@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run tests before push (disabled for initial push)
+# npm test
+
+# Run build to ensure it doesn't break (disabled for initial push)
+# npm run build

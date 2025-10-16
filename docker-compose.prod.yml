@@ -1,0 +1,223 @@
+# Docker Compose - Production Configuration
+# Canvas Memory OS - Multi-tenant Knowledge Management System
+
+version: '3.8'
+
+services:
+  # API Server (Backend)
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: canvas-api
+    restart: unless-stopped
+    ports:
+      - '4001:4001'
+    environment:
+      # Server
+      NODE_ENV: production
+      PORT: 4001
+
+      # Storage Mode: local (SQLite only), canvas (Neo4j only), or hybrid (both)
+      STORAGE_MODE: ${STORAGE_MODE:-local}
+
+      # Local Storage (SQLite + Files)
+      SQLITE_PATH: /data/canvas.db
+      LOCAL_DOCS_PATH: /data/documents
+      STORAGE_PATH: /data/uploads
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-50}
+
+      # Authentication (REQUIRED in production)
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET environment variable must be set}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+
+      # Optional: Neo4j (only needed if STORAGE_MODE=canvas or hybrid)
+      NEO4J_URI: ${NEO4J_URI:-}
+      NEO4J_USER: ${NEO4J_USER:-}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
+
+      # Optional: OAuth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+
+      # Limits (Free tier defaults)
+      FREE_MAX_SOURCES: ${FREE_MAX_SOURCES:-500}
+      FREE_MAX_NODES: ${FREE_MAX_NODES:-20000}
+      FREE_MAX_GROUPS: ${FREE_MAX_GROUPS:-50}
+      FREE_STORAGE_GB: ${FREE_STORAGE_GB:-5}
+
+    volumes:
+      # Persistent data storage
+      - canvas-data:/data
+
+      # Optional: Mount external backup location
+      # - /path/to/backups:/backups
+
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:4001/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    networks:
+      - canvas-network
+
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # Frontend (Web UI)
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: canvas-web
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4001}
+      NEXT_PUBLIC_STORAGE_MODE: ${STORAGE_MODE:-local}
+
+      # Optional: Feature flags
+      NEXT_PUBLIC_ENABLE_PRO_FEATURES: ${ENABLE_PRO_FEATURES:-false}
+      NEXT_PUBLIC_ENABLE_BUSINESS_FEATURES: ${ENABLE_BUSINESS_FEATURES:-false}
+
+    depends_on:
+      api:
+        condition: service_healthy
+
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    networks:
+      - canvas-network
+
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # Neo4j Database (Optional - only needed for graph mode)
+  neo4j:
+    image: neo4j:5.19
+    container_name: canvas-neo4j
+    restart: unless-stopped
+    ports:
+      - '7474:7474' # HTTP
+      - '7687:7687' # Bolt
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set if using Neo4j}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_memory_heap_max__size: ${NEO4J_HEAP_SIZE:-2G}
+      NEO4J_dbms_memory_pagecache_size: ${NEO4J_PAGECACHE_SIZE:-1G}
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+
+    healthcheck:
+      test:
+        ['CMD', 'cypher-shell', '-u', '${NEO4J_USER:-neo4j}', '-p', '${NEO4J_PASSWORD}', 'RETURN 1']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+    networks:
+      - canvas-network
+
+    # Only start if STORAGE_MODE requires Neo4j
+    profiles:
+      - neo4j
+
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '50m'
+        max-file: '3'
+
+  # Nginx Reverse Proxy (Optional - for SSL termination)
+  nginx:
+    image: nginx:alpine
+    container_name: canvas-nginx
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx-cache:/var/cache/nginx
+
+    depends_on:
+      - api
+      - web
+
+    networks:
+      - canvas-network
+
+    # Only start if ENABLE_NGINX is set
+    profiles:
+      - nginx
+
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+# Named volumes for persistent data
+volumes:
+  canvas-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-./data}
+
+  neo4j-data:
+    driver: local
+
+  neo4j-logs:
+    driver: local
+
+  nginx-cache:
+    driver: local
+
+# Network for service communication
+networks:
+  canvas-network:
+    driver: bridge
+# Usage Examples:
+#
+# 1. Start in local mode (SQLite only):
+#    docker-compose -f docker-compose.prod.yml up -d api web
+#
+# 2. Start with Neo4j (graph mode):
+#    docker-compose -f docker-compose.prod.yml --profile neo4j up -d
+#
+# 3. Start with Nginx reverse proxy:
+#    docker-compose -f docker-compose.prod.yml --profile nginx up -d
+#
+# 4. View logs:
+#    docker-compose -f docker-compose.prod.yml logs -f api
+#
+# 5. Stop all services:
+#    docker-compose -f docker-compose.prod.yml down
+#
+# 6. Backup data:
+#    docker cp canvas-api:/data ./backup-$(date +%Y%m%d)
+#
+# 7. Restore data:
+#    docker cp ./backup-20241012 canvas-api:/data

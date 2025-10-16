@@ -1,0 +1,124 @@
+import Database from 'better-sqlite3';
+import { DatabaseClient } from '@canvas-memory/db';
+
+/**
+ * Create an in-memory SQLite database for testing
+ * Includes all tables from the main schema
+ */
+export function createTestDb(): DatabaseClient {
+  const db = new Database(':memory:');
+  db.pragma('journal_mode = WAL');
+
+  // Create all tables
+  db.exec(`
+    -- Accounts table
+    CREATE TABLE IF NOT EXISTS accounts (
+      id TEXT PRIMARY KEY,
+      account_type TEXT NOT NULL CHECK(account_type IN ('admin', 'client')) DEFAULT 'client',
+      account_class TEXT NOT NULL CHECK(account_class IN ('free', 'professional', 'business')) DEFAULT 'free',
+      account_name TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      mode_service INTEGER DEFAULT 0
+    );
+
+    -- Users table
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      name TEXT NOT NULL,
+      rank INTEGER NOT NULL DEFAULT 1 CHECK(rank BETWEEN 1 AND 4),
+      permission_level TEXT NOT NULL DEFAULT 'junior',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    );
+
+    -- Account links table
+    CREATE TABLE IF NOT EXISTS account_links (
+      id TEXT PRIMARY KEY,
+      admin_account_id TEXT NOT NULL,
+      client_account_id TEXT NOT NULL,
+      relationship_type TEXT NOT NULL DEFAULT 'manages',
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (admin_account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+      FOREIGN KEY (client_account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+      UNIQUE(admin_account_id, client_account_id)
+    );
+
+    -- Nodes table
+    CREATE TABLE IF NOT EXISTS nodes (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      data TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    );
+
+    -- Edges table
+    CREATE TABLE IF NOT EXISTS edges (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      from_id TEXT NOT NULL,
+      to_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      data TEXT,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+      FOREIGN KEY (from_id) REFERENCES nodes(id) ON DELETE CASCADE,
+      FOREIGN KEY (to_id) REFERENCES nodes(id) ON DELETE CASCADE
+    );
+
+    -- Audit log table
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      resource_type TEXT,
+      resource_id TEXT,
+      metadata TEXT,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    -- Create indexes
+    CREATE INDEX IF NOT EXISTS idx_users_account ON users(account_id);
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_nodes_account ON nodes(account_id);
+    CREATE INDEX IF NOT EXISTS idx_nodes_kind ON nodes(kind);
+    CREATE INDEX IF NOT EXISTS idx_edges_account ON edges(account_id);
+    CREATE INDEX IF NOT EXISTS idx_edges_from ON edges(from_id);
+    CREATE INDEX IF NOT EXISTS idx_edges_to ON edges(to_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_log_account ON audit_log(account_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log(user_id);
+  `);
+
+  return db as unknown as DatabaseClient;
+}
+
+/**
+ * Clear all data from test database
+ */
+export function clearTestDb(db: DatabaseClient) {
+  db.exec(`
+    DELETE FROM audit_log;
+    DELETE FROM edges;
+    DELETE FROM nodes;
+    DELETE FROM account_links;
+    DELETE FROM users;
+    DELETE FROM accounts;
+  `);
+}
+
+/**
+ * Close test database connection
+ */
+export function closeTestDb(db: DatabaseClient) {
+  db.close();
+}

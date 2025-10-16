@@ -1,0 +1,357 @@
+import { Router, Request, Response } from 'express';
+import {
+  SourceNodeSchema,
+  GroupNodeSchema,
+  ObjectiveClaimSchema,
+} from '@canvas-memory/types';
+
+const router = Router();
+
+// Auth middleware will be added by server.ts when authService is available
+let authService: any = null;
+let requireAuth: any = null;
+let requirePermission: any = null;
+let isolateByAccount: any = null;
+
+// Export function to set auth dependencies
+export function setAuthDependencies(
+  service: any,
+  authMiddleware: any,
+  permissionMiddleware: any,
+  isolationMiddleware: any
+) {
+  authService = service;
+  requireAuth = authMiddleware;
+  requirePermission = permissionMiddleware;
+  isolateByAccount = isolationMiddleware;
+}
+
+// Helper to get database client
+function getDbClient() {
+  if (!global.dbClient) {
+    throw new Error('Database not initialized');
+  }
+  return global.dbClient;
+}
+
+/**
+ * POST /api/v1/nodes/source
+ * Create a Source node (requires senior permission)
+ */
+router.post('/source', async (req: Request, res: Response) => {
+  try {
+    // Check if auth is enabled
+    if (requireAuth && requirePermission) {
+      // Apply auth middleware
+      await new Promise<void>((resolve, reject) => {
+        requireAuth(authService)(req, res, (err: any) => {
+          if (err) reject(err);
+          else {
+            requirePermission('senior')(req, res, (err2: any) => {
+              if (err2) reject(err2);
+              else resolve();
+            });
+          }
+        });
+      });
+    }
+
+    const source = SourceNodeSchema.parse(req.body);
+    const db = getDbClient();
+
+    // Prepare node data with auth fields
+    const nodeData: any = { ...source };
+    if (req.user) {
+      nodeData.account_id = req.user.accountId;
+      nodeData.created_by = req.user.userId;
+    }
+
+    await db.createNode(nodeData);
+
+    res.status(201).json({ success: true, node: source });
+  } catch (error: any) {
+    console.error('Create source error:', error);
+    res.status(500).json({
+      error: 'Failed to create source node',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/v1/nodes/:id
+ * Get a node by ID (with account isolation)
+ */
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    // Apply auth if available
+    if (requireAuth && isolateByAccount) {
+      await new Promise<void>((resolve, reject) => {
+        requireAuth(authService)(req, res, (err: any) => {
+          if (err) reject(err);
+          else {
+            isolateByAccount(req, res, (err2: any) => {
+              if (err2) reject(err2);
+              else resolve();
+            });
+          }
+        });
+      });
+    }
+
+    const { id } = req.params;
+    const db = getDbClient();
+
+    const node = await db.getNode(id);
+
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+
+    // Check account access if auth is enabled
+    if (req.user) {
+      const nodeAccountId = (node as any).account_id;
+
+      // Admin accounts can access all data
+      if (req.user.accountType !== 'admin') {
+        // Client accounts can only access their own data
+        if (nodeAccountId !== req.user.accountId) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
+      }
+    }
+
+    res.json({ node });
+  } catch (error: any) {
+    console.error('Get node error:', error);
+    res.status(500).json({
+      error: 'Failed to get node',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/v1/nodes
+ * List nodes with filters (with account isolation)
+ * Query params: ?kind=ChatThread&skip=0&limit=10
+ */
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    // Apply auth if available
+    if (requireAuth && isolateByAccount) {
+      await new Promise<void>((resolve, reject) => {
+        requireAuth(authService)(req, res, (err: any) => {
+          if (err) reject(err);
+          else {
+            isolateByAccount(req, res, (err2: any) => {
+              if (err2) reject(err2);
+              else resolve();
+            });
+          }
+        });
+      });
+    }
+
+    const { kind, limit = '100', skip = '0' } = req.query;
+    const db = getDbClient();
+
+    const limitNum = parseInt(limit as string, 10);
+    const skipNum = parseInt(skip as string, 10);
+    const storageMode = process.env.STORAGE_MODE || 'local';
+
+    let nodes;
+    let total = 0;
+
+    // Build account filter
+    const accountFilter = req.user && req.user.accountType !== 'admin'
+      ? req.user.accountId
+      : null;
+
+    if (storageMode === 'local') {
+      // SQLite queries with account filtering
+      if (accountFilter) {
+        // Client account - filter by account_id
+        if (kind) {
+          const query = 'SELECT properties FROM nodes WHERE kind = ? AND account_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
+          const result = await db.execute(query, [kind, accountFilter, limitNum, skipNum]);
+          nodes = result.records.map((row: any) => JSON.parse(row.properties));
+
+          const countResult = await db.execute('SELECT COUNT(*) as count FROM nodes WHERE kind = ? AND account_id = ?', [kind, accountFilter]);
+          total = countResult.records[0].count;
+        } else {
+          const query = 'SELECT properties FROM nodes WHERE account_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
+          const result = await db.execute(query, [accountFilter, limitNum, skipNum]);
+          nodes = result.records.map((row: any) => JSON.parse(row.properties));
+
+          const countResult = await db.execute('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?', [accountFilter]);
+          total = countResult.records[0].count;
+        }
+      } else {
+        // Admin account - see all data
+        if (kind) {
+          const query = 'SELECT properties FROM nodes WHERE kind = ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
+          const result = await db.execute(query, [kind, limitNum, skipNum]);
+          nodes = result.records.map((row: any) => JSON.parse(row.properties));
+
+          const countResult = await db.execute('SELECT COUNT(*) as count FROM nodes WHERE kind = ?', [kind]);
+          total = countResult.records[0].count;
+        } else {
+          const query = 'SELECT properties FROM nodes ORDER BY created_at DESC LIMIT ? OFFSET ?';
+          const result = await db.execute(query, [limitNum, skipNum]);
+          nodes = result.records.map((row: any) => JSON.parse(row.properties));
+
+          const countResult = await db.execute('SELECT COUNT(*) as count FROM nodes');
+          total = countResult.records[0].count;
+        }
+      }
+    } else {
+      // Neo4j queries - similar pattern
+      if (accountFilter) {
+        if (kind) {
+          const query = 'MATCH (n:Node) WHERE n.kind = $kind AND n.account_id = $accountId RETURN n ORDER BY n.created_at DESC SKIP $skip LIMIT $limit';
+          const result = await db.execute(query, { kind, accountId: accountFilter, skip: skipNum, limit: limitNum });
+          nodes = result.records.map((r: any) => r.get('n').properties);
+        } else {
+          const query = 'MATCH (n:Node) WHERE n.account_id = $accountId RETURN n ORDER BY n.created_at DESC SKIP $skip LIMIT $limit';
+          const result = await db.execute(query, { accountId: accountFilter, skip: skipNum, limit: limitNum });
+          nodes = result.records.map((r: any) => r.get('n').properties);
+        }
+      } else {
+        if (kind) {
+          const query = 'MATCH (n:Node) WHERE n.kind = $kind RETURN n ORDER BY n.created_at DESC SKIP $skip LIMIT $limit';
+          const result = await db.execute(query, { kind, skip: skipNum, limit: limitNum });
+          nodes = result.records.map((r: any) => r.get('n').properties);
+        } else {
+          const query = 'MATCH (n:Node) RETURN n ORDER BY n.created_at DESC SKIP $skip LIMIT $limit';
+          const result = await db.execute(query, { skip: skipNum, limit: limitNum });
+          nodes = result.records.map((r: any) => r.get('n').properties);
+        }
+      }
+    }
+
+    res.json({ nodes, count: nodes?.length || 0, total });
+  } catch (error: any) {
+    console.error('List nodes error:', error);
+    res.status(500).json({
+      error: 'Failed to list nodes',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * DELETE /api/v1/nodes/:id
+ * Delete a node (requires leader permission)
+ */
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    // Apply auth if available (leader permission required for delete)
+    if (requireAuth && requirePermission && isolateByAccount) {
+      await new Promise<void>((resolve, reject) => {
+        requireAuth(authService)(req, res, (err: any) => {
+          if (err) reject(err);
+          else {
+            requirePermission('leader')(req, res, (err2: any) => {
+              if (err2) reject(err2);
+              else {
+                isolateByAccount(req, res, (err3: any) => {
+                  if (err3) reject(err3);
+                  else resolve();
+                });
+              }
+            });
+          }
+        });
+      });
+    }
+
+    const { id } = req.params;
+    const db = getDbClient();
+
+    // Check if node exists first
+    const node = await db.getNode(id);
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+
+    // Check account access if auth is enabled
+    if (req.user) {
+      const nodeAccountId = (node as any).account_id;
+
+      // Admin accounts can delete all data
+      if (req.user.accountType !== 'admin') {
+        // Client accounts can only delete their own data
+        if (nodeAccountId !== req.user.accountId) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
+      }
+    }
+
+    // Delete the node
+    if (db.deleteNode) {
+      await db.deleteNode(id);
+    } else {
+      // Fallback for databases without deleteNode method
+      const storageMode = process.env.STORAGE_MODE || 'local';
+      if (storageMode === 'local') {
+        await db.execute('DELETE FROM nodes WHERE id = ?', [id]);
+      } else {
+        await db.execute('MATCH (n:Node {id: $id}) DETACH DELETE n', { id });
+      }
+    }
+
+    res.json({ success: true, deleted: 1 });
+  } catch (error: any) {
+    console.error('Delete node error:', error);
+    res.status(500).json({
+      error: 'Failed to delete node',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/v1/nodes/group
+ * Create a Group node (requires senior permission)
+ */
+router.post('/group', async (req: Request, res: Response) => {
+  try {
+    // Apply auth if available
+    if (requireAuth && requirePermission) {
+      await new Promise<void>((resolve, reject) => {
+        requireAuth(authService)(req, res, (err: any) => {
+          if (err) reject(err);
+          else {
+            requirePermission('senior')(req, res, (err2: any) => {
+              if (err2) reject(err2);
+              else resolve();
+            });
+          }
+        });
+      });
+    }
+
+    const group = GroupNodeSchema.parse(req.body);
+    const db = getDbClient();
+
+    // Prepare node data with auth fields
+    const nodeData: any = { ...group };
+    if (req.user) {
+      nodeData.account_id = req.user.accountId;
+      nodeData.created_by = req.user.userId;
+    }
+
+    await db.createNode(nodeData);
+
+    res.status(201).json({ success: true, node: group });
+  } catch (error: any) {
+    console.error('Create group error:', error);
+    res.status(500).json({
+      error: 'Failed to create group node',
+      message: error.message,
+    });
+  }
+});
+
+export default router;

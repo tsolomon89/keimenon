@@ -1,0 +1,396 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { DuplicateGroup, ReviewDecision } from '@/types/chat-import';
+import { DuplicateTreeView } from './DuplicateTreeView';
+import { DuplicateComparisonView } from './DuplicateComparisonView';
+import { DuplicateActionsPanel } from './DuplicateActionsPanel';
+import { useUndoRedo } from '@/hooks/useUndoRedo';
+import { resolveDuplicate } from '@/lib/api-client';
+
+interface DuplicateReviewPanelProps {
+  groups: DuplicateGroup[];
+  onReviewComplete: (decisions: Map<string, ReviewDecision>) => void;
+  onCancel: () => void;
+}
+
+export function DuplicateReviewPanel({
+  groups,
+  onReviewComplete,
+  onCancel,
+}: DuplicateReviewPanelProps) {
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(
+    groups.length > 0 ? groups[0].id : null
+  );
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'side-by-side' | 'unified'>('side-by-side');
+
+  // Undo/Redo for decisions
+  const {
+    state: decisions,
+    setState: setDecisions,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useUndoRedo<Map<string, ReviewDecision>>(new Map());
+
+  const selectedGroup = groups.find((g) => g.id === selectedGroupId);
+  const selectedCandidate = selectedGroup?.candidates.find(
+    (c) => c.id === selectedCandidateId
+  );
+
+  const handleDecision = async (candidateId: string, action: ReviewDecision['action']) => {
+    try {
+      // ✅ Call backend API to resolve the duplicate
+      await resolveDuplicate(candidateId, action);
+
+      // Update local state
+      const newDecisions = new Map(decisions);
+      newDecisions.set(candidateId, {
+        duplicateId: candidateId,
+        action,
+        timestamp: Date.now(),
+      });
+      setDecisions(newDecisions);
+
+      // Auto-advance to next candidate
+      if (selectedGroup) {
+        const currentIndex = selectedGroup.candidates.findIndex((c) => c.id === candidateId);
+        if (currentIndex < selectedGroup.candidates.length - 1) {
+          setSelectedCandidateId(selectedGroup.candidates[currentIndex + 1].id);
+        } else {
+          // Move to next group
+          const currentGroupIndex = groups.findIndex((g) => g.id === selectedGroupId);
+          if (currentGroupIndex < groups.length - 1) {
+            const nextGroup = groups[currentGroupIndex + 1];
+            setSelectedGroupId(nextGroup.id);
+            setSelectedCandidateId(nextGroup.candidates[0]?.id || null);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to resolve duplicate:', error);
+      // TODO: Show error toast to user
+    }
+  };
+
+  const handleComplete = () => {
+    onReviewComplete(decisions);
+  };
+
+  const handleBulkAction = (action: ReviewDecision['action']) => {
+    const newDecisions = new Map(decisions);
+
+    // Apply action to all candidates in current group
+    if (selectedGroup) {
+      selectedGroup.candidates.forEach((candidate) => {
+        newDecisions.set(candidate.id, {
+          duplicateId: candidate.id,
+          action,
+          timestamp: Date.now(),
+        });
+      });
+      setDecisions(newDecisions);
+    }
+  };
+
+  const handleBulkActionAll = (action: ReviewDecision['action']) => {
+    const newDecisions = new Map(decisions);
+
+    // Apply action to all candidates in all groups
+    groups.forEach((group) => {
+      group.candidates.forEach((candidate) => {
+        newDecisions.set(candidate.id, {
+          duplicateId: candidate.id,
+          action,
+          timestamp: Date.now(),
+        });
+      });
+    });
+    setDecisions(newDecisions);
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if a candidate is selected
+      if (!selectedCandidateId) return;
+
+      // Ignore if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.key) {
+        case '1':
+          e.preventDefault();
+          handleDecision(selectedCandidateId, 'keep-primary');
+          break;
+        case '2':
+          e.preventDefault();
+          handleDecision(selectedCandidateId, 'keep-duplicate');
+          break;
+        case '3':
+          e.preventDefault();
+          handleDecision(selectedCandidateId, 'keep-both');
+          break;
+        case '4':
+          e.preventDefault();
+          handleDecision(selectedCandidateId, 'merge');
+          break;
+        case 'z':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            if (e.shiftKey) {
+              redo();
+            } else {
+              undo();
+            }
+          }
+          break;
+        case 'y':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            redo();
+          }
+          break;
+        case 'ArrowUp':
+        case 'ArrowDown':
+          e.preventDefault();
+          navigateCandidate(e.key === 'ArrowUp' ? 'prev' : 'next');
+          break;
+        case 'Escape':
+          e.preventDefault();
+          onCancel();
+          break;
+        case 'Enter':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            handleComplete();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedCandidateId, selectedGroupId, groups, decisions, undo, redo]);
+
+  const navigateCandidate = (direction: 'prev' | 'next') => {
+    if (!selectedGroup || !selectedCandidateId) return;
+
+    const currentIndex = selectedGroup.candidates.findIndex((c) => c.id === selectedCandidateId);
+
+    if (direction === 'next') {
+      if (currentIndex < selectedGroup.candidates.length - 1) {
+        setSelectedCandidateId(selectedGroup.candidates[currentIndex + 1].id);
+      } else {
+        // Move to next group
+        const currentGroupIndex = groups.findIndex((g) => g.id === selectedGroupId);
+        if (currentGroupIndex < groups.length - 1) {
+          const nextGroup = groups[currentGroupIndex + 1];
+          setSelectedGroupId(nextGroup.id);
+          setSelectedCandidateId(nextGroup.candidates[0]?.id || null);
+        }
+      }
+    } else {
+      if (currentIndex > 0) {
+        setSelectedCandidateId(selectedGroup.candidates[currentIndex - 1].id);
+      } else {
+        // Move to previous group
+        const currentGroupIndex = groups.findIndex((g) => g.id === selectedGroupId);
+        if (currentGroupIndex > 0) {
+          const prevGroup = groups[currentGroupIndex - 1];
+          setSelectedGroupId(prevGroup.id);
+          setSelectedCandidateId(
+            prevGroup.candidates[prevGroup.candidates.length - 1]?.id || null
+          );
+        }
+      }
+    }
+  };
+
+  const totalCandidates = groups.reduce((sum, g) => sum + g.candidates.length, 0);
+  const reviewedCount = decisions.size;
+  const progressPercent = totalCandidates > 0 ? (reviewedCount / totalCandidates) * 100 : 0;
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header with progress */}
+      <div className="p-4 border-b border-slate-700 bg-slate-900">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h2 className="text-lg font-semibold">Review Duplicates</h2>
+            <div className="text-xs text-slate-500 mt-1">
+              Use ↑↓ arrows to navigate • 1-4 for actions • Ctrl+Z/Y to undo/redo • Esc to cancel • Ctrl+Enter to complete
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Bulk Actions Dropdown */}
+            <div className="relative group">
+              <button className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded transition-colors">
+                Bulk Actions ▾
+              </button>
+              <div className="absolute right-0 mt-1 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                <div className="p-2">
+                  <div className="text-xs text-slate-400 mb-2 px-2">Apply to current group:</div>
+                  <button
+                    onClick={() => handleBulkAction('keep-primary')}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors"
+                  >
+                    Keep Primary for All
+                  </button>
+                  <button
+                    onClick={() => handleBulkAction('keep-duplicate')}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors"
+                  >
+                    Keep Duplicate for All
+                  </button>
+                  <button
+                    onClick={() => handleBulkAction('keep-both')}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors"
+                  >
+                    Keep Both for All
+                  </button>
+                  <div className="border-t border-slate-700 my-2"></div>
+                  <div className="text-xs text-slate-400 mb-2 px-2">Apply to all groups:</div>
+                  <button
+                    onClick={() => handleBulkActionAll('keep-primary')}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors"
+                  >
+                    Keep Primary Everywhere
+                  </button>
+                  <button
+                    onClick={() => handleBulkActionAll('keep-duplicate')}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors"
+                  >
+                    Keep Duplicate Everywhere
+                  </button>
+                  <button
+                    onClick={() => handleBulkActionAll('keep-both')}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors"
+                  >
+                    Keep Both Everywhere
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="text-sm text-slate-400">
+              {reviewedCount} / {totalCandidates} reviewed
+            </div>
+          </div>
+        </div>
+        <div className="w-full bg-slate-800 rounded-full h-2">
+          <div
+            className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Three-panel layout */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* LHS: Tree view */}
+        <div className="w-80 border-r border-slate-700 overflow-y-auto bg-slate-900/50">
+          <DuplicateTreeView
+            groups={groups}
+            selectedGroupId={selectedGroupId}
+            selectedCandidateId={selectedCandidateId}
+            decisions={decisions}
+            onGroupSelect={setSelectedGroupId}
+            onCandidateSelect={setSelectedCandidateId}
+          />
+        </div>
+
+        {/* Center: Comparison view */}
+        <div className="flex-1 overflow-y-auto">
+          {selectedCandidate ? (
+            <DuplicateComparisonView
+              candidate={selectedCandidate}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-slate-400">
+              <p>Select a duplicate pair to review</p>
+            </div>
+          )}
+        </div>
+
+        {/* RHS: Actions panel */}
+        <div className="w-80 border-l border-slate-700 overflow-y-auto bg-slate-900/50">
+          {selectedCandidate && (
+            <DuplicateActionsPanel
+              candidate={selectedCandidate}
+              decision={selectedCandidateId ? decisions.get(selectedCandidateId) : undefined}
+              onDecision={(action) =>
+                selectedCandidateId && handleDecision(selectedCandidateId, action)
+              }
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Footer with actions */}
+      <div className="p-4 border-t border-slate-700 bg-slate-900 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-slate-400 hover:text-slate-300 transition-colors"
+          >
+            Cancel
+          </button>
+          <div className="flex items-center gap-1 ml-4">
+            <button
+              onClick={undo}
+              disabled={!canUndo}
+              className="p-2 text-slate-400 hover:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Undo (Ctrl+Z)"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                />
+              </svg>
+            </button>
+            <button
+              onClick={redo}
+              disabled={!canRedo}
+              className="p-2 text-slate-400 hover:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Redo (Ctrl+Y)"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button
+          onClick={handleComplete}
+          className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors"
+        >
+          Complete Review
+        </button>
+      </div>
+    </div>
+  );
+}

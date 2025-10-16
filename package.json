@@ -1,0 +1,58 @@
+{
+  "name": "canvas-memory-os",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "setup": "npm install && npm run check-ports && npm run prepare && echo \n✅ Setup complete! Run 'npm run dev' to start.",
+    "dev": "node scripts/dev.js",
+    "dev:clean": "node scripts/dev.js --clean",
+    "dev:stop": "node scripts/dev-stop.js",
+    "test": "turbo run test",
+    "test:auth": "node tests/auth-suite.js",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "lint-staged": "lint-staged",
+    "clean": "turbo run clean",
+    "type-check": "turbo run type-check",
+    "validate": "node scripts/validate-env.js --verbose",
+    "kill-ports": "node scripts/kill-port.js 3000 4001",
+    "check-ports": "node scripts/check-port.js 3000 && node scripts/check-port.js 4001",
+    "backup": "node scripts/backup-db.js",
+    "backup:compress": "node scripts/backup-db.js --compress",
+    "restore": "node scripts/restore-db.js",
+    "migrate:to-local": "npx tsx scripts/migrate-to-local-storage.ts",
+    "migrate:to-local:dry-run": "npx tsx scripts/migrate-to-local-storage.ts --dry-run",
+    "prepare": "husky install",
+    "commitlint": "commitlint"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^18.4.3",
+    "@commitlint/config-conventional": "^18.4.3",
+    "@types/bcrypt": "^6.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/passport": "^1.0.17",
+    "@types/passport-google-oauth20": "^2.0.16",
+    "esbuild": "^0.25.10",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.1.1",
+    "turbo": "^1.13.4",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0"
+  }
+}

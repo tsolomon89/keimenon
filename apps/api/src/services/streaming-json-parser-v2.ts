@@ -1,0 +1,189 @@
+import { createReadStream } from 'fs';
+import { EventEmitter } from 'events';
+import JSONStream from 'JSONStream';
+
+export interface ParseProgress {
+  conversationsProcessed: number;
+  messagesProcessed: number;
+  bytesProcessed: number;
+  currentConversation?: string;
+}
+
+export interface ConversationChunk {
+  id: string;
+  title: string;
+  messages: Array<{
+    role: string;
+    content: string;
+    timestamp?: string;
+    metadata?: Record<string, any>;
+  }>;
+  created_at?: string;
+  updated_at?: string;
+  platform: 'chatgpt' | 'claude' | 'gemini' | 'unknown';
+}
+
+/**
+ * Streaming JSON parser for large conversation files using JSONStream
+ * Better handles large text nodes than clarinet
+ */
+export class StreamingJSONParserV2 extends EventEmitter {
+  private conversationBuffer: any[] = [];
+  private bufferSize = 0;
+  private maxBufferSize = 10; // Process in batches of 10 conversations
+  private conversationsProcessed = 0;
+  private messagesProcessed = 0;
+
+  constructor() {
+    super();
+  }
+
+  /**
+   * Parse a large JSON file in streaming fashion
+   */
+  async parseFile(filePath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const stream = createReadStream(filePath, {
+        encoding: 'utf8',
+        highWaterMark: 256 * 1024, // 256KB chunks
+      });
+
+      // JSONStream expects the array at root or with a path like '*'
+      const parser = JSONStream.parse('*');
+
+      let bytesProcessed = 0;
+
+      stream.on('data', (chunk: string) => {
+        bytesProcessed += Buffer.byteLength(chunk, 'utf8');
+      });
+
+      parser.on('data', (data: any) => {
+        // Normalize the conversation
+        const normalized = this.normalizeConversation(data);
+
+        if (normalized) {
+          this.conversationBuffer.push(normalized);
+          this.bufferSize++;
+          this.conversationsProcessed++;
+          this.messagesProcessed += normalized.messages.length;
+
+          // Emit batch when buffer is full
+          if (this.bufferSize >= this.maxBufferSize) {
+            this.emit('batch', [...this.conversationBuffer]);
+            this.emit('progress', {
+              conversationsProcessed: this.conversationsProcessed,
+              messagesProcessed: this.messagesProcessed,
+              bytesProcessed,
+              currentConversation: normalized.title,
+            });
+            this.conversationBuffer = [];
+            this.bufferSize = 0;
+          }
+        }
+      });
+
+      parser.on('error', (error: Error) => {
+        reject(error);
+      });
+
+      parser.on('end', () => {
+        // Flush remaining buffer
+        if (this.conversationBuffer.length > 0) {
+          this.emit('batch', [...this.conversationBuffer]);
+          this.emit('progress', {
+            conversationsProcessed: this.conversationsProcessed,
+            messagesProcessed: this.messagesProcessed,
+            bytesProcessed,
+          });
+        }
+        resolve();
+      });
+
+      stream.on('error', (error) => {
+        reject(error);
+      });
+
+      stream.pipe(parser);
+    });
+  }
+
+  /**
+   * Normalize conversation from different formats
+   */
+  private normalizeConversation(raw: any): ConversationChunk | null {
+    // Detect format and normalize
+    let platform: ConversationChunk['platform'] = 'unknown';
+    let messages: ConversationChunk['messages'] = [];
+
+    // ChatGPT format with mapping
+    if (raw.mapping) {
+      platform = 'chatgpt';
+      const mapping = raw.mapping;
+
+      for (const [nodeId, node] of Object.entries(mapping) as [string, any][]) {
+        if (node.message?.content) {
+          const msg = node.message;
+          const role = msg.author?.role;
+          if (role === 'system') continue;
+
+          const parts = msg.content?.parts || [];
+          const content = Array.isArray(parts) ? parts.join('\n') : String(parts);
+
+          if (content) {
+            messages.push({
+              role: role === 'user' ? 'user' : 'assistant',
+              content,
+              timestamp: msg.create_time,
+              metadata: { id: msg.id },
+            });
+          }
+        }
+      }
+    }
+
+    // Claude format with chat_messages
+    else if (raw.chat_messages || raw.messages) {
+      platform = raw.uuid ? 'claude' : 'chatgpt';
+      const msgArray = raw.chat_messages || raw.messages || [];
+
+      for (const msg of msgArray) {
+        const role = msg.sender || msg.role || msg.author?.role;
+        if (role === 'system') continue;
+
+        let content = msg.text || msg.content || msg.message || '';
+        if (typeof content === 'object') {
+          content = content.text || JSON.stringify(content);
+        }
+
+        if (content) {
+          messages.push({
+            role: role === 'human' || role === 'user' ? 'user' : 'assistant',
+            content: String(content),
+            timestamp: msg.created_at || msg.timestamp,
+            metadata: { id: msg.uuid || msg.id },
+          });
+        }
+      }
+    }
+
+    if (messages.length === 0) {
+      return null;
+    }
+
+    return {
+      id: raw.id || raw.uuid || `conv_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      title: raw.title || raw.name || 'Untitled Conversation',
+      messages,
+      created_at: raw.created_at || raw.create_time,
+      updated_at: raw.updated_at || raw.update_time,
+      platform,
+    };
+  }
+
+  /**
+   * Set maximum buffer size before emitting batch
+   */
+  setBufferSize(size: number) {
+    this.maxBufferSize = size;
+  }
+}

@@ -1,0 +1,126 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+junit.xml
+test-results/
+playwright-report/
+
+# Next.js
+.next/
+out/
+.swc/
+
+# Production
+build/
+dist/
+*.tsbuildinfo
+*.tsbuildinfo.json
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files (IMPORTANT: never commit secrets)
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+.canvas-memory/
+
+# Vercel
+.vercel/
+
+# Turbo
+.turbo/
+
+# TypeScript
+*.tsbuildinfo
+*.tsbuildinfo.json
+
+# IDE & Editors
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+.vscode-test
+.history/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Logs
+logs/
+*.log
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Runtime
+.runtime/
+tmp/
+temp/
+
+# Backups
+*.backup
+*.bak
+backup_*
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Large test data files (>100MB)
+ai_context/chat_data/claude_conversations.json
+ai_context/chat_data/gpt_conversations.json
+ai_context/chat_data/gpt_projects.json
+ai_context/chat_data/test-samples/medium.json
+
+# Large upload files
+apps/api/uploads/*
+
+# Misc
+*.pem
+*.key
+*.cert

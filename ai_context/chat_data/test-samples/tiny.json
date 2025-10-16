@@ -1,0 +1,52 @@
+[
+  {
+    "uuid": "e11fc0bc-eb83-4364-bb1e-b9c6c4fc2679",
+    "name": "",
+    "created_at": "2025-08-06T23:23:29.456308Z",
+    "updated_at": "2025-08-06T23:23:29.456308Z",
+    "account": {
+      "uuid": "4e069525-815c-4535-865a-64738a6d3dd6"
+    },
+    "chat_messages": []
+  },
+  {
+    "uuid": "24db86d2-42f6-4780-8326-e231d2b3f7f9",
+    "name": "",
+    "created_at": "2025-08-06T02:01:08.219225Z",
+    "updated_at": "2025-08-07T01:24:43.423167Z",
+    "account": {
+      "uuid": "4e069525-815c-4535-865a-64738a6d3dd6"
+    },
+    "chat_messages": []
+  },
+  {
+    "uuid": "ae8ff9ff-5a88-4e4d-881d-cf12adcd8341",
+    "name": "",
+    "created_at": "2025-08-09T17:34:25.268807Z",
+    "updated_at": "2025-08-09T17:34:25.268807Z",
+    "account": {
+      "uuid": "4e069525-815c-4535-865a-64738a6d3dd6"
+    },
+    "chat_messages": []
+  },
+  {
+    "uuid": "b414799d-5bc1-44df-9ca2-b75a6569ab66",
+    "name": "",
+    "created_at": "2025-08-06T11:25:40.511485Z",
+    "updated_at": "2025-08-07T01:24:36.362157Z",
+    "account": {
+      "uuid": "4e069525-815c-4535-865a-64738a6d3dd6"
+    },
+    "chat_messages": []
+  },
+  {
+    "uuid": "35b68052-2b35-4ae6-8637-25f1fbe6f425",
+    "name": "",
+    "created_at": "2025-08-01T18:04:09.534525Z",
+    "updated_at": "2025-08-01T18:04:09.534525Z",
+    "account": {
+      "uuid": "4e069525-815c-4535-865a-64738a6d3dd6"
+    },
+    "chat_messages": []
+  }
+]

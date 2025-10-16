@@ -1,0 +1,22 @@
+{
+  "name": "@canvas-memory/graph",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "d3-force": "^3.0.0",
+    "d3-quadtree": "^3.0.1",
+    "@canvas-memory/types": "*"
+  },
+  "devDependencies": {
+    "@types/d3-force": "^3.0.9",
+    "@types/d3-quadtree": "^3.0.6",
+    "typescript": "^5.3.3"
+  }
+}
