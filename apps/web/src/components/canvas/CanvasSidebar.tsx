@@ -19,6 +19,7 @@ import { useGroupsTree, fetchGroupMembers, fetchFolderChildren } from '@/hooks/u
 import { useSettingsTree } from '@/hooks/useSettingsTree';
 import { useNodeGroupLookup } from '@/hooks/useNodeGroupLookup';
 import { useCanvasStore } from '@/store/canvasStore';
+import { NavigationModelFactory } from '@canvas-memory/types/src/navigation.model';
 
 interface CanvasSidebarProps {
   side: 'left' | 'right';
@@ -57,7 +58,11 @@ export function CanvasSidebar({
     const { operating, switchAccount } = useOperating();
     const { treeData: accountTreeData, loading: accountsLoading } = useAccountTree();
     const { treeData: groupsTreeData, loading: groupsLoading } = useGroupsTree();
-    const { tree: settingsTreeData, loading: settingsLoading, error: settingsError } = useSettingsTree();
+    const {
+      tree: settingsTreeData,
+      loading: settingsLoading,
+      error: settingsError,
+    } = useSettingsTree();
     const [expandedTreeData, setExpandedTreeData] = useState<TreeNode[]>(groupsTreeData);
     const [_loadingFolders, setLoadingFolders] = useState<Set<string>>(new Set());
     const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
@@ -70,47 +75,29 @@ export function CanvasSidebar({
     const canvasSelectedArray = Array.from(canvasSelectedNodeIds);
     const { groupIds: highlightedGroupIds } = useNodeGroupLookup(canvasSelectedArray);
 
-    // Determine navigation mode and data based on shell/canvas mode
-    let navMode: 'groups' | 'accounts' | 'settings' = 'groups';
-    let navData: TreeNode[] = [];
-    let navTitle = 'Navigation';
-    let searchPlaceholder = 'Search...';
-    let emptyMessage = 'No items';
+    // Use NavigationModelFactory to determine navigation data (DRY + testable)
+    const navModel = NavigationModelFactory.get({
+      shellMode,
+      canvasMode,
+      operatingMode: operating.mode,
+      user: user ? { accountType: user.accountType, accountId: user.accountId } : null,
+      accountTreeData,
+      groupsTreeData,
+      settingsTreeData,
+      accountsLoading,
+      groupsLoading,
+      settingsLoading,
+      settingsError,
+    });
 
-    if (canvasMode === 'settings') {
-      // Settings mode - show settings tree from API
-      navMode = 'settings';
-      navTitle = 'Settings';
-      searchPlaceholder = 'Search settings...';
-
-      if (settingsError) {
-        emptyMessage = `Error: ${settingsError}`;
-      } else if (settingsLoading) {
-        emptyMessage = 'Loading settings...';
-      } else {
-        emptyMessage = 'No settings available';
-      }
-
-      navData = settingsTreeData;
-    } else if (shellMode === 'crm' && canvasMode === 'dashboard') {
-      // CRM mode with dashboard - show account tree from API
-      // Note: When in canvas mode, we show groups even if in CRM shell
-      navMode = 'accounts';
-      navTitle = 'Accounts';
-      searchPlaceholder = 'Search accounts...';
-      emptyMessage = accountsLoading ? 'Loading accounts...' : 'No accounts found';
-      navData = accountTreeData;
-    } else {
-      // Canvas/Portal mode - show groups & folders
-      // This applies to: portal shell (any mode) OR crm shell in canvas mode
-      navMode = 'groups';
-      navTitle = 'Groups & Folders';
-      searchPlaceholder = 'Search groups...';
-      emptyMessage = groupsLoading ? 'Loading groups...' : 'No groups yet. Upload sources to get started.';
-
-      // Load groups from backend
-      navData = groupsTreeData;
-    }
+    const {
+      mode: navMode,
+      title: navTitle,
+      searchPlaceholder,
+      emptyMessage,
+      data: navData,
+      showCreateButton,
+    } = navModel;
 
     const handleSelect = async (node: TreeNode, event?: React.MouseEvent) => {
       console.log('Selected node:', node);
@@ -234,7 +221,7 @@ export function CanvasSidebar({
 
             // Bidirectional sync: Also select the member nodes on canvas
             canvasStore.clearSelection();
-            memberIds.forEach(id => canvasStore.selectNode(id, true));
+            memberIds.forEach((id) => canvasStore.selectNode(id, true));
 
             // TODO: Optionally zoom to fit the filtered nodes
           } catch (error) {
@@ -250,8 +237,8 @@ export function CanvasSidebar({
         <div className="min-h-[48px] border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm flex items-center justify-between px-3">
           <h2 className="text-sm font-semibold text-slate-300">{navTitle}</h2>
           <div className="flex items-center gap-1">
-            {/* + Account button (admin only, CRM mode) */}
-            {navMode === 'accounts' && user?.accountType === 'admin' && (
+            {/* + Account button (from navigation model) */}
+            {showCreateButton && navMode === 'accounts' && (
               <button
                 onClick={() => setShowCreateAccountModal(true)}
                 className="p-1 hover:bg-slate-800 rounded text-purple-400 hover:text-purple-300"
@@ -275,9 +262,11 @@ export function CanvasSidebar({
           data={navData}
           selectedId={navMode === 'accounts' ? operating.accountId : undefined}
           selectedIds={
-            navMode === 'accounts' ? selectedAccountIds :
-            navMode === 'groups' ? highlightedGroupIds :
-            undefined
+            navMode === 'accounts'
+              ? selectedAccountIds
+              : navMode === 'groups'
+                ? highlightedGroupIds
+                : undefined
           }
           multiSelect={navMode === 'accounts' || navMode === 'groups'}
           onSelect={handleSelect}
@@ -319,9 +308,9 @@ export function CanvasSidebar({
           return {
             id: node.metadata.accountId as string,
             name: node.label,
-            email: node.metadata.email as string || '',
-            account_type: node.metadata.accountType as string || 'client',
-            account_class: node.metadata.accountClass as string || 'free',
+            email: (node.metadata.email as string) || '',
+            account_type: (node.metadata.accountType as string) || 'client',
+            account_class: (node.metadata.accountClass as string) || 'free',
             created_at: Date.now(),
             updated_at: Date.now(),
           };
@@ -358,8 +347,12 @@ export function CanvasSidebar({
       details: [
         { label: 'Type', value: node.type, type: 'badge' as const },
         { label: 'ID', value: node.id.slice(0, 12) + '...', type: 'text' as const },
-        ...(node.data.metadata?.char_count ? [{ label: 'Characters', value: node.data.metadata.char_count, type: 'number' as const }] : []),
-        ...(node.data.metadata?.created_at ? [{ label: 'Created', value: node.data.metadata.created_at, type: 'date' as const }] : []),
+        ...(node.data.metadata?.char_count
+          ? [{ label: 'Characters', value: node.data.metadata.char_count, type: 'number' as const }]
+          : []),
+        ...(node.data.metadata?.created_at
+          ? [{ label: 'Created', value: node.data.metadata.created_at, type: 'date' as const }]
+          : []),
       ],
       metadata: node.data.metadata || {},
       actions: [
@@ -489,7 +482,9 @@ export function CanvasSidebar({
               <Tag className="w-12 h-12 mb-4 text-slate-600 mx-auto" />
               <p>No selection</p>
               <p className="mt-2 text-xs">
-                {rightShellMode === 'crm' ? 'Select an account to inspect' : 'Click nodes to inspect'}
+                {rightShellMode === 'crm'
+                  ? 'Select an account to inspect'
+                  : 'Click nodes to inspect'}
               </p>
             </div>
           </div>
