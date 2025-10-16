@@ -7,14 +7,7 @@
  * Configuration Scope Hierarchy
  * defaults → org → workspace → role → user → view → component
  */
-export type ConfigScope =
-  | 'defaults'
-  | 'org'
-  | 'workspace'
-  | 'role'
-  | 'user'
-  | 'view'
-  | 'component';
+export type ConfigScope = 'defaults' | 'org' | 'workspace' | 'role' | 'user' | 'view' | 'component';
 
 /**
  * Setting Value Types
@@ -411,6 +404,24 @@ export const SETTINGS_REGISTRY: SettingCategory[] = [
           },
         ],
       },
+      {
+        id: 'users',
+        label: 'Users',
+        description: 'Manage users in your account',
+        order: 4,
+        controls: [
+          {
+            id: 'user_management',
+            label: 'User Management',
+            description: 'View and manage users in your account',
+            type: 'string',
+            defaultValue: '',
+            scope: 'workspace',
+            visibleTo: ['junior', 'senior', 'leader', 'admin'],
+            editableBy: ['admin'],
+          },
+        ],
+      },
     ],
   },
   {
@@ -435,6 +446,43 @@ export const SETTINGS_REGISTRY: SettingCategory[] = [
             unit: 'days',
             scope: 'workspace',
             editableBy: ['admin'],
+          },
+        ],
+      },
+      {
+        id: 'management',
+        label: 'Data Management',
+        order: 2,
+        controls: [
+          {
+            id: 'clear_canvas_data',
+            label: 'Clear Canvas Data',
+            description:
+              'Delete all imported conversations, sources, code blocks, folders, and groups. Your account and settings will NOT be affected.',
+            type: 'string',
+            defaultValue: '',
+            scope: 'user',
+            helpUrl: '/docs/data-management',
+          },
+        ],
+      },
+      {
+        id: 'admin_management',
+        label: 'Admin Data Management',
+        description: 'Administrative data clearing options',
+        order: 3,
+        adminOnly: true,
+        controls: [
+          {
+            id: 'clear_all_client_data',
+            label: 'Clear All Client Data',
+            description:
+              'Delete canvas data for ALL client accounts (preserves admin data, user accounts, and settings). Use with extreme caution!',
+            type: 'string',
+            defaultValue: '',
+            scope: 'workspace',
+            editableBy: ['admin'],
+            adminOnly: true,
           },
         ],
       },
