@@ -3,14 +3,16 @@
 import { useState, useMemo } from 'react';
 import { Save, X, AlertCircle, CheckCircle, History } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
+import { useAuth } from '@/contexts/AuthContext';
 import { SettingsCard } from './SettingsCard';
-import {
-  SETTINGS_REGISTRY,
-} from '@canvas-memory/types/src/settings';
+import { DataManagementCard, AdminDataManagementCard } from './DataManagementCard';
+import { UsersListCard } from './UsersListCard';
+import { SETTINGS_REGISTRY } from '@canvas-memory/types/src/settings';
 
 interface SettingsPageProps {
   selectedSectionId?: string; // section_categoryId_sectionId from navigation
   onControlSelect?: (controlId: string) => void;
+  onUserSelect?: (user: any) => void; // Callback when user is selected for Inspector
 }
 
 /**
@@ -23,7 +25,11 @@ interface SettingsPageProps {
  * - Permission-based editing
  * - Change history
  */
-export function SettingsPage({ selectedSectionId, onControlSelect }: SettingsPageProps) {
+export function SettingsPage({
+  selectedSectionId,
+  onControlSelect,
+  onUserSelect,
+}: SettingsPageProps) {
   const {
     settings: _settings,
     metadata,
@@ -40,6 +46,7 @@ export function SettingsPage({ selectedSectionId, onControlSelect }: SettingsPag
     hasUnsavedChange,
   } = useSettings();
 
+  const { user } = useAuth();
   const [showHistory, setShowHistory] = useState(false);
 
   // Parse selected section from ID
@@ -126,9 +133,7 @@ export function SettingsPage({ selectedSectionId, onControlSelect }: SettingsPag
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-sm font-semibold text-red-300 mb-1">
-                Failed to load settings
-              </h3>
+              <h3 className="text-sm font-semibold text-red-300 mb-1">Failed to load settings</h3>
               <p className="text-sm text-red-400">{error}</p>
             </div>
           </div>
@@ -163,9 +168,7 @@ export function SettingsPage({ selectedSectionId, onControlSelect }: SettingsPag
                 {selectedSection?.label || selectedCategory?.label || 'Settings'}
               </h1>
               {selectedSection?.description && (
-                <p className="text-sm text-slate-400 mt-1">
-                  {selectedSection.description}
-                </p>
+                <p className="text-sm text-slate-400 mt-1">{selectedSection.description}</p>
               )}
               {metadata && (
                 <p className="text-xs text-slate-500 mt-2">
@@ -192,9 +195,7 @@ export function SettingsPage({ selectedSectionId, onControlSelect }: SettingsPag
               <div className="flex items-center gap-2 text-sm text-yellow-300">
                 <AlertCircle className="w-4 h-4" />
                 <span className="font-medium">You have unsaved changes</span>
-                <span className="text-yellow-400/70">
-                  Changes are previewed but not saved
-                </span>
+                <span className="text-yellow-400/70">Changes are previewed but not saved</span>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -231,32 +232,53 @@ export function SettingsPage({ selectedSectionId, onControlSelect }: SettingsPag
       {/* Settings cards */}
       <div className="p-6">
         <div className="max-w-5xl mx-auto space-y-4">
-          {controls.map((control) => {
-            const effectiveSetting = getSetting(control.id);
-            if (!effectiveSetting) return null;
+          {/* Special handling for data management sections */}
+          {sectionId === 'management' && categoryId === 'data' && <DataManagementCard />}
 
-            // Apply unsaved changes to effective value
-            const previewValue = getEffectiveValue(control.id);
-            const hasLocalChange = hasUnsavedChange(control.id);
+          {sectionId === 'admin_management' &&
+            categoryId === 'data' &&
+            user?.accountType === 'admin' && <AdminDataManagementCard />}
 
-            return (
-              <div
-                key={control.id}
-                className={hasLocalChange ? 'ring-2 ring-yellow-500/50 rounded-lg' : ''}
-                onClick={() => onControlSelect?.(control.id)}
-              >
-                <SettingsCard
-                  control={control}
-                  effectiveValue={{
-                    ...effectiveSetting,
-                    value: previewValue,
-                  }}
-                  onChange={(value) => handleChange(control.id, value)}
-                  onReset={() => handleReset(control.id)}
-                />
-              </div>
-            );
-          })}
+          {/* Special handling for users section */}
+          {sectionId === 'users' && categoryId === 'account' && (
+            <UsersListCard onUserSelect={onUserSelect} />
+          )}
+
+          {/* Regular settings controls */}
+          {sectionId !== 'management' &&
+            sectionId !== 'admin_management' &&
+            sectionId !== 'users' &&
+            controls
+              .filter(
+                (control) =>
+                  control.id !== 'clear_canvas_data' && control.id !== 'clear_all_client_data'
+              )
+              .map((control) => {
+                const effectiveSetting = getSetting(control.id);
+                if (!effectiveSetting) return null;
+
+                // Apply unsaved changes to effective value
+                const previewValue = getEffectiveValue(control.id);
+                const hasLocalChange = hasUnsavedChange(control.id);
+
+                return (
+                  <div
+                    key={control.id}
+                    className={hasLocalChange ? 'ring-2 ring-yellow-500/50 rounded-lg' : ''}
+                    onClick={() => onControlSelect?.(control.id)}
+                  >
+                    <SettingsCard
+                      control={control}
+                      effectiveValue={{
+                        ...effectiveSetting,
+                        value: previewValue,
+                      }}
+                      onChange={(value) => handleChange(control.id, value)}
+                      onReset={() => handleReset(control.id)}
+                    />
+                  </div>
+                );
+              })}
         </div>
 
         {/* Footer info */}
