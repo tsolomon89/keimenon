@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Folder, Tag, Filter, Grid } from 'lucide-react';
 import { TreeNode } from '@/components/common/NavigationBar';
 import { useAuth } from '@/contexts/AuthContext';
+import { errorCapture } from '@/services/error-capture.service';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 const TOKEN_KEY = 'canvas_memory_token';
@@ -50,7 +51,7 @@ export function useGroupsTree() {
         // Fetch root groups and folders
         const response = await fetch(`${API_BASE_URL}/api/v1/groups`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
@@ -69,7 +70,25 @@ export function useGroupsTree() {
         setTreeData(tree);
       } catch (err: any) {
         console.error('Failed to fetch groups tree:', err);
-        setError(err.message || 'Failed to load groups');
+
+        // Capture error for console display
+        const capturedError = errorCapture.capture(
+          err,
+          {
+            domain: 'api',
+            operation: 'groups.fetchTree',
+            userId: user.userId,
+            accountId: user.accountId,
+            metadata: {
+              component: 'useGroupsTree',
+              endpoint: '/api/v1/groups',
+            },
+          },
+          'error'
+        );
+
+        const userMessage = capturedError.userMessage || err.message || 'Failed to load groups';
+        setError(userMessage);
         setTreeData([]);
       } finally {
         setLoading(false);
@@ -96,7 +115,7 @@ export function useGroupsTree() {
 
       const response = await fetch(`${API_BASE_URL}/api/v1/groups`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -113,7 +132,25 @@ export function useGroupsTree() {
       setTreeData(tree);
     } catch (err: any) {
       console.error('Failed to refetch groups tree:', err);
-      setError(err.message || 'Failed to reload groups');
+
+      // Capture error for console display
+      const capturedError = errorCapture.capture(
+        err,
+        {
+          domain: 'api',
+          operation: 'groups.refetch',
+          userId: user.userId,
+          accountId: user.accountId,
+          metadata: {
+            component: 'useGroupsTree.refetch',
+            endpoint: '/api/v1/groups',
+          },
+        },
+        'error'
+      );
+
+      const userMessage = capturedError.userMessage || err.message || 'Failed to reload groups';
+      setError(userMessage);
     } finally {
       setLoading(false);
     }
@@ -149,7 +186,7 @@ function groupToTreeNode(group: GroupNode): TreeNode {
     label: group.label,
     icon: IconComponent,
     badge: group.badge,
-    badgeColor: group.badgeColor as any || badgeColor,
+    badgeColor: (group.badgeColor as any) || badgeColor,
     metadata: {
       kind: group.kind,
       group_kind: group.group_kind,
@@ -172,7 +209,7 @@ export async function fetchFolderChildren(folderId: string): Promise<TreeNode[]>
 
     const response = await fetch(`${API_BASE_URL}/api/v1/groups/${folderId}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
@@ -188,6 +225,22 @@ export async function fetchFolderChildren(folderId: string): Promise<TreeNode[]>
     return children.map((child) => groupToTreeNode(child));
   } catch (error: any) {
     console.error('Failed to fetch folder children:', error);
+
+    // Capture error for console display
+    errorCapture.capture(
+      error,
+      {
+        domain: 'api',
+        operation: 'groups.fetchFolderChildren',
+        metadata: {
+          component: 'fetchFolderChildren',
+          folderId,
+          endpoint: `/api/v1/groups/${folderId}`,
+        },
+      },
+      'error'
+    );
+
     throw error;
   }
 }
@@ -206,7 +259,7 @@ export async function fetchGroupMembers(groupId: string, recursive = false): Pro
     const url = `${API_BASE_URL}/api/v1/groups/${groupId}/nodes${recursive ? '?recursive=true' : ''}`;
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
@@ -220,6 +273,23 @@ export async function fetchGroupMembers(groupId: string, recursive = false): Pro
     return data.node_ids || [];
   } catch (error: any) {
     console.error('Failed to fetch group members:', error);
+
+    // Capture error for console display
+    errorCapture.capture(
+      error,
+      {
+        domain: 'api',
+        operation: 'groups.fetchMembers',
+        metadata: {
+          component: 'fetchGroupMembers',
+          groupId,
+          recursive,
+          endpoint: `/api/v1/groups/${groupId}/nodes`,
+        },
+      },
+      'error'
+    );
+
     throw error;
   }
 }

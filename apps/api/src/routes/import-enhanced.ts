@@ -9,6 +9,7 @@ import { AuthService } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
+import { emitImportProgress } from './import-progress-stream';
 import {
   ContentProcessor,
   GroupingStorage,
@@ -16,44 +17,49 @@ import {
   ClusteringEngine,
   ClusterEvidenceComputer,
 } from '@canvas-memory/parsers';
+import { loadPolicyFromFile } from '@canvas-memory/types';
 import path from 'path';
 import os from 'os';
 
 // Enhanced import configuration schema - now accepts the same format as standard import
-const EnhancedImportConfigSchema = z.object({
-  // Standard import config fields
-  sources_role_subset: z.enum(['both', 'user', 'assistant']).default('both'),
-  sources_min_chars_user: z.number().default(400),
-  sources_min_chars_assistant: z.number().default(400),
-  sources_stitch_strategy: z.enum(['by_chat', 'by_title', 'by_topic']).default('by_chat'),
-  sources_preserve_chat_integrity: z.boolean().default(true),
-  sources_cap: z.number().default(150),
-  sources_attach_mode: z.string().default('non-unique'),
-  include_assistant_context: z.boolean().default(false),
-  sources_export_format: z.string().default('md'),
+const EnhancedImportConfigSchema = z
+  .object({
+    // Standard import config fields
+    sources_role_subset: z.enum(['both', 'user', 'assistant']).default('both'),
+    sources_min_chars_user: z.number().default(400),
+    sources_min_chars_assistant: z.number().default(400),
+    sources_stitch_strategy: z.enum(['by_chat', 'by_title', 'by_topic']).default('by_chat'),
+    sources_preserve_chat_integrity: z.boolean().default(true),
+    sources_cap: z.number().default(150),
+    sources_attach_mode: z.string().default('non-unique'),
+    include_assistant_context: z.boolean().default(false),
+    sources_export_format: z.string().default('md'),
 
-  // Code extraction
-  export_code: z.boolean().default(true),
-  code_min_chars: z.number().default(50),
-  code_global_dedupe: z.boolean().default(true),
+    // Code extraction
+    export_code: z.boolean().default(true),
+    code_min_chars: z.number().default(50),
+    code_global_dedupe: z.boolean().default(true),
 
-  // Duplicate detection
-  duplicate_detection_enabled: z.boolean().default(true),
-  duplicate_exact_match: z.boolean().default(false),
-  duplicate_similarity_threshold: z.number().min(0).max(1).default(0.85),
-  duplicate_cross_conversation: z.boolean().default(true),
-  duplicate_algorithm: z.enum(['jaccard', 'levenshtein', 'cosine', 'embedding']).default('jaccard'),
-  duplicate_normalize_tokens: z.boolean().default(true),
-  duplicate_min_token_overlap: z.number().default(5),
-  duplicate_length_ratio_tolerance: z.number().default(0.2),
-  duplicate_ignore_whitespace: z.boolean().default(true),
-  duplicate_ignore_case: z.boolean().default(false),
-  duplicate_ignore_timestamp: z.boolean().default(true),
-  duplicate_require_review: z.boolean().default(true),
-  duplicate_auto_approve_exact: z.boolean().default(false),
-  duplicate_auto_merge_threshold: z.number().default(0.95),
-  similarity_threshold: z.number().default(0.85),
-}).partial();
+    // Duplicate detection
+    duplicate_detection_enabled: z.boolean().default(true),
+    duplicate_exact_match: z.boolean().default(false),
+    duplicate_similarity_threshold: z.number().min(0).max(1).default(0.85),
+    duplicate_cross_conversation: z.boolean().default(true),
+    duplicate_algorithm: z
+      .enum(['jaccard', 'levenshtein', 'cosine', 'embedding'])
+      .default('jaccard'),
+    duplicate_normalize_tokens: z.boolean().default(true),
+    duplicate_min_token_overlap: z.number().default(5),
+    duplicate_length_ratio_tolerance: z.number().default(0.2),
+    duplicate_ignore_whitespace: z.boolean().default(true),
+    duplicate_ignore_case: z.boolean().default(false),
+    duplicate_ignore_timestamp: z.boolean().default(true),
+    duplicate_require_review: z.boolean().default(true),
+    duplicate_auto_approve_exact: z.boolean().default(false),
+    duplicate_auto_merge_threshold: z.number().default(0.95),
+    similarity_threshold: z.number().default(0.85),
+  })
+  .partial();
 
 /**
  * Factory function to create import-enhanced routes with auth
@@ -70,7 +76,15 @@ export function createImportEnhancedRoutes(authService: AuthService): Router {
       // Extract account_id and userId from authenticated user
       const accountId = (req as any).user?.accountId;
       const userId = (req as any).user?.userId;
+      const userEmail = (req as any).user?.email;
+
+      console.log('📦 IMPORT START ============================================');
+      console.log(`  User: ${userEmail} (${userId})`);
+      console.log(`  Account: ${accountId}`);
+      console.log(`  Timestamp: ${new Date().toISOString()}`);
+
       if (!accountId || !userId) {
+        console.log('  ❌ IMPORT FAILED: Missing authentication');
         return res.status(401).json({
           success: false,
           error: 'Authentication required',
@@ -81,13 +95,31 @@ export function createImportEnhancedRoutes(authService: AuthService): Router {
       const uploadResult = await streamingUploadService.handleUploadWithFields(req);
       const files = uploadResult.files;
 
+      // Emit initial "queued" progress for each file
+      for (const file of files) {
+        emitImportProgress(file.uploadId, {
+          stage: 'queued',
+          progress: 0,
+          message: 'Import queued',
+          detail: `File ${file.fileName} ready for processing`,
+          stats: {
+            nodesCreated: 0,
+            edgesCreated: 0,
+            sourcesCreated: 0,
+            conversationsProcessed: 0,
+            messagesProcessed: 0,
+          },
+        });
+      }
+
       // Parse configuration from form fields
       let config = EnhancedImportConfigSchema.parse({});
 
       if (uploadResult.fields.config) {
-        const parsed = typeof uploadResult.fields.config === 'string'
-          ? JSON.parse(uploadResult.fields.config)
-          : uploadResult.fields.config;
+        const parsed =
+          typeof uploadResult.fields.config === 'string'
+            ? JSON.parse(uploadResult.fields.config)
+            : uploadResult.fields.config;
         config = EnhancedImportConfigSchema.parse(parsed);
       }
 
@@ -102,11 +134,19 @@ export function createImportEnhancedRoutes(authService: AuthService): Router {
 
       for (const file of files) {
         try {
+          console.log(`\n📦 Processing file ${file.fileName}...`);
           const importResult = await processEnhancedImport(file, config, accountId, userId);
+
+          console.log(`✅ Import completed for ${file.fileName}:`);
+          console.log(`  - ${importResult.conversations} conversations`);
+          console.log(`  - ${importResult.messageCount} messages`);
+          console.log(`  - ${importResult.sources} sources`);
+          console.log(`  - ${importResult.codeBlocks} code blocks`);
 
           // Format response to match standard import structure
           results.push({
             file: file.fileName,
+            uploadId: file.uploadId, // ✅ Added: Frontend needs this to connect to SSE stream
             success: true,
             result: {
               conversations: importResult.conversationsData || [],
@@ -125,6 +165,26 @@ export function createImportEnhancedRoutes(authService: AuthService): Router {
             },
           });
         } catch (error: any) {
+          console.error(`❌ Import failed for ${file.fileName}:`, error);
+          console.error(`  Error message: ${error.message}`);
+          console.error(`  Stack trace:`, error.stack);
+
+          // Emit error event
+          emitImportProgress(file.uploadId, {
+            stage: 'error',
+            progress: 0,
+            message: 'Import failed',
+            detail: error.message || 'An unknown error occurred',
+            stats: {
+              nodesCreated: 0,
+              edgesCreated: 0,
+              sourcesCreated: 0,
+              conversationsProcessed: 0,
+              messagesProcessed: 0,
+            },
+            error: error.message || 'Import processing failed',
+          });
+
           results.push({
             file: file.fileName,
             success: false,
@@ -133,19 +193,24 @@ export function createImportEnhancedRoutes(authService: AuthService): Router {
         }
       }
 
-      res.json({
+      console.log(`\n📦 IMPORT COMPLETE =========================================`);
+      console.log(`  Total files: ${files.length}`);
+      console.log(`  Successful: ${results.filter((r) => r.success).length}`);
+      console.log(`  Failed: ${results.filter((r) => !r.success).length}`);
+      console.log(`===========================================================\n`);
+
+      return res.json({
         success: true,
         results,
         summary: {
           total_files: files.length,
-          successful: results.filter(r => r.success).length,
-          failed: results.filter(r => !r.success).length,
+          successful: results.filter((r) => r.success).length,
+          failed: results.filter((r) => !r.success).length,
         },
       });
-
     } catch (error: any) {
       console.error('Enhanced import error:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to process import',
       });
@@ -166,9 +231,31 @@ async function processEnhancedImport(
 ) {
   const { uploadId, fileName, filePath } = file;
 
+  console.log(`\n🔄 Processing file: ${fileName}`);
+  console.log(`  Upload ID: ${uploadId}`);
+  console.log(`  Account ID: ${accountId}`);
+  console.log(`  User ID: ${userId}`);
+  console.log(`  File path: ${filePath}`);
+
   streamingUploadService.updateStatus(uploadId, 'processing');
 
+  // Emit progress: Reading stage
+  emitImportProgress(uploadId, {
+    stage: 'reading',
+    progress: 5,
+    message: 'Reading file...',
+    detail: `Processing ${fileName}`,
+    stats: {
+      nodesCreated: 0,
+      edgesCreated: 0,
+      sourcesCreated: 0,
+      conversationsProcessed: 0,
+      messagesProcessed: 0,
+    },
+  });
+
   // Step 1: Parse conversations
+  console.log('📖 Step 1: Parsing conversations...');
   const parser = new StreamingJSONParserV2();
   const conversations: any[] = [];
 
@@ -178,6 +265,27 @@ async function processEnhancedImport(
 
   await parser.parseFile(filePath);
   console.log(`✅ Parsed ${conversations.length} conversations`);
+  if (conversations.length > 0) {
+    console.log(`  First conversation: ${conversations[0].id} - "${conversations[0].title}"`);
+    console.log(`  Message count in first: ${conversations[0].messages.length}`);
+  }
+
+  const totalMessages = conversations.reduce((sum, conv) => sum + conv.messages.length, 0);
+
+  // Emit progress: Parsing complete
+  emitImportProgress(uploadId, {
+    stage: 'parsing',
+    progress: 20,
+    message: 'Parsing conversations...',
+    detail: `Found ${conversations.length} conversations with ${totalMessages} messages`,
+    stats: {
+      nodesCreated: 0,
+      edgesCreated: 0,
+      sourcesCreated: 0,
+      conversationsProcessed: conversations.length,
+      messagesProcessed: totalMessages,
+    },
+  });
 
   // Use global database client (supports both SQLite and Neo4j)
   const db = global.dbClient;
@@ -202,7 +310,7 @@ async function processEnhancedImport(
   const builder = new SourcesBuilder(sourcesConfig);
 
   // Convert conversations to format expected by builder
-  const convForSources = conversations.map(conv => ({
+  const convForSources = conversations.map((conv) => ({
     id: conv.id,
     title: conv.title,
     messages: conv.messages.map((msg: any, idx: number) => ({
@@ -220,6 +328,21 @@ async function processEnhancedImport(
   sources = await builder.buildSources(convForSources);
   console.log(`✅ Built ${sources.length} sources`);
 
+  // Emit progress: Normalizing (sources built, starting to save to DB)
+  emitImportProgress(uploadId, {
+    stage: 'normalizing',
+    progress: 35,
+    message: 'Normalizing data...',
+    detail: `Built ${sources.length} sources, preparing to save`,
+    stats: {
+      nodesCreated: 0,
+      edgesCreated: 0,
+      sourcesCreated: sources.length,
+      conversationsProcessed: conversations.length,
+      messagesProcessed: totalMessages,
+    },
+  });
+
   // IMPORTANT: Save conversations FIRST to create ChatThread and Message nodes
   // Other entities (sources, code blocks, duplicates) create edges pointing to these nodes
   console.log('💾 Saving conversations...');
@@ -230,6 +353,25 @@ async function processEnhancedImport(
   console.log('💾 Saving sources...');
   await saveSourcesToNeo4j(db, sources, accountId, userId);
   console.log(`✅ Saved ${sources.length} sources`);
+
+  // Calculate nodes created so far (ChatThread + Messages + Sources)
+  const nodesCreated = conversations.length + totalMessages + sources.length;
+  const edgesCreated = totalMessages + sources.length; // CONTAINS edges + DERIVES_FROM edges
+
+  // Emit progress: Indexing (saving to graph DB)
+  emitImportProgress(uploadId, {
+    stage: 'indexing',
+    progress: 50,
+    message: 'Indexing conversations...',
+    detail: `Saved ${nodesCreated} nodes and ${edgesCreated} edges to graph`,
+    stats: {
+      nodesCreated,
+      edgesCreated,
+      sourcesCreated: sources.length,
+      conversationsProcessed: conversations.length,
+      messagesProcessed: totalMessages,
+    },
+  });
 
   // Step 3: Extract code blocks if enabled
   let codeBlocks: any[] = [];
@@ -245,7 +387,7 @@ async function processEnhancedImport(
     const extractor = new CodeExtractor(codeConfig);
 
     // Flatten all messages from all conversations
-    const allMessages = conversations.flatMap(conv =>
+    const allMessages = conversations.flatMap((conv) =>
       conv.messages.map((msg: any, idx: number) => ({
         id: msg.metadata?.id || `${conv.id}_msg_${idx}`,
         content: msg.content,
@@ -263,12 +405,13 @@ async function processEnhancedImport(
   // Step 4: Detect duplicates if enabled
   let duplicates: any[] = [];
   if (config.duplicate_detection_enabled !== false) {
-    const textsToCheck = config.duplicate_cross_conversation !== false
-      ? conversations  // Check across all conversations
-      : conversations.map(conv => ({ ...conv, messages: [conv] })); // Check within conversations
+    const textsToCheck =
+      config.duplicate_cross_conversation !== false
+        ? conversations // Check across all conversations
+        : conversations.map((conv) => ({ ...conv, messages: [conv] })); // Check within conversations
 
     // Extract message contents for comparison
-    const messages = textsToCheck.flatMap(conv =>
+    const messages = textsToCheck.flatMap((conv) =>
       conv.messages.map((msg: any) => ({
         id: msg.metadata?.id || msg.id,
         content: msg.content,
@@ -290,6 +433,25 @@ async function processEnhancedImport(
     await saveDuplicatesToNeo4j(db, duplicates, accountId, userId);
   }
 
+  // Update stats with code blocks and duplicates
+  const totalNodesCreated = nodesCreated + codeBlocks.length;
+  const totalEdgesCreated = edgesCreated + codeBlocks.length + duplicates.length;
+
+  // Emit progress: Linking (creating relationships between entities)
+  emitImportProgress(uploadId, {
+    stage: 'linking',
+    progress: 75,
+    message: 'Linking entities...',
+    detail: `Found ${codeBlocks.length} code blocks, ${duplicates.length} duplicate pairs`,
+    stats: {
+      nodesCreated: totalNodesCreated,
+      edgesCreated: totalEdgesCreated,
+      sourcesCreated: sources.length,
+      conversationsProcessed: conversations.length,
+      messagesProcessed: totalMessages,
+    },
+  });
+
   // Step 5: Create default organizational structure (Folders/Groups)
   console.log('📁 Creating default organization...');
   await createDefaultOrganization(db, conversations, accountId, userId);
@@ -300,42 +462,83 @@ async function processEnhancedImport(
   streamingUploadService.updateStatus(uploadId, 'complete');
 
   // Format duplicate groups for frontend
-  const duplicateGroups = duplicates.length > 0 ? [{
-    id: 'group_1',
-    candidates: duplicates.map((dup: any) => ({
-      id: `${dup.primary}_${dup.duplicate}`,
-      primary: {
-        id: dup.primary,
-        content: dup.primaryContent || '',
-        conversationTitle: '',
-        timestamp: Date.now(),
-        charCount: 0,
-        metadata: {},
-      },
-      duplicate: {
-        id: dup.duplicate,
-        content: dup.duplicateContent || '',
-        conversationTitle: '',
-        timestamp: Date.now(),
-        charCount: 0,
-        metadata: {},
-      },
-      similarity: dup.similarity.score,
-      metrics: {
-        tokenOverlap: 0,
-        editDistance: 0,
-        lengthRatio: 1,
-      },
-    })),
-    totalDuplicates: duplicates.length,
-    reviewed: 0,
-    autoResolved: 0,
-  }] : [];
+  const duplicateGroups =
+    duplicates.length > 0
+      ? [
+          {
+            id: 'group_1',
+            candidates: duplicates.map((dup: any) => ({
+              id: `${dup.primary}_${dup.duplicate}`,
+              primary: {
+                id: dup.primary,
+                content: dup.primaryContent || '',
+                conversationTitle: '',
+                timestamp: Date.now(),
+                charCount: 0,
+                metadata: {},
+              },
+              duplicate: {
+                id: dup.duplicate,
+                content: dup.duplicateContent || '',
+                conversationTitle: '',
+                timestamp: Date.now(),
+                charCount: 0,
+                metadata: {},
+              },
+              similarity: dup.similarity.score,
+              metrics: {
+                tokenOverlap: 0,
+                editDistance: 0,
+                lengthRatio: 1,
+              },
+            })),
+            totalDuplicates: duplicates.length,
+            reviewed: 0,
+            autoResolved: 0,
+          },
+        ]
+      : [];
 
   // Step 6: Run Phase 1-3 Processing (blobs, signatures, deduplication, clustering)
   console.log('🔬 Running Phase 1-3 processing...');
-  const phase3Stats = await runPhase1to3Processing(conversations, accountId);
-  console.log(`✅ Phase 1-3 complete: ${phase3Stats.blobs_created} blobs, ${phase3Stats.clusters_created} clusters`);
+  let phase3Stats;
+  try {
+    phase3Stats = await runPhase1to3Processing(conversations, accountId);
+    console.log(
+      `✅ Phase 1-3 complete: ${phase3Stats.blobs_created} blobs, ${phase3Stats.clusters_created} clusters`
+    );
+  } catch (error: any) {
+    console.warn('[WARN] Phase 1-3 processing failed - continuing with basic import');
+    console.warn(`[WARN] Error: ${error.message}`);
+    phase3Stats = {
+      blobs_created: 0,
+      spans_created: 0,
+      signatures_created: 0,
+      exact_duplicates_found: 0,
+      clusters_created: 0,
+      near_dup_edges_created: 0,
+    };
+  }
+
+  // Emit progress: Done!
+  emitImportProgress(uploadId, {
+    stage: 'done',
+    progress: 100,
+    message: 'Import complete!',
+    detail: `Successfully imported ${conversations.length} conversations with ${totalMessages} messages`,
+    stats: {
+      nodesCreated: totalNodesCreated,
+      edgesCreated: totalEdgesCreated,
+      sourcesCreated: sources.length,
+      conversationsProcessed: conversations.length,
+      messagesProcessed: totalMessages,
+    },
+    recentNodes: conversations.slice(0, 5).map((conv) => ({
+      id: conv.id,
+      kind: 'ChatThread',
+      label: conv.title || 'Untitled',
+    })),
+  });
 
   return {
     uploadId,
@@ -346,7 +549,7 @@ async function processEnhancedImport(
     duplicates: duplicates.length,
     messageCount: conversations.reduce((sum, conv) => sum + conv.messages.length, 0),
     // Include actual data for frontend
-    conversationsData: conversations.map(conv => ({
+    conversationsData: conversations.map((conv) => ({
       id: conv.id,
       title: conv.title,
       platform: conv.platform,
@@ -383,29 +586,35 @@ async function runPhase1to3Processing(
 }> {
   // Get SQLite database path
   const dbPath = process.env.SQLITE_PATH || path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+  const dbClient = global.dbClient;
+  const db = dbClient.getDatabase();
+
+  // Load clustering policy
+  const policyPath = path.join(__dirname, '../../policy.yaml');
+  const policy = loadPolicyFromFile(policyPath);
 
   // Initialize Phase 1-3 services
   const processor = new ContentProcessor({
-    extractTokens: false,    // Skip token level for performance
-    extractPhrases: false,    // Skip phrase level
-    extractSentences: true,   // Keep sentences
-    extractBlocks: true,      // Keep blocks
-    extractSections: true,    // Keep sections
+    extractTokens: false, // Skip token level for performance
+    extractPhrases: false, // Skip phrase level
+    extractSentences: true, // Keep sentences
+    extractBlocks: true, // Keep blocks
+    extractSections: true, // Keep sections
     generateSignatures: true, // Generate MinHash/TF-IDF
     minHashPermutations: 128,
   });
 
   const storage = new GroupingStorage(dbPath);
-  const deduper = new DeduplicationEngine(dbPath, storage);
-  const clusterer = new ClusteringEngine(dbPath, storage, undefined); // Use default policy
-  const evidenceComputer = new ClusterEvidenceComputer(dbPath, undefined);
+  const deduper = new DeduplicationEngine(db, storage);
+  const clusterer = new ClusteringEngine(db, storage, policy);
+  const evidenceComputer = new ClusterEvidenceComputer(db, policy);
 
   let blobsCreated = 0;
   let spansCreated = 0;
   let signaturesCreated = 0;
 
   // Convert conversations to NormalizedConversation format
-  const normalizedConvs = conversations.map(conv => ({
+  const normalizedConvs = conversations.map((conv) => ({
     conversation_id: conv.id,
     title: conv.title,
     platform: conv.platform || 'unknown',
@@ -424,7 +633,9 @@ async function runPhase1to3Processing(
 
   // Phase 1-2: Process each conversation
   // NOTE: Phase 1-3 tables don't have account_id yet - using data_tag for now
-  // TODO: Add account_id column to blobs, node_spans, node_signatures, lsh_bands tables
+  // TODO: Add account_id column to Phase 1-3 tables for proper multi-tenancy
+  // Related: packages/db/src/sqlite/schema.sql (add account_id to blobs, node_spans, node_signatures, lsh_bands)
+  // See: packages/parsers/src/services/grouping-storage.ts (update insert methods)
   const dataTag = `account_${accountId.substring(0, 8)}`;
 
   for (const conv of normalizedConvs) {
@@ -439,7 +650,7 @@ async function runPhase1to3Processing(
       blobsCreated++;
 
       // Insert spans
-      const spansWithTag = processed.spans.map(span => ({
+      const spansWithTag = processed.spans.map((span) => ({
         ...span,
         data_tag: dataTag,
       }));
@@ -447,7 +658,7 @@ async function runPhase1to3Processing(
       spansCreated += processed.spans.length;
 
       // Insert signatures
-      const sigsWithTag = processed.signatures.map(sig => ({
+      const sigsWithTag = processed.signatures.map((sig) => ({
         ...sig,
         data_tag: dataTag,
       }));
@@ -471,8 +682,8 @@ async function runPhase1to3Processing(
   }
 
   // Phase 3: Exact Deduplication
-  const dedupResult = await deduper.deduplicate();
-  const exactDuplicatesFound = dedupResult.canonical_nodes.length;
+  const dedupResult = (await deduper.deduplicate()) as any;
+  const exactDuplicatesFound = dedupResult.canonical_nodes?.length || 0;
 
   // Phase 3: Clustering (run on sentence + block levels, prose + code modalities)
   let clustersCreated = 0;
@@ -480,19 +691,19 @@ async function runPhase1to3Processing(
 
   try {
     // Cluster sentence-level prose
-    const sentenceProseResult = await clusterer.cluster('sentence', 'prose');
-    clustersCreated += sentenceProseResult.stats.total_clusters || 0;
-    nearDupEdgesCreated += sentenceProseResult.stats.edges_created || 0;
+    const sentenceProseResult = (await clusterer.cluster('sentence', 'prose')) as any;
+    clustersCreated += sentenceProseResult.stats?.total_clusters || 0;
+    nearDupEdgesCreated += sentenceProseResult.stats?.edges_created || 0;
 
     // Cluster block-level prose
-    const blockProseResult = await clusterer.cluster('block', 'prose');
-    clustersCreated += blockProseResult.stats.total_clusters || 0;
-    nearDupEdgesCreated += blockProseResult.stats.edges_created || 0;
+    const blockProseResult = (await clusterer.cluster('block', 'prose')) as any;
+    clustersCreated += blockProseResult.stats?.total_clusters || 0;
+    nearDupEdgesCreated += blockProseResult.stats?.edges_created || 0;
 
     // Cluster block-level code
-    const blockCodeResult = await clusterer.cluster('block', 'code');
-    clustersCreated += blockCodeResult.stats.total_clusters || 0;
-    nearDupEdgesCreated += blockCodeResult.stats.edges_created || 0;
+    const blockCodeResult = (await clusterer.cluster('block', 'code')) as any;
+    clustersCreated += blockCodeResult.stats?.total_clusters || 0;
+    nearDupEdgesCreated += blockCodeResult.stats?.edges_created || 0;
 
     // Compute evidence for all clusters
     evidenceComputer.computeAllEvidence();
@@ -514,7 +725,12 @@ async function runPhase1to3Processing(
  * Create default organizational structure after import
  * Creates a root folder "Imported Conversations" and groups each conversation
  */
-async function createDefaultOrganization(db: any, conversations: any[], accountId: string, userId: string) {
+async function createDefaultOrganization(
+  db: any,
+  conversations: any[],
+  accountId: string,
+  userId: string
+) {
   // Create root folder
   const folderId = `folder_${randomUUID()}`;
   const folderNode = {
@@ -579,7 +795,12 @@ async function createDefaultOrganization(db: any, conversations: any[], accountI
 /**
  * Save conversations to database (SQLite or Neo4j)
  */
-async function saveConversationsToNeo4j(db: any, conversations: any[], accountId: string, userId: string) {
+async function saveConversationsToNeo4j(
+  db: any,
+  conversations: any[],
+  accountId: string,
+  userId: string
+) {
   for (const conv of conversations) {
     // Create ChatThread node
     const chatNode = {
@@ -699,7 +920,12 @@ async function saveSourcesToNeo4j(db: any, sources: any[], accountId: string, us
 /**
  * Save code blocks to database (SQLite or Neo4j)
  */
-async function saveCodeBlocksToNeo4j(db: any, codeBlocks: any[], accountId: string, userId: string) {
+async function saveCodeBlocksToNeo4j(
+  db: any,
+  codeBlocks: any[],
+  accountId: string,
+  userId: string
+) {
   for (const block of codeBlocks) {
     // Create CodeBlock node
     const codeNode = {
@@ -740,14 +966,19 @@ async function saveCodeBlocksToNeo4j(db: any, codeBlocks: any[], accountId: stri
 /**
  * Save duplicate relationships to database (SQLite or Neo4j)
  */
-async function saveDuplicatesToNeo4j(db: any, duplicates: any[], accountId: string, userId: string) {
+async function saveDuplicatesToNeo4j(
+  db: any,
+  duplicates: any[],
+  accountId: string,
+  userId: string
+) {
   for (const dup of duplicates) {
     // Use EQUIVALENT_TO edge for duplicates
     const dupEdge = {
       id: `${dup.primary}_dup_${dup.duplicate}`,
       kind: 'DUP_OF' as const,
       from: dup.duplicate, // duplicate points to primary
-      to: dup.primary,     // primary is the canonical node
+      to: dup.primary, // primary is the canonical node
       created_at: Date.now(),
       score: dup.similarity.score,
       canonical: dup.primary,

@@ -343,7 +343,10 @@ Updated to display groups in Portal/Client mode.
 
 **Click Behavior**:
 
-- **Folder click**: Expand/collapse (TODO: lazy load children)
+- **Folder click**: Expand/collapse
+  // TODO: Implement lazy loading of folder children on expand
+  // Related: apps/web/src/components/canvas/CanvasSidebar.tsx:186-212 (fetchFolderChildren logic)
+  // See: apps/web/src/hooks/useGroupsTree.ts (add folder state management)
 - **Group click**: Fetch members → display in Canvas
 
 ```typescript
@@ -358,7 +361,9 @@ if (navMode === 'groups') {
     fetchGroupMembers(node.id)
       .then((memberIds) => {
         console.log(`Group has ${memberIds.length} members:`, memberIds);
-        // TODO: Signal to canvas to display these nodes
+        // TODO: Wire group member display to Canvas component
+        // Related: apps/web/src/components/canvas/CanvasViewport.tsx (add member highlighting)
+        // See: apps/web/src/store/canvasStore.ts:220 (setFilteredNodeIds already implemented)
       })
       .catch((error) => {
         console.error('Failed to fetch group members:', error);
@@ -447,19 +452,38 @@ Icons are assigned based on node type:
 **Current**: Logs folder ID to console
 **TODO**:
 
-- Expand/collapse folder in tree
-- Lazy-load children from `GET /groups/nav/:id`
-- Add toggle: "Include descendants" to show union of all descendant group members
+- TODO: Implement folder expand/collapse with state persistence
+  // Related: apps/web/src/hooks/useGroupsTree.ts (add expanded state Map)
+  // See: apps/web/src/components/common/NavigationBar.tsx (add collapse/expand handlers)
+
+- TODO: Lazy-load folder children from API
+  // Related: apps/api/src/routes/groups.routes.ts (GET /groups/nav/:id already exists)
+  // See: apps/web/src/hooks/useGroupsTree.ts:fetchFolderChildren (update tree data on load)
+
+- TODO: Add "Include descendants" toggle UI
+  // Related: apps/web/src/components/canvas/CanvasSidebar.tsx (add toggle in folder header)
+  // See: apps/api/src/routes/groups.routes.ts:159 (recursive=true already supported)
 
 ### Group Click
 
 **Current**: Fetches member IDs and logs to console
 **TODO**:
 
-- Signal to Canvas component to display member nodes
-- Highlight selected group in Nav
-- Show member count badge
-- Filter canvas by `IN_GROUP` edges
+- TODO: Wire Canvas to display group member nodes
+  // Related: apps/web/src/components/canvas/CanvasViewport.tsx (filter by member IDs)
+  // See: apps/web/src/store/canvasStore.ts:220 (setFilteredNodeIds method)
+
+- TODO: Highlight selected group in navigation tree
+  // Related: apps/web/src/components/common/NavigationBar.tsx (add selectedId highlighting)
+  // See: apps/web/src/hooks/useNodeGroupLookup.ts (bidirectional group selection)
+
+- TODO: Show member count badge on groups
+  // Related: apps/web/src/hooks/useGroupsTree.ts:transformToTreeNode (badge already set)
+  // See: apps/web/src/components/common/NavigationBar.tsx (render badge prop)
+
+- TODO: Filter Canvas by IN_GROUP edge relationships
+  // Related: apps/api/src/routes/groups.routes.ts:159 (getGroupMembers endpoint)
+  // See: apps/web/src/components/canvas/CanvasSidebar.tsx:226 (already implemented!)
 
 ## Recursive Mode (Folders)
 

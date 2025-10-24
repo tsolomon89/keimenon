@@ -39,6 +39,7 @@ import { useImportProgress } from '@/contexts/ImportProgressContext';
 interface LocalFirstImportModalProps {
   onClose: () => void;
   onSuccess?: (results: LocalImportResult[]) => void;
+  variant?: 'modal' | 'panel';
 }
 
 type Stage = 'select' | 'processing' | 'complete' | 'error';
@@ -46,8 +47,17 @@ type Stage = 'select' | 'processing' | 'complete' | 'error';
 export function LocalFirstImportModal({
   onClose,
   onSuccess,
+  variant = 'modal',
 }: LocalFirstImportModalProps) {
-  const { progress: globalProgress, startImport, updateProgress, completeImport, failImport, minimizeModal } = useImportProgress();
+  const {
+    progress: globalProgress,
+    startImport,
+    updateProgress,
+    completeImport,
+    failImport,
+    minimizeModal,
+  } = useImportProgress();
+  const isPanelVariant = variant === 'panel';
   const [stage, setStage] = useState<Stage>('select');
   const [config, setConfig] = useState<LocalImportConfig>(DEFAULT_LOCAL_CONFIG);
   const [showConfig, setShowConfig] = useState(false);
@@ -159,7 +169,7 @@ export function LocalFirstImportModal({
           const response = await fetch(`${API_BASE_URL}/api/v1/import/enhanced`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${token}`,
+              Authorization: `Bearer ${token}`,
             },
             body: formData,
           });
@@ -208,8 +218,7 @@ export function LocalFirstImportModal({
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-    if (bytes < 1024 * 1024 * 1024)
-      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   };
 
@@ -224,11 +233,24 @@ export function LocalFirstImportModal({
     { conversations: 0, messages: 0, sources: 0, codeBlocks: 0 }
   );
 
+  const containerClasses = isPanelVariant
+    ? 'flex h-full flex-col bg-slate-900 overflow-y-auto'
+    : 'bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl';
+  const headerPadding = isPanelVariant ? 'px-4 py-3' : 'p-6';
+  const contentPadding = isPanelVariant ? 'p-4' : 'p-6';
+  const footerPadding = isPanelVariant ? 'px-4 py-3' : 'p-6';
+
+  const outerWrapperClass = isPanelVariant
+    ? 'flex h-full flex-col'
+    : 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4';
+
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div className={outerWrapperClass}>
+      <div className={containerClasses}>
         {/* Header */}
-        <div className="sticky top-0 bg-slate-900 border-b border-slate-800 p-6 flex items-center justify-between z-10">
+        <div
+          className={`sticky top-0 bg-slate-900 border-b border-slate-800 ${headerPadding} flex items-center justify-between z-10`}
+        >
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-600/20 rounded-lg">
               <Upload className="w-6 h-6 text-purple-400" />
@@ -250,7 +272,7 @@ export function LocalFirstImportModal({
           </div>
           <div className="flex items-center gap-2">
             {/* Minimize button (only during processing when minimizable) */}
-            {stage === 'processing' && globalProgress.canMinimize && (
+            {!isPanelVariant && stage === 'processing' && globalProgress.canMinimize && (
               <button
                 onClick={minimizeModal}
                 className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
@@ -282,18 +304,16 @@ export function LocalFirstImportModal({
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className={contentPadding}>
           {/* Local-First Info Banner */}
           {stage === 'select' && (
             <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-3">
               <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="text-blue-300 font-medium mb-1">
-                  Local-First Processing
-                </p>
+                <p className="text-blue-300 font-medium mb-1">Local-First Processing</p>
                 <p className="text-blue-200/70">
-                  Files are processed entirely in your browser. No upload to
-                  server required. Your data stays on your device.
+                  Files are processed entirely in your browser. No upload to server required. Your
+                  data stays on your device.
                 </p>
               </div>
             </div>
@@ -310,15 +330,10 @@ export function LocalFirstImportModal({
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="w-16 h-16 mx-auto mb-4 text-slate-500" />
-                <p className="text-lg font-semibold mb-2">
-                  Drop chat export files here
-                </p>
-                <p className="text-sm text-slate-400 mb-4">
-                  or click to browse
-                </p>
+                <p className="text-lg font-semibold mb-2">Drop chat export files here</p>
+                <p className="text-sm text-slate-400 mb-4">or click to browse</p>
                 <p className="text-xs text-slate-500">
-                  Supports ChatGPT, Claude, Gemini • JSON format • Up to 2GB per
-                  file
+                  Supports ChatGPT, Claude, Gemini • JSON format • Up to 2GB per file
                 </p>
                 <input
                   ref={fileInputRef}
@@ -334,9 +349,7 @@ export function LocalFirstImportModal({
               {files.length > 0 && (
                 <div className="bg-slate-800/50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold">
-                      Selected Files ({files.length})
-                    </h3>
+                    <h3 className="text-sm font-semibold">Selected Files ({files.length})</h3>
                     <button
                       onClick={() => setFiles([])}
                       className="text-xs text-slate-400 hover:text-white transition-colors"
@@ -354,15 +367,11 @@ export function LocalFirstImportModal({
                           <FileText className="w-5 h-5 text-purple-400" />
                           <div>
                             <p className="text-sm font-medium">{file.name}</p>
-                            <p className="text-xs text-slate-500">
-                              {formatFileSize(file.size)}
-                            </p>
+                            <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
                           </div>
                         </div>
                         <button
-                          onClick={() =>
-                            setFiles(files.filter((_, i) => i !== idx))
-                          }
+                          onClick={() => setFiles(files.filter((_, i) => i !== idx))}
                           className="p-1 hover:bg-slate-800 rounded transition-colors"
                         >
                           <X className="w-4 h-4 text-slate-400" />
@@ -397,9 +406,7 @@ export function LocalFirstImportModal({
                         <input
                           type="checkbox"
                           checked={config.includeUser}
-                          onChange={(e) =>
-                            setConfig({ ...config, includeUser: e.target.checked })
-                          }
+                          onChange={(e) => setConfig({ ...config, includeUser: e.target.checked })}
                           className="rounded bg-slate-900 border-slate-700"
                         />
                         <span className="text-sm">User messages</span>
@@ -427,9 +434,7 @@ export function LocalFirstImportModal({
                       <input
                         type="checkbox"
                         checked={config.extractCode}
-                        onChange={(e) =>
-                          setConfig({ ...config, extractCode: e.target.checked })
-                        }
+                        onChange={(e) => setConfig({ ...config, extractCode: e.target.checked })}
                         className="rounded bg-slate-900 border-slate-700"
                       />
                       <span className="text-sm">Extract code blocks</span>
@@ -449,9 +454,7 @@ export function LocalFirstImportModal({
                             }
                             className="rounded bg-slate-900 border-slate-700"
                           />
-                          <span className="text-xs text-slate-400">
-                            Deduplicate code
-                          </span>
+                          <span className="text-xs text-slate-400">Deduplicate code</span>
                         </label>
                       </div>
                     )}
@@ -468,9 +471,7 @@ export function LocalFirstImportModal({
               <div className="bg-slate-800/50 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold">{progress.message}</span>
-                  <span className="text-sm text-slate-400">
-                    {progress.progress}%
-                  </span>
+                  <span className="text-sm text-slate-400">{progress.progress}%</span>
                 </div>
                 <div className="w-full bg-slate-900 rounded-full h-2 mb-2">
                   <div
@@ -478,20 +479,16 @@ export function LocalFirstImportModal({
                     style={{ width: `${progress.progress}%` }}
                   />
                 </div>
-                {progress.detail && (
-                  <p className="text-xs text-slate-400">{progress.detail}</p>
-                )}
+                {progress.detail && <p className="text-xs text-slate-400">{progress.detail}</p>}
               </div>
 
               {/* Processing Icon */}
               <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="w-16 h-16 text-purple-500 animate-spin mb-4" />
-                <h3 className="text-xl font-semibold mb-2">
-                  Processing Locally...
-                </h3>
+                <h3 className="text-xl font-semibold mb-2">Processing Locally...</h3>
                 <p className="text-slate-400 text-center max-w-md">
-                  Your files are being processed entirely in your browser. No data
-                  is being sent to any server.
+                  Your files are being processed entirely in your browser. No data is being sent to
+                  any server.
                 </p>
               </div>
             </div>
@@ -536,20 +533,14 @@ export function LocalFirstImportModal({
               {/* Individual File Results */}
               {results.length > 1 && (
                 <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-slate-300">
-                    File Details
-                  </h4>
+                  <h4 className="text-sm font-semibold text-slate-300">File Details</h4>
                   {results.map((result, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-slate-900 rounded-lg p-3 text-sm"
-                    >
+                    <div key={idx} className="bg-slate-900 rounded-lg p-3 text-sm">
                       <p className="font-medium mb-1">{files[idx].name}</p>
                       <p className="text-xs text-slate-400">
                         {result.stats.totalConversations} conversations •{' '}
-                        {result.stats.totalMessages} messages •{' '}
-                        {result.stats.totalSources} sources •{' '}
-                        {result.stats.totalCodeBlocks} code blocks
+                        {result.stats.totalMessages} messages • {result.stats.totalSources} sources
+                        • {result.stats.totalCodeBlocks} code blocks
                       </p>
                     </div>
                   ))}
@@ -574,11 +565,11 @@ export function LocalFirstImportModal({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-slate-900 border-t border-slate-800 p-6 flex items-center justify-between">
+        <div
+          className={`sticky bottom-0 bg-slate-900 border-t border-slate-800 ${footerPadding} flex items-center justify-between`}
+        >
           <div className="text-sm text-slate-400">
-            {stage === 'select' && files.length > 0 && (
-              <span>{files.length} file(s) selected</span>
-            )}
+            {stage === 'select' && files.length > 0 && <span>{files.length} file(s) selected</span>}
             {stage === 'processing' && progress && (
               <span className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />

@@ -1,0 +1,36 @@
+{
+  "mcpServers": {
+    "canvas-database": {
+      "command": "node",
+      "args": [".mcp/servers/database/index.js"],
+      "env": {
+        "SQLITE_PATH": "${HOME}/.canvas-memory/canvas.db"
+      }
+    },
+    "canvas-docs": {
+      "command": "node",
+      "args": [".mcp/servers/docs/index.js"]
+    },
+    "canvas-api-testing": {
+      "command": "node",
+      "args": [".mcp/servers/api-testing/index.js"],
+      "env": {
+        "API_BASE_URL": "http://localhost:4001"
+      }
+    },
+    "canvas-chat-import": {
+      "command": "node",
+      "args": [".mcp/servers/chat-import/index.js"],
+      "env": {
+        "API_BASE_URL": "http://localhost:4001"
+      }
+    },
+    "canvas-settings-crm": {
+      "command": "node",
+      "args": [".mcp/servers/settings-crm/index.js"],
+      "env": {
+        "SQLITE_PATH": "${HOME}/.canvas-memory/canvas.db"
+      }
+    }
+  }
+}

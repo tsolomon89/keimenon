@@ -120,6 +120,10 @@ ai_context/chat_data/test-samples/medium.json
 # Large upload files
 apps/api/uploads/*
 
+# MCP servers
+.mcp/servers/*/node_modules/
+.mcp/servers/*/*.log
+
 # Misc
 *.pem
 *.key

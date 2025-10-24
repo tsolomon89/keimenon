@@ -20,16 +20,22 @@
  * Together: Complete system validation from upload button to rendered UI
  */
 
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, test, before, after } from 'node:test';
+import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import FormData from 'form-data';
 import fetch from 'node-fetch';
 import Database from 'better-sqlite3';
+import EventSourcePolyfill from 'eventsource';
+
+// Handle both ESM and CommonJS imports
+const EventSource = (EventSourcePolyfill as any).default || EventSourcePolyfill;
 
 // Test Configuration
 const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:4001';
-const DB_PATH = process.env.DB_PATH || path.join(require('os').homedir(), '.canvas-memory', 'canvas.db');
+const DB_PATH = process.env.DB_PATH || path.join(os.homedir(), '.canvas-memory', 'canvas.db');
 const TEST_FILES_DIR = path.join(process.cwd(), '../../ai_context/chat_data/test-samples');
 
 // Test Credentials (from migration 001_seed_admin.ts)
@@ -53,7 +59,7 @@ let db: Database.Database;
 /**
  * Setup: Authenticate and get tokens
  */
-beforeAll(async () => {
+before(async () => {
   console.log('\n🔧 Setting up UI Integration Tests...\n');
 
   // Open database connection
@@ -97,7 +103,7 @@ beforeAll(async () => {
 /**
  * Cleanup: Close database
  */
-afterAll(() => {
+after(() => {
   if (db) {
     db.close();
   }
@@ -115,7 +121,7 @@ async function uploadFile(filePath: string, token: string, config: any = {}) {
   const response = await fetch(`${API_BASE_URL}/api/v1/import/enhanced`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       ...form.getHeaders(),
     },
     body: form,
@@ -131,7 +137,7 @@ async function getGroupsTree(token: string) {
   const response = await fetch(`${API_BASE_URL}/api/v1/groups`, {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
@@ -146,13 +152,17 @@ async function getGroupsTree(token: string) {
  * Helper: Get nodes by account
  */
 function getNodesByAccount(accountId: string) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT kind, COUNT(*) as count
     FROM nodes
     WHERE account_id = ?
     GROUP BY kind
     ORDER BY kind
-  `).all(accountId);
+  `
+    )
+    .all(accountId);
 }
 
 /**
@@ -172,7 +182,7 @@ function cleanupTestData(accountId: string) {
  * ============================================================================
  */
 describe('API Upload Endpoint', () => {
-  it('should accept multipart form data with files and config', async () => {
+  test('should accept multipart form data with files and config', async (_t) => {
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
 
     if (!fs.existsSync(testFile)) {
@@ -185,13 +195,13 @@ describe('API Upload Endpoint', () => {
       code_min_chars: 50,
     });
 
-    expect(response.ok).toBe(true);
+    assert.strictEqual(response.ok, true);
 
     const data = await response.json();
-    expect(data.success).toBe(true);
+    assert.strictEqual(data.success, true);
   }, 60000); // 60s timeout
 
-  it('should reject unauthenticated requests', async () => {
+  test('should reject unauthenticated requests', async (_t) => {
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
 
     if (!fs.existsSync(testFile)) {
@@ -206,10 +216,10 @@ describe('API Upload Endpoint', () => {
       body: form,
     });
 
-    expect(response.status).toBe(401);
+    assert.strictEqual(response.status, 401);
   });
 
-  it('should parse config from form fields', async () => {
+  test('should parse config from form fields', async (_t) => {
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
 
     if (!fs.existsSync(testFile)) {
@@ -223,7 +233,7 @@ describe('API Upload Endpoint', () => {
     };
 
     const response = await uploadFile(testFile, adminToken, customConfig);
-    expect(response.ok).toBe(true);
+    assert.strictEqual(response.ok, true);
   }, 60000);
 });
 
@@ -233,13 +243,13 @@ describe('API Upload Endpoint', () => {
  * ============================================================================
  */
 describe('Data Persistence & Multi-Tenancy', () => {
-  beforeAll(() => {
+  before(() => {
     // Clean up any existing test data
     cleanupTestData(adminAccountId);
     cleanupTestData(clientAccountId);
   });
 
-  it('should persist imported data with correct account_id', async () => {
+  test('should persist imported data with correct account_id', async (_t) => {
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
 
     if (!fs.existsSync(testFile)) {
@@ -251,7 +261,7 @@ describe('Data Persistence & Multi-Tenancy', () => {
     console.log('📊 Before import:', beforeCounts);
 
     const response = await uploadFile(testFile, adminToken);
-    expect(response.ok).toBe(true);
+    assert.strictEqual(response.ok, true);
 
     const afterCounts = getNodesByAccount(adminAccountId);
     console.log('📊 After import:', afterCounts);
@@ -260,17 +270,17 @@ describe('Data Persistence & Multi-Tenancy', () => {
     const totalBefore = beforeCounts.reduce((sum, row: any) => sum + row.count, 0);
     const totalAfter = afterCounts.reduce((sum, row: any) => sum + row.count, 0);
 
-    expect(totalAfter).toBeGreaterThan(totalBefore);
+    assert.ok(totalAfter > totalBefore);
 
     // Should have Folder and Group nodes
     const folderCount = afterCounts.find((r: any) => r.kind === 'Folder')?.count || 0;
     const groupCount = afterCounts.find((r: any) => r.kind === 'Group')?.count || 0;
 
-    expect(folderCount).toBeGreaterThan(0);
-    expect(groupCount).toBeGreaterThan(0);
+    assert.ok(folderCount > 0);
+    assert.ok(groupCount > 0);
   }, 120000); // 2min timeout
 
-  it('should isolate data between accounts', async () => {
+  test('should isolate data between accounts', async (_t) => {
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
 
     if (!fs.existsSync(testFile)) {
@@ -284,22 +294,30 @@ describe('Data Persistence & Multi-Tenancy', () => {
     await uploadFile(testFile, clientToken);
 
     // Check admin data
-    const adminNodes = db.prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?').get(adminAccountId);
+    const adminNodes = db
+      .prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?')
+      .get(adminAccountId);
 
     // Check client data
-    const clientNodes = db.prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?').get(clientAccountId);
+    const clientNodes = db
+      .prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?')
+      .get(clientAccountId);
 
     // Both should have data
-    expect((adminNodes as any).count).toBeGreaterThan(0);
-    expect((clientNodes as any).count).toBeGreaterThan(0);
+    assert.ok((adminNodes as any).count > 0);
+    assert.ok((clientNodes as any).count > 0);
 
     // Check for data leakage
-    const wrongAccountNodes = db.prepare(`
+    const wrongAccountNodes = db
+      .prepare(
+        `
       SELECT COUNT(*) as count FROM nodes
       WHERE account_id NOT IN (?, ?)
-    `).get(adminAccountId, clientAccountId);
+    `
+      )
+      .get(adminAccountId, clientAccountId);
 
-    expect((wrongAccountNodes as any).count).toBe(0);
+    assert.strictEqual((wrongAccountNodes as any).count, 0);
   }, 120000);
 });
 
@@ -309,7 +327,7 @@ describe('Data Persistence & Multi-Tenancy', () => {
  * ============================================================================
  */
 describe('Groups & Folders Navigation', () => {
-  beforeAll(async () => {
+  before(async () => {
     // Ensure admin has some imported data
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
     if (fs.existsSync(testFile)) {
@@ -317,26 +335,26 @@ describe('Groups & Folders Navigation', () => {
     }
   });
 
-  it('should return groups tree for authenticated user', async () => {
+  test('should return groups tree for authenticated user', async (_t) => {
     const response = await getGroupsTree(adminToken);
 
-    expect(response.success).toBe(true);
-    expect(Array.isArray(response.groups)).toBe(true);
+    assert.strictEqual(response.success, true);
+    assert.ok(Array.isArray(response.groups));
 
     console.log(`📁 Admin has ${response.groups.length} root folders/groups`);
   });
 
-  it('should return empty tree for user with no data', async () => {
+  test('should return empty tree for user with no data', async (_t) => {
     // Create a new client without any imports
     cleanupTestData(clientAccountId);
 
     const response = await getGroupsTree(clientToken);
 
-    expect(response.success).toBe(true);
-    expect(response.groups.length).toBe(0);
+    assert.strictEqual(response.success, true);
+    assert.strictEqual(response.groups.length, 0);
   });
 
-  it('should include folder structure with groups', async () => {
+  test('should include folder structure with groups', async (_t) => {
     const response = await getGroupsTree(adminToken);
 
     if (response.groups.length === 0) {
@@ -347,18 +365,18 @@ describe('Groups & Folders Navigation', () => {
     const folder = response.groups.find((g: any) => g.kind === 'Folder');
 
     if (folder) {
-      expect(folder).toHaveProperty('id');
-      expect(folder).toHaveProperty('kind');
-      expect(folder).toHaveProperty('properties');
+      assert.ok(folder.hasOwnProperty('id'));
+      assert.ok(folder.hasOwnProperty('kind'));
+      assert.ok(folder.hasOwnProperty('properties'));
 
       // Folders can have children
       if (folder.children) {
-        expect(Array.isArray(folder.children)).toBe(true);
+        assert.ok(Array.isArray(folder.children));
       }
     }
   });
 
-  it('should only show data for the authenticated account', async () => {
+  test('should only show data for the authenticated account', async (_t) => {
     // Get admin tree
     const adminTree = await getGroupsTree(adminToken);
 
@@ -382,8 +400,8 @@ describe('Groups & Folders Navigation', () => {
     collectIds(clientTree.groups);
 
     // Should have NO overlap
-    const overlap = Array.from(adminNodeIds).filter(id => clientNodeIds.has(id));
-    expect(overlap.length).toBe(0);
+    const overlap = Array.from(adminNodeIds).filter((id) => clientNodeIds.has(id));
+    assert.strictEqual(overlap.length, 0);
   });
 });
 
@@ -393,7 +411,7 @@ describe('Groups & Folders Navigation', () => {
  * ============================================================================
  */
 describe('UI Data Transformation', () => {
-  it('should parse node properties from JSON strings', async () => {
+  test('should parse node properties from JSON strings', async (_t) => {
     const response = await getGroupsTree(adminToken);
 
     if (response.groups.length === 0) {
@@ -404,26 +422,30 @@ describe('UI Data Transformation', () => {
     const node = response.groups[0];
 
     // Properties should be parsed objects, not JSON strings
-    expect(typeof node.properties).toBe('object');
-    expect(node.properties).not.toBe(null);
+    assert.strictEqual(typeof node.properties, 'object');
+    assert.ok(node.properties !== null);
   });
 
-  it('should include edge relationships in tree structure', async () => {
+  test('should include edge relationships in tree structure', async (_t) => {
     const response = await getGroupsTree(adminToken);
 
     // Check if we have FOLDS_INTO_FOLDER edges
-    const foldsIntoEdges = db.prepare(`
+    const foldsIntoEdges = db
+      .prepare(
+        `
       SELECT COUNT(*) as count FROM edges
       WHERE kind = 'FOLDS_INTO_FOLDER'
       AND account_id = ?
-    `).get(adminAccountId);
+    `
+      )
+      .get(adminAccountId);
 
     console.log(`📊 FOLDS_INTO_FOLDER edges: ${(foldsIntoEdges as any).count}`);
 
     // If we have edges, tree should reflect hierarchy
     if ((foldsIntoEdges as any).count > 0) {
       const hasChildren = response.groups.some((g: any) => g.children && g.children.length > 0);
-      expect(hasChildren).toBe(true);
+      assert.strictEqual(hasChildren, true);
     }
   });
 });
@@ -434,35 +456,35 @@ describe('UI Data Transformation', () => {
  * ============================================================================
  */
 describe('Error Handling', () => {
-  it('should handle invalid file formats gracefully', async () => {
+  test('should handle invalid file formats gracefully', async (_t) => {
     const form = new FormData();
     form.append('files', Buffer.from('invalid json'), { filename: 'test.txt' });
 
     const response = await fetch(`${API_BASE_URL}/api/v1/import/enhanced`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        Authorization: `Bearer ${adminToken}`,
         ...form.getHeaders(),
       },
       body: form,
     });
 
     // Should either accept and handle, or reject cleanly
-    expect([200, 400]).toContain(response.status);
+    assert.ok([200, 400].includes(response.status));
   });
 
-  it('should validate authentication tokens', async () => {
+  test('should validate authentication tokens', async (_t) => {
     const response = await fetch(`${API_BASE_URL}/api/v1/groups`, {
       method: 'GET',
       headers: {
-        'Authorization': 'Bearer invalid_token_12345',
+        Authorization: 'Bearer invalid_token_12345',
       },
     });
 
-    expect(response.status).toBe(401);
+    assert.strictEqual(response.status, 401);
   });
 
-  it('should handle missing config gracefully', async () => {
+  test('should handle missing config gracefully', async (_t) => {
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
 
     if (!fs.existsSync(testFile)) {
@@ -476,14 +498,14 @@ describe('Error Handling', () => {
     const response = await fetch(`${API_BASE_URL}/api/v1/import/enhanced`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        Authorization: `Bearer ${adminToken}`,
         ...form.getHeaders(),
       },
       body: form,
     });
 
     // Should use default config and succeed
-    expect(response.ok).toBe(true);
+    assert.strictEqual(response.ok, true);
   }, 60000);
 });
 
@@ -493,7 +515,7 @@ describe('Error Handling', () => {
  * ============================================================================
  */
 describe('Performance & Scale', () => {
-  it('should handle medium file (135MB) import', async () => {
+  test('should handle medium file (135MB) import', async (_t) => {
     const testFile = path.join(TEST_FILES_DIR, 'medium.json');
 
     if (!fs.existsSync(testFile)) {
@@ -505,7 +527,7 @@ describe('Performance & Scale', () => {
     const response = await uploadFile(testFile, adminToken);
     const duration = Date.now() - startTime;
 
-    expect(response.ok).toBe(true);
+    assert.strictEqual(response.ok, true);
 
     console.log(`⏱️  Medium file import took: ${(duration / 1000).toFixed(1)}s`);
 
@@ -518,7 +540,7 @@ describe('Performance & Scale', () => {
     }
   }, 300000); // 5min timeout
 
-  it('should fetch groups tree quickly even with large dataset', async () => {
+  test('should fetch groups tree quickly even with large dataset', async (_t) => {
     const startTime = Date.now();
     await getGroupsTree(adminToken);
     const duration = Date.now() - startTime;
@@ -526,6 +548,207 @@ describe('Performance & Scale', () => {
     console.log(`⏱️  Groups tree fetch took: ${duration}ms`);
 
     // Should be fast (< 1s)
-    expect(duration).toBeLessThan(1000);
+    assert.ok(duration < 1000);
   });
+});
+
+/**
+ * ============================================================================
+ * TEST SUITE 7: SSE Job Streaming (Real-time Updates)
+ * ============================================================================
+ */
+describe('SSE Job Streaming', () => {
+  test('should connect to SSE stream with token authentication', async (_t) => {
+    const sseUrl = `${API_BASE_URL}/api/v1/stream/jobs?token=${adminToken}`;
+    const eventSource = new EventSource(sseUrl);
+
+    // Wait for connection
+    await new Promise((resolve, reject) => {
+      eventSource.onopen = () => {
+        console.log('✅ SSE connection established');
+        resolve(true);
+      };
+
+      eventSource.onerror = (error) => {
+        reject(new Error('SSE connection failed'));
+      };
+
+      // Timeout after 5s
+      setTimeout(() => reject(new Error('SSE connection timeout')), 5000);
+    });
+
+    eventSource.close();
+    assert.strictEqual(true, true); // If we got here, connection succeeded
+  }, 10000);
+
+  test('should receive real-time job updates via SSE', async (_t) => {
+    const testFile = path.join(TEST_FILES_DIR, 'tiny.json');
+
+    if (!fs.existsSync(testFile)) {
+      console.warn('⚠️  Test file not found, skipping SSE test');
+      return;
+    }
+
+    const sseUrl = `${API_BASE_URL}/api/v1/stream/jobs?token=${adminToken}`;
+    const eventSource = new EventSource(sseUrl);
+    const receivedEvents: any[] = [];
+
+    // Listen for job updates
+    eventSource.addEventListener('jobs.update', (event: any) => {
+      const data = JSON.parse(event.data);
+      receivedEvents.push(data);
+      console.log(`📡 SSE event received: ${data.jobs?.length || 0} job(s)`);
+    });
+
+    // Wait for connection
+    await new Promise((resolve) => {
+      eventSource.onopen = resolve;
+      setTimeout(resolve, 2000); // Fallback
+    });
+
+    // Create import job (job-based endpoint)
+    const form = new FormData();
+    form.append('files', fs.createReadStream(testFile));
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/import`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        ...form.getHeaders(),
+      },
+      body: form,
+    });
+
+    assert.strictEqual(response.ok, true);
+    const jobData = (await response.json()) as any;
+    const jobId = jobData.jobId;
+
+    console.log(`📋 Created job: ${jobId}`);
+
+    // Wait for SSE events (up to 30s)
+    await new Promise((resolve) => setTimeout(resolve, 30000));
+
+    eventSource.close();
+
+    // Verify we received events
+    assert.ok(receivedEvents.length > 0);
+
+    // Verify events contain our job
+    const ourJobEvents = receivedEvents.filter((evt) =>
+      evt.jobs?.some((j: any) => j.jobId === jobId)
+    );
+
+    assert.ok(ourJobEvents.length > 0);
+
+    // Verify status progression
+    const statuses = ourJobEvents.flatMap((evt) =>
+      evt.jobs?.filter((j: any) => j.jobId === jobId).map((j: any) => j.status)
+    );
+
+    console.log(`📊 Job status progression: ${statuses.join(' → ')}`);
+
+    // Should have progressed through states
+    assert.ok(statuses.includes('queued'));
+    // Should eventually succeed or fail
+    const hasTerminalStatus = statuses.some((s) => ['succeeded', 'failed'].includes(s));
+    assert.strictEqual(hasTerminalStatus, true);
+  }, 60000);
+
+  test('should isolate SSE streams by account', async (_t) => {
+    // Connect as admin
+    const adminSseUrl = `${API_BASE_URL}/api/v1/stream/jobs?token=${adminToken}`;
+    const adminEventSource = new EventSource(adminSseUrl);
+    const adminEvents: any[] = [];
+
+    adminEventSource.addEventListener('jobs.update', (event: any) => {
+      adminEvents.push(JSON.parse(event.data));
+    });
+
+    // Connect as client
+    const clientSseUrl = `${API_BASE_URL}/api/v1/stream/jobs?token=${clientToken}`;
+    const clientEventSource = new EventSource(clientSseUrl);
+    const clientEvents: any[] = [];
+
+    clientEventSource.addEventListener('jobs.update', (event: any) => {
+      clientEvents.push(JSON.parse(event.data));
+    });
+
+    // Wait for connections
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Create job for admin account (using legacy endpoint for simplicity)
+    const testFile = path.join(TEST_FILES_DIR, 'tiny.json');
+    if (fs.existsSync(testFile)) {
+      await uploadFile(testFile, adminToken);
+    }
+
+    // Wait for events
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+
+    adminEventSource.close();
+    clientEventSource.close();
+
+    // Admin should have received events
+    assert.ok(adminEvents.length > 0);
+
+    // Client should NOT have received admin's job events
+    // (They might receive their own events from other tests, but not admin's)
+    const adminJobIds = new Set(
+      adminEvents.flatMap((evt) => evt.jobs?.map((j: any) => j.jobId) || [])
+    );
+
+    const clientHasAdminJobs = clientEvents.some((evt) =>
+      evt.jobs?.some((j: any) => adminJobIds.has(j.jobId))
+    );
+
+    assert.strictEqual(clientHasAdminJobs, false);
+
+    console.log(`✅ SSE streams correctly isolated by account`);
+  }, 30000);
+
+  test('should handle SSE reconnection', async (_t) => {
+    const sseUrl = `${API_BASE_URL}/api/v1/stream/jobs?token=${adminToken}`;
+    let eventSource = new EventSource(sseUrl);
+    let connectionCount = 0;
+
+    eventSource.onopen = () => {
+      connectionCount++;
+      console.log(`📡 SSE connection ${connectionCount}`);
+    };
+
+    // Wait for initial connection
+    await new Promise((resolve) => {
+      const check = () => {
+        if (connectionCount > 0) {
+          resolve(true);
+        } else {
+          setTimeout(check, 100);
+        }
+      };
+      check();
+    });
+
+    assert.strictEqual(connectionCount, 1);
+
+    // Close and reconnect
+    eventSource.close();
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    eventSource = new EventSource(sseUrl);
+
+    eventSource.onopen = () => {
+      connectionCount++;
+      console.log(`📡 SSE reconnection ${connectionCount}`);
+    };
+
+    // Wait for reconnection
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    eventSource.close();
+
+    assert.strictEqual(connectionCount, 2);
+
+    console.log(`✅ SSE reconnection successful`);
+  }, 10000);
 });

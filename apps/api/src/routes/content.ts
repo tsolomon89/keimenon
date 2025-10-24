@@ -100,7 +100,7 @@ router.get('/message/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Content file not found on disk' });
     }
 
-    res.json({
+    return res.json({
       id,
       content,
       source: 'local',
@@ -110,7 +110,7 @@ router.get('/message/:id', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Get message content error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to retrieve message content',
       message: error.message,
     });
@@ -177,7 +177,7 @@ router.get('/source/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Content file not found on disk' });
     }
 
-    res.json({
+    return res.json({
       id,
       title: source.title,
       content,
@@ -187,7 +187,7 @@ router.get('/source/:id', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Get source content error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to retrieve source content',
       message: error.message,
     });
@@ -262,7 +262,7 @@ router.get('/code/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Code file not found on disk' });
     }
 
-    res.json({
+    return res.json({
       id,
       code,
       language: codeBlock.language,
@@ -272,7 +272,7 @@ router.get('/code/:id', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Get code content error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to retrieve code content',
       message: error.message,
     });
@@ -337,9 +337,7 @@ router.get('/conversation/:id', async (req: Request, res: Response) => {
 
     // Fallback: reconstruct from database messages
     // Get CONTAINS edges from thread to messages
-    const edges = db.getNodeEdges
-      ? await db.getNodeEdges(id, 'outgoing')
-      : [];
+    const edges = db.getNodeEdges ? await db.getNodeEdges(id, 'outgoing') : [];
 
     const messageEdges = edges.filter((e: any) => e.kind === 'CONTAINS');
 
@@ -360,7 +358,7 @@ router.get('/conversation/:id', async (req: Request, res: Response) => {
     // Sort by index
     messages.sort((a, b) => a.index - b.index);
 
-    res.json({
+    return res.json({
       id,
       source: 'database',
       conversation: {
@@ -372,7 +370,7 @@ router.get('/conversation/:id', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Get conversation error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to retrieve conversation',
       message: error.message,
     });
@@ -398,9 +396,15 @@ router.get('/stats', async (req: Request, res: Response) => {
 
       if (storageMode === 'local') {
         const totalResult = await db.execute('SELECT COUNT(*) as count FROM nodes');
-        const messagesResult = await db.execute("SELECT COUNT(*) as count FROM nodes WHERE kind = 'Message'");
-        const sourcesResult = await db.execute("SELECT COUNT(*) as count FROM nodes WHERE kind = 'Source'");
-        const codeResult = await db.execute("SELECT COUNT(*) as count FROM nodes WHERE kind = 'CodeBlock'");
+        const messagesResult = await db.execute(
+          "SELECT COUNT(*) as count FROM nodes WHERE kind = 'Message'"
+        );
+        const sourcesResult = await db.execute(
+          "SELECT COUNT(*) as count FROM nodes WHERE kind = 'Source'"
+        );
+        const codeResult = await db.execute(
+          "SELECT COUNT(*) as count FROM nodes WHERE kind = 'CodeBlock'"
+        );
         const edgesResult = await db.execute('SELECT COUNT(*) as count FROM edges');
 
         dbStats = {
@@ -430,7 +434,7 @@ router.get('/stats', async (req: Request, res: Response) => {
       }
     }
 
-    res.json({
+    return res.json({
       local_storage: {
         ...stats,
         path: process.env.LOCAL_DOCS_PATH || '~/.canvas-memory',
@@ -441,7 +445,7 @@ router.get('/stats', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Get stats error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to retrieve stats',
       message: error.message,
     });

@@ -44,12 +44,8 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-purple-600">
             <Lock className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">
-            Canvas Memory OS
-          </h1>
-          <p className="text-slate-400">
-            Sign in to your workspace
-          </p>
+          <h1 className="text-4xl font-bold text-white mb-2">Canvas Memory OS</h1>
+          <p className="text-slate-400">Sign in to your workspace</p>
         </div>
 
         {/* Login Form */}
@@ -102,6 +98,15 @@ export default function LoginPage() {
             </div>
           </div>
 
+          <div className="flex items-center justify-end">
+            <Link
+              href="/forgot-password"
+              className="text-sm text-purple-300 hover:text-purple-200 transition-colors"
+            >
+              Forgot password? (debug)
+            </Link>
+          </div>
+
           <button
             type="submit"
             disabled={isLoading}
@@ -128,9 +133,7 @@ export default function LoginPage() {
               Create one here
             </Link>
           </p>
-          <p className="mt-3 text-xs text-slate-500">
-            Development: admin@admin.com (any password)
-          </p>
+          <p className="mt-3 text-xs text-slate-500">Development: admin@admin.com (any password)</p>
         </div>
       </div>
     </div>

@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
-import { Account } from '@/lib/api-client';
+import { Account, createUser } from '@/lib/api-client';
+import { logApiEvent } from '@/lib/error-handler';
 
 interface CreateUserInAccountModalProps {
   account: Account;
@@ -37,24 +38,26 @@ export function CreateUserInAccountModal({
 
     try {
       const targetAccountId = isMultiSelect ? formData.accountId : account.id;
-      const response = await fetch(`/api/v1/accounts/${targetAccountId}/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('canvas_memory_token')}`,
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          permissionLevel: formData.permissionLevel,
-        }),
+
+      // Use API client instead of raw fetch
+      const result = await createUser(targetAccountId, {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        permission_level: formData.permissionLevel,
+        user_class: 'person',
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create user');
-      }
+      // Log successful user creation
+      logApiEvent(`User created: ${formData.name} (${formData.email})`, {
+        domain: 'api',
+        operation: 'users.create',
+        metadata: {
+          accountId: targetAccountId,
+          userId: result.user.id,
+          permissionLevel: formData.permissionLevel,
+        },
+      });
 
       onSuccess();
     } catch (err: any) {
@@ -91,9 +94,7 @@ export function CreateUserInAccountModal({
           {/* Account selector (multi-select mode) */}
           {isMultiSelect && (
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Account
-              </label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Account</label>
               <select
                 value={formData.accountId}
                 onChange={(e) => setFormData({ ...formData, accountId: e.target.value })}
@@ -102,7 +103,7 @@ export function CreateUserInAccountModal({
               >
                 {accounts.map((acc) => (
                   <option key={acc.id} value={acc.id}>
-                    {acc.name} ({acc.email})
+                    {acc.name} ({acc.account_type})
                   </option>
                 ))}
               </select>
@@ -113,15 +114,15 @@ export function CreateUserInAccountModal({
           {!isMultiSelect && (
             <div className="px-4 py-3 bg-slate-900/50 border border-slate-700 rounded">
               <p className="text-sm font-medium text-slate-300">{account.name}</p>
-              <p className="text-xs text-slate-500">{account.email}</p>
+              <p className="text-xs text-slate-500">
+                {account.account_type} - {account.account_class}
+              </p>
             </div>
           )}
 
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Full Name
-            </label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Full Name</label>
             <input
               type="text"
               value={formData.name}
@@ -134,9 +135,7 @@ export function CreateUserInAccountModal({
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Email
-            </label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Email</label>
             <input
               type="email"
               value={formData.email}
@@ -149,9 +148,7 @@ export function CreateUserInAccountModal({
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Password
-            </label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
             <input
               type="password"
               value={formData.password}

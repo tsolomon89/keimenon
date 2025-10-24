@@ -46,34 +46,78 @@ describe('Import-Enhanced Integration Tests', () => {
     // Create admin account
     adminAccountId = randomUUID();
     const adminNow = Date.now();
-    db.getDatabase().prepare(`
+    db.getDatabase()
+      .prepare(
+        `
       INSERT INTO accounts (id, account_type, account_class, email, name, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(adminAccountId, 'admin', 'business', 'admin@test.com', 'Admin Test', adminNow, adminNow);
+    `
+      )
+      .run(adminAccountId, 'admin', 'business', 'admin@test.com', 'Admin Test', adminNow, adminNow);
 
     // Create admin user
     adminUserId = randomUUID();
     const adminPasswordHash = await authService.hashPassword('adminpass123');
-    db.getDatabase().prepare(`
+    db.getDatabase()
+      .prepare(
+        `
       INSERT INTO users (id, account_id, email, password_hash, name, permission_level, user_class, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(adminUserId, adminAccountId, 'admin@test.com', adminPasswordHash, 'Admin User', 'admin', 'person', adminNow, adminNow);
+    `
+      )
+      .run(
+        adminUserId,
+        adminAccountId,
+        'admin@test.com',
+        adminPasswordHash,
+        'Admin User',
+        'admin',
+        'person',
+        adminNow,
+        adminNow
+      );
 
     // Create client account
     clientAccountId = randomUUID();
     const clientNow = Date.now();
-    db.getDatabase().prepare(`
+    db.getDatabase()
+      .prepare(
+        `
       INSERT INTO accounts (id, account_type, account_class, email, name, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(clientAccountId, 'client', 'free', 'client@test.com', 'Client Test', clientNow, clientNow);
+    `
+      )
+      .run(
+        clientAccountId,
+        'client',
+        'free',
+        'client@test.com',
+        'Client Test',
+        clientNow,
+        clientNow
+      );
 
     // Create client user
     clientUserId = randomUUID();
     const clientPasswordHash = await authService.hashPassword('clientpass123');
-    db.getDatabase().prepare(`
+    db.getDatabase()
+      .prepare(
+        `
       INSERT INTO users (id, account_id, email, password_hash, name, permission_level, user_class, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(clientUserId, clientAccountId, 'client@test.com', clientPasswordHash, 'Client User', 'junior', 'person', clientNow, clientNow);
+    `
+      )
+      .run(
+        clientUserId,
+        clientAccountId,
+        'client@test.com',
+        clientPasswordHash,
+        'Client User',
+        'junior',
+        'person',
+        clientNow,
+        clientNow
+      );
 
     // Generate tokens
     adminToken = await authService.generateToken({
@@ -107,7 +151,10 @@ describe('Import-Enhanced Integration Tests', () => {
   });
 
   it('should import data with authentication and create organizational structure', async () => {
-    const testFilePath = path.join(__dirname, '../../../ai_context/chat_data/test-samples/small.json');
+    const testFilePath = path.join(
+      __dirname,
+      '../../../ai_context/chat_data/test-samples/small.json'
+    );
 
     if (!fs.existsSync(testFilePath)) {
       console.warn(`⚠️  Test file not found: ${testFilePath}, skipping test`);
@@ -123,7 +170,7 @@ describe('Import-Enhanced Integration Tests', () => {
     const response = await fetch(`${API_BASE_URL}/api/v1/import/enhanced`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        Authorization: `Bearer ${adminToken}`,
         ...form.getHeaders(),
       },
       body: form as any,
@@ -138,60 +185,107 @@ describe('Import-Enhanced Integration Tests', () => {
     console.log(`✅ Import successful: ${data.results.length} file(s) processed`);
 
     // Verify ChatThread nodes have account_id
-    const chatThreads = db.getDatabase().prepare(`
+    const chatThreads = db
+      .getDatabase()
+      .prepare(
+        `
       SELECT * FROM nodes
       WHERE kind = 'ChatThread' AND account_id = ?
-    `).all(adminAccountId);
+    `
+      )
+      .all(adminAccountId);
     assert.ok(chatThreads.length > 0, 'ChatThread nodes should be created');
     console.log(`   ✓ Created ${chatThreads.length} ChatThread nodes`);
 
     // Verify Message nodes have account_id
-    const messages = db.getDatabase().prepare(`
+    const messages = db
+      .getDatabase()
+      .prepare(
+        `
       SELECT * FROM nodes
       WHERE kind = 'Message' AND account_id = ?
-    `).all(adminAccountId);
+    `
+      )
+      .all(adminAccountId);
     assert.ok(messages.length > 0, 'Message nodes should be created');
     console.log(`   ✓ Created ${messages.length} Message nodes`);
 
     // Verify Folder node created
-    const folders = db.getDatabase().prepare(`
+    const folders = db
+      .getDatabase()
+      .prepare(
+        `
       SELECT * FROM nodes
       WHERE kind = 'Folder' AND account_id = ?
-    `).all(adminAccountId) as any[];
+    `
+      )
+      .all(adminAccountId) as any[];
     assert.strictEqual(folders.length, 1, 'Exactly one Folder should be created');
     const folderProps = JSON.parse(folders[0].properties);
-    assert.strictEqual(folderProps.name, 'Imported Conversations', 'Folder should be named "Imported Conversations"');
+    assert.strictEqual(
+      folderProps.name,
+      'Imported Conversations',
+      'Folder should be named "Imported Conversations"'
+    );
     console.log(`   ✓ Created folder: "${folderProps.name}"`);
 
     // Verify Group nodes created (one per conversation)
-    const groups = db.getDatabase().prepare(`
+    const groups = db
+      .getDatabase()
+      .prepare(
+        `
       SELECT * FROM nodes
       WHERE kind = 'Group' AND account_id = ?
-    `).all(adminAccountId);
-    assert.strictEqual(groups.length, chatThreads.length, 'One Group should be created per ChatThread');
+    `
+      )
+      .all(adminAccountId);
+    assert.strictEqual(
+      groups.length,
+      chatThreads.length,
+      'One Group should be created per ChatThread'
+    );
     console.log(`   ✓ Created ${groups.length} Group nodes`);
 
     // Verify IN_GROUP edges link ChatThreads to Groups
-    const inGroupEdges = db.getDatabase().prepare(`
+    const inGroupEdges = db
+      .getDatabase()
+      .prepare(
+        `
       SELECT * FROM edges
       WHERE kind = 'IN_GROUP' AND account_id = ?
-    `).all(adminAccountId);
-    assert.strictEqual(inGroupEdges.length, chatThreads.length, 'Each ChatThread should have an IN_GROUP edge');
+    `
+      )
+      .all(adminAccountId);
+    assert.strictEqual(
+      inGroupEdges.length,
+      chatThreads.length,
+      'Each ChatThread should have an IN_GROUP edge'
+    );
     console.log(`   ✓ Created ${inGroupEdges.length} IN_GROUP edges`);
 
     // Verify FOLDS_INTO_FOLDER edges link Groups to Folder
-    const foldsEdges = db.getDatabase().prepare(`
+    const foldsEdges = db
+      .getDatabase()
+      .prepare(
+        `
       SELECT * FROM edges
       WHERE kind = 'FOLDS_INTO_FOLDER' AND account_id = ?
-    `).all(adminAccountId);
+    `
+      )
+      .all(adminAccountId);
     assert.strictEqual(foldsEdges.length, groups.length, 'Each Group should fold into the Folder');
     console.log(`   ✓ Created ${foldsEdges.length} FOLDS_INTO_FOLDER edges`);
 
     // Verify CONTAINS edges have account_id
-    const containsEdges = db.getDatabase().prepare(`
+    const containsEdges = db
+      .getDatabase()
+      .prepare(
+        `
       SELECT * FROM edges
       WHERE kind = 'CONTAINS' AND account_id = ?
-    `).all(adminAccountId);
+    `
+      )
+      .all(adminAccountId);
     assert.ok(containsEdges.length > 0, 'CONTAINS edges should be created');
     console.log(`   ✓ Created ${containsEdges.length} CONTAINS edges`);
 
@@ -200,19 +294,29 @@ describe('Import-Enhanced Integration Tests', () => {
 
   it('should verify tenant isolation between admin and client accounts', async () => {
     // Verify admin has their data
-    const adminChatThreads = db.getDatabase().prepare(`
+    const adminChatThreads = db
+      .getDatabase()
+      .prepare(
+        `
       SELECT * FROM nodes
       WHERE kind = 'ChatThread' AND account_id = ?
-    `).all(adminAccountId);
+    `
+      )
+      .all(adminAccountId);
     assert.ok(adminChatThreads.length > 0, 'Admin should have ChatThreads');
 
     // Verify no cross-contamination (admin data created by admin user only)
-    const crossContamination = db.getDatabase().prepare(`
+    const crossContamination = db
+      .getDatabase()
+      .prepare(
+        `
       SELECT * FROM nodes
       WHERE kind = 'ChatThread'
         AND account_id = ?
         AND created_by != ?
-    `).all(adminAccountId, adminUserId);
+    `
+      )
+      .all(adminAccountId, adminUserId);
     assert.strictEqual(crossContamination.length, 0, 'No cross-contamination should exist');
 
     console.log('✅ Tenant isolation verified');
@@ -224,7 +328,7 @@ describe('Import-Enhanced Integration Tests', () => {
     const response = await fetch(`${API_BASE_URL}/api/v1/groups/nav`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
     });
@@ -251,7 +355,7 @@ describe('Import-Enhanced Integration Tests', () => {
     const groupsResponse = await fetch(`${API_BASE_URL}/api/v1/groups/nav`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
     });
@@ -264,7 +368,7 @@ describe('Import-Enhanced Integration Tests', () => {
     const childrenResponse = await fetch(`${API_BASE_URL}/api/v1/groups/nav/${folder.id}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
     });
@@ -283,7 +387,7 @@ describe('Import-Enhanced Integration Tests', () => {
     const membersResponse = await fetch(`${API_BASE_URL}/api/v1/groups/nav/${group.id}/nodes`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
     });
@@ -296,12 +400,131 @@ describe('Import-Enhanced Integration Tests', () => {
 
     // Verify node IDs are ChatThread nodes
     const nodeId = membersData.node_ids[0];
-    const node = db.getDatabase().prepare(`
+    const node = db
+      .getDatabase()
+      .prepare(
+        `
       SELECT * FROM nodes WHERE id = ? AND account_id = ?
-    `).get(nodeId, adminAccountId) as any;
+    `
+      )
+      .get(nodeId, adminAccountId) as any;
     assert.ok(node, 'Node should exist in database');
     assert.strictEqual(node.kind, 'ChatThread', 'Node should be a ChatThread');
 
     console.log(`✅ Successfully fetched ${membersData.node_ids.length} member(s) from group`);
+  });
+
+  it('[Job-Based] should create import job instead of processing synchronously', async () => {
+    console.log('📋 Testing job-based import endpoint...');
+
+    const testFilePath = path.join(
+      __dirname,
+      '../../../ai_context/chat_data/test-samples/tiny.json'
+    );
+
+    if (!fs.existsSync(testFilePath)) {
+      console.warn(`⚠️  Test file not found: ${testFilePath}, skipping test`);
+      return;
+    }
+
+    const form = new FormData();
+    form.append('files', fs.createReadStream(testFilePath), 'tiny.json');
+    form.append(
+      'config',
+      JSON.stringify({
+        exportCode: true,
+        codeMinChars: 50,
+      })
+    );
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/import`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        ...form.getHeaders(),
+      },
+      body: form as any,
+    });
+
+    assert.strictEqual(response.status, 201, 'Job creation should return 201');
+    const data: any = await response.json();
+
+    assert.ok(data.success, 'Response should indicate success');
+    assert.ok(data.jobId, 'Response should include jobId');
+    assert.strictEqual(data.job.type, 'import', 'Job type should be import');
+    assert.strictEqual(data.job.state.status, 'queued', 'Initial status should be queued');
+    assert.ok(data.job.config.files, 'Job config should include files');
+    assert.strictEqual(data.job.config.files.length, 1, 'Should have one file');
+    assert.ok(
+      data.job.config.files[0].fileName.includes('tiny.json'),
+      'File name should be preserved'
+    );
+
+    console.log(`✅ Job created: ${data.jobId}`);
+    console.log(`   Status: ${data.job.state.status}`);
+    console.log(`   Files: ${data.job.config.files.length}`);
+  });
+
+  it('[Job-Based] should process import job and verify completion', async () => {
+    console.log('📋 Testing job execution and completion...');
+
+    const testFilePath = path.join(
+      __dirname,
+      '../../../ai_context/chat_data/test-samples/tiny.json'
+    );
+
+    if (!fs.existsSync(testFilePath)) {
+      console.warn(`⚠️  Test file not found: ${testFilePath}, skipping test`);
+      return;
+    }
+
+    // Create job
+    const form = new FormData();
+    form.append('files', fs.createReadStream(testFilePath), 'tiny.json');
+
+    const createResponse = await fetch(`${API_BASE_URL}/api/v1/jobs/import`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        ...form.getHeaders(),
+      },
+      body: form as any,
+    });
+
+    const createData: any = await createResponse.json();
+    const jobId = createData.jobId;
+
+    console.log(`   Job created: ${jobId}`);
+
+    // Poll for completion (wait up to 30 seconds)
+    const startTime = Date.now();
+    let job: any = null;
+
+    while (Date.now() - startTime < 30000) {
+      const statusResponse = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+        },
+      });
+
+      const statusData: any = await statusResponse.json();
+      job = statusData.job;
+
+      if (['succeeded', 'failed'].includes(job.state.status)) {
+        break;
+      }
+
+      // Wait 500ms before next check
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    assert.ok(job, 'Job should be found');
+    assert.strictEqual(job.state.status, 'succeeded', 'Job should succeed');
+    assert.strictEqual(job.progress.percent, 100, 'Progress should be 100%');
+
+    console.log(`✅ Job completed successfully`);
+    console.log(`   Duration: ${Date.now() - startTime}ms`);
+    console.log(`   Status: ${job.state.status}`);
   });
 });

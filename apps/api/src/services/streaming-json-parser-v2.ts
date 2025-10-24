@@ -53,8 +53,9 @@ export class StreamingJSONParserV2 extends EventEmitter {
 
       let bytesProcessed = 0;
 
-      stream.on('data', (chunk: string) => {
-        bytesProcessed += Buffer.byteLength(chunk, 'utf8');
+      stream.on('data', (chunk: string | Buffer) => {
+        const chunkStr = typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+        bytesProcessed += Buffer.byteLength(chunkStr, 'utf8');
       });
 
       parser.on('data', (data: any) => {

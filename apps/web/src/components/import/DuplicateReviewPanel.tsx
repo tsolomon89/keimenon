@@ -36,14 +36,19 @@ export function DuplicateReviewPanel({
   } = useUndoRedo<Map<string, ReviewDecision>>(new Map());
 
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
-  const selectedCandidate = selectedGroup?.candidates.find(
-    (c) => c.id === selectedCandidateId
-  );
+  const selectedCandidate = selectedGroup?.candidates.find((c) => c.id === selectedCandidateId);
 
   const handleDecision = async (candidateId: string, action: ReviewDecision['action']) => {
     try {
-      // ✅ Call backend API to resolve the duplicate
-      await resolveDuplicate(candidateId, action);
+      // Find the candidate to get node IDs
+      const candidate = selectedGroup?.candidates.find((c) => c.id === candidateId);
+      if (!candidate) {
+        console.error('Candidate not found:', candidateId);
+        return;
+      }
+
+      // ✅ Call backend API to resolve the duplicate with node IDs
+      await resolveDuplicate(candidateId, action, candidate.primary.id, candidate.duplicate.id);
 
       // Update local state
       const newDecisions = new Map(decisions);
@@ -72,6 +77,8 @@ export function DuplicateReviewPanel({
     } catch (error) {
       console.error('Failed to resolve duplicate:', error);
       // TODO: Show error toast to user
+      // Related: apps/web/src/components/common/Toast.tsx (create toast system)
+      // See: docs/features/ERROR_HANDLING.md
     }
   };
 
@@ -203,9 +210,7 @@ export function DuplicateReviewPanel({
         if (currentGroupIndex > 0) {
           const prevGroup = groups[currentGroupIndex - 1];
           setSelectedGroupId(prevGroup.id);
-          setSelectedCandidateId(
-            prevGroup.candidates[prevGroup.candidates.length - 1]?.id || null
-          );
+          setSelectedCandidateId(prevGroup.candidates[prevGroup.candidates.length - 1]?.id || null);
         }
       }
     }
@@ -223,7 +228,8 @@ export function DuplicateReviewPanel({
           <div>
             <h2 className="text-lg font-semibold">Review Duplicates</h2>
             <div className="text-xs text-slate-500 mt-1">
-              Use ↑↓ arrows to navigate • 1-4 for actions • Ctrl+Z/Y to undo/redo • Esc to cancel • Ctrl+Enter to complete
+              Use ↑↓ arrows to navigate • 1-4 for actions • Ctrl+Z/Y to undo/redo • Esc to cancel •
+              Ctrl+Enter to complete
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -348,12 +354,7 @@ export function DuplicateReviewPanel({
               className="p-2 text-slate-400 hover:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="Undo (Ctrl+Z)"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -368,12 +369,7 @@ export function DuplicateReviewPanel({
               className="p-2 text-slate-400 hover:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="Redo (Ctrl+Y)"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

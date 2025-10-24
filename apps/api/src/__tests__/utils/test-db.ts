@@ -122,3 +122,17 @@ export function clearTestDb(db: DatabaseClient) {
 export function closeTestDb(db: DatabaseClient) {
   db.close();
 }
+
+/**
+ * Setup test database (alias for createTestDb)
+ */
+export function setupTestDatabase(): DatabaseClient {
+  return createTestDb();
+}
+
+/**
+ * Cleanup test database (alias for closeTestDb)
+ */
+export function cleanupTestDatabase(db: DatabaseClient) {
+  closeTestDb(db);
+}

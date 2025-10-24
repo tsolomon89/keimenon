@@ -59,9 +59,7 @@ router.get('/', async (req: Request, res: Response) => {
     let boards: any[];
 
     // Build account filter
-    const accountFilter = req.user && req.user.accountType !== 'admin'
-      ? req.user.accountId
-      : null;
+    const accountFilter = req.user && req.user.accountType !== 'admin' ? req.user.accountId : null;
 
     if (storageMode === 'local') {
       // SQLite query with account filtering
@@ -99,10 +97,10 @@ router.get('/', async (req: Request, res: Response) => {
       boards = result.records.map((r: any) => r.get('b').properties);
     }
 
-    res.json({ boards, count: boards.length });
+    return res.json({ boards, count: boards.length });
   } catch (error: any) {
     console.error('List boards error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to list boards',
       message: error.message,
     });
@@ -152,10 +150,10 @@ router.get('/:id', async (req: Request, res: Response) => {
       }
     }
 
-    res.json({ board });
+    return res.json({ board });
   } catch (error: any) {
     console.error('Get board error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to get board',
       message: error.message,
     });
@@ -212,9 +210,7 @@ router.get('/:id/graph', async (req: Request, res: Response) => {
     let edges: any[];
 
     // Build account filter
-    const accountFilter = req.user && req.user.accountType !== 'admin'
-      ? req.user.accountId
-      : null;
+    const accountFilter = req.user && req.user.accountType !== 'admin' ? req.user.accountId : null;
 
     if (storageMode === 'local') {
       // SQLite query for nodes with account filtering
@@ -301,7 +297,7 @@ router.get('/:id/graph', async (req: Request, res: Response) => {
       }));
     }
 
-    res.json({
+    return res.json({
       board_id: id,
       nodes,
       edges,
@@ -312,7 +308,7 @@ router.get('/:id/graph', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Get board graph error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to get board graph',
       message: error.message,
     });
@@ -362,10 +358,10 @@ router.post('/', async (req: Request, res: Response) => {
 
     await db.createNode(board);
 
-    res.status(201).json({ success: true, board });
+    return res.status(201).json({ success: true, board });
   } catch (error: any) {
     console.error('Create board error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to create board',
       message: error.message,
     });
@@ -459,10 +455,10 @@ router.put('/:id', async (req: Request, res: Response) => {
       await db.execute(query, params);
     }
 
-    res.json({ success: true, board });
+    return res.json({ success: true, board });
   } catch (error: any) {
     console.error('Update board error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to update board',
       message: error.message,
     });
@@ -540,7 +536,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
         // Delete the board itself
         await db.execute('DELETE FROM nodes WHERE id = ?', [id]);
 
-        res.json({
+        return res.json({
           success: true,
           deleted: { board: 1, nodes: nodesDeleted },
         });
@@ -556,7 +552,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
         const boardDeleted = result.records[0]?.get('boardDeleted')?.toNumber() || 0;
         const nodesDeleted = result.records[0]?.get('nodesDeleted')?.toNumber() || 0;
 
-        res.json({
+        return res.json({
           success: true,
           deleted: { board: boardDeleted, nodes: nodesDeleted },
         });
@@ -565,7 +561,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
       // Just delete board, keep nodes
       if (storageMode === 'local') {
         await db.execute('DELETE FROM nodes WHERE id = ?', [id]);
-        res.json({ success: true, deleted: 1 });
+        return res.json({ success: true, deleted: 1 });
       } else {
         // Neo4j delete board only
         const query = `
@@ -576,12 +572,12 @@ router.delete('/:id', async (req: Request, res: Response) => {
         const result = await db.execute(query, { id });
         const deleted = result.records[0]?.get('deleted')?.toNumber() || 0;
 
-        res.json({ success: true, deleted });
+        return res.json({ success: true, deleted });
       }
     }
   } catch (error: any) {
     console.error('Delete board error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to delete board',
       message: error.message,
     });

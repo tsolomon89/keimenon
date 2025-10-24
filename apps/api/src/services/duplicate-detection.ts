@@ -85,11 +85,7 @@ export class DuplicateDetectionService {
         }
 
         // Check if messages are duplicates
-        const result = this.checkDuplicate(
-          msgA.content,
-          msgB.content,
-          config
-        );
+        const result = this.checkDuplicate(msgA.content, msgB.content, config);
 
         if (result.isDuplicate) {
           const candidate: DuplicateCandidate = {
@@ -240,7 +236,10 @@ export class DuplicateDetectionService {
         break;
 
       case 'embedding':
-        // TODO: Implement embedding-based similarity (requires ML model)
+        // TODO: Implement embedding-based similarity using ML model
+        // Related: apps/api/src/services/embeddings.ts (needs creation)
+        // See: docs/architecture/EMBEDDINGS.md (needs creation)
+        // Requires: sentence-transformers or OpenAI embeddings integration
         // For now, fall back to Jaccard
         const tokensAFallback = tokenize(processedA);
         const tokensBFallback = tokenize(processedB);
@@ -352,10 +351,7 @@ export class DuplicateDetectionService {
 
     for (const candidate of candidates) {
       // Create a group key based on conversation pair
-      const key = [
-        candidate.primary.conversationTitle,
-        candidate.duplicate.conversationTitle,
-      ]
+      const key = [candidate.primary.conversationTitle, candidate.duplicate.conversationTitle]
         .sort()
         .join('||');
 

@@ -1,0 +1,30 @@
+{
+  "name": "mcp-canvas-database",
+  "version": "1.0.0",
+  "description": "MCP server for Canvas Memory OS SQLite database operations",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "mcp",
+    "sqlite",
+    "database",
+    "canvas-memory"
+  ],
+  "author": "Canvas Memory OS Team",
+  "license": "PRIVATE",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "better-sqlite3": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

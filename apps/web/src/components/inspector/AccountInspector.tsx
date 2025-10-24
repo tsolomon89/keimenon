@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Building2, Users, Database, GitBranch, UserPlus, Crown, Zap } from 'lucide-react';
 import { getAccountStats, Account } from '@/lib/api-client';
+import { useShell } from '@/contexts/ShellContext';
 
 interface AccountInspectorProps {
   account: Account;
@@ -10,7 +11,12 @@ interface AccountInspectorProps {
   onCreateUser: () => void;
 }
 
-export function AccountInspector({ account, isMultiSelect = false, onCreateUser }: AccountInspectorProps) {
+export function AccountInspector({
+  account,
+  isMultiSelect = false,
+  onCreateUser,
+}: AccountInspectorProps) {
+  const { setCanvasMode } = useShell();
   const [stats, setStats] = useState<{ nodes: number; edges: number; users: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -63,12 +69,14 @@ export function AccountInspector({ account, isMultiSelect = false, onCreateUser 
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-white">{account.name}</h3>
-              <p className="text-sm text-slate-400">{account.email}</p>
+              <p className="text-sm text-slate-400">Account ID: {account.id.slice(0, 16)}...</p>
             </div>
           </div>
 
           {/* Tier Badge */}
-          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 ${getTierColor()}`}>
+          <div
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 ${getTierColor()}`}
+          >
             {getTierIcon()}
             <span className="text-sm font-medium capitalize">{account.account_class}</span>
           </div>
@@ -88,7 +96,9 @@ export function AccountInspector({ account, isMultiSelect = false, onCreateUser 
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-slate-400">Created</span>
-              <span className="text-white">{new Date(account.created_at).toLocaleDateString()}</span>
+              <span className="text-white">
+                {new Date(account.created_at).toLocaleDateString()}
+              </span>
             </div>
           </div>
         </div>
@@ -127,8 +137,16 @@ export function AccountInspector({ account, isMultiSelect = false, onCreateUser 
         <div className="space-y-2">
           <h4 className="text-xs font-semibold text-slate-400 uppercase">Actions</h4>
           <button
-            onClick={onCreateUser}
+            onClick={() => setCanvasMode('canvas')}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+            title="View this account's canvas"
+          >
+            <GitBranch className="w-4 h-4" />
+            <span>View Canvas</span>
+          </button>
+          <button
+            onClick={onCreateUser}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors"
             title="Add user to this account"
           >
             <UserPlus className="w-4 h-4" />
@@ -140,7 +158,8 @@ export function AccountInspector({ account, isMultiSelect = false, onCreateUser 
         {isMultiSelect && (
           <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3">
             <p className="text-xs text-blue-300">
-              You have multiple accounts selected. The user creation form will include an account selector.
+              You have multiple accounts selected. The user creation form will include an account
+              selector.
             </p>
           </div>
         )}

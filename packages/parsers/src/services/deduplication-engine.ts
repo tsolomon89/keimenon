@@ -20,11 +20,11 @@ import { GroupingStorage } from './grouping-storage';
  * Evidence weights configuration
  */
 export interface EvidenceWeightsConfig {
-  freq_weight: number;       // log1p(instances_count)
-  diversity_weight: number;  // log1p(distinct_blobs)
-  role_weight: number;       // unique_roles / 3
-  temporal_weight: number;   // stability across time windows
-  modality_weight: number;   // bonus for cross-modality
+  freq_weight: number; // log1p(instances_count)
+  diversity_weight: number; // log1p(distinct_blobs)
+  role_weight: number; // unique_roles / 3
+  temporal_weight: number; // stability across time windows
+  modality_weight: number; // bonus for cross-modality
 }
 
 const DEFAULT_WEIGHTS: EvidenceWeightsConfig = {
@@ -157,7 +157,7 @@ export class DeduplicationEngine {
     `);
 
     const rows = stmt.all() as any[];
-    return rows.map(row => ({
+    return rows.map((row) => ({
       content_id: row.content_id,
       node_ids: row.node_ids.split(','),
     }));
@@ -260,7 +260,9 @@ export class DeduplicationEngine {
     const lastSeenAt = timeRow?.last || now;
 
     // Count distinct roles (Phase 1-3 doesn't have nodes table, so we'll default to 1)
-    // TODO: Add role tracking to node_spans if needed
+    // TODO: Add role tracking to node_spans for better context
+    // Related: packages/parsers/src/services/content-processor.ts (add role to spans)
+    // See: packages/db/src/sqlite/schema.sql (add role column to node_spans table)
     const distinctRoles = 1;
 
     // Compute evidence weights
@@ -322,7 +324,7 @@ export class DeduplicationEngine {
     `);
 
     const rows = stmt.all(canonicalNodeId, canonicalNodeId) as any[];
-    const nodeIds = rows.map(r => r.node_id);
+    const nodeIds = rows.map((r) => r.node_id);
 
     if (nodeIds.length > 0) {
       this.computeCanonicalStats(canonicalNodeId, nodeIds);
@@ -369,7 +371,7 @@ export class DeduplicationEngine {
     `);
 
     const rows = stmt.all(canonicalNodeId, canonicalNodeId) as any[];
-    return rows.map(r => r.node_id);
+    return rows.map((r) => r.node_id);
   }
 
   /**
@@ -407,7 +409,7 @@ export class DeduplicationEngine {
     `);
 
     const rows = stmt.all(minInstancesCount, limit) as any[];
-    return rows.map(row => ({
+    return rows.map((row) => ({
       canonical_node_id: row.canonical_node_id,
       instances_count: row.instances_count,
       distinct_blobs: row.distinct_blobs,

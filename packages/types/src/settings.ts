@@ -486,6 +486,32 @@ export const SETTINGS_REGISTRY: SettingCategory[] = [
           },
         ],
       },
+      {
+        id: 'deduplication',
+        label: 'Content Deduplication',
+        description: 'Automatic duplicate detection and storage optimization',
+        order: 4,
+        controls: [
+          {
+            id: 'deduplication_enabled',
+            label: 'Enable Automatic Deduplication',
+            description: 'Automatically detect and track duplicate content using SHA-256 hashing',
+            type: 'boolean',
+            defaultValue: true,
+            scope: 'workspace',
+            editableBy: ['admin'],
+          },
+          {
+            id: 'deduplication_auto_merge',
+            label: 'Auto-Merge Duplicates',
+            description: 'Automatically merge duplicate nodes (requires manual approval)',
+            type: 'boolean',
+            defaultValue: false,
+            scope: 'workspace',
+            editableBy: ['admin'],
+          },
+        ],
+      },
     ],
   },
   {
@@ -565,6 +591,23 @@ export const SETTINGS_REGISTRY: SettingCategory[] = [
           },
         ],
       },
+      {
+        id: 'privacy',
+        label: 'Privacy & Error Tracking',
+        description: 'Control how your data is used to improve the product',
+        order: 2,
+        controls: [
+          {
+            id: 'error_tracking_consent',
+            label: 'Error Tracking',
+            description:
+              'Help improve Canvas Memory OS by sending anonymous error reports via Sentry',
+            type: 'boolean',
+            defaultValue: false,
+            scope: 'user',
+          },
+        ],
+      },
     ],
   },
   {
@@ -595,10 +638,27 @@ export const SETTINGS_REGISTRY: SettingCategory[] = [
     ],
   },
   {
+    id: 'debug',
+    label: 'Debug',
+    icon: 'Bug',
+    order: 10,
+    adminOnly: true,
+    sections: [
+      {
+        id: 'modals',
+        label: 'Modals',
+        description: 'Reference for modal components and their wiring status',
+        order: 1,
+        adminOnly: true,
+        controls: [],
+      },
+    ],
+  },
+  {
     id: 'advanced',
     label: 'Advanced',
     icon: 'Wrench',
-    order: 10,
+    order: 11,
     adminOnly: true,
     sections: [
       {

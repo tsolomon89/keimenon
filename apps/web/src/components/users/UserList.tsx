@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { User, Shield, Trash2, Edit, UserCircle } from 'lucide-react';
 import { User as UserType, deleteUser } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
+import { errorCapture } from '@/services/error-capture.service';
 
 interface UserListProps {
   users: UserType[];
@@ -14,19 +15,29 @@ interface UserListProps {
 export function UserList({ users, onUserDeleted }: UserListProps) {
   const { user: currentUser } = useAuth();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
 
   const handleDelete = async (userId: string, userName: string) => {
-    if (!confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)) {
+    if (
+      !confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)
+    ) {
       return;
     }
 
     setDeletingId(userId);
+    setOperationError(null);
 
     try {
       await deleteUser(userId);
       onUserDeleted(userId);
     } catch (error: any) {
-      alert(`Failed to delete user: ${error.message}`);
+      const err = error instanceof Error ? error : new Error(String(error));
+      errorCapture.capture(err, {
+        domain: 'ui',
+        operation: 'users.delete',
+        metadata: { userId },
+      });
+      setOperationError(err.message || 'Failed to delete user');
     } finally {
       setDeletingId(null);
     }
@@ -50,7 +61,9 @@ export function UserList({ users, onUserDeleted }: UserListProps) {
   const getPermissionBadge = (level: string) => {
     const color = getPermissionColor(level);
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${color}`}>
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${color}`}
+      >
         <Shield className="w-3 h-3" />
         {level}
       </span>
@@ -75,6 +88,14 @@ export function UserList({ users, onUserDeleted }: UserListProps) {
 
   return (
     <div className="space-y-4">
+      {operationError && (
+        <div
+          role="alert"
+          className="bg-red-900/20 border border-red-500/40 rounded-lg p-3 text-sm text-red-300"
+        >
+          {operationError}
+        </div>
+      )}
       {users.map((user) => (
         <div
           key={user.id}

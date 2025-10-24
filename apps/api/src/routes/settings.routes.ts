@@ -31,23 +31,24 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       const accountId = user.accountId;
       const userId = user.userId;
       const permissionLevel = user.permissionLevel;
+      const accountType = user.accountType;
 
       // Load settings from all scopes
       const settingsData: Record<string, EffectiveSettingValue> = {};
 
       for (const category of SETTINGS_REGISTRY) {
-        // Filter by admin-only
-        if (category.adminOnly && permissionLevel !== 'admin') {
+        // Filter by admin-only (check accountType, not permissionLevel)
+        if (category.adminOnly && accountType !== 'admin') {
           continue;
         }
 
         for (const section of category.sections) {
-          if (section.adminOnly && permissionLevel !== 'admin') {
+          if (section.adminOnly && accountType !== 'admin') {
             continue;
           }
 
           for (const control of section.controls) {
-            // Check if user can view this setting
+            // Check if user can view this setting (this checks permissionLevel for control-level permissions)
             if (!canViewSetting(control, permissionLevel)) {
               continue;
             }
@@ -77,7 +78,7 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
         }
       }
 
-      res.json({
+      return res.json({
         success: true,
         settings: settingsData,
         metadata: {
@@ -89,7 +90,7 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       });
     } catch (error: any) {
       console.error('Error fetching settings:', error);
-      res.status(500).json({ error: 'Failed to fetch settings' });
+      return res.status(500).json({ error: 'Failed to fetch settings' });
     }
   });
 
@@ -127,7 +128,7 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       // Get change history
       const history = await getSettingHistory(database, control.id, accountId, userId);
 
-      res.json({
+      return res.json({
         success: true,
         setting: {
           control,
@@ -141,7 +142,7 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       });
     } catch (error: any) {
       console.error('Error fetching setting:', error);
-      res.status(500).json({ error: 'Failed to fetch setting' });
+      return res.status(500).json({ error: 'Failed to fetch setting' });
     }
   });
 
@@ -208,7 +209,7 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       // Audit log
       await logAudit(database, 'update', 'Setting', control.id, userId, accountId, true);
 
-      res.json({
+      return res.json({
         success: true,
         setting: {
           id: control.id,
@@ -219,7 +220,7 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       });
     } catch (error: any) {
       console.error('Error updating setting:', error);
-      res.status(500).json({ error: 'Failed to update setting' });
+      return res.status(500).json({ error: 'Failed to update setting' });
     }
   });
 
@@ -269,7 +270,7 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       // Audit log
       await logAudit(database, 'reset', 'Setting', control.id, userId, accountId, true);
 
-      res.json({
+      return res.json({
         success: true,
         setting: {
           id: control.id,
@@ -280,7 +281,7 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       });
     } catch (error: any) {
       console.error('Error resetting setting:', error);
-      res.status(500).json({ error: 'Failed to reset setting' });
+      return res.status(500).json({ error: 'Failed to reset setting' });
     }
   });
 
@@ -306,13 +307,13 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
 
       const history = await getSettingHistory(database, settingId, accountId, userId);
 
-      res.json({
+      return res.json({
         success: true,
         history,
       });
     } catch (error: any) {
       console.error('Error fetching history:', error);
-      res.status(500).json({ error: 'Failed to fetch history' });
+      return res.status(500).json({ error: 'Failed to fetch history' });
     }
   });
 
@@ -323,10 +324,11 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
     try {
       const user = (req as any).user;
       const permissionLevel = user.permissionLevel;
+      const accountType = user.accountType;
 
-      // Filter registry based on permissions
+      // Filter registry based on permissions (use accountType for admin-only sections)
       const filteredRegistry = SETTINGS_REGISTRY.filter((category) => {
-        if (category.adminOnly && permissionLevel !== 'admin') {
+        if (category.adminOnly && accountType !== 'admin') {
           return false;
         }
         return true;
@@ -334,7 +336,7 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
         ...category,
         sections: category.sections
           .filter((section) => {
-            if (section.adminOnly && permissionLevel !== 'admin') {
+            if (section.adminOnly && accountType !== 'admin') {
               return false;
             }
             return true;
@@ -347,14 +349,14 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
           })),
       }));
 
-      res.json({
+      return res.json({
         success: true,
         registry: filteredRegistry,
         permission: permissionLevel,
       });
     } catch (error: any) {
       console.error('Error fetching registry:', error);
-      res.status(500).json({ error: 'Failed to fetch settings registry' });
+      return res.status(500).json({ error: 'Failed to fetch settings registry' });
     }
   });
 

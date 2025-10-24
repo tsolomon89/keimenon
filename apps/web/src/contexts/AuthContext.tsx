@@ -2,6 +2,14 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCanvasStore } from '@/store/canvasStore';
+import { logApiEvent } from '@/lib/error-handler';
+
+interface AccountInfo {
+  accountId: string;
+  accountName: string;
+  role: string;
+}
 
 interface User {
   userId: string;
@@ -12,19 +20,45 @@ interface User {
   accountClass: 'free' | 'professional' | 'business';
   rank: number;
   overrides?: Record<string, boolean>;
+  sessionId?: string;
+  allAccounts?: AccountInfo[];
+}
+
+interface UserAccount {
+  accountId: string;
+  accountName: string;
+  accountType: 'admin' | 'client';
+  accountClass: 'free' | 'professional' | 'business';
+  permission_level: 'junior' | 'senior' | 'leader' | 'admin';
+  role_rank: number;
+  status: 'active' | 'pending' | 'suspended' | 'left';
+  last_accessed?: number;
+}
+
+interface LoginResult {
+  requiresAccountSelection?: boolean;
+  availableAccounts?: UserAccount[];
+  tempToken?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, accountClass?: 'free' | 'professional' | 'business') => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResult | void>;
+  selectAccount: (tempToken: string, accountId: string, accountPassword?: string) => Promise<void>;
+  switchAccount: (accountId: string, accountPassword?: string) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    name: string,
+    accountClass?: 'free' | 'professional' | 'business'
+  ) => Promise<void>;
   logout: () => void;
   refreshUser: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'canvas_memory_token';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
@@ -57,7 +91,7 @@ function isTokenExpired(token: string): boolean {
 }
 
 /**
- * Parse user from JWT payload
+ * Parse user from JWT payload (M:N aware)
  */
 function parseUserFromToken(token: string): User | null {
   const payload = decodeJWT(token);
@@ -72,6 +106,8 @@ function parseUserFromToken(token: string): User | null {
     accountClass: payload.accountClass,
     rank: payload.rank || 1,
     overrides: payload.overrides,
+    sessionId: payload.sessionId,
+    allAccounts: payload.allAccounts,
   };
 }
 
@@ -111,98 +147,256 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * Login user with email and password
+   * Reset canvas store when account changes
    */
-  const login = useCallback(async (email: string, password: string) => {
-    setIsLoading(true);
+  useEffect(() => {
+    if (user && user.accountId) {
+      const currentAccountId = useCanvasStore.getState().currentAccountId;
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Login failed');
+      // If account changed (or first login), reset canvas store
+      if (currentAccountId && currentAccountId !== user.accountId) {
+        console.log(
+          `🔄 Account switched from ${currentAccountId} to ${user.accountId} - resetting canvas store`
+        );
+        useCanvasStore.getState().reset();
       }
 
-      const data = await response.json();
-      const { token } = data;
-
-      if (!token) {
-        throw new Error('No token received from server');
-      }
-
-      // Store token
-      localStorage.setItem(TOKEN_KEY, token);
-
-      // Parse and set user
-      const parsedUser = parseUserFromToken(token);
-      if (!parsedUser) {
-        throw new Error('Failed to parse user from token');
-      }
-
-      setUser(parsedUser);
-      setIsLoading(false);
-
-      console.log('Login successful:', {
-        email: parsedUser.email,
-        rank: parsedUser.rank,
-        accountType: parsedUser.accountType,
-      });
-
-      // Redirect to canvas
-      router.push('/canvas');
-    } catch (error: any) {
-      setIsLoading(false);
-      console.error('Login error:', error);
-      throw error;
+      // Update stored account ID
+      useCanvasStore.getState().setCurrentAccountId(user.accountId);
     }
-  }, [router]);
+  }, [user?.accountId]);
+
+  /**
+   * Login user with email and password (M:N aware)
+   * Returns LoginResult if account selection is needed
+   */
+  const login = useCallback(
+    async (email: string, password: string): Promise<LoginResult | void> => {
+      setIsLoading(true);
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Login failed');
+        }
+
+        const data = await response.json();
+
+        // Check if account selection is required (multi-account user)
+        if (data.requiresAccountSelection) {
+          setIsLoading(false);
+          return {
+            requiresAccountSelection: true,
+            availableAccounts: data.availableAccounts,
+            tempToken: data.tempToken,
+          };
+        }
+
+        // Single account - direct login
+        const { token } = data;
+
+        if (!token) {
+          throw new Error('No token received from server');
+        }
+
+        // Store token
+        localStorage.setItem(TOKEN_KEY, token);
+
+        // Parse and set user
+        const parsedUser = parseUserFromToken(token);
+        if (!parsedUser) {
+          throw new Error('Failed to parse user from token');
+        }
+
+        setUser(parsedUser);
+        setIsLoading(false);
+
+        console.log('Login successful:', {
+          email: parsedUser.email,
+          accountId: parsedUser.accountId,
+          rank: parsedUser.rank,
+          accountType: parsedUser.accountType,
+        });
+
+        // Redirect to canvas
+        router.push('/canvas');
+      } catch (error: any) {
+        setIsLoading(false);
+        console.error('Login error:', error);
+        throw error;
+      }
+    },
+    [router]
+  );
 
   /**
    * Register new user account
    */
-  const register = useCallback(async (
-    email: string,
-    password: string,
-    name: string,
-    accountClass: 'free' | 'professional' | 'business' = 'free'
-  ) => {
+  const register = useCallback(
+    async (
+      email: string,
+      password: string,
+      name: string,
+      accountClass: 'free' | 'professional' | 'business' = 'free'
+    ) => {
+      // TODO: Add client-side validation for registration fields
+      // Related: apps/web/src/app/register/page.tsx (registration form)
+      // See: docs/features/INPUT_VALIDATION.md (needs creation)
+      // Validate: email format, password strength, name length, accountClass enum
+      setIsLoading(true);
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            password,
+            name,
+            accountType: 'client', // New registrations are always client accounts
+            accountClass,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Registration failed');
+        }
+
+        const data = await response.json();
+        const { token } = data;
+
+        if (!token) {
+          throw new Error('No token received from server');
+        }
+
+        // Store token
+        localStorage.setItem(TOKEN_KEY, token);
+
+        // Parse and set user
+        const parsedUser = parseUserFromToken(token);
+        if (!parsedUser) {
+          throw new Error('Failed to parse user from token');
+        }
+
+        setUser(parsedUser);
+        setIsLoading(false);
+
+        console.log('Registration successful:', {
+          email: parsedUser.email,
+          accountType: parsedUser.accountType,
+          accountClass: parsedUser.accountClass,
+        });
+
+        // Redirect to canvas
+        router.push('/canvas');
+      } catch (error: any) {
+        setIsLoading(false);
+        console.error('Registration error:', error);
+        throw error;
+      }
+    },
+    [router]
+  );
+
+  /**
+   * Select account after multi-account login
+   */
+  const selectAccount = useCallback(
+    async (tempToken: string, accountId: string, accountPassword?: string) => {
+      setIsLoading(true);
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/auth/select-account`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tempToken, accountId, accountPassword }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Account selection failed');
+        }
+
+        const data = await response.json();
+        const { token } = data;
+
+        if (!token) {
+          throw new Error('No token received from server');
+        }
+
+        // Store token
+        localStorage.setItem(TOKEN_KEY, token);
+
+        // Parse and set user
+        const parsedUser = parseUserFromToken(token);
+        if (!parsedUser) {
+          throw new Error('Failed to parse user from token');
+        }
+
+        setUser(parsedUser);
+        setIsLoading(false);
+
+        console.log('Account selected:', {
+          accountId: parsedUser.accountId,
+          email: parsedUser.email,
+        });
+
+        // Redirect to canvas
+        router.push('/canvas');
+      } catch (error: any) {
+        setIsLoading(false);
+        console.error('Account selection error:', error);
+        throw error;
+      }
+    },
+    [router]
+  );
+
+  /**
+   * Switch to a different account
+   */
+  const switchAccount = useCallback(async (accountId: string, accountPassword?: string) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/switch-account`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          password,
-          name,
-          accountType: 'client', // New registrations are always client accounts
-          accountClass,
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ accountId, accountPassword }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Registration failed');
+        throw new Error(error.error || 'Account switch failed');
       }
 
       const data = await response.json();
-      const { token } = data;
+      const newToken = data.token;
 
-      if (!token) {
+      if (!newToken) {
         throw new Error('No token received from server');
       }
 
-      // Store token
-      localStorage.setItem(TOKEN_KEY, token);
+      // Store new token
+      localStorage.setItem(TOKEN_KEY, newToken);
 
       // Parse and set user
-      const parsedUser = parseUserFromToken(token);
+      const parsedUser = parseUserFromToken(newToken);
       if (!parsedUser) {
         throw new Error('Failed to parse user from token');
       }
@@ -210,20 +404,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(parsedUser);
       setIsLoading(false);
 
-      console.log('Registration successful:', {
-        email: parsedUser.email,
-        accountType: parsedUser.accountType,
-        accountClass: parsedUser.accountClass,
+      // Log account switch event
+      logApiEvent(`Switched to account: ${parsedUser.accountId}`, {
+        domain: 'api',
+        operation: 'auth.switchAccount',
+        metadata: {
+          accountId: parsedUser.accountId,
+          userId: parsedUser.userId,
+          accountType: parsedUser.accountType,
+        },
       });
 
-      // Redirect to canvas
-      router.push('/canvas');
+      console.log('Account switched:', {
+        accountId: parsedUser.accountId,
+        email: parsedUser.email,
+      });
+
+      // Reload page to refresh data for new account
+      window.location.reload();
     } catch (error: any) {
       setIsLoading(false);
-      console.error('Registration error:', error);
+      console.error('Account switch error:', error);
       throw error;
     }
-  }, [router]);
+  }, []);
 
   /**
    * Logout user
@@ -234,6 +438,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Clear user state
     setUser(null);
+
+    // Reset canvas store (clear all selected nodes, loaded data, etc.)
+    useCanvasStore.getState().reset();
 
     // Redirect to login
     router.push('/login');
@@ -271,6 +478,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: !!user,
     isLoading,
     login,
+    selectAccount,
+    switchAccount,
     register,
     logout,
     refreshUser,

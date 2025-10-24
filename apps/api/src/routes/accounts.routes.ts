@@ -53,44 +53,47 @@ export function createAccountsRoutes(db: SQLiteClient, authService: AuthService)
    * PATCH /api/v1/accounts/:id
    * Update account (admin only for now)
    */
-  router.patch('/:id', requireAuth(authService), requireAdmin, async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const { account_class, name } = req.body;
+  router.patch(
+    '/:id',
+    requireAuth(authService),
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const { account_class, name } = req.body;
 
-      const updates: string[] = [];
-      const values: any[] = [];
+        const updates: string[] = [];
+        const values: any[] = [];
 
-      if (account_class) {
-        updates.push('account_class = ?');
-        values.push(account_class);
+        if (account_class) {
+          updates.push('account_class = ?');
+          values.push(account_class);
+        }
+
+        if (name) {
+          updates.push('name = ?');
+          values.push(name);
+        }
+
+        if (updates.length === 0) {
+          return res.status(400).json({ error: 'No valid fields to update' });
+        }
+
+        updates.push('updated_at = ?');
+        values.push(Date.now());
+        values.push(id);
+
+        database.prepare(`UPDATE accounts SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+
+        const account = database.prepare('SELECT * FROM accounts WHERE id = ?').get(id);
+
+        return res.json({ account });
+      } catch (error: any) {
+        console.error('Update account error:', error);
+        return res.status(500).json({ error: error.message || 'Failed to update account' });
       }
-
-      if (name) {
-        updates.push('name = ?');
-        values.push(name);
-      }
-
-      if (updates.length === 0) {
-        return res.status(400).json({ error: 'No valid fields to update' });
-      }
-
-      updates.push('updated_at = ?');
-      values.push(Date.now());
-      values.push(id);
-
-      database
-        .prepare(`UPDATE accounts SET ${updates.join(', ')} WHERE id = ?`)
-        .run(...values);
-
-      const account = database.prepare('SELECT * FROM accounts WHERE id = ?').get(id);
-
-      return res.json({ account });
-    } catch (error: any) {
-      console.error('Update account error:', error);
-      return res.status(500).json({ error: error.message || 'Failed to update account' });
     }
-  });
+  );
 
   /**
    * GET /api/v1/accounts/:id/users
@@ -105,8 +108,17 @@ export function createAccountsRoutes(db: SQLiteClient, authService: AuthService)
         return res.status(403).json({ error: 'Access denied' });
       }
 
+      // Get users via user_accounts junction table (M:N relationship)
       const users = database
-        .prepare('SELECT * FROM users WHERE account_id = ? ORDER BY created_at DESC')
+        .prepare(
+          `
+          SELECT u.*, ua.permission_level, ua.role_rank, ua.status as membership_status, ua.joined_at
+          FROM user_accounts ua
+          JOIN users u ON u.id = ua.user_id
+          WHERE ua.account_id = ?
+          ORDER BY u.created_at DESC
+        `
+        )
         .all(id);
 
       return res.json({ users });
@@ -120,50 +132,102 @@ export function createAccountsRoutes(db: SQLiteClient, authService: AuthService)
    * POST /api/v1/accounts/:id/users
    * Create user in account (admin permission required)
    */
-  router.post('/:id/users', requireAuth(authService), requirePermission('admin'), async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const { email, name, permission_level, user_class, password } = req.body;
+  router.post(
+    '/:id/users',
+    requireAuth(authService),
+    requirePermission('admin'),
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const { email, name, permission_level, user_class, password } = req.body;
 
-      // Check permission
-      if (req.user!.accountType !== 'admin' && req.user!.accountId !== id) {
-        return res.status(403).json({ error: 'Access denied' });
+        // Check permission
+        if (req.user!.accountType !== 'admin' && req.user!.accountId !== id) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
+
+        if (!email || !name || !permission_level || !user_class) {
+          return res
+            .status(400)
+            .json({ error: 'Email, name, permission_level, and user_class required' });
+        }
+
+        // Check if email already exists
+        const existing = database.prepare('SELECT id FROM users WHERE email = ?').get(email);
+        if (existing) {
+          return res.status(400).json({ error: 'Email already in use' });
+        }
+
+        const userId = randomUUID();
+        const now = Date.now();
+
+        // Hash password if provided
+        let passwordHash = null;
+        if (password) {
+          passwordHash = await authService.hashPassword(password);
+        }
+
+        // Insert user without account_id (M:N model)
+        database
+          .prepare(
+            `INSERT INTO users (
+             id,
+             email,
+             password_hash,
+             google_id,
+             name,
+             permission_level,
+             user_class,
+             is_active,
+             created_at,
+             updated_at,
+             primary_account_id,
+             last_login_account_id
+           )
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          )
+          .run(
+            userId,
+            email,
+            passwordHash,
+            null,
+            name,
+            permission_level,
+            user_class,
+            1,
+            now,
+            now,
+            id,
+            id
+          );
+
+        // Create user_accounts membership
+        const membershipId = randomUUID();
+        const roleRank =
+          permission_level === 'admin'
+            ? 4
+            : permission_level === 'leader'
+              ? 3
+              : permission_level === 'senior'
+                ? 2
+                : 1;
+
+        database
+          .prepare(
+            `INSERT INTO user_accounts (id, user_id, account_id, permission_level, role_rank, status, joined_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          )
+          .run(membershipId, userId, id, permission_level, roleRank, 'active', now, now, now);
+
+        const user = database.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+
+        return res.json({ user });
+      } catch (error: any) {
+        console.error('Create user error:', error);
+        return res.status(500).json({ error: error.message || 'Failed to create user' });
       }
-
-      if (!email || !name || !permission_level || !user_class) {
-        return res.status(400).json({ error: 'Email, name, permission_level, and user_class required' });
-      }
-
-      // Check if email already exists
-      const existing = database.prepare('SELECT id FROM users WHERE email = ?').get(email);
-      if (existing) {
-        return res.status(400).json({ error: 'Email already in use' });
-      }
-
-      const userId = randomUUID();
-      const now = Date.now();
-
-      // Hash password if provided
-      let passwordHash = null;
-      if (password) {
-        passwordHash = await authService.hashPassword(password);
-      }
-
-      database
-        .prepare(
-          `INSERT INTO users (id, account_id, email, password_hash, google_id, name, permission_level, user_class, is_active, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        )
-        .run(userId, id, email, passwordHash, null, name, permission_level, user_class, 1, now, now);
-
-      const user = database.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-
-      return res.json({ user });
-    } catch (error: any) {
-      console.error('Create user error:', error);
-      return res.status(500).json({ error: error.message || 'Failed to create user' });
     }
-  });
+  );
 
   /**
    * GET /api/v1/accounts/:id/stats
@@ -187,8 +251,8 @@ export function createAccountsRoutes(db: SQLiteClient, authService: AuthService)
         .get(id) as any;
 
       const userCount = database
-        .prepare('SELECT COUNT(*) as count FROM users WHERE account_id = ?')
-        .get(id) as any;
+        .prepare('SELECT COUNT(*) as count FROM user_accounts WHERE account_id = ? AND status = ?')
+        .get(id, 'active') as any;
 
       return res.json({
         nodes: nodeCount.count,

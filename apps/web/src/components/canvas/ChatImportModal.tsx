@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { X, Upload, FileText, Save } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { X, Upload, FileText, Save, CheckCircle2 } from 'lucide-react';
 import {
   ChatImportConfig,
   DEFAULT_IMPORT_CONFIG,
@@ -15,7 +15,14 @@ import { ImportStageSelect } from '../import/ImportStageSelect';
 import { ImportStageProcessing } from '../import/ImportStageProcessing';
 import { ImportStageConfig } from '../import/ImportStageConfig';
 import { DuplicateReviewPanel } from '../import/DuplicateReviewPanel';
-import { importChatFiles, analyzeFiles, detectPlatform } from '@/lib/api-client';
+import {
+  importChatFilesAsJob,
+  analyzeFiles,
+  detectPlatform,
+  applyDuplicateDecisions,
+} from '@/lib/api-client';
+import { useJobStream, type JobUpdate } from '@/hooks/useJobStream';
+import { logApiEvent, logJobEvent } from '@/lib/error-handler';
 
 interface ChatImportModalProps {
   onDismiss: () => void;
@@ -37,6 +44,61 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
   });
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+
+  // Subscribe to job updates via SSE
+  const { jobs, connected } = useJobStream();
+
+  // Listen for job updates and update progress
+  useEffect(() => {
+    if (!currentJobId) return;
+
+    const jobUpdate = jobs.get(currentJobId);
+    if (!jobUpdate) return;
+
+    console.log('[ChatImportModal] Job update received:', jobUpdate);
+
+    // Map job status to upload progress
+    const statusToStage: Record<string, UploadProgress['stage']> = {
+      queued: 'uploading',
+      running: 'analyzing',
+      succeeded: 'ready',
+      failed: 'error',
+      canceled: 'error',
+    };
+
+    const stage = statusToStage[jobUpdate.status] || 'analyzing';
+    const percent = jobUpdate.progress.percent;
+    const message = jobUpdate.progress.message || '';
+
+    setProgress({ stage, percent, message });
+
+    // Handle completion
+    if (jobUpdate.status === 'succeeded') {
+      setIsImporting(false);
+      setStage('complete');
+      console.log('[ChatImportModal] Import job completed successfully');
+
+      // Log completion event
+      logJobEvent(`Import completed successfully`, 'import.jobCompleted', {
+        jobId: currentJobId,
+        progress: jobUpdate.progress.percent,
+      });
+    } else if (jobUpdate.status === 'failed') {
+      setIsImporting(false);
+      setProgress({
+        stage: 'error',
+        percent: 0,
+        message: 'Import failed. Please try again.',
+      });
+
+      // Error is already captured by error handler, but log the failure
+      logJobEvent(`Import job failed`, 'import.jobFailed', {
+        jobId: currentJobId,
+        message: jobUpdate.progress.message,
+      });
+    }
+  }, [currentJobId, jobs]);
 
   const processFiles = async (filesToProcess: File[]) => {
     try {
@@ -111,8 +173,11 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
 
   const handleImport = async () => {
     try {
-      console.log('Starting import with config:', config);
-      console.log('Files to import:', files.map(f => f.name));
+      console.log('[ChatImportModal] Starting import with config:', config);
+      console.log(
+        '[ChatImportModal] Files to import:',
+        files.map((f) => f.name)
+      );
 
       if (files.length === 0) {
         alert('Please select files to import');
@@ -122,54 +187,55 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       // Set importing state and show loading
       setIsImporting(true);
       setStage('processing');
-      setProgress({ stage: 'uploading', percent: 20, message: 'Uploading to server...' });
+      setProgress({ stage: 'uploading', percent: 10, message: 'Creating import job...' });
 
-      console.log('Calling importChatFiles...');
+      console.log('[ChatImportModal] Calling importChatFilesAsJob...');
+      console.log('[ChatImportModal] Detected platform:', platformDetection?.platform);
 
-      // Call real import API
-      const response = await importChatFiles(files, config);
+      // Create import job (returns immediately with job ID)
+      // Pass detected platform to enable platform-specific parsers
+      const response = await importChatFilesAsJob(
+        files,
+        config,
+        platformDetection?.platform as 'chatgpt' | 'claude' | 'gemini' | 'generic' | undefined
+      );
 
-      console.log('Got response:', response);
+      console.log('[ChatImportModal] Job created:', response);
 
-      if (!response.success) {
-        console.error('Import failed:', response.error);
+      if (!response.success || !response.jobId) {
+        console.error('[ChatImportModal] Job creation failed:', response);
         setIsImporting(false);
-        alert(`Import failed: ${response.error}`);
+        alert(`Failed to create import job: ${response.message || 'Unknown error'}`);
         return;
       }
 
-      console.log('Import successful:', response);
+      // Store job ID to track progress via SSE
+      setCurrentJobId(response.jobId);
 
-      // Aggregate results from all files
-      const allDuplicateGroups = response.results
-        ?.flatMap(r => r.result?.duplicate_groups || [])
-        .filter(g => g !== undefined) || [];
+      // Log event for canvas console
+      logJobEvent(
+        `Import job created: ${files.map((f) => f.name).join(', ')}`,
+        'import.jobCreated',
+        {
+          jobId: response.jobId,
+          fileCount: files.length,
+          fileNames: files.map((f) => f.name),
+        }
+      );
 
-      // Calculate aggregate stats
-      const totalConversations = response.results?.reduce((sum, r) => sum + (r.result?.stats.total_conversations || 0), 0) || 0;
-      const totalMessages = response.results?.reduce((sum, r) => sum + (r.result?.stats.total_messages || 0), 0) || 0;
-      const totalSources = response.results?.reduce((sum, r) => sum + (r.result?.stats.total_sources || 0), 0) || 0;
-      const totalCodeBlocks = response.results?.reduce((sum, r) => sum + (r.result?.stats.total_code_blocks || 0), 0) || 0;
+      console.log(
+        `[ChatImportModal] Import job ${response.jobId} created. Tracking progress via SSE...`
+      );
+      setProgress({
+        stage: 'uploading',
+        percent: 20,
+        message: `Job created. Monitoring progress... (Job ID: ${response.jobId.substring(0, 8)}...)`,
+      });
 
-      // Check if we have duplicate groups to review
-      if (allDuplicateGroups.length > 0) {
-        setIsImporting(false);
-        setDuplicateGroups(allDuplicateGroups);
-        setStage('review');
-      } else {
-        // No duplicates or duplicate detection disabled, complete import
-        setIsImporting(false);
-        alert(
-          `Import complete!\n\n` +
-          `Conversations: ${totalConversations}\n` +
-          `Messages: ${totalMessages}\n` +
-          `Sources: ${totalSources}\n` +
-          `Code blocks: ${totalCodeBlocks}`
-        );
-        onDismiss();
-      }
+      // SSE will handle progress updates via useEffect
+      // Job will appear in Background Operations table automatically
     } catch (error) {
-      console.error('Import error:', error);
+      console.error('[ChatImportModal] Import error:', error);
       setIsImporting(false);
       setProgress({
         stage: 'error',
@@ -180,10 +246,72 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
     }
   };
 
-  const handleReviewComplete = (decisions: Map<string, ReviewDecision>) => {
-    // TODO: Apply decisions and finalize import
-    console.log('Review decisions:', decisions);
-    onDismiss();
+  const handleReviewComplete = async (decisions: Map<string, ReviewDecision>) => {
+    try {
+      console.log('[ChatImportModal] Applying duplicate decisions:', decisions);
+
+      // Convert Map to array format expected by backend
+      const decisionsArray = Array.from(decisions.entries()).map(([duplicateId, decision]) => ({
+        duplicateId,
+        action: decision.action,
+        timestamp: Date.now(),
+      }));
+
+      if (decisionsArray.length === 0) {
+        console.log('[ChatImportModal] No decisions to apply, dismissing modal');
+        onDismiss();
+        return;
+      }
+
+      // Show progress
+      setProgress({
+        stage: 'uploading',
+        percent: 90,
+        message: `Applying ${decisionsArray.length} duplicate decisions...`,
+      });
+
+      // Apply decisions to backend
+      const result = await applyDuplicateDecisions(decisionsArray, currentJobId || undefined);
+
+      console.log('[ChatImportModal] Decisions applied:', result);
+
+      // Log success event
+      logApiEvent(`Applied ${result.result.applied_decisions} duplicate decisions`, {
+        domain: 'import',
+        operation: 'duplicateDecisionsApplied',
+        metadata: {
+          applied: result.result.applied_decisions,
+          removed: result.result.nodes_removed,
+          merged: result.result.nodes_merged,
+          actionCounts: result.result.action_counts,
+        },
+      });
+
+      // Show success message
+      setProgress({
+        stage: 'ready',
+        percent: 100,
+        message: result.result.message,
+      });
+
+      // Wait a bit to show the success message, then dismiss
+      setTimeout(() => {
+        onDismiss();
+      }, 1500);
+    } catch (error) {
+      console.error('[ChatImportModal] Error applying decisions:', error);
+
+      // Show error but still allow dismissing
+      setProgress({
+        stage: 'error',
+        percent: 0,
+        message: error instanceof Error ? error.message : 'Failed to apply decisions',
+      });
+
+      alert(
+        `Failed to apply duplicate decisions: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   };
 
   const getStageTitle = () => {
@@ -191,11 +319,13 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       case 'select':
         return 'Select chat export files to import';
       case 'processing':
-        return 'Processing your files...';
+        return currentJobId ? 'Import job in progress...' : 'Processing your files...';
       case 'config':
         return 'Configure import settings';
       case 'review':
         return 'Review potential duplicates';
+      case 'complete':
+        return 'Import completed successfully!';
       default:
         return '';
     }
@@ -240,10 +370,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
             )}
 
             {stage === 'processing' && (
-              <ImportStageProcessing
-                platformDetection={platformDetection}
-                progress={progress}
-              />
+              <ImportStageProcessing platformDetection={platformDetection} progress={progress} />
             )}
 
             {stage === 'config' && (
@@ -254,11 +381,39 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
                 analysis={analysis}
               />
             )}
+
+            {stage === 'complete' && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-16 h-16 bg-green-600/20 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle2 className="w-10 h-10 text-green-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-200 mb-2">
+                  Import Job Created Successfully!
+                </h3>
+                <p className="text-slate-400 mb-4 max-w-md">
+                  Your import is now processing in the background. You can track its progress in the
+                  <span className="text-purple-400 font-medium"> Background Operations</span> table
+                  on the dashboard.
+                </p>
+                {currentJobId && (
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-6">
+                    <p className="text-xs text-slate-500 mb-1">Job ID</p>
+                    <code className="text-sm text-purple-400 font-mono">{currentJobId}</code>
+                  </div>
+                )}
+                <button
+                  onClick={onDismiss}
+                  className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors"
+                >
+                  Close & View Progress
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Footer - hide for review stage (has its own footer) */}
-        {stage !== 'review' && (
+        {/* Footer - hide for review and complete stages */}
+        {stage !== 'review' && stage !== 'complete' && (
           <div className="sticky bottom-0 bg-slate-900 border-t border-slate-800 p-6 flex items-center justify-between">
             <button
               onClick={onDismiss}
@@ -271,7 +426,9 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
               <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    /* TODO: Save preset */
+                    // TODO: Implement preset saving functionality
+                    // Related: apps/api/src/routes/presets.ts (create presets endpoint)
+                    // See: docs/features/IMPORT_PRESETS.md (needs creation)
                   }}
                   className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
                 >

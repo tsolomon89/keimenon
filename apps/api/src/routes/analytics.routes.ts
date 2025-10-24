@@ -9,14 +9,18 @@ import Database from 'better-sqlite3';
  * Note: This is a placeholder until proper subscription tracking is implemented
  */
 function calculateEstimatedMRR(database: Database.Database): number {
-  const accountsByTier = database.prepare(`
+  const accountsByTier = database
+    .prepare(
+      `
     SELECT
       account_class,
       COUNT(*) as count
     FROM accounts
     WHERE account_type = 'client'
     GROUP BY account_class
-  `).all() as any[];
+  `
+    )
+    .all() as any[];
 
   // Estimated pricing (replace with actual when subscriptions table exists)
   const pricing: Record<string, number> = {
@@ -40,73 +44,219 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
 
   /**
    * GET /api/v1/analytics/overview
-   * Get system-wide analytics overview (admin only)
+   * Get analytics overview
+   * - Admin users (no operating context): system-wide view
+   * - Admin users (in CRM mode): account-scoped view for target account
+   * - Client users: account-scoped view for their own account
    */
-  router.get('/overview', requireAuth(authService), requireAdmin, async (req: Request, res: Response) => {
+  router.get('/overview', requireAuth(authService), async (req: Request, res: Response) => {
     try {
-      // Account Metrics
-      const accountStats = database.prepare(`
-        SELECT
-          COUNT(*) as total_accounts,
-          SUM(CASE WHEN account_type = 'client' THEN 1 ELSE 0 END) as client_accounts,
-          SUM(CASE WHEN account_class = 'free' THEN 1 ELSE 0 END) as free_tier,
-          SUM(CASE WHEN account_class = 'professional' THEN 1 ELSE 0 END) as pro_tier,
-          SUM(CASE WHEN account_class = 'business' THEN 1 ELSE 0 END) as business_tier
-        FROM accounts
-      `).get() as any;
+      // Determine target account and scope
+      const isAdmin = req.user?.accountType === 'admin';
+      const targetAccountId = req.operating?.accountId || req.user?.accountId;
+      const isSystemWideView = isAdmin && !req.operating;
 
-      const totalSeats = database.prepare(`
-        SELECT COUNT(*) as count FROM users WHERE is_active = 1
-      `).get() as any;
+      // Account Metrics
+      let accountStats: any;
+      let totalSeats: any;
+
+      if (isSystemWideView) {
+        // Admin system-wide view: all accounts
+        accountStats = database
+          .prepare(
+            `
+          SELECT
+            COUNT(*) as total_accounts,
+            SUM(CASE WHEN account_type = 'client' THEN 1 ELSE 0 END) as client_accounts,
+            SUM(CASE WHEN account_class = 'free' THEN 1 ELSE 0 END) as free_tier,
+            SUM(CASE WHEN account_class = 'professional' THEN 1 ELSE 0 END) as pro_tier,
+            SUM(CASE WHEN account_class = 'business' THEN 1 ELSE 0 END) as business_tier
+          FROM accounts
+        `
+          )
+          .get() as any;
+
+        totalSeats = database
+          .prepare(
+            `
+          SELECT COUNT(*) as count FROM users WHERE is_active = 1
+        `
+          )
+          .get() as any;
+      } else {
+        // Account-scoped view: single account stats
+        accountStats = database
+          .prepare(
+            `
+          SELECT
+            1 as total_accounts,
+            CASE WHEN account_type = 'client' THEN 1 ELSE 0 END as client_accounts,
+            CASE WHEN account_class = 'free' THEN 1 ELSE 0 END as free_tier,
+            CASE WHEN account_class = 'professional' THEN 1 ELSE 0 END as pro_tier,
+            CASE WHEN account_class = 'business' THEN 1 ELSE 0 END as business_tier
+          FROM accounts
+          WHERE id = ?
+        `
+          )
+          .get(targetAccountId) as any;
+
+        totalSeats = database
+          .prepare(
+            `
+          SELECT COUNT(*) as count
+          FROM user_accounts ua
+          JOIN users u ON u.id = ua.user_id
+          WHERE ua.account_id = ? AND ua.status = 'active' AND u.is_active = 1
+        `
+          )
+          .get(targetAccountId) as any;
+      }
 
       // User Activity (last 7 and 30 days)
       const now = Date.now();
-      const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
-      const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+      const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
 
-      const activeUsers7d = database.prepare(`
-        SELECT COUNT(DISTINCT actor_user_id) as count
-        FROM audit_log
-        WHERE timestamp > ?
-      `).get(sevenDaysAgo) as any;
+      let activeUsers7d: any = { count: 0 };
+      let activeUsers30d: any = { count: 0 };
+      let sessionTimeResult: any = { avg_minutes: 0 };
 
-      const activeUsers30d = database.prepare(`
-        SELECT COUNT(DISTINCT actor_user_id) as count
-        FROM audit_log
-        WHERE timestamp > ?
-      `).get(thirtyDaysAgo) as any;
+      // Try to fetch activity from audit_log, fallback to zeros if table doesn't exist
+      try {
+        if (isSystemWideView) {
+          // System-wide activity
+          activeUsers7d = database
+            .prepare(
+              `
+            SELECT COUNT(DISTINCT actor_user_id) as count
+            FROM audit_log
+            WHERE timestamp > ?
+          `
+            )
+            .get(sevenDaysAgo) as any;
 
-      // Calculate average session time (last 30 days)
-      // Group actions by user and day, calculate time between first and last action
-      const sessionTimeResult = database.prepare(`
-        SELECT AVG(session_duration) as avg_minutes
-        FROM (
-          SELECT
-            actor_user_id,
-            DATE(timestamp/1000, 'unixepoch') as session_date,
-            (MAX(timestamp) - MIN(timestamp)) / 60000.0 as session_duration
-          FROM audit_log
-          WHERE timestamp > ? AND success = 1
-          GROUP BY actor_user_id, session_date
-          HAVING COUNT(*) > 1
-        )
-      `).get(thirtyDaysAgo) as any;
+          activeUsers30d = database
+            .prepare(
+              `
+            SELECT COUNT(DISTINCT actor_user_id) as count
+            FROM audit_log
+            WHERE timestamp > ?
+          `
+            )
+            .get(thirtyDaysAgo) as any;
+
+          sessionTimeResult = database
+            .prepare(
+              `
+            SELECT AVG(session_duration) as avg_minutes
+            FROM (
+              SELECT
+                actor_user_id,
+                DATE(timestamp/1000, 'unixepoch') as session_date,
+                (MAX(timestamp) - MIN(timestamp)) / 60000.0 as session_duration
+              FROM audit_log
+              WHERE timestamp > ? AND success = 1
+              GROUP BY actor_user_id, session_date
+              HAVING COUNT(*) > 1
+            )
+          `
+            )
+            .get(thirtyDaysAgo) as any;
+        } else {
+          // Account-scoped activity
+          activeUsers7d = database
+            .prepare(
+              `
+            SELECT COUNT(DISTINCT actor_user_id) as count
+            FROM audit_log
+            WHERE timestamp > ? AND actor_account_id = ?
+          `
+            )
+            .get(sevenDaysAgo, targetAccountId) as any;
+
+          activeUsers30d = database
+            .prepare(
+              `
+            SELECT COUNT(DISTINCT actor_user_id) as count
+            FROM audit_log
+            WHERE timestamp > ? AND actor_account_id = ?
+          `
+            )
+            .get(thirtyDaysAgo, targetAccountId) as any;
+
+          sessionTimeResult = database
+            .prepare(
+              `
+            SELECT AVG(session_duration) as avg_minutes
+            FROM (
+              SELECT
+                actor_user_id,
+                DATE(timestamp/1000, 'unixepoch') as session_date,
+                (MAX(timestamp) - MIN(timestamp)) / 60000.0 as session_duration
+              FROM audit_log
+              WHERE timestamp > ? AND actor_account_id = ? AND success = 1
+              GROUP BY actor_user_id, session_date
+              HAVING COUNT(*) > 1
+            )
+          `
+            )
+            .get(thirtyDaysAgo, targetAccountId) as any;
+        }
+      } catch (auditError) {
+        // audit_log table doesn't exist or is empty - use default zeros
+        console.warn('Analytics: audit_log queries failed, using fallback values:', auditError);
+      }
 
       const avgSessionTime = sessionTimeResult?.avg_minutes || 0;
 
       // Storage & Resources
-      const storageStats = database.prepare(`
-        SELECT
-          (SELECT COUNT(*) FROM nodes) as total_nodes,
-          (SELECT COUNT(*) FROM edges) as total_edges,
-          (SELECT COUNT(*) FROM nodes WHERE kind = 'Source') as total_sources
-      `).get() as any;
+      let storageStats: any;
+      let storageSizeResult: any;
 
-      // Calculate storage size from node properties
-      const storageSizeResult = database.prepare(`
-        SELECT SUM(LENGTH(properties)) as total_bytes
-        FROM nodes
-      `).get() as any;
+      if (isSystemWideView) {
+        // System-wide storage
+        storageStats = database
+          .prepare(
+            `
+          SELECT
+            (SELECT COUNT(*) FROM nodes) as total_nodes,
+            (SELECT COUNT(*) FROM edges) as total_edges,
+            (SELECT COUNT(*) FROM nodes WHERE kind = 'Source') as total_sources
+        `
+          )
+          .get() as any;
+
+        storageSizeResult = database
+          .prepare(
+            `
+          SELECT SUM(LENGTH(properties)) as total_bytes
+          FROM nodes
+        `
+          )
+          .get() as any;
+      } else {
+        // Account-scoped storage
+        storageStats = database
+          .prepare(
+            `
+          SELECT
+            (SELECT COUNT(*) FROM nodes WHERE account_id = ?) as total_nodes,
+            (SELECT COUNT(*) FROM edges WHERE account_id = ?) as total_edges,
+            (SELECT COUNT(*) FROM nodes WHERE account_id = ? AND kind = 'Source') as total_sources
+        `
+          )
+          .get(targetAccountId, targetAccountId, targetAccountId) as any;
+
+        storageSizeResult = database
+          .prepare(
+            `
+          SELECT SUM(LENGTH(properties)) as total_bytes
+          FROM nodes
+          WHERE account_id = ?
+        `
+          )
+          .get(targetAccountId) as any;
+      }
 
       const storageSize = storageSizeResult?.total_bytes || 0;
 
@@ -147,7 +297,9 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
         },
         processing: processingStats,
         billing: {
-          // TODO: Implement billing metrics when subscriptions table is added
+          // TODO: Implement billing metrics using subscriptions table
+          // Related: packages/db/src/sqlite/schema.sql (add subscriptions table)
+          // See: docs/architecture/BILLING.md (needs creation)
           // For now, calculate estimated value based on account classes
           mrr: calculateEstimatedMRR(database),
           churn_rate: 0, // Requires subscription history
@@ -163,10 +315,19 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
 
   /**
    * GET /api/v1/analytics/top-accounts
-   * Get top accounts by various metrics (admin only)
+   * Get top accounts by various metrics
+   * - Admin only (system-wide view of all client accounts)
+   * - Client users: returns empty array (not applicable)
    */
-  router.get('/top-accounts', requireAuth(authService), requireAdmin, async (req: Request, res: Response) => {
+  router.get('/top-accounts', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      const isAdmin = req.user?.accountType === 'admin';
+
+      // Only admin users can view top accounts (system-wide metric)
+      if (!isAdmin) {
+        return res.json({ accounts: [] }); // Empty for client users
+      }
+
       const { metric = 'usage', limit = 10 } = req.query;
 
       let query = '';
@@ -177,7 +338,8 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
             a.id, a.name, a.account_class,
             COUNT(DISTINCT al.id) as activity_count
           FROM accounts a
-          LEFT JOIN users u ON u.account_id = a.id
+          LEFT JOIN user_accounts ua ON ua.account_id = a.id
+          LEFT JOIN users u ON u.id = ua.user_id
           LEFT JOIN audit_log al ON al.actor_user_id = u.id
           WHERE a.account_type = 'client'
           GROUP BY a.id
@@ -212,24 +374,58 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
 
   /**
    * GET /api/v1/analytics/recent-activity
-   * Get recent system activity (admin only)
+   * Get recent activity
+   * - Admin (no operating context): system-wide activity
+   * - Admin (in CRM mode): account-scoped activity
+   * - Client users: account-scoped activity
    */
-  router.get('/recent-activity', requireAuth(authService), requireAdmin, async (req: Request, res: Response) => {
+  router.get('/recent-activity', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      const isAdmin = req.user?.accountType === 'admin';
+      const targetAccountId = req.operating?.accountId || req.user?.accountId;
+      const isSystemWideView = isAdmin && !req.operating;
       const { limit = 50 } = req.query;
 
-      const recentActivity = database.prepare(`
-        SELECT
-          al.*,
-          u.email as user_email,
-          u.name as user_name,
-          a.name as account_name
-        FROM audit_log al
-        LEFT JOIN users u ON u.id = al.actor_user_id
-        LEFT JOIN accounts a ON a.id = al.actor_account_id
-        ORDER BY al.timestamp DESC
-        LIMIT ?
-      `).all(Number(limit));
+      let recentActivity: any[];
+
+      if (isSystemWideView) {
+        // System-wide activity
+        recentActivity = database
+          .prepare(
+            `
+          SELECT
+            al.*,
+            u.email as user_email,
+            u.name as user_name,
+            a.name as account_name
+          FROM audit_log al
+          LEFT JOIN users u ON u.id = al.actor_user_id
+          LEFT JOIN accounts a ON a.id = al.actor_account_id
+          ORDER BY al.timestamp DESC
+          LIMIT ?
+        `
+          )
+          .all(Number(limit));
+      } else {
+        // Account-scoped activity
+        recentActivity = database
+          .prepare(
+            `
+          SELECT
+            al.*,
+            u.email as user_email,
+            u.name as user_name,
+            a.name as account_name
+          FROM audit_log al
+          LEFT JOIN users u ON u.id = al.actor_user_id
+          LEFT JOIN accounts a ON a.id = al.actor_account_id
+          WHERE al.actor_account_id = ?
+          ORDER BY al.timestamp DESC
+          LIMIT ?
+        `
+          )
+          .all(targetAccountId, Number(limit));
+      }
 
       return res.json({ activity: recentActivity });
     } catch (error: any) {
@@ -240,23 +436,54 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
 
   /**
    * GET /api/v1/analytics/alerts
-   * Get system alerts (admin only)
+   * Get system alerts
+   * - Admin (no operating context): system-wide alerts
+   * - Admin (in CRM mode): account-scoped alerts
+   * - Client users: account-scoped alerts
    */
-  router.get('/alerts', requireAuth(authService), requireAdmin, async (req: Request, res: Response) => {
+  router.get('/alerts', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      const isAdmin = req.user?.accountType === 'admin';
+      const targetAccountId = req.operating?.accountId || req.user?.accountId;
+      const isSystemWideView = isAdmin && !req.operating;
       const alerts: any[] = [];
 
       // Check for accounts approaching quota
-      const accountsNearQuota = database.prepare(`
-        SELECT
-          a.id, a.name, a.account_class,
-          COUNT(n.id) as node_count
-        FROM accounts a
-        LEFT JOIN nodes n ON n.account_id = a.id
-        WHERE a.account_type = 'client'
-        GROUP BY a.id
-        HAVING node_count > 8000
-      `).all();
+      let accountsNearQuota: any[];
+
+      if (isSystemWideView) {
+        // System-wide: check all client accounts
+        accountsNearQuota = database
+          .prepare(
+            `
+          SELECT
+            a.id, a.name, a.account_class,
+            COUNT(n.id) as node_count
+          FROM accounts a
+          LEFT JOIN nodes n ON n.account_id = a.id
+          WHERE a.account_type = 'client'
+          GROUP BY a.id
+          HAVING node_count > 8000
+        `
+          )
+          .all();
+      } else {
+        // Account-scoped: check only target account
+        accountsNearQuota = database
+          .prepare(
+            `
+          SELECT
+            a.id, a.name, a.account_class,
+            COUNT(n.id) as node_count
+          FROM accounts a
+          LEFT JOIN nodes n ON n.account_id = a.id
+          WHERE a.id = ?
+          GROUP BY a.id
+          HAVING node_count > 8000
+        `
+          )
+          .all(targetAccountId);
+      }
 
       accountsNearQuota.forEach((account: any) => {
         alerts.push({
@@ -269,7 +496,9 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
       });
 
       // Check for failed jobs (would need jobs table)
-      // TODO: Add more alert types
+      // TODO: Add more alert types (failed imports, system errors, security incidents)
+      // Related: packages/db/src/sqlite/schema.sql (add system_alerts table)
+      // See: docs/features/MONITORING.md (needs creation)
 
       return res.json({ alerts });
     } catch (error: any) {

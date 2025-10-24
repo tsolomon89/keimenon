@@ -246,7 +246,7 @@ export function checkPermission(options: PermissionOptions) {
       }
 
       // Permission granted
-      next();
+      return next();
     } catch (error) {
       console.error('Permission check error:', error);
       return res.status(500).json({ error: 'Permission check failed' });
@@ -314,7 +314,8 @@ export function checkRankCeiling() {
         if (global.auditService) {
           await global.auditService.logFailure({
             req,
-            action: req.method === 'POST' ? 'create' : req.method === 'DELETE' ? 'delete' : 'update',
+            action:
+              req.method === 'POST' ? 'create' : req.method === 'DELETE' ? 'delete' : 'update',
             resourceType: 'user',
             resourceId: targetUserId,
             reason: `Rank ceiling violation: actor rank ${actorRank} cannot modify rank ${targetRank}`,
@@ -328,7 +329,7 @@ export function checkRankCeiling() {
       }
 
       // Rank check passed
-      next();
+      return next();
     } catch (error) {
       console.error('Rank ceiling check error:', error);
       return res.status(500).json({ error: 'Rank check failed' });
@@ -395,7 +396,7 @@ export function applyBasicProjection() {
       } as any;
     }
 
-    next();
+    return next();
   };
 }
 

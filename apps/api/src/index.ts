@@ -1,6 +1,4 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
 import dotenv from 'dotenv';
 import path from 'path';
 import { Server } from 'http';
@@ -12,13 +10,15 @@ import nodesRoutes, { setAuthDependencies as setNodesAuthDeps } from './routes/n
 import boardsRoutes, { setAuthDependencies as setBoardsAuthDeps } from './routes/boards';
 import edgesRoutes, { setAuthDependencies as setEdgesAuthDeps } from './routes/edges';
 import importRoutes from './routes/import';
-import importDecisionsRoutes from './routes/import-decisions';
+import { createImportDecisionsRoutes } from './routes/import-decisions';
 import importStreamRoutes from './routes/import-stream';
 import { createImportEnhancedRoutes } from './routes/import-enhanced';
+import { createImportProgressStreamRoutes } from './routes/import-progress-stream';
+import { createImportJobsRoutes } from './routes/import-jobs';
 import contentRoutes, { setAuthDependencies as setContentAuthDeps } from './routes/content';
 // import groupsRoutes from './routes/groups'; // OLD: auto-grouping routes (deprecated)
 import configRoutes from './routes/config';
-import duplicatesRoutes from './routes/duplicates';
+import { createDuplicatesRoutes } from './routes/duplicates';
 import reviewQueueRoutes from './routes/review-queue.routes';
 import clusterRoutes from './routes/cluster.routes';
 import { createAuthRoutes } from './routes/auth.routes';
@@ -28,49 +28,68 @@ import { createAnalyticsRoutes } from './routes/analytics.routes';
 import { createGroupsRoutes } from './routes/groups.routes';
 import { createSettingsRoutes } from './routes/settings.routes';
 import { createAdminRoutes } from './routes/admin.routes';
+import { createDataManagementRoutes } from './routes/data-management';
+import { createDeduplicationRoutes } from './routes/deduplication';
+import { createJobsRoutes } from './modules/jobs/infrastructure/jobs.routes';
+import { createStreamRoutes } from './modules/jobs/infrastructure/stream.routes';
+import { createImportJobsRoutes as createJobBasedImportRoutes } from './modules/jobs/infrastructure/import-jobs.routes';
+import { SSEBroadcaster } from './modules/jobs/infrastructure/SSEBroadcaster';
+import { WorkerPool } from './modules/workers/domain/WorkerPool';
+import { ConcurrencyGuard } from './modules/workers/domain/ConcurrencyGuard';
+import { SQLiteJobRepository } from './modules/jobs/infrastructure/JobRepository';
+import { StartJob } from './modules/jobs/application/StartJob';
+import { ImportWorker } from './modules/workers/infrastructure/ImportWorker';
+import { DeleteWorker } from './modules/workers/infrastructure/DeleteWorker';
+import { DatabaseWriteQueue } from './services/DatabaseWriteQueue';
 import { AuthService } from './services/auth.service';
 import { requireAuth, requirePermission, isolateByAccount } from './middleware/auth.middleware';
+import {
+  configureCors,
+  configureHelmet,
+  addCustomSecurityHeaders,
+} from './middleware/security.middleware';
+import { validateAndFailFast } from './utils/env-validator';
+import { errorLogger, notFoundHandler } from './middleware/error-handler.middleware';
+import { initSentry, addSentryErrorHandler } from './services/sentry.service';
+// DISABLED: Using clean embedded schema instead of migrations
+// import { MigrationRunner } from '@canvas-memory/db/src/sqlite/MigrationRunner';
 
 // Load environment variables - override ensures we get the right .env
 dotenv.config({ path: path.join(__dirname, '../.env'), override: true });
 
+// Validate environment variables - fail fast if critical config is missing
+validateAndFailFast();
+
 const app: Express = express();
 const port = process.env.PORT || 3001;
+
+// Initialize Sentry (MUST be before all other middleware)
+// Only initializes if SENTRY_DSN environment variable is set (opt-in)
+initSentry(app);
 
 // Global state
 let server: Server | null = null;
 let neo4jClient: any = null;
 let storageService: any = null;
 let authService: AuthService | null = null;
+let sseBroadcaster: SSEBroadcaster | null = null;
+let writeQueue: DatabaseWriteQueue | null = null;
+let workerPool: WorkerPool | null = null;
 let isReady = false;
 
-// Middleware
-app.use(helmet());
-app.use(cors());
+// Security Middleware - MUST be applied before routes
+app.use(configureHelmet()); // Security headers (CSP, XSS, HSTS, etc.)
+app.use(configureCors()); // CORS with environment-based origin restrictions
+app.use(addCustomSecurityHeaders()); // Additional custom security headers
 
-// Skip body parsing for streaming upload routes
-app.use((req, res, next) => {
-  // Skip body parsing for file upload endpoints
-  if (req.path.includes('/import/enhanced') || req.path.includes('/import/stream')) {
-    return next();
-  }
-  // Apply body parsing for all other routes
-  express.json({ limit: '10mb' })(req, res, next);
-});
-
-app.use((req, res, next) => {
-  // Skip body parsing for file upload endpoints
-  if (req.path.includes('/import/enhanced') || req.path.includes('/import/stream')) {
-    return next();
-  }
-  // Apply URL encoding for all other routes
-  express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
-});
+// Body parsing - skip for file upload routes
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`${req.method} ${req.path}`);
-  next();
+  return next();
 });
 
 // Health check
@@ -140,7 +159,7 @@ app.get('/ready', async (req: Request, res: Response) => {
     // Storage not ready
   }
 
-  const ready = Object.values(checks).every(c => c);
+  const ready = Object.values(checks).every((c) => c);
   const statusCode = ready ? 200 : 503;
 
   res.status(statusCode).json({
@@ -221,6 +240,12 @@ app.get('/api/v1', (req: Request, res: Response) => {
         getConversation: 'GET /api/v1/content/conversation/:id',
         getStats: 'GET /api/v1/content/stats',
       },
+      deduplication: {
+        stats: 'GET /api/v1/deduplication/stats',
+        merge: 'POST /api/v1/deduplication/merge',
+        analyze: 'POST /api/v1/deduplication/analyze',
+        duplicates: 'GET /api/v1/deduplication/duplicates',
+      },
     },
   });
 });
@@ -234,71 +259,155 @@ let groupsNavigationRoutes: any = null;
 let settingsRoutes: any = null;
 let adminRoutes: any = null;
 let importEnhancedRoutes: any = null;
+let importProgressStreamRoutes: any = null;
+let importJobsRoutes: any = null;
+let importDecisionsRoutes: any = null;
+let dataManagementRoutes: any = null;
+let deduplicationRoutes: any = null;
+let duplicatesRoutes: any = null;
+let jobsRoutes: any = null;
+let streamRoutes: any = null;
+let jobBasedImportRoutes: any = null;
 
-app.use('/api/v1/ingest', ingestRoutes);
-app.use('/api/v1/nodes', nodesRoutes);
-app.use('/api/v1/boards', boardsRoutes);
-app.use('/api/v1/edges', edgesRoutes);
-app.use('/api/v1/import', importRoutes);
-app.use('/api/v1/import', importDecisionsRoutes);
-app.use('/api/v1/import', importStreamRoutes);
-app.use('/api/v1/content', contentRoutes);
-// app.use('/api/v1/groups', groupsRoutes); // OLD: Removed - replaced by authenticated groups.routes.ts
-app.use('/api/v1/config', configRoutes);
-app.use('/api/v1/duplicates', duplicatesRoutes);
-app.use('/api/v1/review-queue', reviewQueueRoutes);
-app.use('/api/v1/cluster', clusterRoutes);
+// Auth-protected routes (deferred until auth service initializes)
+// These routes require authentication and are registered after authService is ready
 
 // Dynamic auth routes (registered after auth service is initialized)
 app.use('/api/v1/auth', (req, res, next) => {
   if (authRoutes) return authRoutes(req, res, next);
-  res.status(503).json({ error: 'Auth service not initialized' });
+  return res.status(503).json({ error: 'Auth service not initialized' });
 });
 app.use('/api/v1/accounts', (req, res, next) => {
   if (accountsRoutes) return accountsRoutes(req, res, next);
-  res.status(503).json({ error: 'Auth service not initialized' });
+  return res.status(503).json({ error: 'Auth service not initialized' });
 });
 app.use('/api/v1/users', (req, res, next) => {
   if (usersRoutes) return usersRoutes(req, res, next);
-  res.status(503).json({ error: 'Auth service not initialized' });
+  return res.status(503).json({ error: 'Auth service not initialized' });
 });
 app.use('/api/v1/analytics', (req, res, next) => {
   if (analyticsRoutes) return analyticsRoutes(req, res, next);
-  res.status(503).json({ error: 'Auth service not initialized' });
+  return res.status(503).json({ error: 'Auth service not initialized' });
 });
 app.use('/api/v1/groups', (req, res, next) => {
   if (groupsNavigationRoutes) return groupsNavigationRoutes(req, res, next);
-  res.status(503).json({ error: 'Auth service not initialized' });
+  return res.status(503).json({ error: 'Auth service not initialized' });
 });
 app.use('/api/v1/settings', (req, res, next) => {
   if (settingsRoutes) return settingsRoutes(req, res, next);
-  res.status(503).json({ error: 'Auth service not initialized' });
+  return res.status(503).json({ error: 'Auth service not initialized' });
 });
 app.use('/api/v1/admin', (req, res, next) => {
   if (adminRoutes) return adminRoutes(req, res, next);
-  res.status(503).json({ error: 'Auth service not initialized' });
+  return res.status(503).json({ error: 'Auth service not initialized' });
 });
+
+// ==================== Import Routes ====================
+// IMPORTANT: More specific paths MUST be registered BEFORE less specific ones
+// Express matches routes in registration order and stops at first match
+
+// Most specific: /api/v1/import/progress/stream/:uploadId, /api/v1/import/progress/:uploadId
+app.use('/api/v1/import/progress', (req, res, next) => {
+  if (importProgressStreamRoutes) return importProgressStreamRoutes(req, res, next);
+  return res.status(503).json({ error: 'Auth service not initialized' });
+});
+
+// Most specific: /api/v1/import/jobs/...
+app.use('/api/v1/import/jobs', (req, res, next) => {
+  if (importJobsRoutes) return importJobsRoutes(req, res, next);
+  return res.status(503).json({ error: 'Auth service not initialized' });
+});
+app.use('/api/v1/data', (req, res, next) => {
+  if (dataManagementRoutes) return dataManagementRoutes(req, res, next);
+  return res.status(503).json({ error: 'Auth service not initialized' });
+});
+app.use('/api/v1/deduplication', (req, res, next) => {
+  if (deduplicationRoutes) return deduplicationRoutes(req, res, next);
+  return res.status(503).json({ error: 'Auth service not initialized' });
+});
+app.use('/api/v1/stream', (req, res, next) => {
+  if (streamRoutes) return streamRoutes(req, res, next);
+  return res.status(503).json({ error: 'Auth service not initialized' });
+});
+// Job-based import/delete routes (must come before general /api/v1/jobs to match specific paths first)
+app.use('/api/v1/jobs', (req, res, next) => {
+  if (jobBasedImportRoutes) return jobBasedImportRoutes(req, res, next);
+  // Fall through to next handler if route not matched
+  return next();
+});
+// General jobs API routes
+app.use('/api/v1/jobs', (req, res, next) => {
+  if (jobsRoutes) return jobsRoutes(req, res, next);
+  return res.status(503).json({ error: 'Auth service not initialized' });
+});
+
+// Auth-protected data routes (deferred)
+app.use('/api/v1/nodes', (req, res, next) => {
+  if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
+  return nodesRoutes(req, res, next);
+});
+app.use('/api/v1/edges', (req, res, next) => {
+  if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
+  return edgesRoutes(req, res, next);
+});
+app.use('/api/v1/boards', (req, res, next) => {
+  if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
+  return boardsRoutes(req, res, next);
+});
+app.use('/api/v1/content', (req, res, next) => {
+  if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
+  return contentRoutes(req, res, next);
+});
+app.use('/api/v1/ingest', (req, res, next) => {
+  if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
+  return ingestRoutes(req, res, next);
+});
+
+// Less specific: /api/v1/import/enhanced, /api/v1/import/chat/*, /api/v1/import/stream, etc.
+// This consolidates all /api/v1/import/* routes into proper registration order
 app.use('/api/v1/import', (req, res, next) => {
   if (importEnhancedRoutes) return importEnhancedRoutes(req, res, next);
-  res.status(503).json({ error: 'Auth service not initialized' });
+  return next(); // Fall through to next /api/v1/import handler
+});
+app.use('/api/v1/import', (req, res, next) => {
+  if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
+  return importRoutes(req, res, next); // Handles /chat, /chat/batch, /config/defaults
+});
+app.use('/api/v1/import', (req, res, next) => {
+  if (importDecisionsRoutes) return importDecisionsRoutes(req, res, next); // Handles /chat/apply-decisions, /chat/decisions/status/:import_id
+  return next(); // Fall through if no match
+});
+app.use('/api/v1/import', (req, res, next) => {
+  if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
+  return importStreamRoutes(req, res, next); // Handles /stream, /progress/:uploadId, /cancel/:uploadId
 });
 
-// 404 handler
-app.use((req: Request, res: Response) => {
-  res.status(404).json({
-    error: 'Not found',
-    path: req.path,
-  });
+// Config routes (may not need auth - but deferring for consistency)
+app.use('/api/v1/config', (req, res, next) => {
+  if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
+  return configRoutes(req, res, next);
+});
+app.use('/api/v1/duplicates', (req, res, next) => {
+  if (duplicatesRoutes) return duplicatesRoutes(req, res, next);
+  return res.status(503).json({ error: 'Auth service not initialized' });
+});
+app.use('/api/v1/review-queue', (req, res, next) => {
+  if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
+  return reviewQueueRoutes(req, res, next);
+});
+app.use('/api/v1/cluster', (req, res, next) => {
+  if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
+  return clusterRoutes(req, res, next);
 });
 
-// Error handling
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('Error:', err.stack);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined,
-  });
-});
+// 404 Not Found Handler - Must be after all routes
+app.use(notFoundHandler);
+
+// Sentry Error Handler - Must be before other error handlers
+addSentryErrorHandler(app);
+
+// Global Error Handler - Must be the LAST middleware
+app.use(errorLogger);
 
 // Graceful shutdown handler
 async function gracefulShutdown(signal: string) {
@@ -313,6 +422,36 @@ async function gracefulShutdown(signal: string) {
 
   // Mark as not ready
   isReady = false;
+
+  // Stop SSE broadcaster
+  if (sseBroadcaster) {
+    try {
+      sseBroadcaster.stop();
+      console.log('✅ SSE broadcaster stopped');
+    } catch (error) {
+      console.error('⚠️  Error stopping SSE broadcaster:', error);
+    }
+  }
+
+  // Stop write queue (flush pending writes before worker pool stops)
+  if (writeQueue) {
+    try {
+      await writeQueue.stop();
+      console.log('✅ Write queue stopped and flushed');
+    } catch (error) {
+      console.error('⚠️  Error stopping write queue:', error);
+    }
+  }
+
+  // Stop worker pool
+  if (workerPool) {
+    try {
+      await workerPool.stop();
+      console.log('✅ Worker pool stopped');
+    } catch (error) {
+      console.error('⚠️  Error stopping worker pool:', error);
+    }
+  }
 
   // Close database connections
   try {
@@ -348,8 +487,10 @@ async function start() {
 
     // Resolve home directory path
     const homeDir = process.env.HOME || process.env.USERPROFILE || '~';
-    const localDocsPath = process.env.LOCAL_DOCS_PATH?.replace('~', homeDir) || path.join(homeDir, '.canvas-memory');
-    const sqlitePath = process.env.SQLITE_PATH?.replace('~', homeDir) || path.join(localDocsPath, 'canvas.db');
+    const localDocsPath =
+      process.env.LOCAL_DOCS_PATH?.replace('~', homeDir) || path.join(homeDir, '.canvas-memory');
+    const sqlitePath =
+      process.env.SQLITE_PATH?.replace('~', homeDir) || path.join(localDocsPath, 'canvas.db');
 
     const dbClient = await DatabaseFactory.getClient({
       mode: storageMode,
@@ -357,11 +498,14 @@ async function start() {
         databasePath: sqlitePath,
         verbose: process.env.NODE_ENV === 'development',
       },
-      canvas: storageMode !== 'local' ? {
-        uri: process.env.NEO4J_URI || 'bolt://localhost:7687',
-        user: process.env.NEO4J_USER || 'neo4j',
-        password: process.env.NEO4J_PASSWORD || 'password',
-      } : undefined,
+      canvas:
+        storageMode !== 'local'
+          ? {
+              uri: process.env.NEO4J_URI || 'bolt://localhost:7687',
+              user: process.env.NEO4J_USER || 'neo4j',
+              password: process.env.NEO4J_PASSWORD || 'password',
+            }
+          : undefined,
     });
 
     // Store globally for routes to use
@@ -378,6 +522,13 @@ async function start() {
       await (dbClient as any).initializeSchema();
     }
 
+    // DISABLED: Using clean embedded schema in client.ts instead of migrations
+    // Run pending migrations (automatic migration system)
+    // console.log('📦 Running database migrations...');
+    // const migrationRunner = new MigrationRunner((dbClient as any).db);
+    // await migrationRunner.runPendingMigrations();
+    // console.log('✅ Database migrations complete');
+
     // Initialize Auth Service
     console.log('🔐 Initializing auth service...');
     authService = new AuthService(dbClient as any);
@@ -389,6 +540,14 @@ async function start() {
     settingsRoutes = createSettingsRoutes(dbClient as any, authService);
     adminRoutes = createAdminRoutes(dbClient as any, authService);
     importEnhancedRoutes = createImportEnhancedRoutes(authService);
+    importProgressStreamRoutes = createImportProgressStreamRoutes(authService);
+    importJobsRoutes = createImportJobsRoutes(authService);
+    importDecisionsRoutes = createImportDecisionsRoutes(dbClient as any, authService);
+    dataManagementRoutes = createDataManagementRoutes(dbClient as any, authService);
+    deduplicationRoutes = createDeduplicationRoutes(dbClient as any, authService);
+    duplicatesRoutes = createDuplicatesRoutes(dbClient as any, authService);
+    jobsRoutes = createJobsRoutes(authService, (dbClient as any).db); // Pass SQLite database instance
+    jobBasedImportRoutes = createJobBasedImportRoutes(authService, (dbClient as any).db); // Job-based import/delete endpoints
 
     // Inject auth dependencies into data routes
     setNodesAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
@@ -417,6 +576,49 @@ async function start() {
     await localStore.initialize();
     console.log('✅ Local document store initialized');
 
+    // Initialize SSE Broadcaster
+    console.log('📡 Initializing SSE broadcaster...');
+    sseBroadcaster = new SSEBroadcaster(
+      parseInt(process.env.SSE_BROADCAST_INTERVAL_MS || '500'), // 2Hz
+      parseInt(process.env.SSE_HEARTBEAT_INTERVAL_MS || '30000') // 30s
+    );
+    sseBroadcaster.start();
+    console.log('✅ SSE broadcaster initialized and started');
+
+    // Register stream routes
+    streamRoutes = createStreamRoutes(authService, sseBroadcaster);
+
+    // Initialize Database Write Queue (non-blocking writes for imports)
+    console.log('💾 Initializing database write queue...');
+    writeQueue = new DatabaseWriteQueue(dbClient, sseBroadcaster);
+    writeQueue.start();
+    console.log('✅ Database write queue initialized and started');
+
+    // Initialize Worker Pool
+    console.log('⚙️ Initializing worker pool...');
+    const jobRepository = new SQLiteJobRepository((dbClient as any).db);
+    const concurrencyGuard = new ConcurrencyGuard(jobRepository);
+    const startJobUseCase = new StartJob(jobRepository);
+
+    workerPool = new WorkerPool(
+      jobRepository,
+      concurrencyGuard,
+      startJobUseCase,
+      {
+        maxConcurrentJobs: parseInt(process.env.MAX_CONCURRENT_JOBS || '3'),
+        pollIntervalMs: parseInt(process.env.WORKER_POLL_INTERVAL_MS || '5000'),
+      },
+      sseBroadcaster // Pass broadcaster to worker pool
+    );
+
+    // Register workers (pass write queue to import worker)
+    workerPool.registerWorker(new ImportWorker(dbClient, writeQueue));
+    workerPool.registerWorker(new DeleteWorker(dbClient));
+
+    // Start worker pool (recovers orphaned jobs from previous instance)
+    await workerPool.start();
+    console.log('✅ Worker pool initialized and started');
+
     // Start server
     server = app.listen(port, () => {
       isReady = true;
@@ -444,4 +646,3 @@ async function start() {
 start();
 
 export default app;
-

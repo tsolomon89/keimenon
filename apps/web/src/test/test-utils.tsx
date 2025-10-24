@@ -19,7 +19,11 @@ export interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ token: string; user: User }>;
-  register: (email: string, password: string, name: string) => Promise<{ token: string; user: User }>;
+  register: (
+    email: string,
+    password: string,
+    name: string
+  ) => Promise<{ token: string; user: User }>;
   logout: () => Promise<void>;
 }
 
@@ -36,10 +40,10 @@ export interface OperatingContextType {
 }
 
 export interface ShellContextType {
-  shellMode: 'crm' | 'portal';
-  canvasMode: 'dashboard' | 'settings' | 'canvas' | 'upload' | 'processing';
-  setShellMode: (mode: 'crm' | 'portal') => void;
-  setCanvasMode: (mode: 'dashboard' | 'settings' | 'canvas' | 'upload' | 'processing') => void;
+  shellMode: 'admin' | 'client';
+  canvasMode: 'auth' | 'dashboard' | 'settings' | 'canvas';
+  setShellMode: (mode: 'admin' | 'client') => void;
+  setCanvasMode: (mode: 'auth' | 'dashboard' | 'settings' | 'canvas') => void;
   canAccessPortal: () => boolean;
 }
 
@@ -108,7 +112,7 @@ export function mockOperatingContext(
 // Mock ShellContext value
 export function mockShellContext(overrides?: Partial<ShellContextType>): ShellContextType {
   return {
-    shellMode: 'crm',
+    shellMode: 'admin',
     canvasMode: 'canvas',
     setShellMode: () => {},
     setCanvasMode: () => {},
@@ -162,7 +166,7 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
 export function renderWithProviders(
   ui: ReactElement,
   options?: CustomRenderOptions
-) {
+): ReturnType<typeof render> {
   const { authContext, operatingContext, shellContext, ...renderOptions } = options || {};
 
   return render(ui, {

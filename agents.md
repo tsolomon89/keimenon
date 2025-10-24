@@ -146,6 +146,26 @@ Put defaults in `ai_context/agents/policies.json`.
 - Always emit a `status` and `error` field.
 - On sequester conflict: **stop** and return an `ApprovalRequest` object.
 - On token/cost overrun: stop early and return partial artifacts + `BudgetEvent`.
+- **Log TODO markers** for unhandled edge cases or deferred error scenarios.
+
+### 7.1 TODO Standards for Agent Code
+
+All agent implementations must use standard TODO patterns for VSCode/Todo Tree integration:
+
+```typescript
+// TODO: [Action needed]
+// FIXME: [Bug to fix]
+// HACK: [Temporary solution - include replacement plan]
+// NOTE: [Critical context]
+// XXX: [Requires immediate attention]
+```
+
+**Agent-specific patterns:**
+
+- `// TODO(verification): Add HTTP_CHECK for this endpoint claim`
+- `// FIXME(gatherer): Rate limiting fails on >100 requests/min`
+- `// HACK(synthesizer): Using regex until NLP library is added`
+- `// NOTE(planner): This assumes single-board scope - multi-board needs refactor`
 
 ---
 
@@ -178,5 +198,92 @@ Put defaults in `ai_context/agents/policies.json`.
 
 - Agents must assume **no server‑side persistence** in Free/Pro default. Write temporary artifacts to `state/` only.
 - Never include raw PII in logs or artifacts outside Business. Use redaction tokens (e.g., `{{EMAIL_REDACTED}}`).
+
+---
+
+## 11) AI Agent Operational Protocol
+
+### 11.1 Task Initialization Checklist
+
+Before executing any agent run:
+
+1. **Search for TODOs** in target area:
+
+   ```bash
+   grep -r "TODO|FIXME|HACK" <target_directory>
+   ```
+
+2. **Review referenced documentation**:
+   - Check `ai_context/schemas/*.json` for data contracts
+   - Read `policies/*.md` for tier/privacy rules
+   - Review `agents/registry.json` for dependencies
+
+3. **Verify scope boundaries**:
+   - Confirm `scope_id` validity
+   - Check sequester flags
+   - Validate budget constraints
+
+4. **Check for related work**:
+   - Search for similar agent runs in `state/`
+   - Review recent receipts for context
+   - Check for open `ApprovalRequest` objects
+
+### 11.2 During Execution
+
+**Required comment patterns:**
+
+```typescript
+// TODO(agent:gatherer): Fetch additional sources from arxiv.org
+// FIXME(agent:verifier): HTTP_CHECK timeout too aggressive (5s -> 30s)
+// HACK(agent:synthesizer): Skipping L2 ring until schema updated
+// NOTE(agent:extractor): This claim requires manual verification
+```
+
+**Documentation references:**
+
+```typescript
+// See: ai_context/schemas/Claim.json:65-72
+// Related: policies/Verification.md#http-checks
+// Depends on: agents/registry.json:gatherer_v1
+```
+
+### 11.3 Post-Execution
+
+1. **Update TODOs**:
+   - Remove completed items
+   - Add new TODOs for discovered work
+   - Update estimates if scope changed
+
+2. **Document decisions**:
+
+   ```typescript
+   // NOTE: Chose HTTP_CHECK over SCHEMA_MATCH due to cost limits
+   // TODO: Revisit when Pro tier budget increases
+   ```
+
+3. **Cross-reference artifacts**:
+   - Link receipt to claims: `// Receipt: rct_abc123 -> claims: clm_1, clm_2`
+   - Reference sources: `// Source nodes: src_arxiv_2024_001, src_github_repo_xyz`
+
+### 11.4 File Reference Standards
+
+When working across the codebase:
+
+| File Type | TODO Pattern       | Example                                                          |
+| --------- | ------------------ | ---------------------------------------------------------------- |
+| Schema    | `TODO(schema)`     | `// TODO(schema): Add 'confidence_interval' field to Claim.json` |
+| Policy    | `TODO(policy)`     | `// TODO(policy): Update when PII rules change in Tiering.md`    |
+| Agent     | `TODO(agent:type)` | `// TODO(agent:gatherer): Expand to academic sources`            |
+| Workflow  | `TODO(workflow)`   | `// TODO(workflow): Add approval step for CRM writes`            |
+
+### 11.5 Cross-Agent Communication
+
+Leave breadcrumbs for downstream agents:
+
+```typescript
+// TODO(for:verifier): Claims clm_45-49 need HTTP_CHECK against api.example.com
+// TODO(for:synthesizer): Group these claims under "API Endpoints" section
+// TODO(for:planner): Gap detected - missing authentication flow documentation
+```
 
 **End of file.**

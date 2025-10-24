@@ -1,15 +1,17 @@
 import { Router, Request, Response } from 'express';
-import { AuthService } from '../services/auth.service';
+import { AuthServiceV2 } from '../services/auth.service';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
+import { authRateLimiter, registrationRateLimiter } from '../middleware/rate-limit.middleware';
 
-export function createAuthRoutes(authService: AuthService): Router {
+export function createAuthRoutes(authService: AuthServiceV2): Router {
   const router = Router();
 
   /**
    * POST /api/v1/auth/login
    * Login with email and password
+   * Returns either direct login (single account) or account selection (multiple accounts)
    */
-  router.post('/login', async (req: Request, res: Response) => {
+  router.post('/login', authRateLimiter, async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
 
@@ -17,16 +19,31 @@ export function createAuthRoutes(authService: AuthService): Router {
         return res.status(400).json({ error: 'Email and password required' });
       }
 
-      const result = await authService.login(email, password);
+      // Extract IP address and user agent for lockout tracking
+      const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+      const userAgent = req.headers['user-agent'];
+
+      const result = await authService.login(email, password, ipAddress, userAgent);
 
       if (!result) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
+      // Check if account selection is required
+      if (result.requiresAccountSelection) {
+        return res.json({
+          requiresAccountSelection: true,
+          availableAccounts: result.availableAccounts,
+          tempToken: result.tempToken,
+        });
+      }
+
+      // Direct login (single account)
       return res.json({
         user: result.user,
         account: result.account,
         token: result.token,
+        membership: result.membership,
       });
     } catch (error: any) {
       console.error('Login error:', error);
@@ -38,9 +55,9 @@ export function createAuthRoutes(authService: AuthService): Router {
    * POST /api/v1/auth/register
    * Register a new account with email and password
    */
-  router.post('/register', async (req: Request, res: Response) => {
+  router.post('/register', registrationRateLimiter, async (req: Request, res: Response) => {
     try {
-      const { email, password, name, accountType, accountClass } = req.body;
+      const { email, password, name, accountName, accountType, accountClass } = req.body;
 
       if (!email || !password || !name) {
         return res.status(400).json({ error: 'Email, password, and name required' });
@@ -50,6 +67,7 @@ export function createAuthRoutes(authService: AuthService): Router {
         email,
         password,
         name,
+        accountName || name, // Use user's name as account name if not provided
         accountType || 'client',
         accountClass || 'free'
       );
@@ -62,6 +80,7 @@ export function createAuthRoutes(authService: AuthService): Router {
         user: result.user,
         account: result.account,
         token: result.token,
+        membership: result.membership,
       });
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -69,6 +88,111 @@ export function createAuthRoutes(authService: AuthService): Router {
         return res.status(409).json({ error: error.message });
       }
       return res.status(500).json({ error: error.message || 'Registration failed' });
+    }
+  });
+
+  /**
+   * POST /api/v1/auth/reset-password-debug
+   * Insecure debug helper to reset password by email.
+   */
+  router.post('/reset-password-debug', authRateLimiter, async (req: Request, res: Response) => {
+    try {
+      const { email, newPassword } = req.body;
+
+      if (!email || !newPassword) {
+        return res.status(400).json({ error: 'Email and new password required' });
+      }
+
+      const result = await authService.debugResetPassword(email, newPassword);
+
+      if (!result) {
+        return res.status(404).json({ error: 'User not found for that email' });
+      }
+
+      // HACK(auth): Temporary insecure reset endpoint - remove once real flow ships.
+      return res.json({
+        message: 'Password updated. Please log in with the new password.',
+        updatedAt: result.updatedAt,
+      });
+    } catch (error: any) {
+      console.error('Reset password (debug) error:', error);
+      return res.status(500).json({ error: error.message || 'Password reset failed' });
+    }
+  });
+
+  /**
+   * POST /api/v1/auth/select-account
+   * Select an account after multi-account login
+   */
+  router.post('/select-account', async (req: Request, res: Response) => {
+    try {
+      const { tempToken, accountId, accountPassword } = req.body;
+
+      if (!tempToken || !accountId) {
+        return res.status(400).json({ error: 'Temp token and account ID required' });
+      }
+
+      // Verify temporary token
+      const tempPayload = await authService.verifyTempToken(tempToken);
+      if (!tempPayload) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+
+      // Select the account
+      const result = await authService.selectAccount(
+        tempPayload.userId,
+        accountId,
+        accountPassword
+      );
+
+      return res.json({
+        user: result.user,
+        account: result.account,
+        token: result.token,
+        membership: result.membership,
+      });
+    } catch (error: any) {
+      console.error('Select account error:', error);
+      return res.status(500).json({ error: error.message || 'Account selection failed' });
+    }
+  });
+
+  /**
+   * POST /api/v1/auth/switch-account
+   * Switch to a different account without re-authentication
+   */
+  router.post('/switch-account', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const { accountId, accountPassword } = req.body;
+
+      if (!accountId) {
+        return res.status(400).json({ error: 'Account ID required' });
+      }
+
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Check if user has access to this account
+      const userAccounts = await authService.getUserAccounts(req.user.userId);
+      const hasAccess = userAccounts.some((a) => a.accountId === accountId);
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: 'You do not have access to this account' });
+      }
+
+      // Switch to the account
+      const result = await authService.switchAccount(req.user.userId, accountId, accountPassword);
+
+      return res.json({
+        user: result.user,
+        account: result.account,
+        token: result.token,
+        membership: result.membership,
+      });
+    } catch (error: any) {
+      console.error('Switch account error:', error);
+      return res.status(500).json({ error: error.message || 'Account switch failed' });
     }
   });
 
@@ -84,13 +208,14 @@ export function createAuthRoutes(authService: AuthService): Router {
         return res.status(400).json({ error: 'Google ID, email, and name required' });
       }
 
-      const result = await authService.registerWithGoogle(googleId, email, name);
+      // TODO: Implement registerWithGoogle method in AuthServiceV2
+      throw new Error('Google registration not yet implemented');
 
-      return res.json({
-        user: result.user,
-        account: result.account,
-        token: result.token,
-      });
+      // return res.json({
+      //   user: result.user,
+      //   account: result.account,
+      //   token: result.token,
+      // });
     } catch (error: any) {
       console.error('Google register error:', error);
       return res.status(500).json({ error: error.message || 'Registration failed' });

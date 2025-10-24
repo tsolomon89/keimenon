@@ -32,8 +32,8 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
 
     if (ext === '.jsonl') {
       // Parse JSONL (one JSON object per line)
-      const lines = fileContent.split('\n').filter(line => line.trim());
-      data = lines.map(line => JSON.parse(line));
+      const lines = fileContent.split('\n').filter((line) => line.trim());
+      data = lines.map((line) => JSON.parse(line));
     } else {
       // Parse regular JSON
       data = JSON.parse(fileContent);
@@ -41,22 +41,18 @@ router.post('/chat', upload.single('file'), async (req: Request, res: Response) 
 
     // Import
     const importService = new ImportService();
-    const result = await importService.importConversations(
-      data,
-      req.file.originalname,
-      config
-    );
+    const result = await importService.importConversations(data, req.file.originalname, config);
 
     // Clean up uploaded file
     await fs.unlink(filePath);
 
-    res.json({
+    return res.json({
       success: true,
       result,
     });
   } catch (error: any) {
     console.error('Import error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Import failed',
       message: error.message,
     });
@@ -92,18 +88,14 @@ router.post('/chat/batch', upload.array('files', 10), async (req: Request, res: 
         const ext = path.extname(file.originalname).toLowerCase();
 
         if (ext === '.jsonl') {
-          const lines = fileContent.split('\n').filter(line => line.trim());
-          data = lines.map(line => JSON.parse(line));
+          const lines = fileContent.split('\n').filter((line) => line.trim());
+          data = lines.map((line) => JSON.parse(line));
         } else {
           data = JSON.parse(fileContent);
         }
 
         // Import
-        const result = await importService.importConversations(
-          data,
-          file.originalname,
-          config
-        );
+        const result = await importService.importConversations(data, file.originalname, config);
 
         results.push({
           file: file.originalname,
@@ -122,18 +114,18 @@ router.post('/chat/batch', upload.array('files', 10), async (req: Request, res: 
       }
     }
 
-    res.json({
+    return res.json({
       success: true,
       results,
       summary: {
         total_files: files.length,
-        successful: results.filter(r => r.success).length,
-        failed: results.filter(r => !r.success).length,
+        successful: results.filter((r) => r.success).length,
+        failed: results.filter((r) => !r.success).length,
       },
     });
   } catch (error: any) {
     console.error('Batch import error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Batch import failed',
       message: error.message,
     });
@@ -146,7 +138,7 @@ router.post('/chat/batch', upload.array('files', 10), async (req: Request, res: 
  */
 router.get('/config/defaults', (_req: Request, res: Response) => {
   const defaults = ImportConfigSchema.parse({});
-  res.json(defaults);
+  return res.json(defaults);
 });
 
 export default router;

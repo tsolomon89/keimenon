@@ -1,0 +1,534 @@
+/**
+ * Test Helper Utilities
+ *
+ * Common test utilities for E2E and integration tests including:
+ * - Authentication helpers
+ * - Job creation helpers
+ * - SSE connection helpers
+ * - Wait utilities
+ * - Database helpers
+ */
+
+import fetch from 'node-fetch';
+import FormData from 'form-data';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import Database from 'better-sqlite3';
+import { EventSource } from 'eventsource';
+
+const API_URL = process.env.TEST_API_URL || 'http://localhost:4001';
+
+/**
+ * Login and get JWT token
+ */
+export async function login(
+  email: string,
+  password: string
+): Promise<{ token: string; accountId: string; userId: string }> {
+  if (process.env.NODE_ENV !== 'production' || process.env.DISABLE_RATE_LIMIT === '1') {
+    try {
+      const dbPath = process.env.DB_PATH || path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+      const db = new Database(dbPath);
+
+      // Clear login attempts (if login_attempts table exists)
+      const tablesResult = db
+        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='login_attempts'")
+        .all();
+      if (tablesResult.length > 0) {
+        db.prepare('DELETE FROM login_attempts WHERE email = ?').run(email);
+      }
+
+      // Note: account_lockout_until column doesn't exist in current schema
+      // If lockout functionality is added in future, add column first
+
+      db.close();
+    } catch (err) {
+      console.warn('[test-helpers] Failed to reset login attempts', err);
+    }
+  }
+
+  const response = await fetch(`${API_URL}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Login failed (${response.status}): ${error}`);
+  }
+
+  const data = (await response.json()) as any;
+
+  // Extract accountId from various possible locations
+  const accountId =
+    data.user?.account_id || data.user?.accountId || data.accountId || data.user?.account;
+  const userId = data.user?.id || data.user?.userId || data.userId;
+
+  // If still undefined, try to decode from JWT (accountId is in the token)
+  if (!accountId && data.token) {
+    try {
+      const payload = JSON.parse(Buffer.from(data.token.split('.')[1], 'base64').toString());
+      return {
+        token: data.token,
+        accountId: payload.accountId,
+        userId: payload.userId,
+      };
+    } catch (err) {
+      console.warn('[test-helpers] Failed to decode JWT:', err);
+    }
+  }
+
+  return {
+    token: data.token,
+    accountId,
+    userId,
+  };
+}
+
+/**
+ * Create multipart form data with file
+ */
+export function createFormData(filePath: string, config?: any): FormData {
+  const form = new FormData();
+  form.append('files', fs.createReadStream(filePath));
+
+  if (config) {
+    form.append('config', JSON.stringify(config));
+  }
+
+  return form;
+}
+
+/**
+ * Wait for job to reach terminal status (succeeded/failed/canceled)
+ */
+export async function waitForJobCompletion(
+  jobId: string,
+  token: string,
+  timeoutMs: number = 60000
+): Promise<any> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeoutMs) {
+    const response = await fetch(`${API_URL}/api/v1/jobs/${jobId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch job: ${response.statusText}`);
+    }
+
+    const data = (await response.json()) as any;
+    const job = data.job;
+
+    // Check if terminal status
+    if (['succeeded', 'failed', 'canceled'].includes(job.state.status)) {
+      return job;
+    }
+
+    // Wait 500ms before polling again
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  throw new Error(`Job ${jobId} did not complete within ${timeoutMs}ms`);
+}
+
+/**
+ * Create import job via API
+ */
+export async function createImportJob(
+  filePath: string,
+  token: string,
+  config?: any
+): Promise<{ jobId: string; uploadId: string }> {
+  const form = createFormData(filePath, config);
+
+  const response = await fetch(`${API_URL}/api/v1/import/enhanced`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...form.getHeaders(),
+    },
+    body: form,
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Import failed (${response.status}): ${error}`);
+  }
+
+  const data = (await response.json()) as any;
+
+  // Extract job ID and upload ID from response
+  const result = data.results?.[0] || data;
+  return {
+    jobId: result.jobId || result.id,
+    uploadId: result.uploadId || result.id,
+  };
+}
+
+/**
+ * Create delete job via API
+ */
+export async function createDeleteJob(
+  scope: 'canvas' | 'all-clients',
+  token: string
+): Promise<{ jobId: string }> {
+  const response = await fetch(`${API_URL}/api/v1/jobs/delete`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ scope }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Delete job creation failed (${response.status}): ${error}`);
+  }
+
+  const data = (await response.json()) as any;
+  return {
+    jobId: data.jobId,
+  };
+}
+
+/**
+ * Count nodes in database for an account
+ */
+export function countNodes(db: Database.Database, accountId: string): number {
+  const result = db
+    .prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?')
+    .get(accountId) as { count: number };
+  return result.count;
+}
+
+/**
+ * Count edges in database for an account
+ */
+export function countEdges(db: Database.Database, accountId: string): number {
+  const result = db
+    .prepare(
+      'SELECT COUNT(*) as count FROM edges WHERE from_node IN (SELECT id FROM nodes WHERE account_id = ?)'
+    )
+    .get(accountId) as { count: number };
+  return result.count;
+}
+
+/**
+ * Get nodes by kind for an account
+ */
+export function getNodesByKind(
+  db: Database.Database,
+  accountId: string
+): Array<{ kind: string; count: number }> {
+  const results = db
+    .prepare(
+      'SELECT kind, COUNT(*) as count FROM nodes WHERE account_id = ? GROUP BY kind ORDER BY count DESC'
+    )
+    .all(accountId) as Array<{ kind: string; count: number }>;
+  return results;
+}
+
+/**
+ * Create test nodes in database
+ */
+export function createTestNodes(
+  db: Database.Database,
+  accountId: string,
+  count: number = 10,
+  kind: string = 'ChatThread'
+): string[] {
+  const nodeIds: string[] = [];
+  const now = Date.now();
+
+  const stmt = db.prepare(`
+    INSERT INTO nodes (id, account_id, kind, label, properties, created_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  for (let i = 0; i < count; i++) {
+    const nodeId = `test_${kind}_${Date.now()}_${i}`;
+    stmt.run(
+      nodeId,
+      accountId,
+      kind,
+      `Test ${kind} ${i + 1}`,
+      JSON.stringify({ index: i }),
+      accountId,
+      now,
+      now
+    );
+    nodeIds.push(nodeId);
+  }
+
+  return nodeIds;
+}
+
+/**
+ * Connect to SSE stream and collect events
+ */
+export class SSECollector {
+  private eventSource: EventSource | null = null;
+  private events: any[] = [];
+  private isConnected: boolean = false;
+  private connectionError: Error | null = null;
+
+  constructor(
+    private url: string,
+    private token: string,
+    private eventType: string = 'jobs.update'
+  ) {}
+
+  /**
+   * Start listening to SSE stream
+   */
+  async connect(): Promise<void> {
+    const fullUrl = `${this.url}?token=${this.token}`;
+    this.eventSource = new EventSource(fullUrl);
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('SSE connection timeout'));
+      }, 5000);
+
+      this.eventSource!.addEventListener('open', () => {
+        this.isConnected = true;
+        clearTimeout(timeout);
+        resolve();
+      });
+
+      this.eventSource!.addEventListener('error', (error) => {
+        this.connectionError = error as Error;
+        this.isConnected = false;
+        clearTimeout(timeout);
+        reject(error);
+      });
+
+      this.eventSource!.addEventListener(this.eventType, (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.events.push(data);
+        } catch (error) {
+          console.error('Failed to parse SSE event:', error);
+        }
+      });
+    });
+  }
+
+  /**
+   * Wait for specific condition in events
+   */
+  async waitForCondition(
+    condition: (events: any[]) => boolean,
+    timeoutMs: number = 10000
+  ): Promise<void> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeoutMs) {
+      if (condition(this.events)) {
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    throw new Error('Condition not met within timeout');
+  }
+
+  /**
+   * Get all events received
+   */
+  getEvents(): any[] {
+    return [...this.events];
+  }
+
+  /**
+   * Get events matching predicate
+   */
+  getEventsWhere(predicate: (event: any) => boolean): any[] {
+    return this.events.filter(predicate);
+  }
+
+  /**
+   * Get latest event
+   */
+  getLatestEvent(): any | null {
+    return this.events.length > 0 ? this.events[this.events.length - 1] : null;
+  }
+
+  /**
+   * Check if connected
+   */
+  get connected(): boolean {
+    return this.isConnected;
+  }
+
+  /**
+   * Close connection
+   */
+  close(): void {
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.isConnected = false;
+    }
+  }
+
+  /**
+   * Clear collected events
+   */
+  clear(): void {
+    this.events = [];
+  }
+}
+
+/**
+ * Wait for condition with timeout
+ */
+export async function waitFor(
+  condition: () => boolean | Promise<boolean>,
+  options: { timeout?: number; interval?: number } = {}
+): Promise<void> {
+  const { timeout = 5000, interval = 100 } = options;
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    const result = await Promise.resolve(condition());
+    if (result) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(`Condition not met within ${timeout}ms`);
+}
+
+/**
+ * Sleep for specified milliseconds
+ */
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Cleanup test data for an account
+ */
+export function cleanupTestData(db: Database.Database, accountId: string): void {
+  // Delete in correct order (respecting foreign keys)
+  db.prepare(
+    'DELETE FROM edges WHERE from_node IN (SELECT id FROM nodes WHERE account_id = ?)'
+  ).run(accountId);
+  db.prepare('DELETE FROM nodes WHERE account_id = ?').run(accountId);
+  db.prepare(
+    'DELETE FROM job_events WHERE job_id IN (SELECT id FROM jobs WHERE account_id = ?)'
+  ).run(accountId);
+  db.prepare(
+    'DELETE FROM job_items WHERE job_id IN (SELECT id FROM jobs WHERE account_id = ?)'
+  ).run(accountId);
+  db.prepare('DELETE FROM jobs WHERE account_id = ?').run(accountId);
+}
+
+/**
+ * Get job by ID
+ */
+export async function getJob(jobId: string, token: string): Promise<any> {
+  const response = await fetch(`${API_URL}/api/v1/jobs/${jobId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch job: ${response.statusText}`);
+  }
+
+  const data = (await response.json()) as any;
+  return data.job;
+}
+
+/**
+ * List jobs
+ */
+export async function listJobs(
+  token: string,
+  filters?: { status?: string; limit?: number }
+): Promise<any[]> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.append('status', filters.status);
+  if (filters?.limit) params.append('limit', filters.limit.toString());
+
+  const url = `${API_URL}/api/v1/jobs?${params.toString()}`;
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to list jobs: ${response.statusText}`);
+  }
+
+  const data = (await response.json()) as any;
+  return data.jobs || [];
+}
+
+/**
+ * Cancel job
+ */
+export async function cancelJob(jobId: string, token: string): Promise<void> {
+  const response = await fetch(`${API_URL}/api/v1/jobs/${jobId}/cancel`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to cancel job: ${response.statusText}`);
+  }
+}
+
+/**
+ * Assert job status
+ */
+export function assertJobStatus(job: any, expectedStatus: string): void {
+  const actualStatus = job.state?.status || job.status;
+  if (actualStatus !== expectedStatus) {
+    throw new Error(`Expected job status "${expectedStatus}" but got "${actualStatus}"`);
+  }
+}
+
+/**
+ * Assert job progress
+ */
+export function assertJobProgress(job: any, expectedPercent: number): void {
+  const actualPercent = job.state?.progress || job.progress?.percent || 0;
+  if (actualPercent !== expectedPercent) {
+    throw new Error(`Expected job progress ${expectedPercent}% but got ${actualPercent}%`);
+  }
+}
+
+/**
+ * Get test file path
+ */
+export function getTestFilePath(filename: string): string {
+  return `${__dirname}/../../../../../ai_context/chat_data/test-samples/${filename}`;
+}
+
+export default {
+  login,
+  createFormData,
+  waitForJobCompletion,
+  createImportJob,
+  createDeleteJob,
+  countNodes,
+  countEdges,
+  getNodesByKind,
+  createTestNodes,
+  SSECollector,
+  waitFor,
+  sleep,
+  cleanupTestData,
+  getJob,
+  listJobs,
+  cancelJob,
+  assertJobStatus,
+  assertJobProgress,
+  getTestFilePath,
+};

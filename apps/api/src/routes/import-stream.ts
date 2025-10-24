@@ -14,14 +14,17 @@ function getDbClient() {
 }
 
 // Store active imports
-const activeImports = new Map<string, {
-  parser: StreamingJSONParser;
-  uploadId: string;
-  conversationsProcessed: number;
-  totalConversations: number;
-  status: 'uploading' | 'parsing' | 'importing' | 'complete' | 'error';
-  error?: string;
-}>();
+const activeImports = new Map<
+  string,
+  {
+    parser: StreamingJSONParser;
+    uploadId: string;
+    conversationsProcessed: number;
+    totalConversations: number;
+    status: 'uploading' | 'parsing' | 'importing' | 'complete' | 'error';
+    error?: string;
+  }
+>();
 
 /**
  * POST /api/v1/import/stream
@@ -44,12 +47,19 @@ router.post('/stream', async (req: Request, res: Response) => {
       const parser = new StreamingJSONParser();
       const { uploadId, fileName, filePath } = file;
 
-      const importState = {
+      const importState: {
+        parser: StreamingJSONParser;
+        uploadId: string;
+        conversationsProcessed: number;
+        totalConversations: number;
+        status: 'uploading' | 'parsing' | 'importing' | 'complete' | 'error';
+        error?: string;
+      } = {
         parser,
         uploadId,
         conversationsProcessed: 0,
         totalConversations: 0,
-        status: 'parsing' as const,
+        status: 'parsing',
       };
 
       activeImports.set(uploadId, importState);
@@ -119,7 +129,7 @@ router.post('/stream', async (req: Request, res: Response) => {
         error: r.reason?.message || 'Unknown error',
       }));
 
-    res.json({
+    return res.json({
       success: successfulImports.length > 0,
       results: successfulImports,
       failed: failedImports,
@@ -127,15 +137,12 @@ router.post('/stream', async (req: Request, res: Response) => {
         total: files.length,
         successful: successfulImports.length,
         failed: failedImports.length,
-        totalConversations: successfulImports.reduce(
-          (sum, r) => sum + r.conversationsImported,
-          0
-        ),
+        totalConversations: successfulImports.reduce((sum, r) => sum + r.conversationsImported, 0),
       },
     });
   } catch (error: any) {
     console.error('Streaming import error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to process upload',
     });
@@ -159,14 +166,16 @@ router.get('/progress/:uploadId', (req: Request, res: Response) => {
     });
   }
 
-  res.json({
+  return res.json({
     success: true,
     upload: uploadProgress,
-    import: importState ? {
-      conversationsProcessed: importState.conversationsProcessed,
-      status: importState.status,
-      error: importState.error,
-    } : null,
+    import: importState
+      ? {
+          conversationsProcessed: importState.conversationsProcessed,
+          status: importState.status,
+          error: importState.error,
+        }
+      : null,
   });
 });
 
@@ -180,7 +189,7 @@ router.delete('/cancel/:uploadId', (req: Request, res: Response) => {
   streamingUploadService.cancelUpload(uploadId);
   activeImports.delete(uploadId);
 
-  res.json({
+  return res.json({
     success: true,
     message: 'Import cancelled',
   });

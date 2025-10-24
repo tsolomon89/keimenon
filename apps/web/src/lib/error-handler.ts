@@ -2,6 +2,8 @@
  * Centralized error handling utilities
  */
 
+import { errorCapture, ErrorDomain, ErrorSeverity } from '@/services/error-capture.service';
+
 export class AppError extends Error {
   constructor(
     message: string,
@@ -43,60 +45,101 @@ export class AuthError extends AppError {
 }
 
 /**
- * Error handler for API calls
+ * Enhanced error handler for API calls
+ * Automatically captures errors for console display
+ * Now handles backend APIError format from error-handler.middleware.ts
  */
 export async function handleApiError(error: any): Promise<never> {
-  // Network errors
+  let appError: AppError;
+
+  // Network errors (fetch failures, CORS, etc.)
   if (error.name === 'TypeError' && error.message.includes('fetch')) {
-    throw new NetworkError('Unable to connect to server. Please check your connection.');
+    appError = new NetworkError('Unable to connect to server. Please check your connection.');
+
+    // Capture for console
+    errorCapture.capture(
+      appError,
+      {
+        domain: 'api',
+        operation: 'network.fetch',
+        metadata: { originalError: error.message },
+      },
+      'error'
+    );
+
+    throw appError;
   }
 
-  // HTTP errors
+  // HTTP errors with response
   if (error.response) {
     const status = error.response.status;
     const data = await error.response.json().catch(() => ({}));
 
-    switch (status) {
-      case 400:
-        throw new ValidationError(
-          data.message || 'Invalid request',
-          data.errors || data
-        );
-      case 401:
-        throw new AuthError(data.message || 'Authentication required');
-      case 403:
-        throw new AuthError(data.message || 'Access forbidden');
-      case 404:
-        throw new AppError(data.message || 'Resource not found', 'NOT_FOUND', 404);
-      case 413:
-        throw new FileError('File is too large', { maxSize: '10MB' });
-      case 422:
-        throw new ValidationError(
-          data.message || 'Validation failed',
-          data.errors || data
-        );
-      case 500:
-        throw new AppError(
-          data.message || 'Internal server error',
-          'SERVER_ERROR',
-          500
-        );
-      case 503:
-        throw new NetworkError('Service temporarily unavailable');
-      default:
-        throw new AppError(
-          data.message || 'An unexpected error occurred',
-          'UNKNOWN_ERROR',
-          status
-        );
-    }
+    // Extract backend error structure (from error-handler.middleware.ts)
+    const backendError = data.error || {};
+    const errorMessage = backendError.message || data.message || 'An error occurred';
+    const errorDomain = backendError.domain || 'api';
+    const errorOperation = backendError.operation || `api.${error.response.url || 'unknown'}`;
+
+    // Map status code to error type with dynamic message
+    const createError = (status: number): AppError => {
+      switch (status) {
+        case 400:
+          return new ValidationError(errorMessage, data.errors || backendError);
+        case 401:
+          return new AuthError(errorMessage);
+        case 403:
+          return new AuthError(errorMessage);
+        case 404:
+          return new AppError(errorMessage, 'NOT_FOUND', 404);
+        case 413:
+          return new FileError(errorMessage, { maxSize: '10MB' });
+        case 422:
+          return new ValidationError(errorMessage, data.errors || backendError);
+        case 500:
+          return new AppError(errorMessage, 'SERVER_ERROR', 500);
+        case 503:
+          return new NetworkError(errorMessage);
+        default:
+          return new AppError(errorMessage, 'UNKNOWN_ERROR', status);
+      }
+    };
+
+    appError = createError(status);
+
+    // Determine severity based on status code
+    const severity: ErrorSeverity = status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info';
+
+    // Capture with backend context (preserves domain/operation from backend)
+    errorCapture.capture(
+      appError,
+      {
+        domain: errorDomain as any,
+        operation: errorOperation,
+        metadata: {
+          statusCode: status,
+          backendError,
+          url: error.response.url,
+        },
+      },
+      severity
+    );
+
+    throw appError;
   }
 
-  // Generic errors
-  throw new AppError(
-    error.message || 'An unexpected error occurred',
-    'UNKNOWN_ERROR'
+  // Generic errors (no HTTP response)
+  appError = new AppError(error.message || 'An unexpected error occurred', 'UNKNOWN_ERROR');
+  errorCapture.capture(
+    appError,
+    {
+      domain: 'api',
+      operation: 'unknown',
+      metadata: { originalError: error },
+    },
+    'error'
   );
+  throw appError;
 }
 
 /**
@@ -118,10 +161,10 @@ export function handleFileError(error: any, fileName?: string): never {
     throw new FileError(`Permission denied: ${fileName}`);
   }
 
-  throw new FileError(
-    error.message || 'Failed to process file',
-    { fileName, originalError: error }
-  );
+  throw new FileError(error.message || 'Failed to process file', {
+    fileName,
+    originalError: error,
+  });
 }
 
 /**
@@ -195,12 +238,7 @@ export async function withRetry<T>(
     onRetry?: (attempt: number, error: any) => void;
   } = {}
 ): Promise<T> {
-  const {
-    maxAttempts = 3,
-    delay = 1000,
-    backoff = true,
-    onRetry,
-  } = options;
+  const { maxAttempts = 3, delay = 1000, backoff = true, onRetry } = options;
 
   let lastError: any;
 
@@ -227,10 +265,7 @@ export async function withRetry<T>(
 /**
  * Safe JSON parse with error handling
  */
-export function safeJsonParse<T = any>(
-  json: string,
-  fallback?: T
-): T | undefined {
+export function safeJsonParse<T = any>(json: string, fallback?: T): T | undefined {
   try {
     return JSON.parse(json);
   } catch (error) {
@@ -254,4 +289,53 @@ export function withErrorBoundary<T extends (...args: any[]) => Promise<any>>(
       throw error;
     }
   }) as T;
+}
+
+/**
+ * Log API events (successful operations)
+ * Use for important operations that should appear in console
+ *
+ * Examples:
+ * - File import started
+ * - Job created
+ * - Data deletion initiated
+ * - Account switched
+ */
+export function logApiEvent(
+  message: string,
+  context: {
+    domain?: ErrorDomain;
+    operation: string;
+    metadata?: Record<string, any>;
+  }
+) {
+  errorCapture.info(message, {
+    domain: context.domain || 'api',
+    operation: context.operation,
+    metadata: context.metadata,
+  });
+}
+
+/**
+ * Log data processing events
+ * Use for tracking data transformation stages
+ */
+export function logDataEvent(message: string, operation: string, metadata?: Record<string, any>) {
+  errorCapture.info(message, {
+    domain: 'import',
+    operation,
+    metadata,
+  });
+}
+
+/**
+ * Log job events
+ * Use for job lifecycle tracking
+ */
+export function logJobEvent(message: string, operation: string, metadata?: Record<string, any>) {
+  errorCapture.info(message, {
+    domain: 'jobs',
+    operation,
+    metadata,
+  });
 }

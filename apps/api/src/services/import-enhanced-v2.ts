@@ -7,6 +7,7 @@ import { nanoid } from 'nanoid';
 import { DatabaseClient } from '@canvas-memory/db';
 import { EnhancedAutogroupService, type Group } from './autogroup-enhanced';
 import { getLocalDocumentStore } from './local-document-store';
+import { DatabaseWriteQueue } from './DatabaseWriteQueue';
 import type { ImportConfiguration } from '@canvas-memory/types';
 
 export interface ImportMessage {
@@ -55,13 +56,64 @@ export interface ImportResult {
  */
 export class EnhancedImportServiceV2 {
   private db: DatabaseClient;
+  private writeQueue: DatabaseWriteQueue | null;
   private localStore: ReturnType<typeof getLocalDocumentStore>;
   private autogroupService: EnhancedAutogroupService;
+  private context: { accountId: string; userId: string } | null = null;
 
-  constructor(db: DatabaseClient) {
+  constructor(db: DatabaseClient, writeQueue?: DatabaseWriteQueue) {
     this.db = db;
+    this.writeQueue = writeQueue || null;
     this.localStore = getLocalDocumentStore();
     this.autogroupService = new EnhancedAutogroupService();
+  }
+
+  /**
+   * Write node (queued if write queue available, otherwise direct)
+   */
+  private async writeNode(node: any): Promise<void> {
+    if (!node.account_id && this.context) {
+      node.account_id = this.context.accountId;
+    }
+    if (!node.created_by && this.context) {
+      node.created_by = this.context.userId;
+    }
+    node.created_at = node.created_at || Date.now();
+    node.updated_at = node.updated_at || Date.now();
+
+    if (this.writeQueue) {
+      this.writeQueue.enqueueNode(node);
+    } else {
+      await this.db.createNode(node);
+    }
+  }
+
+  /**
+   * Write edge (queued if write queue available, otherwise direct)
+   */
+  private async writeEdge(edge: any): Promise<void> {
+    if (!edge.account_id && this.context) {
+      edge.account_id = this.context.accountId;
+    }
+    if (!edge.created_by && this.context) {
+      edge.created_by = this.context.userId;
+    }
+    edge.created_at = edge.created_at || Date.now();
+
+    if (this.writeQueue) {
+      this.writeQueue.enqueueEdge(edge);
+    } else {
+      await this.db.createEdge(edge);
+    }
+  }
+
+  /**
+   * Flush write queue (if available)
+   */
+  private async flushWrites(): Promise<void> {
+    if (this.writeQueue) {
+      await this.writeQueue.forceFlush();
+    }
   }
 
   /**
@@ -70,72 +122,81 @@ export class EnhancedImportServiceV2 {
   async import(
     conversations: ImportConversation[],
     uploadHash: string,
-    config: ImportConfiguration
+    config: ImportConfiguration,
+    context: { accountId: string; userId: string }
   ): Promise<ImportResult> {
+    this.context = context;
     const startTime = Date.now();
 
-    // Step 1: Save upload metadata
-    await this.saveUploadMetadata(uploadHash, conversations, config);
+    try {
+      // Step 1: Save upload metadata
+      await this.saveUploadMetadata(uploadHash, conversations, config);
 
-    // Step 2: Extract messages for grouping
-    const allMessages = this.extractMessages(conversations, config);
+      // Step 2: Extract messages for grouping
+      const allMessages = this.extractMessages(conversations, config);
 
-    // Step 3: Auto-group messages
-    const groupResult = await this.autogroupService.autoGroupMessages(
-      allMessages,
-      config.grouping
-    );
+      // Step 3: Auto-group messages
+      const groupResult = await this.autogroupService.autoGroupMessages(
+        allMessages,
+        config.grouping
+      );
 
-    // Step 4: Save conversations, messages, and groups to database
-    await this.saveToDatabase(conversations, groupResult.groups, uploadHash);
+      // Step 4: Save conversations, messages, and groups to database
+      await this.saveToDatabase(conversations, groupResult.groups, uploadHash);
 
-    // Step 5: Create sources from messages
-    const sources = await this.createSources(allMessages, groupResult.groups, config);
+      // Step 5: Create sources from messages
+      const sources = await this.createSources(allMessages, groupResult.groups, config);
 
-    // Step 6: Extract code blocks (if enabled)
-    let codeBlocks = 0;
-    if (config.code.extract) {
-      codeBlocks = await this.extractCodeBlocks(conversations, config);
-    }
+      // Step 6: Extract code blocks (if enabled)
+      let codeBlocks = 0;
+      if (config.code.extract) {
+        codeBlocks = await this.extractCodeBlocks(conversations, config);
+      }
 
-    // Step 7: Detect duplicates (if enabled)
-    let duplicatesForReview = 0;
-    if (config.duplicates.enabled) {
-      duplicatesForReview = await this.detectDuplicates(sources, groupResult.groups, config);
-    }
+      // Step 7: Detect duplicates (if enabled)
+      let duplicatesForReview = 0;
+      if (config.duplicates.enabled) {
+        duplicatesForReview = await this.detectDuplicates(sources, groupResult.groups, config);
+      }
 
-    // Step 8: Create bundles (if enabled)
-    let bundles = 0;
-    if (config.sources.bundling.enabled) {
-      bundles = await this.createBundles(sources, config);
-    }
+      // Step 8: Create bundles (if enabled)
+      let bundles = 0;
+      if (config.sources.bundling.enabled) {
+        bundles = await this.createBundles(sources, config);
+      }
 
-    const endTime = Date.now();
-    const durationMs = endTime - startTime;
-    const totalMessages = conversations.reduce((sum, c) => sum + c.messages.length, 0);
+      // Flush all pending writes before completing
+      await this.flushWrites();
 
-    return {
-      uploadHash,
-      conversations: conversations.length,
-      messages: totalMessages,
-      groups: groupResult.groups,
-      sources: sources.length,
-      codeBlocks,
-      duplicatesForReview,
-      bundles,
-      stats: {
-        grouping: {
-          manualGroups: groupResult.stats.manualGroups,
-          autoGroups: groupResult.stats.autoGroups,
-          catchAllGroup: groupResult.stats.catchAllGroup,
-          avgGroupSize: groupResult.stats.avgGroupSize,
+      const endTime = Date.now();
+      const durationMs = endTime - startTime;
+      const totalMessages = conversations.reduce((sum, c) => sum + c.messages.length, 0);
+
+      return {
+        uploadHash,
+        conversations: conversations.length,
+        messages: totalMessages,
+        groups: groupResult.groups,
+        sources: sources.length,
+        codeBlocks,
+        duplicatesForReview,
+        bundles,
+        stats: {
+          grouping: {
+            manualGroups: groupResult.stats.manualGroups,
+            autoGroups: groupResult.stats.autoGroups,
+            catchAllGroup: groupResult.stats.catchAllGroup,
+            avgGroupSize: groupResult.stats.avgGroupSize,
+          },
+          processing: {
+            durationMs,
+            messagesPerSecond: Math.round((totalMessages / durationMs) * 1000),
+          },
         },
-        processing: {
-          durationMs,
-          messagesPerSecond: Math.round((totalMessages / durationMs) * 1000),
-        },
-      },
-    };
+      };
+    } finally {
+      this.context = null;
+    }
   }
 
   /**
@@ -148,15 +209,15 @@ export class EnhancedImportServiceV2 {
   ): Promise<void> {
     const totalMessages = conversations.reduce((sum, c) => sum + c.messages.length, 0);
     const userMessages = conversations.reduce(
-      (sum, c) => sum + c.messages.filter(m => m.role === 'user').length,
+      (sum, c) => sum + c.messages.filter((m) => m.role === 'user').length,
       0
     );
     const assistantMessages = conversations.reduce(
-      (sum, c) => sum + c.messages.filter(m => m.role === 'assistant').length,
+      (sum, c) => sum + c.messages.filter((m) => m.role === 'assistant').length,
       0
     );
 
-    await this.db.createNode({
+    await this.writeNode({
       id: `upload_${uploadHash}`,
       kind: 'UploadItem',
       created_at: Date.now(),
@@ -212,7 +273,7 @@ export class EnhancedImportServiceV2 {
   ): Promise<void> {
     // Save conversations as ChatThread nodes
     for (const conv of conversations) {
-      await this.db.createNode({
+      await this.writeNode({
         id: conv.id,
         kind: 'ChatThread',
         title: conv.title,
@@ -228,15 +289,10 @@ export class EnhancedImportServiceV2 {
       // Save messages (content to local store)
       for (const msg of conv.messages) {
         // Save content to local filesystem
-        const contentMeta = await this.localStore.saveMessage(
-          conv.id,
-          msg.id,
-          msg.content,
-          'md'
-        );
+        const contentMeta = await this.localStore.saveMessage(conv.id, msg.id, msg.content, 'md');
 
         // Save message ref to database
-        await this.db.createNode({
+        await this.writeNode({
           id: msg.id,
           kind: 'Message',
           role: msg.role,
@@ -253,7 +309,7 @@ export class EnhancedImportServiceV2 {
         });
 
         // Create HAS_MESSAGE edge
-        await this.db.createEdge({
+        await this.writeEdge({
           id: `edge_${nanoid()}`,
           kind: 'HAS_MESSAGE',
           from: conv.id,
@@ -268,7 +324,7 @@ export class EnhancedImportServiceV2 {
 
     // Save groups
     for (const group of groups) {
-      await this.db.createNode({
+      await this.writeNode({
         id: group.id,
         kind: 'Group',
         name: group.name,
@@ -285,7 +341,7 @@ export class EnhancedImportServiceV2 {
 
       // Create CONTAINS edges to messages
       for (const sourceId of group.sources) {
-        await this.db.createEdge({
+        await this.writeEdge({
           id: `edge_${nanoid()}`,
           kind: 'CONTAINS',
           from: group.id,
@@ -315,7 +371,7 @@ export class EnhancedImportServiceV2 {
         type: config.sources.scope,
         role: msg.role,
         content_location: `local://messages/${msg.conversationId}/${msg.id}.md`,
-        groups: groups.filter(g => g.sources.includes(msg.id)).map(g => g.id),
+        groups: groups.filter((g) => g.sources.includes(msg.id)).map((g) => g.id),
       });
     }
 
@@ -348,14 +404,10 @@ export class EnhancedImportServiceV2 {
             const codeId = `code_${nanoid()}`;
 
             // Save to local store
-            const codeMeta = await this.localStore.saveCodeBlock(
-              codeId,
-              code,
-              language
-            );
+            const codeMeta = await this.localStore.saveCodeBlock(codeId, code, language);
 
             // Save to database
-            await this.db.createNode({
+            await this.writeNode({
               id: codeId,
               kind: 'CodeBlock',
               language,
@@ -371,7 +423,7 @@ export class EnhancedImportServiceV2 {
             });
 
             // Create EXTRACTED_FROM edge
-            await this.db.createEdge({
+            await this.writeEdge({
               id: `edge_${nanoid()}`,
               kind: 'EXTRACTED_FROM',
               from: codeId,
@@ -396,7 +448,9 @@ export class EnhancedImportServiceV2 {
     groups: Group[],
     config: ImportConfiguration
   ): Promise<number> {
-    // TODO: Implement multi-layer duplicate detection
+    // TODO: Implement multi-layer duplicate detection using DuplicateDetectionService
+    // Related: apps/api/src/services/duplicate-detection.ts (DuplicateDetectionService)
+    // See: docs/features/DUPLICATE_DETECTION.md
     // For now, return 0
     return 0;
   }
@@ -405,7 +459,9 @@ export class EnhancedImportServiceV2 {
    * Create bundles (stub for now)
    */
   private async createBundles(sources: any[], config: ImportConfiguration): Promise<number> {
-    // TODO: Implement bundle creation
+    // TODO: Implement bundle creation logic
+    // Related: packages/parsers/src/services/sources-stitcher.ts (stitching logic)
+    // See: docs/features/BUNDLING.md (needs creation)
     // For now, return 0
     return 0;
   }

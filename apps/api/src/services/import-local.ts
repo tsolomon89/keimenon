@@ -17,13 +17,14 @@ import {
   ClusterEvidenceComputer,
   type ProcessingConfig,
 } from '@canvas-memory/parsers';
-import { getNeo4jClient, getSQLiteClient } from '@canvas-memory/db';
+import { SQLiteClient, DatabaseClient } from '@canvas-memory/db';
 import {
   DuplicateDetectionService,
   DuplicateGroup,
   DuplicateDetectionConfig,
 } from './duplicate-detection';
 import { getLocalDocumentStore, LocalDocumentStore } from './local-document-store';
+import { loadPolicyFromFile } from '@canvas-memory/types';
 import path from 'path';
 import os from 'os';
 
@@ -124,10 +125,7 @@ export class ImportServiceLocal {
         autoMergeThreshold: config.duplicate_auto_merge_threshold,
       };
 
-      duplicateGroups = await duplicateService.findDuplicates(
-        parseResult.conversations,
-        dupConfig
-      );
+      duplicateGroups = await duplicateService.findDuplicates(parseResult.conversations, dupConfig);
     }
 
     // 4. Build Sources Mode documents if enabled
@@ -142,10 +140,7 @@ export class ImportServiceLocal {
     }
 
     // 5. Phase 1-3: Content Processing, Grouping, and Clustering (SQLite)
-    const phase3Stats = await this.runPhase1to3Processing(
-      parseResult.conversations,
-      dataTag
-    );
+    const phase3Stats = await this.runPhase1to3Processing(parseResult.conversations, dataTag);
 
     // 6. Persist to local storage + Neo4j
     localStorageBytes = await this.persistToLocalAndNeo4j(
@@ -157,7 +152,7 @@ export class ImportServiceLocal {
 
     // 7. Build result
     const result: ImportResultLocal = {
-      conversations: parseResult.conversations.map(conv => ({
+      conversations: parseResult.conversations.map((conv) => ({
         id: conv.conversation_id,
         title: conv.title,
         platform: conv.platform,
@@ -236,23 +231,30 @@ export class ImportServiceLocal {
     near_dup_edges_created: number;
   }> {
     // Get SQLite database path (default to user home directory)
-    const dbPath = process.env.SQLITE_PATH || path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+    const dbPath =
+      process.env.SQLITE_PATH || path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+    const dbClient = global.dbClient;
+    const db = dbClient.getDatabase();
+
+    // Load clustering policy
+    const policyPath = path.join(__dirname, '../../policy.yaml');
+    const policy = loadPolicyFromFile(policyPath);
 
     // Initialize Phase 1-3 services
     const processor = new ContentProcessor({
-      extractTokens: false,    // Skip token level for performance
-      extractPhrases: false,    // Skip phrase level
-      extractSentences: true,   // Keep sentences
-      extractBlocks: true,      // Keep blocks
-      extractSections: true,    // Keep sections
+      extractTokens: false, // Skip token level for performance
+      extractPhrases: false, // Skip phrase level
+      extractSentences: true, // Keep sentences
+      extractBlocks: true, // Keep blocks
+      extractSections: true, // Keep sections
       generateSignatures: true, // Generate MinHash/TF-IDF
       minHashPermutations: 128,
     });
 
     const storage = new GroupingStorage(dbPath);
-    const deduper = new DeduplicationEngine(dbPath, storage);
-    const clusterer = new ClusteringEngine(dbPath, storage, undefined); // Use default policy
-    const evidenceComputer = new ClusterEvidenceComputer(dbPath, undefined);
+    const deduper = new DeduplicationEngine(db, storage);
+    const clusterer = new ClusteringEngine(db, storage, policy);
+    const evidenceComputer = new ClusterEvidenceComputer(db, policy);
 
     let blobsCreated = 0;
     let spansCreated = 0;
@@ -271,7 +273,7 @@ export class ImportServiceLocal {
         blobsCreated++;
 
         // Insert spans
-        const spansWithTag = processed.spans.map(span => ({
+        const spansWithTag = processed.spans.map((span) => ({
           ...span,
           data_tag: dataTag,
         }));
@@ -279,7 +281,7 @@ export class ImportServiceLocal {
         spansCreated += processed.spans.length;
 
         // Insert signatures
-        const sigsWithTag = processed.signatures.map(sig => ({
+        const sigsWithTag = processed.signatures.map((sig) => ({
           ...sig,
           data_tag: dataTag,
         }));
@@ -303,8 +305,8 @@ export class ImportServiceLocal {
     }
 
     // Phase 3: Exact Deduplication
-    const dedupResult = await deduper.deduplicate();
-    const exactDuplicatesFound = dedupResult.canonical_nodes.length;
+    const dedupResult = (await deduper.deduplicate()) as any;
+    const exactDuplicatesFound = dedupResult.canonical_nodes?.length || 0;
 
     // Phase 3: Clustering (run on sentence + block levels, prose + code modalities)
     let clustersCreated = 0;
@@ -312,19 +314,19 @@ export class ImportServiceLocal {
 
     try {
       // Cluster sentence-level prose
-      const sentenceProseResult = await clusterer.cluster('sentence', 'prose');
-      clustersCreated += sentenceProseResult.stats.total_clusters || 0;
-      nearDupEdgesCreated += sentenceProseResult.stats.edges_created || 0;
+      const sentenceProseResult = (await clusterer.cluster('sentence', 'prose')) as any;
+      clustersCreated += sentenceProseResult.stats?.total_clusters || 0;
+      nearDupEdgesCreated += sentenceProseResult.stats?.edges_created || 0;
 
       // Cluster block-level prose
-      const blockProseResult = await clusterer.cluster('block', 'prose');
-      clustersCreated += blockProseResult.stats.total_clusters || 0;
-      nearDupEdgesCreated += blockProseResult.stats.edges_created || 0;
+      const blockProseResult = (await clusterer.cluster('block', 'prose')) as any;
+      clustersCreated += blockProseResult.stats?.total_clusters || 0;
+      nearDupEdgesCreated += blockProseResult.stats?.edges_created || 0;
 
       // Cluster block-level code
-      const blockCodeResult = await clusterer.cluster('block', 'code');
-      clustersCreated += blockCodeResult.stats.total_clusters || 0;
-      nearDupEdgesCreated += blockCodeResult.stats.edges_created || 0;
+      const blockCodeResult = (await clusterer.cluster('block', 'code')) as any;
+      clustersCreated += blockCodeResult.stats?.total_clusters || 0;
+      nearDupEdgesCreated += blockCodeResult.stats?.edges_created || 0;
 
       // Compute evidence for all clusters
       evidenceComputer.computeAllEvidence();
@@ -352,333 +354,8 @@ export class ImportServiceLocal {
     codeAssets: CodeAsset[],
     dataTag: 'test' | 'automated' | 'manual' | 'real' = 'manual'
   ): Promise<number> {
-    const neo4j = getNeo4jClient();
-    const session = neo4j.getSession();
-    let totalBytes = 0;
-
-    try {
-      // 1. Save conversations to local + create graph nodes
-      for (const conv of conversations) {
-        // Save full conversation to local storage
-        const convMetadata = await this.localStore.saveConversation(
-          conv.conversation_id,
-          conv
-        );
-        totalBytes += convMetadata.size;
-
-        // Create ChatThread node (metadata only)
-        await this.createChatThread(session, conv, dataTag);
-
-        // Save messages to local + create Message nodes
-        for (const msg of conv.messages) {
-          const msgId = `${conv.conversation_id}_msg_${msg.index}`;
-
-          // Save message content to local storage
-          const msgMetadata = await this.localStore.saveMessage(
-            conv.conversation_id,
-            msgId,
-            msg.content,
-            'md'
-          );
-          totalBytes += msgMetadata.size;
-
-          // Create Message node with location pointer
-          await this.createMessageNode(session, conv.conversation_id, msg, msgId, msgMetadata.storagePath, dataTag);
-        }
-      }
-
-      // 2. Save SourceDocs to local + create Source nodes
-      for (const source of sources) {
-        // Save source content to local storage
-        const sourceContent = this.formatSourceDoc(source);
-        const sourceMetadata = await this.localStore.saveSource(
-          source.source_id,
-          sourceContent
-        );
-        totalBytes += sourceMetadata.size;
-
-        // Create Source node with location pointer
-        await this.createSourceDoc(session, source, sourceMetadata.storagePath, dataTag);
-      }
-
-      // 3. Save CodeAssets to local + create CodeBlock nodes
-      for (const asset of codeAssets) {
-        // Save code to local storage
-        const codeMetadata = await this.localStore.saveCodeBlock(
-          asset.id,
-          asset.code,
-          asset.language
-        );
-        totalBytes += codeMetadata.size;
-
-        // Create CodeBlock node with location pointer
-        await this.createCodeAsset(session, asset, codeMetadata.storagePath, dataTag);
-      }
-    } finally {
-      await session.close();
-    }
-
-    return totalBytes;
+    // TODO: This function is deprecated - Neo4j support has been removed
+    throw new Error('Neo4j import is deprecated. Use SQLite import instead.');
   }
-
-  /**
-   * Create ChatThread node
-   */
-  private async createChatThread(session: any, conv: NormalizedConversation, dataTag: string) {
-    const now = Date.now();
-
-    await session.run(
-      `
-      CREATE (t:ChatThread:Node {
-        id: $id,
-        kind: 'ChatThread',
-        title: $title,
-        created_at: $created_at,
-        updated_at: $updated_at,
-        metadata: $metadata,
-        data_tag: $data_tag
-      })
-      RETURN t
-      `,
-      {
-        id: conv.conversation_id,
-        title: conv.title,
-        created_at: conv.created_at,
-        updated_at: now,
-        metadata: JSON.stringify({
-          platform: conv.platform,
-          source_file: conv.metadata?.source_file,
-          message_count: conv.messages.length,
-        }),
-        data_tag: dataTag,
-      }
-    );
-  }
-
-  /**
-   * Create Message node (metadata only, content in local storage)
-   */
-  private async createMessageNode(
-    session: any,
-    threadId: string,
-    msg: any,
-    msgId: string,
-    storagePath: string,
-    dataTag: string
-  ) {
-    const now = Date.now();
-
-    await session.run(
-      `
-      MATCH (t:ChatThread {id: $threadId})
-      CREATE (m:Message:Node {
-        id: $id,
-        kind: 'Message',
-        role: $role,
-        content_location: $content_location,
-        content_hash: $content_hash,
-        char_count: $char_count,
-        thread_id: $threadId,
-        timestamp: $timestamp,
-        created_at: $created_at,
-        updated_at: $updated_at,
-        metadata: $metadata,
-        data_tag: $data_tag
-      })
-      CREATE (t)-[:HAS_MESSAGE {index: $index}]->(m)
-      `,
-      {
-        threadId,
-        id: msgId,
-        role: msg.role,
-        content_location: this.localStore.getStorageLocation({
-          id: msgId,
-          type: 'message',
-          hash: msg.hash,
-          storagePath,
-          size: msg.content.length,
-          createdAt: msg.timestamp
-        }),
-        content_hash: msg.hash,
-        char_count: msg.content.length,
-        timestamp: msg.timestamp,
-        index: msg.index,
-        created_at: msg.timestamp,
-        updated_at: now,
-        metadata: JSON.stringify({
-          ...msg.metadata,
-        }),
-        data_tag: dataTag,
-      }
-    );
-  }
-
-  /**
-   * Create SourceDoc as a Source node
-   */
-  private async createSourceDoc(
-    session: any,
-    sourceDoc: SourceDoc,
-    storagePath: string,
-    dataTag: string
-  ) {
-    const now = Date.now();
-
-    await session.run(
-      `
-      CREATE (s:Source:Node {
-        id: $id,
-        kind: 'Source',
-        title: $title,
-        fingerprint: $fingerprint,
-        mime_type: 'text/markdown',
-        size_bytes: $size_bytes,
-        content_location: $content_location,
-        created_at: $created_at,
-        updated_at: $updated_at,
-        metadata: $metadata,
-        data_tag: $data_tag
-      })
-      `,
-      {
-        id: sourceDoc.source_id,
-        title: sourceDoc.canonical_title,
-        fingerprint: `srcdoc:${sourceDoc.source_id}`,
-        size_bytes: sourceDoc.n_chars,
-        content_location: this.localStore.getStorageLocation({
-          id: sourceDoc.source_id,
-          type: 'source',
-          hash: sourceDoc.source_id,
-          storagePath,
-          size: sourceDoc.n_chars,
-          createdAt: sourceDoc.created_ts_min,
-        }),
-        created_at: sourceDoc.created_ts_min,
-        updated_at: now,
-        metadata: JSON.stringify({
-          type: 'source_doc',
-          n_segments: sourceDoc.n_segments,
-          n_chars: sourceDoc.n_chars,
-          provenance: sourceDoc.provenance,
-        }),
-        data_tag: dataTag,
-      }
-    );
-
-    // Create COMPILED_FROM edges to messages
-    for (const prov of sourceDoc.provenance) {
-      await session.run(
-        `
-        MATCH (s:Source {id: $sourceId})
-        MATCH (m:Message)
-        WHERE m.thread_id = $threadId
-          AND m.metadata CONTAINS '"index":' + toString($minIdx)
-        MERGE (s)-[:COMPILED_FROM]->(m)
-        `,
-        {
-          sourceId: sourceDoc.source_id,
-          threadId: prov.conversation_id,
-          minIdx: prov.message_idx_start,
-        }
-      );
-    }
-  }
-
-  /**
-   * Create CodeAsset as a CodeBlock node
-   */
-  private async createCodeAsset(
-    session: any,
-    asset: CodeAsset,
-    storagePath: string,
-    dataTag: string
-  ) {
-    const now = Date.now();
-
-    await session.run(
-      `
-      CREATE (c:CodeBlock:Source:Node {
-        id: $id,
-        kind: 'CodeBlock',
-        language: $language,
-        title: $title,
-        fingerprint: $fingerprint,
-        mime_type: $mime_type,
-        size_bytes: $size_bytes,
-        content_location: $content_location,
-        content_hash: $content_hash,
-        line_count: $line_count,
-        char_count: $char_count,
-        created_at: $created_at,
-        updated_at: $updated_at,
-        metadata: $metadata,
-        data_tag: $data_tag
-      })
-      `,
-      {
-        id: asset.id,
-        language: asset.language,
-        title: `${asset.language} code`,
-        fingerprint: asset.hash,
-        mime_type: `text/x-${asset.language}`,
-        size_bytes: asset.code.length,
-        content_location: this.localStore.getStorageLocation({
-          id: asset.id,
-          type: 'code',
-          hash: asset.hash,
-          storagePath,
-          size: asset.code.length,
-          createdAt: asset.timestamp,
-        }),
-        content_hash: asset.hash,
-        line_count: asset.code.split('\n').length,
-        char_count: asset.code.length,
-        created_at: asset.timestamp,
-        updated_at: now,
-        metadata: JSON.stringify({
-          type: 'code_asset',
-          ext: asset.ext,
-          conversation_id: asset.conversation_id,
-          derived_from_message_id: asset.derived_from_message_id,
-        }),
-        data_tag: dataTag,
-      }
-    );
-
-    // Create DERIVES_FROM edge to message
-    if (asset.derived_from_message_id) {
-      await session.run(
-        `
-        MATCH (c:CodeBlock {id: $codeId})
-        MATCH (m:Message {id: $msgId})
-        MERGE (c)-[:DERIVES_FROM]->(m)
-        `,
-        {
-          codeId: asset.id,
-          msgId: asset.derived_from_message_id,
-        }
-      );
-    }
-  }
-
-  /**
-   * Format source document as Markdown
-   */
-  private formatSourceDoc(source: SourceDoc): string {
-    let markdown = `# ${source.canonical_title}\n\n`;
-    markdown += source.content_markdown + '\n\n';
-    markdown += `## Provenance\n\n`;
-    markdown += `| Conversation | Messages | Timestamp |\n`;
-    markdown += `|--------------|----------|----------|\n`;
-
-    for (const prov of source.provenance) {
-      const msgRange = prov.message_idx_start === prov.message_idx_end
-        ? `${prov.message_idx_start}`
-        : `${prov.message_idx_start}-${prov.message_idx_end}`;
-      const date = new Date(prov.created_ts_min).toISOString();
-      markdown += `| ${prov.conversation_id.substring(0, 12)}... | ${msgRange} | ${date} |\n`;
-    }
-
-    return markdown;
-  }
+  // All Neo4j-related helper methods have been removed (deprecated)
 }

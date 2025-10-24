@@ -154,6 +154,37 @@ Emit a `VerifierPlan` JSON (no execution):
 - No purple prose. No invented URLs or companies.
 - When uncertain, write an **OpenQuestions** block with what evidence is missing.
 
+### 8.1 TODO Comment Standards (VSCode Integration)
+
+**Purpose:** Enable tracking via VSCode's built-in TODO detection and Todo Tree extension, ensuring AI agent visibility and user oversight.
+
+**Required patterns (always use these):**
+
+```typescript
+// TODO: [Description of what needs to be done]
+// FIXME: [Bug or issue that needs fixing]
+// HACK: [Temporary workaround, include why and what's needed]
+// NOTE: [Important implementation detail or context]
+// XXX: [Critical attention required]
+// BUG: [Known bug that needs addressing]
+```
+
+**Best practices:**
+
+- **Always reference related files**: `// TODO: Update AuthContext.tsx when adding MFA (see docs/architecture/AUTH.md)`
+- **Include context**: `// FIXME: Race condition in useEffect - need to debounce API calls`
+- **Link to docs**: `// TODO: Implement schema validation per ai_context/schemas/Claim.json`
+- **Specify owner when known**: `// TODO(@api-team): Add rate limiting middleware`
+- **Estimate scope**: `// TODO(2h): Refactor this to use the new factory pattern`
+
+**AI Agent workflow:**
+
+1. When starting any task, grep for relevant TODOs first
+2. Reference TODO locations when discussing implementation
+3. Add TODOs for incomplete work or follow-up items
+4. Update or remove TODOs when completing work
+5. Cross-reference with `docs/*.md` files mentioned in TODOs
+
 ---
 
 ## 9) Files you may read/extend
@@ -168,10 +199,47 @@ Emit a `VerifierPlan` JSON (no execution):
 ## 10) Mini runbook
 
 1. Load Receipt/Scope.
-2. List constraints (tier, limits) in `plan`.
-3. Perform task (extract, synthesize, plan) with citations.
-4. Propose verifications.
-5. Emit artifacts matching schemas.
-6. Record `receipt_used`.
+2. **Check for relevant TODOs** (grep across codebase for context).
+3. List constraints (tier, limits) in `plan`.
+4. Perform task (extract, synthesize, plan) with citations.
+5. Propose verifications.
+6. Emit artifacts matching schemas.
+7. Record `receipt_used`.
+8. **Update/add TODOs** for follow-up work or incomplete items.
+
+---
+
+## 11) AI Agent Professional Standards
+
+### 11.1 Pre-Task Analysis
+
+- **Search for TODOs** related to the current task area
+- **Read relevant `.md` files** referenced in code or TODOs
+- **Check component dependencies** before modifications
+- **Review test files** for existing coverage patterns
+
+### 11.2 During Implementation
+
+- **Add TODOs** for any shortcuts or deferred work
+- **Reference docs** in comments: `// See docs/architecture/OVERVIEW.md:649`
+- **Link related files**: `// Related: components/settings/DataManagementCard.tsx:42`
+- **Mark trade-offs**: `// HACK: Using polling until WebSocket support added (TODO: Issue #123)`
+
+### 11.3 Post-Task Cleanup
+
+- **Remove completed TODOs** from code
+- **Update referenced docs** if implementation differs
+- **Add new TODOs** discovered during work
+- **Document technical debt**: `// FIXME: O(n²) complexity, needs optimization for large datasets`
+
+### 11.4 Cross-Reference Protocol
+
+When working on features, always check:
+
+1. `docs/architecture/*.md` - System design patterns
+2. `docs/features/*.md` - Feature specifications
+3. `ai_context/schemas/*.json` - Data contracts
+4. Related component test files
+5. Existing TODOs in modified files
 
 **End of file.**

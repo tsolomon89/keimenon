@@ -16,9 +16,7 @@ const router = Router();
 function getDatabasePath(): string {
   const envPath = process.env.DATABASE_PATH;
   if (envPath) {
-    return envPath.startsWith('~')
-      ? path.join(os.homedir(), envPath.slice(1))
-      : envPath;
+    return envPath.startsWith('~') ? path.join(os.homedir(), envPath.slice(1)) : envPath;
   }
   return path.join(os.homedir(), '.canvas-memory', 'graph.db');
 }
@@ -50,13 +48,13 @@ router.post('/auto', async (req: Request, res: Response) => {
     const autogroupService = new EnhancedAutogroupService();
     const result = await autogroupService.autoGroupMessages(messages, groupingConfig);
 
-    res.json({
+    return res.json({
       success: true,
       result,
     });
   } catch (error: any) {
     console.error('Auto-group error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to auto-group messages',
       message: error.message,
     });
@@ -81,7 +79,7 @@ router.get('/suggest', async (req: Request, res: Response) => {
     const autogroupService = new EnhancedAutogroupService();
     const suggestions = await autogroupService.suggestGroups(parsedMessages, targetCount);
 
-    res.json({
+    return res.json({
       success: true,
       suggestions,
       targetCount,
@@ -89,7 +87,7 @@ router.get('/suggest', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Group suggestion error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to suggest groups',
       message: error.message,
     });
@@ -111,20 +109,16 @@ router.post('/recompute', async (req: Request, res: Response) => {
     }
 
     const autogroupService = new EnhancedAutogroupService();
-    const result = await autogroupService.recomputeGroups(
-      messages,
-      config,
-      newTargetCount
-    );
+    const result = await autogroupService.recomputeGroups(messages, config, newTargetCount);
 
-    res.json({
+    return res.json({
       success: true,
       result,
       newTargetCount,
     });
   } catch (error: any) {
     console.error('Recompute error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to recompute groups',
       message: error.message,
     });
@@ -149,14 +143,14 @@ router.get('/', async (req: Request, res: Response) => {
 
     const groups = await db.getNodesByKind?.('Group');
 
-    res.json({
+    return res.json({
       success: true,
       groups: groups || [],
       count: groups?.length || 0,
     });
   } catch (error: any) {
     console.error('List groups error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to list groups',
       message: error.message,
     });
@@ -187,22 +181,22 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     // Get group members (outgoing CONTAINS edges)
     const edges = await db.getNodeEdges?.(id, 'outgoing');
-    const memberIds = edges?.filter(e => e.kind === 'CONTAINS').map(e => e.to) || [];
+    const memberIds = edges?.filter((e) => e.kind === 'CONTAINS').map((e) => e.to) || [];
 
     // Get member nodes
     const members = await Promise.all(
       memberIds.map(async (memberId) => await db.getNode(memberId))
     );
 
-    res.json({
+    return res.json({
       success: true,
       group,
-      members: members.filter(m => m !== null),
+      members: members.filter((m) => m !== null),
       memberCount: members.length,
     });
   } catch (error: any) {
     console.error('Get group error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to get group',
       message: error.message,
     });
@@ -259,7 +253,7 @@ router.post('/', async (req: Request, res: Response) => {
       }
     }
 
-    res.json({
+    return res.json({
       success: true,
       groupId,
       name,
@@ -267,7 +261,7 @@ router.post('/', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Create group error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to create group',
       message: error.message,
     });
@@ -299,14 +293,14 @@ router.delete('/:id', async (req: Request, res: Response) => {
     // Delete group (edges will be cascade deleted due to foreign keys)
     await db.deleteNode?.(id);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Group deleted',
       groupId: id,
     });
   } catch (error: any) {
     console.error('Delete group error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to delete group',
       message: error.message,
     });

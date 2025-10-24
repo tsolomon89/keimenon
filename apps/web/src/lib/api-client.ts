@@ -19,6 +19,10 @@ function getAuthHeaders(): HeadersInit {
 
   // Add operating context headers if available
   // These are set by the OperatingContext when switching accounts
+  // TODO: Replace unsafe type assertions with proper Window interface extension
+  // Related: apps/web/src/contexts/OperatingContext.tsx:92-93 (sets these globals)
+  // See: docs/architecture/TYPE_SAFETY.md (needs creation)
+  // Add: global.d.ts with Window interface extension for __operatingAccount and __operatingMode
   if (typeof window !== 'undefined') {
     const operatingAccount = (window as any).__operatingAccount;
     const operatingMode = (window as any).__operatingMode;
@@ -78,14 +82,19 @@ export interface BatchImportResponse {
 /**
  * Convert frontend ChatImportConfig to backend ImportConfig format
  */
+// TODO: Add input validation for ChatImportConfig before conversion
+// Related: apps/web/src/types/chat-import.ts (ChatImportConfig type definition)
+// See: docs/features/INPUT_VALIDATION.md (needs creation)
+// Validate: threshold ranges (0-1), minLength >= 0, proper enum values
 function convertConfig(config: ChatImportConfig): any {
   return {
     // Role & length filters
-    sources_role_subset: config.extraction.includeUser && config.extraction.includeAssistant
-      ? 'both'
-      : config.extraction.includeUser
-      ? 'user'
-      : 'assistant',
+    sources_role_subset:
+      config.extraction.includeUser && config.extraction.includeAssistant
+        ? 'both'
+        : config.extraction.includeUser
+          ? 'user'
+          : 'assistant',
     sources_min_chars_user: config.minMessageLength,
     sources_min_chars_assistant: config.minMessageLength,
 
@@ -126,13 +135,128 @@ function convertConfig(config: ChatImportConfig): any {
 }
 
 /**
- * Import chat conversations from files
+ * Import chat files as a background job (unified jobs system)
+ * Returns job ID immediately for SSE progress tracking
+ *
+ * Related: apps/api/src/modules/jobs/infrastructure/import-jobs.routes.ts:76 (POST /api/v1/jobs/import)
+ * Related: apps/web/src/hooks/useJobStream.ts (SSE progress updates)
+ * Related: apps/web/src/components/canvas/ImportsTableCard.tsx (job history display)
+ */
+export async function importChatFilesAsJob(
+  files: File[],
+  config: ChatImportConfig,
+  detectedPlatform?: 'chatgpt' | 'claude' | 'gemini' | 'generic'
+): Promise<{
+  success: boolean;
+  jobId: string;
+  uploadIds: string[];
+  message: string;
+  job: any;
+}> {
+  const formData = new FormData();
+
+  // Add all files
+  files.forEach((file) => {
+    formData.append('files', file);
+  });
+
+  // Enhanced config for job-based import - pass all relevant settings
+  const jobConfig = {
+    // Platform detection (enables platform-specific parsers)
+    platform: detectedPlatform,
+
+    // Code extraction
+    exportCode: config.extractCode,
+    codeMinChars: config.codeSettings.minLength,
+
+    // Grouping (auto-grouping when processingMode is automatic)
+    autoGroup: config.processingMode === 'automatic',
+    targetGroupCount: 25, // Default target for auto-grouping
+
+    // Duplicate detection
+    duplicateDetection: config.duplicateDetection.enabled,
+    duplicateThreshold: config.duplicateDetection.similarityThreshold,
+
+    // Processing mode (automatic vs manual grouping)
+    processingMode: config.processingMode,
+
+    // Branches (conversation branch handling)
+    branches: config.branches,
+
+    // Manual groups (if processingMode is manual)
+    manualGroups: config.processingMode === 'manual' ? config.groups : undefined,
+  };
+
+  formData.append('config', JSON.stringify(jobConfig));
+
+  // Validate files before uploading
+  const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+
+  for (const file of files) {
+    if (!file.name.match(/\.(json|jsonl)$/i)) {
+      throw new FileError(
+        `Invalid file type: ${file.name}. Only JSON and JSONL files are supported.`
+      );
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      throw new FileError(`File too large: ${file.name}. Maximum size is 2GB.`, {
+        fileName: file.name,
+        size: file.size,
+        maxSize: MAX_FILE_SIZE,
+      });
+    }
+  }
+
+  const endpoint = `${API_BASE_URL}/api/v1/jobs/import`;
+
+  console.log(
+    `Creating import job for files:`,
+    files.map((f) => f.name)
+  );
+
+  try {
+    return await withRetry(
+      async () => {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: formData,
+        });
+
+        if (!response.ok) {
+          await handleApiError({ response });
+        }
+
+        return await response.json();
+      },
+      {
+        maxAttempts: 2,
+        delay: 1000,
+        onRetry: (attempt, error) => {
+          console.warn(`Import job creation attempt ${attempt} failed, retrying...`, error);
+        },
+      }
+    );
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+/**
+ * Import chat conversations from files (legacy synchronous endpoint)
  * Automatically uses streaming endpoint for files > 10MB
+ *
+ * @deprecated Use importChatFilesAsJob() instead for better UX with background job processing
  */
 export async function importChatFiles(
   files: File[],
   config: ChatImportConfig
 ): Promise<BatchImportResponse> {
+  // TODO: Add validation for empty files array
+  // Related: apps/web/src/components/canvas/ChatImportModal.tsx (file upload UI)
+  // See: docs/features/INPUT_VALIDATION.md (needs creation)
+  // Validate: files.length > 0, each file has valid size/type
   const formData = new FormData();
 
   // Add all files
@@ -162,10 +286,11 @@ export async function importChatFiles(
 
       // Validate against streaming max size
       if (file.size > STREAMING_MAX_SIZE) {
-        throw new FileError(
-          `File too large: ${file.name}. Maximum size is 2GB.`,
-          { fileName: file.name, size: file.size, maxSize: STREAMING_MAX_SIZE }
-        );
+        throw new FileError(`File too large: ${file.name}. Maximum size is 2GB.`, {
+          fileName: file.name,
+          size: file.size,
+          maxSize: STREAMING_MAX_SIZE,
+        });
       }
     }
   }
@@ -175,7 +300,10 @@ export async function importChatFiles(
     ? `${API_BASE_URL}/api/v1/import/enhanced`
     : `${API_BASE_URL}/api/v1/import/chat/batch`;
 
-  console.log(`Using ${useStreaming ? 'streaming' : 'standard'} import for files:`, files.map(f => f.name));
+  console.log(
+    `Using ${useStreaming ? 'streaming' : 'standard'} import for files:`,
+    files.map((f) => f.name)
+  );
 
   try {
     return await withRetry(
@@ -249,6 +377,9 @@ export async function detectPlatform(file: File): Promise<{
     return { platform: 'unknown', confidence: 0.0 };
   } catch (error) {
     console.error('Platform detection error:', error);
+    // TODO: Add user-facing error notification for platform detection failures
+    // Related: apps/web/src/components/common/Toast.tsx (create toast system)
+    // See: docs/features/ERROR_HANDLING.md (needs creation)
     return { platform: 'unknown', confidence: 0.0 };
   }
 }
@@ -276,7 +407,9 @@ export async function analyzeFiles(files: File[]): Promise<{
 
       // For large files, provide rough estimates to avoid browser freeze
       if (file.size > LARGE_FILE_THRESHOLD) {
-        console.log(`Large file detected (${(file.size / 1024 / 1024).toFixed(2)}MB), using estimates`);
+        console.log(
+          `Large file detected (${(file.size / 1024 / 1024).toFixed(2)}MB), using estimates`
+        );
         // Rough estimate: 1 conversation per 250KB, 10 messages per conversation
         const estimatedConvs = Math.floor(file.size / (250 * 1024));
         totalConversations += estimatedConvs;
@@ -307,6 +440,9 @@ export async function analyzeFiles(files: File[]): Promise<{
       }
     } catch (error) {
       console.error('Error analyzing file:', file.name, error);
+      // TODO: Add user-facing error notification for file analysis failures
+      // Related: apps/web/src/components/common/Toast.tsx (create toast system)
+      // See: docs/features/ERROR_HANDLING.md (needs creation)
       // If analysis fails, provide minimal estimate
       totalConversations += 1;
       totalMessages += 10;
@@ -365,6 +501,14 @@ export interface ConversationContent {
   };
 }
 
+type GraphStorageStats = {
+  total_nodes: number;
+  message_nodes: number;
+  source_nodes: number;
+  code_block_nodes: number;
+  total_edges?: number;
+};
+
 export interface StorageStats {
   local_storage: {
     totalDocuments: number;
@@ -372,13 +516,10 @@ export interface StorageStats {
     byType: Record<string, { count: number; size: number }>;
     path: string;
   };
-  neo4j: {
-    total_nodes: number;
-    message_nodes: number;
-    source_nodes: number;
-    code_block_nodes: number;
-  };
+  database?: GraphStorageStats;
+  neo4j?: GraphStorageStats;
   storage_model: string;
+  storage_mode?: string;
 }
 
 /**
@@ -735,16 +876,59 @@ export interface DuplicateResolutionResult {
 
 /**
  * Resolve a duplicate with a decision
+ * Creates appropriate edges based on decision type (immutable approach)
+ *
+ * @param candidateId - Unique identifier for this duplicate candidate
+ * @param decision - Type of resolution (keep-primary, keep-duplicate, keep-both, merge)
+ * @param primaryNodeId - Node ID of the primary/canonical version
+ * @param duplicateNodeId - Node ID of the duplicate version
  */
 export async function resolveDuplicate(
   candidateId: string,
-  decision: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge'
+  decision: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge',
+  primaryNodeId: string,
+  duplicateNodeId: string
 ): Promise<DuplicateResolutionResult> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/duplicates/resolve`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ candidateId, decision }),
+      body: JSON.stringify({
+        candidateId,
+        decision,
+        primaryNodeId,
+        duplicateNodeId,
+      }),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+/**
+ * Mark a duplicate as ignored (creates IGNORE edge instead of deleting)
+ * This follows the immutability principle - nodes are never deleted
+ *
+ * @param duplicateId - Unique identifier for this duplicate candidate
+ * @param primaryNodeId - Node ID of the primary version
+ * @param duplicateNodeId - Node ID of the duplicate version
+ */
+export async function ignoreDuplicate(
+  duplicateId: string,
+  primaryNodeId: string,
+  duplicateNodeId: string
+): Promise<{ success: boolean; edgeId: string; message: string }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/duplicates/${duplicateId}/ignore`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ primaryNodeId, duplicateNodeId }),
     });
 
     if (!response.ok) {
@@ -759,12 +943,68 @@ export async function resolveDuplicate(
 
 /**
  * Delete a duplicate message
+ * @deprecated Use ignoreDuplicate() instead - this system maintains immutability
  */
 export async function deleteDuplicate(duplicateId: string): Promise<{ success: boolean }> {
+  console.warn('deleteDuplicate() is deprecated - use ignoreDuplicate() instead');
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/duplicates/${duplicateId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+/**
+ * Apply duplicate review decisions after import
+ * Creates appropriate edges and removes/merges nodes based on user decisions
+ *
+ * @param decisions Array of review decisions
+ * @param importId Optional import ID for tracking
+ */
+export async function applyDuplicateDecisions(
+  decisions: Array<{
+    duplicateId: string;
+    action: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge';
+    timestamp: number;
+    userId?: string;
+  }>,
+  importId?: string
+): Promise<{
+  success: boolean;
+  result: {
+    applied_decisions: number;
+    action_counts: {
+      'keep-primary': number;
+      'keep-duplicate': number;
+      'keep-both': number;
+      merge: number;
+    };
+    nodes_kept: number;
+    nodes_removed: number;
+    nodes_merged: number;
+    message: string;
+  };
+}> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/import/chat/apply-decisions`, {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        decisions,
+        import_id: importId,
+      }),
     });
 
     if (!response.ok) {
@@ -824,6 +1064,18 @@ export async function getNodes(params?: {
     }
 
     const data = await response.json();
+    console.log('📥 getNodes response:', {
+      nodeCount: data.nodes?.length || 0,
+      total: data.total,
+      sampleNode: data.nodes?.[0]
+        ? {
+            id: data.nodes[0].id,
+            kind: data.nodes[0].kind,
+            hasProperties: !!data.nodes[0].properties,
+          }
+        : null,
+    });
+
     return {
       nodes: data.nodes || [],
       total: data.total || data.nodes?.length || 0,
@@ -1037,11 +1289,17 @@ export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
 /**
  * Get top accounts by metric (admin only)
  */
-export async function getTopAccounts(metric: 'usage' | 'storage' = 'usage', limit: number = 10): Promise<{ accounts: TopAccount[] }> {
+export async function getTopAccounts(
+  metric: 'usage' | 'storage' = 'usage',
+  limit: number = 10
+): Promise<{ accounts: TopAccount[] }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/analytics/top-accounts?metric=${metric}&limit=${limit}`, {
-      headers: getAuthHeaders(),
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/analytics/top-accounts?metric=${metric}&limit=${limit}`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -1056,11 +1314,16 @@ export async function getTopAccounts(metric: 'usage' | 'storage' = 'usage', limi
 /**
  * Get recent system activity (admin only)
  */
-export async function getRecentActivity(limit: number = 50): Promise<{ activity: RecentActivity[] }> {
+export async function getRecentActivity(
+  limit: number = 50
+): Promise<{ activity: RecentActivity[] }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/analytics/recent-activity?limit=${limit}`, {
-      headers: getAuthHeaders(),
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/analytics/recent-activity?limit=${limit}`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -1223,3 +1486,107 @@ export async function deleteUser(userId: string): Promise<{ message: string }> {
     throw await handleApiError(error);
   }
 }
+
+// ==================== Axios-style API Client ====================
+
+/**
+ * Get auth token for SSE and other direct requests
+ */
+export function getAuthToken(): string {
+  return getToken() || '';
+}
+
+/**
+ * Settings API functions
+ */
+export async function fetchSettings(accountId: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/settings?accountId=${accountId}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) await handleApiError({ response });
+  return response.json();
+}
+
+export async function updateSetting(id: string, value: any): Promise<any> {
+  const token = getToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/settings/${id}`, {
+    method: 'PATCH',
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ value }),
+  });
+  if (!response.ok) await handleApiError({ response });
+  return response.json();
+}
+
+export async function bulkUpdateSettings(updates: Array<{ id: string; value: any }>): Promise<any> {
+  const token = getToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/settings/bulk`, {
+    method: 'PATCH',
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ updates }),
+  });
+  if (!response.ok) await handleApiError({ response });
+  return response.json();
+}
+
+/**
+ * Axios-style API client for compatibility with existing code
+ */
+export const apiClient = {
+  get: async (url: string, config?: { headers?: HeadersInit }) => {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'GET',
+      headers: { ...getAuthHeaders(), ...config?.headers },
+    });
+    if (!response.ok) await handleApiError({ response });
+    return { data: await response.json() };
+  },
+
+  post: async (url: string, data?: any, config?: { headers?: HeadersInit }) => {
+    const isFormData = data instanceof FormData;
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(),
+        ...(!isFormData && { 'Content-Type': 'application/json' }),
+        ...config?.headers,
+      },
+      body: isFormData ? data : JSON.stringify(data),
+    });
+    if (!response.ok) await handleApiError({ response });
+    return { data: await response.json() };
+  },
+
+  patch: async (url: string, data?: any, config?: { headers?: HeadersInit }) => {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'PATCH',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+        ...config?.headers,
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) await handleApiError({ response });
+    return { data: await response.json() };
+  },
+
+  delete: async (url: string, config?: { headers?: HeadersInit }) => {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeaders(), ...config?.headers },
+    });
+    if (!response.ok) await handleApiError({ response });
+    return { data: await response.json() };
+  },
+};

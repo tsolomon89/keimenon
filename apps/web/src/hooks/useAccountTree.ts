@@ -3,6 +3,7 @@ import { Building2, Wrench, Crown, Zap } from 'lucide-react';
 import { TreeNode } from '@/components/common/NavigationBar';
 import { getAccounts, Account } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
+import { errorCapture } from '@/services/error-capture.service';
 
 export function useAccountTree() {
   const { user } = useAuth();
@@ -29,9 +30,7 @@ export function useAccountTree() {
         const clientAccounts = accounts.filter(
           (acc) => acc.account_type === 'client' && !acc.mode_service
         );
-        const debugAccounts = accounts.filter(
-          (acc) => acc.mode_service === true
-        );
+        const debugAccounts = accounts.filter((acc) => acc.mode_service === true);
 
         // Build tree structure
         const tree: TreeNode[] = [
@@ -56,7 +55,25 @@ export function useAccountTree() {
         setTreeData(tree);
       } catch (err: any) {
         console.error('Failed to fetch account tree:', err);
-        setError(err.message || 'Failed to load accounts');
+
+        // Capture error for console display
+        const capturedError = errorCapture.capture(
+          err,
+          {
+            domain: 'api',
+            operation: 'accounts.fetchTree',
+            userId: user?.userId,
+            accountId: user?.accountId,
+            metadata: {
+              component: 'useAccountTree',
+              endpoint: '/api/v1/analytics/accounts',
+            },
+          },
+          'error'
+        );
+
+        const userMessage = capturedError.userMessage || err.message || 'Failed to load accounts';
+        setError(userMessage);
       } finally {
         setLoading(false);
       }

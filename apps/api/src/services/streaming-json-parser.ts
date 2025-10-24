@@ -169,9 +169,10 @@ export class StreamingJSONParser extends EventEmitter {
         resolve();
       });
 
-      stream.on('data', (chunk: Buffer) => {
-        bytesProcessed += chunk.length;
-        this.parser.write(chunk.toString());
+      stream.on('data', (chunk: string | Buffer) => {
+        const buffer = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk;
+        bytesProcessed += buffer.length;
+        this.parser.write(buffer.toString());
       });
 
       stream.on('end', () => {

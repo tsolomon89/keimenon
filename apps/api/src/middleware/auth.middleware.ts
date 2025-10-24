@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AuthService } from '../services/auth.service';
+import { AuthServiceV2 } from '../services/auth.service';
 import { AuditService } from '../services/audit.service';
 import { SQLiteClient } from '@canvas-memory/db';
 
@@ -9,13 +9,15 @@ declare global {
     interface Request {
       user?: {
         userId: string;
-        accountId: string; // Home account
+        accountId: string; // Current active account
         email: string;
-        permissionLevel: 'junior' | 'senior' | 'leader' | 'admin';
+        permissionLevel: 'junior' | 'senior' | 'leader' | 'admin'; // Permission for current account
         accountType: 'admin' | 'client';
         accountClass: 'free' | 'professional' | 'business';
-        rank: number; // 1-4
+        rank: number; // 1-4 (role_rank for current account)
         overrides?: Record<string, boolean>;
+        sessionId: string; // Session ID for tracking
+        allAccounts?: string[]; // All accessible account IDs
       };
       // NEW: Operating context for nested/CRM mode
       operating?: {
@@ -32,8 +34,9 @@ declare global {
 /**
  * Middleware to require authentication
  * Verifies JWT token and attaches user data to request
+ * Updated for M:N user-account relationships
  */
-export function requireAuth(authService: AuthService) {
+export function requireAuth(authService: AuthServiceV2) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Get token from Authorization header
@@ -52,16 +55,18 @@ export function requireAuth(authService: AuthService) {
         return res.status(401).json({ error: 'Invalid or expired token' });
       }
 
-      // Attach user data to request
+      // Attach user data to request (from JWT payload)
       req.user = {
         userId: payload.userId,
-        accountId: payload.accountId,
+        accountId: payload.accountId, // Current active account
         email: payload.email,
-        permissionLevel: payload.permissionLevel as any,
+        permissionLevel: payload.permissionLevel as any, // Permission for current account
         accountType: payload.accountType as any,
         accountClass: payload.accountClass as any,
-        rank: payload.rank || 1,
+        rank: payload.rank || 1, // role_rank for current account
         overrides: payload.overrides,
+        sessionId: payload.sessionId,
+        allAccounts: payload.allAccounts, // All accounts user has access to
       };
 
       // Check for operating context headers (nested/CRM mode)
@@ -70,39 +75,52 @@ export function requireAuth(authService: AuthService) {
 
       if (operatingAccountHeader && operatingAccountHeader !== payload.accountId) {
         // User is trying to operate in a different account context
-        // This is only allowed for admin users
-        if (payload.accountType !== 'admin') {
-          return res.status(403).json({
-            error: 'Cross-account access denied',
-            message: 'Only admin accounts can operate in other accounts',
-          });
-        }
-
-        // Verify admin has access to target account (check account_links)
+        // First check if user has direct membership in target account (M:N relationship)
         const database = authService['db'].getDatabase();
 
-        const link = database
+        const membership = database
           .prepare(
-            `SELECT * FROM account_links
-             WHERE admin_account_id = ? AND client_account_id = ?`
+            `SELECT * FROM user_accounts
+             WHERE user_id = ? AND account_id = ? AND status = 'active'`
           )
-          .get(payload.accountId, operatingAccountHeader) as any;
+          .get(payload.userId, operatingAccountHeader) as any;
 
-        if (!link) {
-          // Log failed cross-tenant access attempt
-          if (global.auditService) {
-            await global.auditService.logFailure({
-              req: { user: req.user, operating: undefined } as any,
-              action: 'read',
-              resourceType: 'account',
-              resourceId: operatingAccountHeader,
-              reason: 'Admin not linked to target account',
+        if (membership) {
+          // User has direct access to this account
+          // This is allowed - user can switch between their accounts
+          // No additional checks needed for direct membership
+        } else if (payload.accountType === 'admin') {
+          // User doesn't have direct membership, but is an admin
+          // Check if admin has access via account_links
+          const link = database
+            .prepare(
+              `SELECT * FROM account_links
+               WHERE admin_account_id = ? AND client_account_id = ?`
+            )
+            .get(payload.accountId, operatingAccountHeader) as any;
+
+          if (!link) {
+            // Log failed cross-tenant access attempt
+            if (global.auditService) {
+              await global.auditService.logFailure({
+                req: { user: req.user, operating: undefined } as any,
+                action: 'read',
+                resourceType: 'account',
+                resourceId: operatingAccountHeader,
+                reason: 'User not member and admin not linked to target account',
+              });
+            }
+
+            return res.status(403).json({
+              error: 'Access denied',
+              message: 'You do not have access to this account',
             });
           }
-
+        } else {
+          // User is not a member and not an admin
           return res.status(403).json({
-            error: 'Access denied',
-            message: 'Admin account is not linked to target account',
+            error: 'Cross-account access denied',
+            message: 'You do not have access to this account',
           });
         }
 
@@ -168,7 +186,7 @@ export function requireAuth(authService: AuthService) {
         };
       }
 
-      next();
+      return next();
     } catch (error) {
       console.error('Auth middleware error:', error);
       return res.status(401).json({ error: 'Authentication failed' });
@@ -189,7 +207,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     return res.status(403).json({ error: 'Admin access required' });
   }
 
-  next();
+  return next();
 }
 
 /**
@@ -213,7 +231,7 @@ export function requirePermission(minLevel: 'junior' | 'senior' | 'leader' | 'ad
       });
     }
 
-    next();
+    return next();
   };
 }
 
@@ -231,7 +249,7 @@ export function isolateByAccount(req: Request, res: Response, next: NextFunction
   if (req.user.accountType === 'admin') {
     // Allow admin to optionally filter by account_id via query param
     // If not provided, they see all data
-    next();
+    return next();
     return;
   }
 
@@ -239,7 +257,7 @@ export function isolateByAccount(req: Request, res: Response, next: NextFunction
   // Attach account_id to request for use in route handlers
   (req as any).accountId = req.user.accountId;
 
-  next();
+  return next();
 }
 
 /**
@@ -257,7 +275,7 @@ export function requireBusiness(req: Request, res: Response, next: NextFunction)
     });
   }
 
-  next();
+  return next();
 }
 
 /**
@@ -275,21 +293,21 @@ export function requireProfessional(req: Request, res: Response, next: NextFunct
     });
   }
 
-  next();
+  return next();
 }
 
 /**
  * Optional auth middleware - doesn't fail if no token provided
  * Just attaches user data if valid token exists
  */
-export function optionalAuth(authService: AuthService) {
+export function optionalAuth(authService: AuthServiceV2) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const authHeader = req.headers.authorization;
 
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         // No token provided - continue without auth
-        next();
+        return next();
         return;
       }
 
@@ -304,13 +322,17 @@ export function optionalAuth(authService: AuthService) {
           permissionLevel: payload.permissionLevel as any,
           accountType: payload.accountType as any,
           accountClass: payload.accountClass as any,
+          rank: payload.rank || 1,
+          overrides: payload.overrides,
+          sessionId: payload.sessionId,
+          allAccounts: payload.allAccounts,
         };
       }
 
-      next();
+      return next();
     } catch (error) {
       // Silently continue without auth
-      next();
+      return next();
     }
   };
 }

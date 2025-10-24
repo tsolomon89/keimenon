@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { getNodes, getEdges, GraphNode as APIGraphNode, GraphEdge as APIGraphEdge } from '@/lib/api-client';
+import {
+  getNodes,
+  getEdges,
+  GraphNode as APIGraphNode,
+  GraphEdge as APIGraphEdge,
+} from '@/lib/api-client';
 
 // Helper functions to map API types to Canvas types
 function mapNodeKindToType(kind: string): 'conversation' | 'message' | 'source' | 'code' {
@@ -91,6 +96,9 @@ interface CanvasState {
     filteredNodeIds: string[] | null; // null = show all, array = show only these IDs
   };
 
+  // Account isolation
+  currentAccountId: string | null;
+
   // Actions
   setNodes: (nodes: CanvasNode[]) => void;
   setEdges: (edges: CanvasEdge[]) => void;
@@ -130,6 +138,9 @@ interface CanvasState {
   getNode: (id: string) => CanvasNode | undefined;
   getConnectedNodes: (id: string) => CanvasNode[];
   reset: () => void;
+
+  // Account isolation actions
+  setCurrentAccountId: (accountId: string) => void;
 }
 
 const initialState = {
@@ -147,6 +158,7 @@ const initialState = {
     searchQuery: '',
     filteredNodeIds: null,
   },
+  currentAccountId: null,
 };
 
 export const useCanvasStore = create<CanvasState>()(
@@ -164,8 +176,23 @@ export const useCanvasStore = create<CanvasState>()(
           // Fetch nodes and edges from API
           const [nodesResult, edgesResult] = await Promise.all([
             getNodes({ limit: 1000 }), // Load first 1000 nodes for now
-            getEdges({ limit: 2000 })  // Load first 2000 edges for now
+            getEdges({ limit: 2000 }), // Load first 2000 edges for now
           ]);
+
+          console.log('🎨 loadGraphData received:', {
+            nodesCount: nodesResult.nodes.length,
+            edgesCount: edgesResult.edges.length,
+            sampleNode: nodesResult.nodes[0]
+              ? {
+                  id: nodesResult.nodes[0].id,
+                  kind: nodesResult.nodes[0].kind,
+                  hasProperties: !!nodesResult.nodes[0].properties,
+                  propertiesKeys: nodesResult.nodes[0].properties
+                    ? Object.keys(nodesResult.nodes[0].properties)
+                    : [],
+                }
+              : null,
+          });
 
           // Transform API nodes to Canvas nodes
           const canvasNodes: CanvasNode[] = nodesResult.nodes.map((apiNode: APIGraphNode) => ({
@@ -176,7 +203,8 @@ export const useCanvasStore = create<CanvasState>()(
               y: Math.random() * 600,
             },
             data: {
-              label: apiNode.properties?.title || apiNode.properties?.name || apiNode.id.slice(0, 8),
+              label:
+                apiNode.properties?.title || apiNode.properties?.name || apiNode.id.slice(0, 8),
               content: apiNode.properties?.content,
               metadata: apiNode.properties,
             },
@@ -191,14 +219,33 @@ export const useCanvasStore = create<CanvasState>()(
             data: apiEdge.properties,
           }));
 
+          console.log('🎨 Transformed to canvas format:', {
+            canvasNodesCount: canvasNodes.length,
+            canvasEdgesCount: canvasEdges.length,
+            sampleCanvasNode: canvasNodes[0]
+              ? {
+                  id: canvasNodes[0].id,
+                  type: canvasNodes[0].type,
+                  label: canvasNodes[0].data.label,
+                  hasMetadata: !!canvasNodes[0].data.metadata,
+                }
+              : null,
+          });
+
           set({
             nodes: canvasNodes,
             edges: canvasEdges,
             isLoading: false,
             error: null,
           });
+
+          console.log('✅ Canvas store updated successfully');
         } catch (error: any) {
           console.error('Failed to load graph data:', error);
+          // TODO: Add retry logic and exponential backoff for graph data loading failures
+          // Related: apps/web/src/lib/error-handler.ts:withRetry (retry utility exists)
+          // See: docs/features/ERROR_RECOVERY.md (needs creation)
+          // Implement: Automatic retry with backoff, manual retry button in UI
           set({
             isLoading: false,
             error: error.message || 'Failed to load graph data',
@@ -218,9 +265,7 @@ export const useCanvasStore = create<CanvasState>()(
 
       updateNode: (id, updates) =>
         set((state) => ({
-          nodes: state.nodes.map((node) =>
-            node.id === id ? { ...node, ...updates } : node
-          ),
+          nodes: state.nodes.map((node) => (node.id === id ? { ...node, ...updates } : node)),
         })),
 
       deleteNode: (id) =>
@@ -243,7 +288,9 @@ export const useCanvasStore = create<CanvasState>()(
         set((state) => {
           const newSelection = new Set(multi ? state.selectedNodeIds : []);
           newSelection.add(id);
-          const selectedNode = multi ? state.selectedNode : (state.nodes.find(n => n.id === id) || null);
+          const selectedNode = multi
+            ? state.selectedNode
+            : state.nodes.find((n) => n.id === id) || null;
           return { selectedNodeIds: newSelection, selectedNode };
         }),
 
@@ -298,6 +345,10 @@ export const useCanvasStore = create<CanvasState>()(
         const { nodes } = get();
         if (nodes.length === 0) return;
 
+        // TODO: Handle edge case where window dimensions are unavailable (SSR, tests)
+        // Related: apps/web/src/components/canvas/CanvasViewport.tsx (viewport management)
+        // See: docs/features/CANVAS_VIEWPORT.md (needs creation)
+        // Add: Check for window existence and fallback dimensions
         const padding = 50;
         const minX = Math.min(...nodes.map((n) => n.position.x)) - padding;
         const minY = Math.min(...nodes.map((n) => n.position.y)) - padding;
@@ -349,15 +400,15 @@ export const useCanvasStore = create<CanvasState>()(
 
       getConnectedNodes: (id) => {
         const { nodes, edges } = get();
-        const connectedEdges = edges.filter(
-          (edge) => edge.source === id || edge.target === id
-        );
+        const connectedEdges = edges.filter((edge) => edge.source === id || edge.target === id);
         const connectedNodeIds = new Set(
           connectedEdges.flatMap((edge) => [edge.source, edge.target])
         );
         connectedNodeIds.delete(id);
         return nodes.filter((node) => connectedNodeIds.has(node.id));
       },
+
+      setCurrentAccountId: (accountId) => set({ currentAccountId: accountId }),
 
       reset: () => set(initialState),
     }),

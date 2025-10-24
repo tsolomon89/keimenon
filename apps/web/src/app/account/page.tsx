@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Building2, ArrowLeft, Users, Database, Crown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAccountStats, Account as AccountType } from '@/lib/api-client';
+import { getAccountStats } from '@/lib/api-client';
 
 export default function AccountPage() {
   const router = useRouter();
@@ -65,9 +65,7 @@ export default function AccountPage() {
   };
 
   const getAccountTypeBadge = (type: string) => {
-    return type === 'admin'
-      ? 'bg-red-700 text-red-300'
-      : 'bg-green-700 text-green-300';
+    return type === 'admin' ? 'bg-red-700 text-red-300' : 'bg-green-700 text-green-300';
   };
 
   return (
@@ -89,9 +87,7 @@ export default function AccountPage() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-white">Account Settings</h1>
-              <p className="text-slate-400 mt-1">
-                Manage your workspace account
-              </p>
+              <p className="text-slate-400 mt-1">Manage your workspace account</p>
             </div>
           </div>
         </div>
@@ -114,7 +110,9 @@ export default function AccountPage() {
                 <div>
                   <label className="text-sm text-slate-400">Account Type</label>
                   <div className="mt-1">
-                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded text-sm font-medium ${getAccountTypeBadge(currentUser.accountType)}`}>
+                    <span
+                      className={`inline-flex items-center gap-2 px-3 py-1 rounded text-sm font-medium ${getAccountTypeBadge(currentUser.accountType)}`}
+                    >
                       {currentUser.accountType === 'admin' && <Crown className="w-4 h-4" />}
                       {currentUser.accountType}
                     </span>
@@ -124,7 +122,9 @@ export default function AccountPage() {
                 <div>
                   <label className="text-sm text-slate-400">Plan Tier</label>
                   <div className="mt-1">
-                    <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${getTierBadge(currentUser.accountClass)}`}>
+                    <span
+                      className={`inline-block px-3 py-1 rounded text-sm font-medium ${getTierBadge(currentUser.accountClass)}`}
+                    >
                       {currentUser.accountClass}
                     </span>
                   </div>
@@ -136,9 +136,7 @@ export default function AccountPage() {
                     <span className="text-white font-medium capitalize">
                       {currentUser.permissionLevel}
                     </span>
-                    <span className="text-slate-400 text-sm ml-2">
-                      (Rank {currentUser.rank}/4)
-                    </span>
+                    <span className="text-slate-400 text-sm ml-2">(Rank {currentUser.rank}/4)</span>
                   </div>
                 </div>
               </div>

@@ -7,8 +7,8 @@
  * Replaces 40+ lines of conditional logic in CanvasSidebar with a single factory call.
  */
 
-export type ShellMode = 'crm' | 'portal';
-export type CanvasMode = 'dashboard' | 'settings' | 'canvas' | 'upload' | 'processing';
+export type ShellMode = 'admin' | 'client';
+export type CanvasMode = 'auth' | 'dashboard' | 'settings' | 'canvas';
 export type OperatingMode = 'native' | 'nested' | 'crm';
 export type NavigationMode = 'groups' | 'accounts' | 'settings';
 
@@ -107,7 +107,7 @@ export class NavigationModelFactory {
    * @example
    * ```typescript
    * const navModel = NavigationModelFactory.get({
-   *   shellMode: 'crm',
+   *   shellMode: 'admin',
    *   canvasMode: 'dashboard',
    *   operatingMode: 'native',
    *   user: { accountType: 'admin', accountId: '123' },
@@ -126,8 +126,8 @@ export class NavigationModelFactory {
       return this.getSettingsModel(context);
     }
 
-    // Rule 2: CRM + Dashboard shows accounts tree
-    if (context.shellMode === 'crm' && context.canvasMode === 'dashboard') {
+    // Rule 2: Admin + Dashboard shows accounts tree
+    if (context.shellMode === 'admin' && context.canvasMode === 'dashboard') {
       return this.getAccountsModel(context);
     }
 
@@ -214,7 +214,7 @@ export function supportsMultiSelect(mode: NavigationMode): boolean {
  * Get default canvas mode for a given shell mode
  */
 export function getDefaultCanvasMode(shellMode: ShellMode, user: User | null): CanvasMode {
-  if (user?.accountType === 'admin' && shellMode === 'crm') {
+  if (user?.accountType === 'admin' && shellMode === 'admin') {
     return 'dashboard';
   }
   return 'canvas';
@@ -224,5 +224,5 @@ export function getDefaultCanvasMode(shellMode: ShellMode, user: User | null): C
  * Get default shell mode for a given user
  */
 export function getDefaultShellMode(user: User | null): ShellMode {
-  return user?.accountType === 'admin' ? 'crm' : 'portal';
+  return user?.accountType === 'admin' ? 'admin' : 'client';
 }

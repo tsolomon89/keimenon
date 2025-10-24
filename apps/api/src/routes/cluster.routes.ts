@@ -49,7 +49,8 @@ router.post('/run', requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    const db = req.app.locals.db as Database.Database;
+    const dbClient = req.app.locals.db;
+    const db = dbClient.getDatabase();
 
     // Load policy
     const policyPath = path.join(__dirname, '../../policy.yaml');
@@ -59,14 +60,15 @@ router.post('/run', requireAuth, async (req: Request, res: Response) => {
     const userId = (req as any).user?.id || 'system';
     savePolicyVersion(db, policy, require('fs').readFileSync(policyPath, 'utf8'), userId);
 
-    // Create services
-    const storage = new GroupingStorage(db);
+    // Create services - GroupingStorage expects dbPath string, but we'll use existing db
+    const dbPath = process.env.DATABASE_PATH || './data/canvas.db';
+    const storage = new GroupingStorage(dbPath);
     const engine = new ClusteringEngine(db, storage, policy);
 
     // Run clustering
     const result = await engine.cluster(level, modality, seed);
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         run_id: result.run_id,
@@ -84,7 +86,7 @@ router.post('/run', requireAuth, async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error running clustering:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to run clustering',
     });
@@ -145,7 +147,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
       }
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         cluster: {
@@ -167,7 +169,7 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error fetching cluster:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to fetch cluster',
     });
@@ -192,13 +194,13 @@ router.get('/:id/evidence', requireAuth, (req: Request, res: Response) => {
     const computer = new ClusterEvidenceComputer(db, policy);
     const evidence = computer.computeEvidence(clusterId);
 
-    res.json({
+    return res.json({
       success: true,
       data: evidence,
     });
   } catch (error: any) {
     console.error('Error fetching cluster evidence:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to fetch cluster evidence',
     });
@@ -227,13 +229,13 @@ router.post('/:id/merge', requireAuth, (req: Request, res: Response) => {
     const manualOps = new ClusterManualOps(db);
     const result = manualOps.mergeClusters([clusterId, ...merge_with], userId, notes);
 
-    res.json({
+    return res.json({
       success: true,
       data: result,
     });
   } catch (error: any) {
     console.error('Error merging clusters:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to merge clusters',
     });
@@ -262,13 +264,13 @@ router.post('/:id/split', requireAuth, (req: Request, res: Response) => {
     const manualOps = new ClusterManualOps(db);
     const result = manualOps.splitCluster(clusterId, member_groups, userId, notes);
 
-    res.json({
+    return res.json({
       success: true,
       data: result,
     });
   } catch (error: any) {
     console.error('Error splitting cluster:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to split cluster',
     });
@@ -331,10 +333,10 @@ router.get('/export', requireAuth, (req: Request, res: Response) => {
 
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', 'attachment; filename=edges.csv');
-      res.send(csv);
+      return res.send(csv);
     } else {
       // JSON export
-      res.json({
+      return res.json({
         success: true,
         data: {
           edges: formattedEdges,
@@ -344,7 +346,7 @@ router.get('/export', requireAuth, (req: Request, res: Response) => {
     }
   } catch (error: any) {
     console.error('Error exporting edges:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to export edges',
     });
@@ -369,13 +371,13 @@ router.get('/runs', requireAuth, (req: Request, res: Response) => {
       limit: parseInt(limit as string, 10),
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: runs,
     });
   } catch (error: any) {
     console.error('Error listing runs:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to list runs',
     });
@@ -399,13 +401,13 @@ router.get('/stats', requireAuth, (req: Request, res: Response) => {
       policyId: policy_id as string | undefined,
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: stats,
     });
   } catch (error: any) {
     console.error('Error fetching stats:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to fetch stats',
     });

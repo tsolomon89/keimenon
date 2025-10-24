@@ -21,11 +21,13 @@ export const SourceNodeSchema = BaseNodeSchema.extend({
   size_bytes: z.number(),
   title: z.string().optional(),
   content_location: z.string().optional(), // e.g., "local://documents/sources/{id}.md"
-  provenance: z.object({
-    origin: z.string(),
-    retrieved_at: z.number().optional(),
-    attested: z.boolean().default(false),
-  }).optional(),
+  provenance: z
+    .object({
+      origin: z.string(),
+      retrieved_at: z.number().optional(),
+      attested: z.boolean().default(false),
+    })
+    .optional(),
 });
 
 export type SourceNode = z.infer<typeof SourceNodeSchema>;
@@ -36,11 +38,13 @@ export const GroupNodeSchema = BaseNodeSchema.extend({
   name: z.string(),
   purpose: z.string().optional(),
   member_count: z.number().default(0),
-  trust_metrics: z.object({
-    objectivity: z.number().min(0).max(1).optional(),
-    subjectivity: z.number().min(0).max(1).optional(),
-    verification_ratio: z.number().min(0).max(1).optional(),
-  }).optional(),
+  trust_metrics: z
+    .object({
+      objectivity: z.number().min(0).max(1).optional(),
+      subjectivity: z.number().min(0).max(1).optional(),
+      verification_ratio: z.number().min(0).max(1).optional(),
+    })
+    .optional(),
 });
 
 export type GroupNode = z.infer<typeof GroupNodeSchema>;
@@ -61,10 +65,12 @@ export const ObjectiveClaimSchema = BaseNodeSchema.extend({
   type: z.enum(['fact', 'endpoint', 'parameter', 'definition', 'metric', 'config']),
   status: z.enum(['unverified', 'verified', 'contested', 'stale']).default('unverified'),
   confidence: z.number().min(0).max(1).default(0.4),
-  citations: z.array(z.object({
-    node_id: z.string(),
-    span: z.string().optional(), // e.g., "p3:s12-34"
-  })),
+  citations: z.array(
+    z.object({
+      node_id: z.string(),
+      span: z.string().optional(), // e.g., "p3:s12-34"
+    })
+  ),
   supports: z.array(z.string()).default([]), // claim IDs
   contradicts: z.array(z.string()).default([]), // claim IDs
 });
@@ -79,10 +85,12 @@ export const UnifiedDocSchema = BaseNodeSchema.extend({
   content_markdown: z.string().optional(), // Optional when content_location is used
   content_location: z.string().optional(), // e.g., "local://documents/unified/{id}.md"
   token_count: z.number(),
-  citations: z.array(z.object({
-    node_id: z.string(),
-    span: z.string().optional(),
-  })),
+  citations: z.array(
+    z.object({
+      node_id: z.string(),
+      span: z.string().optional(),
+    })
+  ),
   claims_index: z.array(z.string()), // claim IDs
 });
 
@@ -114,16 +122,39 @@ export const UserNodeSchema = BaseNodeSchema.extend({
 
 export type UserNode = z.infer<typeof UserNodeSchema>;
 
+// AccountNode (NEW - for M:N user-account visualization)
+export const AccountNodeSchema = BaseNodeSchema.extend({
+  kind: z.literal('AccountNode'),
+  // Link to SQL account
+  sql_account_id: z.string(),
+  // Display properties
+  name: z.string(),
+  account_type: z.enum(['admin', 'client']),
+  account_class: z.enum(['free', 'professional', 'business']),
+  // Metadata
+  owner_user_id: z.string().optional(),
+  member_count: z.number().default(0),
+  // Visual properties (for canvas)
+  color: z.string().optional(),
+  icon: z.string().optional(),
+  // Policies (account-level settings)
+  policies: z.record(z.any()).optional(),
+});
+
+export type AccountNode = z.infer<typeof AccountNodeSchema>;
+
 // ChatThread
 export const ChatThreadSchema = BaseNodeSchema.extend({
   kind: z.literal('ChatThread'),
   title: z.string(),
   system_preamble: z.string().optional(),
-  persona: z.object({
-    name: z.string(),
-    model: z.string(),
-    tools_allowed: z.array(z.string()),
-  }).optional(),
+  persona: z
+    .object({
+      name: z.string(),
+      model: z.string(),
+      tools_allowed: z.array(z.string()),
+    })
+    .optional(),
 });
 
 export type ChatThread = z.infer<typeof ChatThreadSchema>;
@@ -168,6 +199,7 @@ export type AnyNode =
   | UnifiedDoc
   | Constellation
   | UserNode
+  | AccountNode
   | ChatThread
   | MessageNode
   | CodeBlockNode;

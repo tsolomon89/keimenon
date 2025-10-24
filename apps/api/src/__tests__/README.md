@@ -10,23 +10,23 @@ This directory contains two complementary test suites that together provide comp
 
 ### 1. **Backend Pipeline Tests** (`comprehensive-system-test.ts`)
 
-**Purpose:** Test the core processing pipeline (Phase 1-3)
+**Purpose:** Test the core chat import and processing pipeline
 
 **What It Tests:**
 
-- ✅ Content-addressable storage (SHA-256 fingerprinting)
-- ✅ Multi-level text breaking (sentences, blocks, sections)
-- ✅ Signature generation (MinHash, TF-IDF, LSH)
-- ✅ Exact deduplication (canonical selection)
-- ✅ Near-duplicate clustering
-- ✅ Graph model integrity (edges, relationships)
-- ✅ Performance benchmarks with real files (9.8MB → 1.11GB)
+- ✅ Chat import processing (ChatGPT/Claude formats)
+- ✅ Message stitching into source documents
+- ✅ Code block extraction and deduplication (SHA-256)
+- ✅ Duplicate message detection (Jaccard/Levenshtein/Cosine)
+- ✅ Graph model integrity (nodes, edges, relationships)
+- ✅ SQLite database operations (CRUD, FTS, transactions)
+- ✅ Performance benchmarks with real files (9.8MB → 136MB)
 
 **When To Run:**
 
-- After modifying Phase 1-3 processing code
-- After updating deduplication logic
-- After changing clustering algorithms
+- After modifying chat import logic
+- After updating deduplication algorithms
+- After changing database schema
 - Before deploying backend changes
 
 **Run:**
@@ -69,6 +69,70 @@ npm test ui-integration-test
 
 ---
 
+### 3. **Data Management Tests** (`data-management.test.ts`)
+
+**Purpose:** Test data clearing endpoints with comprehensive error handling
+
+**What It Tests:**
+
+- ✅ DELETE /api/v1/data/canvas (clear current user's data)
+- ✅ DELETE /api/v1/data/all-clients (admin only - clear all client data)
+- ✅ GET /api/v1/data/stats (canvas data statistics)
+- ✅ Error handling with asyncHandler and ErrorFactory
+- ✅ Edge cases (empty database, concurrent deletions)
+- ✅ Multi-tenant data isolation
+- ✅ Admin authorization
+- ✅ Audit log creation
+- ✅ Performance with large datasets
+
+**When To Run:**
+
+- After modifying data-management.ts routes
+- After changing error handling middleware
+- After updating asyncHandler or ErrorFactory
+- Before deploying data deletion features
+
+**Run:**
+
+```bash
+cd apps/api
+npm test data-management
+```
+
+---
+
+### 4. **Jobs System Tests** (`jobs-system.test.ts`)
+
+**Purpose:** Test the unified background jobs system with SSE streaming
+
+**What It Tests:**
+
+- ✅ Job creation and lifecycle (queued → running → succeeded/failed)
+- ✅ Import worker file parsing and processing
+- ✅ Delete worker with exclusive locks
+- ✅ SSE real-time progress updates
+- ✅ Job idempotency
+- ✅ Multi-tenant job isolation
+- ✅ Worker pool concurrency limits
+- ✅ Job cancellation
+- ✅ Error handling and recovery
+
+**When To Run:**
+
+- After modifying job domain models
+- After updating worker implementations
+- After changing SSE broadcaster logic
+- Before deploying jobs system changes
+
+**Run:**
+
+```bash
+cd apps/api
+npm test jobs-system
+```
+
+---
+
 ## 🔄 How They Work Together
 
 ```
@@ -93,17 +157,18 @@ npm test ui-integration-test
                      ▼
         ┌────────────────────────────┐
         │  BACKEND PIPELINE          │ ◄─── Backend Tests
-        │  - Phase 1: Import         │      validate this layer
-        │  - Phase 2: Signatures     │
-        │  - Phase 2.5: Dedup        │
-        │  - Phase 3: Clustering     │
+        │  - Parse conversations     │      validate this layer
+        │  - Build sources           │
+        │  - Extract code            │
+        │  - Detect duplicates       │
         └────────────┬───────────────┘
                      │
                      ▼
         ┌────────────────────────────┐
-        │  DATABASE STORAGE          │ ◄─── Both test suites
+        │  DATABASE STORAGE (SQLite) │ ◄─── Both test suites
         │  - Nodes (with account_id) │      validate this layer
         │  - Edges (relationships)   │
+        │  - FTS5 search index       │
         └────────────┬───────────────┘
                      │
                      ▼
@@ -125,19 +190,30 @@ npm test ui-integration-test
 
 ## 📊 Test Coverage Matrix
 
-| Layer                    | Backend Tests | UI Tests         |
-| ------------------------ | ------------- | ---------------- |
-| Browser Upload           | ❌            | ✅               |
-| API Authentication       | ❌            | ✅               |
-| File Upload Endpoint     | ⚠️ (minimal)  | ✅               |
-| **Phase 1-3 Processing** | ✅            | ⚠️ (implicit)    |
-| **Deduplication**        | ✅            | ❌               |
-| **Clustering**           | ✅            | ❌               |
-| Graph Integrity          | ✅            | ⚠️ (edge counts) |
-| Multi-Tenancy            | ❌            | ✅               |
-| Groups/Folders API       | ❌            | ✅               |
-| UI Navigation Tree       | ❌            | ✅               |
-| Performance              | ✅            | ✅               |
+| Layer                      | Backend Tests | UI Tests         | Data Mgmt Tests | **Jobs Tests** |
+| -------------------------- | ------------- | ---------------- | --------------- | -------------- |
+| Browser Upload             | ❌            | ✅               | ❌              | ❌             |
+| API Authentication         | ❌            | ✅               | ✅              | ✅             |
+| File Upload Endpoint       | ⚠️ (minimal)  | ✅               | ❌              | ✅             |
+| **Chat Import Processing** | ✅            | ⚠️ (implicit)    | ❌              | ✅             |
+| **Code Extraction**        | ✅            | ❌               | ❌              | ⚠️             |
+| **Duplicate Detection**    | ✅            | ❌               | ❌              | ⚠️             |
+| **Data Clearing**          | ❌            | ✅               | ✅              | ❌             |
+| **Error Handling**         | ❌            | ❌               | ✅              | ✅             |
+| **Edge Cases**             | ⚠️            | ⚠️               | ✅              | ✅             |
+| Graph Integrity            | ✅            | ⚠️ (edge counts) | ✅              | ⚠️             |
+| Multi-Tenancy              | ❌            | ✅               | ✅              | ✅             |
+| **Admin Authorization**    | ❌            | ❌               | ✅              | ⚠️             |
+| **Audit Logs**             | ❌            | ❌               | ✅              | ⚠️             |
+| **Job Lifecycle**          | ❌            | ❌               | ❌              | ✅             |
+| **SSE Streaming**          | ❌            | ✅               | ❌              | ✅             |
+| **Worker Pool**            | ❌            | ❌               | ❌              | ✅             |
+| **Job Idempotency**        | ❌            | ❌               | ❌              | ✅             |
+| **Concurrency Control**    | ❌            | ❌               | ❌              | ✅             |
+| Groups/Folders API         | ❌            | ✅               | ❌              | ❌             |
+| Settings Management        | ❌            | ✅               | ❌              | ❌             |
+| UI Navigation Tree         | ❌            | ✅               | ❌              | ❌             |
+| Performance                | ✅            | ✅               | ✅              | ⚠️             |
 
 **Legend:**
 
@@ -186,9 +262,9 @@ Both suites use test files from:
 
 ```
 ai_context/chat_data/test-samples/
-├── small.json      (~10MB)   - Quick smoke tests
-├── medium.json     (135MB)   - Realistic workload
-└── large.json      (1.11GB)  - Performance benchmarks
+├── tiny.json       (~1.4KB)  - Minimal smoke tests
+├── small.json      (~10MB)   - Integration tests
+└── medium.json     (~136MB)  - Performance benchmarks
 ```
 
 **Note:** These files contain real chat export data and should be treated accordingly.
@@ -216,7 +292,7 @@ DB_PATH=/path/to/test.db
 - **Quick tests:** 10s default
 - **File upload tests:** 60s
 - **Medium file tests:** 2-5min
-- **Large file tests:** 10min
+- **Data clearing tests:** 30s
 
 ---
 
@@ -317,9 +393,9 @@ console.log(`⏱️  Import took: ${(duration / 1000).toFixed(1)}s`);
 
 ## 📚 Related Documentation
 
-- [COMPREHENSIVE_TEST_SUITE.md](../../../../COMPREHENSIVE_TEST_SUITE.md) - Backend test suite details
-- [Phase 1-3 Processing](../../../../packages/parsers/README.md) - Pipeline architecture
-- [Multi-Tenant Architecture](../../docs/multi-tenancy.md) - Data isolation design
+- [README.md](../../../../README.md) - Main project documentation
+- [AUTH_GUIDE.md](../../../../ai_context/docs_active/AUTH_GUIDE.md) - Authentication architecture
+- [SESSION_FINAL.md](../../../../SESSION_FINAL.md) - SQLite migration details
 
 ---
 
@@ -369,7 +445,7 @@ npm test -- --maxWorkers=4
 ### Skip Slow Tests Locally
 
 ```typescript
-it.skip('should handle large file (1.11GB)', async () => {
+it.skip('should handle large file (136MB)', async () => {
   // Only runs in CI
 });
 ```
@@ -388,6 +464,6 @@ npm test -- --testNamePattern="integration"
 
 ---
 
-**Last Updated:** 2025-10-15
+**Last Updated:** 2025-10-16
 **Maintainer:** Canvas Memory Team
-**Status:** ✅ Active
+**Status:** ✅ Active (SQLite local-first architecture)

@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Users, Plus, Search, X, Shield, Edit, Trash2, UserCircle, Loader } from 'lucide-react';
-import { User as UserType, getAccountUsers, deleteUser } from '@/lib/api-client';
+import { User as UserType, getAccountUsers, deleteUser, Account } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
+import { CreateUserInAccountModal } from '@/components/modals/CreateUserInAccountModal';
+import { logApiEvent } from '@/lib/error-handler';
+import { errorCapture } from '@/services/error-capture.service';
 
 interface UsersListCardProps {
   onUserSelect?: (user: UserType) => void;
@@ -27,6 +30,8 @@ export function UsersListCard({ onUserSelect, onCreateUser }: UsersListCardProps
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Load users
   useEffect(() => {
@@ -40,8 +45,12 @@ export function UsersListCard({ onUserSelect, onCreateUser }: UsersListCardProps
         const data = await getAccountUsers(currentUser.accountId);
         setUsers(data.users);
       } catch (err: any) {
-        console.error('Failed to load users:', err);
-        setError(err.message || 'Failed to load users');
+        const error = err instanceof Error ? err : new Error(String(err));
+        errorCapture.capture(error, {
+          domain: 'api',
+          operation: 'settings.users.fetch',
+        });
+        setError(error.message || 'Failed to load users');
       } finally {
         setIsLoading(false);
       }
@@ -70,14 +79,57 @@ export function UsersListCard({ onUserSelect, onCreateUser }: UsersListCardProps
     }
 
     setDeletingId(userId);
+    setActionError(null);
 
     try {
       await deleteUser(userId);
       setUsers((prev) => prev.filter((u) => u.id !== userId));
+
+      // Log deletion event
+      logApiEvent(`User deleted: ${userName}`, {
+        domain: 'api',
+        operation: 'users.delete',
+        metadata: { userId, userName },
+      });
     } catch (error: any) {
-      alert(`Failed to delete user: ${error.message}`);
+      const err = error instanceof Error ? error : new Error(String(error));
+      errorCapture.capture(err, {
+        domain: 'ui',
+        operation: 'settings.users.delete',
+        metadata: { userId },
+      });
+      setActionError(err.message || 'Failed to delete user');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  // Handle create user modal
+  const handleCreateClick = () => {
+    if (onCreateUser) {
+      onCreateUser();
+    } else {
+      setShowCreateModal(true);
+    }
+  };
+
+  const handleCreateSuccess = () => {
+    setShowCreateModal(false);
+    // Reload users list
+    if (currentUser) {
+      getAccountUsers(currentUser.accountId)
+        .then((data) => setUsers(data.users))
+        .catch((err) => {
+          const error = err instanceof Error ? err : new Error(String(err));
+          errorCapture.capture(
+            error,
+            {
+              domain: 'ui',
+              operation: 'settings.users.reload',
+            },
+            'warn'
+          );
+        });
     }
   };
 
@@ -128,6 +180,14 @@ export function UsersListCard({ onUserSelect, onCreateUser }: UsersListCardProps
 
   return (
     <div className="space-y-4">
+      {actionError && (
+        <div
+          role="alert"
+          className="bg-red-900/20 border border-red-500/40 rounded-lg p-3 text-sm text-red-300"
+        >
+          {actionError}
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -144,7 +204,7 @@ export function UsersListCard({ onUserSelect, onCreateUser }: UsersListCardProps
 
         {canManageUsers && (
           <button
-            onClick={onCreateUser}
+            onClick={handleCreateClick}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -297,6 +357,22 @@ export function UsersListCard({ onUserSelect, onCreateUser }: UsersListCardProps
           </span>
           {searchQuery && <span>• Filtered by: "{searchQuery}"</span>}
         </div>
+      )}
+
+      {/* Create User Modal */}
+      {showCreateModal && currentUser && (
+        <CreateUserInAccountModal
+          account={
+            {
+              id: currentUser.accountId,
+              name: 'Current Account',
+              account_type: currentUser.accountType,
+              account_class: currentUser.accountClass,
+            } as Account
+          }
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={handleCreateSuccess}
+        />
       )}
     </div>
   );

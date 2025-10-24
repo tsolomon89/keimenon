@@ -62,7 +62,9 @@ export default function BoardPage() {
 
       setNodes(graphNodes);
 
-      // TODO: Fetch edges
+      // TODO: Fetch edges from API endpoint
+      // Related: apps/api/src/routes/edges.ts (needs implementation)
+      // See: docs/features/GRAPH_EDGES.md
       setEdges([]);
     } catch (error) {
       console.error('Failed to load board:', error);
@@ -135,22 +137,15 @@ export default function BoardPage() {
               Selection ({selectedNodeIds.length})
             </h3>
             {selectedNodeIds.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                Click nodes to select them
-              </p>
+              <p className="text-sm text-slate-500">Click nodes to select them</p>
             ) : (
               <div className="space-y-2">
                 {selectedNodeIds.map((id) => {
                   const node = nodes.find((n) => n.id === id);
                   return (
-                    <div
-                      key={id}
-                      className="p-2 bg-slate-800 rounded text-sm"
-                    >
+                    <div key={id} className="p-2 bg-slate-800 rounded text-sm">
                       <p className="font-mono text-xs">{id}</p>
-                      <p className="text-slate-400 text-xs">
-                        {node?.kind || 'Unknown'}
-                      </p>
+                      <p className="text-slate-400 text-xs">{node?.kind || 'Unknown'}</p>
                     </div>
                   );
                 })}
@@ -172,12 +167,8 @@ export default function BoardPage() {
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-4 max-w-md">
               <Grid3x3 className="w-16 h-16 text-slate-700 mx-auto" />
-              <h2 className="text-2xl font-semibold text-slate-300">
-                No nodes yet
-              </h2>
-              <p className="text-slate-400">
-                Upload some files to get started
-              </p>
+              <h2 className="text-2xl font-semibold text-slate-300">No nodes yet</h2>
+              <p className="text-slate-400">Upload some files to get started</p>
               <a
                 href="/ingest"
                 className="inline-block px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors"

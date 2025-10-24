@@ -646,7 +646,15 @@ NEO4J_PASSWORD=your-password
 - ✅ JWT with 7-day expiration
 - ✅ Database-backed sessions (revocable)
 - ✅ Single sign-on (old sessions deleted)
-- 🚀 TODO: Refresh tokens, MFA, rate limiting
+- 🚀 TODO: Add refresh tokens for long-lived sessions
+  // Related: apps/api/src/services/auth.service.ts (add refresh token generation)
+  // See: packages/db/src/sqlite/schema.sql (add refresh_tokens table)
+- 🚀 TODO: Implement MFA (TOTP/SMS) for enhanced security
+  // Related: apps/api/src/routes/auth.ts (add MFA endpoints)
+  // See: docs/features/MFA.md (needs creation)
+- 🚀 TODO: Add rate limiting middleware
+  // Related: apps/api/src/middleware/rate-limit.ts (needs creation)
+  // See: docs/architecture/RATE_LIMITING.md (needs creation)
 
 ### Authorization
 
@@ -661,7 +669,12 @@ NEO4J_PASSWORD=your-password
 - ✅ Zod validation (input sanitization)
 - ✅ CORS middleware (restrict origins)
 - ✅ Helmet middleware (security headers)
-- 🚀 TODO: Rate limiting, HTTPS in production
+- 🚀 TODO: Implement rate limiting per IP/user
+  // Related: apps/api/src/middleware/rate-limit.ts (needs creation)
+  // Requires: express-rate-limit or similar package
+- 🚀 TODO: Enable HTTPS in production with Let's Encrypt
+  // Related: deployment/nginx.conf (needs creation)
+  // See: docs/deployment/HTTPS_SETUP.md (needs creation)
 
 ---
 

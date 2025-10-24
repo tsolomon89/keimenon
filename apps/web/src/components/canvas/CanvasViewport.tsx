@@ -4,7 +4,10 @@ import { useEffect, useRef, useState, useMemo, useImperativeHandle, forwardRef }
 import { FileText, FolderPlus, Upload } from 'lucide-react';
 import { useCanvasStore } from '@/store/canvasStore';
 import { Canvas2D, Canvas2DHandle } from './Canvas2D';
+import { ProgressVisualization } from './ProgressVisualization';
 import { GraphNode, GraphEdge } from '@canvas-memory/graph';
+import { useJobStream } from '@/hooks/useJobStream';
+import { logDataEvent } from '@/lib/error-handler';
 
 interface CanvasViewportProps {
   onOpenUpload: () => void;
@@ -32,6 +35,23 @@ export const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportPro
     const selectNode = useCanvasStore((state) => state.selectNode);
     const clearSelection = useCanvasStore((state) => state.clearSelection);
 
+    // Track active import job for progress visualization
+    const { jobs } = useJobStream();
+    const [activeImportJobId, setActiveImportJobId] = useState<string | null>(null);
+
+    // Find active import job
+    useEffect(() => {
+      let activeJob: string | null = null;
+
+      jobs.forEach((job, jobId) => {
+        if (job.type === 'import' && job.status === 'running') {
+          activeJob = jobId;
+        }
+      });
+
+      setActiveImportJobId(activeJob);
+    }, [jobs]);
+
     // Expose camera control methods to parent via ref
     useImperativeHandle(
       ref,
@@ -53,16 +73,6 @@ export const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportPro
     }, [nodes, filters.filteredNodeIds]);
 
     const hasContent = displayNodes.length > 0;
-
-    // Debug: Log render state
-    console.log('CanvasViewport render state:', {
-      isLoading,
-      error,
-      hasContent,
-      nodesCount: displayNodes.length,
-      dimensions,
-      willRenderCanvas: !isLoading && !error && hasContent && dimensions.width > 0,
-    });
 
     // Update dimensions on mount and resize
     useEffect(() => {
@@ -109,7 +119,10 @@ export const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportPro
       }));
 
     const handleNodeClick = (node: GraphNode) => {
-      console.log('Node clicked:', node);
+      logDataEvent('Canvas node clicked', 'canvas.node.click', {
+        nodeId: node.id,
+        nodeKind: node.kind,
+      });
 
       // Find the corresponding CanvasNode and set it as selected
       const canvasNode = displayNodes.find((n) => n.id === node.id);
@@ -119,12 +132,19 @@ export const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportPro
     };
 
     const handleNodeDoubleClick = (node: GraphNode) => {
-      console.log('Node double-clicked:', node);
-      // TODO: Focus on node
+      logDataEvent('Canvas node double-clicked', 'canvas.node.doubleClick', {
+        nodeId: node.id,
+        nodeKind: node.kind,
+      });
+      // TODO: Implement zoom/focus on double-clicked node
+      // Related: apps/web/src/components/canvas/Canvas2D.tsx (add focusOnNode method)
+      // See: docs/features/CANVAS_NAVIGATION.md (needs creation)
     };
 
     const handleSelectionChange = (selectedIds: string[]) => {
-      console.log('Selection changed:', selectedIds);
+      logDataEvent('Canvas selection changed', 'canvas.selection.change', {
+        selectionCount: selectedIds.length,
+      });
 
       if (selectedIds.length === 0) {
         clearSelection();
@@ -183,16 +203,25 @@ export const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportPro
 
         {/* Canvas content or empty state */}
         {!isLoading && !error && hasContent && dimensions.width > 0 && (
-          <Canvas2D
-            ref={canvas2DRef}
-            nodes={graphNodes}
-            edges={graphEdges}
-            width={dimensions.width}
-            height={dimensions.height}
-            onNodeClick={handleNodeClick}
-            onNodeDoubleClick={handleNodeDoubleClick}
-            onSelectionChange={handleSelectionChange}
-          />
+          <>
+            <Canvas2D
+              ref={canvas2DRef}
+              nodes={graphNodes}
+              edges={graphEdges}
+              width={dimensions.width}
+              height={dimensions.height}
+              onNodeClick={handleNodeClick}
+              onNodeDoubleClick={handleNodeDoubleClick}
+              onSelectionChange={handleSelectionChange}
+            />
+
+            {/* Progress Visualization Overlay - Game Dev Techniques */}
+            <ProgressVisualization
+              width={dimensions.width}
+              height={dimensions.height}
+              jobId={activeImportJobId}
+            />
+          </>
         )}
 
         {!isLoading && !error && !hasContent && (

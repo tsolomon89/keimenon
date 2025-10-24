@@ -7,6 +7,8 @@ import { SettingsInspector } from '../settings/SettingsInspector';
 import { SourceInspector } from './SourceInspector';
 import { SelectionStack } from './SelectionStack';
 import { AccountInspector } from '../inspector/AccountInspector';
+import { ImportModule } from './ImportModule';
+import { UserDetailInspector } from '../inspector/UserDetailInspector';
 import { InspectorData } from '@/types/canvas';
 import { CanvasNode } from '@/store/canvasStore';
 import { CreateAccountModal } from '../modals/CreateAccountModal';
@@ -20,6 +22,19 @@ import { useSettingsTree } from '@/hooks/useSettingsTree';
 import { useNodeGroupLookup } from '@/hooks/useNodeGroupLookup';
 import { useCanvasStore } from '@/store/canvasStore';
 import { NavigationModelFactory } from '@canvas-memory/types/src/navigation.model';
+import { logDataEvent } from '@/lib/error-handler';
+import { errorCapture } from '@/services/error-capture.service';
+import type { Operation } from '@/contexts/BackgroundOperationsContext';
+
+// Inspector panel types for right sidebar
+export type InspectorPanel =
+  | 'node-detail' // Single node inspector
+  | 'multi-select' // Multi-select stack
+  | 'account-detail' // CRM account inspector
+  | 'settings-control' // Settings inspector
+  | 'import-flow' // Unified import panel
+  | 'import-detail' // Import job detail (Manager mode)
+  | 'user-detail'; // User detail inspector (Settings > Users)
 
 interface CanvasSidebarProps {
   side: 'left' | 'right';
@@ -27,6 +42,12 @@ interface CanvasSidebarProps {
   onToggle: () => void;
   onSettingsSectionSelect?: (sectionId: string) => void;
   selectedSettingsControlId?: string | null;
+  inspectorPanel?: InspectorPanel;
+  onInspectorPanelChange?: (panel: InspectorPanel) => void;
+  selectedUser?: any; // User selected from Settings > Users section
+  onUserUpdate?: (user: any) => void; // Callback when user is updated
+  activeOperation?: Operation | null;
+  onViewProcessing?: () => void;
 }
 
 export function CanvasSidebar({
@@ -35,12 +56,18 @@ export function CanvasSidebar({
   onToggle,
   onSettingsSectionSelect,
   selectedSettingsControlId,
+  inspectorPanel: externalInspectorPanel,
+  onInspectorPanelChange,
+  selectedUser,
+  onUserUpdate,
+  activeOperation,
+  onViewProcessing,
 }: CanvasSidebarProps) {
   if (!isOpen) {
     return (
       <button
         onClick={onToggle}
-        className={`w-10 border-${side === 'left' ? 'r' : 'l'} border-slate-800 bg-slate-900/50 hover:bg-slate-800/50 flex items-center justify-center transition-colors`}
+        className={`hidden lg:flex w-10 border-${side === 'left' ? 'r' : 'l'} border-slate-800 bg-slate-900/50 hover:bg-slate-800/50 items-center justify-center transition-colors`}
       >
         {side === 'left' ? (
           <ChevronRight className="w-4 h-4 text-slate-500" />
@@ -100,7 +127,11 @@ export function CanvasSidebar({
     } = navModel;
 
     const handleSelect = async (node: TreeNode, event?: React.MouseEvent) => {
-      console.log('Selected node:', node);
+      logDataEvent('Navigation item selected', 'canvas.navigation.select', {
+        nodeId: node.id,
+        navMode,
+        shellMode,
+      });
 
       // Handle account selection in CRM mode
       if (navMode === 'accounts' && node.metadata?.accountId) {
@@ -171,7 +202,10 @@ export function CanvasSidebar({
         if (onSettingsSectionSelect) {
           onSettingsSectionSelect(node.id);
         }
-        console.log('Navigate to settings section:', node.id, node.metadata);
+        logDataEvent('Settings navigation item selected', 'canvas.navigation.settingsSection', {
+          nodeId: node.id,
+          sectionId: node.metadata?.sectionId,
+        });
       }
 
       // Handle group/folder selection
@@ -201,7 +235,12 @@ export function CanvasSidebar({
 
               setExpandedTreeData(updateTreeWithChildren(expandedTreeData));
             } catch (error) {
-              console.error('Failed to load folder children:', error);
+              const err = error instanceof Error ? error : new Error(String(error));
+              errorCapture.capture(err, {
+                domain: 'api',
+                operation: 'canvas.groups.fetchFolderChildren',
+                metadata: { folderId: node.id },
+              });
             } finally {
               setLoadingFolders((prev) => {
                 const next = new Set(prev);
@@ -214,7 +253,10 @@ export function CanvasSidebar({
           // Group: fetch members, filter canvas, and SELECT them
           try {
             const memberIds = await fetchGroupMembers(node.id);
-            console.log(`Group ${node.id} has ${memberIds.length} members:`, memberIds);
+            logDataEvent('Fetched group members', 'canvas.navigation.groupMembers', {
+              groupId: node.id,
+              memberCount: memberIds.length,
+            });
 
             // Filter canvas nodes to show only group members
             canvasStore.setFilteredNodeIds(memberIds);
@@ -223,68 +265,83 @@ export function CanvasSidebar({
             canvasStore.clearSelection();
             memberIds.forEach((id) => canvasStore.selectNode(id, true));
 
-            // TODO: Optionally zoom to fit the filtered nodes
+            // TODO: Implement zoom to fit filtered nodes
+            // Related: apps/web/src/components/canvas/CanvasViewport.tsx (add zoomToFit method)
+            // See: apps/web/src/components/canvas/Canvas2D.tsx (camera controls)
           } catch (error) {
-            console.error('Failed to fetch group members:', error);
+            const err = error instanceof Error ? error : new Error(String(error));
+            errorCapture.capture(err, {
+              domain: 'api',
+              operation: 'canvas.groups.fetchMembers',
+              metadata: { groupId: node.id },
+            });
           }
         }
       }
     };
 
     return (
-      <aside className="w-64 border-r border-slate-800 bg-slate-900/50 backdrop-blur-sm flex flex-col">
-        {/* Header */}
-        <div className="min-h-[48px] border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm flex items-center justify-between px-3">
-          <h2 className="text-sm font-semibold text-slate-300">{navTitle}</h2>
-          <div className="flex items-center gap-1">
-            {/* + Account button (from navigation model) */}
-            {showCreateButton && navMode === 'accounts' && (
+      <>
+        {/* Mobile overlay backdrop */}
+        <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={onToggle} />
+
+        {/* Sidebar */}
+        <aside className="fixed lg:static inset-y-0 left-0 z-50 lg:z-auto w-64 lg:w-64 border-r border-slate-800 bg-slate-900 lg:bg-slate-900/50 backdrop-blur-sm flex flex-col shadow-2xl lg:shadow-none">
+          {/* Header */}
+          <div className="min-h-[48px] border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm flex items-center justify-between px-3">
+            <h2 className="text-sm font-semibold text-slate-300">{navTitle}</h2>
+            <div className="flex items-center gap-1">
+              {/* + Account button (from navigation model) */}
+              {showCreateButton && navMode === 'accounts' && (
+                <button
+                  onClick={() => setShowCreateAccountModal(true)}
+                  className="p-1 hover:bg-slate-800 rounded text-purple-400 hover:text-purple-300"
+                  title="Create Account"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              )}
               <button
-                onClick={() => setShowCreateAccountModal(true)}
-                className="p-1 hover:bg-slate-800 rounded text-purple-400 hover:text-purple-300"
-                title="Create Account"
+                onClick={onToggle}
+                className="p-1 hover:bg-slate-800 rounded text-slate-500 hover:text-slate-300"
               >
-                <Plus className="w-4 h-4" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
-            )}
-            <button
-              onClick={onToggle}
-              className="p-1 hover:bg-slate-800 rounded text-slate-500 hover:text-slate-300"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
+            </div>
           </div>
-        </div>
 
-        {/* NavigationBar */}
-        <NavigationBar
-          mode={navMode}
-          data={navData}
-          selectedId={navMode === 'accounts' ? operating.accountId : undefined}
-          selectedIds={
-            navMode === 'accounts'
-              ? selectedAccountIds
-              : navMode === 'groups'
-                ? highlightedGroupIds
-                : undefined
-          }
-          multiSelect={navMode === 'accounts' || navMode === 'groups'}
-          onSelect={handleSelect}
-          searchPlaceholder={searchPlaceholder}
-          emptyMessage={emptyMessage}
-        />
-
-        {/* Create Account Modal */}
-        {showCreateAccountModal && (
-          <CreateAccountModal
-            onClose={() => setShowCreateAccountModal(false)}
-            onSuccess={() => {
-              setShowCreateAccountModal(false);
-              // TODO: Refetch accounts after creation
-            }}
+          {/* NavigationBar */}
+          <NavigationBar
+            mode={navMode}
+            data={navData}
+            selectedId={navMode === 'accounts' ? operating.accountId : undefined}
+            selectedIds={
+              navMode === 'accounts'
+                ? selectedAccountIds
+                : navMode === 'groups'
+                  ? highlightedGroupIds
+                  : undefined
+            }
+            multiSelect={navMode === 'accounts' || navMode === 'groups'}
+            onSelect={handleSelect}
+            searchPlaceholder={searchPlaceholder}
+            emptyMessage={emptyMessage}
           />
-        )}
-      </aside>
+
+          {/* Create Account Modal */}
+          {showCreateAccountModal && (
+            <CreateAccountModal
+              onClose={() => setShowCreateAccountModal(false)}
+              onSuccess={() => {
+                setShowCreateAccountModal(false);
+                // TODO: Refetch accounts after creation
+                // Related: apps/web/src/hooks/useAccountTree.tsx (add refetch method)
+                // See: apps/api/src/routes/admin.routes.ts (accounts endpoint)
+              }}
+            />
+          )}
+        </aside>
+      </>
     );
   }
 
@@ -299,6 +356,45 @@ export function CanvasSidebar({
   const clearSelection = useCanvasStore((state) => state.clearSelection);
   const openDetailPanel = useCanvasStore((state) => state.openDetailPanel);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+
+  // Inspector panel state management
+  const [internalInspectorPanel, setInternalInspectorPanel] = useState<InspectorPanel | null>(null);
+  const [panelHistory, setPanelHistory] = useState<InspectorPanel[]>([]);
+
+  // Use external panel if provided, otherwise use internal
+  const currentPanel = externalInspectorPanel || internalInspectorPanel;
+
+  // Helper to change panel and track history
+  const changePanel = (newPanel: InspectorPanel) => {
+    if (currentPanel && currentPanel !== newPanel) {
+      setPanelHistory([...panelHistory, currentPanel]);
+    }
+    if (onInspectorPanelChange) {
+      onInspectorPanelChange(newPanel);
+    } else {
+      setInternalInspectorPanel(newPanel);
+    }
+  };
+
+  // Helper to go back to previous panel
+  const goBackToPanel = () => {
+    if (panelHistory.length > 0) {
+      const previousPanel = panelHistory[panelHistory.length - 1];
+      setPanelHistory(panelHistory.slice(0, -1));
+      if (onInspectorPanelChange) {
+        onInspectorPanelChange(previousPanel);
+      } else {
+        setInternalInspectorPanel(previousPanel);
+      }
+    } else {
+      // No history - return to default state
+      if (onInspectorPanelChange) {
+        onInspectorPanelChange('node-detail');
+      } else {
+        setInternalInspectorPanel(null);
+      }
+    }
+  };
 
   // Find the selected account from account tree
   const findAccountById = (accountId: string): any => {
@@ -361,15 +457,23 @@ export function CanvasSidebar({
           icon: 'copy',
           onClick: () => {
             navigator.clipboard.writeText(node.id);
-            console.log('Copied node ID:', node.id);
+            logDataEvent('Copied node ID to clipboard', 'canvas.node.copyId', {
+              nodeId: node.id,
+            });
           },
         },
         {
           label: 'Add to Scope',
           icon: 'link',
           onClick: () => {
-            console.log('TODO: Add to scope:', node.id);
+            errorCapture.warn('Scope builder integration pending', {
+              domain: 'ui',
+              operation: 'canvas.scope.add',
+              metadata: { nodeId: node.id },
+            });
             // TODO: Implement scope builder integration
+            // Related: apps/web/src/components/scope/ScopeBuilder.tsx (needs creation)
+            // See: docs/features/SCOPE_BUILDER.md (needs creation)
           },
         },
       ],
@@ -377,119 +481,166 @@ export function CanvasSidebar({
   };
 
   return (
-    <aside className="w-96 border-l border-slate-800 bg-slate-900/50 backdrop-blur-sm flex flex-col">
-      {/* Header */}
-      <div className="min-h-[48px] border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm flex items-center justify-between px-3">
-        <h2 className="text-sm font-semibold text-slate-300">Inspector</h2>
-        <button
-          onClick={onToggle}
-          className="p-1 hover:bg-slate-800 rounded text-slate-500 hover:text-slate-300"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
+    <>
+      {/* Mobile overlay backdrop */}
+      <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={onToggle} />
 
-      {/* Content - mode-aware */}
-      <div className="flex-1 overflow-hidden">
-        {rightCanvasMode === 'settings' ? (
-          // Settings Inspector
-          <SettingsInspector selectedControlId={selectedSettingsControlId || null} />
-        ) : rightShellMode === 'crm' && selectedAccounts.length > 1 ? (
-          // CRM mode with multi-select → Show multi-select inspector
-          <>
-            <div className="h-full overflow-y-auto p-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-300">
-                    {selectedAccounts.length} Accounts Selected
-                  </h3>
-                  <button
-                    onClick={() => setShowCreateUserModal(true)}
-                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded transition-colors"
-                  >
-                    Add User
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {selectedAccounts.map((account) => (
-                    <div
-                      key={account.id}
-                      className="px-3 py-2 bg-slate-800 border border-slate-700 rounded"
+      {/* Sidebar */}
+      <aside className="fixed lg:static inset-y-0 right-0 z-50 lg:z-auto w-80 sm:w-96 lg:w-96 border-l border-slate-800 bg-slate-900 lg:bg-slate-900/50 backdrop-blur-sm flex flex-col shadow-2xl lg:shadow-none">
+        {/* Header */}
+        <div className="min-h-[48px] border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm flex items-center justify-between px-3">
+          <h2 className="text-sm font-semibold text-slate-300">Inspector</h2>
+          <button
+            onClick={onToggle}
+            className="p-1 hover:bg-slate-800 rounded text-slate-500 hover:text-slate-300"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Content - mode-aware */}
+        <div className="flex-1 overflow-hidden">
+          {currentPanel === 'user-detail' && selectedUser ? (
+            // User Detail Inspector (Settings > Users)
+            <UserDetailInspector
+              user={selectedUser}
+              onClose={() => {
+                // Clear panel and history
+                setInternalInspectorPanel(null);
+                setPanelHistory([]);
+              }}
+              onUpdate={onUserUpdate}
+            />
+          ) : currentPanel === 'import-flow' ? (
+            <>
+              {/* NOTE(import-flow): Swap back to ImportOperationInspector (apps/web/src/components/inspector/ImportOperationInspector.tsx) if the legacy upload workflow is needed. */}
+              <ImportModule
+                variant="panel"
+                onClose={() => {
+                  setInternalInspectorPanel(null);
+                  setPanelHistory([]);
+                }}
+                onSuccess={() => {
+                  onViewProcessing?.();
+                }}
+              />
+            </>
+          ) : rightCanvasMode === 'settings' ? (
+            // Settings Inspector
+            <SettingsInspector selectedControlId={selectedSettingsControlId || null} />
+          ) : rightShellMode === 'admin' && selectedAccounts.length > 1 ? (
+            // Admin mode with multi-select → Show multi-select inspector
+            <>
+              <div className="h-full overflow-y-auto p-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-300">
+                      {selectedAccounts.length} Accounts Selected
+                    </h3>
+                    <button
+                      onClick={() => setShowCreateUserModal(true)}
+                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded transition-colors"
                     >
-                      <p className="text-sm font-medium text-slate-200">{account.name}</p>
-                      <p className="text-xs text-slate-500">{account.email}</p>
-                    </div>
-                  ))}
+                      Add User
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {selectedAccounts.map((account) => (
+                      <div
+                        key={account.id}
+                        className="px-3 py-2 bg-slate-800 border border-slate-700 rounded"
+                      >
+                        <p className="text-sm font-medium text-slate-200">{account.name}</p>
+                        <p className="text-xs text-slate-500">{account.email}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-            {showCreateUserModal && (
-              <CreateUserInAccountModal
-                account={selectedAccounts[0]}
-                accounts={selectedAccounts}
-                onClose={() => setShowCreateUserModal(false)}
-                onSuccess={() => {
-                  setShowCreateUserModal(false);
-                  // TODO: Refetch account users if needed
-                }}
-              />
-            )}
-          </>
-        ) : rightShellMode === 'crm' && selectedAccount ? (
-          // CRM mode with single selected account → Account Inspector
-          <>
-            <AccountInspector
-              account={selectedAccount}
-              onCreateUser={() => setShowCreateUserModal(true)}
-            />
-            {showCreateUserModal && (
-              <CreateUserInAccountModal
+              {showCreateUserModal && (
+                <CreateUserInAccountModal
+                  account={selectedAccounts[0]}
+                  accounts={selectedAccounts}
+                  onClose={() => setShowCreateUserModal(false)}
+                  onSuccess={() => {
+                    setShowCreateUserModal(false);
+                    // TODO: Refetch account users after creation
+                    // Related: apps/web/src/components/inspector/AccountInspector.tsx (users list)
+                    // See: apps/api/src/routes/admin.routes.ts (users endpoint)
+                  }}
+                />
+              )}
+            </>
+          ) : rightShellMode === 'admin' && selectedAccount ? (
+            // Admin mode with single selected account → Account Inspector
+            <>
+              <AccountInspector
                 account={selectedAccount}
-                onClose={() => setShowCreateUserModal(false)}
-                onSuccess={() => {
-                  setShowCreateUserModal(false);
-                  // TODO: Refetch account users if needed
-                }}
+                onCreateUser={() => setShowCreateUserModal(true)}
               />
-            )}
-          </>
-        ) : selectedNodeIds.size > 1 ? (
-          // Multi-select → Selection Stack
-          <SelectionStack
-            selectedNodes={nodes.filter((n) => selectedNodeIds.has(n.id))}
-            onRemoveFromSelection={(nodeId) => deselectNode(nodeId)}
-            onClearAll={() => clearSelection()}
-            onViewDetails={(node) => openDetailPanel(node)}
-            onAddToScope={(nodeId) => {
-              console.log('Add to scope:', nodeId);
-              // TODO: Implement scope builder integration
-            }}
-            onSequester={(nodeId) => {
-              console.log('Sequester node:', nodeId);
-              // TODO: Implement sequester functionality
-            }}
-          />
-        ) : selectedNode ? (
-          // Single node selected → Source Inspector
-          <SourceInspector
-            data={transformNodeToInspectorData(selectedNode)}
-            onViewFullDetails={() => openDetailPanel(selectedNode)}
-          />
-        ) : (
-          // No selection → Empty state
-          <div className="h-full flex items-center justify-center p-6">
-            <div className="text-center text-sm text-slate-500">
-              <Tag className="w-12 h-12 mb-4 text-slate-600 mx-auto" />
-              <p>No selection</p>
-              <p className="mt-2 text-xs">
-                {rightShellMode === 'crm'
-                  ? 'Select an account to inspect'
-                  : 'Click nodes to inspect'}
-              </p>
+              {showCreateUserModal && (
+                <CreateUserInAccountModal
+                  account={selectedAccount}
+                  onClose={() => setShowCreateUserModal(false)}
+                  onSuccess={() => {
+                    setShowCreateUserModal(false);
+                    // TODO: Refetch account users after creation
+                    // Related: apps/web/src/components/inspector/AccountInspector.tsx (users list)
+                    // See: apps/api/src/routes/admin.routes.ts (users endpoint)
+                  }}
+                />
+              )}
+            </>
+          ) : selectedNodeIds.size > 1 ? (
+            // Multi-select → Selection Stack
+            <SelectionStack
+              selectedNodes={nodes.filter((n) => selectedNodeIds.has(n.id))}
+              onRemoveFromSelection={(nodeId) => deselectNode(nodeId)}
+              onClearAll={() => clearSelection()}
+              onViewDetails={(node) => openDetailPanel(node)}
+              onAddToScope={(nodeId) => {
+                errorCapture.warn('Scope builder integration pending', {
+                  domain: 'ui',
+                  operation: 'canvas.scope.add',
+                  metadata: { nodeId },
+                });
+                // TODO: Implement scope builder integration
+                // Related: apps/web/src/components/scope/ScopeBuilder.tsx (needs creation)
+                // See: docs/features/SCOPE_BUILDER.md (needs creation)
+              }}
+              onSequester={(nodeId) => {
+                errorCapture.warn('Sequester action pending implementation', {
+                  domain: 'ui',
+                  operation: 'canvas.scope.sequester',
+                  metadata: { nodeId },
+                });
+                // TODO: Implement sequester functionality
+                // Related: apps/api/src/routes/nodes.ts (add sequester endpoint)
+                // See: docs/architecture/SEQUESTER.md (needs creation)
+              }}
+            />
+          ) : selectedNode ? (
+            // Single node selected → Source Inspector
+            <SourceInspector
+              data={transformNodeToInspectorData(selectedNode)}
+              onViewFullDetails={() => openDetailPanel(selectedNode)}
+            />
+          ) : (
+            // No selection → Empty state
+            <div className="h-full flex items-center justify-center p-6">
+              <div className="text-center text-sm text-slate-500">
+                <Tag className="w-12 h-12 mb-4 text-slate-600 mx-auto" />
+                <p>No selection</p>
+                <p className="mt-2 text-xs">
+                  {rightShellMode === 'admin'
+                    ? 'Select an account to inspect'
+                    : 'Click nodes to inspect'}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-    </aside>
+          )}
+        </div>
+      </aside>
+    </>
   );
 }

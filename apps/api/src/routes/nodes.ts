@@ -1,9 +1,5 @@
 import { Router, Request, Response } from 'express';
-import {
-  SourceNodeSchema,
-  GroupNodeSchema,
-  ObjectiveClaimSchema,
-} from '@canvas-memory/types';
+import { SourceNodeSchema, GroupNodeSchema, ObjectiveClaimSchema } from '@canvas-memory/types';
 
 const router = Router();
 
@@ -68,10 +64,10 @@ router.post('/source', async (req: Request, res: Response) => {
 
     await db.createNode(nodeData);
 
-    res.status(201).json({ success: true, node: source });
+    return res.status(201).json({ success: true, node: source });
   } catch (error: any) {
     console.error('Create source error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to create source node',
       message: error.message,
     });
@@ -121,10 +117,10 @@ router.get('/:id', async (req: Request, res: Response) => {
       }
     }
 
-    res.json({ node });
+    return res.json({ node });
   } catch (error: any) {
     console.error('Get node error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to get node',
       message: error.message,
     });
@@ -164,42 +160,146 @@ router.get('/', async (req: Request, res: Response) => {
     let total = 0;
 
     // Build account filter
-    const accountFilter = req.user && req.user.accountType !== 'admin'
-      ? req.user.accountId
-      : null;
+    const accountFilter = req.user && req.user.accountType !== 'admin' ? req.user.accountId : null;
+
+    // Log user info for debugging
+    if (req.user) {
+      console.log(
+        `👤 Request from: ${req.user.email} (${req.user.accountType}) | account_id=${req.user.accountId}`
+      );
+    } else {
+      console.log('👤 Request from: unauthenticated user');
+    }
 
     if (storageMode === 'local') {
       // SQLite queries with account filtering
       if (accountFilter) {
         // Client account - filter by account_id
         if (kind) {
-          const query = 'SELECT properties FROM nodes WHERE kind = ? AND account_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
+          const query =
+            'SELECT id, kind, properties, created_at, updated_at FROM nodes WHERE kind = ? AND account_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
           const result = await db.execute(query, [kind, accountFilter, limitNum, skipNum]);
-          nodes = result.records.map((row: any) => JSON.parse(row.properties));
+          console.log(
+            `📊 Query returned ${result.records?.length || 0} records for kind=${kind}, account=${accountFilter}`
+          );
 
-          const countResult = await db.execute('SELECT COUNT(*) as count FROM nodes WHERE kind = ? AND account_id = ?', [kind, accountFilter]);
+          nodes = result.records.map((row: any) => {
+            let parsedProperties;
+            try {
+              parsedProperties =
+                typeof row.properties === 'string' ? JSON.parse(row.properties) : row.properties;
+            } catch (e) {
+              console.error('Failed to parse properties for node:', row.id, e);
+              parsedProperties = {};
+            }
+
+            return {
+              id: row.id,
+              kind: row.kind,
+              properties: parsedProperties,
+              created_at: row.created_at,
+              updated_at: row.updated_at,
+            };
+          });
+
+          const countResult = await db.execute(
+            'SELECT COUNT(*) as count FROM nodes WHERE kind = ? AND account_id = ?',
+            [kind, accountFilter]
+          );
           total = countResult.records[0].count;
         } else {
-          const query = 'SELECT properties FROM nodes WHERE account_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
+          const query =
+            'SELECT id, kind, properties, created_at, updated_at FROM nodes WHERE account_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
           const result = await db.execute(query, [accountFilter, limitNum, skipNum]);
-          nodes = result.records.map((row: any) => JSON.parse(row.properties));
+          console.log(
+            `📊 Query returned ${result.records?.length || 0} records for account=${accountFilter}`
+          );
 
-          const countResult = await db.execute('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?', [accountFilter]);
+          nodes = result.records.map((row: any) => {
+            let parsedProperties;
+            try {
+              parsedProperties =
+                typeof row.properties === 'string' ? JSON.parse(row.properties) : row.properties;
+            } catch (e) {
+              console.error('Failed to parse properties for node:', row.id, e);
+              parsedProperties = {};
+            }
+
+            return {
+              id: row.id,
+              kind: row.kind,
+              properties: parsedProperties,
+              created_at: row.created_at,
+              updated_at: row.updated_at,
+            };
+          });
+
+          const countResult = await db.execute(
+            'SELECT COUNT(*) as count FROM nodes WHERE account_id = ?',
+            [accountFilter]
+          );
           total = countResult.records[0].count;
         }
       } else {
         // Admin account - see all data
         if (kind) {
-          const query = 'SELECT properties FROM nodes WHERE kind = ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
+          const query =
+            'SELECT id, kind, properties, created_at, updated_at FROM nodes WHERE kind = ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
           const result = await db.execute(query, [kind, limitNum, skipNum]);
-          nodes = result.records.map((row: any) => JSON.parse(row.properties));
+          console.log(
+            `📊 Query returned ${result.records?.length || 0} records (admin mode, kind=${kind})`
+          );
 
-          const countResult = await db.execute('SELECT COUNT(*) as count FROM nodes WHERE kind = ?', [kind]);
+          nodes = result.records.map((row: any) => {
+            let parsedProperties;
+            try {
+              parsedProperties =
+                typeof row.properties === 'string' ? JSON.parse(row.properties) : row.properties;
+            } catch (e) {
+              console.error('Failed to parse properties for node:', row.id, e);
+              parsedProperties = {};
+            }
+
+            return {
+              id: row.id,
+              kind: row.kind,
+              properties: parsedProperties,
+              created_at: row.created_at,
+              updated_at: row.updated_at,
+            };
+          });
+
+          const countResult = await db.execute(
+            'SELECT COUNT(*) as count FROM nodes WHERE kind = ?',
+            [kind]
+          );
           total = countResult.records[0].count;
         } else {
-          const query = 'SELECT properties FROM nodes ORDER BY created_at DESC LIMIT ? OFFSET ?';
+          const query =
+            'SELECT id, kind, properties, created_at, updated_at FROM nodes ORDER BY created_at DESC LIMIT ? OFFSET ?';
           const result = await db.execute(query, [limitNum, skipNum]);
-          nodes = result.records.map((row: any) => JSON.parse(row.properties));
+          console.log(
+            `📊 Query returned ${result.records?.length || 0} records (admin mode, all nodes)`
+          );
+
+          nodes = result.records.map((row: any) => {
+            let parsedProperties;
+            try {
+              parsedProperties =
+                typeof row.properties === 'string' ? JSON.parse(row.properties) : row.properties;
+            } catch (e) {
+              console.error('Failed to parse properties for node:', row.id, e);
+              parsedProperties = {};
+            }
+
+            return {
+              id: row.id,
+              kind: row.kind,
+              properties: parsedProperties,
+              created_at: row.created_at,
+              updated_at: row.updated_at,
+            };
+          });
 
           const countResult = await db.execute('SELECT COUNT(*) as count FROM nodes');
           total = countResult.records[0].count;
@@ -209,31 +309,53 @@ router.get('/', async (req: Request, res: Response) => {
       // Neo4j queries - similar pattern
       if (accountFilter) {
         if (kind) {
-          const query = 'MATCH (n:Node) WHERE n.kind = $kind AND n.account_id = $accountId RETURN n ORDER BY n.created_at DESC SKIP $skip LIMIT $limit';
-          const result = await db.execute(query, { kind, accountId: accountFilter, skip: skipNum, limit: limitNum });
+          const query =
+            'MATCH (n:Node) WHERE n.kind = $kind AND n.account_id = $accountId RETURN n ORDER BY n.created_at DESC SKIP $skip LIMIT $limit';
+          const result = await db.execute(query, {
+            kind,
+            accountId: accountFilter,
+            skip: skipNum,
+            limit: limitNum,
+          });
           nodes = result.records.map((r: any) => r.get('n').properties);
         } else {
-          const query = 'MATCH (n:Node) WHERE n.account_id = $accountId RETURN n ORDER BY n.created_at DESC SKIP $skip LIMIT $limit';
-          const result = await db.execute(query, { accountId: accountFilter, skip: skipNum, limit: limitNum });
+          const query =
+            'MATCH (n:Node) WHERE n.account_id = $accountId RETURN n ORDER BY n.created_at DESC SKIP $skip LIMIT $limit';
+          const result = await db.execute(query, {
+            accountId: accountFilter,
+            skip: skipNum,
+            limit: limitNum,
+          });
           nodes = result.records.map((r: any) => r.get('n').properties);
         }
       } else {
         if (kind) {
-          const query = 'MATCH (n:Node) WHERE n.kind = $kind RETURN n ORDER BY n.created_at DESC SKIP $skip LIMIT $limit';
+          const query =
+            'MATCH (n:Node) WHERE n.kind = $kind RETURN n ORDER BY n.created_at DESC SKIP $skip LIMIT $limit';
           const result = await db.execute(query, { kind, skip: skipNum, limit: limitNum });
           nodes = result.records.map((r: any) => r.get('n').properties);
         } else {
-          const query = 'MATCH (n:Node) RETURN n ORDER BY n.created_at DESC SKIP $skip LIMIT $limit';
+          const query =
+            'MATCH (n:Node) RETURN n ORDER BY n.created_at DESC SKIP $skip LIMIT $limit';
           const result = await db.execute(query, { skip: skipNum, limit: limitNum });
           nodes = result.records.map((r: any) => r.get('n').properties);
         }
       }
     }
 
-    res.json({ nodes, count: nodes?.length || 0, total });
+    console.log(`📤 Returning ${nodes?.length || 0} nodes, total: ${total}`);
+    if (nodes && nodes.length > 0) {
+      console.log('Sample node:', {
+        id: nodes[0].id,
+        kind: nodes[0].kind,
+        hasProperties: !!nodes[0].properties,
+      });
+    }
+
+    return res.json({ nodes, count: nodes?.length || 0, total });
   } catch (error: any) {
     console.error('List nodes error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to list nodes',
       message: error.message,
     });
@@ -301,10 +423,10 @@ router.delete('/:id', async (req: Request, res: Response) => {
       }
     }
 
-    res.json({ success: true, deleted: 1 });
+    return res.json({ success: true, deleted: 1 });
   } catch (error: any) {
     console.error('Delete node error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to delete node',
       message: error.message,
     });
@@ -344,10 +466,10 @@ router.post('/group', async (req: Request, res: Response) => {
 
     await db.createNode(nodeData);
 
-    res.status(201).json({ success: true, node: group });
+    return res.status(201).json({ success: true, node: group });
   } catch (error: any) {
     console.error('Create group error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to create group node',
       message: error.message,
     });

@@ -106,14 +106,14 @@ router.get('/', async (req: Request, res: Response) => {
       },
     };
 
-    res.json({
+    return res.json({
       success: true,
       config: sanitized,
       configPath: getConfigPath(),
     });
   } catch (error: any) {
     console.error('Get config error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to load configuration',
       message: error.message,
     });
@@ -155,14 +155,14 @@ router.put('/', async (req: Request, res: Response) => {
     // Save
     await saveConfig(validated);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Configuration updated',
       config: validated,
     });
   } catch (error: any) {
     console.error('Update config error:', error);
-    res.status(400).json({
+    return res.status(400).json({
       error: 'Failed to update configuration',
       message: error.message,
     });
@@ -179,14 +179,14 @@ router.post('/reset', async (req: Request, res: Response) => {
 
     await saveConfig(defaultConfig);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Configuration reset to defaults',
       config: defaultConfig,
     });
   } catch (error: any) {
     console.error('Reset config error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to reset configuration',
       message: error.message,
     });
@@ -198,7 +198,7 @@ router.post('/reset', async (req: Request, res: Response) => {
  * Get default import configuration
  */
 router.get('/defaults', (req: Request, res: Response) => {
-  res.json({
+  return res.json({
     success: true,
     defaults: DEFAULT_IMPORT_CONFIGURATION,
   });
@@ -212,13 +212,13 @@ router.get('/import', async (req: Request, res: Response) => {
   try {
     const config = await loadConfig();
 
-    res.json({
+    return res.json({
       success: true,
       importConfig: config.defaults || DEFAULT_IMPORT_CONFIGURATION,
     });
   } catch (error: any) {
     console.error('Get import config error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to load import configuration',
       message: error.message,
     });
@@ -248,14 +248,14 @@ router.put('/import', async (req: Request, res: Response) => {
     // Save
     await saveConfig(newConfig);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Import configuration updated',
       importConfig: newConfig.defaults,
     });
   } catch (error: any) {
     console.error('Update import config error:', error);
-    res.status(400).json({
+    return res.status(400).json({
       error: 'Failed to update import configuration',
       message: error.message,
     });
@@ -270,7 +270,7 @@ router.get('/storage-mode', async (req: Request, res: Response) => {
   try {
     const config = await loadConfig();
 
-    res.json({
+    return res.json({
       success: true,
       storageMode: config.storageMode,
       database: {
@@ -286,7 +286,7 @@ router.get('/storage-mode', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Get storage mode error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to get storage mode',
       message: error.message,
     });
@@ -319,7 +319,7 @@ router.put('/storage-mode', async (req: Request, res: Response) => {
     // Save
     await saveConfig(newConfig);
 
-    res.json({
+    return res.json({
       success: true,
       message: `Storage mode changed to: ${mode}`,
       storageMode: mode,
@@ -327,7 +327,7 @@ router.put('/storage-mode', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Update storage mode error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to update storage mode',
       message: error.message,
     });

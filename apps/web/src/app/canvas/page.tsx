@@ -1,13 +1,17 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CanvasLayout } from '@/components/canvas/CanvasLayout';
 import { FirstTimeUploadModal } from '@/components/canvas/FirstTimeUploadModal';
-import { LocalFirstImportModal } from '@/components/canvas/LocalFirstImportModal';
+import { ImportModule } from '@/components/canvas/ImportModule';
 import { useCanvasStore } from '@/store/canvasStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { ImportProgressProvider } from '@/contexts/ImportProgressContext';
+import { ConsoleProvider } from '@/contexts/ConsoleContext';
+import {
+  BackgroundOperationsProvider,
+  type Operation,
+} from '@/contexts/BackgroundOperationsContext';
 
 export default function CanvasPage() {
   const router = useRouter();
@@ -15,31 +19,28 @@ export default function CanvasPage() {
   const [isFirstTime, setIsFirstTime] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showChatImportModal, setShowChatImportModal] = useState(false);
-  const [showLocalFirstImportModal, setShowLocalFirstImportModal] = useState(false);
-
+  const [showImportModule, setShowImportModule] = useState(false);
+  const [restoredOperation, setRestoredOperation] = useState<Operation | null>(null);
   const loadGraphData = useCanvasStore((state) => state.loadGraphData);
 
   useEffect(() => {
-    // Wait for auth to load
-    if (isLoading) return;
+    if (isLoading) {
+      return;
+    }
 
-    // Check auth
     if (!isAuthenticated) {
       router.push('/login');
       return;
     }
 
-    // Check if first time user
     const hasSeenWelcome = localStorage.getItem('canvas_memory_welcome_shown');
     if (!hasSeenWelcome) {
       setIsFirstTime(true);
     }
 
-    // Load graph data from API
     loadGraphData();
   }, [isAuthenticated, isLoading, router, loadGraphData]);
 
-  // Show loading state while checking auth
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900">
@@ -51,7 +52,6 @@ export default function CanvasPage() {
     );
   }
 
-  // Don't render if not authenticated (will redirect)
   if (!isAuthenticated) {
     return null;
   }
@@ -64,10 +64,14 @@ export default function CanvasPage() {
   const handleOpenUpload = () => {
     // Temporarily default to new local-first modal
     // Hold shift to use old modal for comparison
+    // TODO(agent:canvas): Replace unsafe type assertion with proper event handling
+    // Related: apps/web/src/components/canvas/CanvasViewport.tsx (keyboard event handling)
+    // See: docs/features/CANVAS_KEYBOARD_SHORTCUTS.md (needs creation)
+    // Use: React synthetic events or window.addEventListener for keyboard shortcuts
     if (typeof window !== 'undefined' && (window as any).event?.shiftKey) {
       setShowUploadModal(true);
     } else {
-      setShowLocalFirstImportModal(true);
+      setShowImportModule(true);
     }
   };
 
@@ -76,32 +80,41 @@ export default function CanvasPage() {
   };
 
   return (
-    <ImportProgressProvider>
-      <CanvasLayout
-        showUploadModal={showUploadModal}
-        onShowUploadModal={setShowUploadModal}
-        onOpenUpload={handleOpenUpload}
-        showChatImportModal={showChatImportModal}
-        onShowChatImportModal={setShowChatImportModal}
-        onOpenChatImport={handleOpenChatImport}
-      />
-      {isFirstTime && (
-        <FirstTimeUploadModal
-          onDismiss={handleDismissWelcome}
-          onOpenUpload={handleOpenUpload}
-          onOpenChatImport={handleOpenChatImport}
-        />
-      )}
-      {showLocalFirstImportModal && (
-        <LocalFirstImportModal
-          onClose={() => setShowLocalFirstImportModal(false)}
-          onSuccess={(results) => {
-            console.log('Import success:', results);
-            // TODO: Refresh canvas with new data
-            loadGraphData();
-          }}
-        />
-      )}
-    </ImportProgressProvider>
+    <ConsoleProvider>
+      <BackgroundOperationsProvider onRestoreOperation={setRestoredOperation}>
+        <ImportProgressProvider>
+          <CanvasLayout
+            showUploadModal={showUploadModal}
+            onShowUploadModal={setShowUploadModal}
+            onOpenUpload={handleOpenUpload}
+            showChatImportModal={showChatImportModal}
+            onShowChatImportModal={setShowChatImportModal}
+            onOpenChatImport={handleOpenChatImport}
+            restoredOperation={restoredOperation}
+            onClearRestoredOperation={() => setRestoredOperation(null)}
+          />
+          {isFirstTime && (
+            <FirstTimeUploadModal
+              onDismiss={handleDismissWelcome}
+              onOpenUpload={handleOpenUpload}
+              onOpenChatImport={handleOpenChatImport}
+            />
+          )}
+          {showImportModule && (
+            <ImportModule
+              variant="modal"
+              onClose={() => setShowImportModule(false)}
+              onSuccess={(results) => {
+                console.log('Import success:', results);
+                // TODO(agent:canvas): Refresh canvas with new data from IndexedDB
+                // Related: apps/web/src/store/canvasStore.ts:loadGraphData
+                // See: apps/web/src/lib/local-import.ts:279 (save implementation needed first)
+                loadGraphData();
+              }}
+            />
+          )}
+        </ImportProgressProvider>
+      </BackgroundOperationsProvider>
+    </ConsoleProvider>
   );
 }

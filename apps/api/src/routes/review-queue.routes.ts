@@ -19,13 +19,7 @@ const router = Router();
  */
 router.get('/', requireAuth, (req: Request, res: Response) => {
   try {
-    const {
-      status = 'pending',
-      modality,
-      level,
-      limit = '50',
-      cursor,
-    } = req.query;
+    const { status = 'pending', modality, level, limit = '50', cursor } = req.query;
 
     const db = req.app.locals.db as Database.Database;
 
@@ -108,7 +102,7 @@ router.get('/', requireAuth, (req: Request, res: Response) => {
       review_notes: row.review_notes,
     }));
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         items: formattedItems,
@@ -118,7 +112,7 @@ router.get('/', requireAuth, (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error fetching review queue:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to fetch review queue',
     });
@@ -168,7 +162,7 @@ router.post('/:id/decision', requireAuth, (req: Request, res: Response) => {
     // Apply decision
     if (decision === 'defer') {
       // Just log the defer, don't mark as reviewed
-      res.json({
+      return res.json({
         success: true,
         message: 'Review deferred',
       });
@@ -208,7 +202,7 @@ router.post('/:id/decision', requireAuth, (req: Request, res: Response) => {
       const clusterStmt = db.prepare(`
         SELECT * FROM clusters WHERE cluster_id = ?
       `);
-      const cluster = clusterStmt.get(clusterId);
+      const cluster = clusterStmt.get(clusterId) as any;
 
       if (!cluster) {
         // Create singleton cluster first
@@ -227,14 +221,7 @@ router.post('/:id/decision', requireAuth, (req: Request, res: Response) => {
           cluster_id, node_id, level, modality, similarity_score, joined_at
         ) VALUES (?, ?, ?, ?, ?, ?)
       `);
-      memberStmt.run(
-        clusterId,
-        item.node_id,
-        item.level,
-        item.modality,
-        item.top_score,
-        now
-      );
+      memberStmt.run(clusterId, item.node_id, item.level, item.modality, item.top_score, now);
 
       // Update cluster member count
       const updateClusterStmt = db.prepare(`
@@ -298,14 +285,7 @@ router.post('/:id/decision', requireAuth, (req: Request, res: Response) => {
           member_count, algorithm, threshold, created_at, updated_at
         ) VALUES (?, ?, ?, ?, 1, 'manual_reject', 0.0, ?, ?)
       `);
-      createClusterStmt.run(
-        clusterId,
-        item.level,
-        item.modality,
-        item.node_id,
-        now,
-        now
-      );
+      createClusterStmt.run(clusterId, item.level, item.modality, item.node_id, now, now);
 
       const memberStmt = db.prepare(`
         INSERT INTO cluster_memberships (
@@ -333,7 +313,7 @@ router.post('/:id/decision', requireAuth, (req: Request, res: Response) => {
       );
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: `Review ${decision}d successfully`,
       data: {
@@ -345,7 +325,7 @@ router.post('/:id/decision', requireAuth, (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error processing review decision:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to process review decision',
     });
@@ -437,7 +417,7 @@ router.get('/stats', requireAuth, (req: Request, res: Response) => {
       }
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         totals,
@@ -448,7 +428,7 @@ router.get('/stats', requireAuth, (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error fetching review queue stats:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error.message || 'Failed to fetch review queue stats',
     });

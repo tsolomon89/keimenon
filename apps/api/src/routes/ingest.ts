@@ -192,7 +192,7 @@ router.post('/files', upload.array('files', 10), async (req: Request, res: Respo
     // Detect duplicates
     const duplicates = autogroup.detectDuplicates(sources);
 
-    res.json({
+    return res.json({
       success: true,
       sources,
       groups: createdGroups,
@@ -206,7 +206,7 @@ router.post('/files', upload.array('files', 10), async (req: Request, res: Respo
     });
   } catch (error: any) {
     console.error('Ingest error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to ingest files',
       message: error.message,
     });
@@ -225,18 +225,25 @@ router.post('/url', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    // TODO: Fetch URL content
-    // TODO: Generate fingerprint
-    // TODO: Create Source node
+    // TODO: Implement URL content fetching
+    // Related: apps/api/src/services/url-fetcher.ts (needs creation)
+    // See: docs/features/URL_INGEST.md (needs creation)
 
-    res.json({
+    // TODO: Generate fingerprint from fetched content
+    // Related: apps/api/src/services/fingerprint.ts (generateFingerprint)
+
+    // TODO: Create Source node with provenance tracking
+    // Related: apps/api/src/routes/nodes.ts (createNode logic)
+    // See: packages/db/src/sqlite/schema.sql (Source node schema)
+
+    return res.json({
       success: true,
       message: 'URL ingest not yet implemented',
       url,
     });
   } catch (error: any) {
     console.error('URL ingest error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to ingest URL',
       message: error.message,
     });
@@ -252,7 +259,7 @@ router.get('/status', async (req: Request, res: Response) => {
     const storage = getStorageService();
     const stats = await storage.getUsageStats();
 
-    res.json({
+    return res.json({
       storage: {
         totalFiles: stats.totalFiles,
         totalSizeBytes: stats.totalSizeBytes,
@@ -260,7 +267,7 @@ router.get('/status', async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to get status',
       message: error.message,
     });

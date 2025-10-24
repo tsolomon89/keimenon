@@ -2,22 +2,55 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Search, Zap, User, Settings, LogOut, ChevronDown, Shield, Users, Building2, Loader2, CheckCircle2, AlertCircle, Minimize2 } from 'lucide-react';
+import {
+  ChevronRight,
+  Search,
+  Zap,
+  User,
+  Settings,
+  LogOut,
+  ChevronDown,
+  Shield,
+  Users,
+  Building2,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Minimize2,
+  Sparkles,
+} from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOperating } from '@/contexts/OperatingContext';
 import { useImportProgress } from '@/contexts/ImportProgressContext';
+import { useUIVersion } from '@/contexts/UIVersionContext';
+import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
 
 export function CanvasHeader() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, switchAccount } = useAuth();
   const { isOperatingMode } = useOperating();
   const { progress, openModal } = useImportProgress();
+  const { uiVersion, toggleUIVersion } = useUIVersion();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [membershipMenuOpen, setMembershipMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const membershipMenuRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = user?.accountType === 'admin';
+
+  // Prepare account switcher data
+  const hasMultipleAccounts = user?.allAccounts && user.allAccounts.length > 1;
+  const currentAccountForSwitcher = user
+    ? {
+        accountId: user.accountId,
+        accountName:
+          user.allAccounts?.find((acc) => acc.accountId === user.accountId)?.accountName ||
+          'Current Account',
+        accountType: user.accountType,
+        accountClass: user.accountClass,
+        permissionLevel: user.permissionLevel,
+      }
+    : null;
 
   // Get progress indicator styling
   const getProgressStyle = () => {
@@ -66,9 +99,24 @@ export function CanvasHeader() {
   const getMembershipDisplay = () => {
     const tier = user?.accountClass || 'free';
     const colors = {
-      free: { bg: 'bg-slate-600/20', border: 'border-slate-500/30', text: 'text-slate-300', icon: 'text-slate-400' },
-      professional: { bg: 'bg-purple-600/20', border: 'border-purple-500/30', text: 'text-purple-300', icon: 'text-purple-400' },
-      business: { bg: 'bg-blue-600/20', border: 'border-blue-500/30', text: 'text-blue-300', icon: 'text-blue-400' },
+      free: {
+        bg: 'bg-slate-600/20',
+        border: 'border-slate-500/30',
+        text: 'text-slate-300',
+        icon: 'text-slate-400',
+      },
+      professional: {
+        bg: 'bg-purple-600/20',
+        border: 'border-purple-500/30',
+        text: 'text-purple-300',
+        icon: 'text-purple-400',
+      },
+      business: {
+        bg: 'bg-blue-600/20',
+        border: 'border-blue-500/30',
+        text: 'text-blue-300',
+        icon: 'text-blue-400',
+      },
     };
     const labels = {
       free: 'Free',
@@ -78,11 +126,12 @@ export function CanvasHeader() {
 
     return {
       label: labels[tier as keyof typeof labels] || 'Free',
-      ...colors[tier as keyof typeof colors] || colors.free,
+      ...(colors[tier as keyof typeof colors] || colors.free),
     };
   };
 
   const membership = getMembershipDisplay();
+  const searchShortcut = 'Ctrl + K';
 
   return (
     <header className="h-14 border-b border-slate-800 bg-slate-950/95 backdrop-blur-sm flex items-center justify-between px-4 z-50">
@@ -101,13 +150,33 @@ export function CanvasHeader() {
           <Search className="w-4 h-4" />
           <span>Search or command...</span>
           <kbd className="ml-auto px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-xs">
-            ⌘K
+            {searchShortcut}
           </kbd>
         </button>
       </div>
 
-      {/* Right: Membership & User */}
+      {/* Right: UI Toggle, Membership & User */}
       <div className="flex items-center gap-3">
+        {/* UI Version Toggle */}
+        <button
+          onClick={toggleUIVersion}
+          className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg hover:opacity-80 transition-opacity ${
+            uiVersion === 'primitives'
+              ? 'bg-purple-600/20 border-purple-500/30'
+              : 'bg-blue-600/20 border-blue-500/30'
+          }`}
+          title={uiVersion === 'primitives' ? 'Switch back to classic UI' : 'Try new primitives UI'}
+        >
+          <Sparkles
+            className={`w-4 h-4 ${uiVersion === 'primitives' ? 'text-purple-400' : 'text-blue-400'}`}
+          />
+          <span
+            className={`text-sm font-medium ${uiVersion === 'primitives' ? 'text-purple-300' : 'text-blue-300'}`}
+          >
+            {uiVersion === 'primitives' ? 'Classic UI' : 'New UI'}
+          </span>
+        </button>
+
         {/* Import Progress Indicator */}
         {progress.isProcessing && (
           <button
@@ -122,13 +191,18 @@ export function CanvasHeader() {
             ) : (
               <Loader2 className={`w-4 h-4 ${progressStyle.icon} animate-spin`} />
             )}
-            <span className={`text-sm font-medium ${progressStyle.text}`}>
-              {progress.message}
-            </span>
-            <span className={`text-xs ${progressStyle.text} opacity-75`}>
-              {progress.progress}%
-            </span>
+            <span className={`text-sm font-medium ${progressStyle.text}`}>{progress.message}</span>
+            <span className={`text-xs ${progressStyle.text} opacity-75`}>{progress.progress}%</span>
           </button>
+        )}
+
+        {/* Account Switcher (only show if user has multiple accounts) */}
+        {hasMultipleAccounts && currentAccountForSwitcher && user?.allAccounts && (
+          <AccountSwitcher
+            currentAccount={currentAccountForSwitcher}
+            allAccounts={user.allAccounts}
+            onSwitch={switchAccount}
+          />
         )}
 
         {/* Admin Badge (when in operating mode) */}
@@ -151,7 +225,9 @@ export function CanvasHeader() {
               <ChevronDown className={`w-3 h-3 ${membership.text}`} />
             </button>
           ) : (
-            <div className={`flex items-center gap-2 px-3 py-1.5 ${membership.bg} border ${membership.border} rounded-lg`}>
+            <div
+              className={`flex items-center gap-2 px-3 py-1.5 ${membership.bg} border ${membership.border} rounded-lg`}
+            >
               <Zap className={`w-4 h-4 ${membership.icon}`} />
               <span className={`text-sm font-medium ${membership.text}`}>{membership.label}</span>
             </div>
@@ -163,7 +239,9 @@ export function CanvasHeader() {
               <div className="py-1">
                 <button
                   onClick={() => {
-                    // TODO: Simulate Free tier
+                    // TODO: Implement tier emulation for admin testing
+                    // Related: apps/web/src/contexts/AuthContext.tsx (add emulation state)
+                    // See: docs/architecture/OVERVIEW.md (admin testing features)
                     setMembershipMenuOpen(false);
                   }}
                   className="w-full px-4 py-2 text-left text-sm hover:bg-slate-700 transition-colors"
@@ -175,7 +253,9 @@ export function CanvasHeader() {
                 </button>
                 <button
                   onClick={() => {
-                    // TODO: Simulate Pro tier
+                    // TODO: Implement tier emulation for admin testing
+                    // Related: apps/web/src/contexts/AuthContext.tsx (add emulation state)
+                    // See: docs/architecture/OVERVIEW.md (admin testing features)
                     setMembershipMenuOpen(false);
                   }}
                   className="w-full px-4 py-2 text-left text-sm hover:bg-slate-700 transition-colors"
@@ -187,7 +267,9 @@ export function CanvasHeader() {
                 </button>
                 <button
                   onClick={() => {
-                    // TODO: Simulate Business tier
+                    // TODO: Implement tier emulation for admin testing
+                    // Related: apps/web/src/contexts/AuthContext.tsx (add emulation state)
+                    // See: docs/architecture/OVERVIEW.md (admin testing features)
                     setMembershipMenuOpen(false);
                   }}
                   className="w-full px-4 py-2 text-left text-sm hover:bg-slate-700 transition-colors"
@@ -218,7 +300,8 @@ export function CanvasHeader() {
               <div className="px-4 py-3 border-b border-slate-700">
                 <p className="text-sm font-medium text-white">{user?.email}</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  {user?.permissionLevel} • {user?.accountType === 'admin' ? 'Admin Account' : 'Client Account'}
+                  {user?.permissionLevel} •{' '}
+                  {user?.accountType === 'admin' ? 'Admin Account' : 'Client Account'}
                 </p>
               </div>
 

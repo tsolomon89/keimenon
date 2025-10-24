@@ -12,8 +12,20 @@ export interface UploadProgress {
   bytesReceived: number;
   totalBytes: number;
   percentage: number;
-  status: 'uploading' | 'processing' | 'complete' | 'error';
+  status: 'uploading' | 'processing' | 'complete' | 'error' | 'pending';
   error?: string;
+  // Extended fields for import jobs API
+  accountId?: string;
+  userId?: string;
+  startedAt?: number;
+  completedAt?: number;
+  progress?: number; // 0-100 overall progress (different from upload percentage)
+  stats?: {
+    nodesCreated: number;
+    edgesCreated: number;
+    sourcesCreated: number;
+    conversationsProcessed: number;
+  };
 }
 
 export interface UploadedFile {
@@ -104,9 +116,7 @@ export class StreamingUploadService extends EventEmitter {
         fileStream.on('data', (chunk: Buffer) => {
           bytesReceived += chunk.length;
           progress.bytesReceived = bytesReceived;
-          progress.percentage = totalBytes > 0
-            ? Math.round((bytesReceived / totalBytes) * 100)
-            : 0;
+          progress.percentage = totalBytes > 0 ? Math.round((bytesReceived / totalBytes) * 100) : 0;
 
           this.emit('progress', progress);
         });
@@ -228,6 +238,40 @@ export class StreamingUploadService extends EventEmitter {
         await this.cleanup(filePath);
       }
     }
+  }
+
+  /**
+   * Set metadata for upload (accountId, userId, timestamps)
+   */
+  setUploadMetadata(uploadId: string, metadata: Partial<UploadProgress>) {
+    const progress = this.uploads.get(uploadId);
+    if (progress) {
+      Object.assign(progress, metadata);
+    }
+  }
+
+  /**
+   * Get recent uploads for an account
+   * NOTE: This is an in-memory implementation. In production, this should query from database.
+   */
+  getRecentUploads(accountId: string, limit: number = 50): UploadProgress[] {
+    const allUploads = Array.from(this.uploads.values());
+
+    // Filter by accountId
+    const accountUploads = allUploads.filter((upload) => upload.accountId === accountId);
+
+    // Sort by startedAt (most recent first)
+    accountUploads.sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+
+    // Limit results
+    return accountUploads.slice(0, limit);
+  }
+
+  /**
+   * Get upload status by uploadId
+   */
+  getUploadStatus(uploadId: string): UploadProgress | undefined {
+    return this.uploads.get(uploadId);
   }
 }
 

@@ -7,6 +7,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SettingsCard } from './SettingsCard';
 import { DataManagementCard, AdminDataManagementCard } from './DataManagementCard';
 import { UsersListCard } from './UsersListCard';
+import { ErrorTrackingCard } from './ErrorTrackingCard';
+import { DebugModalsCard } from './DebugModalsCard';
+import { DeduplicationCard } from './DeduplicationCard';
 import { SETTINGS_REGISTRY } from '@canvas-memory/types/src/settings';
 
 interface SettingsPageProps {
@@ -142,8 +145,20 @@ export function SettingsPage({
     );
   }
 
+  // Debug logging
+  console.log('[SettingsPage] Debug state:', {
+    selectedSectionId,
+    categoryId,
+    sectionId,
+    selectedCategory: selectedCategory?.id,
+    selectedSection: selectedSection?.id,
+    controlsLength: controls.length,
+    controls: controls.map((c) => c.id),
+  });
+
   // No section selected
   if (!selectedSectionId || controls.length === 0) {
+    console.log('[SettingsPage] No section or controls, showing empty state');
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
@@ -151,6 +166,15 @@ export function SettingsPage({
           <p className="text-sm text-slate-500">
             Select a section from the navigation to view settings
           </p>
+          <div className="mt-4 p-4 bg-slate-800 rounded-lg text-xs text-left text-slate-400">
+            <p>
+              <strong>Debug Info:</strong>
+            </p>
+            <p>Selected Section ID: {selectedSectionId || 'none'}</p>
+            <p>Category ID: {categoryId || 'none'}</p>
+            <p>Section ID: {sectionId || 'none'}</p>
+            <p>Controls Count: {controls.length}</p>
+          </div>
         </div>
       </div>
     );
@@ -230,7 +254,7 @@ export function SettingsPage({
       </div>
 
       {/* Settings cards */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="max-w-5xl mx-auto space-y-4">
           {/* Special handling for data management sections */}
           {sectionId === 'management' && categoryId === 'data' && <DataManagementCard />}
@@ -244,10 +268,24 @@ export function SettingsPage({
             <UsersListCard onUserSelect={onUserSelect} />
           )}
 
+          {/* Special handling for privacy/error tracking section */}
+          {sectionId === 'privacy' && categoryId === 'security' && <ErrorTrackingCard />}
+
+          {/* Special handling for deduplication section */}
+          {sectionId === 'deduplication' && categoryId === 'data' && <DeduplicationCard />}
+
+          {/* Debug modals inventory */}
+          {sectionId === 'modals' && categoryId === 'debug' && user?.accountType === 'admin' && (
+            <DebugModalsCard />
+          )}
+
           {/* Regular settings controls */}
           {sectionId !== 'management' &&
             sectionId !== 'admin_management' &&
             sectionId !== 'users' &&
+            sectionId !== 'privacy' &&
+            sectionId !== 'deduplication' &&
+            sectionId !== 'modals' &&
             controls
               .filter(
                 (control) =>
@@ -296,7 +334,10 @@ export function SettingsPage({
         </div>
       </div>
 
-      {/* History panel (TODO: implement) */}
+      {/* History panel */}
+      {/* TODO: Implement change history tracking */}
+      {/* Related: apps/api/src/routes/settings.routes.ts (audit_log table) */}
+      {/* See: docs/inventory.md:130 (backend TODO mentioned) */}
       {showHistory && (
         <div className="fixed inset-y-0 right-0 w-96 bg-slate-900 border-l border-slate-800 shadow-2xl overflow-y-auto">
           <div className="p-6">

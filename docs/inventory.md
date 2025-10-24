@@ -128,6 +128,9 @@ interface AnalyticsOverview {
 - Live preview with unsaved changes
 - Permission-based editing
 - Change history (UI ready, backend TODO)
+  // TODO: Implement settings change history backend
+  // Related: apps/api/src/routes/settings.routes.ts (add changelog endpoint with audit_log integration)
+  // See: packages/db/src/sqlite/schema.sql (audit_log table already exists)
 
 ---
 

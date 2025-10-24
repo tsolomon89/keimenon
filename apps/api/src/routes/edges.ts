@@ -65,9 +65,7 @@ router.get('/', async (req: Request, res: Response) => {
     let edges: any[];
 
     // Build account filter
-    const accountFilter = req.user && req.user.accountType !== 'admin'
-      ? req.user.accountId
-      : null;
+    const accountFilter = req.user && req.user.accountType !== 'admin' ? req.user.accountId : null;
 
     if (storageMode === 'local') {
       // SQLite query with account filtering
@@ -142,7 +140,8 @@ router.get('/', async (req: Request, res: Response) => {
         query += ' WHERE ' + conditions.join(' AND ');
       }
 
-      query += ' RETURN a.id as source, b.id as target, type(r) as kind, properties(r) as props, id(r) as edgeId LIMIT $limit';
+      query +=
+        ' RETURN a.id as source, b.id as target, type(r) as kind, properties(r) as props, id(r) as edgeId LIMIT $limit';
 
       const result = await db.execute(query, params);
       edges = result.records.map((r: any) => ({
@@ -154,10 +153,10 @@ router.get('/', async (req: Request, res: Response) => {
       }));
     }
 
-    res.json({ edges, count: edges.length });
+    return res.json({ edges, count: edges.length });
   } catch (error: any) {
     console.error('List edges error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to list edges',
       message: error.message,
     });
@@ -237,7 +236,11 @@ router.post('/', async (req: Request, res: Response) => {
       if (req.user.accountType !== 'admin') {
         // Client accounts can only create edges between their own nodes
         if (fromNodeAccountId !== req.user.accountId || toNodeAccountId !== req.user.accountId) {
-          return res.status(403).json({ error: 'Access denied: You can only create edges between nodes in your account' });
+          return res
+            .status(403)
+            .json({
+              error: 'Access denied: You can only create edges between nodes in your account',
+            });
         }
       }
     }
@@ -260,10 +263,10 @@ router.post('/', async (req: Request, res: Response) => {
 
     await db.createEdge(edge);
 
-    res.status(201).json({ success: true, edge });
+    return res.status(201).json({ success: true, edge });
   } catch (error: any) {
     console.error('Create edge error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to create edge',
       message: error.message,
     });
@@ -326,7 +329,11 @@ router.delete('/', async (req: Request, res: Response) => {
       if (req.user.accountType !== 'admin') {
         // Client accounts can only delete edges between their own nodes
         if (fromNodeAccountId !== req.user.accountId || toNodeAccountId !== req.user.accountId) {
-          return res.status(403).json({ error: 'Access denied: You can only delete edges between nodes in your account' });
+          return res
+            .status(403)
+            .json({
+              error: 'Access denied: You can only delete edges between nodes in your account',
+            });
         }
       }
     }
@@ -351,10 +358,10 @@ router.delete('/', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Edge not found' });
     }
 
-    res.json({ success: true, deleted });
+    return res.json({ success: true, deleted });
   } catch (error: any) {
     console.error('Delete edge error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to delete edge',
       message: error.message,
     });
@@ -497,7 +504,7 @@ router.get('/node/:nodeId', async (req: Request, res: Response) => {
     }
   } catch (error: any) {
     console.error('Get node edges error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to get node edges',
       message: error.message,
     });

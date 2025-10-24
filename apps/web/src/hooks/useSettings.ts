@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getToken } from '../contexts/AuthContext';
 import {
   SettingControl,
   EffectiveSettingValue,
   SettingChange,
 } from '@canvas-memory/types/src/settings';
+import { errorCapture } from '@/services/error-capture.service';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 
@@ -36,6 +37,7 @@ export function useSettings() {
   const [error, setError] = useState<string | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch all settings
   const fetchSettings = useCallback(async () => {
@@ -47,18 +49,34 @@ export function useSettings() {
       return;
     }
 
+    // Cancel any pending request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller for this request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       setLoading(true);
       setError(null);
+
+      // Add timeout to prevent hanging
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
       const response = await fetch(`${API_BASE_URL}/api/v1/settings`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        throw new Error('Failed to fetch settings');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch settings (${response.status})`);
       }
 
       const data = await response.json();
@@ -70,8 +88,30 @@ export function useSettings() {
       setSettings(data.settings);
       setMetadata(data.metadata);
     } catch (err: any) {
+      // Ignore abort errors (from timeout or component unmount)
+      if (err.name === 'AbortError') {
+        console.debug('[useSettings] Fetch aborted');
+        return;
+      }
+
       console.error('Error fetching settings:', err);
-      setError(err.message || 'Failed to load settings');
+
+      // Capture error for console display
+      const capturedError = errorCapture.capture(
+        err,
+        {
+          domain: 'api',
+          operation: 'settings.fetchAll',
+          metadata: {
+            component: 'useSettings',
+            endpoint: '/api/v1/settings',
+          },
+        },
+        'error'
+      );
+
+      const userMessage = capturedError.userMessage || err.message || 'Failed to load settings';
+      setError(userMessage);
       setSettings({});
       setMetadata(null);
     } finally {
@@ -79,9 +119,16 @@ export function useSettings() {
     }
   }, []);
 
-  // Fetch settings on mount and when user changes
+  // Fetch settings on mount and cleanup on unmount
   useEffect(() => {
     fetchSettings();
+
+    return () => {
+      // Abort any pending request when component unmounts
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [fetchSettings]);
 
   // Get specific setting
@@ -112,25 +159,23 @@ export function useSettings() {
       setError(null);
 
       // Save each changed setting
-      const promises = Object.entries(unsavedChanges).map(
-        async ([controlId, value]) => {
-          const response = await fetch(`${API_BASE_URL}/api/v1/settings/${controlId}`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ value }),
-          });
+      const promises = Object.entries(unsavedChanges).map(async ([controlId, value]) => {
+        const response = await fetch(`${API_BASE_URL}/api/v1/settings/${controlId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ value }),
+        });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to update setting');
-          }
-
-          return response.json();
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to update setting');
         }
-      );
+
+        return response.json();
+      });
 
       await Promise.all(promises);
 
@@ -141,7 +186,23 @@ export function useSettings() {
       setUnsavedChanges({});
     } catch (err: any) {
       console.error('Error applying changes:', err);
-      setError(err.message || 'Failed to save settings');
+
+      // Capture error for console display
+      const capturedError = errorCapture.capture(
+        err,
+        {
+          domain: 'api',
+          operation: 'settings.applyChanges',
+          metadata: {
+            component: 'useSettings',
+            changedSettings: Object.keys(unsavedChanges),
+          },
+        },
+        'error'
+      );
+
+      const userMessage = capturedError.userMessage || err.message || 'Failed to save settings';
+      setError(userMessage);
     } finally {
       setSaving(false);
     }
@@ -181,7 +242,23 @@ export function useSettings() {
         });
       } catch (err: any) {
         console.error('Error resetting setting:', err);
-        setError(err.message || 'Failed to reset setting');
+
+        // Capture error for console display
+        const capturedError = errorCapture.capture(
+          err,
+          {
+            domain: 'api',
+            operation: 'settings.reset',
+            metadata: {
+              component: 'useSettings',
+              controlId,
+            },
+          },
+          'error'
+        );
+
+        const userMessage = capturedError.userMessage || err.message || 'Failed to reset setting';
+        setError(userMessage);
       }
     },
     [fetchSettings]
@@ -269,7 +346,23 @@ export function useSettingHistory(controlId: string | null) {
         setHistory(data.history);
       } catch (err: any) {
         console.error('Error fetching history:', err);
-        setError(err.message || 'Failed to load history');
+
+        // Capture error for console display
+        const capturedError = errorCapture.capture(
+          err,
+          {
+            domain: 'api',
+            operation: 'settings.fetchHistory',
+            metadata: {
+              component: 'useSettingHistory',
+              controlId,
+            },
+          },
+          'error'
+        );
+
+        const userMessage = capturedError.userMessage || err.message || 'Failed to load history';
+        setError(userMessage);
         setHistory([]);
       } finally {
         setLoading(false);
@@ -335,7 +428,23 @@ export function useSettingDetails(controlId: string | null) {
         setHistory(data.history || []);
       } catch (err: any) {
         console.error('Error fetching setting details:', err);
-        setError(err.message || 'Failed to load setting');
+
+        // Capture error for console display
+        const capturedError = errorCapture.capture(
+          err,
+          {
+            domain: 'api',
+            operation: 'settings.fetchDetails',
+            metadata: {
+              component: 'useSettingDetails',
+              controlId,
+            },
+          },
+          'error'
+        );
+
+        const userMessage = capturedError.userMessage || err.message || 'Failed to load setting';
+        setError(userMessage);
         resetState();
       } finally {
         setLoading(false);

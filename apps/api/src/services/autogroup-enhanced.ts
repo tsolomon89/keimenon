@@ -45,10 +45,7 @@ export class EnhancedAutogroupService {
   /**
    * Auto-group messages based on keyword clustering
    */
-  async autoGroupMessages(
-    messages: Message[],
-    config: GroupingConfig
-  ): Promise<AutoGroupResult> {
+  async autoGroupMessages(messages: Message[], config: GroupingConfig): Promise<AutoGroupResult> {
     const groups: Group[] = [];
 
     // Step 1: Create manual groups first (they take priority)
@@ -61,7 +58,7 @@ export class EnhancedAutogroupService {
             id: `grp_manual_${nanoid()}`,
             name: manual.name,
             keywords: manual.keywords,
-            sources: matchingMessages.map(m => m.id),
+            sources: matchingMessages.map((m) => m.id),
             isManual: true,
             confidence: 1.0,
           });
@@ -70,12 +67,10 @@ export class EnhancedAutogroupService {
     }
 
     // Track which messages are already assigned to manual groups
-    const assignedToManual = new Set<string>(
-      groups.flatMap(g => g.sources)
-    );
+    const assignedToManual = new Set<string>(groups.flatMap((g) => g.sources));
 
     // Filter out messages already in manual groups
-    const unassignedMessages = messages.filter(m => !assignedToManual.has(m.id));
+    const unassignedMessages = messages.filter((m) => !assignedToManual.has(m.id));
 
     // Step 2: Extract keywords using TF-IDF
     const topKeywords = extractKeywords(unassignedMessages, 100);
@@ -93,10 +88,7 @@ export class EnhancedAutogroupService {
     const keywordClusters = clusterKeywords(cooccurrence, targetCount);
 
     // Step 5: Assign messages to clusters
-    const messageAssignments = assignMessagesToClusters(
-      unassignedMessages,
-      keywordClusters
-    );
+    const messageAssignments = assignMessagesToClusters(unassignedMessages, keywordClusters);
 
     // Step 6: Create auto-generated groups
     let createdCount = 0;
@@ -110,9 +102,12 @@ export class EnhancedAutogroupService {
           id: `grp_auto_${nanoid()}`,
           name: this.formatGroupName(clusterName),
           keywords,
-          sources: clusteredMessages.map(m => m.id),
+          sources: clusteredMessages.map((m) => m.id),
           isManual: false,
-          confidence: this.calculateGroupConfidence(clusteredMessages.length, unassignedMessages.length),
+          confidence: this.calculateGroupConfidence(
+            clusteredMessages.length,
+            unassignedMessages.length
+          ),
         });
 
         createdCount++;
@@ -123,15 +118,15 @@ export class EnhancedAutogroupService {
     const createCatchAll = config.auto?.createCatchAll !== false;
 
     if (createCatchAll) {
-      const allAssigned = new Set(groups.flatMap(g => g.sources));
-      const unmatched = messages.filter(m => !allAssigned.has(m.id));
+      const allAssigned = new Set(groups.flatMap((g) => g.sources));
+      const unmatched = messages.filter((m) => !allAssigned.has(m.id));
 
       if (unmatched.length > 0) {
         groups.push({
           id: `grp_catchall_${nanoid()}`,
           name: 'Other / Uncategorized',
           keywords: [],
-          sources: unmatched.map(m => m.id),
+          sources: unmatched.map((m) => m.id),
           isManual: false,
           isCatchAll: true,
           confidence: 0.1,
@@ -167,14 +162,12 @@ export class EnhancedAutogroupService {
    * Build result with statistics
    */
   private buildResult(groups: Group[], allMessages: Message[]): AutoGroupResult {
-    const manualGroups = groups.filter(g => g.isManual);
-    const autoGroups = groups.filter(g => !g.isManual && !g.isCatchAll);
-    const catchAllGroup = groups.find(g => g.isCatchAll);
+    const manualGroups = groups.filter((g) => g.isManual);
+    const autoGroups = groups.filter((g) => !g.isManual && !g.isCatchAll);
+    const catchAllGroup = groups.find((g) => g.isCatchAll);
 
-    const totalAssigned = new Set(groups.flatMap(g => g.sources)).size;
-    const avgGroupSize = groups.length > 0
-      ? Math.round(totalAssigned / groups.length)
-      : 0;
+    const totalAssigned = new Set(groups.flatMap((g) => g.sources)).size;
+    const avgGroupSize = groups.length > 0 ? Math.round(totalAssigned / groups.length) : 0;
 
     return {
       groups,
@@ -202,8 +195,10 @@ export class EnhancedAutogroupService {
     const newConfig: GroupingConfig = {
       ...config,
       auto: {
-        ...config.auto,
         targetGroupCount: newTargetCount,
+        createCatchAll: config.auto?.createCatchAll ?? true,
+        minGroupSize: config.auto?.minGroupSize ?? 2,
+        algorithm: config.auto?.algorithm ?? 'tfidf',
       },
     };
 

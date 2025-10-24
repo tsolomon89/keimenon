@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react';
 import { TreeNode } from '../components/common/NavigationBar';
 import { getToken, useAuth } from '../contexts/AuthContext';
-import {
-  SettingCategory,
-  SettingSection,
-  SettingControl,
-} from '@canvas-memory/types/src/settings';
+import { SettingCategory, SettingSection, SettingControl } from '@canvas-memory/types/src/settings';
 import * as Icons from 'lucide-react';
+import { errorCapture } from '@/services/error-capture.service';
 
 /**
  * useSettingsTree Hook
@@ -41,7 +38,10 @@ export function useSettingsTree() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch settings registry');
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.error || `Failed to fetch settings registry (${response.status})`
+          );
         }
 
         const data = await response.json();
@@ -55,7 +55,23 @@ export function useSettingsTree() {
         setTree(treeNodes);
       } catch (err: any) {
         console.error('Error fetching settings registry:', err);
-        setError(err.message || 'Failed to load settings');
+
+        // Capture error for console display
+        const capturedError = errorCapture.capture(
+          err,
+          {
+            domain: 'api',
+            operation: 'settings.fetchRegistry',
+            metadata: {
+              component: 'useSettingsTree',
+              endpoint: '/api/v1/settings/registry/all',
+            },
+          },
+          'error'
+        );
+
+        const userMessage = capturedError.userMessage || err.message || 'Failed to load settings';
+        setError(userMessage);
         setTree([]);
       } finally {
         setLoading(false);
@@ -86,7 +102,6 @@ function transformCategoryToNode(category: SettingCategory): TreeNode {
   return {
     id: `category_${category.id}`,
     label: category.label,
-    type: 'folder',
     icon: Icon,
     children: category.sections
       .sort((a, b) => a.order - b.order)
@@ -101,10 +116,7 @@ function transformCategoryToNode(category: SettingCategory): TreeNode {
 /**
  * Transform SettingSection to TreeNode
  */
-function transformSectionToNode(
-  section: SettingSection,
-  categoryId: string
-): TreeNode {
+function transformSectionToNode(section: SettingSection, categoryId: string): TreeNode {
   const Icon = section.icon ? getIconComponent(section.icon) : undefined;
 
   // If section has subsections, it's a folder node
@@ -112,7 +124,6 @@ function transformSectionToNode(
     return {
       id: `section_${categoryId}_${section.id}`,
       label: section.label,
-      type: 'folder',
       icon: Icon,
       children: [
         // Controls in this section
@@ -137,7 +148,6 @@ function transformSectionToNode(
   return {
     id: `section_${categoryId}_${section.id}`,
     label: section.label,
-    type: 'file',
     icon: Icon,
     metadata: {
       categoryId,
@@ -162,7 +172,6 @@ function transformControlToNode(
   return {
     id: `control_${control.id}`,
     label: control.label,
-    type: 'file',
     metadata: {
       categoryId,
       sectionId,

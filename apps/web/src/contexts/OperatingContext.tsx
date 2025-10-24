@@ -31,7 +31,7 @@ interface OperatingContextType {
   isOperatingMode: boolean;
 }
 
-const OperatingContext = createContext<OperatingContextType | undefined>(undefined);
+export const OperatingContext = createContext<OperatingContextType | undefined>(undefined);
 
 export function OperatingProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -88,6 +88,10 @@ export function OperatingProvider({ children }: { children: React.ReactNode }) {
       setOperating(newOperating);
 
       // Sync with window globals for api-client
+      // TODO: Replace unsafe type assertions with proper Window interface extension
+      // Related: apps/web/src/lib/api-client.ts:23-24 (reads these globals)
+      // See: docs/architecture/TYPE_SAFETY.md (needs creation)
+      // Add: global.d.ts with Window interface extension
       if (typeof window !== 'undefined') {
         (window as any).__operatingAccount = accountId;
         (window as any).__operatingMode = mode;
@@ -110,6 +114,9 @@ export function OperatingProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Clear window globals
+    // TODO: Replace unsafe type assertions with proper Window interface extension
+    // Related: apps/web/src/contexts/OperatingContext.tsx:92-93 (sets these globals)
+    // See: docs/architecture/TYPE_SAFETY.md (needs creation)
     if (typeof window !== 'undefined') {
       delete (window as any).__operatingAccount;
       delete (window as any).__operatingMode;

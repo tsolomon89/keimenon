@@ -67,7 +67,15 @@ export const DEFAULT_LOCAL_CONFIG: LocalImportConfig = {
 };
 
 export interface LocalImportProgress {
-  stage: 'reading' | 'parsing' | 'extracting' | 'stitching' | 'deduping' | 'saving' | 'complete' | 'error';
+  stage:
+    | 'reading'
+    | 'parsing'
+    | 'extracting'
+    | 'stitching'
+    | 'deduping'
+    | 'saving'
+    | 'complete'
+    | 'error';
   progress: number; // 0-100
   message: string;
   detail?: string;
@@ -100,11 +108,12 @@ export interface LocalImportResult {
  */
 function convertConfig(config: LocalImportConfig): ImportConfig {
   return {
-    sources_role_subset: config.includeUser && config.includeAssistant
-      ? 'both'
-      : config.includeUser
-      ? 'user'
-      : 'assistant',
+    sources_role_subset:
+      config.includeUser && config.includeAssistant
+        ? 'both'
+        : config.includeUser
+          ? 'user'
+          : 'assistant',
     sources_min_chars_user: config.minMessageLength,
     sources_min_chars_assistant: config.minMessageLength,
     sources_stitch_strategy: config.processingMode === 'manual' ? 'by_chat' : 'by_title',
@@ -223,14 +232,22 @@ export class LocalImportService {
       this.reportProgress('reading', 0, 'Reading file...', file.name);
       const fileContent = await this.readFile(file);
 
-      this.reportProgress('reading', 20, 'Parsing JSON...', `${(fileContent.length / 1024 / 1024).toFixed(2)} MB`);
+      this.reportProgress(
+        'reading',
+        20,
+        'Parsing JSON...',
+        `${(fileContent.length / 1024 / 1024).toFixed(2)} MB`
+      );
       const data = JSON.parse(fileContent);
 
       // Stage 2: Parse conversations
       this.reportProgress('parsing', 30, 'Parsing conversations...', 'Detecting platform');
       const parseResult: ParseResult = await this.parserRegistry.parse(data, file.name);
 
-      this.reportProgress('parsing', 40, 'Parsed conversations',
+      this.reportProgress(
+        'parsing',
+        40,
+        'Parsed conversations',
         `${parseResult.conversations.length} conversations, ${parseResult.stats.total_messages} messages`
       );
 
@@ -238,17 +255,17 @@ export class LocalImportService {
       let codeAssets: CodeAsset[] = [];
       if (config.extractCode) {
         this.reportProgress('extracting', 50, 'Extracting code blocks...');
-        codeAssets = extractCodeFromConversations(
-          parseResult.conversations,
-          config.codeMinLength
-        );
+        codeAssets = extractCodeFromConversations(parseResult.conversations, config.codeMinLength);
 
         if (config.codeDeduplicate) {
           this.reportProgress('deduping', 55, 'Deduplicating code...');
           codeAssets = deduplicateCodeAssets(codeAssets);
         }
 
-        this.reportProgress('extracting', 60, 'Code extraction complete',
+        this.reportProgress(
+          'extracting',
+          60,
+          'Code extraction complete',
           `${codeAssets.length} code blocks`
         );
       }
@@ -268,15 +285,15 @@ export class LocalImportService {
         const stitcher = new SourcesStitcher(importConfig);
         sources = stitcher.buildSources(dedupedSegments);
 
-        this.reportProgress('stitching', 80, 'Sources built',
-          `${sources.length} source documents`
-        );
+        this.reportProgress('stitching', 80, 'Sources built', `${sources.length} source documents`);
       }
 
       // Stage 5: Save to local storage (IndexedDB or LocalStorage)
       this.reportProgress('saving', 85, 'Saving to local storage...');
 
-      // TODO: Implement local storage save
+      // TODO: Implement local storage save using IndexedDB
+      // Related: apps/web/src/lib/db.ts (create IndexedDB wrapper)
+      // See: docs/architecture/LOCAL_STORAGE.md for design
       // For now, we'll just prepare the result
 
       this.reportProgress('saving', 95, 'Save complete');
@@ -284,13 +301,16 @@ export class LocalImportService {
       // Stage 6: Build result
       const processingTimeMs = Date.now() - startTime;
 
-      this.reportProgress('complete', 100, 'Import complete!',
+      this.reportProgress(
+        'complete',
+        100,
+        'Import complete!',
         `Processed in ${(processingTimeMs / 1000).toFixed(1)}s`
       );
 
       const result: LocalImportResult = {
         success: true,
-        conversations: parseResult.conversations.map(conv => ({
+        conversations: parseResult.conversations.map((conv) => ({
           id: conv.conversation_id,
           title: conv.title,
           platform: conv.platform,
@@ -310,7 +330,6 @@ export class LocalImportService {
       };
 
       return result;
-
     } catch (error: any) {
       this.reportProgress('error', 0, 'Import failed', error.message);
 

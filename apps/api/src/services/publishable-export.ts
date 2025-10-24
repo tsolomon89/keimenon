@@ -15,18 +15,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import Database from 'better-sqlite3';
-import { ClusteringPolicy } from '@canvas/types/policy';
+import { ClusteringPolicy } from '@canvas-memory/types';
 
 /**
  * Hashed edge (no plaintext)
  */
 export interface HashedEdge {
-  from: string;           // SHA-256 hash of node_id
-  to: string;             // SHA-256 hash of node_id
-  score: number;          // Similarity score ∈ [0, 1]
-  reason_code: string;    // TOK_OVERLAP, MINHASH_HIGH, etc.
-  level?: string;         // sentence, block, section
-  modality?: string;      // prose, code, math, etc.
+  from: string; // SHA-256 hash of node_id
+  to: string; // SHA-256 hash of node_id
+  score: number; // Similarity score ∈ [0, 1]
+  reason_code: string; // TOK_OVERLAP, MINHASH_HIGH, etc.
+  level?: string; // sentence, block, section
+  modality?: string; // prose, code, math, etc.
 }
 
 /**
@@ -34,7 +34,7 @@ export interface HashedEdge {
  */
 export interface ExportStats {
   total_edges: number;
-  total_nodes: number;      // Unique hashed nodes
+  total_nodes: number; // Unique hashed nodes
   avg_score: number;
   min_score: number;
   max_score: number;
@@ -47,10 +47,10 @@ export interface ExportStats {
  * Edge snapshot (versioned export)
  */
 export interface EdgeSnapshot {
-  version: string;          // Snapshot version (timestamp-based)
-  created_at: number;       // Unix timestamp
+  version: string; // Snapshot version (timestamp-based)
+  created_at: number; // Unix timestamp
   policy_signature: string; // Policy hash for reproducibility
-  policy_version: string;   // Policy semver
+  policy_version: string; // Policy semver
   edges: HashedEdge[];
   stats: ExportStats;
 }
@@ -59,10 +59,10 @@ export interface EdgeSnapshot {
  * Export options
  */
 export interface ExportOptions {
-  minScore?: number;        // Filter edges below this score
+  minScore?: number; // Filter edges below this score
   includeReasonCodes?: boolean;
   includeLevelModality?: boolean;
-  outputPath?: string;      // Where to save snapshot
+  outputPath?: string; // Where to save snapshot
 }
 
 /**
@@ -320,7 +320,10 @@ export class PublishableExport {
   /**
    * Compare two snapshots
    */
-  compareSnapshots(version1: string, version2: string): {
+  compareSnapshots(
+    version1: string,
+    version2: string
+  ): {
     added_edges: number;
     removed_edges: number;
     score_changes: number;
@@ -330,8 +333,8 @@ export class PublishableExport {
     const snap2 = this.loadSnapshot(version2);
 
     // Build edge maps
-    const edges1 = new Map(snap1.edges.map(e => [`${e.from}-${e.to}`, e.score]));
-    const edges2 = new Map(snap2.edges.map(e => [`${e.from}-${e.to}`, e.score]));
+    const edges1 = new Map(snap1.edges.map((e) => [`${e.from}-${e.to}`, e.score]));
+    const edges2 = new Map(snap2.edges.map((e) => [`${e.from}-${e.to}`, e.score]));
 
     let addedEdges = 0;
     let removedEdges = 0;

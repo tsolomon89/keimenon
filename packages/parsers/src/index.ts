@@ -2,7 +2,13 @@
 export * from './types';
 
 // Parser exports
-export { ParserRegistry, ChatGPTParser, ClaudeParser, GeminiParser, GenericParser } from './parsers';
+export {
+  ParserRegistry,
+  ChatGPTParser,
+  ClaudeParser,
+  GeminiParser,
+  GenericParser,
+} from './parsers';
 
 // Utility exports
 export { fingerprint, normalizeText, tokenize, jaccard, normalizeTitle } from './utils/fingerprint';
@@ -28,7 +34,7 @@ export {
   generateBlobId,
   generateNodeKey,
   generateContentId,
-  generateNodeId,
+  generateNodeId as generateLegacyNodeId, // Alias to avoid conflict with CAS generateNodeId
   generateClusterId,
   generateHierarchicalNodeKey,
   parseBlobId,
@@ -74,6 +80,41 @@ export {
   type MarkdownNormalizationResult,
   type CodeIsland,
 } from './normalizers/markdown-normalizer';
+
+// Canonicalization and Content Addressing exports
+export {
+  canonicalize,
+  areCanonicallyEqual,
+  canonicalizeForNodeType,
+  validateCanonicalizeProperties,
+  TEST_VECTORS,
+  type CanonicalizeOptions,
+} from './services/canonicalization';
+
+export {
+  contentHash,
+  contentHashForNodeType,
+  generateNodeId,
+  parseNodeId,
+  areHashesEqual,
+  isValidContentHash,
+  isValidNodeId,
+  createContentAddressedNode,
+  calculateDeduplicationSavings,
+  analyzeDeduplication,
+  createMergePlan,
+  batchContentHash,
+  findDuplicatesInBatch,
+  ContentAddressingMonitor,
+  createMonitoredHashFunction,
+  HASH_ALGORITHM,
+  HASH_ENCODING,
+  type ContentHash,
+  type NodeId,
+  type ContentAddressedNode,
+  type DeduplicationResult as CASDeduplicationResult,
+  type ContentAddressingStats,
+} from './services/content-addressing';
 
 // Services exports
 export {

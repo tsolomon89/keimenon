@@ -1,0 +1,55 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schema/mcp-config.json",
+  "mcpServers": {
+    "canvas-database": {
+      "command": "node",
+      "args": ["servers/database/index.js"],
+      "description": "Query and inspect Canvas Memory OS SQLite database",
+      "enabled": true,
+      "permissions": ["read", "write"],
+      "env": {
+        "SQLITE_PATH": "${env:HOME}/.canvas-memory/canvas.db"
+      }
+    },
+    "canvas-docs": {
+      "command": "node",
+      "args": ["servers/docs/index.js"],
+      "description": "Search and navigate project documentation",
+      "enabled": true,
+      "permissions": ["read"]
+    },
+    "canvas-api-testing": {
+      "command": "node",
+      "args": ["servers/api-testing/index.js"],
+      "description": "Test API endpoints with authentication",
+      "enabled": true,
+      "permissions": ["read", "write"],
+      "note": "Comprehensive API testing including auth, CRUD, multi-tenant, and import workflows"
+    },
+    "canvas-chat-import": {
+      "command": "node",
+      "args": ["servers/chat-import/index.js"],
+      "description": "Test chat import functionality with sample datasets",
+      "enabled": true,
+      "permissions": ["read", "write"],
+      "note": "Import testing with pre-built datasets (tiny, small, medium, edge-cases)"
+    },
+    "canvas-codebase": {
+      "command": "node",
+      "args": ["servers/codebase/index.js"],
+      "description": "Analyze code patterns and dependencies",
+      "enabled": false,
+      "permissions": ["read"],
+      "note": "Not implemented yet - placeholder for future code analysis features"
+    },
+    "canvas-git-workflow": {
+      "command": "node",
+      "args": ["servers/git-workflow/index.js"],
+      "description": "Git operations following project conventions",
+      "enabled": false,
+      "permissions": ["read", "write"],
+      "note": "Enable for git workflow assistance"
+    }
+  },
+  "version": "1.0.0"
+}

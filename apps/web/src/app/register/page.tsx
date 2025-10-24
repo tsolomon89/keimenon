@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { UserPlus, ArrowRight, AlertCircle, Lock } from 'lucide-react';
+import { UserPlus, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function RegisterPage() {
@@ -69,12 +69,8 @@ export default function RegisterPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-purple-600">
             <UserPlus className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">
-            Canvas Memory OS
-          </h1>
-          <p className="text-slate-400">
-            Create your workspace account
-          </p>
+          <h1 className="text-4xl font-bold text-white mb-2">Canvas Memory OS</h1>
+          <p className="text-slate-400">Create your workspace account</p>
         </div>
 
         {/* Registration Form */}
@@ -148,7 +144,10 @@ export default function RegisterPage() {
 
             {/* Confirm Password */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-300 mb-2">
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-slate-300 mb-2"
+              >
                 Confirm Password
               </label>
               <input
@@ -167,7 +166,10 @@ export default function RegisterPage() {
 
             {/* Account Tier */}
             <div>
-              <label htmlFor="accountClass" className="block text-sm font-medium text-slate-300 mb-2">
+              <label
+                htmlFor="accountClass"
+                className="block text-sm font-medium text-slate-300 mb-2"
+              >
                 Account Tier
               </label>
               <select

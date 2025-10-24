@@ -48,7 +48,7 @@ const mockSettingsTree: TreeNode[] = [
  */
 function createContext(overrides: Partial<NavigationContext> = {}): NavigationContext {
   return {
-    shellMode: 'portal',
+    shellMode: 'client',
     canvasMode: 'canvas',
     operatingMode: 'native',
     user: mockClientUser,
@@ -67,7 +67,7 @@ describe('NavigationModelFactory', () => {
   describe('Settings Mode (Rule 1 - Highest Priority)', () => {
     it('should show settings tree when canvasMode is settings (admin, crm)', () => {
       const context = createContext({
-        shellMode: 'crm',
+        shellMode: 'admin',
         canvasMode: 'settings',
         user: mockAdminUser,
       });
@@ -84,7 +84,7 @@ describe('NavigationModelFactory', () => {
 
     it('should show settings tree when canvasMode is settings (admin, portal)', () => {
       const context = createContext({
-        shellMode: 'portal',
+        shellMode: 'client',
         canvasMode: 'settings',
         user: mockAdminUser,
       });
@@ -98,7 +98,7 @@ describe('NavigationModelFactory', () => {
 
     it('should show settings tree when canvasMode is settings (client, portal)', () => {
       const context = createContext({
-        shellMode: 'portal',
+        shellMode: 'client',
         canvasMode: 'settings',
         user: mockClientUser,
       });
@@ -135,7 +135,7 @@ describe('NavigationModelFactory', () => {
   describe('CRM Mode (Rule 2 - Medium Priority)', () => {
     it('should show accounts tree when in CRM + Dashboard (admin)', () => {
       const context = createContext({
-        shellMode: 'crm',
+        shellMode: 'admin',
         canvasMode: 'dashboard',
         user: mockAdminUser,
       });
@@ -152,7 +152,7 @@ describe('NavigationModelFactory', () => {
 
     it('should NOT show accounts tree in CRM + Canvas (default to groups)', () => {
       const context = createContext({
-        shellMode: 'crm',
+        shellMode: 'admin',
         canvasMode: 'canvas',
         user: mockAdminUser,
       });
@@ -166,7 +166,7 @@ describe('NavigationModelFactory', () => {
     it('should show accounts tree even if user is client (but in CRM mode)', () => {
       // Edge case: client shouldn't be in CRM mode, but if they are, show accounts
       const context = createContext({
-        shellMode: 'crm',
+        shellMode: 'admin',
         canvasMode: 'dashboard',
         user: mockClientUser,
       });
@@ -179,7 +179,7 @@ describe('NavigationModelFactory', () => {
 
     it('should show loading message when accounts are loading', () => {
       const context = createContext({
-        shellMode: 'crm',
+        shellMode: 'admin',
         canvasMode: 'dashboard',
         accountsLoading: true,
       });
@@ -193,7 +193,7 @@ describe('NavigationModelFactory', () => {
   describe('Groups Mode (Rule 3 - Default/Fallback)', () => {
     it('should show groups tree in portal + canvas (client)', () => {
       const context = createContext({
-        shellMode: 'portal',
+        shellMode: 'client',
         canvasMode: 'canvas',
         user: mockClientUser,
       });
@@ -210,7 +210,7 @@ describe('NavigationModelFactory', () => {
 
     it('should show groups tree in portal + dashboard (admin-as-client)', () => {
       const context = createContext({
-        shellMode: 'portal',
+        shellMode: 'client',
         canvasMode: 'dashboard',
         user: mockAdminUser,
       });
@@ -223,7 +223,7 @@ describe('NavigationModelFactory', () => {
 
     it('should show groups tree in crm + canvas (admin in canvas view)', () => {
       const context = createContext({
-        shellMode: 'crm',
+        shellMode: 'admin',
         canvasMode: 'canvas',
         user: mockAdminUser,
       });
@@ -233,10 +233,10 @@ describe('NavigationModelFactory', () => {
       expect(model.mode).toBe('groups');
     });
 
-    it('should show groups tree in portal + upload', () => {
+    it('should show groups tree in portal + canvas', () => {
       const context = createContext({
-        shellMode: 'portal',
-        canvasMode: 'upload',
+        shellMode: 'client',
+        canvasMode: 'canvas',
       });
 
       const model = NavigationModelFactory.get(context);
@@ -244,33 +244,10 @@ describe('NavigationModelFactory', () => {
       expect(model.mode).toBe('groups');
     });
 
-    it('should show groups tree in portal + processing', () => {
+    it('should show groups tree in crm + canvas', () => {
       const context = createContext({
-        shellMode: 'portal',
-        canvasMode: 'processing',
-      });
-
-      const model = NavigationModelFactory.get(context);
-
-      expect(model.mode).toBe('groups');
-    });
-
-    it('should show groups tree in crm + upload', () => {
-      const context = createContext({
-        shellMode: 'crm',
-        canvasMode: 'upload',
-        user: mockAdminUser,
-      });
-
-      const model = NavigationModelFactory.get(context);
-
-      expect(model.mode).toBe('groups');
-    });
-
-    it('should show groups tree in crm + processing', () => {
-      const context = createContext({
-        shellMode: 'crm',
-        canvasMode: 'processing',
+        shellMode: 'admin',
+        canvasMode: 'canvas',
         user: mockAdminUser,
       });
 
@@ -304,94 +281,73 @@ describe('NavigationModelFactory', () => {
 
   describe('All 12 Permutations (Comprehensive Matrix)', () => {
     const testCases: Array<{
-      shell: 'crm' | 'portal';
-      canvas: 'dashboard' | 'settings' | 'canvas' | 'upload' | 'processing';
+      shell: 'admin' | 'client';
+      canvas: 'auth' | 'dashboard' | 'settings' | 'canvas';
       user: User;
       expectedMode: 'accounts' | 'settings' | 'groups';
       description: string;
     }> = [
       // CRM shell variations
       {
-        shell: 'crm',
+        shell: 'admin',
         canvas: 'dashboard',
         user: mockAdminUser,
         expectedMode: 'accounts',
         description: 'Admin in CRM dashboard shows accounts',
       },
       {
-        shell: 'crm',
+        shell: 'admin',
         canvas: 'canvas',
         user: mockAdminUser,
         expectedMode: 'groups',
         description: 'Admin in CRM canvas shows groups',
       },
       {
-        shell: 'crm',
+        shell: 'admin',
         canvas: 'settings',
         user: mockAdminUser,
         expectedMode: 'settings',
         description: 'Admin in CRM settings shows settings',
       },
       {
-        shell: 'crm',
-        canvas: 'upload',
+        shell: 'admin',
+        canvas: 'canvas',
         user: mockAdminUser,
         expectedMode: 'groups',
-        description: 'Admin in CRM upload shows groups',
-      },
-      {
-        shell: 'crm',
-        canvas: 'processing',
-        user: mockAdminUser,
-        expectedMode: 'groups',
-        description: 'Admin in CRM processing shows groups',
+        description: 'Admin in CRM canvas shows groups',
       },
 
       // Portal shell variations (admin-as-client or client)
       {
-        shell: 'portal',
+        shell: 'client',
         canvas: 'dashboard',
         user: mockAdminUser,
         expectedMode: 'groups',
         description: 'Admin-as-client in portal dashboard shows groups',
       },
       {
-        shell: 'portal',
+        shell: 'client',
         canvas: 'canvas',
         user: mockAdminUser,
         expectedMode: 'groups',
         description: 'Admin-as-client in portal canvas shows groups',
       },
       {
-        shell: 'portal',
+        shell: 'client',
         canvas: 'settings',
         user: mockAdminUser,
         expectedMode: 'settings',
         description: 'Admin-as-client in portal settings shows settings',
       },
       {
-        shell: 'portal',
-        canvas: 'upload',
-        user: mockClientUser,
-        expectedMode: 'groups',
-        description: 'Client in portal upload shows groups',
-      },
-      {
-        shell: 'portal',
-        canvas: 'processing',
-        user: mockClientUser,
-        expectedMode: 'groups',
-        description: 'Client in portal processing shows groups',
-      },
-      {
-        shell: 'portal',
+        shell: 'client',
         canvas: 'canvas',
         user: mockClientUser,
         expectedMode: 'groups',
         description: 'Client in portal canvas shows groups',
       },
       {
-        shell: 'portal',
+        shell: 'client',
         canvas: 'settings',
         user: mockClientUser,
         expectedMode: 'settings',
@@ -445,34 +401,34 @@ describe('NavigationModelFactory', () => {
 
     describe('getDefaultCanvasMode', () => {
       it('should return dashboard for admin in CRM shell', () => {
-        expect(getDefaultCanvasMode('crm', mockAdminUser)).toBe('dashboard');
+        expect(getDefaultCanvasMode('admin', mockAdminUser)).toBe('dashboard');
       });
 
       it('should return canvas for admin in portal shell', () => {
-        expect(getDefaultCanvasMode('portal', mockAdminUser)).toBe('canvas');
+        expect(getDefaultCanvasMode('client', mockAdminUser)).toBe('canvas');
       });
 
       it('should return canvas for client in any shell', () => {
-        expect(getDefaultCanvasMode('portal', mockClientUser)).toBe('canvas');
-        expect(getDefaultCanvasMode('crm', mockClientUser)).toBe('canvas');
+        expect(getDefaultCanvasMode('client', mockClientUser)).toBe('canvas');
+        expect(getDefaultCanvasMode('admin', mockClientUser)).toBe('canvas');
       });
 
       it('should return canvas when user is null', () => {
-        expect(getDefaultCanvasMode('crm', null)).toBe('canvas');
+        expect(getDefaultCanvasMode('admin', null)).toBe('canvas');
       });
     });
 
     describe('getDefaultShellMode', () => {
       it('should return crm for admin user', () => {
-        expect(getDefaultShellMode(mockAdminUser)).toBe('crm');
+        expect(getDefaultShellMode(mockAdminUser)).toBe('admin');
       });
 
       it('should return portal for client user', () => {
-        expect(getDefaultShellMode(mockClientUser)).toBe('portal');
+        expect(getDefaultShellMode(mockClientUser)).toBe('client');
       });
 
       it('should return portal when user is null', () => {
-        expect(getDefaultShellMode(null)).toBe('portal');
+        expect(getDefaultShellMode(null)).toBe('client');
       });
     });
   });
@@ -503,7 +459,7 @@ describe('NavigationModelFactory', () => {
 
     it('should prioritize settings mode even if accounts would match', () => {
       const context = createContext({
-        shellMode: 'crm',
+        shellMode: 'admin',
         canvasMode: 'settings', // Settings takes priority
         user: mockAdminUser,
       });
