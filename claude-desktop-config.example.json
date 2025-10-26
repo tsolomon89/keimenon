@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "playwright-e2e": {
+      "command": "node",
+      "args": [
+        "C:\\Development\\Projects\\ai_convo_parser\\.mcp\\servers\\playwright-e2e\\index.js"
+      ],
+      "env": {
+        "BASE_URL": "http://localhost:3000",
+        "API_BASE_URL": "http://localhost:4001",
+        "TEST_USER_EMAIL": "admin@admin.com",
+        "TEST_USER_PASSWORD": "admin123"
+      }
+    }
+  },
+  "globalShortcut": "Ctrl+Space"
+}
