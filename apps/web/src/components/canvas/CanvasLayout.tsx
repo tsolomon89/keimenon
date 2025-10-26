@@ -95,6 +95,40 @@ export function CanvasLayout({
     }
   }, [activeOperation, getActiveOperations]);
 
+  // Auto-switch to processing view when import job starts
+  // TODO: Add user preference to disable auto-switch (see docs/features/IMPORT_PREFERENCES.md)
+  useEffect(() => {
+    const runningImports = Array.from(operations.values()).filter(
+      (op) =>
+        op.type === 'import' &&
+        [
+          'queued',
+          'reading',
+          'parsing',
+          'normalizing',
+          'indexing',
+          'linking',
+          'processing',
+        ].includes(op.status)
+    );
+
+    // Auto-switch to processing view when import starts (if we're in canvas mode)
+    // Shows minigraph visualization and real-time pipeline progress
+    if (canvasMode === 'canvas' && runningImports.length > 0 && canvasSurface !== 'processing') {
+      console.log('[CanvasLayout] Auto-switching to processing view for import job');
+      setCanvasSurface('processing');
+
+      // Set the first running import as active if none is selected
+      if (
+        !activeOperation ||
+        activeOperation.status === 'done' ||
+        activeOperation.status === 'error'
+      ) {
+        setActiveOperation(runningImports[0]);
+      }
+    }
+  }, [operations, canvasMode, canvasSurface, activeOperation]);
+
   // Reset processing surface when there is no active operation
   useEffect(() => {
     if (canvasSurface === 'processing' && !activeOperation) {
