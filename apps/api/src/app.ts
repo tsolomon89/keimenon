@@ -42,6 +42,7 @@ import { SSEBroadcaster } from './modules/jobs/infrastructure/SSEBroadcaster';
 import { WorkerPool } from './modules/workers/domain/WorkerPool';
 import { DatabaseWriteQueue } from './services/DatabaseWriteQueue';
 import { AuthService } from './services/auth.service';
+import { testIsolationMiddleware } from './middleware/test-isolation.middleware';
 
 /**
  * App context holds initialized services
@@ -72,6 +73,12 @@ export function createApp(): { app: Express; context: AppContext } {
   // Body parsing
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+  // Test isolation (only active in test environment)
+  if (process.env.NODE_ENV === 'test') {
+    app.use(testIsolationMiddleware);
+    console.log('🧪 Test isolation middleware enabled - using per-worker databases');
+  }
 
   // Request logging
   app.use((req: Request, res: Response, next: NextFunction) => {

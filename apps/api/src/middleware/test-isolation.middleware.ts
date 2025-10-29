@@ -1,0 +1,102 @@
+import { Request, Response, NextFunction } from 'express';
+import path from 'path';
+import fs from 'fs';
+
+/**
+ * Test Isolation Middleware
+ *
+ * Enables per-worker database isolation during E2E testing.
+ *
+ * How it works:
+ * 1. E2E tests send X-Test-DB-Path header with worker-specific DB path
+ * 2. This middleware intercepts the request
+ * 3. If in test mode and header present, overrides DB path for this request
+ * 4. Database client uses the worker-specific DB instead of shared DB
+ *
+ * Security:
+ * - Only active when NODE_ENV=test
+ * - Validates DB path is within .test-dbs directory
+ * - Prevents path traversal attacks
+ *
+ * Usage:
+ *   // apps/api/src/index.ts
+ *   import { testIsolationMiddleware } from './middleware/test-isolation.middleware';
+ *
+ *   if (process.env.NODE_ENV === 'test') {
+ *     app.use(testIsolationMiddleware);
+ *   }
+ */
+
+export function testIsolationMiddleware(req: Request, res: Response, next: NextFunction) {
+  // Only active in test environment
+  if (process.env.NODE_ENV !== 'test') {
+    return next();
+  }
+
+  const testDbPath = req.headers['x-test-db-path'] as string;
+
+  if (testDbPath) {
+    // Security: Validate path is safe
+    const normalizedPath = path.normalize(testDbPath);
+    const testDbsDir = path.join(process.cwd(), '.test-dbs');
+
+    // Ensure path is within .test-dbs directory
+    if (!normalizedPath.startsWith(testDbsDir)) {
+      console.warn(`[Test Isolation] Rejected invalid DB path: ${testDbPath}`);
+      return res.status(400).json({ error: 'Invalid test DB path' });
+    }
+
+    // Ensure file exists or can be created
+    if (!fs.existsSync(normalizedPath) && !fs.existsSync(path.dirname(normalizedPath))) {
+      console.warn(`[Test Isolation] DB directory does not exist: ${path.dirname(normalizedPath)}`);
+      return res.status(400).json({ error: 'Test DB directory not found' });
+    }
+
+    // Attach DB path to request for database client to use
+    (req as any).testDbPath = normalizedPath;
+
+    console.log(`[Test Isolation] Using worker DB: ${path.basename(normalizedPath)}`);
+  }
+
+  next();
+}
+
+/**
+ * Helper function to get DB path for current request
+ *
+ * Usage in database client:
+ *
+ * ```typescript
+ * import { getDbPath } from '../middleware/test-isolation.middleware';
+ *
+ * export function getDatabaseClient(req?: Request) {
+ *   const dbPath = getDbPath(req);
+ *   return new Database(dbPath);
+ * }
+ * ```
+ */
+export function getDbPath(req?: Request): string {
+  // If test mode and request has testDbPath, use it
+  if (req && (req as any).testDbPath) {
+    return (req as any).testDbPath;
+  }
+
+  // Otherwise use default DB path
+  const defaultPath =
+    process.env.STORAGE_MODE === 'local'
+      ? path.join(process.cwd(), 'packages/db/data/canvas-memory.db')
+      : path.join(process.cwd(), '.data/canvas-memory.db');
+
+  return defaultPath;
+}
+
+/**
+ * TypeScript declaration to extend Express Request
+ */
+declare global {
+  namespace Express {
+    interface Request {
+      testDbPath?: string;
+    }
+  }
+}
