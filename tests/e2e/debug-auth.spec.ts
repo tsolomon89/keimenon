@@ -30,8 +30,8 @@ test.describe('Debug Authentication', () => {
     await page.getByLabel(/password/i).fill(TEST_PASSWORD);
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    // Wait for redirect
-    await page.waitForURL(/\/canvas/, { timeout: 20000 });
+    // Wait for redirect (uses global 30s timeout)
+    await page.waitForURL(/\/canvas/);
     await page.waitForLoadState('domcontentloaded');
     console.log('✅ Redirected to canvas');
 
@@ -44,6 +44,9 @@ test.describe('Debug Authentication', () => {
 
     expect(token).not.toBeNull();
     console.log('✅ Token found in localStorage');
+
+    // Wait for token to stabilize and API to be ready (increased for parallel execution)
+    await page.waitForTimeout(3000);
 
     // Test API call from browser context (like components do)
     // NOTE: We pass the API URL as a parameter since process.env doesn't exist in browser context

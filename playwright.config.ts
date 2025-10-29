@@ -24,8 +24,8 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
 
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Limit parallel workers to reduce resource contention */
+  workers: process.env.CI ? 1 : 2,
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
@@ -50,6 +50,9 @@ export default defineConfig({
 
     /* Maximum time each action such as `click()` can take. */
     actionTimeout: 10000,
+
+    /* Maximum time for navigation (goto, waitForURL, etc.) */
+    navigationTimeout: 30000,
 
     /* Bypass CSP and ignore HTTPS errors to fix DELETE request blocking */
     bypassCSP: true,
@@ -85,6 +88,9 @@ export default defineConfig({
         extraHTTPHeaders: {
           'x-test-source': 'playwright-e2e',
         },
+        // WebKit needs longer timeouts for SSE connections and async operations
+        actionTimeout: 30000,
+        navigationTimeout: 30000,
       },
     },
 

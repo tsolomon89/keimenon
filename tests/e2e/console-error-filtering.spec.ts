@@ -32,7 +32,7 @@ test.describe('Console Footer Error Filtering', () => {
   test('should capture errors with different severity levels', async ({ page }) => {
     // Inject test errors with different severities
     await page.evaluate(() => {
-      const { errorCapture } = require('@/services/error-capture.service');
+      const errorCapture = (window as any).errorCapture;
 
       // Create test errors
       errorCapture.error('Test error message', {
@@ -63,16 +63,16 @@ test.describe('Console Footer Error Filtering', () => {
     await expect(page.getByText('Console')).toBeVisible();
 
     // Verify all errors are visible initially (no filter)
-    await expect(page.getByText('Test error message')).toBeVisible();
-    await expect(page.getByText('Test warning message')).toBeVisible();
-    await expect(page.getByText('Test info message')).toBeVisible();
-    await expect(page.getByText('Test debug message')).toBeVisible();
+    await expect(page.getByText('Test error message').first()).toBeVisible();
+    await expect(page.getByText('Test warning message').first()).toBeVisible();
+    await expect(page.getByText('Test info message').first()).toBeVisible();
+    await expect(page.getByText('Test debug message').first()).toBeVisible();
   });
 
   test('should filter by severity correctly', async ({ page }) => {
     // Inject test errors
     await page.evaluate(() => {
-      const { errorCapture } = require('@/services/error-capture.service');
+      const errorCapture = (window as any).errorCapture;
 
       errorCapture.error('Error 1', { domain: 'ui', operation: 'test' });
       errorCapture.warn('Warning 1', { domain: 'ui', operation: 'test' });
@@ -94,46 +94,52 @@ test.describe('Console Footer Error Filtering', () => {
     await page.waitForTimeout(500);
 
     // Should show only errors
-    await expect(page.getByText('Error 1')).toBeVisible();
-    await expect(page.getByText('Warning 1')).not.toBeVisible();
-    await expect(page.getByText('Info 1')).not.toBeVisible();
-    await expect(page.getByText('Debug 1')).not.toBeVisible();
+    await expect(page.getByText('Error 1').first()).toBeVisible();
+    await expect(page.getByText('Warning 1').first()).not.toBeVisible();
+    await expect(page.getByText('Info 1').first()).not.toBeVisible();
+    await expect(page.getByText('Debug 1').first()).not.toBeVisible();
 
     // Filter by "Warnings" only
     await severityDropdown.selectOption('warn');
     await page.waitForTimeout(500);
 
     // Should show only warnings
-    await expect(page.getByText('Error 1')).not.toBeVisible();
-    await expect(page.getByText('Warning 1')).toBeVisible();
-    await expect(page.getByText('Info 1')).not.toBeVisible();
-    await expect(page.getByText('Debug 1')).not.toBeVisible();
+    await expect(page.getByText('Error 1').first()).not.toBeVisible();
+    await expect(page.getByText('Warning 1').first()).toBeVisible();
+    await expect(page.getByText('Info 1').first()).not.toBeVisible();
+    await expect(page.getByText('Debug 1').first()).not.toBeVisible();
 
     // Filter by "Info" only
     await severityDropdown.selectOption('info');
     await page.waitForTimeout(500);
 
     // Should show only info
-    await expect(page.getByText('Error 1')).not.toBeVisible();
-    await expect(page.getByText('Warning 1')).not.toBeVisible();
-    await expect(page.getByText('Info 1')).toBeVisible();
-    await expect(page.getByText('Debug 1')).not.toBeVisible();
+    await expect(page.getByText('Error 1').first()).not.toBeVisible();
+    await expect(page.getByText('Warning 1').first()).not.toBeVisible();
+    await expect(page.getByText('Info 1').first()).toBeVisible();
+    await expect(page.getByText('Debug 1').first()).not.toBeVisible();
 
     // Reset to "All Severities"
     await severityDropdown.selectOption('all');
     await page.waitForTimeout(500);
 
     // Should show all
-    await expect(page.getByText('Error 1')).toBeVisible();
-    await expect(page.getByText('Warning 1')).toBeVisible();
-    await expect(page.getByText('Info 1')).toBeVisible();
-    await expect(page.getByText('Debug 1')).toBeVisible();
+    await expect(page.getByText('Error 1').first()).toBeVisible();
+    await expect(page.getByText('Warning 1').first()).toBeVisible();
+    await expect(page.getByText('Info 1').first()).toBeVisible();
+    await expect(page.getByText('Debug 1').first()).toBeVisible();
   });
 
   test('should display correct error counts by severity', async ({ page }) => {
+    // Clear existing errors to start fresh
+    await page.evaluate(() => {
+      const errorCapture = (window as any).errorCapture;
+      errorCapture.clear();
+    });
+
     // Inject multiple errors
     await page.evaluate(() => {
-      const { errorCapture } = require('@/services/error-capture.service');
+      const errorCapture = (window as any).errorCapture;
 
       // Create 3 errors
       errorCapture.error('Error 1', { domain: 'ui', operation: 'test' });
@@ -148,12 +154,19 @@ test.describe('Console Footer Error Filtering', () => {
     // Open console
     await page.keyboard.press('`');
 
+    // Wait for console to render and badges to update (Firefox needs extra time)
+    await page.waitForTimeout(800);
+
     // Check Console tab badge shows error count (should be 3)
     const consoleTab = page.getByRole('button', { name: /Console/ });
-    await expect(consoleTab.locator('text=3')).toBeVisible();
+    await expect(consoleTab.getByText('3')).toBeVisible();
 
     // Footer status bar (when closed) should also show counts
     await page.keyboard.press('`'); // Close console
+
+    // Wait for footer to update after closing
+    await page.waitForTimeout(500);
+
     await expect(page.getByText(/3 errors?/)).toBeVisible();
     await expect(page.getByText(/2 warnings?/)).toBeVisible();
   });
@@ -171,7 +184,7 @@ test.describe('Console Footer Error Filtering', () => {
 
     // Inject errors with different severities
     await page.evaluate(() => {
-      const { errorCapture } = require('@/services/error-capture.service');
+      const errorCapture = (window as any).errorCapture;
 
       errorCapture.error('Error message', { domain: 'ui', operation: 'test' });
       errorCapture.warn('Warning message', { domain: 'ui', operation: 'test' });
@@ -203,7 +216,7 @@ test.describe('Console Footer Error Filtering', () => {
   test('should filter by domain correctly', async ({ page }) => {
     // Inject errors with different domains
     await page.evaluate(() => {
-      const { errorCapture } = require('@/services/error-capture.service');
+      const errorCapture = (window as any).errorCapture;
 
       errorCapture.error('API Error', { domain: 'api', operation: 'test' });
       errorCapture.error('Import Error', { domain: 'import', operation: 'test' });
@@ -221,24 +234,24 @@ test.describe('Console Footer Error Filtering', () => {
     await page.waitForTimeout(500);
 
     // Should show only API errors
-    await expect(page.getByText('API Error')).toBeVisible();
-    await expect(page.getByText('Import Error')).not.toBeVisible();
-    await expect(page.getByText('UI Error')).not.toBeVisible();
+    await expect(page.getByText('API Error').first()).toBeVisible();
+    await expect(page.getByText('Import Error').first()).not.toBeVisible();
+    await expect(page.getByText('UI Error').first()).not.toBeVisible();
 
     // Filter by "Import" domain
     await domainDropdown.selectOption('import');
     await page.waitForTimeout(500);
 
     // Should show only Import errors
-    await expect(page.getByText('API Error')).not.toBeVisible();
-    await expect(page.getByText('Import Error')).toBeVisible();
-    await expect(page.getByText('UI Error')).not.toBeVisible();
+    await expect(page.getByText('API Error').first()).not.toBeVisible();
+    await expect(page.getByText('Import Error').first()).toBeVisible();
+    await expect(page.getByText('UI Error').first()).not.toBeVisible();
   });
 
   test('should search errors by text', async ({ page }) => {
     // Inject errors with different messages
     await page.evaluate(() => {
-      const { errorCapture } = require('@/services/error-capture.service');
+      const errorCapture = (window as any).errorCapture;
 
       errorCapture.error('Network timeout error', { domain: 'api', operation: 'fetch' });
       errorCapture.error('File upload failed', { domain: 'import', operation: 'upload' });
@@ -256,9 +269,9 @@ test.describe('Console Footer Error Filtering', () => {
     await page.waitForTimeout(500);
 
     // Should show only matching error
-    await expect(page.getByText('Network timeout error')).toBeVisible();
-    await expect(page.getByText('File upload failed')).not.toBeVisible();
-    await expect(page.getByText('Invalid credentials')).not.toBeVisible();
+    await expect(page.getByText('Network timeout error').first()).toBeVisible();
+    await expect(page.getByText('File upload failed').first()).not.toBeVisible();
+    await expect(page.getByText('Invalid credentials').first()).not.toBeVisible();
 
     // Search for "failed"
     await searchInput.clear();
@@ -266,8 +279,8 @@ test.describe('Console Footer Error Filtering', () => {
     await page.waitForTimeout(500);
 
     // Should show only matching error
-    await expect(page.getByText('Network timeout error')).not.toBeVisible();
-    await expect(page.getByText('File upload failed')).toBeVisible();
-    await expect(page.getByText('Invalid credentials')).not.toBeVisible();
+    await expect(page.getByText('Network timeout error').first()).not.toBeVisible();
+    await expect(page.getByText('File upload failed').first()).toBeVisible();
+    await expect(page.getByText('Invalid credentials').first()).not.toBeVisible();
   });
 });

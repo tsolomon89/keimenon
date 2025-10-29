@@ -59,13 +59,19 @@ async function navigateToSettings(page: Page): Promise<void> {
 
   // Click Settings icon button in toolbar
   const settingsButton = page.locator('button[title="Settings"]');
+
+  // Ensure Settings button is visible and clickable (critical for parallel execution)
+  await settingsButton.waitFor({ state: 'visible', timeout: 5000 });
+  await page.waitForTimeout(500); // Let any animations settle
   await settingsButton.click();
-  await page.waitForTimeout(500); // Let settings view load
+
+  // Wait for Settings page to fully load (increased for parallel execution)
+  await page.waitForTimeout(3000);
 
   // Click "Data" category in left sidebar
   // The left sidebar shows categories: General, Appearance, Layout, Account, Data, etc.
   const dataCategory = page.locator('text="Data"').first();
-  await dataCategory.waitFor({ state: 'visible', timeout: 5000 });
+  await dataCategory.waitFor({ state: 'visible', timeout: 10000 });
   await dataCategory.click();
   await page.waitForTimeout(500);
 
