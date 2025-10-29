@@ -68,7 +68,12 @@ jobs:
           PORT: 3000
 
       - name: Run E2E tests
-        run: npm run e2e -- --project=${{ matrix.browser }}
+        run: |
+          if [ "${{ matrix.browser }}" = "webkit" ]; then
+            npm run e2e -- --project=${{ matrix.browser }} --workers=1
+          else
+            npm run e2e -- --project=${{ matrix.browser }}
+          fi
         env:
           BASE_URL: http://localhost:3000
           API_BASE_URL: http://localhost:4001
