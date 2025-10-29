@@ -1,0 +1,273 @@
+import { test, expect } from './fixtures/testId';
+
+/**
+ * Console Footer Error Filtering Tests
+ *
+ * Tests the error capture service and console footer filtering functionality.
+ * Verifies that:
+ * - Errors are captured with correct severity levels
+ * - Severity filters work correctly (no state sync issues)
+ * - Browser console uses appropriate methods (error/warn/info/debug)
+ */
+
+test.describe('Console Footer Error Filtering', () => {
+  test.describe.configure({ tag: '@full' });
+
+  // Test credentials
+  const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
+  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'admin123';
+
+  test.beforeEach(async ({ page }) => {
+    // Login
+    await page.goto('/login');
+    await page.getByLabel(/email/i).fill(TEST_EMAIL);
+    await page.getByLabel(/password/i).fill(TEST_PASSWORD);
+    await page.getByRole('button', { name: /sign in/i }).click();
+
+    // Wait for redirect to canvas
+    await expect(page).toHaveURL(/\/canvas/, { timeout: 10000 });
+    await page.waitForLoadState('domcontentloaded');
+  });
+
+  test('should capture errors with different severity levels', async ({ page }) => {
+    // Inject test errors with different severities
+    await page.evaluate(() => {
+      const { errorCapture } = require('@/services/error-capture.service');
+
+      // Create test errors
+      errorCapture.error('Test error message', {
+        domain: 'ui',
+        operation: 'test.error',
+      });
+
+      errorCapture.warn('Test warning message', {
+        domain: 'ui',
+        operation: 'test.warn',
+      });
+
+      errorCapture.info('Test info message', {
+        domain: 'ui',
+        operation: 'test.info',
+      });
+
+      errorCapture.debug('Test debug message', {
+        domain: 'ui',
+        operation: 'test.debug',
+      });
+    });
+
+    // Open console footer (press backtick)
+    await page.keyboard.press('`');
+
+    // Wait for console to open
+    await expect(page.getByText('Console')).toBeVisible();
+
+    // Verify all errors are visible initially (no filter)
+    await expect(page.getByText('Test error message')).toBeVisible();
+    await expect(page.getByText('Test warning message')).toBeVisible();
+    await expect(page.getByText('Test info message')).toBeVisible();
+    await expect(page.getByText('Test debug message')).toBeVisible();
+  });
+
+  test('should filter by severity correctly', async ({ page }) => {
+    // Inject test errors
+    await page.evaluate(() => {
+      const { errorCapture } = require('@/services/error-capture.service');
+
+      errorCapture.error('Error 1', { domain: 'ui', operation: 'test' });
+      errorCapture.warn('Warning 1', { domain: 'ui', operation: 'test' });
+      errorCapture.info('Info 1', { domain: 'ui', operation: 'test' });
+      errorCapture.debug('Debug 1', { domain: 'ui', operation: 'test' });
+    });
+
+    // Open console
+    await page.keyboard.press('`');
+    await expect(page.getByText('Console')).toBeVisible();
+
+    // Find severity dropdown
+    const severityDropdown = page.locator('select').filter({ hasText: 'All Severities' }).first();
+
+    // Filter by "Errors" only
+    await severityDropdown.selectOption('error');
+
+    // Wait for filter to apply
+    await page.waitForTimeout(500);
+
+    // Should show only errors
+    await expect(page.getByText('Error 1')).toBeVisible();
+    await expect(page.getByText('Warning 1')).not.toBeVisible();
+    await expect(page.getByText('Info 1')).not.toBeVisible();
+    await expect(page.getByText('Debug 1')).not.toBeVisible();
+
+    // Filter by "Warnings" only
+    await severityDropdown.selectOption('warn');
+    await page.waitForTimeout(500);
+
+    // Should show only warnings
+    await expect(page.getByText('Error 1')).not.toBeVisible();
+    await expect(page.getByText('Warning 1')).toBeVisible();
+    await expect(page.getByText('Info 1')).not.toBeVisible();
+    await expect(page.getByText('Debug 1')).not.toBeVisible();
+
+    // Filter by "Info" only
+    await severityDropdown.selectOption('info');
+    await page.waitForTimeout(500);
+
+    // Should show only info
+    await expect(page.getByText('Error 1')).not.toBeVisible();
+    await expect(page.getByText('Warning 1')).not.toBeVisible();
+    await expect(page.getByText('Info 1')).toBeVisible();
+    await expect(page.getByText('Debug 1')).not.toBeVisible();
+
+    // Reset to "All Severities"
+    await severityDropdown.selectOption('all');
+    await page.waitForTimeout(500);
+
+    // Should show all
+    await expect(page.getByText('Error 1')).toBeVisible();
+    await expect(page.getByText('Warning 1')).toBeVisible();
+    await expect(page.getByText('Info 1')).toBeVisible();
+    await expect(page.getByText('Debug 1')).toBeVisible();
+  });
+
+  test('should display correct error counts by severity', async ({ page }) => {
+    // Inject multiple errors
+    await page.evaluate(() => {
+      const { errorCapture } = require('@/services/error-capture.service');
+
+      // Create 3 errors
+      errorCapture.error('Error 1', { domain: 'ui', operation: 'test' });
+      errorCapture.error('Error 2', { domain: 'ui', operation: 'test' });
+      errorCapture.error('Error 3', { domain: 'ui', operation: 'test' });
+
+      // Create 2 warnings
+      errorCapture.warn('Warning 1', { domain: 'ui', operation: 'test' });
+      errorCapture.warn('Warning 2', { domain: 'ui', operation: 'test' });
+    });
+
+    // Open console
+    await page.keyboard.press('`');
+
+    // Check Console tab badge shows error count (should be 3)
+    const consoleTab = page.getByRole('button', { name: /Console/ });
+    await expect(consoleTab.locator('text=3')).toBeVisible();
+
+    // Footer status bar (when closed) should also show counts
+    await page.keyboard.press('`'); // Close console
+    await expect(page.getByText(/3 errors?/)).toBeVisible();
+    await expect(page.getByText(/2 warnings?/)).toBeVisible();
+  });
+
+  test('should use correct console methods for different severities', async ({ page }) => {
+    // Listen to console messages
+    const consoleMessages: { type: string; text: string }[] = [];
+
+    page.on('console', (msg) => {
+      consoleMessages.push({
+        type: msg.type(),
+        text: msg.text(),
+      });
+    });
+
+    // Inject errors with different severities
+    await page.evaluate(() => {
+      const { errorCapture } = require('@/services/error-capture.service');
+
+      errorCapture.error('Error message', { domain: 'ui', operation: 'test' });
+      errorCapture.warn('Warning message', { domain: 'ui', operation: 'test' });
+      errorCapture.info('Info message', { domain: 'ui', operation: 'test' });
+      errorCapture.debug('Debug message', { domain: 'ui', operation: 'test' });
+    });
+
+    // Wait for console logs to be captured
+    await page.waitForTimeout(1000);
+
+    // Verify correct console methods were used
+    const errorLogs = consoleMessages.filter((m) => m.type === 'error');
+    const warnLogs = consoleMessages.filter((m) => m.type === 'warning');
+    const infoLogs = consoleMessages.filter((m) => m.type === 'info');
+    const debugLogs = consoleMessages.filter((m) => m.type === 'debug');
+
+    // Should have used console.error() for errors
+    expect(errorLogs.length).toBeGreaterThan(0);
+
+    // Should have used console.warn() for warnings
+    expect(warnLogs.length).toBeGreaterThan(0);
+
+    // Should have used console.info() for info
+    expect(infoLogs.length).toBeGreaterThan(0);
+
+    // Note: console.debug() may not be captured in all browsers
+  });
+
+  test('should filter by domain correctly', async ({ page }) => {
+    // Inject errors with different domains
+    await page.evaluate(() => {
+      const { errorCapture } = require('@/services/error-capture.service');
+
+      errorCapture.error('API Error', { domain: 'api', operation: 'test' });
+      errorCapture.error('Import Error', { domain: 'import', operation: 'test' });
+      errorCapture.error('UI Error', { domain: 'ui', operation: 'test' });
+    });
+
+    // Open console
+    await page.keyboard.press('`');
+
+    // Find domain dropdown
+    const domainDropdown = page.locator('select').filter({ hasText: 'All Domains' }).first();
+
+    // Filter by "API" domain
+    await domainDropdown.selectOption('api');
+    await page.waitForTimeout(500);
+
+    // Should show only API errors
+    await expect(page.getByText('API Error')).toBeVisible();
+    await expect(page.getByText('Import Error')).not.toBeVisible();
+    await expect(page.getByText('UI Error')).not.toBeVisible();
+
+    // Filter by "Import" domain
+    await domainDropdown.selectOption('import');
+    await page.waitForTimeout(500);
+
+    // Should show only Import errors
+    await expect(page.getByText('API Error')).not.toBeVisible();
+    await expect(page.getByText('Import Error')).toBeVisible();
+    await expect(page.getByText('UI Error')).not.toBeVisible();
+  });
+
+  test('should search errors by text', async ({ page }) => {
+    // Inject errors with different messages
+    await page.evaluate(() => {
+      const { errorCapture } = require('@/services/error-capture.service');
+
+      errorCapture.error('Network timeout error', { domain: 'api', operation: 'fetch' });
+      errorCapture.error('File upload failed', { domain: 'import', operation: 'upload' });
+      errorCapture.error('Invalid credentials', { domain: 'api', operation: 'auth' });
+    });
+
+    // Open console
+    await page.keyboard.press('`');
+
+    // Find search input
+    const searchInput = page.getByPlaceholder('Search errors...');
+
+    // Search for "network"
+    await searchInput.fill('network');
+    await page.waitForTimeout(500);
+
+    // Should show only matching error
+    await expect(page.getByText('Network timeout error')).toBeVisible();
+    await expect(page.getByText('File upload failed')).not.toBeVisible();
+    await expect(page.getByText('Invalid credentials')).not.toBeVisible();
+
+    // Search for "failed"
+    await searchInput.clear();
+    await searchInput.fill('failed');
+    await page.waitForTimeout(500);
+
+    // Should show only matching error
+    await expect(page.getByText('Network timeout error')).not.toBeVisible();
+    await expect(page.getByText('File upload failed')).toBeVisible();
+    await expect(page.getByText('Invalid credentials')).not.toBeVisible();
+  });
+});

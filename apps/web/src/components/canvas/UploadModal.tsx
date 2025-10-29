@@ -36,13 +36,10 @@ export function UploadModal({ onClose }: UploadModalProps) {
       files.forEach((file) => formData.append('files', file));
       formData.append('board_id', 'default_board');
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/ingest/files`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/ingest/files`, {
+        method: 'POST',
+        body: formData,
+      });
 
       if (!response.ok) {
         throw new Error(`Upload failed: ${response.statusText}`);
@@ -70,15 +67,27 @@ export function UploadModal({ onClose }: UploadModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full shadow-2xl max-h-[90vh] flex flex-col">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="upload-modal-title"
+        data-testid="upload-modal"
+        className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full shadow-2xl max-h-[90vh] flex flex-col"
+      >
         {/* Header */}
         <div className="flex-shrink-0">
           <div className="p-6 border-b border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Upload className="w-6 h-6 text-purple-500" />
-              <h2 className="text-xl font-bold">Upload Sources</h2>
+              <h2 id="upload-modal-title" className="text-xl font-bold">
+                Upload Sources
+              </h2>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+              aria-label="Close upload modal"
+            >
               <X className="w-5 h-5 text-slate-400" />
             </button>
           </div>
@@ -99,8 +108,8 @@ export function UploadModal({ onClose }: UploadModalProps) {
                           isCompleted
                             ? 'bg-purple-600 text-white'
                             : isActive
-                            ? 'bg-purple-600 text-white ring-4 ring-purple-600/30'
-                            : 'bg-slate-800 text-slate-500'
+                              ? 'bg-purple-600 text-white ring-4 ring-purple-600/30'
+                              : 'bg-slate-800 text-slate-500'
                         }`}
                       >
                         {isCompleted ? <CheckCircle className="w-4 h-4" /> : index + 1}
@@ -114,7 +123,9 @@ export function UploadModal({ onClose }: UploadModalProps) {
                       </span>
                     </div>
                     {index < stages.length - 1 && (
-                      <div className={`flex-1 h-0.5 mx-2 ${isCompleted ? 'bg-purple-600' : 'bg-slate-800'}`} />
+                      <div
+                        className={`flex-1 h-0.5 mx-2 ${isCompleted ? 'bg-purple-600' : 'bg-slate-800'}`}
+                      />
                     )}
                   </div>
                 );
@@ -143,7 +154,12 @@ export function UploadModal({ onClose }: UploadModalProps) {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <input type="checkbox" id="dedupe" defaultChecked className="rounded bg-slate-800 border-slate-700" />
+              <input
+                type="checkbox"
+                id="dedupe"
+                defaultChecked
+                className="rounded bg-slate-800 border-slate-700"
+              />
               <label htmlFor="dedupe" className="text-sm text-slate-400">
                 Detect and flag duplicates
               </label>
@@ -170,7 +186,8 @@ export function UploadModal({ onClose }: UploadModalProps) {
               <div className="text-center py-8">
                 <h3 className="text-lg font-semibold mb-2">Review Your Files</h3>
                 <p className="text-sm text-slate-400">
-                  {files.length} file{files.length !== 1 ? 's' : ''} ready to upload with the configuration above
+                  {files.length} file{files.length !== 1 ? 's' : ''} ready to upload with the
+                  configuration above
                 </p>
               </div>
               {/* File List */}
@@ -184,9 +201,7 @@ export function UploadModal({ onClose }: UploadModalProps) {
                       <FileText className="w-5 h-5 text-purple-400 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{file.name}</p>
-                        <p className="text-xs text-slate-400">
-                          {(file.size / 1024).toFixed(1)} KB
-                        </p>
+                        <p className="text-xs text-slate-400">{(file.size / 1024).toFixed(1)} KB</p>
                       </div>
                     </div>
                   ))}

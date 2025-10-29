@@ -9,6 +9,9 @@
  * - GET /api/v1/data/stats (get canvas data statistics)
  */
 
+// Start test server before running tests
+import './setup-global';
+
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert';
 import { SQLiteClient } from '@canvas-memory/db';

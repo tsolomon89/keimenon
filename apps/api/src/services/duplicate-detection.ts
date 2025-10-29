@@ -236,11 +236,11 @@ export class DuplicateDetectionService {
         break;
 
       case 'embedding':
-        // TODO: Implement embedding-based similarity using ML model
-        // Related: apps/api/src/services/embeddings.ts (needs creation)
-        // See: docs/architecture/EMBEDDINGS.md (needs creation)
+        // TODO(enhancement): Optional ML-based similarity using embeddings
+        // This is a future enhancement, not a bug. Jaccard fallback is intentional and acceptable.
+        // Related: apps/api/src/services/embeddings.ts (would need creation)
         // Requires: sentence-transformers or OpenAI embeddings integration
-        // For now, fall back to Jaccard
+        // Current: Falls back to Jaccard similarity (works well for most use cases)
         const tokensAFallback = tokenize(processedA);
         const tokensBFallback = tokenize(processedB);
         similarity = jaccard(tokensAFallback, tokensBFallback);

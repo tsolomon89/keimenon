@@ -25,11 +25,16 @@ import { StartJob } from '../application/StartJob';
 import { CancelJob } from '../application/CancelJob';
 import { RetryJob } from '../application/RetryJob';
 import Database from 'better-sqlite3';
+import type { SSEBroadcaster } from './SSEBroadcaster';
 
 /**
  * Factory function to create jobs routes with auth and database
  */
-export function createJobsRoutes(authService: AuthService, db: Database.Database): Router {
+export function createJobsRoutes(
+  authService: AuthService,
+  db: Database.Database,
+  sseBroadcaster?: SSEBroadcaster
+): Router {
   const router = Router();
 
   // Initialize repository and use cases
@@ -378,6 +383,21 @@ export function createJobsRoutes(authService: AuthService, db: Database.Database
       const job = await jobRepository.findById(id, targetAccountId);
       if (!job) {
         throw ErrorFactory.notFound('Job', 'jobs.delete');
+      }
+
+      // Broadcast deletion event to UI BEFORE deleting from database
+      // This allows the UI to remove the job from its state immediately
+      if (sseBroadcaster) {
+        const deletedJob = {
+          id: job.id,
+          type: job.type,
+          accountId: job.accountId,
+          status: 'deleted' as const,
+          progress: { current: 0, total: 0, percent: 0 },
+          config: job.config,
+        };
+        sseBroadcaster.broadcastJobUpdate(deletedJob as any);
+        console.log(`📡 Broadcasting deletion event for job ${id}`);
       }
 
       // Delete job from database

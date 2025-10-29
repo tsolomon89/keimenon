@@ -7,7 +7,8 @@ import { SettingsInspector } from '../settings/SettingsInspector';
 import { SourceInspector } from './SourceInspector';
 import { SelectionStack } from './SelectionStack';
 import { AccountInspector } from '../inspector/AccountInspector';
-import { ImportModule } from './ImportModule';
+import { ChatImportModal } from './ChatImportModal';
+import { ImportMethodSelector } from './ImportMethodSelector';
 import { UserDetailInspector } from '../inspector/UserDetailInspector';
 import { InspectorData } from '@/types/canvas';
 import { CanvasNode } from '@/store/canvasStore';
@@ -513,17 +514,27 @@ export function CanvasSidebar({
             />
           ) : currentPanel === 'import-flow' ? (
             <>
-              {/* NOTE(import-flow): Swap back to ImportOperationInspector (apps/web/src/components/inspector/ImportOperationInspector.tsx) if the legacy upload workflow is needed. */}
-              <ImportModule
-                variant="panel"
-                onClose={() => {
-                  setInternalInspectorPanel(null);
-                  setPanelHistory([]);
-                }}
-                onSuccess={() => {
-                  onViewProcessing?.();
-                }}
-              />
+              {/* NOTE(import-flow): Using ChatImportModal as primary job-based import rail.
+                  Legacy ImportModule quarantined to ImportModule.old.tsx.
+                  Debug selector enabled via NEXT_PUBLIC_DEBUG_IMPORT_SELECTOR=1. */}
+              {process.env.NEXT_PUBLIC_DEBUG_IMPORT_SELECTOR === '1' ? (
+                <ImportMethodSelector
+                  onClose={() => {
+                    setInternalInspectorPanel(null);
+                    setPanelHistory([]);
+                  }}
+                  onSuccess={() => {
+                    onViewProcessing?.();
+                  }}
+                />
+              ) : (
+                <ChatImportModal
+                  onDismiss={() => {
+                    setInternalInspectorPanel(null);
+                    setPanelHistory([]);
+                  }}
+                />
+              )}
             </>
           ) : rightCanvasMode === 'settings' ? (
             // Settings Inspector

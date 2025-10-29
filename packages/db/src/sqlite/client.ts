@@ -180,6 +180,10 @@ CREATE TABLE IF NOT EXISTS nodes (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  content_hash TEXT,
+  canonical_content TEXT,
+  is_duplicate INTEGER DEFAULT 0,
+  original_node_id TEXT,
   FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -303,6 +307,8 @@ CREATE INDEX IF NOT EXISTS idx_nodes_created ON nodes(created_at);
 CREATE INDEX IF NOT EXISTS idx_nodes_updated ON nodes(updated_at);
 CREATE INDEX IF NOT EXISTS idx_nodes_data_tag ON nodes(data_tag);
 CREATE INDEX IF NOT EXISTS idx_nodes_account_tag ON nodes(account_id, data_tag);
+CREATE INDEX IF NOT EXISTS idx_nodes_content_hash ON nodes(content_hash);
+CREATE INDEX IF NOT EXISTS idx_nodes_account_hash ON nodes(account_id, content_hash);
 CREATE INDEX IF NOT EXISTS idx_edges_kind ON edges(kind);
 CREATE INDEX IF NOT EXISTS idx_edges_account ON edges(account_id);
 CREATE INDEX IF NOT EXISTS idx_edges_created_by ON edges(created_by);
@@ -355,13 +361,50 @@ INSERT OR REPLACE INTO schema_metadata (key, value) VALUES ('features', 'clean_m
 /**
  * SQLite client for local-first graph storage
  * Provides same API as Neo4jClient for easy swapping
+ *
+ * SINGLE WRITER PATTERN:
+ * - Direct writes are restricted to workers via DatabaseWriteQueue
+ * - Routes and controllers should be read-only
+ * - Use allowDirectWrites flag ONLY for workers and migrations
  */
 export class SQLiteClient {
   private db: Database.Database | null = null;
   private config: SQLiteConfig;
+  private allowDirectWrites: boolean = false;
 
   constructor(config: SQLiteConfig) {
     this.config = config;
+  }
+
+  /**
+   * Enable direct writes (for workers and migrations only)
+   * @internal
+   */
+  enableDirectWrites(): void {
+    this.allowDirectWrites = true;
+  }
+
+  /**
+   * Disable direct writes (default for route handlers)
+   * @internal
+   */
+  disableDirectWrites(): void {
+    this.allowDirectWrites = false;
+  }
+
+  /**
+   * Assert that direct writes are allowed
+   * @throws Error if direct writes are disabled
+   * @internal
+   */
+  private assertWriteAllowed(operation: string): void {
+    if (!this.allowDirectWrites) {
+      throw new Error(
+        `Direct database write denied: ${operation}. ` +
+          'Use DatabaseWriteQueue for writes. Direct writes are only allowed in workers. ' +
+          'If you are implementing a worker, call db.enableDirectWrites() first.'
+      );
+    }
   }
 
   /**
@@ -416,10 +459,52 @@ export class SQLiteClient {
       // Use embedded schema - no file I/O required!
       this.db.exec(SQLITE_SCHEMA);
 
+      // Run migrations for existing databases
+      await this.runMigrations();
+
       console.log('✅ SQLite schema initialized');
     } catch (error) {
       console.error('❌ Failed to initialize schema:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Run database migrations for existing databases
+   * Adds missing columns that were added after initial schema
+   */
+  private async runMigrations(): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not connected');
+    }
+
+    // Migration 1: Add deduplication columns to nodes table
+    // Check if content_hash column exists
+    const tableInfo = this.db.prepare('PRAGMA table_info(nodes)').all() as any[];
+    const hasContentHash = tableInfo.some((col: any) => col.name === 'content_hash');
+
+    if (!hasContentHash) {
+      console.log('🔄 Running migration: Adding deduplication columns to nodes table');
+
+      try {
+        this.db.exec(`
+          ALTER TABLE nodes ADD COLUMN content_hash TEXT;
+          ALTER TABLE nodes ADD COLUMN canonical_content TEXT;
+          ALTER TABLE nodes ADD COLUMN is_duplicate INTEGER DEFAULT 0;
+          ALTER TABLE nodes ADD COLUMN original_node_id TEXT;
+        `);
+
+        // Create indexes for the new columns
+        this.db.exec(`
+          CREATE INDEX IF NOT EXISTS idx_nodes_content_hash ON nodes(content_hash);
+          CREATE INDEX IF NOT EXISTS idx_nodes_account_hash ON nodes(account_id, content_hash);
+        `);
+
+        console.log('✅ Migration complete: Deduplication columns added');
+      } catch (error) {
+        console.error('❌ Migration failed:', error);
+        // Don't throw - allow database to continue working without deduplication
+      }
     }
   }
 
@@ -465,6 +550,8 @@ export class SQLiteClient {
    * @see docs/architecture/CANONICALIZATION.md
    */
   async createNode(node: AnyNode): Promise<void> {
+    this.assertWriteAllowed('createNode');
+
     if (!this.db) {
       throw new Error('Database not connected');
     }
@@ -517,6 +604,8 @@ export class SQLiteClient {
    * @see docs/architecture/ARCHITECTURE_CONTRACT.md
    */
   async createNodes(nodes: AnyNode[]): Promise<void> {
+    this.assertWriteAllowed('createNodes');
+
     if (!this.db) {
       throw new Error('Database not connected');
     }
@@ -636,6 +725,8 @@ export class SQLiteClient {
    * Update a node
    */
   async updateNode(id: string, node: Partial<AnyNode>): Promise<void> {
+    this.assertWriteAllowed('updateNode');
+
     if (!this.db) {
       throw new Error('Database not connected');
     }
@@ -662,6 +753,8 @@ export class SQLiteClient {
    * Delete a node
    */
   async deleteNode(id: string): Promise<void> {
+    this.assertWriteAllowed('deleteNode');
+
     if (!this.db) {
       throw new Error('Database not connected');
     }
@@ -675,6 +768,8 @@ export class SQLiteClient {
    * Uses INSERT OR REPLACE to handle re-imports gracefully (updates existing edges)
    */
   async createEdge(edge: AnyEdge): Promise<void> {
+    this.assertWriteAllowed('createEdge');
+
     if (!this.db) {
       throw new Error('Database not connected');
     }
@@ -703,6 +798,8 @@ export class SQLiteClient {
    * Uses INSERT OR REPLACE to handle re-imports gracefully (updates existing edges)
    */
   async createEdges(edges: AnyEdge[]): Promise<void> {
+    this.assertWriteAllowed('createEdges');
+
     if (!this.db) {
       throw new Error('Database not connected');
     }
@@ -777,6 +874,8 @@ export class SQLiteClient {
    * Delete an edge
    */
   async deleteEdge(id: string): Promise<void> {
+    this.assertWriteAllowed('deleteEdge');
+
     if (!this.db) {
       throw new Error('Database not connected');
     }
@@ -861,6 +960,8 @@ export class SQLiteClient {
    * Useful for cleaning up test data
    */
   async deleteNodesByTag(dataTag: 'test' | 'automated' | 'manual' | 'real'): Promise<number> {
+    this.assertWriteAllowed('deleteNodesByTag');
+
     if (!this.db) {
       throw new Error('Database not connected');
     }
@@ -916,6 +1017,8 @@ export class SQLiteClient {
     nodeIds: string[],
     dataTag: 'test' | 'automated' | 'manual' | 'real'
   ): Promise<number> {
+    this.assertWriteAllowed('updateNodeTag');
+
     if (!this.db) {
       throw new Error('Database not connected');
     }
@@ -1163,7 +1266,7 @@ export class SQLiteClient {
             JSON.stringify(duplicateIds),
             edgesRelinked,
             spaceSaved,
-            'system', // TODO: Get actual user ID from context
+            'system', // TODO(enhancement): Get actual user ID from context parameter
             Date.now()
           );
         } catch {
@@ -1257,7 +1360,7 @@ export class SQLiteClient {
             JSON.stringify(dupIds),
             edgeCount,
             spaceSaved,
-            'system', // TODO: Get actual user ID from context
+            'system', // TODO(enhancement): Get actual user ID from context parameter
             Date.now()
           );
         } catch {

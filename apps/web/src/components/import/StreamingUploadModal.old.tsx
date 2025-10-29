@@ -46,8 +46,8 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const updateStep = (stepId: string, updates: Partial<ProcessingStep>) => {
-    setProcessingSteps(prev =>
-      prev.map(step => (step.id === stepId ? { ...step, ...updates } : step))
+    setProcessingSteps((prev) =>
+      prev.map((step) => (step.id === stepId ? { ...step, ...updates } : step))
     );
   };
 
@@ -78,7 +78,7 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
       abortControllerRef.current = new AbortController();
 
       const formData = new FormData();
-      files.forEach(file => formData.append('files', file));
+      files.forEach((file) => formData.append('files', file));
       formData.append('config', JSON.stringify(config));
 
       // Update upload step
@@ -113,7 +113,6 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
       // Set results
       setResults(data.results || []);
       setStage('complete');
-
     } catch (error: any) {
       if (error.name === 'AbortError') {
         setErrorMessage('Upload cancelled');
@@ -133,7 +132,7 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
 
       // Simulate progress
       for (let i = 0; i <= 100; i += 10) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         updateStep(stepId, { progress: i });
       }
 
@@ -196,15 +195,9 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="w-16 h-16 mx-auto mb-4 text-slate-500" />
-                <p className="text-lg font-semibold mb-2">
-                  Drop chat export files here
-                </p>
-                <p className="text-sm text-slate-400 mb-4">
-                  or click to browse
-                </p>
-                <p className="text-xs text-slate-500">
-                  Supports files up to 2GB • JSON format
-                </p>
+                <p className="text-lg font-semibold mb-2">Drop chat export files here</p>
+                <p className="text-sm text-slate-400 mb-4">or click to browse</p>
+                <p className="text-xs text-slate-500">Supports files up to 2GB • JSON format</p>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -229,15 +222,11 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                           <FileText className="w-5 h-5 text-purple-400" />
                           <div>
                             <p className="text-sm font-medium">{file.name}</p>
-                            <p className="text-xs text-slate-500">
-                              {formatFileSize(file.size)}
-                            </p>
+                            <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
                           </div>
                         </div>
                         <button
-                          onClick={() =>
-                            setFiles(files.filter((_, i) => i !== idx))
-                          }
+                          onClick={() => setFiles(files.filter((_, i) => i !== idx))}
                           className="p-1 hover:bg-slate-800 rounded transition-colors"
                         >
                           <X className="w-4 h-4 text-slate-400" />
@@ -268,7 +257,7 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                       <input
                         type="checkbox"
                         checked={config.sources?.enabled ?? true}
-                        onChange={e =>
+                        onChange={(e) =>
                           setConfig({
                             ...config,
                             sources: { ...config.sources, enabled: e.target.checked },
@@ -282,12 +271,10 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                     {config.sources?.enabled && (
                       <div className="ml-6 space-y-2">
                         <div>
-                          <label className="text-xs text-slate-400">
-                            Stitch strategy
-                          </label>
+                          <label className="text-xs text-slate-400">Stitch strategy</label>
                           <select
                             value={config.sources?.stitchStrategy ?? 'by_chat'}
-                            onChange={e =>
+                            onChange={(e) =>
                               setConfig({
                                 ...config,
                                 sources: {
@@ -313,7 +300,7 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                       <input
                         type="checkbox"
                         checked={config.code?.enabled ?? true}
-                        onChange={e =>
+                        onChange={(e) =>
                           setConfig({
                             ...config,
                             code: { ...config.code, enabled: e.target.checked },
@@ -330,7 +317,7 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                           <input
                             type="checkbox"
                             checked={config.code?.deduplicate ?? true}
-                            onChange={e =>
+                            onChange={(e) =>
                               setConfig({
                                 ...config,
                                 code: {
@@ -341,9 +328,7 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                             }
                             className="rounded bg-slate-900 border-slate-700"
                           />
-                          <span className="text-xs text-slate-400">
-                            Deduplicate code
-                          </span>
+                          <span className="text-xs text-slate-400">Deduplicate code</span>
                         </label>
                       </div>
                     )}
@@ -355,7 +340,7 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                       <input
                         type="checkbox"
                         checked={config.duplicates?.enabled ?? true}
-                        onChange={e =>
+                        onChange={(e) =>
                           setConfig({
                             ...config,
                             duplicates: {
@@ -372,12 +357,10 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                     {config.duplicates?.enabled && (
                       <div className="ml-6 space-y-2">
                         <div>
-                          <label className="text-xs text-slate-400">
-                            Algorithm
-                          </label>
+                          <label className="text-xs text-slate-400">Algorithm</label>
                           <select
                             value={config.duplicates?.algorithm ?? 'jaccard'}
-                            onChange={e =>
+                            onChange={(e) =>
                               setConfig({
                                 ...config,
                                 duplicates: {
@@ -409,7 +392,7 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold">Processing</span>
                   <span className="text-sm text-slate-400">
-                    {processingSteps.filter(s => s.status === 'complete').length} /{' '}
+                    {processingSteps.filter((s) => s.status === 'complete').length} /{' '}
                     {processingSteps.length} steps
                   </span>
                 </div>
@@ -418,8 +401,7 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                     className="bg-purple-600 h-2 rounded-full transition-all duration-300"
                     style={{
                       width: `${
-                        (processingSteps.filter(s => s.status === 'complete')
-                          .length /
+                        (processingSteps.filter((s) => s.status === 'complete').length /
                           processingSteps.length) *
                         100
                       }%`,
@@ -430,17 +412,17 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
 
               {/* Step Details */}
               <div className="space-y-3">
-                {processingSteps.map(step => (
+                {processingSteps.map((step) => (
                   <div
                     key={step.id}
                     className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
                       step.status === 'active'
                         ? 'bg-purple-600/20 border border-purple-600/30'
                         : step.status === 'complete'
-                        ? 'bg-emerald-600/20 border border-emerald-600/30'
-                        : step.status === 'error'
-                        ? 'bg-red-600/20 border border-red-600/30'
-                        : 'bg-slate-800/50'
+                          ? 'bg-emerald-600/20 border border-emerald-600/30'
+                          : step.status === 'error'
+                            ? 'bg-red-600/20 border border-red-600/30'
+                            : 'bg-slate-800/50'
                     }`}
                   >
                     {step.status === 'complete' && (
@@ -449,9 +431,7 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                     {step.status === 'active' && (
                       <div className="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
                     )}
-                    {step.status === 'error' && (
-                      <AlertCircle className="w-5 h-5 text-red-400" />
-                    )}
+                    {step.status === 'error' && <AlertCircle className="w-5 h-5 text-red-400" />}
                     {step.status === 'pending' && (
                       <div className="w-5 h-5 rounded-full bg-slate-700" />
                     )}
@@ -459,16 +439,12 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                     <div className="flex-1">
                       <p className="text-sm font-medium">{step.label}</p>
                       {step.message && (
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {step.message}
-                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">{step.message}</p>
                       )}
                     </div>
 
                     {step.progress !== undefined && step.status === 'active' && (
-                      <span className="text-sm text-slate-400">
-                        {step.progress}%
-                      </span>
+                      <span className="text-sm text-slate-400">{step.progress}%</span>
                     )}
                   </div>
                 ))}
@@ -484,9 +460,7 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                   <CheckCircle2 className="w-10 h-10 text-emerald-400" />
                 </div>
                 <h3 className="text-xl font-bold mb-2">Import Complete!</h3>
-                <p className="text-slate-400">
-                  Successfully processed {results.length} file(s)
-                </p>
+                <p className="text-slate-400">Successfully processed {results.length} file(s)</p>
               </div>
 
               {/* Results */}
@@ -555,7 +529,7 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                 setFiles([]);
                 setStage('select');
                 setProcessingSteps(
-                  processingSteps.map(s => ({ ...s, status: 'pending', progress: undefined }))
+                  processingSteps.map((s) => ({ ...s, status: 'pending', progress: undefined }))
                 );
                 setResults([]);
               }}
@@ -571,7 +545,7 @@ export function StreamingUploadModal({ onDismiss }: StreamingUploadModalProps) {
                 setStage('select');
                 setErrorMessage('');
                 setProcessingSteps(
-                  processingSteps.map(s => ({ ...s, status: 'pending', progress: undefined }))
+                  processingSteps.map((s) => ({ ...s, status: 'pending', progress: undefined }))
                 );
               }}
               className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors"

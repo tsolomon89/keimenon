@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CanvasLayout } from '@/components/canvas/CanvasLayout';
 import { FirstTimeUploadModal } from '@/components/canvas/FirstTimeUploadModal';
-import { ImportModule } from '@/components/canvas/ImportModule';
+// LEGACY (quarantined): import { ImportModule } from '@/components/canvas/ImportModule.old';
+// Using ChatImportModal as primary import rail
 import { useCanvasStore } from '@/store/canvasStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { ImportProgressProvider } from '@/contexts/ImportProgressContext';
@@ -33,8 +34,10 @@ export default function CanvasPage() {
       return;
     }
 
+    // Check if E2E testing mode is enabled (disables welcome modal)
+    const isE2ETesting = process.env.NEXT_PUBLIC_E2E_TESTING === 'true';
     const hasSeenWelcome = localStorage.getItem('canvas_memory_welcome_shown');
-    if (!hasSeenWelcome) {
+    if (!hasSeenWelcome && !isE2ETesting) {
       setIsFirstTime(true);
     }
 
@@ -64,11 +67,11 @@ export default function CanvasPage() {
   const handleOpenUpload = () => {
     // Temporarily default to new local-first modal
     // Hold shift to use old modal for comparison
-    // TODO(agent:canvas): Replace unsafe type assertion with proper event handling
+    // TODO(agent:canvas): Replace window.event with proper React event handling
     // Related: apps/web/src/components/canvas/CanvasViewport.tsx (keyboard event handling)
     // See: docs/features/CANVAS_KEYBOARD_SHORTCUTS.md (needs creation)
     // Use: React synthetic events or window.addEventListener for keyboard shortcuts
-    if (typeof window !== 'undefined' && (window as any).event?.shiftKey) {
+    if (typeof window !== 'undefined' && window.event?.shiftKey) {
       setShowUploadModal(true);
     } else {
       setShowImportModule(true);
@@ -100,19 +103,9 @@ export default function CanvasPage() {
               onOpenChatImport={handleOpenChatImport}
             />
           )}
-          {showImportModule && (
-            <ImportModule
-              variant="modal"
-              onClose={() => setShowImportModule(false)}
-              onSuccess={(results) => {
-                console.log('Import success:', results);
-                // TODO(agent:canvas): Refresh canvas with new data from IndexedDB
-                // Related: apps/web/src/store/canvasStore.ts:loadGraphData
-                // See: apps/web/src/lib/local-import.ts:279 (save implementation needed first)
-                loadGraphData();
-              }}
-            />
-          )}
+          {/* LEGACY (quarantined): showImportModule pathway removed
+              Import Module quarantined to ImportModule.old.tsx
+              Use ChatImportModal via CanvasSidebar or FirstTimeUploadModal instead */}
         </ImportProgressProvider>
       </BackgroundOperationsProvider>
     </ConsoleProvider>

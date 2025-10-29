@@ -123,7 +123,14 @@ class ErrorCaptureService {
     context: ErrorContext,
     severity: ErrorSeverity = 'error'
   ): CapturedError {
-    const errorObj = typeof error === 'string' ? new Error(error) : error;
+    // For info/debug, don't create Error objects (no stack trace needed)
+    // For error/warn, ensure we have an Error object with stack trace
+    const errorObj =
+      typeof error === 'string'
+        ? severity === 'error' || severity === 'warn'
+          ? new Error(error)
+          : ({ message: error, name: 'LogMessage' } as Error)
+        : error;
 
     const capturedError: CapturedError = {
       id: this.generateId(),
@@ -174,11 +181,27 @@ class ErrorCaptureService {
       });
     }
 
-    // Log to console in development
+    // Log to console in development using appropriate console method
     if (process.env.NODE_ENV === 'development') {
       const style = this.getConsoleStyle(severity);
       console.group(`%c[${context.domain}] ${context.operation}`, style);
-      console.error(errorObj);
+
+      // Use appropriate console method based on severity
+      switch (severity) {
+        case 'error':
+          console.error(errorObj);
+          break;
+        case 'warn':
+          console.warn(errorObj);
+          break;
+        case 'info':
+          console.info(errorObj);
+          break;
+        case 'debug':
+          console.debug(errorObj);
+          break;
+      }
+
       if (context.metadata) {
         console.log('Metadata:', context.metadata);
       }
@@ -217,7 +240,7 @@ class ErrorCaptureService {
 
   info(message: string, context: Partial<ErrorContext> = {}): CapturedError {
     return this.capture(
-      new Error(message),
+      message, // Pass string directly - no Error object for info logs
       {
         domain: context.domain || 'system',
         operation: context.operation || 'unknown',
@@ -229,7 +252,7 @@ class ErrorCaptureService {
 
   debug(message: string, context: Partial<ErrorContext> = {}): CapturedError {
     return this.capture(
-      new Error(message),
+      message, // Pass string directly - no Error object for debug logs
       {
         domain: context.domain || 'system',
         operation: context.operation || 'unknown',

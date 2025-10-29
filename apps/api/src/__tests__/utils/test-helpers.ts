@@ -15,9 +15,68 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Database from 'better-sqlite3';
-import { EventSource } from 'eventsource';
+import EventSource from 'eventsource';
 
 const API_URL = process.env.TEST_API_URL || 'http://localhost:4001';
+
+// Type definitions for API responses
+interface LoginResponse {
+  token: string;
+  user?: {
+    id?: string;
+    userId?: string;
+    account_id?: string;
+    accountId?: string;
+    account?: string;
+  };
+  accountId?: string;
+  userId?: string;
+}
+
+interface JobResponse {
+  job: {
+    id: string;
+    state: {
+      status: string;
+      progress?: number;
+    };
+    status?: string;
+    progress?: {
+      percent?: number;
+    };
+  };
+}
+
+interface JobListResponse {
+  jobs: Array<{
+    id: string;
+    state: {
+      status: string;
+      progress?: number;
+    };
+  }>;
+}
+
+interface ImportJobResponse {
+  success: boolean;
+  jobId: string;
+  uploadIds?: string[];
+  job?: any;
+}
+
+interface DeleteJobResponse {
+  success: boolean;
+  jobId: string;
+}
+
+interface CountResult {
+  count: number;
+}
+
+interface NodesByKindResult {
+  kind: string;
+  count: number;
+}
 
 /**
  * Login and get JWT token
@@ -59,7 +118,7 @@ export async function login(
     throw new Error(`Login failed (${response.status}): ${error}`);
   }
 
-  const data = (await response.json()) as any;
+  const data = (await response.json()) as LoginResponse;
 
   // Extract accountId from various possible locations
   const accountId =
@@ -120,7 +179,7 @@ export async function waitForJobCompletion(
       throw new Error(`Failed to fetch job: ${response.statusText}`);
     }
 
-    const data = (await response.json()) as any;
+    const data = (await response.json()) as JobResponse;
     const job = data.job;
 
     // Check if terminal status
@@ -136,7 +195,8 @@ export async function waitForJobCompletion(
 }
 
 /**
- * Create import job via API
+ * Create import job via API (job-based system)
+ * Uses POST /api/v1/jobs/import (primary production rail)
  */
 export async function createImportJob(
   filePath: string,
@@ -145,7 +205,7 @@ export async function createImportJob(
 ): Promise<{ jobId: string; uploadId: string }> {
   const form = createFormData(filePath, config);
 
-  const response = await fetch(`${API_URL}/api/v1/import/enhanced`, {
+  const response = await fetch(`${API_URL}/api/v1/jobs/import`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -159,13 +219,12 @@ export async function createImportJob(
     throw new Error(`Import failed (${response.status}): ${error}`);
   }
 
-  const data = (await response.json()) as any;
+  const data = (await response.json()) as ImportJobResponse;
 
-  // Extract job ID and upload ID from response
-  const result = data.results?.[0] || data;
+  // Job-based response format: { success, jobId, uploadIds, job }
   return {
-    jobId: result.jobId || result.id,
-    uploadId: result.uploadId || result.id,
+    jobId: data.jobId,
+    uploadId: data.uploadIds?.[0] || data.jobId, // Use first uploadId or fallback to jobId
   };
 }
 
@@ -190,7 +249,7 @@ export async function createDeleteJob(
     throw new Error(`Delete job creation failed (${response.status}): ${error}`);
   }
 
-  const data = (await response.json()) as any;
+  const data = (await response.json()) as DeleteJobResponse;
   return {
     jobId: data.jobId,
   };
@@ -202,7 +261,7 @@ export async function createDeleteJob(
 export function countNodes(db: Database.Database, accountId: string): number {
   const result = db
     .prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?')
-    .get(accountId) as { count: number };
+    .get(accountId) as CountResult;
   return result.count;
 }
 
@@ -214,22 +273,19 @@ export function countEdges(db: Database.Database, accountId: string): number {
     .prepare(
       'SELECT COUNT(*) as count FROM edges WHERE from_node IN (SELECT id FROM nodes WHERE account_id = ?)'
     )
-    .get(accountId) as { count: number };
+    .get(accountId) as CountResult;
   return result.count;
 }
 
 /**
  * Get nodes by kind for an account
  */
-export function getNodesByKind(
-  db: Database.Database,
-  accountId: string
-): Array<{ kind: string; count: number }> {
+export function getNodesByKind(db: Database.Database, accountId: string): NodesByKindResult[] {
   const results = db
     .prepare(
       'SELECT kind, COUNT(*) as count FROM nodes WHERE account_id = ? GROUP BY kind ORDER BY count DESC'
     )
-    .all(accountId) as Array<{ kind: string; count: number }>;
+    .all(accountId) as NodesByKindResult[];
   return results;
 }
 
@@ -442,7 +498,7 @@ export async function getJob(jobId: string, token: string): Promise<any> {
     throw new Error(`Failed to fetch job: ${response.statusText}`);
   }
 
-  const data = (await response.json()) as any;
+  const data = (await response.json()) as JobResponse;
   return data.job;
 }
 
@@ -466,7 +522,7 @@ export async function listJobs(
     throw new Error(`Failed to list jobs: ${response.statusText}`);
   }
 
-  const data = (await response.json()) as any;
+  const data = (await response.json()) as JobListResponse;
   return data.jobs || [];
 }
 

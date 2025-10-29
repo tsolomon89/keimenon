@@ -23,6 +23,8 @@ import {
 } from '@/lib/api-client';
 import { useJobStream, type JobUpdate } from '@/hooks/useJobStream';
 import { logApiEvent, logJobEvent } from '@/lib/error-handler';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOperating } from '@/contexts/OperatingContext';
 
 interface ChatImportModalProps {
   onDismiss: () => void;
@@ -31,6 +33,10 @@ interface ChatImportModalProps {
 type Stage = 'select' | 'processing' | 'config' | 'review' | 'complete';
 
 export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
+  // Auth and operating context
+  const { user } = useAuth();
+  const { operating } = useOperating();
+
   // State
   const [stage, setStage] = useState<Stage>('select');
   const [config, setConfig] = useState<ChatImportConfig>(DEFAULT_IMPORT_CONFIG);
@@ -333,7 +339,14 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="chat-import-modal-title"
+        aria-describedby="chat-import-modal-description"
+        data-testid="chat-import-modal"
+        className="bg-slate-900 border border-slate-800 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+      >
         {/* Header */}
         <div className="sticky top-0 bg-slate-900 border-b border-slate-800 p-6 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
@@ -341,13 +354,18 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
               <FileText className="w-6 h-6 text-purple-400" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">Import AI Chat Conversations</h2>
-              <p className="text-sm text-slate-400">{getStageTitle()}</p>
+              <h2 id="chat-import-modal-title" className="text-xl font-bold">
+                Import AI Chat Conversations
+              </h2>
+              <p id="chat-import-modal-description" className="text-sm text-slate-400">
+                {getStageTitle()}
+              </p>
             </div>
           </div>
           <button
             onClick={onDismiss}
             className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+            aria-label="Close import modal"
           >
             <X className="w-5 h-5 text-slate-400" />
           </button>
@@ -414,47 +432,63 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
 
         {/* Footer - hide for review and complete stages */}
         {stage !== 'review' && stage !== 'complete' && (
-          <div className="sticky bottom-0 bg-slate-900 border-t border-slate-800 p-6 flex items-center justify-between">
-            <button
-              onClick={onDismiss}
-              className="px-4 py-2 text-slate-400 hover:text-slate-300 transition-colors"
-            >
-              Cancel
-            </button>
-
-            {stage === 'config' && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    // TODO: Implement preset saving functionality
-                    // Related: apps/api/src/routes/presets.ts (create presets endpoint)
-                    // See: docs/features/IMPORT_PRESETS.md (needs creation)
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
-                >
-                  <Save className="w-4 h-4" />
-                  Save Preset
-                </button>
-
-                <button
-                  onClick={handleImport}
-                  disabled={isImporting}
-                  className="flex items-center gap-2 px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors"
-                >
-                  {isImporting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Importing...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4" />
-                      Import & Review
-                    </>
-                  )}
-                </button>
+          <div className="sticky bottom-0 bg-slate-900 border-t border-slate-800 p-6">
+            {/* Tenancy Debug Badge - Only visible when DEBUG_IMPORT_SELECTOR=1 */}
+            {process.env.NEXT_PUBLIC_DEBUG_IMPORT_SELECTOR === '1' && (
+              <div className="mb-4 px-3 py-2 bg-slate-800/50 border border-slate-700 rounded text-xs text-slate-400 font-mono">
+                <span className="text-slate-500">Import Rail:</span>{' '}
+                <span className="text-green-400">job-based</span>
+                {' · '}
+                <span className="text-slate-500">Account:</span>{' '}
+                <span className="text-purple-400">{operating?.accountId || 'N/A'}</span>
+                {' · '}
+                <span className="text-slate-500">Permission:</span>{' '}
+                <span className="text-yellow-400">{user?.permissionLevel || 'N/A'}</span>
               </div>
             )}
+
+            <div className="flex items-center justify-between">
+              <button
+                onClick={onDismiss}
+                className="px-4 py-2 text-slate-400 hover:text-slate-300 transition-colors"
+              >
+                Cancel
+              </button>
+
+              {stage === 'config' && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      // TODO: Implement preset saving functionality
+                      // Related: apps/api/src/routes/presets.ts (create presets endpoint)
+                      // See: docs/features/IMPORT_PRESETS.md (needs creation)
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Preset
+                  </button>
+
+                  <button
+                    onClick={handleImport}
+                    disabled={isImporting}
+                    className="flex items-center gap-2 px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors"
+                  >
+                    {isImporting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Importing...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        Import & Review
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

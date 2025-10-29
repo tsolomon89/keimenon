@@ -19,48 +19,48 @@ Location: comprehensive-test.test.ts:108-202, ImportFlowPanel.tsx:259-430
    - Code files (.py, .js, etc.): Treat as code
 
 3. For JSON specifically:
-   IF matches expected pattern → - ChatGPT: `mapping` + `messages` - Claude: `chat_messages` + `uuid`  
-    - Gemini: Similar structure
-   → Multi-source upload (many conversations in one file)
-   ELSE → - Unknown JSON structure
-   → Single-source upload (treat as single document)
-   Key Insight: JSON detection has TWO paths:
-   Multi-source (AI chat exports) → Many conversations
-   Single-source (random JSON) → One document
-   🔧 Config Sections: General vs Chat-Specific
-   Universal Settings (Apply to ALL file types) ✅
-   ExtractionSection: Include user/assistant (or author/content for non-chat)
-   MinLengthSection: Minimum content length filter
-   CodeExtractionSection: Extract code blocks (works for HTML, MD, JSON, any text)
-   DuplicateDetectionSection: Detect duplicates (universal text comparison)
-   Chat-Specific Settings (ONLY for AI chat JSON)
-   BranchesSection: Conversation branches (chat-specific)
-   GroupsSection: Auto-grouping strategy (by_chat, by_title, by_topic)
-   ProcessingModeSection: Sequential vs parallel (more relevant for multi-conversation)
-   Decision Logic:
-   if (detectedType === 'chat' && platform !== 'unknown') {
-   // Show ALL 7 sections (universal + chat-specific)
-   showSections: [
-   'Extraction', 'MinLength', 'CodeExtraction', 'DuplicateDetection',
-   'Branches', 'Groups', 'ProcessingMode'
-   ]
-   } else if (detectedType === 'document' || detectedType === 'unknown') {
-   // Show only UNIVERSAL sections
-   showSections: [
-   'Extraction', 'MinLength', 'CodeExtraction', 'DuplicateDetection'
-   ]
-   }
-   📊 Phase 2: Normalization to JSON Document Model
-   Purpose: Convert ANY input format → Unified NormalizedConversation[] structure From: knowledge-extractor-enhancements.py:150-256 (StreamingJSONParser)
-   // Normalization Target (packages/parsers/src/types.ts):
-   interface NormalizedConversation {
-   conversation_id: string,
-   title: string,
-   platform: string,
-   created_at: number,
-   messages: NormalizedMessage[],
-   metadata: Record<string, any>
-   }
+   IF matches expected pattern → - ChatGPT: `mapping` + `messages` - Claude: `chat_messages` + `uuid`
+   - Gemini: Similar structure
+     → Multi-source upload (many conversations in one file)
+     ELSE → - Unknown JSON structure
+     → Single-source upload (treat as single document)
+     Key Insight: JSON detection has TWO paths:
+     Multi-source (AI chat exports) → Many conversations
+     Single-source (random JSON) → One document
+     🔧 Config Sections: General vs Chat-Specific
+     Universal Settings (Apply to ALL file types) ✅
+     ExtractionSection: Include user/assistant (or author/content for non-chat)
+     MinLengthSection: Minimum content length filter
+     CodeExtractionSection: Extract code blocks (works for HTML, MD, JSON, any text)
+     DuplicateDetectionSection: Detect duplicates (universal text comparison)
+     Chat-Specific Settings (ONLY for AI chat JSON)
+     BranchesSection: Conversation branches (chat-specific)
+     GroupsSection: Auto-grouping strategy (by_chat, by_title, by_topic)
+     ProcessingModeSection: Sequential vs parallel (more relevant for multi-conversation)
+     Decision Logic:
+     if (detectedType === 'chat' && platform !== 'unknown') {
+     // Show ALL 7 sections (universal + chat-specific)
+     showSections: [
+     'Extraction', 'MinLength', 'CodeExtraction', 'DuplicateDetection',
+     'Branches', 'Groups', 'ProcessingMode'
+     ]
+     } else if (detectedType === 'document' || detectedType === 'unknown') {
+     // Show only UNIVERSAL sections
+     showSections: [
+     'Extraction', 'MinLength', 'CodeExtraction', 'DuplicateDetection'
+     ]
+     }
+     📊 Phase 2: Normalization to JSON Document Model
+     Purpose: Convert ANY input format → Unified NormalizedConversation[] structure From: knowledge-extractor-enhancements.py:150-256 (StreamingJSONParser)
+     // Normalization Target (packages/parsers/src/types.ts):
+     interface NormalizedConversation {
+     conversation_id: string,
+     title: string,
+     platform: string,
+     created_at: number,
+     messages: NormalizedMessage[],
+     metadata: Record<string, any>
+     }
 
 interface NormalizedMessage {
 index: number,

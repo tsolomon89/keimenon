@@ -21,6 +21,7 @@
 import { DatabaseClient } from '@canvas-memory/db';
 import { AnyNode, AnyEdge } from '@canvas-memory/types';
 import { SSEBroadcaster } from '../modules/jobs/infrastructure/SSEBroadcaster';
+import { WriteQueueErrorHandler } from './WriteQueueErrorHandler';
 
 interface NodePreview {
   id: string;
@@ -63,6 +64,7 @@ export class DatabaseWriteQueue {
   private edgeQueue: AnyEdge[] = [];
   private flushInterval: NodeJS.Timeout | null = null;
   private isShuttingDown = false;
+  private errorHandler: WriteQueueErrorHandler;
   private stats: WriteQueueStats = {
     nodesQueued: 0,
     edgesQueued: 0,
@@ -79,7 +81,22 @@ export class DatabaseWriteQueue {
   constructor(
     private db: DatabaseClient,
     private broadcaster?: SSEBroadcaster
-  ) {}
+  ) {
+    // Enable direct writes for the write queue (authorized write path)
+    if ('enableDirectWrites' in this.db) {
+      (this.db as any).enableDirectWrites();
+    }
+
+    // Initialize error handler with circuit breaker and retry logic
+    this.errorHandler = new WriteQueueErrorHandler(this.db, {
+      maxConsecutiveFailures: 3,
+      maxRetries: 2,
+      retryDelayMs: 1000,
+      useExponentialBackoff: true,
+      enableCircuitBreaker: true,
+      deadLetterQueueSize: 1000,
+    });
+  }
 
   /**
    * Start the write queue (begins automatic flushing)
@@ -241,23 +258,34 @@ export class DatabaseWriteQueue {
         bucket.edgesAdded += 1;
       }
 
-      // Batched database writes (uses SQLiteClient's transaction support)
-      if (nodes.length > 0 && this.db.createNodes) {
-        await this.db.createNodes(nodes);
-        this.stats.nodesFlushed += nodes.length;
-      }
+      // Batched database writes with error handling (circuit breaker + retry + partial success)
+      const successCount = await this.errorHandler.handleFlush(nodes, edges);
 
-      if (edges.length > 0 && this.db.createEdges) {
-        await this.db.createEdges(edges);
-        this.stats.edgesFlushed += edges.length;
-      }
-
+      // Update stats from error handler metrics
+      const errorMetrics = this.errorHandler.getMetrics();
+      this.stats.nodesFlushed = errorMetrics.successfulWrites;
+      this.stats.edgesFlushed = errorMetrics.successfulWrites;
       this.stats.flushCount++;
       this.stats.lastFlushTime = Date.now();
 
       const flushDuration = Date.now() - startTime;
 
-      console.log(`💾 Flushed ${nodes.length} nodes + ${edges.length} edges in ${flushDuration}ms`);
+      console.log(
+        `💾 Flushed ${successCount}/${nodes.length + edges.length} items in ${flushDuration}ms`
+      );
+
+      // Log circuit breaker status if opened
+      if (this.errorHandler.isCircuitOpen()) {
+        console.warn('⚠️ Circuit breaker is open - write operations paused');
+      }
+
+      // Log dead letter queue if items failed
+      const deadLetterQueue = this.errorHandler.getDeadLetterQueue();
+      if (deadLetterQueue.length > 0) {
+        console.warn(
+          `⚠️ ${deadLetterQueue.length} items in dead letter queue (failed after retries)`
+        );
+      }
 
       // Emit SSE event for real-time UI updates (per account)
       if (this.broadcaster && perAccount.size > 0) {
@@ -281,9 +309,20 @@ export class DatabaseWriteQueue {
       }
     } catch (error) {
       console.error('❌ Failed to flush write queue:', error);
-      console.error(`   Nodes lost: ${nodes.length}`);
-      console.error(`   Edges lost: ${edges.length}`);
-      throw error; // Re-throw to trigger retry logic (future enhancement)
+
+      // Error handler has already tried retries and partial success
+      // Check if circuit breaker opened
+      if (this.errorHandler.isCircuitOpen()) {
+        console.error('🚫 Circuit breaker opened - stopping write operations');
+        console.error('   Will auto-reset in 30 seconds');
+        console.error(`   Items queued when circuit opened: ${nodes.length + edges.length}`);
+      } else {
+        console.error(`   Items failed after retries: ${nodes.length + edges.length}`);
+      }
+
+      // Don't re-throw - error handler has done its best
+      // Circuit breaker will prevent further attempts if needed
+      // Dead letter queue contains failed items for investigation
     }
   }
 
@@ -314,5 +353,50 @@ export class DatabaseWriteQueue {
       nodes: this.nodeQueue.length,
       edges: this.edgeQueue.length,
     };
+  }
+
+  /**
+   * Check if circuit breaker is open
+   */
+  isCircuitOpen(): boolean {
+    return this.errorHandler.isCircuitOpen();
+  }
+
+  /**
+   * Manually close circuit breaker (for recovery)
+   */
+  closeCircuitBreaker(): void {
+    this.errorHandler.closeCircuit();
+  }
+
+  /**
+   * Get error handler metrics
+   */
+  getErrorMetrics() {
+    return this.errorHandler.getMetrics();
+  }
+
+  /**
+   * Get dead letter queue (failed items)
+   */
+  getDeadLetterQueue() {
+    return this.errorHandler.getDeadLetterQueue();
+  }
+
+  /**
+   * Clear dead letter queue (returns count of items cleared)
+   */
+  clearDeadLetterQueue(): number {
+    return this.errorHandler.clearDeadLetterQueue();
+  }
+
+  /**
+   * Manually reset the circuit breaker
+   * Use this when you've fixed the root cause and want to resume operations
+   */
+  resetCircuitBreaker(): void {
+    console.log('🔄 Manually resetting circuit breaker...');
+    this.errorHandler.closeCircuit();
+    console.log('✅ Circuit breaker reset successfully');
   }
 }

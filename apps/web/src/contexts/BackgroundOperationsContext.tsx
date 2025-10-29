@@ -82,6 +82,9 @@ interface BackgroundOperationsContextValue {
   // Remove operation (when user dismisses or auto-cleanup after completion)
   removeOperation: (id: string) => void;
 
+  // Remove multiple operations at once (for bulk delete)
+  removeOperationsByJobIds: (jobIds: string[]) => void;
+
   // Restore operation panel in Inspector Bar
   restoreOperation: (id: string) => void;
 
@@ -269,6 +272,23 @@ export function BackgroundOperationsProvider({
     });
   }, []);
 
+  // Remove multiple operations at once (for bulk delete)
+  const removeOperationsByJobIds = useCallback((jobIds: string[]) => {
+    setOperations((prev) => {
+      const next = new Map(prev);
+      let removed = 0;
+      jobIds.forEach((jobId) => {
+        if (next.delete(jobId)) {
+          removed++;
+        }
+      });
+      if (removed > 0) {
+        console.log(`[BackgroundOperations] Removed ${removed} operation(s):`, jobIds);
+      }
+      return removed > 0 ? next : prev;
+    });
+  }, []);
+
   // Restore operation panel
   const restoreOperation = useCallback(
     (id: string) => {
@@ -306,7 +326,7 @@ export function BackgroundOperationsProvider({
     return Array.from(operations.values()).filter((op) => !['done', 'error'].includes(op.status));
   }, [operations]);
 
-  // Auto-cleanup completed operations after 30 seconds
+  // Auto-cleanup completed operations after 15 seconds (faster than before)
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
@@ -315,11 +335,11 @@ export function BackgroundOperationsProvider({
         let removed = 0;
 
         for (const [id, operation] of next.entries()) {
-          // Remove completed operations older than 30 seconds
+          // Remove completed operations older than 15 seconds (reduced from 30s)
           if (
             operation.status === 'done' &&
             operation.completedAt &&
-            now - operation.completedAt > 30000
+            now - operation.completedAt > 15000
           ) {
             next.delete(id);
             removed++;
@@ -332,7 +352,7 @@ export function BackgroundOperationsProvider({
 
         return removed > 0 ? next : prev;
       });
-    }, 5000); // Check every 5 seconds
+    }, 3000); // Check every 3 seconds (faster polling)
 
     return () => clearInterval(interval);
   }, []);
@@ -342,6 +362,7 @@ export function BackgroundOperationsProvider({
     addOperation,
     updateOperation,
     removeOperation,
+    removeOperationsByJobIds,
     restoreOperation,
     getOperation,
     getAllOperations,

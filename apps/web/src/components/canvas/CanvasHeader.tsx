@@ -18,12 +18,14 @@ import {
   AlertCircle,
   Minimize2,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOperating } from '@/contexts/OperatingContext';
 import { useImportProgress } from '@/contexts/ImportProgressContext';
 import { useUIVersion } from '@/contexts/UIVersionContext';
 import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
+import { useCanvasStore } from '@/store/canvasStore';
 
 export function CanvasHeader() {
   const router = useRouter();
@@ -175,6 +177,15 @@ export function CanvasHeader() {
           >
             {uiVersion === 'primitives' ? 'Classic UI' : 'New UI'}
           </span>
+        </button>
+
+        {/* Manual Refresh Button */}
+        <button
+          onClick={() => useCanvasStore.getState().loadGraphData()}
+          className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+          title="Refresh graph data"
+        >
+          <RefreshCw className="w-5 h-5" />
         </button>
 
         {/* Import Progress Indicator */}

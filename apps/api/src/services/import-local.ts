@@ -354,7 +354,8 @@ export class ImportServiceLocal {
     codeAssets: CodeAsset[],
     dataTag: 'test' | 'automated' | 'manual' | 'real' = 'manual'
   ): Promise<number> {
-    // TODO: This function is deprecated - Neo4j support has been removed
+    // DEPRECATED: Neo4j support has been removed
+    // TODO(cleanup): Delete this entire function and update callers
     throw new Error('Neo4j import is deprecated. Use SQLite import instead.');
   }
   // All Neo4j-related helper methods have been removed (deprecated)

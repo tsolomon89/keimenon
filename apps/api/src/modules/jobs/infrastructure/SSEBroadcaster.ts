@@ -16,6 +16,7 @@
 import { Response } from 'express';
 import { Job } from '../domain/Job';
 import { JobEvent } from '../domain/JobEvent';
+import { JobRepository } from './JobRepository';
 
 export interface SSEConnection {
   accountId: string;
@@ -67,11 +68,19 @@ export class SSEBroadcaster {
   private pendingGraphUpdates: Map<string, SSEGraphUpdate> = new Map(); // accountId -> graph update
   private broadcastTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private jobRepository: JobRepository | null = null;
 
   constructor(
     private broadcastIntervalMs: number = 500, // 2Hz = 500ms
-    private heartbeatIntervalMs: number = 30000 // 30s heartbeat
+    private heartbeatIntervalMs: number = 15000 // 15s heartbeat (reduced from 30s for faster disconnect detection)
   ) {}
+
+  /**
+   * Set the job repository (called during initialization)
+   */
+  setJobRepository(repository: JobRepository): void {
+    this.jobRepository = repository;
+  }
 
   /**
    * Start the broadcaster
@@ -129,7 +138,7 @@ export class SSEBroadcaster {
   /**
    * Add a new SSE connection
    */
-  addConnection(accountId: string, response: Response): void {
+  async addConnection(accountId: string, response: Response): Promise<void> {
     // Get or create connections array for this account
     if (!this.connections.has(accountId)) {
       this.connections.set(accountId, []);
@@ -162,6 +171,57 @@ export class SSEBroadcaster {
         message: 'SSE connection established',
       },
     });
+
+    // Send current active jobs for this account (initial state sync)
+    if (this.jobRepository) {
+      try {
+        const activeJobs = await this.jobRepository.find({
+          accountId,
+          status: ['queued', 'running'],
+          limit: 100,
+        });
+
+        if (activeJobs.length > 0) {
+          const jobUpdates: SSEJobUpdate[] = activeJobs.map((job) => {
+            // Extract minimal config metadata for UI display
+            const configMetadata: { fileName?: string; deleteScope?: string } = {};
+            if (job.config.files && job.config.files.length > 0) {
+              configMetadata.fileName = job.config.files[0].fileName;
+            }
+            if (job.config.deleteScope) {
+              configMetadata.deleteScope = job.config.deleteScope;
+            }
+
+            return {
+              jobId: job.id,
+              type: job.type,
+              status: job.status,
+              progress: job.stateData.progress || {
+                current: 0,
+                total: 0,
+                percent: 0,
+              },
+              config: configMetadata,
+              timestamp: job.updatedAt,
+            };
+          });
+
+          this.sendMessage(response, {
+            type: 'jobs.update',
+            data: {
+              jobs: jobUpdates,
+              timestamp: Date.now(),
+            },
+          });
+
+          console.log(
+            `📡 Sent initial state: ${activeJobs.length} active jobs for account ${accountId}`
+          );
+        }
+      } catch (error) {
+        console.error(`❌ Error sending initial job state for account ${accountId}:`, error);
+      }
+    }
   }
 
   /**

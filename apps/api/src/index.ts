@@ -9,12 +9,13 @@ import ingestRoutes, { setAuthDependencies as setIngestAuthDeps } from './routes
 import nodesRoutes, { setAuthDependencies as setNodesAuthDeps } from './routes/nodes';
 import boardsRoutes, { setAuthDependencies as setBoardsAuthDeps } from './routes/boards';
 import edgesRoutes, { setAuthDependencies as setEdgesAuthDeps } from './routes/edges';
-import importRoutes from './routes/import';
+// LEGACY IMPORTS (quarantined - renamed to .old.ts)
+// import importRoutes from './routes/import.old';
+// import importStreamRoutes from './routes/import-stream.old';
+// import { createImportProgressStreamRoutes } from './routes/import-progress-stream.old';
+// import { createImportJobsRoutes } from './routes/import-jobs.old';
 import { createImportDecisionsRoutes } from './routes/import-decisions';
-import importStreamRoutes from './routes/import-stream';
 import { createImportEnhancedRoutes } from './routes/import-enhanced';
-import { createImportProgressStreamRoutes } from './routes/import-progress-stream';
-import { createImportJobsRoutes } from './routes/import-jobs';
 import contentRoutes, { setAuthDependencies as setContentAuthDeps } from './routes/content';
 // import groupsRoutes from './routes/groups'; // OLD: auto-grouping routes (deprecated)
 import configRoutes from './routes/config';
@@ -50,6 +51,7 @@ import {
 } from './middleware/security.middleware';
 import { validateAndFailFast } from './utils/env-validator';
 import { errorLogger, notFoundHandler } from './middleware/error-handler.middleware';
+import { testCorrelationMiddleware } from './middleware/test-correlation.middleware';
 import { initSentry, addSentryErrorHandler } from './services/sentry.service';
 // DISABLED: Using clean embedded schema instead of migrations
 // import { MigrationRunner } from '@canvas-memory/db/src/sqlite/MigrationRunner';
@@ -91,6 +93,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`${req.method} ${req.path}`);
   return next();
 });
+
+// Test correlation for E2E testing (adds x-test-id header tracking)
+app.use(testCorrelationMiddleware);
 
 // Health check
 app.get('/health', async (req: Request, res: Response) => {
@@ -259,8 +264,8 @@ let groupsNavigationRoutes: any = null;
 let settingsRoutes: any = null;
 let adminRoutes: any = null;
 let importEnhancedRoutes: any = null;
-let importProgressStreamRoutes: any = null;
-let importJobsRoutes: any = null;
+// LEGACY (quarantined): let importProgressStreamRoutes: any = null;
+// LEGACY (quarantined): let importJobsRoutes: any = null;
 let importDecisionsRoutes: any = null;
 let dataManagementRoutes: any = null;
 let deduplicationRoutes: any = null;
@@ -306,17 +311,17 @@ app.use('/api/v1/admin', (req, res, next) => {
 // IMPORTANT: More specific paths MUST be registered BEFORE less specific ones
 // Express matches routes in registration order and stops at first match
 
-// Most specific: /api/v1/import/progress/stream/:uploadId, /api/v1/import/progress/:uploadId
-app.use('/api/v1/import/progress', (req, res, next) => {
-  if (importProgressStreamRoutes) return importProgressStreamRoutes(req, res, next);
-  return res.status(503).json({ error: 'Auth service not initialized' });
-});
-
-// Most specific: /api/v1/import/jobs/...
-app.use('/api/v1/import/jobs', (req, res, next) => {
-  if (importJobsRoutes) return importJobsRoutes(req, res, next);
-  return res.status(503).json({ error: 'Auth service not initialized' });
-});
+// LEGACY ROUTES (quarantined):
+// /api/v1/import/progress/* - Old per-upload SSE (replaced by /api/v1/stream/jobs)
+// /api/v1/import/jobs/* - Old job tracking (replaced by /api/v1/jobs/*)
+// app.use('/api/v1/import/progress', (req, res, next) => {
+//   if (importProgressStreamRoutes) return importProgressStreamRoutes(req, res, next);
+//   return res.status(503).json({ error: 'Auth service not initialized' });
+// });
+// app.use('/api/v1/import/jobs', (req, res, next) => {
+//   if (importJobsRoutes) return importJobsRoutes(req, res, next);
+//   return res.status(503).json({ error: 'Auth service not initialized' });
+// });
 app.use('/api/v1/data', (req, res, next) => {
   if (dataManagementRoutes) return dataManagementRoutes(req, res, next);
   return res.status(503).json({ error: 'Auth service not initialized' });
@@ -331,8 +336,10 @@ app.use('/api/v1/stream', (req, res, next) => {
 });
 // Job-based import/delete routes (must come before general /api/v1/jobs to match specific paths first)
 app.use('/api/v1/jobs', (req, res, next) => {
+  console.log(`[Route Debug] Incoming request to /api/v1/jobs: ${req.method} ${req.path}`);
   if (jobBasedImportRoutes) return jobBasedImportRoutes(req, res, next);
   // Fall through to next handler if route not matched
+  console.log(`[Route Debug] No match in jobBasedImportRoutes, calling next()`);
   return next();
 });
 // General jobs API routes
@@ -369,17 +376,22 @@ app.use('/api/v1/import', (req, res, next) => {
   if (importEnhancedRoutes) return importEnhancedRoutes(req, res, next);
   return next(); // Fall through to next /api/v1/import handler
 });
-app.use('/api/v1/import', (req, res, next) => {
-  if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
-  return importRoutes(req, res, next); // Handles /chat, /chat/batch, /config/defaults
-});
+// LEGACY ROUTES (quarantined):
+// These routes have been quarantined to .old.ts files
+// Kept here for reference if ENABLE_LEGACY_IMPORTS flag is ever added
+// app.use('/api/v1/import', (req, res, next) => {
+//   if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
+//   return importRoutes(req, res, next); // Handles /chat, /chat/batch, /config/defaults
+// });
+// app.use('/api/v1/import', (req, res, next) => {
+//   if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
+//   return importStreamRoutes(req, res, next); // Handles /stream, /progress/:uploadId, /cancel/:uploadId
+// });
+
+// Import decisions routes (still active - used by duplicate review workflow)
 app.use('/api/v1/import', (req, res, next) => {
   if (importDecisionsRoutes) return importDecisionsRoutes(req, res, next); // Handles /chat/apply-decisions, /chat/decisions/status/:import_id
   return next(); // Fall through if no match
-});
-app.use('/api/v1/import', (req, res, next) => {
-  if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
-  return importStreamRoutes(req, res, next); // Handles /stream, /progress/:uploadId, /cancel/:uploadId
 });
 
 // Config routes (may not need auth - but deferring for consistency)
@@ -540,14 +552,14 @@ async function start() {
     settingsRoutes = createSettingsRoutes(dbClient as any, authService);
     adminRoutes = createAdminRoutes(dbClient as any, authService);
     importEnhancedRoutes = createImportEnhancedRoutes(authService);
-    importProgressStreamRoutes = createImportProgressStreamRoutes(authService);
-    importJobsRoutes = createImportJobsRoutes(authService);
+    // LEGACY (quarantined): importProgressStreamRoutes = createImportProgressStreamRoutes(authService);
+    // LEGACY (quarantined): importJobsRoutes = createImportJobsRoutes(authService);
     importDecisionsRoutes = createImportDecisionsRoutes(dbClient as any, authService);
     dataManagementRoutes = createDataManagementRoutes(dbClient as any, authService);
     deduplicationRoutes = createDeduplicationRoutes(dbClient as any, authService);
     duplicatesRoutes = createDuplicatesRoutes(dbClient as any, authService);
     jobsRoutes = createJobsRoutes(authService, (dbClient as any).db); // Pass SQLite database instance
-    jobBasedImportRoutes = createJobBasedImportRoutes(authService, (dbClient as any).db); // Job-based import/delete endpoints
+    // NOTE: jobBasedImportRoutes will be initialized after workerPool is ready (see line ~676)
 
     // Inject auth dependencies into data routes
     setNodesAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
@@ -580,7 +592,7 @@ async function start() {
     console.log('📡 Initializing SSE broadcaster...');
     sseBroadcaster = new SSEBroadcaster(
       parseInt(process.env.SSE_BROADCAST_INTERVAL_MS || '500'), // 2Hz
-      parseInt(process.env.SSE_HEARTBEAT_INTERVAL_MS || '30000') // 30s
+      parseInt(process.env.SSE_HEARTBEAT_INTERVAL_MS || '15000') // 15s (reduced from 30s for faster disconnect detection)
     );
     sseBroadcaster.start();
     console.log('✅ SSE broadcaster initialized and started');
@@ -594,11 +606,74 @@ async function start() {
     writeQueue.start();
     console.log('✅ Database write queue initialized and started');
 
+    // Debug/Diagnostic endpoints for write queue
+    app.get('/api/v1/debug/queue/status', (req: Request, res: Response) => {
+      if (!writeQueue) {
+        return res.status(503).json({ error: 'Write queue not initialized' });
+      }
+
+      const stats = writeQueue.getStats();
+      const queueSizes = writeQueue.getQueueSizes();
+      const isCircuitOpen = writeQueue.isCircuitOpen();
+      const errorMetrics = writeQueue.getErrorMetrics();
+      const deadLetterQueue = writeQueue.getDeadLetterQueue();
+
+      res.json({
+        queue: {
+          nodes: queueSizes.nodes,
+          edges: queueSizes.edges,
+        },
+        stats,
+        circuitBreaker: {
+          isOpen: isCircuitOpen,
+          ...errorMetrics,
+        },
+        deadLetterQueue: {
+          count: deadLetterQueue.length,
+          items: deadLetterQueue.slice(0, 10), // First 10 items
+        },
+      });
+    });
+
+    app.post('/api/v1/debug/queue/reset-circuit', (req: Request, res: Response) => {
+      if (!writeQueue) {
+        return res.status(503).json({ error: 'Write queue not initialized' });
+      }
+
+      try {
+        writeQueue.resetCircuitBreaker();
+        res.json({
+          success: true,
+          message: 'Circuit breaker reset successfully',
+          isOpen: writeQueue.isCircuitOpen(),
+        });
+      } catch (error: any) {
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
+      }
+    });
+
     // Initialize Worker Pool
     console.log('⚙️ Initializing worker pool...');
     const jobRepository = new SQLiteJobRepository((dbClient as any).db);
     const concurrencyGuard = new ConcurrencyGuard(jobRepository);
     const startJobUseCase = new StartJob(jobRepository);
+
+    // Recover orphaned jobs from previous server instance
+    // This marks any jobs left in 'queued' or 'running' state as 'failed'
+    // Must run BEFORE worker pool starts to prevent race conditions
+    const { recoverOrphanedJobs } = await import(
+      './modules/jobs/infrastructure/OrphanedJobRecovery'
+    );
+    await recoverOrphanedJobs(jobRepository);
+
+    // Connect SSE broadcaster to job repository for initial state sync
+    if (sseBroadcaster) {
+      sseBroadcaster.setJobRepository(jobRepository);
+      console.log('✅ SSE broadcaster connected to job repository');
+    }
 
     workerPool = new WorkerPool(
       jobRepository,
@@ -618,6 +693,14 @@ async function start() {
     // Start worker pool (recovers orphaned jobs from previous instance)
     await workerPool.start();
     console.log('✅ Worker pool initialized and started');
+
+    // Initialize job-based import routes NOW that workerPool is ready
+    jobBasedImportRoutes = createJobBasedImportRoutes(
+      authService,
+      (dbClient as any).db,
+      workerPool
+    );
+    console.log('✅ Job-based import routes initialized');
 
     // Start server
     server = app.listen(port, () => {

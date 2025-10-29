@@ -8,15 +8,27 @@ interface FirstTimeUploadModalProps {
   onOpenChatImport?: () => void;
 }
 
-export function FirstTimeUploadModal({ onDismiss, onOpenUpload, onOpenChatImport }: FirstTimeUploadModalProps) {
+export function FirstTimeUploadModal({
+  onDismiss,
+  onOpenUpload,
+  onOpenChatImport,
+}: FirstTimeUploadModalProps) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="welcome-modal-title"
+        aria-describedby="welcome-modal-description"
+        data-testid="first-time-upload-modal"
+        className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full shadow-2xl"
+      >
         {/* Header */}
         <div className="relative p-8 border-b border-slate-800">
           <button
             onClick={onDismiss}
             className="absolute top-4 right-4 p-2 hover:bg-slate-800 rounded-lg transition-colors"
+            aria-label="Close welcome modal"
           >
             <X className="w-5 h-5 text-slate-400" />
           </button>
@@ -25,8 +37,10 @@ export function FirstTimeUploadModal({ onDismiss, onOpenUpload, onOpenChatImport
               <Sparkles className="w-8 h-8 text-purple-400" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold mb-2">Welcome to Canvas Memory OS!</h2>
-              <p className="text-slate-400">
+              <h2 id="welcome-modal-title" className="text-2xl font-bold mb-2">
+                Welcome to Canvas Memory OS!
+              </h2>
+              <p id="welcome-modal-description" className="text-slate-400">
                 Let's get you started by uploading your first sources
               </p>
             </div>
@@ -68,8 +82,8 @@ export function FirstTimeUploadModal({ onDismiss, onOpenUpload, onOpenChatImport
               <div>
                 <h3 className="font-semibold mb-1">Import Chat Conversations</h3>
                 <p className="text-sm text-slate-400">
-                  Import conversations from Claude, ChatGPT, or other AI platforms. The system
-                  will automatically organize and index your conversations.
+                  Import conversations from Claude, ChatGPT, or other AI platforms. The system will
+                  automatically organize and index your conversations.
                 </p>
               </div>
             </button>

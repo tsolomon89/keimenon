@@ -9,7 +9,13 @@ import { AuthService } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
-import { emitImportProgress } from './import-progress-stream';
+// LEGACY (quarantined): import { emitImportProgress } from './import-progress-stream.old';
+// Note: import-enhanced.ts will continue to work without SSE progress for now
+// No-op stub for compatibility (SSE progress removed with quarantine)
+const emitImportProgress = (uploadId: string, data: any) => {
+  // No-op: SSE progress stream quarantined
+  // TODO: Migrate to job-based SSE via /api/v1/stream/jobs if needed
+};
 import {
   ContentProcessor,
   GroupingStorage,

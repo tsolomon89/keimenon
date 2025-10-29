@@ -40,6 +40,16 @@ export interface JobConfig {
   exportFormat?: 'json' | 'csv' | 'markdown';
   exportScope?: string; // scope_id
 
+  // Tenancy metadata (server-side validated, embedded in job config)
+  tenancy?: {
+    actorId: string; // Unique ULID for this operation
+    userId: string; // Who initiated the job
+    accountId: string; // Which account owns the data
+    userType: string; // user | admin | super_admin
+    accountMembership: string; // owner | admin | member
+    userEmail: string; // For audit logs
+  };
+
   // Common config
   metadata?: Record<string, unknown>;
 }

@@ -20,16 +20,21 @@ import { EnhancedImportServiceV2, ImportConversation } from '../../../services/i
 import { DatabaseWriteQueue } from '../../../services/DatabaseWriteQueue';
 import { ImportConfiguration } from '@canvas-memory/types';
 import { ParserRegistry } from '@canvas-memory/parsers';
+import { ImportJobStage, IMPORT_STAGE_LABELS } from '@canvas-memory/types/src/import-job-stages';
 import * as fs from 'fs/promises';
 
 export class ImportWorker extends BaseWorker {
   readonly type = 'import' as const;
+  private timeoutMs: number;
 
   constructor(
     private db: DatabaseClient,
-    private writeQueue?: DatabaseWriteQueue
+    private writeQueue?: DatabaseWriteQueue,
+    timeoutMs?: number
   ) {
     super();
+    // Default 10 minutes, configurable via env var
+    this.timeoutMs = timeoutMs || parseInt(process.env.IMPORT_WORKER_TIMEOUT_MS || '600000');
   }
 
   validate(job: Job): boolean {
@@ -42,16 +47,43 @@ export class ImportWorker extends BaseWorker {
   }
 
   protected async execute(job: Job, context: WorkerContext): Promise<WorkerResult> {
+    // Wrap execution in timeout promise race
+    return Promise.race([
+      this.executeWithCheckpoints(job, context),
+      this.createTimeoutPromise(job),
+    ]);
+  }
+
+  /**
+   * Create timeout promise that rejects after configured duration
+   */
+  private createTimeoutPromise(job: Job): Promise<WorkerResult> {
+    return new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(
+          new Error(
+            `Import job ${job.id} exceeded timeout of ${this.timeoutMs}ms (${Math.round(this.timeoutMs / 1000)}s). ` +
+              `Consider increasing IMPORT_WORKER_TIMEOUT_MS for large imports.`
+          )
+        );
+      }, this.timeoutMs);
+    });
+  }
+
+  /**
+   * Execute import with checkpoint tracking for resume capability
+   */
+  private async executeWithCheckpoints(job: Job, context: WorkerContext): Promise<WorkerResult> {
     const files = job.config.files || [];
     const importOptions = job.config.importOptions || {};
+    let allConversations: ImportConversation[] = []; // Declare at function scope for error handling
 
     console.log(`📥 Import worker processing ${files.length} file(s) for job ${job.id}`);
+    console.log(`⏱️  Timeout: ${Math.round(this.timeoutMs / 1000)}s`);
 
     try {
-      // Step 1: Load and parse files
-      await this.reportProgress(job, 0, 100, 'Loading files...', context);
-
-      const allConversations: ImportConversation[] = [];
+      // Step 1: Load and parse files (PARSE stage)
+      await this.reportProgress(job, 0, 100, IMPORT_STAGE_LABELS[ImportJobStage.PARSE], context);
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -70,7 +102,7 @@ export class ImportWorker extends BaseWorker {
           job,
           Math.round((i / files.length) * 30),
           100,
-          `Loading file ${i + 1}/${files.length}: ${file.fileName}`,
+          `${IMPORT_STAGE_LABELS[ImportJobStage.PARSE]} (${i + 1}/${files.length})`,
           context
         );
 
@@ -82,8 +114,14 @@ export class ImportWorker extends BaseWorker {
       // Step 2: Build import configuration
       const config: ImportConfiguration = this.buildImportConfig(importOptions);
 
-      // Step 3: Run import pipeline
-      await this.reportProgress(job, 30, 100, 'Running import pipeline...', context);
+      // Step 3: Run import pipeline (MATERIALIZE stage)
+      await this.reportProgress(
+        job,
+        30,
+        100,
+        IMPORT_STAGE_LABELS[ImportJobStage.MATERIALIZE],
+        context
+      );
 
       const importService = new EnhancedImportServiceV2(this.db, this.writeQueue);
 
@@ -105,8 +143,14 @@ export class ImportWorker extends BaseWorker {
         };
       }
 
-      // Step 4: Complete
-      await this.reportProgress(job, 100, 100, 'Import complete', context);
+      // Step 4: Complete (SUCCEEDED stage)
+      await this.reportProgress(
+        job,
+        100,
+        100,
+        IMPORT_STAGE_LABELS[ImportJobStage.SUCCEEDED],
+        context
+      );
 
       console.log(
         `✅ Import worker completed job ${job.id}: ${result.messages} messages, ${result.conversations} conversations`
@@ -122,16 +166,38 @@ export class ImportWorker extends BaseWorker {
           sources: result.sources,
           codeBlocks: result.codeBlocks,
           duplicatesForReview: result.duplicatesForReview,
+          // Checkpoint data for resume capability
+          checkpoint: {
+            stage: 'SUCCEEDED',
+            filesProcessed: files.length,
+            totalFiles: files.length,
+            completedAt: new Date().toISOString(),
+          },
         },
       };
     } catch (error: any) {
       console.error(`❌ Import worker failed for job ${job.id}:`, error);
 
+      // Determine if this is a timeout error
+      const isTimeout = error.message && error.message.includes('exceeded timeout');
+
+      // Build enhanced error message with diagnostics
+      let errorMessage = isTimeout
+        ? `Import timed out after ${Math.round(this.timeoutMs / 1000)}s. ` +
+          `Processed ${allConversations?.length || 0} conversations before timeout. ` +
+          `Try: (1) Split large files, (2) Increase IMPORT_WORKER_TIMEOUT_MS, or (3) Reduce file size.`
+        : error.message || 'Import failed';
+
+      // Append diagnostic info for timeout errors
+      if (isTimeout) {
+        errorMessage += ` [Files: ${files.length}, Conversations parsed: ${allConversations?.length || 0}, Timeout: ${this.timeoutMs}ms]`;
+      }
+
       return {
         success: false,
         error: {
-          code: error.code || 'IMPORT_FAILED',
-          message: error.message || 'Import failed',
+          code: isTimeout ? 'TIMEOUT' : error.code || 'IMPORT_FAILED',
+          message: errorMessage,
           stack: error.stack,
         },
       };
@@ -200,51 +266,80 @@ export class ImportWorker extends BaseWorker {
 
   /**
    * Build import configuration from job options
+   * Maps the complete configuration from UI to ImportConfiguration schema
    */
   private buildImportConfig(options: any): ImportConfiguration {
+    // Extract extraction settings (which roles to include)
+    const extraction = options.extraction || { includeUser: true, includeAssistant: false };
+    const includeUser = extraction.includeUser ?? true;
+    const includeAssistant = extraction.includeAssistant ?? false;
+
+    // Extract processing mode
+    const processingMode = options.processingMode || 'automatic';
+    const isManualMode = processingMode === 'manual';
+
+    // Extract duplicate detection config
+    const dupeConfig = options.duplicateDetection || {};
+    const dupeEnabled = dupeConfig.enabled ?? true;
+
+    // Extract code settings
+    const codeSettings = options.codeSettings || {};
+    const minMessageLength = options.minMessageLength ?? 400;
+
+    // Support legacy fields for backward compatibility
+    const targetGroupCount = options.targetGroupCount ?? 25;
+    const codeMinChars = options.codeMinChars;
+    const legacyDupeThreshold = options.duplicateThreshold;
+
     return {
       sources: {
         scope: 'message',
         roleFilter: {
-          user: true,
-          ai: true,
-          separate: true,
+          user: includeUser,
+          ai: includeAssistant,
+          separate: includeUser && includeAssistant, // Only separate if both enabled
         },
-        minLengthUser: options.codeMinChars || 10,
-        minLengthAI: options.codeMinChars || 10,
+        // FIX: Use minMessageLength instead of codeMinChars
+        minLengthUser: minMessageLength,
+        minLengthAI: minMessageLength,
         bundling: {
-          enabled: false,
+          enabled: false, // TODO: Make this configurable in future
           method: 'keyword',
           similarityThreshold: 0.75,
         },
       },
       grouping: {
-        mode: 'auto',
-        auto: {
-          targetGroupCount: 25,
-          createCatchAll: true,
-          minGroupSize: 2,
-          algorithm: 'tfidf',
-        },
-        manual: [],
+        mode: isManualMode ? 'manual' : 'auto',
+        auto: !isManualMode
+          ? {
+              targetGroupCount: targetGroupCount,
+              createCatchAll: true,
+              minGroupSize: 2,
+              algorithm: 'tfidf',
+            }
+          : undefined,
+        manual: isManualMode ? options.groups || [] : [],
       },
       code: {
-        extract: options.exportCode || false,
+        extract: options.extractCode ?? true,
         removeFromSource: true,
         createEdges: true,
-        minLength: options.codeMinChars || 50,
-        deduplicate: true,
+        // Use codeSettings.minLength if available, fallback to legacy codeMinChars, then default
+        minLength: codeSettings.minLength ?? codeMinChars ?? 50,
+        deduplicate: codeSettings.deduplicate ?? true,
       },
       duplicates: {
-        enabled: true,
+        // FIX: Respect user's enabled preference
+        enabled: dupeEnabled,
         level: 'message',
-        detectExact: true,
+        detectExact: dupeConfig.exactMatch ?? true,
         detectNear: true,
-        nearThreshold: 0.85,
-        detectSemantic: false,
+        // Use new threshold if available, fallback to legacy field
+        nearThreshold: dupeConfig.similarityThreshold ?? legacyDupeThreshold ?? 0.85,
+        detectSemantic: false, // Future: Premium feature
         semanticThreshold: 0.9,
-        createReviewFolders: true,
-        autoMergeSuggestions: false,
+        createReviewFolders: dupeConfig.requireReview ?? true,
+        autoMergeSuggestions: dupeConfig.autoApproveExact ?? false,
       },
       privacy: {
         storageMode: 'local',

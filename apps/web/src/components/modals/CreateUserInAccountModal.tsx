@@ -69,13 +69,22 @@ export function CreateUserInAccountModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-slate-800 border border-slate-700 rounded-lg shadow-2xl w-full max-w-md">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-user-modal-title"
+        data-testid="create-user-modal"
+        className="bg-slate-800 border border-slate-700 rounded-lg shadow-2xl w-full max-w-md"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-          <h2 className="text-lg font-semibold text-white">Add User</h2>
+          <h2 id="create-user-modal-title" className="text-lg font-semibold text-white">
+            Add User
+          </h2>
           <button
             onClick={onClose}
             className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors"
+            aria-label="Close add user modal"
           >
             <X className="w-5 h-5" />
           </button>

@@ -19,13 +19,10 @@ function getAuthHeaders(): HeadersInit {
 
   // Add operating context headers if available
   // These are set by the OperatingContext when switching accounts
-  // TODO: Replace unsafe type assertions with proper Window interface extension
-  // Related: apps/web/src/contexts/OperatingContext.tsx:92-93 (sets these globals)
-  // See: docs/architecture/TYPE_SAFETY.md (needs creation)
-  // Add: global.d.ts with Window interface extension for __operatingAccount and __operatingMode
+  // Type-safe access via global.d.ts Window interface extension
   if (typeof window !== 'undefined') {
-    const operatingAccount = (window as any).__operatingAccount;
-    const operatingMode = (window as any).__operatingMode;
+    const operatingAccount = window.__operatingAccount;
+    const operatingMode = window.__operatingMode;
 
     if (operatingAccount && operatingMode && operatingMode !== 'native') {
       headers['X-Operating-Account'] = operatingAccount;
@@ -135,6 +132,132 @@ function convertConfig(config: ChatImportConfig): any {
 }
 
 /**
+ * Cancel a running or queued job
+ *
+ * Sends a cancellation request to the backend, which updates the job status
+ * and signals the worker to stop processing at the next checkpoint.
+ *
+ * Related:
+ * - apps/api/src/modules/jobs/infrastructure/import-jobs.routes.ts:531 (cancel endpoint)
+ * - apps/api/src/modules/workers/domain/WorkerPool.ts:360 (worker cancellation)
+ */
+export async function cancelJob(jobId: string): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/cancel`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to cancel job: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Retry a failed or canceled job
+ *
+ * Creates a new job with the same configuration as the original job.
+ * The new job will start from scratch (checkpoint resumption not yet implemented).
+ *
+ * Related:
+ * - apps/api/src/modules/jobs/infrastructure/import-jobs.routes.ts:461 (retry endpoint)
+ * - apps/api/src/modules/jobs/application/RetryJob.ts (retry use case)
+ */
+export async function retryJob(jobId: string): Promise<{
+  success: boolean;
+  jobId?: string;
+  originalJobId?: string;
+  message?: string;
+  error?: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/retry`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to retry job: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Pause a running job
+ *
+ * Pauses the job at the next checkpoint. Job status becomes 'blocked'.
+ * Resume the job to restart from scratch (checkpoint persistence not yet implemented).
+ *
+ * Related:
+ * - apps/api/src/modules/jobs/infrastructure/import-jobs.routes.ts:606 (pause endpoint)
+ * - apps/api/src/modules/workers/domain/WorkerPool.ts (worker signaling)
+ */
+export async function pauseJob(jobId: string): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/pause`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to pause job: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Resume a paused job
+ *
+ * Resumes a job from 'blocked' (paused) status back to 'queued'.
+ * WorkerPool will pick it up and restart from the beginning.
+ *
+ * Related:
+ * - apps/api/src/modules/jobs/infrastructure/import-jobs.routes.ts:676 (resume endpoint)
+ * - apps/api/src/modules/jobs/application/RetryJob.ts (uses retry transition)
+ */
+export async function resumeJob(jobId: string): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/resume`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to resume job: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
  * Import chat files as a background job (unified jobs system)
  * Returns job ID immediately for SSE progress tracking
  *
@@ -160,22 +283,19 @@ export async function importChatFilesAsJob(
     formData.append('files', file);
   });
 
-  // Enhanced config for job-based import - pass all relevant settings
+  // Enhanced config for job-based import - send complete configuration
   const jobConfig = {
     // Platform detection (enables platform-specific parsers)
     platform: detectedPlatform,
 
-    // Code extraction
-    exportCode: config.extractCode,
-    codeMinChars: config.codeSettings.minLength,
+    // Extraction settings - which roles to include
+    extraction: {
+      includeUser: config.extraction.includeUser,
+      includeAssistant: config.extraction.includeAssistant,
+    },
 
-    // Grouping (auto-grouping when processingMode is automatic)
-    autoGroup: config.processingMode === 'automatic',
-    targetGroupCount: 25, // Default target for auto-grouping
-
-    // Duplicate detection
-    duplicateDetection: config.duplicateDetection.enabled,
-    duplicateThreshold: config.duplicateDetection.similarityThreshold,
+    // Filtering - minimum message length
+    minMessageLength: config.minMessageLength,
 
     // Processing mode (automatic vs manual grouping)
     processingMode: config.processingMode,
@@ -183,8 +303,41 @@ export async function importChatFilesAsJob(
     // Branches (conversation branch handling)
     branches: config.branches,
 
-    // Manual groups (if processingMode is manual)
-    manualGroups: config.processingMode === 'manual' ? config.groups : undefined,
+    // Manual groups (used when processingMode is 'manual')
+    groups: config.processingMode === 'manual' ? config.groups : [],
+
+    // Code extraction - complete settings
+    extractCode: config.extractCode,
+    codeSettings: {
+      minLength: config.codeSettings.minLength,
+      languages: config.codeSettings.languages,
+      groupBy: config.codeSettings.groupBy,
+      deduplicate: config.codeSettings.deduplicate,
+    },
+
+    // Duplicate detection - complete configuration
+    duplicateDetection: {
+      enabled: config.duplicateDetection.enabled,
+      exactMatch: config.duplicateDetection.exactMatch,
+      similarityThreshold: config.duplicateDetection.similarityThreshold,
+      crossConversation: config.duplicateDetection.crossConversation,
+      algorithm: config.duplicateDetection.algorithm,
+      normalizeTokens: config.duplicateDetection.normalizeTokens,
+      minTokenOverlap: config.duplicateDetection.minTokenOverlap,
+      lengthRatioTolerance: config.duplicateDetection.lengthRatioTolerance,
+      ignoreWhitespace: config.duplicateDetection.ignoreWhitespace,
+      ignoreCase: config.duplicateDetection.ignoreCase,
+      ignoreTimestamp: config.duplicateDetection.ignoreTimestamp,
+      requireReview: config.duplicateDetection.requireReview,
+      autoApproveExact: config.duplicateDetection.autoApproveExact,
+      autoMergeThreshold: config.duplicateDetection.autoMergeThreshold,
+    },
+
+    // Legacy field support (for backward compatibility with old backend versions)
+    autoGroup: config.processingMode === 'automatic',
+    targetGroupCount: 25,
+    codeMinChars: config.codeSettings.minLength,
+    duplicateThreshold: config.duplicateDetection.similarityThreshold,
   };
 
   formData.append('config', JSON.stringify(jobConfig));
@@ -218,17 +371,53 @@ export async function importChatFilesAsJob(
   try {
     return await withRetry(
       async () => {
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: getAuthHeaders(),
-          body: formData,
+        console.log(`[importChatFilesAsJob] Sending POST to ${endpoint}`);
+        console.log(`[importChatFilesAsJob] FormData contains:`, {
+          fileCount: files.length,
+          files: files.map((f) => ({ name: f.name, size: f.size, type: f.type })),
+          configSize: formData.get('config')?.toString().length || 0,
         });
 
-        if (!response.ok) {
-          await handleApiError({ response });
-        }
+        const controller = new AbortController();
+        const timeout = setTimeout(() => {
+          controller.abort();
+          console.error('[importChatFilesAsJob] Request timed out after 60 seconds');
+        }, 60000); // 60 second timeout
 
-        return await response.json();
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: formData,
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeout);
+
+          console.log(`[importChatFilesAsJob] Response status: ${response.status}`);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[importChatFilesAsJob] Error response:`, {
+              status: response.status,
+              statusText: response.statusText,
+              body: errorText,
+            });
+            await handleApiError({ response });
+          }
+
+          const result = await response.json();
+          console.log(`[importChatFilesAsJob] Success:`, result);
+          return result;
+        } catch (error) {
+          clearTimeout(timeout);
+          if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error(
+              'Import job creation timed out after 60 seconds. The file may be too large or the server is not responding.'
+            );
+          }
+          throw error;
+        }
       },
       {
         maxAttempts: 2,
@@ -239,6 +428,7 @@ export async function importChatFilesAsJob(
       }
     );
   } catch (error: any) {
+    console.error('[importChatFilesAsJob] Final error:', error);
     throw await handleApiError(error);
   }
 }

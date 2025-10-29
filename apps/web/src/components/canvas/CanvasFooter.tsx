@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useConsole } from '@/contexts/ConsoleContext';
 import { ErrorDomain, ErrorSeverity } from '@/services/error-capture.service';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface CanvasFooterProps {
   isOpen: boolean;
@@ -28,14 +28,14 @@ export function CanvasFooter({ isOpen }: CanvasFooterProps) {
   const [selectedDomain, setSelectedDomain] = useState<ErrorDomain | 'all'>('all');
   const [selectedSeverity, setSelectedSeverity] = useState<ErrorSeverity | 'all'>('all');
 
-  // Apply filters when changed
-  const applyFilters = () => {
+  // Apply filters - using useEffect to avoid stale state reads
+  useEffect(() => {
     setFilters({
       domain: selectedDomain === 'all' ? undefined : selectedDomain,
       severity: selectedSeverity === 'all' ? undefined : selectedSeverity,
       search: searchQuery || undefined,
     });
-  };
+  }, [selectedDomain, selectedSeverity, searchQuery, setFilters]);
 
   // Handle export
   const handleExport = (format: 'json' | 'csv') => {
@@ -172,10 +172,7 @@ export function CanvasFooter({ isOpen }: CanvasFooterProps) {
           <Filter className="w-4 h-4 text-slate-500" />
           <select
             value={selectedDomain}
-            onChange={(e) => {
-              setSelectedDomain(e.target.value as ErrorDomain | 'all');
-              applyFilters();
-            }}
+            onChange={(e) => setSelectedDomain(e.target.value as ErrorDomain | 'all')}
             className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs"
           >
             <option value="all">All Domains</option>
@@ -189,10 +186,7 @@ export function CanvasFooter({ isOpen }: CanvasFooterProps) {
           </select>
           <select
             value={selectedSeverity}
-            onChange={(e) => {
-              setSelectedSeverity(e.target.value as ErrorSeverity | 'all');
-              applyFilters();
-            }}
+            onChange={(e) => setSelectedSeverity(e.target.value as ErrorSeverity | 'all')}
             className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs"
           >
             <option value="all">All Severities</option>
@@ -205,10 +199,7 @@ export function CanvasFooter({ isOpen }: CanvasFooterProps) {
             type="text"
             placeholder="Search errors..."
             value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              applyFilters();
-            }}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1 text-xs outline-none focus:border-purple-500"
           />
         </div>

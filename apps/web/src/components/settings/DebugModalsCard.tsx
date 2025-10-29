@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { ShieldAlert, Activity, Archive, FolderOpen } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-type ModalStatus = 'active' | 'legacy' | 'orphaned' | 'archived';
+type ModalStatus = 'active' | 'legacy' | 'orphaned' | 'archived' | 'quarantined';
 
 interface ModalInfo {
   name: string;
@@ -24,6 +24,11 @@ const STATUS_LABELS: Record<ModalStatus, { label: string; color: string; icon: J
     label: 'Legacy',
     color: 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/20',
     icon: <FolderOpen className="w-3.5 h-3.5" />,
+  },
+  quarantined: {
+    label: 'Quarantined',
+    color: 'bg-orange-500/15 text-orange-300 border border-orange-500/20',
+    icon: <ShieldAlert className="w-3.5 h-3.5" />,
   },
   orphaned: {
     label: 'Orphaned',
@@ -88,11 +93,11 @@ const MODALS: ModalInfo[] = [
     integration: 'Canvas toolbar chat import entry & welcome modal CTA.',
   },
   {
-    name: 'StreamingUploadModal',
-    path: 'apps/web/src/components/import/StreamingUploadModal.tsx',
-    status: 'orphaned',
-    description: 'Original streaming uploader superseded by local-first pipeline.',
-    integration: 'No live references (retained for historical comparison).',
+    name: 'StreamingUploadModal (quarantined)',
+    path: 'apps/web/src/components/import/StreamingUploadModal.old.tsx',
+    status: 'quarantined',
+    description: 'Legacy streaming uploader. Quarantined during import system consolidation.',
+    integration: 'No live references. Available via DEBUG_IMPORT_SELECTOR flag if needed.',
   },
   {
     name: 'ChatImportModal (legacy backup)',
@@ -112,7 +117,7 @@ export function DebugModalsCard() {
         acc[modal.status] += 1;
         return acc;
       },
-      { active: 0, legacy: 0, orphaned: 0, archived: 0 }
+      { active: 0, legacy: 0, quarantined: 0, orphaned: 0, archived: 0 }
     );
   }, []);
 

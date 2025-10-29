@@ -18,14 +18,14 @@
  * Related: Product Directive - "UI only subscribes to job state"
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getToken } from '@/contexts/AuthContext';
 import { errorCapture } from '@/services/error-capture.service';
 
 export interface JobUpdate {
   jobId: string;
   type: 'import' | 'delete' | 'export' | 'analyze';
-  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled' | 'blocked';
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled' | 'blocked' | 'deleted';
   progress: {
     current: number;
     total: number;
@@ -62,11 +62,52 @@ export interface UseJobStreamResult {
   connected: boolean;
   error: string | null;
   reconnecting: boolean;
+  removeJobs: (jobIds: string[]) => void;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 const RECONNECT_DELAY_MS = 3000;
 const MAX_RECONNECT_ATTEMPTS = 5;
+
+/**
+ * Get user-friendly error message based on HTTP status code
+ */
+function getHttpErrorMessage(status: number, context: string): string {
+  switch (status) {
+    case 401:
+      return `Authentication failed during ${context}. Please log in again.`;
+    case 403:
+      return `Access denied during ${context}. You don't have permission to access job streams.`;
+    case 404:
+      return `Job stream endpoint not found during ${context}. The server may not be configured correctly.`;
+    case 500:
+    case 502:
+    case 503:
+      return `Server error during ${context}. The server may be down or overloaded.`;
+    case 504:
+      return `Gateway timeout during ${context}. The server took too long to respond.`;
+    default:
+      return `HTTP ${status} error during ${context}. Please try again.`;
+  }
+}
+
+/**
+ * Get detailed error message from EventSource error event
+ */
+function getEventSourceErrorMessage(readyState: number, context: string, attempt: number): string {
+  const attemptInfo = attempt > 0 ? ` (attempt ${attempt}/${MAX_RECONNECT_ATTEMPTS})` : '';
+
+  switch (readyState) {
+    case 0: // CONNECTING
+      return `Connection attempt failed during ${context}${attemptInfo}. The server may be unreachable.`;
+    case 1: // OPEN
+      return `Active connection encountered an error during ${context}${attemptInfo}. The connection will be reestablished.`;
+    case 2: // CLOSED
+      return `Connection closed unexpectedly during ${context}${attemptInfo}. This may be due to network issues, server restart, or authentication timeout.`;
+    default:
+      return `Unknown connection state (${readyState}) during ${context}${attemptInfo}.`;
+  }
+}
 
 /**
  * Hook to subscribe to job updates via SSE
@@ -87,13 +128,17 @@ export function useJobStream(): UseJobStreamResult {
     mountedRef.current = true;
 
     // Connect to SSE stream
-    const connect = () => {
+    const connect = async () => {
       const token = getToken();
       if (!token) {
         setError('Authentication required');
         setConnected(false);
         return;
       }
+
+      const connectionContext =
+        reconnectAttempts.current > 0 ? 'reconnection' : 'initial connection';
+      const urlForLogging = `${API_BASE_URL}/api/v1/stream/jobs?token=***`;
 
       try {
         // Close existing connection
@@ -107,6 +152,48 @@ export function useJobStream(): UseJobStreamResult {
         // Or pass token as query param
         const url = new URL(`${API_BASE_URL}/api/v1/stream/jobs`);
         url.searchParams.set('token', token);
+
+        // Pre-flight check: Test server accessibility with /health endpoint
+        // We can't use the SSE endpoint for pre-flight because it's a streaming connection
+        try {
+          const healthUrl = `${API_BASE_URL}/health`;
+          const controller = new AbortController();
+          const healthTimeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout (allows for multiple parallel checks)
+
+          const preflightResponse = await fetch(healthUrl, {
+            method: 'GET',
+            signal: controller.signal,
+          });
+
+          clearTimeout(healthTimeout);
+
+          if (!preflightResponse.ok) {
+            throw new Error(
+              `Server health check failed (HTTP ${preflightResponse.status}). The API server may be down.`
+            );
+          }
+
+          // Server is healthy, continue with SSE connection
+          // Health check debug logging removed to reduce console noise
+        } catch (preflightError) {
+          // If health check fails, provide clear error
+          if (preflightError instanceof Error) {
+            if (preflightError.name === 'AbortError') {
+              throw new Error(
+                `Server health check timed out during ${connectionContext}. The API server at ${API_BASE_URL} is not responding.`
+              );
+            }
+            if (preflightError instanceof TypeError) {
+              throw new Error(
+                `Network error during ${connectionContext}: Unable to reach ${API_BASE_URL}. Check your connection and ensure the API server is running.`
+              );
+            }
+          }
+          throw preflightError;
+        }
+
+        // SSE connection attempt - debug logging removed to reduce noise
+        // Connection status visible via 'connected' and 'reconnecting' state
 
         const eventSource = new EventSource(url.toString());
 
@@ -128,14 +215,9 @@ export function useJobStream(): UseJobStreamResult {
         });
 
         // Handle connection event
+        // Handshake confirmation - debug logging removed to reduce noise
         eventSource.addEventListener('connected', (event) => {
-          if (process.env.NODE_ENV === 'development') {
-            errorCapture.debug('Job stream handshake confirmed', {
-              domain: 'jobs',
-              operation: 'jobStream.connectedEvent',
-              metadata: { data: event.data },
-            });
-          }
+          // Connection confirmed - state already updated in 'open' handler
         });
 
         // Handle jobs.update event
@@ -145,25 +227,49 @@ export function useJobStream(): UseJobStreamResult {
           try {
             const data = JSON.parse(event.data);
             const updates: JobUpdate[] = data.jobs || [];
+            console.log(`[useJobStream] jobs.update event received with ${updates.length} updates`);
+            updates.forEach((u) => {
+              if (u.status === 'deleted') {
+                console.log(`[useJobStream] ⚠️ Found deletion update in batch: ${u.jobId}`);
+              }
+            });
 
             setJobs((prevJobs) => {
               const newJobs = new Map(prevJobs);
+              const now = Date.now();
 
-              // Update jobs
+              // Update jobs, but filter out completed jobs older than 30 seconds
               for (const update of updates) {
+                // Handle deleted jobs - remove them immediately from UI
+                if (update.status === 'deleted') {
+                  console.log(
+                    `[useJobStream] 🗑️ Deletion event received for job ${update.jobId}, removing from UI`
+                  );
+                  newJobs.delete(update.jobId);
+                  console.log(
+                    `[useJobStream] Jobs map size before: ${prevJobs.size}, after: ${newJobs.size}`
+                  );
+                  continue;
+                }
+
+                const isCompleted = update.status === 'succeeded' || update.status === 'failed';
+                const jobAge = now - update.timestamp;
+
+                // Skip adding/updating if job is completed and older than 30 seconds
+                if (isCompleted && jobAge > 30000) {
+                  // If it exists, remove it (cleanup)
+                  newJobs.delete(update.jobId);
+                  continue;
+                }
+
+                // Otherwise, add/update the job
                 newJobs.set(update.jobId, update);
               }
 
               return newJobs;
             });
 
-            if (process.env.NODE_ENV === 'development' && updates.length > 0) {
-              errorCapture.debug('Processed job updates', {
-                domain: 'jobs',
-                operation: 'jobStream.jobsUpdate',
-                metadata: { updateCount: updates.length },
-              });
-            }
+            // Job updates processed - debug logging removed to reduce noise
           } catch (err) {
             const error = err instanceof Error ? err : new Error(String(err));
             errorCapture.capture(
@@ -204,23 +310,35 @@ export function useJobStream(): UseJobStreamResult {
         });
 
         // Handle heartbeat event
+        // Note: Heartbeat logging removed to reduce console noise
+        // Heartbeats occur every ~5 seconds and provide minimal diagnostic value
         eventSource.addEventListener('heartbeat', () => {
-          if (process.env.NODE_ENV === 'development') {
-            errorCapture.debug('Job stream heartbeat received', {
-              domain: 'jobs',
-              operation: 'jobStream.heartbeat',
-            });
-          }
+          // Silently acknowledge heartbeat - connection status tracked via 'connected' state
         });
 
         // Handle errors
         eventSource.addEventListener('error', (event) => {
-          errorCapture.warn('Job stream encountered an error event', {
+          const connectionContext = reconnectAttempts.current > 0 ? 'reconnection' : 'connection';
+          const readyState = eventSource.readyState;
+          const detailedMessage = getEventSourceErrorMessage(
+            readyState,
+            connectionContext,
+            reconnectAttempts.current
+          );
+
+          // Log with enhanced diagnostics
+          errorCapture.warn(detailedMessage, {
             domain: 'jobs',
             operation: 'jobStream.errorEvent',
             metadata: {
-              readyState: eventSource.readyState,
-              type: event.type,
+              readyState,
+              readyStateLabel:
+                readyState === 0 ? 'CONNECTING' : readyState === 1 ? 'OPEN' : 'CLOSED',
+              eventType: event.type,
+              url: urlForLogging,
+              attempt: reconnectAttempts.current,
+              maxAttempts: MAX_RECONNECT_ATTEMPTS,
+              connectionContext,
             },
           });
 
@@ -234,17 +352,9 @@ export function useJobStream(): UseJobStreamResult {
             reconnectAttempts.current++;
 
             const delay = RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts.current - 1);
-            if (process.env.NODE_ENV === 'development') {
-              errorCapture.debug('Job stream reconnection scheduled', {
-                domain: 'jobs',
-                operation: 'jobStream.reconnectScheduled',
-                metadata: {
-                  delayMs: delay,
-                  attempt: reconnectAttempts.current,
-                  maxAttempts: MAX_RECONNECT_ATTEMPTS,
-                },
-              });
-            }
+
+            // Reconnection scheduled - user sees 'reconnecting' state in UI
+            // Debug logging removed to reduce noise
 
             reconnectTimer.current = setTimeout(() => {
               if (mountedRef.current) {
@@ -252,18 +362,59 @@ export function useJobStream(): UseJobStreamResult {
               }
             }, delay);
           } else {
-            setError('Failed to connect to job stream. Please refresh the page.');
+            const finalError = `Failed to establish job stream connection after ${MAX_RECONNECT_ATTEMPTS} attempts. ${detailedMessage} Please refresh the page or check your network connection.`;
+            setError(finalError);
             setReconnecting(false);
+
+            errorCapture.error(finalError, {
+              domain: 'jobs',
+              operation: 'jobStream.exhaustedRetries',
+              metadata: {
+                attempts: reconnectAttempts.current,
+                lastReadyState: readyState,
+                url: urlForLogging,
+              },
+            });
           }
         });
       } catch (err: any) {
         const error = err instanceof Error ? err : new Error(String(err));
+        const connectionContext =
+          reconnectAttempts.current > 0 ? 'reconnection' : 'initial connection';
+
         errorCapture.capture(error, {
           domain: 'jobs',
           operation: 'jobStream.connectionError',
+          metadata: {
+            context: connectionContext,
+            attempt: reconnectAttempts.current,
+            url: urlForLogging,
+            errorType: error.constructor.name,
+          },
         });
-        setError(error.message || 'Failed to connect');
+
+        const userMessage = error.message || `Failed to connect during ${connectionContext}`;
+        setError(userMessage);
         setConnected(false);
+
+        // If pre-flight check failed, don't attempt reconnection (likely auth or server issue)
+        // Only reconnect on EventSource errors
+        if (reconnectAttempts.current > 0 && reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
+          setReconnecting(true);
+          const delay = RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts.current);
+
+          // Reconnection after pre-flight failure - debug logging removed
+
+          reconnectTimer.current = setTimeout(() => {
+            if (mountedRef.current) {
+              reconnectAttempts.current++;
+              connect();
+            }
+          }, delay);
+        } else if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
+          setReconnecting(false);
+          setError(`${userMessage} Maximum retry attempts reached.`);
+        }
       }
     };
 
@@ -290,12 +441,37 @@ export function useJobStream(): UseJobStreamResult {
     };
   }, []);
 
+  // Remove jobs from local state (for optimistic UI updates after deletion)
+  const removeJobs = useCallback((jobIds: string[]) => {
+    if (jobIds.length === 0) return;
+
+    console.log(`[useJobStream] Removing ${jobIds.length} jobs from local state:`, jobIds);
+
+    setJobs((prev) => {
+      const next = new Map(prev);
+      let removed = 0;
+
+      jobIds.forEach((jobId) => {
+        if (next.delete(jobId)) {
+          removed++;
+        }
+      });
+
+      console.log(
+        `[useJobStream] Successfully removed ${removed}/${jobIds.length} jobs. Map size: ${prev.size} → ${next.size}`
+      );
+
+      return removed > 0 ? next : prev;
+    });
+  }, []);
+
   return {
     jobs,
     graphUpdates,
     connected,
     error,
     reconnecting,
+    removeJobs,
   };
 }
 

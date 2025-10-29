@@ -17,36 +17,14 @@
  * Related: Product Directive - "Idempotency keys"
  */
 
-import { Job, JobSpec } from '../domain/Job';
+import { Job, JobSpec, JobConfig } from '../domain/Job';
 import { JobRepository } from '../infrastructure/JobRepository';
 
 export interface EnqueueJobCommand {
   type: 'import' | 'delete' | 'export' | 'analyze';
   accountId: string;
   createdBy: string; // user_id
-  config: {
-    // Import config
-    files?: Array<{
-      fileName: string;
-      fileSize: number;
-      mimeType: string;
-    }>;
-    importOptions?: {
-      platform?: string;
-      exportCode?: boolean;
-      codeMinChars?: number;
-    };
-
-    // Delete config
-    deleteScope?: 'canvas' | 'all-clients';
-
-    // Export config
-    exportFormat?: 'json' | 'csv' | 'markdown';
-    exportScope?: string;
-
-    // Common
-    metadata?: Record<string, unknown>;
-  };
+  config: JobConfig; // Use shared JobConfig type
 
   // Optional
   idempotencyKey?: string;

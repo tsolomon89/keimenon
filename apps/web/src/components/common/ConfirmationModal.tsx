@@ -119,6 +119,11 @@ export function ConfirmationModal({
       {/* Modal */}
       <div className="relative w-full max-w-md">
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirmation-modal-title"
+          aria-describedby="confirmation-modal-description"
+          data-testid="confirmation-modal"
           className={`relative ${config.bg} border ${config.border} rounded-xl shadow-2xl overflow-hidden`}
         >
           {/* Header */}
@@ -130,8 +135,18 @@ export function ConfirmationModal({
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <h3 className={`text-lg font-semibold ${config.titleColor} mb-2`}>{title}</h3>
-              <p className={`text-sm ${config.messageColor} whitespace-pre-wrap`}>{message}</p>
+              <h3
+                id="confirmation-modal-title"
+                className={`text-lg font-semibold ${config.titleColor} mb-2`}
+              >
+                {title}
+              </h3>
+              <p
+                id="confirmation-modal-description"
+                className={`text-sm ${config.messageColor} whitespace-pre-wrap`}
+              >
+                {message}
+              </p>
               {details && (
                 <p className="text-xs text-slate-400 mt-3 p-3 bg-slate-900/50 rounded border border-slate-700">
                   {details}

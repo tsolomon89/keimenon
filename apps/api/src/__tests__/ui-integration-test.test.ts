@@ -28,10 +28,7 @@ import os from 'os';
 import FormData from 'form-data';
 import fetch from 'node-fetch';
 import Database from 'better-sqlite3';
-import EventSourcePolyfill from 'eventsource';
-
-// Handle both ESM and CommonJS imports
-const EventSource = (EventSourcePolyfill as any).default || EventSourcePolyfill;
+import EventSource from 'eventsource';
 
 // Test Configuration
 const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:4001';

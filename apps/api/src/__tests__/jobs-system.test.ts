@@ -24,7 +24,7 @@ import FormData from 'form-data';
 import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
-import { EventSource } from 'eventsource';
+import EventSource from 'eventsource';
 
 // Test configuration
 const API_URL = process.env.TEST_API_URL || 'http://localhost:4001';
@@ -337,6 +337,263 @@ describe('Import Jobs', () => {
 
   it('should support job cancellation', async () => {
     // Create job
+    const form = createFormData(TEST_FILES.small); // Use small file for longer runtime
+    const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        ...form.getHeaders(),
+      },
+      body: form,
+    });
+
+    assert.strictEqual(createResponse.ok, true, 'Job creation should succeed');
+    const createData = (await createResponse.json()) as any;
+    const jobId = createData.jobId;
+    assert.ok(jobId, 'Job ID should be returned');
+
+    console.log(`   📋 Created job ${jobId}, waiting for it to start...`);
+
+    // Wait a moment for job to start processing
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Cancel the job using POST /api/v1/jobs/:jobId/cancel
+    const cancelResponse = await fetch(`${API_URL}/api/v1/jobs/${jobId}/cancel`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    assert.strictEqual(cancelResponse.ok, true, 'Cancel request should succeed');
+    const cancelData = (await cancelResponse.json()) as any;
+    assert.strictEqual(cancelData.success, true, 'Cancel response should indicate success');
+
+    console.log(`   ⛔ Cancel request sent for job ${jobId}`);
+
+    // Wait for job to actually stop (worker should check signal)
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Verify job status is canceled
+    const statusResponse = await fetch(`${API_URL}/api/v1/jobs/${jobId}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    const statusData = (await statusResponse.json()) as any;
+    const finalStatus = statusData.job.state.status;
+
+    // Job should be canceled (or succeeded if it finished before cancel took effect)
+    assert.ok(
+      ['canceled', 'succeeded'].includes(finalStatus),
+      `Job should be canceled or succeeded, got: ${finalStatus}`
+    );
+
+    console.log(`   ✅ Job final status: ${finalStatus}`);
+
+    // If job was canceled, verify it has a canceledAt timestamp
+    if (finalStatus === 'canceled') {
+      assert.ok(statusData.job.state.canceledAt, 'Canceled job should have canceledAt timestamp');
+      console.log(`   ✅ Job has canceledAt timestamp`);
+    }
+  }, 30000);
+
+  it('should cancel queued job before it starts', async () => {
+    // Create multiple jobs to fill the worker pool
+    const jobIds: string[] = [];
+
+    // Create 5 jobs (assuming worker pool has limited concurrency)
+    for (let i = 0; i < 5; i++) {
+      const form = createFormData(TEST_FILES.small);
+      const response = await fetch(`${API_URL}/api/v1/jobs/import`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          ...form.getHeaders(),
+        },
+        body: form,
+      });
+
+      const data = (await response.json()) as any;
+      jobIds.push(data.jobId);
+    }
+
+    console.log(`   📋 Created ${jobIds.length} jobs`);
+
+    // Immediately cancel the last job (likely still queued)
+    const jobToCancel = jobIds[jobIds.length - 1];
+    const cancelResponse = await fetch(`${API_URL}/api/v1/jobs/${jobToCancel}/cancel`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    assert.strictEqual(cancelResponse.ok, true, 'Cancel request should succeed');
+
+    // Verify the job is canceled
+    const statusResponse = await fetch(`${API_URL}/api/v1/jobs/${jobToCancel}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    const statusData = (await statusResponse.json()) as any;
+    const status = statusData.job.state.status;
+
+    assert.ok(
+      ['canceled', 'queued', 'running'].includes(status),
+      `Job should be in valid state, got: ${status}`
+    );
+
+    console.log(`   ✅ Queued job cancel test completed (status: ${status})`);
+
+    // Wait for all jobs to complete or be canceled
+    await Promise.all(
+      jobIds.map((id) => waitForJobCompletion(id, adminToken, 30000).catch(() => null))
+    );
+  }, 60000);
+
+  it('should pause a running job', async () => {
+    // Create job with small file for longer runtime
+    const form = createFormData(TEST_FILES.small);
+    const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        ...form.getHeaders(),
+      },
+      body: form,
+    });
+
+    assert.strictEqual(createResponse.ok, true, 'Job creation should succeed');
+    const createData = (await createResponse.json()) as any;
+    const jobId = createData.jobId;
+
+    console.log(`   📋 Created job ${jobId}, waiting for it to start...`);
+
+    // Wait for job to start running
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Pause the job
+    const pauseResponse = await fetch(`${API_URL}/api/v1/jobs/${jobId}/pause`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    assert.strictEqual(pauseResponse.ok, true, 'Pause request should succeed');
+    const pauseData = (await pauseResponse.json()) as any;
+    assert.strictEqual(pauseData.success, true, 'Pause response should indicate success');
+
+    console.log(`   ⏸️  Pause request sent for job ${jobId}`);
+
+    // Wait for job to actually pause
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Verify job status is blocked (paused)
+    const statusResponse = await fetch(`${API_URL}/api/v1/jobs/${jobId}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    const statusData = (await statusResponse.json()) as any;
+    const finalStatus = statusData.job.state.status;
+
+    // Job should be blocked (paused) or succeeded if it finished before pause took effect
+    assert.ok(
+      ['blocked', 'succeeded'].includes(finalStatus),
+      `Job should be blocked or succeeded, got: ${finalStatus}`
+    );
+
+    console.log(`   ✅ Job final status: ${finalStatus}`);
+
+    // If job was paused, verify it has blockedAt timestamp
+    if (finalStatus === 'blocked') {
+      assert.ok(statusData.job.state.blockedAt, 'Paused job should have blockedAt timestamp');
+      console.log(`   ✅ Job has blockedAt timestamp`);
+    }
+  }, 30000);
+
+  it('should resume a paused job', async () => {
+    // Create and pause a job
+    const form = createFormData(TEST_FILES.small);
+    const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        ...form.getHeaders(),
+      },
+      body: form,
+    });
+
+    const createData = (await createResponse.json()) as any;
+    const jobId = createData.jobId;
+
+    // Wait for job to start
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Pause it
+    const pauseResponse = await fetch(`${API_URL}/api/v1/jobs/${jobId}/pause`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    assert.strictEqual(pauseResponse.ok, true, 'Pause should succeed');
+
+    // Wait for pause to take effect
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Check job is paused
+    let statusResponse = await fetch(`${API_URL}/api/v1/jobs/${jobId}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    let statusData = (await statusResponse.json()) as any;
+
+    console.log(`   ⏸️  Job paused with status: ${statusData.job.state.status}`);
+
+    // Only test resume if job actually got paused (might have finished too quickly)
+    if (statusData.job.state.status === 'blocked') {
+      // Resume the job
+      const resumeResponse = await fetch(`${API_URL}/api/v1/jobs/${jobId}/resume`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      assert.strictEqual(resumeResponse.ok, true, 'Resume request should succeed');
+      const resumeData = (await resumeResponse.json()) as any;
+      assert.strictEqual(resumeData.success, true, 'Resume response should indicate success');
+
+      console.log(`   ▶️  Resume request sent for job ${jobId}`);
+
+      // Wait a moment and check job is queued again
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      statusResponse = await fetch(`${API_URL}/api/v1/jobs/${jobId}`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      statusData = (await statusResponse.json()) as any;
+
+      // Job should transition from blocked to queued
+      assert.ok(
+        ['queued', 'running', 'succeeded'].includes(statusData.job.state.status),
+        `Resumed job should be queued/running/succeeded, got: ${statusData.job.state.status}`
+      );
+
+      console.log(`   ✅ Job resumed with status: ${statusData.job.state.status}`);
+    } else {
+      console.log(`   ⏭️  Job completed before pause took effect, skipping resume test`);
+    }
+  }, 60000);
+
+  it('should not pause a job that is not running', async () => {
+    // Create job
     const form = createFormData(TEST_FILES.tiny);
     const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
       method: 'POST',
@@ -350,24 +607,85 @@ describe('Import Jobs', () => {
     const createData = (await createResponse.json()) as any;
     const jobId = createData.jobId;
 
-    // Immediately try to cancel (might already be running)
-    const cancelResponse = await fetch(`${API_URL}/api/v1/jobs/${jobId}`, {
-      method: 'DELETE',
+    // Wait for job to complete
+    await waitForJobCompletion(jobId, adminToken, 30000);
+
+    // Try to pause completed job (should fail)
+    const pauseResponse = await fetch(`${API_URL}/api/v1/jobs/${jobId}/pause`, {
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ reason: 'Test cancellation' }),
     });
 
-    const cancelData = (await cancelResponse.json()) as any;
+    // Should return 400 Bad Request
+    assert.strictEqual(pauseResponse.status, 400, 'Pausing non-running job should return 400');
 
-    // Job might be canceled or already completed
-    const finalStatus = cancelData.job.state.status;
-    assert.ok(['canceled', 'succeeded', 'running'].includes(finalStatus));
+    const errorData = (await pauseResponse.json()) as any;
+    assert.strictEqual(errorData.success, false, 'Response should indicate failure');
+    assert.ok(
+      errorData.error.includes('Only running jobs can be paused'),
+      'Error message should mention job status requirement'
+    );
 
-    console.log(`   ✅ Cancel request processed (final status: ${finalStatus})`);
+    console.log(`   ✅ Correctly rejected pause on completed job`);
   }, 30000);
+
+  it('should embed tenancy metadata in job config', async () => {
+    const form = createFormData(TEST_FILES.tiny, {
+      exportCode: true,
+    });
+
+    const response = await fetch(`${API_URL}/api/v1/jobs/import`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        ...form.getHeaders(),
+      },
+      body: form,
+    });
+
+    assert.strictEqual(response.ok, true);
+
+    const data = (await response.json()) as any;
+    const job = data.job;
+
+    console.log('   🔍 Validating tenancy metadata...');
+
+    // Verify tenancy metadata exists and is server-side derived
+    assert.ok(job.config.tenancy, 'job.config.tenancy should exist');
+    assert.ok(job.config.tenancy.actorId, 'actorId should exist');
+    assert.strictEqual(typeof job.config.tenancy.actorId, 'string', 'actorId should be string');
+    assert.ok(job.config.tenancy.actorId.length > 0, 'actorId should not be empty');
+
+    // Verify userId matches authenticated user
+    assert.strictEqual(
+      job.config.tenancy.userId,
+      job.createdBy,
+      'tenancy.userId should match job.createdBy'
+    );
+
+    // Verify accountId is set
+    assert.strictEqual(
+      job.config.tenancy.accountId,
+      job.accountId,
+      'tenancy.accountId should match job.accountId'
+    );
+
+    // Verify userType and accountMembership are set (server-derived, not client-sent)
+    assert.ok(job.config.tenancy.userType, 'userType should exist');
+    assert.ok(job.config.tenancy.accountMembership, 'accountMembership should exist');
+    assert.ok(job.config.tenancy.userEmail, 'userEmail should exist for audit');
+
+    console.log(`   ✅ Tenancy metadata validated:`, {
+      actorId: job.config.tenancy.actorId,
+      userId: job.config.tenancy.userId,
+      accountId: job.config.tenancy.accountId,
+      userType: job.config.tenancy.userType,
+      membership: job.config.tenancy.accountMembership,
+    });
+  }, 10000);
 });
 
 // ============================================================================

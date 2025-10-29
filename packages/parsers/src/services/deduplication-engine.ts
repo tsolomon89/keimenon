@@ -259,10 +259,14 @@ export class DeduplicationEngine {
     const firstSeenAt = timeRow?.first || now;
     const lastSeenAt = timeRow?.last || now;
 
-    // Count distinct roles (Phase 1-3 doesn't have nodes table, so we'll default to 1)
-    // TODO: Add role tracking to node_spans for better context
+    // Count distinct roles (schema doesn't have role column yet)
+    // TODO(enhancement): Add role tracking to node_spans for better deduplication evidence
+    // Priority: LOW-MEDIUM - would improve deduplication confidence scoring
     // Related: packages/parsers/src/services/content-processor.ts (add role to spans)
-    // See: packages/db/src/sqlite/schema.sql (add role column to node_spans table)
+    // Implementation: Add migration in apps/api/src/migrations/
+    //   1. ALTER TABLE node_spans ADD COLUMN role TEXT
+    //   2. Update parsers to populate role field
+    //   3. Update this query to COUNT(DISTINCT role)
     const distinctRoles = 1;
 
     // Compute evidence weights

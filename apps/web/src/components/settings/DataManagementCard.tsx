@@ -35,7 +35,7 @@ export function DataManagementCard() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Watch for deletion job completion and reload page
+  // Watch for deletion job completion and update UI reactively (no reload)
   useEffect(() => {
     if (!deletionJobId) return;
 
@@ -43,19 +43,24 @@ export function DataManagementCard() {
       const operation = getOperation(deletionJobId);
 
       if (operation?.status === 'done') {
-        console.log('[DataManagementCard] Deletion complete, reloading page...');
+        console.log('[DataManagementCard] Deletion complete, updating UI...');
         clearInterval(checkInterval);
 
-        // Show success message briefly before reload
-        setSuccess('Data cleared successfully! Reloading...');
+        // Show success message - UI updates via SSE/context, no reload needed
+        setSuccess('Data cleared successfully! Canvas is now empty.');
 
+        // Clear deletion state after showing success
         setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+          setDeletionJobId(null);
+          setIsClearing(false);
+          setSuccess(null);
+        }, 3000);
       } else if (operation?.status === 'error') {
         console.error('[DataManagementCard] Deletion failed:', operation);
         clearInterval(checkInterval);
         setError('Deletion failed. Please check Background Operations for details.');
+        setDeletionJobId(null);
+        setIsClearing(false);
       }
     }, 1000); // Check every second
 
@@ -431,10 +436,10 @@ export function AdminDataManagementCard() {
       setSuccess(`Successfully cleared data for ${result.cleared_accounts} client account(s)`);
       setShowClearModal(false);
 
-      // Reload after delay
+      // Clear success message after delay (no reload needed - UI updates via SSE)
       setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+        setSuccess(null);
+      }, 5000);
     } catch (err: any) {
       console.error('Failed to clear all client data:', err);
 

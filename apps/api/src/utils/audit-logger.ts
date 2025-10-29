@@ -39,6 +39,46 @@ export interface AuditLogEntry {
 }
 
 /**
+ * Map audit event types to database-compatible action values
+ * Database action column CHECK constraint: ('read', 'create', 'update', 'delete', 'reset')
+ */
+function mapEventTypeToAction(
+  eventType: AuditEventType
+): 'read' | 'create' | 'update' | 'delete' | 'reset' {
+  switch (eventType) {
+    case 'login_success':
+    case 'login_failure':
+    case 'logout':
+    case 'session_expired':
+    case 'unauthorized_access':
+      return 'read'; // Authentication is reading/accessing sessions
+
+    case 'register':
+    case 'account_created':
+    case 'user_created':
+      return 'create';
+
+    case 'password_change':
+    case 'account_switched':
+    case 'permission_changed':
+    case 'user_activated':
+      return 'update';
+
+    case 'account_deleted':
+    case 'user_deleted':
+    case 'user_suspended':
+    case 'login_locked':
+      return 'delete'; // Deactivation/suspension maps to delete
+
+    case 'account_unlocked':
+      return 'reset';
+
+    default:
+      return 'read'; // Safe default
+  }
+}
+
+/**
  * Log an audit event to the database
  * Maps to existing audit_log schema with columns:
  * actor_user_id, actor_account_id, target_account_id, action, resource_type, resource_id,
@@ -63,7 +103,7 @@ export function logAuditEvent(database: Database.Database, entry: AuditLogEntry)
         entry.user_id || 'system',
         entry.account_id || 'system',
         entry.account_id || null,
-        entry.event_type,
+        mapEventTypeToAction(entry.event_type), // Map event_type to valid action
         'auth',
         entry.user_id || null,
         'security',

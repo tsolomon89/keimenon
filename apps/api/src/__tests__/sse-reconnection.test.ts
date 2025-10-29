@@ -14,11 +14,11 @@
 
 import { describe, test, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
-import EventSourcePolyfill from 'eventsource';
 import { login, waitFor } from './utils/test-helpers';
 
-// Handle both ESM and CommonJS imports
-const EventSource = (EventSourcePolyfill as any).default || EventSourcePolyfill;
+// Import EventSource correctly for Node.js
+// The 'eventsource' package exports a default class
+import EventSource from 'eventsource';
 
 // Test configuration
 const API_BASE_URL = process.env.API_URL || 'http://localhost:4001';
@@ -107,6 +107,54 @@ describe('SSE Reconnection', () => {
 
         // Should be closed
         assert.strictEqual(eventSource.readyState, EventSource.CLOSED);
+      },
+      { timeout: 10000 }
+    );
+
+    test(
+      'should cleanup connection on client disconnect',
+      async (_t) => {
+        const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
+
+        // Create multiple connections
+        const eventSource1 = new EventSource(sseUrl);
+        const eventSource2 = new EventSource(sseUrl);
+
+        // Wait for both to connect
+        await Promise.all([
+          new Promise<void>((resolve) => {
+            eventSource1.onopen = () => resolve();
+          }),
+          new Promise<void>((resolve) => {
+            eventSource2.onopen = () => resolve();
+          }),
+        ]);
+
+        assert.strictEqual(eventSource1.readyState, EventSource.OPEN);
+        assert.strictEqual(eventSource2.readyState, EventSource.OPEN);
+
+        console.log('   ✅ Two connections established');
+
+        // Close first connection
+        eventSource1.close();
+        await new Promise((resolve) => setTimeout(resolve, 500)); // Give time for cleanup
+
+        assert.strictEqual(eventSource1.readyState, EventSource.CLOSED);
+        assert.strictEqual(eventSource2.readyState, EventSource.OPEN);
+
+        console.log('   ✅ First connection closed, second still open');
+
+        // Close second connection
+        eventSource2.close();
+        await new Promise((resolve) => setTimeout(resolve, 500)); // Give time for cleanup
+
+        assert.strictEqual(eventSource2.readyState, EventSource.CLOSED);
+
+        console.log('   ✅ All connections cleaned up');
+
+        // Note: We're testing that close() works and doesn't cause errors
+        // The actual server-side cleanup is validated by SSEBroadcaster's removeConnection
+        // which is triggered by response.on('close') handler
       },
       { timeout: 10000 }
     );

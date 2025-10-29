@@ -44,10 +44,13 @@ export interface UploadResult {
 export class StreamingUploadService extends EventEmitter {
   private uploads: Map<string, UploadProgress> = new Map();
   private tempDir: string;
+  private uploadTimeoutMs: number;
 
-  constructor() {
+  constructor(uploadTimeoutMs?: number) {
     super();
     this.tempDir = join(tmpdir(), 'chat-imports');
+    // Default 5 minutes, configurable via env var
+    this.uploadTimeoutMs = uploadTimeoutMs || parseInt(process.env.UPLOAD_TIMEOUT_MS || '300000');
     this.ensureTempDir();
   }
 
@@ -73,6 +76,23 @@ export class StreamingUploadService extends EventEmitter {
     return new Promise((resolve, reject) => {
       const uploadedFiles: UploadedFile[] = [];
       const fields: Record<string, string> = {};
+
+      console.log('[StreamingUpload] Starting upload handler');
+      console.log('[StreamingUpload] Headers:', JSON.stringify(req.headers, null, 2));
+      console.log(
+        `[StreamingUpload] Timeout configured: ${Math.round(this.uploadTimeoutMs / 1000)}s`
+      );
+
+      // Add timeout to prevent hanging requests (configurable via env)
+      const timeout = setTimeout(() => {
+        const error = new Error(
+          `Upload timed out after ${Math.round(this.uploadTimeoutMs / 1000)} seconds. ` +
+            `Consider increasing UPLOAD_TIMEOUT_MS for large files or slow connections.`
+        );
+        console.error('[StreamingUpload] Timeout reached:', error);
+        reject(error);
+      }, this.uploadTimeoutMs);
+
       const bb = busboy({
         headers: req.headers,
         limits: {
@@ -86,8 +106,11 @@ export class StreamingUploadService extends EventEmitter {
         const uploadId = randomUUID();
         const tempFilePath = join(this.tempDir, `${uploadId}-${filename}`);
 
+        console.log(`[StreamingUpload] Receiving file: ${filename} (${mimeType})`);
+
         // Validate file type
         if (!filename.match(/\.(json|jsonl)$/i)) {
+          console.warn(`[StreamingUpload] Invalid file type: ${filename}`);
           fileStream.resume(); // Drain stream
           return;
         }
@@ -143,14 +166,22 @@ export class StreamingUploadService extends EventEmitter {
       });
 
       bb.on('field', (fieldname, value) => {
+        console.log(`[StreamingUpload] Received field: ${fieldname} (${value.length} chars)`);
         fields[fieldname] = value;
       });
 
       bb.on('error', (error) => {
+        clearTimeout(timeout);
+        console.error('[StreamingUpload] Busboy error:', error);
         reject(error);
       });
 
       bb.on('finish', () => {
+        clearTimeout(timeout);
+        console.log(`[StreamingUpload] Upload complete: ${uploadedFiles.length} file(s) received`);
+        uploadedFiles.forEach((f) => {
+          console.log(`  - ${f.fileName}: ${(f.size / 1024).toFixed(2)} KB`);
+        });
         resolve({ files: uploadedFiles, fields });
       });
 

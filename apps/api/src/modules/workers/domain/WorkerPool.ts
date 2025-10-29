@@ -289,16 +289,21 @@ export class WorkerPool {
         return;
       }
 
-      // Update job status based on result
-      if (result.success) {
-        updatedJob.succeed('Job completed successfully');
-        console.log(`✅ Job ${job.id} completed successfully`);
+      // Update job status based on result (only if not already terminal)
+      if (!updatedJob.isTerminal) {
+        if (result.success) {
+          updatedJob.succeed('Job completed successfully');
+          console.log(`✅ Job ${job.id} completed successfully`);
+        } else {
+          updatedJob.fail(result.error!);
+          console.log(`❌ Job ${job.id} failed: ${result.error?.message}`);
+        }
+        await this.jobRepository.save(updatedJob);
       } else {
-        updatedJob.fail(result.error!);
-        console.log(`❌ Job ${job.id} failed: ${result.error?.message}`);
+        console.log(
+          `⏭️  Job ${job.id} already in terminal state (${updatedJob.status}), skipping status update`
+        );
       }
-
-      await this.jobRepository.save(updatedJob);
 
       // Broadcast job completion
       if (this.broadcaster) {
@@ -313,10 +318,10 @@ export class WorkerPool {
       // Remove from active jobs
       this.activeJobs.delete(job.id);
 
-      // Try to mark job as failed
+      // Try to mark job as failed (only if not already in terminal state)
       try {
         const failedJob = await this.jobRepository.findById(job.id, job.accountId);
-        if (failedJob) {
+        if (failedJob && !failedJob.isTerminal) {
           failedJob.fail({
             code: 'UNEXPECTED_ERROR',
             message: error.message || 'Unknown error',
@@ -328,6 +333,10 @@ export class WorkerPool {
           if (this.broadcaster) {
             this.broadcaster.broadcastJobUpdate(failedJob);
           }
+        } else if (failedJob?.isTerminal) {
+          console.log(
+            `⏭️  Job ${job.id} already in terminal state (${failedJob.status}), skipping error update`
+          );
         }
       } catch (saveError: any) {
         console.error(`❌ Failed to save error state for job ${job.id}:`, saveError);
@@ -352,17 +361,46 @@ export class WorkerPool {
 
   /**
    * Cancel a specific job
+   *
+   * This method is called when a user requests job cancellation.
+   * It updates the job status in the database BEFORE signaling the worker to stop.
+   * This ensures the worker sees the canceled status on its next checkpoint check.
    */
-  async cancelJob(jobId: string): Promise<boolean> {
+  async cancelJob(jobId: string, accountId: string, reason?: string): Promise<boolean> {
     const execution = this.activeJobs.get(jobId);
     if (!execution) {
       return false; // Job not running in this pool
     }
 
-    // Abort the job
-    execution.abortController.abort();
+    try {
+      // 1. Load job from database
+      const job = await this.jobRepository.findById(jobId, accountId);
+      if (!job) {
+        console.warn(`⚠️ Job ${jobId} not found in database during cancel`);
+        return false;
+      }
 
-    return true;
+      // 2. Update job status to canceled
+      job.cancel(reason || 'Canceled by user');
+      await this.jobRepository.save(job);
+
+      console.log(`⛔ Job ${jobId} marked as canceled in database`);
+
+      // 3. Broadcast cancellation event
+      if (this.broadcaster) {
+        this.broadcaster.broadcastJobUpdate(job);
+      }
+
+      // 4. Abort the worker execution (signal will be checked on next checkpoint)
+      execution.abortController.abort();
+
+      console.log(`📡 Abort signal sent to worker for job ${jobId}`);
+
+      return true;
+    } catch (error: any) {
+      console.error(`❌ Error canceling job ${jobId}:`, error);
+      return false;
+    }
   }
 
   /**
