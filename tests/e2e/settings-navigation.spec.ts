@@ -21,8 +21,8 @@ test.describe('Settings Navigation', () => {
     await page.getByLabel(/password/i).fill(TEST_PASSWORD);
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    // Wait for redirect to canvas
-    await page.waitForURL(/\/canvas/, { timeout: 20000 });
+    // Wait for redirect to canvas (uses global 30s timeout)
+    await page.waitForURL(/\/canvas/);
     await page.waitForLoadState('domcontentloaded');
   });
 

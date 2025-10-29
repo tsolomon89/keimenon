@@ -57,9 +57,8 @@ test.describe('Authentication and Canvas Flow', () => {
     expect(responseData).toHaveProperty('token');
     expect(responseData).toHaveProperty('user');
 
-    // Step 7: Should redirect to canvas after successful login
-    // Increase timeout to allow for React state updates and Next.js navigation
-    await page.waitForURL(/\/canvas/, { timeout: 20000 });
+    // Step 7: Should redirect to canvas after successful login (uses global 30s timeout)
+    await page.waitForURL(/\/canvas/);
 
     // Step 8: Verify canvas page loaded successfully
     // The canvas page might have polling/SSE, so networkidle won't work
@@ -97,8 +96,8 @@ test.describe('Authentication and Canvas Flow', () => {
     await page.getByLabel(/password/i).fill(TEST_PASSWORD);
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    // Wait for redirect to canvas
-    await page.waitForURL(/\/canvas/, { timeout: 20000 });
+    // Wait for redirect to canvas (uses global 30s timeout)
+    await page.waitForURL(/\/canvas/);
 
     // Now navigate away and back to home
     await page.goto('/');
@@ -117,7 +116,7 @@ test.describe('Authentication and Canvas Flow', () => {
     await page.getByLabel(/password/i).fill(TEST_PASSWORD);
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    await page.waitForURL(/\/canvas/, { timeout: 20000 });
+    await page.waitForURL(/\/canvas/); // Uses global 30s timeout
 
     // Look for logout button (exact location depends on your UI)
     // This might be in a dropdown menu or settings

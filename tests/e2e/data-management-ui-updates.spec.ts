@@ -194,7 +194,7 @@ test.describe.serial('Data Management UI Updates', () => {
     await page.getByLabel(/email/i).fill(TEST_EMAIL);
     await page.getByLabel(/password/i).fill(TEST_PASSWORD);
     await page.getByRole('button', { name: /sign in/i }).click();
-    await page.waitForURL(/\/canvas/, { timeout: 20000 });
+    await page.waitForURL(/\/canvas/); // Uses global 30s timeout
 
     // Use UI workflow to clear jobs
     await clearAllBackgroundOperations(page);
@@ -213,7 +213,7 @@ test.describe.serial('Data Management UI Updates', () => {
     await page.getByRole('button', { name: /sign in/i }).click();
 
     // Wait for redirect to canvas
-    await page.waitForURL(/\/canvas/, { timeout: 20000 });
+    await page.waitForURL(/\/canvas/); // Uses global 30s timeout
     await page.waitForLoadState('domcontentloaded');
 
     // IMPORTANT: Wait for AuthContext to fully initialize
