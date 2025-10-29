@@ -29,6 +29,8 @@ import {
   Eye,
   Trash2,
   RefreshCw,
+  PauseCircle,
+  PlayCircle,
 } from 'lucide-react';
 import { useOperating } from '@/contexts/OperatingContext';
 import { getToken } from '@/contexts/AuthContext';
@@ -38,6 +40,7 @@ import {
 } from '@/contexts/BackgroundOperationsContext';
 import { useJobStream, type JobUpdate } from '@/hooks/useJobStream';
 import { errorCapture } from '@/services/error-capture.service';
+import { cancelJob, pauseJob, resumeJob } from '@/lib/api-client';
 
 // Import job status
 export type ImportStatus =
@@ -48,6 +51,7 @@ export type ImportStatus =
   | 'indexing' // Creating nodes/edges
   | 'linking' // Building relationships
   | 'processing' // Generic processing state
+  | 'blocked' // Paused by user
   | 'done' // Complete
   | 'error'; // Failed
 
@@ -84,6 +88,7 @@ const statusColors: Record<ImportStatus, string> = {
   indexing: 'bg-green-600/20 border-green-500/30 text-green-300',
   linking: 'bg-yellow-600/20 border-yellow-500/30 text-yellow-300',
   processing: 'bg-blue-600/20 border-blue-500/30 text-blue-300',
+  blocked: 'bg-yellow-600/20 border-yellow-500/30 text-yellow-300',
   done: 'bg-green-600/20 border-green-500/30 text-green-300',
   error: 'bg-red-600/20 border-red-500/30 text-red-300',
 };
@@ -97,6 +102,7 @@ const statusIcons: Record<ImportStatus, any> = {
   indexing: Upload,
   linking: Upload,
   processing: Loader2,
+  blocked: PauseCircle,
   done: CheckCircle2,
   error: XCircle,
 };
@@ -110,6 +116,7 @@ const statusLabels: Record<ImportStatus, string> = {
   indexing: 'Indexing',
   linking: 'Linking',
   processing: 'Processing',
+  blocked: 'Paused',
   done: 'Complete',
   error: 'Failed',
 };
@@ -121,12 +128,52 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [activeImportIds, setActiveImportIds] = useState<string[]>([]);
   const [jobsBeingOperated, setJobsBeingOperated] = useState<Set<string>>(new Set());
-  const { operating, isOperatingMode } = useOperating();
-  const { getAllOperations, getOperation, restoreOperation } = useBackgroundOperations();
+  const { operating, isOperatingMode, operatingContextVersion } = useOperating();
+  const { getAllOperations, getOperation, restoreOperation, removeOperationsByJobIds } =
+    useBackgroundOperations();
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Subscribe to real-time job updates via SSE
-  const { jobs: sseJobs, connected: sseConnected, error: sseError } = useJobStream();
+  const {
+    jobs: sseJobs,
+    connected: sseConnected,
+    error: sseError,
+    removeJobs: removeJobsFromStream,
+  } = useJobStream();
+
+  // ==================== BULK ACTION LOADING STATE MANAGEMENT ====================
+  // Track bulkActionLoading changes for debugging
+  useEffect(() => {
+    console.log(`[ImportsTable] bulkActionLoading changed: ${bulkActionLoading}`);
+
+    // Safety mechanism: Auto-reset if stuck in loading state for more than 30 seconds
+    if (bulkActionLoading) {
+      const timeoutId = setTimeout(() => {
+        console.error('[ImportsTable] ⚠️  bulkActionLoading stuck for 30s, forcing reset!');
+        setBulkActionLoading(false);
+        setJobsBeingOperated(new Set());
+
+        errorCapture.warn('Bulk action loading state was stuck and auto-reset', {
+          domain: 'jobs',
+          operation: 'bulkActionLoadingReset',
+          metadata: {
+            selectedJobIds: Array.from(selectedJobIds),
+            jobsBeingOperated: Array.from(jobsBeingOperated),
+          },
+        });
+      }, 30000);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [bulkActionLoading, selectedJobIds, jobsBeingOperated]);
+
+  // Defensive reset on component mount to clear any stuck state
+  useEffect(() => {
+    console.log('[ImportsTable] Component mounted, ensuring clean state');
+    setBulkActionLoading(false);
+    setJobsBeingOperated(new Set());
+  }, []); // Empty dependency array = runs once on mount
+  // ==================== END BULK ACTION LOADING STATE MANAGEMENT ====================
 
   // Convert unified Job API format to ImportJob format
   const convertAPIJobToImportJob = useCallback((apiJob: any): ImportJob => {
@@ -137,7 +184,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       succeeded: 'done',
       failed: 'error',
       canceled: 'error',
-      blocked: 'queued',
+      blocked: 'blocked',
     };
 
     // Extract filename from job config
@@ -172,7 +219,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       succeeded: 'done',
       failed: 'error',
       canceled: 'error',
-      blocked: 'queued',
+      blocked: 'blocked',
     };
 
     // Extract filename from config or generate label based on job type
@@ -206,25 +253,24 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
     };
   }, []);
 
-  // Merge SSE updates into jobs list
+  // Sync jobs list with SSE (SSE is source of truth for real-time updates)
   useEffect(() => {
     if (sseJobs.size > 0) {
       console.log(`[ImportsTable] SSE update received: ${sseJobs.size} jobs`);
-      setJobs((prevJobs) => {
-        const jobsMap = new Map(prevJobs.map((j) => [j.id, j]));
-
-        // Update with SSE jobs
-        for (const [jobId, sseJob] of sseJobs.entries()) {
+      setJobs(() => {
+        // Convert all SSE jobs to ImportJob format
+        // This replaces local state completely, ensuring deleted jobs are removed
+        const sseJobsArray = Array.from(sseJobs.values()).map((sseJob) => {
           console.log(`[ImportsTable] SSE job update:`, {
-            jobId,
+            jobId: sseJob.jobId,
             status: sseJob.status,
             progress: sseJob.progress.percent,
             timestamp: sseJob.timestamp,
           });
-          jobsMap.set(jobId, convertSSEJobToImportJob(sseJob));
-        }
+          return convertSSEJobToImportJob(sseJob);
+        });
 
-        return Array.from(jobsMap.values()).sort((a, b) => b.startedAt - a.startedAt);
+        return sseJobsArray.sort((a, b) => b.startedAt - a.startedAt);
       });
     }
   }, [sseJobs, convertSSEJobToImportJob]);
@@ -301,8 +347,21 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       }
     }
 
+    // Filter out completed jobs older than 5 minutes to prevent UI clutter
+    // This ensures terminal-state jobs (done/error) are shown briefly then auto-removed
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    const filtered = merged.filter((job) => {
+      const isTerminal = job.status === 'done' || job.status === 'error';
+      const isRecent = job.completedAt && job.completedAt > fiveMinutesAgo;
+
+      // Keep job if:
+      // 1. It's not in terminal state (still active), OR
+      // 2. It's terminal but completed recently (within 5 minutes)
+      return !isTerminal || isRecent;
+    });
+
     // Sort by startedAt descending (most recent first)
-    return merged.sort((a, b) => b.startedAt - a.startedAt);
+    return filtered.sort((a, b) => b.startedAt - a.startedAt);
   }, [jobs, getAllOperations]);
 
   // Fetch import jobs with operating context support
@@ -404,15 +463,64 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
         abortControllerRef.current.abort();
       }
     };
-  }, [operating, isOperatingMode, convertAPIJobToImportJob]); // Re-fetch when operating context changes
+  }, [operating, isOperatingMode, operatingContextVersion, convertAPIJobToImportJob]); // Re-fetch when operating context changes
 
   // Handle bulk delete
   const handleDeleteSelected = async () => {
-    if (selectedJobIds.size === 0) return;
+    // CRITICAL FIX: Capture selectedJobIds immediately to prevent race conditions
+    // React state updates can cause selectedJobIds to be cleared during async operations
+    const jobIdsToDelete = new Set(selectedJobIds);
+
+    // ENHANCED DEBUG LOGGING
+    console.log('================================');
+    console.log('🔴 DELETE BUTTON CLICKED - ENTRY POINT');
+    console.log('================================');
+    console.log('[DELETE] Function called at:', new Date().toISOString());
+    console.log('[DELETE] jobIdsToDelete:', Array.from(jobIdsToDelete));
+    console.log('[DELETE] jobIdsToDelete.size:', jobIdsToDelete.size);
+    console.log('[DELETE] bulkActionLoading BEFORE:', bulkActionLoading);
+    console.log('[DELETE] jobsBeingOperated:', Array.from(jobsBeingOperated));
+
+    // CRITICAL CHECK: If bulkActionLoading is already true, something is wrong!
+    if (bulkActionLoading) {
+      console.error('[DELETE] ❌ CRITICAL: bulkActionLoading is already TRUE at function entry!');
+      console.error('[DELETE] This indicates a stuck state from a previous operation.');
+      console.error('[DELETE] Force-resetting bulkActionLoading to false...');
+      setBulkActionLoading(false);
+      setJobsBeingOperated(new Set());
+
+      errorCapture.error(new Error('bulkActionLoading was stuck when delete was initiated'), {
+        domain: 'jobs',
+        operation: 'handleDeleteSelected',
+        metadata: {
+          bulkActionLoading,
+          jobsBeingOperated: Array.from(jobsBeingOperated),
+          selectedJobIds: Array.from(jobIdsToDelete),
+        },
+      });
+
+      // Wait a tick to let state update
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    try {
+      if (jobIdsToDelete.size === 0) {
+        console.log('[DELETE] ❌ No jobs selected, returning early');
+        alert('No jobs selected! This should not happen.');
+        return;
+      }
+
+      console.log('[DELETE] ✅ Proceeding with deletion...');
+    } catch (error) {
+      console.error('[DELETE] ❌ ERROR in early validation:', error);
+      alert('Error in delete handler: ' + error);
+      return;
+    }
 
     // Check if any selected jobs are currently being operated on
-    const conflictingJobs = Array.from(selectedJobIds).filter((id) => jobsBeingOperated.has(id));
+    const conflictingJobs = Array.from(jobIdsToDelete).filter((id) => jobsBeingOperated.has(id));
     if (conflictingJobs.length > 0) {
+      console.log('[DELETE] Conflicting jobs in progress:', conflictingJobs);
       errorCapture.warn(
         `Cannot delete ${conflictingJobs.length} job${conflictingJobs.length !== 1 ? 's' : ''} - operation in progress`,
         {
@@ -425,14 +533,22 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
     }
 
     const confirmed = window.confirm(
-      `Are you sure you want to delete ${selectedJobIds.size} job(s)? This action cannot be undone.`
+      `Are you sure you want to delete ${jobIdsToDelete.size} job(s)? This action cannot be undone.`
     );
 
-    if (!confirmed) return;
+    console.log('[DELETE] Confirmation result:', confirmed);
+    if (!confirmed) {
+      console.log('[DELETE] User cancelled deletion');
+      return;
+    }
+
+    console.log('[DELETE] User confirmed deletion, setting bulkActionLoading = true');
 
     // Mark jobs as being operated on
-    setJobsBeingOperated((prev) => new Set([...prev, ...selectedJobIds]));
+    setJobsBeingOperated((prev) => new Set([...prev, ...jobIdsToDelete]));
     setBulkActionLoading(true);
+
+    console.log('[DELETE] State updated: bulkActionLoading = true, jobsBeingOperated updated');
 
     try {
       const token = getToken();
@@ -449,8 +565,51 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
 
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 
+      // ==================== PRE-DELETE VALIDATION & DIAGNOSTICS ====================
+      console.log('='.repeat(80));
+      console.log('[DELETE] PRE-DELETE DIAGNOSTICS');
+      console.log('='.repeat(80));
+      console.log(`[DELETE] Total jobs to delete: ${jobIdsToDelete.size}`);
+      console.log(`[DELETE] Selected job IDs:`, Array.from(jobIdsToDelete));
+
+      // Check if jobs exist in local state
+      const jobsInLocalState = jobs.filter((j) => jobIdsToDelete.has(j.id));
+      console.log(
+        `[DELETE] Jobs found in local state: ${jobsInLocalState.length}/${jobIdsToDelete.size}`
+      );
+      jobsInLocalState.forEach((j) => {
+        console.log(`  ✓ Job ${j.id}: ${j.fileName} (status: ${j.status})`);
+      });
+
+      // Check if jobs exist in SSE stream
+      const jobsInSSE = Array.from(jobIdsToDelete).filter((id) => sseJobs.has(id));
+      console.log(`[DELETE] Jobs found in SSE stream: ${jobsInSSE.length}/${jobIdsToDelete.size}`);
+      console.log(`[DELETE] SSE stream total size: ${sseJobs.size} jobs`);
+
+      // Log missing jobs
+      const missingFromLocal = Array.from(jobIdsToDelete).filter(
+        (id) => !jobs.find((j) => j.id === id)
+      );
+      const missingFromSSE = Array.from(jobIdsToDelete).filter((id) => !sseJobs.has(id));
+      if (missingFromLocal.length > 0) {
+        console.warn(`[DELETE] ⚠️  Jobs NOT in local state:`, missingFromLocal);
+      }
+      if (missingFromSSE.length > 0) {
+        console.warn(`[DELETE] ⚠️  Jobs NOT in SSE stream:`, missingFromSSE);
+      }
+
+      // Log auth context
+      console.log(`[DELETE] Auth headers:`, {
+        hasToken: !!token,
+        tokenLength: token ? token.length : 0,
+        isOperatingMode,
+        operatingAccountId: operating?.accountId,
+        operatingMode: operating?.mode,
+      });
+      // ==================== END PRE-DELETE DIAGNOSTICS ====================
+
       // Delete each selected job
-      const deletePromises = Array.from(selectedJobIds).map(async (jobId) => {
+      const deletePromises = Array.from(jobIdsToDelete).map(async (jobId) => {
         try {
           const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}`, {
             method: 'DELETE',
@@ -459,6 +618,32 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+
+            // ==================== ENHANCED ERROR DIAGNOSTICS ====================
+            console.error(`❌ [DELETE] FAILED for job ${jobId}`);
+            console.error(`   Status: ${response.status} ${response.statusText}`);
+            console.error(`   Error data:`, errorData);
+            console.error(`   Full response:`, {
+              status: response.status,
+              statusText: response.statusText,
+              headers: Object.fromEntries(response.headers.entries()),
+              url: response.url,
+            });
+
+            // Provide specific guidance based on status code
+            if (response.status === 404) {
+              console.error(
+                `   💡 Diagnosis: Job not found in database or belongs to different account`
+              );
+            } else if (response.status === 401) {
+              console.error(`   💡 Diagnosis: Authentication failed - token invalid or expired`);
+            } else if (response.status === 403) {
+              console.error(`   💡 Diagnosis: Permission denied - insufficient access rights`);
+            } else if (response.status === 500) {
+              console.error(`   💡 Diagnosis: Server error - check API logs`);
+            }
+            console.error('='.repeat(80));
+            // ==================== END ERROR DIAGNOSTICS ====================
 
             // Capture error with ErrorCaptureService
             errorCapture.capture(
@@ -498,7 +683,56 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       const successCount = results.filter(
         (r) => r.status === 'fulfilled' && r.value.success
       ).length;
-      const failCount = selectedJobIds.size - successCount;
+      const failCount = jobIdsToDelete.size - successCount;
+
+      // Extract successfully deleted job IDs
+      const successfulJobIds = new Set(
+        results
+          .filter((r) => r.status === 'fulfilled' && r.value.success)
+          .map((r) => (r as any).value.jobId)
+      );
+
+      // ==================== POST-DELETE ANALYSIS ====================
+      console.log('='.repeat(80));
+      console.log('[DELETE] POST-DELETE ANALYSIS');
+      console.log('='.repeat(80));
+      console.log(`[DELETE] Results summary:`);
+      console.log(`   Total requested: ${jobIdsToDelete.size}`);
+      console.log(`   Successful: ${successCount}`);
+      console.log(`   Failed: ${failCount}`);
+      console.log(`[DELETE] Successful job IDs:`, Array.from(successfulJobIds));
+
+      // Log failed jobs with reasons
+      const failedResults = results.filter((r) => r.status === 'fulfilled' && !r.value.success);
+      if (failedResults.length > 0) {
+        console.error(`[DELETE] Failed job details:`);
+        failedResults.forEach((r) => {
+          const result = (r as any).value;
+          console.error(`   ❌ Job ${result.jobId}:`, result.error);
+        });
+      }
+
+      // Log rejected promises (network errors, etc.)
+      const rejectedResults = results.filter((r) => r.status === 'rejected');
+      if (rejectedResults.length > 0) {
+        console.error(`[DELETE] Rejected promises (network/unexpected errors):`);
+        rejectedResults.forEach((r) => {
+          console.error(`   💥`, (r as any).reason);
+        });
+      }
+
+      // Critical check before calling removeJobsFromStream
+      if (successfulJobIds.size === 0) {
+        console.warn(`[DELETE] ⚠️  WARNING: No jobs successfully deleted!`);
+        console.warn(`[DELETE] removeJobsFromStream will NOT be called (empty array)`);
+        console.warn(`[DELETE] UI state will NOT be updated`);
+      } else {
+        console.log(
+          `[DELETE] ✅ Will call removeJobsFromStream with ${successfulJobIds.size} job IDs`
+        );
+      }
+      console.log('='.repeat(80));
+      // ==================== END POST-DELETE ANALYSIS ====================
 
       // Log success to console
       if (successCount > 0) {
@@ -508,7 +742,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
             domain: 'jobs',
             operation: 'bulkDelete',
             metadata: {
-              totalSelected: selectedJobIds.size,
+              totalSelected: jobIdsToDelete.size,
               successCount,
               failCount,
             },
@@ -522,34 +756,38 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
           domain: 'jobs',
           operation: 'bulkDelete',
           metadata: {
-            totalSelected: selectedJobIds.size,
+            totalSelected: jobIdsToDelete.size,
             successCount,
             failCount,
           },
         });
       }
 
-      // Clear selection
-      setSelectedJobIds(new Set());
-
-      // Refresh jobs list by removing successfully deleted jobs
-      const successfulJobIds = new Set(
-        results
-          .filter((r) => r.status === 'fulfilled' && r.value.success)
-          .map((r) => (r as any).value.jobId)
-      );
+      // CRITICAL: Remove from both local state AND background operations AND job stream
+      // This ensures UI stays in sync and deleted jobs don't reappear
+      // - setJobs: removes from local ImportsTableCard state
+      // - removeOperationsByJobIds: removes from BackgroundOperationsContext
+      // - removeJobsFromStream: removes from useJobStream state (prevents SSE sync race condition)
       setJobs((prev) => prev.filter((j) => !successfulJobIds.has(j.id)));
+      removeOperationsByJobIds(Array.from(successfulJobIds));
+      removeJobsFromStream(Array.from(successfulJobIds));
+
+      // Clear selection AFTER deletion completes
+      setSelectedJobIds(new Set());
     } catch (error: any) {
       errorCapture.capture(
         error,
         {
           domain: 'jobs',
           operation: 'bulkDelete',
-          metadata: { selectedCount: selectedJobIds.size },
+          metadata: { selectedCount: jobIdsToDelete.size },
         },
         'error'
       );
     } finally {
+      console.log('[DELETE] Finally block executing - resetting state');
+      console.log('[DELETE] Setting bulkActionLoading = false');
+
       // Clear jobs from being operated on
       setJobsBeingOperated((prev) => {
         const next = new Set(prev);
@@ -557,6 +795,8 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
         return next;
       });
       setBulkActionLoading(false);
+
+      console.log('[DELETE] Finally block complete - state should be reset');
     }
   };
 
@@ -839,7 +1079,16 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
                 Retry
               </button>
               <button
-                onClick={handleDeleteSelected}
+                onClick={(e) => {
+                  console.log('🔴 RAW BUTTON CLICK EVENT:', {
+                    timestamp: new Date().toISOString(),
+                    target: e.currentTarget,
+                    disabled: e.currentTarget.disabled,
+                    selectedCount: selectedJobIds.size,
+                    bulkActionLoading,
+                  });
+                  handleDeleteSelected();
+                }}
                 disabled={bulkActionLoading}
                 className="flex items-center gap-1 px-2 py-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Delete selected jobs"

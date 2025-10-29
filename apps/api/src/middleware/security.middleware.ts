@@ -73,9 +73,18 @@ export function configureCors(): RequestHandler {
     },
     credentials: true, // Allow cookies and auth headers
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Account-Id'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'X-Account-Id',
+      'X-Operating-Account',
+      'X-Operating-Mode',
+      'x-test-id',
+      'x-test-source',
+    ],
     exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
-    maxAge: 86400, // 24 hours preflight cache
+    maxAge: 86400, // Cache preflight for 24 hours
   });
 }
 
