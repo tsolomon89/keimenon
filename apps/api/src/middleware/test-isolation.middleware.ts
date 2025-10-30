@@ -28,12 +28,23 @@ import fs from 'fs';
  */
 
 export function testIsolationMiddleware(req: Request, res: Response, next: NextFunction) {
-  // Only active in test environment
-  if (process.env.NODE_ENV !== 'test') {
-    return next();
-  }
+  // Debug: Log request details
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  const browser = userAgent.includes('Chrome')
+    ? 'Chromium'
+    : userAgent.includes('Firefox')
+      ? 'Firefox'
+      : userAgent.includes('Safari')
+        ? 'Webkit'
+        : 'Unknown';
 
+  // Check for test DB path header (sent by E2E tests)
   const testDbPath = req.headers['x-test-db-path'] as string;
+
+  console.log(`[Test Isolation MW] Request received:`);
+  console.log(`  - URL: ${req.method} ${req.url}`);
+  console.log(`  - Browser: ${browser}`);
+  console.log(`  - X-Test-DB-Path header: ${testDbPath || '(not present)'}`);
 
   if (testDbPath) {
     // Security: Validate path is safe
@@ -55,7 +66,10 @@ export function testIsolationMiddleware(req: Request, res: Response, next: NextF
     // Attach DB path to request for database client to use
     (req as any).testDbPath = normalizedPath;
 
-    console.log(`[Test Isolation] Using worker DB: ${path.basename(normalizedPath)}`);
+    console.log(`[Test Isolation MW] ✅ Path validated and attached`);
+    console.log(`  - Browser: ${browser}`);
+    console.log(`  - Worker DB: ${path.basename(normalizedPath)}`);
+    console.log(`  - Full path: ${normalizedPath}`);
   }
 
   next();

@@ -106,7 +106,7 @@ export function logAuditEvent(database: Database.Database, entry: AuditLogEntry)
         mapEventTypeToAction(entry.event_type), // Map event_type to valid action
         'auth',
         entry.user_id || null,
-        'security',
+        'native', // Fixed: Changed from 'security' to 'native' to match CHECK constraint
         entry.success ? 1 : 0,
         entry.error_message || null,
         entry.ip_address || null,

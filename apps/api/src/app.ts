@@ -43,6 +43,7 @@ import { WorkerPool } from './modules/workers/domain/WorkerPool';
 import { DatabaseWriteQueue } from './services/DatabaseWriteQueue';
 import { AuthService } from './services/auth.service';
 import { testIsolationMiddleware } from './middleware/test-isolation.middleware';
+import { dbContextMiddleware } from './middleware/db-context.middleware';
 
 /**
  * App context holds initialized services
@@ -77,6 +78,7 @@ export function createApp(): { app: Express; context: AppContext } {
   // Test isolation (only active in test environment)
   if (process.env.NODE_ENV === 'test') {
     app.use(testIsolationMiddleware);
+    app.use(dbContextMiddleware);
     console.log('🧪 Test isolation middleware enabled - using per-worker databases');
   }
 

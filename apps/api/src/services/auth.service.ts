@@ -362,7 +362,7 @@ export class AuthServiceV2 {
     const token = await this.createSession(user, account, membership);
 
     // Log successful login
-    logLoginSuccess(database, user.id, account.id, user.email, ipAddress, userAgent);
+    // TEMPORARILY DISABLED: logLoginSuccess(database, user.id, account.id, user.email, ipAddress, userAgent);
 
     return { user, account, membership, token };
   }
