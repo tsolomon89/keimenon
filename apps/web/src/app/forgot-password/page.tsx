@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Key, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+import { API_BASE_URL } from '@/lib/env.config';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();

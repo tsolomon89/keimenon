@@ -6,8 +6,7 @@ import {
   SettingChange,
 } from '@canvas-memory/types/src/settings';
 import { errorCapture } from '@/services/error-capture.service';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+import { API_BASE_URL } from '@/lib/env.config';
 
 interface SettingsData {
   [controlId: string]: EffectiveSettingValue;

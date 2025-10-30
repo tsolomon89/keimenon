@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Upload, FileText, Loader2, CheckCircle } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/env.config';
 
 interface UploadModalProps {
   onClose: () => void;
@@ -36,7 +37,7 @@ export function UploadModal({ onClose }: UploadModalProps) {
       files.forEach((file) => formData.append('files', file));
       formData.append('board_id', 'default_board');
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/ingest/files`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/ingest/files`, {
         method: 'POST',
         body: formData,
       });

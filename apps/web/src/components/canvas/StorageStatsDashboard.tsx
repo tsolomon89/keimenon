@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getStorageStats, StorageStats } from '@/lib/api-client';
+import { API_BASE_URL } from '@/lib/env.config';
 
 interface DeduplicationStats {
   totalNodes: number;
@@ -38,7 +39,6 @@ export function StorageStatsDashboard() {
         const userStr = localStorage.getItem('canvas_memory_user');
         if (token && userStr) {
           const user = JSON.parse(userStr);
-          const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
           const response = await fetch(
             `${API_BASE_URL}/api/v1/deduplication/stats?accountId=${user.accountId}`,
             {

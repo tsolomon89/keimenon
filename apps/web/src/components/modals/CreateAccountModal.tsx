@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Building2, AlertCircle } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/env.config';
 
 interface CreateAccountModalProps {
   onClose: () => void;
@@ -26,24 +27,21 @@ export function CreateAccountModal({ onClose, onSuccess }: CreateAccountModalPro
     setIsLoading(true);
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/api/v1/admin/accounts`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('canvas_memory_token')}`,
-          },
-          body: JSON.stringify({
-            accountName: formData.accountName,
-            accountEmail: formData.accountEmail,
-            accountClass: formData.accountClass,
-            userName: formData.userName,
-            userEmail: formData.userEmail,
-            userPassword: formData.userPassword,
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/accounts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('canvas_memory_token')}`,
+        },
+        body: JSON.stringify({
+          accountName: formData.accountName,
+          accountEmail: formData.accountEmail,
+          accountClass: formData.accountClass,
+          userName: formData.userName,
+          userEmail: formData.userEmail,
+          userPassword: formData.userPassword,
+        }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json();

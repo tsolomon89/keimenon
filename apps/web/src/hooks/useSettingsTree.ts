@@ -4,6 +4,7 @@ import { getToken, useAuth } from '../contexts/AuthContext';
 import { SettingCategory, SettingSection, SettingControl } from '@canvas-memory/types/src/settings';
 import * as Icons from 'lucide-react';
 import { errorCapture } from '@/services/error-capture.service';
+import { API_BASE_URL } from '@/lib/env.config';
 
 /**
  * useSettingsTree Hook
@@ -30,7 +31,6 @@ export function useSettingsTree() {
         setLoading(true);
         setError(null);
 
-        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
         const response = await fetch(`${API_BASE_URL}/api/v1/settings/registry/all`, {
           headers: {
             Authorization: `Bearer ${token}`,

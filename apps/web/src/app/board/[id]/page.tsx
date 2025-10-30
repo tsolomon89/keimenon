@@ -6,6 +6,7 @@ import { FourRegionLayout } from '@canvas-memory/ui';
 import { Canvas2D } from '@/components/canvas/Canvas2D';
 import { GraphNode, GraphEdge } from '@canvas-memory/graph';
 import { Grid3x3, Zap } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/env.config';
 
 export default function BoardPage() {
   const params = useParams();
@@ -44,9 +45,7 @@ export default function BoardPage() {
       setLoading(true);
 
       // Fetch nodes
-      const nodesResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/nodes?limit=1000`
-      );
+      const nodesResponse = await fetch(`${API_BASE_URL}/api/v1/nodes?limit=1000`);
 
       if (!nodesResponse.ok) {
         throw new Error('Failed to fetch nodes');

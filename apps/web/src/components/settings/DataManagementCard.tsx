@@ -16,8 +16,7 @@ import {
   type OperationStatus,
 } from '@/contexts/BackgroundOperationsContext';
 import { logJobEvent } from '@/lib/error-handler';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+import { API_BASE_URL } from '@/lib/env.config';
 
 interface DataStats {
   nodes: Array<{ kind: string; count: number }>;

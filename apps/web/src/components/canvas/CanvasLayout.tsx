@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOperating } from '@/contexts/OperatingContext';
 import { useUIVersion } from '@/contexts/UIVersionContext';
 import { useBackgroundOperations, type Operation } from '@/contexts/BackgroundOperationsContext';
+import { useConsole } from '@/contexts/ConsoleContext';
 import type { ImportJob } from './ImportsTableCard';
 
 interface CanvasLayoutProps {
@@ -50,11 +51,11 @@ export function CanvasLayout({
   const { uiVersion } = useUIVersion();
   const { operations, getOperation, getActiveOperations, addOperation, updateOperation } =
     useBackgroundOperations();
+  const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
   const canvasViewportRef = useRef<CanvasViewportHandle>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-  const [footerOpen, setFooterOpen] = useState(false);
   const [canvasSurface, setCanvasSurface] = useState<'canvas' | 'legacy' | 'processing'>('canvas');
   const [dashboardView, setDashboardView] = useState<'analytics' | 'storage'>('analytics');
   const [selectedSettingsSectionId, setSelectedSettingsSectionId] = useState<string | undefined>(

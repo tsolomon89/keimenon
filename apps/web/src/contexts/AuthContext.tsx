@@ -58,10 +58,11 @@ interface AuthContextType {
   refreshUser: () => void;
 }
 
+import { API_BASE_URL } from '@/lib/env.config';
+
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'canvas_memory_token';
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 
 /**
  * Decode JWT payload (base64)

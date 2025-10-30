@@ -13,6 +13,7 @@ import {
   BackgroundOperationsProvider,
   type Operation,
 } from '@/contexts/BackgroundOperationsContext';
+import { E2E_TESTING } from '@/lib/env.config';
 
 export default function CanvasPage() {
   const router = useRouter();
@@ -35,9 +36,8 @@ export default function CanvasPage() {
     }
 
     // Check if E2E testing mode is enabled (disables welcome modal)
-    const isE2ETesting = process.env.NEXT_PUBLIC_E2E_TESTING === 'true';
     const hasSeenWelcome = localStorage.getItem('canvas_memory_welcome_shown');
-    if (!hasSeenWelcome && !isE2ETesting) {
+    if (!hasSeenWelcome && !E2E_TESTING) {
       setIsFirstTime(true);
     }
 

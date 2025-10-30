@@ -1,8 +1,7 @@
 import { ChatImportConfig, DuplicateGroup } from '@/types/chat-import';
 import { handleApiError, withRetry, FileError } from './error-handler';
 import { getToken } from '@/contexts/AuthContext';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+import { API_BASE_URL } from './env.config';
 
 /**
  * Get authorization headers with token and operating context

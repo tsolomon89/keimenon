@@ -6,6 +6,7 @@ import { FileUploadZone } from '@/components/ingest/FileUploadZone';
 import { UploadProgress } from '@/components/ingest/UploadProgress';
 import { IngestResults } from '@/components/ingest/IngestResults';
 import { Upload, FileCheck, Loader2 } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/env.config';
 
 export default function IngestPage() {
   const [files, setFiles] = useState<File[]>([]);
@@ -29,13 +30,10 @@ export default function IngestPage() {
       });
       formData.append('board_id', 'default_board');
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/ingest/files`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/v1/ingest/files`, {
+        method: 'POST',
+        body: formData,
+      });
 
       if (!response.ok) {
         throw new Error(`Upload failed: ${response.statusText}`);

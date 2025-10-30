@@ -41,6 +41,7 @@ import {
 import { useJobStream, type JobUpdate } from '@/hooks/useJobStream';
 import { errorCapture } from '@/services/error-capture.service';
 import { cancelJob, pauseJob, resumeJob } from '@/lib/api-client';
+import { API_BASE_URL } from '@/lib/env.config';
 
 // Import job status
 export type ImportStatus =
@@ -393,7 +394,6 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
         }
 
         // Fetch from real API endpoint with 5 second timeout
-        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         const response = await fetch(`${API_BASE_URL}/api/v1/jobs?limit=50`, {
@@ -562,8 +562,6 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
         headers['X-Operating-Account'] = operating.accountId;
         headers['X-Operating-Mode'] = operating.mode;
       }
-
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 
       // ==================== PRE-DELETE VALIDATION & DIAGNOSTICS ====================
       console.log('='.repeat(80));
@@ -834,8 +832,6 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
         headers['X-Operating-Account'] = operating.accountId;
         headers['X-Operating-Mode'] = operating.mode;
       }
-
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 
       // Retry each selected job
       const retryPromises = Array.from(selectedJobIds).map(async (jobId) => {

@@ -4,25 +4,24 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { ChatImportModal } from './ChatImportModal';
 import { UploadModal } from './UploadModal';
+import { ENABLE_LEGACY_IMPORTS, ENABLE_HYBRID_LOCAL_FIRST } from '@/lib/env.config';
 
 // Dynamically import legacy components only if their flags are enabled
-const ImportModuleOld =
-  process.env.NEXT_PUBLIC_ENABLE_LEGACY_IMPORTS === '1'
-    ? dynamic(() => import('./ImportModule.old').then((mod) => ({ default: mod.ImportModule })), {
-        ssr: false,
-      })
-    : null;
+const ImportModuleOld = ENABLE_LEGACY_IMPORTS
+  ? dynamic(() => import('./ImportModule.old').then((mod) => ({ default: mod.ImportModule })), {
+      ssr: false,
+    })
+  : null;
 
-const LocalFirstImportModalOld =
-  process.env.NEXT_PUBLIC_ENABLE_HYBRID_LOCAL_FIRST === '1'
-    ? dynamic(
-        () =>
-          import('./LocalFirstImportModal.old').then((mod) => ({
-            default: mod.LocalFirstImportModal,
-          })),
-        { ssr: false }
-      )
-    : null;
+const LocalFirstImportModalOld = ENABLE_HYBRID_LOCAL_FIRST
+  ? dynamic(
+      () =>
+        import('./LocalFirstImportModal.old').then((mod) => ({
+          default: mod.LocalFirstImportModal,
+        })),
+      { ssr: false }
+    )
+  : null;
 
 type ImportMethod = 'job' | 'hybrid' | 'local' | 'ingest';
 
@@ -44,13 +43,13 @@ export function ImportMethodSelector({ onClose, onSuccess }: ImportMethodSelecto
     {
       value: 'hybrid' as ImportMethod,
       label: '⚠️ Hybrid Local-First',
-      enabled: process.env.NEXT_PUBLIC_ENABLE_HYBRID_LOCAL_FIRST === '1',
+      enabled: ENABLE_HYBRID_LOCAL_FIRST,
       description: 'Browser processing with server fallback (experimental)',
     },
     {
       value: 'local' as ImportMethod,
       label: '❌ Browser-Only (Broken)',
-      enabled: process.env.NEXT_PUBLIC_ENABLE_LEGACY_IMPORTS === '1',
+      enabled: ENABLE_LEGACY_IMPORTS,
       description: 'Local-only processing - KNOWN BUG: Does not save to database',
     },
     {

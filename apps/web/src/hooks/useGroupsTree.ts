@@ -3,8 +3,8 @@ import { Folder, Tag, Filter, Grid } from 'lucide-react';
 import { TreeNode } from '@/components/common/NavigationBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { errorCapture } from '@/services/error-capture.service';
+import { API_BASE_URL } from '@/lib/env.config';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 const TOKEN_KEY = 'canvas_memory_token';
 
 interface GroupNode {

@@ -28,12 +28,21 @@
  */
 
 import * as Sentry from '@sentry/react';
+import {
+  SENTRY_DSN,
+  SENTRY_ENVIRONMENT,
+  SENTRY_SAMPLE_RATE,
+  SENTRY_TRACES_SAMPLE_RATE,
+  SENTRY_REPLAY_SESSION_SAMPLE_RATE,
+  SENTRY_REPLAY_ERROR_SAMPLE_RATE,
+  SENTRY_SCRUB_PII,
+} from '@/lib/env.config';
 
 /**
  * Check if Sentry is enabled
  */
 export function isSentryEnabled(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN);
+  return Boolean(SENTRY_DSN);
 }
 
 /**
@@ -71,7 +80,7 @@ export function setUserConsent(consent: boolean): void {
  */
 export function initSentry(): void {
   // Only initialize if DSN is provided and user has consented
-  if (!process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  if (!SENTRY_DSN) {
     console.log('📊 Sentry: Disabled (no NEXT_PUBLIC_SENTRY_DSN provided)');
     return;
   }
@@ -81,28 +90,18 @@ export function initSentry(): void {
     return;
   }
 
-  const environment =
-    process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production';
-  const sampleRate = parseFloat(process.env.NEXT_PUBLIC_SENTRY_SAMPLE_RATE || '1.0');
-  const tracesSampleRate = parseFloat(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE || '0.1');
-  const replaySessionSampleRate = parseFloat(
-    process.env.NEXT_PUBLIC_SENTRY_REPLAY_SESSION_SAMPLE_RATE || '0.1'
+  console.log(
+    `📊 Sentry: Initializing (env: ${SENTRY_ENVIRONMENT}, sample: ${SENTRY_SAMPLE_RATE})`
   );
-  const replayErrorSampleRate = parseFloat(
-    process.env.NEXT_PUBLIC_SENTRY_REPLAY_ERROR_SAMPLE_RATE || '1.0'
-  );
-  const scrubPII = process.env.NEXT_PUBLIC_SENTRY_SCRUB_PII !== 'false'; // Default: true
-
-  console.log(`📊 Sentry: Initializing (env: ${environment}, sample: ${sampleRate})`);
 
   // Initialize Sentry
   Sentry.init({
-    dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-    environment,
+    dsn: SENTRY_DSN,
+    environment: SENTRY_ENVIRONMENT,
 
     // Sample rates
-    sampleRate,
-    tracesSampleRate,
+    sampleRate: SENTRY_SAMPLE_RATE,
+    tracesSampleRate: SENTRY_TRACES_SAMPLE_RATE,
 
     // Integrations
     integrations: [
@@ -114,12 +113,12 @@ export function initSentry(): void {
     ],
 
     // Session replay sample rates
-    replaysSessionSampleRate: replaySessionSampleRate,
-    replaysOnErrorSampleRate: replayErrorSampleRate,
+    replaysSessionSampleRate: SENTRY_REPLAY_SESSION_SAMPLE_RATE,
+    replaysOnErrorSampleRate: SENTRY_REPLAY_ERROR_SAMPLE_RATE,
 
     // PII scrubbing
     beforeSend(event, hint) {
-      if (scrubPII) {
+      if (SENTRY_SCRUB_PII) {
         // Remove sensitive data from breadcrumbs
         if (event.breadcrumbs) {
           event.breadcrumbs = event.breadcrumbs.map((breadcrumb) => {

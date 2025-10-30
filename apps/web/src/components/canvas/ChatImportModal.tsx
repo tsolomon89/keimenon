@@ -25,6 +25,7 @@ import { useJobStream, type JobUpdate } from '@/hooks/useJobStream';
 import { logApiEvent, logJobEvent } from '@/lib/error-handler';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOperating } from '@/contexts/OperatingContext';
+import { DEBUG_IMPORT_SELECTOR } from '@/lib/env.config';
 
 interface ChatImportModalProps {
   onDismiss: () => void;
@@ -434,7 +435,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         {stage !== 'review' && stage !== 'complete' && (
           <div className="sticky bottom-0 bg-slate-900 border-t border-slate-800 p-6">
             {/* Tenancy Debug Badge - Only visible when DEBUG_IMPORT_SELECTOR=1 */}
-            {process.env.NEXT_PUBLIC_DEBUG_IMPORT_SELECTOR === '1' && (
+            {DEBUG_IMPORT_SELECTOR && (
               <div className="mb-4 px-3 py-2 bg-slate-800/50 border border-slate-700 rounded text-xs text-slate-400 font-mono">
                 <span className="text-slate-500">Import Rail:</span>{' '}
                 <span className="text-green-400">job-based</span>

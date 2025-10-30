@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { GraphNode, GraphEdge } from '@canvas-memory/graph';
 import { Canvas2D } from './Canvas2D';
 import { Loader2, Grid3x3 } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/env.config';
 
 interface LegacyBoardPreviewProps {
   boardId?: string;
@@ -29,9 +30,7 @@ export function LegacyBoardPreview({ boardId = 'default_board', height }: Legacy
       setLoading(true);
       setError(null);
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/api/v1/nodes?limit=1000`
-      );
+      const response = await fetch(`${API_BASE_URL}/api/v1/nodes?limit=1000`);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch nodes (status ${response.status})`);

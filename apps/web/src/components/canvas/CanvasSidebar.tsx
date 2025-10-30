@@ -26,6 +26,7 @@ import { NavigationModelFactory } from '@canvas-memory/types/src/navigation.mode
 import { logDataEvent } from '@/lib/error-handler';
 import { errorCapture } from '@/services/error-capture.service';
 import type { Operation } from '@/contexts/BackgroundOperationsContext';
+import { DEBUG_IMPORT_SELECTOR } from '@/lib/env.config';
 
 // Inspector panel types for right sidebar
 export type InspectorPanel =
@@ -517,7 +518,7 @@ export function CanvasSidebar({
               {/* NOTE(import-flow): Using ChatImportModal as primary job-based import rail.
                   Legacy ImportModule quarantined to ImportModule.old.tsx.
                   Debug selector enabled via NEXT_PUBLIC_DEBUG_IMPORT_SELECTOR=1. */}
-              {process.env.NEXT_PUBLIC_DEBUG_IMPORT_SELECTOR === '1' ? (
+              {DEBUG_IMPORT_SELECTOR ? (
                 <ImportMethodSelector
                   onClose={() => {
                     setInternalInspectorPanel(null);

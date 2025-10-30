@@ -21,6 +21,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getToken } from '@/contexts/AuthContext';
 import { errorCapture } from '@/services/error-capture.service';
+import { API_BASE_URL } from '@/lib/env.config';
 
 export interface JobUpdate {
   jobId: string;
@@ -65,7 +66,6 @@ export interface UseJobStreamResult {
   removeJobs: (jobIds: string[]) => void;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 const RECONNECT_DELAY_MS = 3000;
 const MAX_RECONNECT_ATTEMPTS = 5;
 
