@@ -9,7 +9,7 @@
 import { chromium, FullConfig } from '@playwright/test';
 
 const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
-const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'admin123';
+const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || '123456'; // UPDATED: Correct password in database
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4001';
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 

@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/testId';
+import { login } from './helpers/login';
 
 /**
  * Debug Authentication Test
@@ -11,7 +12,7 @@ import { test, expect } from './fixtures/testId';
 
 test.describe('Debug Authentication', () => {
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
-  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'admin123';
+  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || '123456';
 
   test('should have token and API access after login', async ({ page }) => {
     // Enable console logging
@@ -23,16 +24,9 @@ test.describe('Debug Authentication', () => {
       }
     });
 
-    // Log in
+    // Login using WebKit-friendly helper
     console.log('\n=== Starting Login ===');
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill(TEST_EMAIL);
-    await page.getByLabel(/password/i).fill(TEST_PASSWORD);
-    await page.getByRole('button', { name: /sign in/i }).click();
-
-    // Wait for redirect (uses global 30s timeout)
-    await page.waitForURL(/\/canvas/);
-    await page.waitForLoadState('domcontentloaded');
+    await login(page, TEST_EMAIL, TEST_PASSWORD);
     console.log('✅ Redirected to canvas');
 
     // Check localStorage for token

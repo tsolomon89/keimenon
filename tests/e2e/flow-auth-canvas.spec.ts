@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/testId';
+import { login } from './helpers/login';
 
 /**
  * Authentication and Canvas Flow Test
@@ -20,7 +21,7 @@ test.describe('Authentication and Canvas Flow', () => {
 
   // Test credentials - should exist in test database
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
-  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'admin123';
+  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || '123456';
 
   test('complete login flow: redirect → authenticate → canvas', async ({ page, context }) => {
     // Step 1: Navigate to home page
@@ -32,9 +33,17 @@ test.describe('Authentication and Canvas Flow', () => {
     // Step 3: Verify login page elements
     await expect(page.getByRole('heading', { name: /Canvas Memory OS/i })).toBeVisible();
 
-    // Step 4: Fill in login form using ARIA labels
-    await page.getByLabel(/email/i).fill(TEST_EMAIL);
-    await page.getByLabel(/password/i).fill(TEST_PASSWORD);
+    // Step 4: Fill in login form using ID selectors for WebKit compatibility
+    const emailInput = page.locator('#email');
+    const passwordInput = page.locator('#password');
+
+    // Click to focus, then fill (helps with WebKit React onChange)
+    await emailInput.click();
+    await emailInput.fill(TEST_EMAIL);
+    await emailInput.press('Tab');
+
+    await passwordInput.click();
+    await passwordInput.fill(TEST_PASSWORD);
 
     // Step 5: Submit form and wait for API response
     const signInButton = page.getByRole('button', { name: /sign in/i });
@@ -72,9 +81,16 @@ test.describe('Authentication and Canvas Flow', () => {
   test('invalid credentials should show error message', async ({ page }) => {
     await page.goto('/login');
 
-    // Fill in invalid credentials
-    await page.getByLabel(/email/i).fill('invalid@example.com');
-    await page.getByLabel(/password/i).fill('wrongpassword');
+    // Fill in invalid credentials using WebKit-friendly pattern
+    const emailInput = page.locator('#email');
+    const passwordInput = page.locator('#password');
+
+    await emailInput.click();
+    await emailInput.fill('invalid@example.com');
+    await emailInput.press('Tab');
+
+    await passwordInput.click();
+    await passwordInput.fill('wrongpassword');
 
     // Submit form
     const signInButton = page.getByRole('button', { name: /sign in/i });
@@ -90,14 +106,8 @@ test.describe('Authentication and Canvas Flow', () => {
   });
 
   test('authenticated user should access canvas directly', async ({ page, context }) => {
-    // First, log in to get auth token
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill(TEST_EMAIL);
-    await page.getByLabel(/password/i).fill(TEST_PASSWORD);
-    await page.getByRole('button', { name: /sign in/i }).click();
-
-    // Wait for redirect to canvas (uses global 30s timeout)
-    await page.waitForURL(/\/canvas/);
+    // First, log in using WebKit-friendly helper
+    await login(page, TEST_EMAIL, TEST_PASSWORD);
 
     // Now navigate away and back to home
     await page.goto('/');
@@ -110,13 +120,8 @@ test.describe('Authentication and Canvas Flow', () => {
   });
 
   test('logout should clear session and redirect to login', async ({ page, context }) => {
-    // First, log in
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill(TEST_EMAIL);
-    await page.getByLabel(/password/i).fill(TEST_PASSWORD);
-    await page.getByRole('button', { name: /sign in/i }).click();
-
-    await page.waitForURL(/\/canvas/); // Uses global 30s timeout
+    // First, log in using WebKit-friendly helper
+    await login(page, TEST_EMAIL, TEST_PASSWORD);
 
     // Look for logout button (exact location depends on your UI)
     // This might be in a dropdown menu or settings

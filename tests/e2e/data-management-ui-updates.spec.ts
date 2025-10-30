@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './fixtures/testId';
+import { login } from './helpers/login';
 
 /**
  * Data Management UI Updates Test
@@ -55,7 +56,8 @@ async function navigateToSettings(page: Page): Promise<void> {
   await page.goto('/canvas');
   await page.waitForLoadState('domcontentloaded');
 
-  // No need to dismiss modal - localStorage prevents it from appearing
+  // Dismiss welcome modal if present
+  await dismissWelcomeModal(page);
 
   // Click Settings icon button in toolbar
   const settingsButton = page.locator('button[title="Settings"]');
@@ -100,6 +102,9 @@ async function navigateToSettings(page: Page): Promise<void> {
 async function clearAllBackgroundOperations(page: Page): Promise<void> {
   await page.goto('/canvas');
   await page.waitForLoadState('domcontentloaded');
+
+  // Dismiss welcome modal if present
+  await dismissWelcomeModal(page);
 
   // Navigate to Dashboard where Background Operations table lives
   const dashboardButton = page.getByRole('button', { name: 'Dashboard' });
@@ -152,7 +157,8 @@ async function waitForOperationsTable(page: Page): Promise<typeof page.locator> 
   await page.goto('/canvas');
   await page.waitForLoadState('domcontentloaded');
 
-  // No need to dismiss modal - localStorage prevents it from appearing
+  // Dismiss welcome modal if present
+  await dismissWelcomeModal(page);
 
   // Background Operations table is in Dashboard view, not Canvas view
   // Click Dashboard button to ensure we see the operations table
@@ -189,20 +195,19 @@ async function waitForOperationsTable(page: Page): Promise<typeof page.locator> 
 test.describe.serial('Data Management UI Updates', () => {
   test.describe.configure({ tag: '@smoke' });
 
+  // Increase timeout for slow page loads and login (matches login helper timeout)
+  test.setTimeout(60000); // 60 seconds
+
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
-  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'admin123';
+  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || '123456';
 
   // First test: Clear stale jobs before running other tests
   test('cleanup: clear all background operations', async ({ page }) => {
     // This test runs first and clears stale jobs using the actual UI workflow
     // Validates: UI → API → DB → SSE → UI round-trip works
 
-    // Login
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill(TEST_EMAIL);
-    await page.getByLabel(/password/i).fill(TEST_PASSWORD);
-    await page.getByRole('button', { name: /sign in/i }).click();
-    await page.waitForURL(/\/canvas/); // Uses global 30s timeout
+    // Login using WebKit-friendly helper
+    await login(page, TEST_EMAIL, TEST_PASSWORD);
 
     // Use UI workflow to clear jobs
     await clearAllBackgroundOperations(page);
@@ -214,15 +219,8 @@ test.describe.serial('Data Management UI Updates', () => {
     // Welcome modal is automatically disabled during E2E tests via NEXT_PUBLIC_E2E_TESTING environment variable
     // No need to manipulate localStorage - the canvas page checks the env var and skips the modal entirely
 
-    // Log in before each test
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill(TEST_EMAIL);
-    await page.getByLabel(/password/i).fill(TEST_PASSWORD);
-    await page.getByRole('button', { name: /sign in/i }).click();
-
-    // Wait for redirect to canvas
-    await page.waitForURL(/\/canvas/); // Uses global 30s timeout
-    await page.waitForLoadState('domcontentloaded');
+    // Login using WebKit-friendly helper
+    await login(page, TEST_EMAIL, TEST_PASSWORD);
 
     // IMPORTANT: Wait for AuthContext to fully initialize
     // The canvas page makes API calls that require auth token from localStorage.
@@ -233,6 +231,7 @@ test.describe.serial('Data Management UI Updates', () => {
     // This ensures the page is fully ready before tests interact with it
     await page
       .getByRole('button', { name: /canvas/i })
+      .first()
       .waitFor({ state: 'visible', timeout: 10000 });
   });
 

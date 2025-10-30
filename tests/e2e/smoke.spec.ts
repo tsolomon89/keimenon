@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/testId';
+import { test, expect } from './fixtures/test-isolation';
 
 /**
  * Smoke Tests

@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/testId';
+import { login } from './helpers/login';
 
 /**
  * Canvas Operations Test
@@ -12,18 +13,11 @@ test.describe('Canvas Operations', () => {
 
   // Test credentials
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
-  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'admin123';
+  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || '123456';
 
   test.beforeEach(async ({ page }) => {
-    // Log in before each test
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill(TEST_EMAIL);
-    await page.getByLabel(/password/i).fill(TEST_PASSWORD);
-    await page.getByRole('button', { name: /sign in/i }).click();
-
-    // Wait for redirect to canvas (uses global 30s timeout)
-    await page.waitForURL(/\/canvas/);
-    await page.waitForLoadState('domcontentloaded');
+    // Log in before each test using WebKit-friendly helper
+    await login(page, TEST_EMAIL, TEST_PASSWORD);
   });
 
   test('should load canvas page successfully', async ({ page }) => {
