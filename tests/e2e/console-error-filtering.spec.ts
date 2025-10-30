@@ -154,8 +154,13 @@ test.describe('Console Footer Error Filtering', () => {
     // Open console
     await page.keyboard.press('`');
 
-    // Wait for console to render and badges to update (Firefox needs extra time)
-    await page.waitForTimeout(800);
+    // Wait for console to fully render (with animations)
+    await expect(page.getByText('Console')).toBeVisible();
+
+    // Wait for error badges to update after console opens
+    // Badges update asynchronously after error count calculation
+    // Firefox/parallel execution needs extra time for React state updates
+    await page.waitForTimeout(1500);
 
     // Check Console tab badge shows error count (should be 3)
     const consoleTab = page.getByRole('button', { name: /Console/ });

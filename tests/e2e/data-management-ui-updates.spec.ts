@@ -65,13 +65,15 @@ async function navigateToSettings(page: Page): Promise<void> {
   await page.waitForTimeout(500); // Let any animations settle
   await settingsButton.click();
 
-  // Wait for Settings page to fully load (increased for parallel execution)
-  await page.waitForTimeout(3000);
+  // Wait for Settings page to fully load (increased for parallel execution and 401 retries)
+  // Settings API may take longer in parallel due to token timing and resource contention
+  await page.waitForTimeout(5000);
 
   // Click "Data" category in left sidebar
   // The left sidebar shows categories: General, Appearance, Layout, Account, Data, etc.
+  // Increased timeout to handle Settings API 401 errors and retries in parallel execution
   const dataCategory = page.locator('text="Data"').first();
-  await dataCategory.waitFor({ state: 'visible', timeout: 10000 });
+  await dataCategory.waitFor({ state: 'visible', timeout: 15000 });
   await dataCategory.click();
   await page.waitForTimeout(500);
 

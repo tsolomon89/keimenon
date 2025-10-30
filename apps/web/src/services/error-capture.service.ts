@@ -484,3 +484,11 @@ class ErrorCaptureService {
 
 // Singleton instance
 export const errorCapture = new ErrorCaptureService();
+
+// Expose to window for E2E testing
+if (typeof window !== 'undefined') {
+  (window as any).errorCapture = errorCapture;
+  console.log('%c[system] errorCapture.init', 'color: #3b82f6; font-weight: normal');
+  console.log({ message: 'ErrorCaptureService initialized', name: 'LogMessage' });
+  console.groupEnd();
+}

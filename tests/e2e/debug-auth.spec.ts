@@ -46,7 +46,9 @@ test.describe('Debug Authentication', () => {
     console.log('✅ Token found in localStorage');
 
     // Wait for token to stabilize and API to be ready (increased for parallel execution)
-    await page.waitForTimeout(3000);
+    // Parallel execution needs extra time for token persistence and API readiness
+    // 5s accounts for: token write (500ms) + localStorage sync (1s) + API warmup (3.5s)
+    await page.waitForTimeout(5000);
 
     // Test API call from browser context (like components do)
     // NOTE: We pass the API URL as a parameter since process.env doesn't exist in browser context
