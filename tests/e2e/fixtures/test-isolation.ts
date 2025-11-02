@@ -29,6 +29,7 @@ import fs from 'fs';
 // Test-scoped fixtures (per test)
 interface TestIsolationFixtures {
   // page fixture will be extended to auto-inject headers
+  apiRequest: any; // Playwright APIRequestContext for API calls
 }
 
 // Worker-scoped fixtures (per worker)
@@ -81,22 +82,37 @@ async function initializeWorkerDb(workerIndex: number, dbPath: string): Promise<
 }
 
 export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtures>({
+  // Test-scoped: Provide API request context with correct baseURL
+  apiRequest: async ({ playwright, dbPath }, use) => {
+    const apiContext = await playwright.request.newContext({
+      baseURL: process.env.API_BASE_URL || 'http://localhost:4001',
+      extraHTTPHeaders: {
+        'X-Test-DB-Path': dbPath,
+        'x-test-source': 'playwright-e2e',
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+    });
+
+    console.log(`[Test Isolation] API Request context created with baseURL: http://localhost:4001`);
+
+    await use(apiContext);
+
+    // Cleanup
+    await apiContext.dispose();
+  },
+
   // Worker-scoped: Provide database path for this worker
+  // NEW: Restore from pristine snapshot instead of copying main DB
   dbPath: [
     async ({}, use, workerInfo) => {
-      const dbDir = path.join(process.cwd(), '.test-dbs');
+      const { DatabaseSnapshotManager } = await import('./database-snapshots');
+      const snapshotManager = new DatabaseSnapshotManager();
 
-      // Create .test-dbs directory if it doesn't exist
-      if (!fs.existsSync(dbDir)) {
-        fs.mkdirSync(dbDir, { recursive: true });
-      }
+      // Restore pristine snapshot to worker DB
+      const dbPath = await snapshotManager.restoreToWorker(workerInfo.workerIndex);
 
-      const dbPath = path.join(dbDir, `worker-${workerInfo.workerIndex}.db`);
-
-      console.log(`[Worker ${workerInfo.workerIndex}] Using isolated DB: ${dbPath}`);
-
-      // Initialize worker-specific database
-      await initializeWorkerDb(workerInfo.workerIndex, dbPath);
+      console.log(`[Worker ${workerInfo.workerIndex}] Restored from snapshot: ${dbPath}`);
 
       // Provide DB path to tests
       await use(dbPath);
@@ -112,7 +128,22 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
   ],
 
   // Test-scoped: Automatically inject X-Test-DB-Path header for all page requests
-  page: async ({ page, dbPath }, use) => {
+  // NEW: Wrap each test in savepoint for atomic cleanup
+  // NEW: Clear browser state before and after each test for visual stability
+  page: async ({ page, context, dbPath }, use, testInfo) => {
+    const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4001';
+
+    // CRITICAL: Clear browser state BEFORE test to ensure clean slate
+    // This prevents state pollution from previous tests (auth tokens, cached data, etc.)
+    await context.clearCookies();
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    console.log(
+      `[Test Isolation] ✅ Browser state cleared (cookies, localStorage, sessionStorage)`
+    );
+
     // Set DB path header for all requests from this page
     await page.setExtraHTTPHeaders({
       'X-Test-DB-Path': dbPath,
@@ -120,7 +151,60 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
 
     console.log(`[Test Isolation] Page configured with DB: ${path.basename(dbPath)}`);
 
-    await use(page);
+    // Generate unique savepoint ID for this test
+    const testId = `test_${testInfo.testId.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
+
+    try {
+      // BEGIN SAVEPOINT before test
+      const beginResponse = await page.request.post(`${API_BASE_URL}/api/v1/test/savepoint`, {
+        headers: { 'X-Test-DB-Path': dbPath },
+        data: { action: 'begin', savepointId: testId },
+      });
+
+      if (!beginResponse.ok()) {
+        console.warn(`[Test Isolation] ⚠️ Failed to begin savepoint: ${beginResponse.status()}`);
+        // Continue anyway - test will run without savepoint protection
+      } else {
+        console.log(`[Test Isolation] ✅ Savepoint created: ${testId}`);
+      }
+
+      // Run the test
+      await use(page);
+    } finally {
+      // ROLLBACK TO SAVEPOINT after test (even if test failed)
+      // This undoes all database changes made during the test
+      try {
+        const rollbackResponse = await page.request.post(`${API_BASE_URL}/api/v1/test/savepoint`, {
+          headers: { 'X-Test-DB-Path': dbPath },
+          data: { action: 'rollback', savepointId: testId },
+        });
+
+        if (!rollbackResponse.ok()) {
+          console.warn(
+            `[Test Isolation] ⚠️ Failed to rollback savepoint: ${rollbackResponse.status()}`
+          );
+        } else {
+          console.log(`[Test Isolation] ✅ Rolled back savepoint: ${testId}`);
+        }
+      } catch (error) {
+        console.warn(`[Test Isolation] ⚠️ Savepoint rollback error:`, error);
+        // Don't fail the test if cleanup fails
+      }
+
+      // CRITICAL: Clear browser state AFTER test as well (belt and suspenders)
+      // Ensures no state leaks to next test even if test crashes before cleanup
+      try {
+        await context.clearCookies();
+        await page.evaluate(() => {
+          localStorage.clear();
+          sessionStorage.clear();
+        });
+        console.log(`[Test Isolation] ✅ Browser state cleared after test`);
+      } catch (error) {
+        console.warn(`[Test Isolation] ⚠️ Post-test browser cleanup error:`, error);
+        // Don't fail if cleanup fails
+      }
+    }
   },
 
   // Worker-scoped: Provide separate storage state per worker (for auth tokens, etc.)
