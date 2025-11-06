@@ -83,9 +83,12 @@ async function initializeWorkerDb(workerIndex: number, dbPath: string): Promise<
 
 export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtures>({
   // Test-scoped: Provide API request context with correct baseURL
-  apiRequest: async ({ playwright, dbPath }, use) => {
+  // NEW: Wrap each test in savepoint for atomic cleanup (same as page fixture)
+  apiRequest: async ({ playwright, dbPath }, use, testInfo) => {
+    const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4001';
+
     const apiContext = await playwright.request.newContext({
-      baseURL: process.env.API_BASE_URL || 'http://localhost:4001',
+      baseURL: API_BASE_URL,
       extraHTTPHeaders: {
         'X-Test-DB-Path': dbPath,
         'x-test-source': 'playwright-e2e',
@@ -94,12 +97,50 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
       },
     });
 
-    console.log(`[Test Isolation] API Request context created with baseURL: http://localhost:4001`);
+    console.log(`[Test Isolation] API Request context created with baseURL: ${API_BASE_URL}`);
 
-    await use(apiContext);
+    // Generate unique savepoint ID for this test
+    const testId = `test_${testInfo.testId.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
 
-    // Cleanup
-    await apiContext.dispose();
+    try {
+      // BEGIN SAVEPOINT before test
+      const beginResponse = await apiContext.post(`${API_BASE_URL}/api/v1/test/savepoint`, {
+        headers: { 'X-Test-DB-Path': dbPath },
+        data: { action: 'begin', savepointId: testId },
+      });
+
+      if (!beginResponse.ok()) {
+        console.warn(`[Test Isolation] ⚠️ Failed to begin savepoint: ${beginResponse.status()}`);
+        // Continue anyway - test will run without savepoint protection
+      } else {
+        console.log(`[Test Isolation] ✅ Savepoint created: ${testId}`);
+      }
+
+      // Run the test
+      await use(apiContext);
+    } finally {
+      // ROLLBACK TO SAVEPOINT after test (even if test failed)
+      try {
+        const rollbackResponse = await apiContext.post(`${API_BASE_URL}/api/v1/test/savepoint`, {
+          headers: { 'X-Test-DB-Path': dbPath },
+          data: { action: 'rollback', savepointId: testId },
+        });
+
+        if (!rollbackResponse.ok()) {
+          console.warn(
+            `[Test Isolation] ⚠️ Failed to rollback savepoint: ${rollbackResponse.status()}`
+          );
+        } else {
+          console.log(`[Test Isolation] ✅ Rolled back savepoint: ${testId}`);
+        }
+      } catch (error) {
+        console.warn(`[Test Isolation] ⚠️ Savepoint rollback error:`, error);
+        // Don't fail the test if cleanup fails
+      }
+
+      // Cleanup
+      await apiContext.dispose();
+    }
   },
 
   // Worker-scoped: Provide database path for this worker
@@ -108,6 +149,40 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
     async ({}, use, workerInfo) => {
       const { DatabaseSnapshotManager } = await import('./database-snapshots');
       const snapshotManager = new DatabaseSnapshotManager();
+      const path = await import('path');
+
+      // Calculate worker DB path before restoration
+      const testDbsDir = path.resolve(process.cwd(), '.test-dbs');
+      const workerDbPath = path.join(testDbsDir, `worker-${workerInfo.workerIndex}.db`);
+
+      // CRITICAL FIX #8: Close cached API database connection before restoring snapshot
+      // This releases Windows file locks that prevent file deletion
+      try {
+        const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4001';
+        const closeResponse = await fetch(`${API_BASE_URL}/api/v1/test/close-connection`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ testDbPath: workerDbPath }),
+        });
+
+        if (closeResponse.ok) {
+          const result = await closeResponse.json();
+          console.log(
+            `[Worker ${workerInfo.workerIndex}] ✅ Closed cached connection: ${result.message || 'success'}`
+          );
+        } else {
+          // Not an error - connection might not be cached yet
+          console.log(
+            `[Worker ${workerInfo.workerIndex}] No cached connection to close (first run)`
+          );
+        }
+      } catch (error) {
+        // Don't fail if API not available yet
+        console.log(
+          `[Worker ${workerInfo.workerIndex}] Could not close connection (API not ready):`,
+          error
+        );
+      }
 
       // Restore pristine snapshot to worker DB
       const dbPath = await snapshotManager.restoreToWorker(workerInfo.workerIndex);
@@ -136,18 +211,33 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
     // CRITICAL: Clear browser state BEFORE test to ensure clean slate
     // This prevents state pollution from previous tests (auth tokens, cached data, etc.)
     await context.clearCookies();
-    await page.evaluate(() => {
-      localStorage.clear();
-      sessionStorage.clear();
-    });
-    console.log(
-      `[Test Isolation] ✅ Browser state cleared (cookies, localStorage, sessionStorage)`
-    );
+    try {
+      await page.evaluate(() => {
+        localStorage.clear();
+        sessionStorage.clear();
+      });
+      console.log(
+        `[Test Isolation] ✅ Browser state cleared (cookies, localStorage, sessionStorage)`
+      );
+    } catch (error: any) {
+      console.warn(
+        `[Test Isolation] ⚠️  Could not clear browser storage (${error.message}), continuing anyway`
+      );
+      // Continue - savepoint will handle data isolation
+    }
 
     // Set DB path header for all requests from this page
     await page.setExtraHTTPHeaders({
       'X-Test-DB-Path': dbPath,
     });
+
+    // CRITICAL FIX #4: Inject test DB path into window so frontend JavaScript can access it
+    // This is needed because setExtraHTTPHeaders() only affects page navigation,
+    // NOT fetch() or XMLHttpRequest() calls made by the frontend code
+    await page.addInitScript((testDbPath: string) => {
+      // @ts-ignore - window object extension for test mode
+      window.__TEST_DB_PATH__ = testDbPath;
+    }, dbPath);
 
     console.log(`[Test Isolation] Page configured with DB: ${path.basename(dbPath)}`);
 

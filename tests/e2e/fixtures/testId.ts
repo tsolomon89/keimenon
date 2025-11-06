@@ -1,9 +1,19 @@
-import { test as base } from '@playwright/test';
+import { test as base } from './test-isolation';
 import { randomUUID } from 'crypto';
 
 /**
  * Extended test fixture that adds x-test-id header to all requests
  * for backend correlation and log tracking.
+ *
+ * CRITICAL FIX #6: Now extends test-isolation fixture instead of @playwright/test
+ * This ensures all tests get:
+ * - Worker-specific database isolation (dbPath fixture)
+ * - window.__TEST_DB_PATH__ injection for frontend test isolation
+ * - Savepoint-based atomic test cleanup
+ * - X-Test-DB-Path header injection
+ *
+ * Previous issue: Tests were using raw @playwright/test which didn't include
+ * the test isolation fixtures, causing login failures due to missing test user.
  */
 export const test = base.extend({
   context: async ({ context }, use) => {

@@ -6,7 +6,7 @@
  * Architecture:
  *   1. Global setup creates a "golden snapshot" with:
  *      - Complete schema (all migrations applied)
- *      - Standard test user (admin@admin.com / 123456)
+ *      - Standard test user (admin@admin.com / TestPass123!)
  *      - Zero data (completely empty)
  *
  *   2. Each Playwright worker restores from this snapshot:
@@ -31,7 +31,7 @@
 import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 
 export class DatabaseSnapshotManager {
   private snapshotPath: string;
@@ -94,9 +94,10 @@ export class DatabaseSnapshotManager {
       ).run(accountId, now, now);
 
       // Create standard test user
-      console.log('   Creating test user (admin@admin.com / 123456)...');
+      // IMPORTANT: Using standard test password that meets all validation requirements
+      console.log('   Creating test user (admin@admin.com / TestPass123!)...');
       const userId = 'usr_test_e2e';
-      const passwordHash = await bcrypt.hash('123456', 10);
+      const passwordHash = await bcrypt.hash('TestPass123!', 10);
 
       db.prepare(
         `
@@ -119,40 +120,71 @@ export class DatabaseSnapshotManager {
       // visual differences caused by "No accounts found" vs populated states
       console.log('   Creating fixture accounts for visual stability...');
 
+      // IMPORTANT: All test accounts use the SAME simple password for consistency
+      // This prevents bcrypt/password mismatch issues during testing
+      const TEST_PASSWORD = 'TestPass123!';
+
       const fixtureAccounts = [
         {
-          id: 'acc_fixture_client_1',
+          id: 'acc_fixture_alpha',
           name: 'Client Account Alpha',
           type: 'client',
           class: 'free',
           email: 'client-alpha@fixture.test',
+          userId: 'usr_fixture_alpha',
+          userAccountId: 'ua_fixture_alpha',
+          password: TEST_PASSWORD,
         },
         {
-          id: 'acc_fixture_client_2',
+          id: 'acc_fixture_beta',
           name: 'Client Account Beta',
           type: 'client',
           class: 'professional',
           email: 'client-beta@fixture.test',
+          userId: 'usr_fixture_beta',
+          userAccountId: 'ua_fixture_beta',
+          password: TEST_PASSWORD,
         },
         {
-          id: 'acc_fixture_client_3',
+          id: 'acc_fixture_gamma',
           name: 'Client Account Gamma',
           type: 'client',
           class: 'business',
           email: 'client-gamma@fixture.test',
+          userId: 'usr_fixture_gamma',
+          userAccountId: 'ua_fixture_gamma',
+          password: TEST_PASSWORD,
         },
       ];
 
       for (const acc of fixtureAccounts) {
+        // Create account
         db.prepare(
           `
           INSERT INTO accounts (id, account_type, account_class, email, name, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)
         `
         ).run(acc.id, acc.type, acc.class, acc.email, acc.name, now, now);
+
+        // Create user for this account
+        const fixturePasswordHash = await bcrypt.hash(acc.password, 10);
+        db.prepare(
+          `
+          INSERT INTO users (id, email, password_hash, name, permission_level, user_class, is_active, created_at, updated_at, email_verified)
+          VALUES (?, ?, ?, ?, 'senior', 'person', 1, ?, ?, 1)
+        `
+        ).run(acc.userId, acc.email, fixturePasswordHash, acc.name, now, now);
+
+        // Link user to account
+        db.prepare(
+          `
+          INSERT INTO user_accounts (id, user_id, account_id, permission_level, status, joined_at, created_at, updated_at)
+          VALUES (?, ?, ?, 'senior', 'active', ?, ?, ?)
+        `
+        ).run(acc.userAccountId, acc.userId, acc.id, now, now, now);
       }
 
-      console.log(`   ✅ Created ${fixtureAccounts.length} fixture accounts`);
+      console.log(`   ✅ Created ${fixtureAccounts.length} fixture accounts with users`);
 
       // Verify snapshot is clean (zero data)
       const sessionCount = db.prepare('SELECT COUNT(*) as count FROM sessions').get() as any;
@@ -169,7 +201,7 @@ export class DatabaseSnapshotManager {
       console.log(`   Location: ${this.snapshotPath}`);
       console.log(`   Size: ${this.getFileSize(this.snapshotPath)}`);
       console.log(
-        `   Contents: 4 accounts (1 test + 3 fixtures), 1 user, 0 sessions, 0 nodes, 0 edges (pristine state)`
+        `   Contents: 4 accounts (1 test + 3 fixtures), 4 users, 0 sessions, 0 nodes, 0 edges (pristine state)`
       );
 
       // Close the database
@@ -186,6 +218,11 @@ export class DatabaseSnapshotManager {
    * Copies the pristine snapshot to a worker-specific database file.
    * Each worker gets its own isolated copy.
    *
+   * CRITICAL FIX #5: Windows file locking retry logic
+   * - On Windows, SQLite files may be locked by API server's cached connections
+   * - Retry deletion with exponential backoff to handle transient locks
+   * - Handles EBUSY errors gracefully
+   *
    * @param workerIndex - Playwright worker index (0, 1, 2, 3, etc.)
    * @returns Path to worker database
    */
@@ -198,18 +235,48 @@ export class DatabaseSnapshotManager {
       );
     }
 
-    // Delete old worker DB if exists
-    if (fs.existsSync(workerDbPath)) {
-      fs.unlinkSync(workerDbPath);
-    }
+    // CRITICAL FIX #5: Helper to delete file with retry logic for Windows file locking
+    const deleteFileWithRetry = async (filePath: string, maxRetries = 3): Promise<void> => {
+      if (!fs.existsSync(filePath)) {
+        return; // File doesn't exist, nothing to delete
+      }
 
-    // Also delete WAL and SHM files
-    if (fs.existsSync(`${workerDbPath}-wal`)) {
-      fs.unlinkSync(`${workerDbPath}-wal`);
-    }
-    if (fs.existsSync(`${workerDbPath}-shm`)) {
-      fs.unlinkSync(`${workerDbPath}-shm`);
-    }
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          fs.unlinkSync(filePath);
+          console.log(
+            `[Worker ${workerIndex}] ✅ Deleted ${path.basename(filePath)} (attempt ${attempt})`
+          );
+          return; // Success!
+        } catch (error: any) {
+          if (error.code === 'EBUSY' || error.code === 'EPERM') {
+            if (attempt === maxRetries) {
+              console.warn(
+                `[Worker ${workerIndex}] ⚠️  Failed to delete ${path.basename(filePath)} after ${maxRetries} attempts (file locked)`
+              );
+              throw error; // Give up after max retries
+            }
+
+            // Wait with exponential backoff before retry
+            const delayMs = 50 * Math.pow(2, attempt - 1); // 50ms, 100ms, 200ms
+            console.log(
+              `[Worker ${workerIndex}] ⏳ File locked, retrying in ${delayMs}ms... (attempt ${attempt}/${maxRetries})`
+            );
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+          } else {
+            // Different error - throw immediately
+            throw error;
+          }
+        }
+      }
+    };
+
+    // Delete old worker DB if exists (with retry for Windows)
+    await deleteFileWithRetry(workerDbPath);
+
+    // Also delete WAL and SHM files (with retry for Windows)
+    await deleteFileWithRetry(`${workerDbPath}-wal`);
+    await deleteFileWithRetry(`${workerDbPath}-shm`);
 
     // Copy snapshot to worker DB
     fs.copyFileSync(this.snapshotPath, workerDbPath);
