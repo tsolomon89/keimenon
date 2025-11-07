@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS nodes (
   id TEXT PRIMARY KEY,
   kind TEXT NOT NULL CHECK(kind IN (
     'UploadItem', 'Chat', 'MessageRef', 'Source', 'Group', 'CodeBlock', 'Folder',
-    'ChatThread', 'Message', 'ObjectiveClaim', 'UnifiedDoc', 'Constellation', 'UserNode', 'AccountNode'
+    'ChatThread', 'Message', 'ObjectiveClaim', 'UnifiedDoc', 'Constellation', 'UserNode', 'AccountNode', 'Board'
   )),
   properties TEXT NOT NULL,
   account_id TEXT NOT NULL,
@@ -530,6 +530,12 @@ export class SQLiteClient {
    * Get database instance
    */
   getDatabase(): Database.Database {
+    // For test isolation: prefer global.dbClient if it's been swapped by middleware
+    // This allows tests to use worker-specific databases without changing service code
+    if (global.dbClient && global.dbClient !== this && global.dbClient.db) {
+      return global.dbClient.db;
+    }
+
     if (!this.db) {
       throw new Error('Database not connected');
     }
@@ -704,7 +710,24 @@ export class SQLiteClient {
       return null;
     }
 
-    return JSON.parse(row.properties) as AnyNode;
+    // Parse the entire node from properties JSON
+    const parsedNode = JSON.parse(row.properties);
+
+    // Extract nested properties if they exist, otherwise use empty object
+    const nestedProperties = parsedNode.properties || {};
+
+    // Return structure consistent with list endpoint (nested properties)
+    return {
+      id: row.id,
+      kind: row.kind,
+      account_id: row.account_id,
+      created_by: row.created_by,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      data_tag: row.data_tag,
+      // Nest properties for consistency with list endpoint
+      properties: nestedProperties,
+    } as AnyNode;
   }
 
   /**
