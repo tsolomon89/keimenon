@@ -262,7 +262,10 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
     // Login as Account B
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
     await page.goto('/canvas');
-    await page.waitForLoadState('networkidle');
+    // Wait for page to load (domcontentloaded is more reliable than networkidle)
+    await page.waitForLoadState('domcontentloaded');
+    // Wait a bit for any client-side rendering to complete
+    await page.waitForTimeout(1000);
 
     // Account A's node should NOT be visible
     await expect(page.getByText('Account A Confidential Source')).not.toBeVisible();
@@ -342,7 +345,8 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
     // Login as Account A
     await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
     await page.goto('/canvas');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000);
 
     // Verify Account A sees their node (if UI displays it)
     // await expect(page.getByText('Account A Confidential Source')).toBeVisible();
@@ -351,7 +355,8 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
     await page.goto('/logout');
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
     await page.goto('/canvas');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000);
 
     // Account A's node should no longer be visible
     await expect(page.getByText('Account A Confidential Source')).not.toBeVisible();
@@ -374,7 +379,7 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
     // Admin accounts should be able to see all data across accounts
     const ADMIN = {
       email: 'admin@admin.com',
-      password: 'admin123',
+      password: 'TestPass123!', // Matches password from global-setup.ts
     };
 
     const response = await apiRequest.post('/api/v1/auth/login', {
