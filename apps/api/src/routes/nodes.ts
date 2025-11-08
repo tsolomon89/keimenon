@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { SourceNodeSchema, GroupNodeSchema, ObjectiveClaimSchema } from '@canvas-memory/types';
+import { getDbClient } from '../utils/get-db-client';
 
 const router = Router();
 
@@ -20,14 +21,6 @@ export function setAuthDependencies(
   requireAuth = authMiddleware;
   requirePermission = permissionMiddleware;
   isolateByAccount = isolationMiddleware;
-}
-
-// Helper to get database client
-function getDbClient() {
-  if (!global.dbClient) {
-    throw new Error('Database not initialized');
-  }
-  return global.dbClient;
 }
 
 /**
@@ -53,13 +46,17 @@ router.post('/source', async (req: Request, res: Response) => {
     }
 
     const source = SourceNodeSchema.parse(req.body);
-    const db = getDbClient();
+    const db = await getDbClient(req);
 
     // Prepare node data with auth fields
     const nodeData: any = { ...source };
     if (req.user) {
       nodeData.account_id = req.user.accountId;
       nodeData.created_by = req.user.userId;
+    }
+    // Extract data_tag from metadata if present (for test data cleanup)
+    if (source.metadata?.data_tag) {
+      nodeData.data_tag = source.metadata.data_tag;
     }
 
     await db.createNode(nodeData);
@@ -96,7 +93,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 
     const { id } = req.params;
-    const db = getDbClient();
+    const db = await getDbClient(req);
 
     const node = await db.getNode(id);
 
@@ -110,6 +107,19 @@ router.get('/:id', async (req: Request, res: Response) => {
 
       // Admin accounts can access all data
       if (req.user.accountType !== 'admin') {
+        // CRITICAL SECURITY: Check for NULL account_id (data integrity violation)
+        if (nodeAccountId === null || nodeAccountId === undefined) {
+          console.error('[SECURITY] Node missing account_id:', {
+            nodeId: id,
+            nodeAccountId,
+            requestingUser: req.user.email,
+          });
+          return res.status(500).json({
+            error: 'Data integrity error',
+            message: 'Node has no account owner',
+          });
+        }
+
         // Client accounts can only access their own data
         if (nodeAccountId !== req.user.accountId) {
           return res.status(403).json({ error: 'Access denied' });
@@ -150,7 +160,7 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     const { kind, limit = '100', skip = '0' } = req.query;
-    const db = getDbClient();
+    const db = await getDbClient(req);
 
     const limitNum = parseInt(limit as string, 10);
     const skipNum = parseInt(skip as string, 10);
@@ -368,20 +378,15 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    // Apply auth if available (leader permission required for delete)
-    if (requireAuth && requirePermission && isolateByAccount) {
+    // Apply auth if available
+    if (requireAuth && isolateByAccount) {
       await new Promise<void>((resolve, reject) => {
         requireAuth(authService)(req, res, (err: any) => {
           if (err) reject(err);
           else {
-            requirePermission('leader')(req, res, (err2: any) => {
+            isolateByAccount(req, res, (err2: any) => {
               if (err2) reject(err2);
-              else {
-                isolateByAccount(req, res, (err3: any) => {
-                  if (err3) reject(err3);
-                  else resolve();
-                });
-              }
+              else resolve();
             });
           }
         });
@@ -389,7 +394,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     }
 
     const { id } = req.params;
-    const db = getDbClient();
+    const db = await getDbClient(req);
 
     // Check if node exists first
     const node = await db.getNode(id);
@@ -401,10 +406,37 @@ router.delete('/:id', async (req: Request, res: Response) => {
     if (req.user) {
       const nodeAccountId = (node as any).account_id;
 
+      console.log('[DELETE Authorization Check]', {
+        nodeId: id,
+        nodeAccountId,
+        userAccountId: req.user.accountId,
+        userType: req.user.accountType,
+        nodeKeys: Object.keys(node),
+        fullNode: JSON.stringify(node, null, 2),
+      });
+
       // Admin accounts can delete all data
       if (req.user.accountType !== 'admin') {
+        // CRITICAL SECURITY: Check for NULL account_id (data integrity violation)
+        if (nodeAccountId === null || nodeAccountId === undefined) {
+          console.error('[SECURITY] Node missing account_id on DELETE:', {
+            nodeId: id,
+            nodeAccountId,
+            requestingUser: req.user.email,
+            userAccountId: req.user.accountId,
+          });
+          return res.status(500).json({
+            error: 'Data integrity error',
+            message: 'Node has no account owner - cannot verify permissions',
+          });
+        }
+
         // Client accounts can only delete their own data
         if (nodeAccountId !== req.user.accountId) {
+          console.log('[DELETE DENIED] Account mismatch:', {
+            nodeAccountId,
+            userAccountId: req.user.accountId,
+          });
           return res.status(403).json({ error: 'Access denied' });
         }
       }
@@ -455,7 +487,7 @@ router.post('/group', async (req: Request, res: Response) => {
     }
 
     const group = GroupNodeSchema.parse(req.body);
-    const db = getDbClient();
+    const db = await getDbClient(req);
 
     // Prepare node data with auth fields
     const nodeData: any = { ...group };

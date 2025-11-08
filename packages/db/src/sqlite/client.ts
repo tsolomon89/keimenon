@@ -710,14 +710,14 @@ export class SQLiteClient {
       return null;
     }
 
-    // Parse the entire node from properties JSON
+    // Parse the entire node from properties JSON column
+    // The database stores the complete node structure as JSON
     const parsedNode = JSON.parse(row.properties);
 
-    // Extract nested properties if they exist, otherwise use empty object
-    const nestedProperties = parsedNode.properties || {};
-
-    // Return structure consistent with list endpoint (nested properties)
+    // Return the parsed node with database-level fields overridden for consistency
     return {
+      ...parsedNode,
+      // Override with authoritative database values
       id: row.id,
       kind: row.kind,
       account_id: row.account_id,
@@ -725,8 +725,6 @@ export class SQLiteClient {
       created_at: row.created_at,
       updated_at: row.updated_at,
       data_tag: row.data_tag,
-      // Nest properties for consistency with list endpoint
-      properties: nestedProperties,
     } as AnyNode;
   }
 

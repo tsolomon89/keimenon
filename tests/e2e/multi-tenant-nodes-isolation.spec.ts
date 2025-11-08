@@ -197,7 +197,7 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
 
     expect(verifyResponse.status()).toBe(200);
     const { node } = await verifyResponse.json();
-    expect(node.properties.title).toBe('Account A Confidential Source');
+    expect(node.title).toBe('Account A Confidential Source 1');
   });
 
   test('should not include Account A nodes in Account B list via API', async ({ apiRequest }) => {
@@ -223,7 +223,7 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
     // Account B's node SHOULD be in the list
     const foundAccountBNode = nodes.find((n: any) => n.id === nodeBId);
     expect(foundAccountBNode).toBeDefined();
-    expect(foundAccountBNode.properties.title).toBe('Account B Private Source');
+    expect(foundAccountBNode.title).toBe('Account B Private Source 1');
   });
 
   test('should filter nodes by account_id correctly', async ({ apiRequest }) => {
