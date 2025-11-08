@@ -211,19 +211,22 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
     // CRITICAL: Clear browser state BEFORE test to ensure clean slate
     // This prevents state pollution from previous tests (auth tokens, cached data, etc.)
     await context.clearCookies();
-    try {
-      await page.evaluate(() => {
-        localStorage.clear();
-        sessionStorage.clear();
-      });
-      console.log(
-        `[Test Isolation] ✅ Browser state cleared (cookies, localStorage, sessionStorage)`
-      );
-    } catch (error: any) {
-      console.warn(
-        `[Test Isolation] ⚠️  Could not clear browser storage (${error.message}), continuing anyway`
-      );
-      // Continue - savepoint will handle data isolation
+
+    // Only attempt to clear storage if page is at a valid URL (not about:blank)
+    // This prevents SecurityError warnings when page hasn't navigated yet
+    const currentUrl = page.url();
+    if (currentUrl && currentUrl !== 'about:blank' && !currentUrl.startsWith('chrome-error://')) {
+      try {
+        await page.evaluate(() => {
+          localStorage.clear();
+          sessionStorage.clear();
+        });
+        console.log(
+          `[Test Isolation] ✅ Browser state cleared (cookies, localStorage, sessionStorage)`
+        );
+      } catch (error: any) {
+        // Ignore - page might have navigated away during cleanup
+      }
     }
 
     // Set DB path header for all requests from this page
@@ -261,6 +264,20 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
       // Run the test
       await use(page);
     } finally {
+      // FIX #1: Clear browser storage FIRST while page is still accessible
+      // This prevents "Access is denied" errors from occurring after page navigation
+      try {
+        await page.evaluate(() => {
+          localStorage.clear();
+          sessionStorage.clear();
+        });
+        await context.clearCookies();
+        console.log(`[Test Isolation] ✅ Browser state cleared after test`);
+      } catch (error) {
+        console.warn(`[Test Isolation] ⚠️ Post-test browser cleanup error:`, error);
+        // Don't fail if cleanup fails
+      }
+
       // ROLLBACK TO SAVEPOINT after test (even if test failed)
       // This undoes all database changes made during the test
       try {
@@ -279,20 +296,6 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
       } catch (error) {
         console.warn(`[Test Isolation] ⚠️ Savepoint rollback error:`, error);
         // Don't fail the test if cleanup fails
-      }
-
-      // CRITICAL: Clear browser state AFTER test as well (belt and suspenders)
-      // Ensures no state leaks to next test even if test crashes before cleanup
-      try {
-        await context.clearCookies();
-        await page.evaluate(() => {
-          localStorage.clear();
-          sessionStorage.clear();
-        });
-        console.log(`[Test Isolation] ✅ Browser state cleared after test`);
-      } catch (error) {
-        console.warn(`[Test Isolation] ⚠️ Post-test browser cleanup error:`, error);
-        // Don't fail if cleanup fails
       }
     }
   },

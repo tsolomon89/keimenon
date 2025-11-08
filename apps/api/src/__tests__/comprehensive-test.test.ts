@@ -19,8 +19,6 @@ import fs from 'fs/promises';
 // Phase 1-3 imports (Grouping/Clustering)
 import {
   ParserRegistry,
-  ChatGPTParser,
-  ClaudeParser,
   ContentProcessor,
   GroupingStorage,
   DeduplicationEngine,
@@ -112,8 +110,6 @@ describe('Comprehensive System Test - ALL Implementations', () => {
       const sizeMB = await getFileSizeMB(CLAUDE_FILE);
       console.log(`📁 Claude file size: ${sizeMB.toFixed(2)} MB`);
 
-      const parser = new ClaudeParser();
-
       // Read only first 2KB without loading entire file (may be UTF-16)
       const fileHandle = await fs.open(CLAUDE_FILE, 'r');
       const buffer = Buffer.alloc(2048);
@@ -147,8 +143,6 @@ describe('Comprehensive System Test - ALL Implementations', () => {
 
       const sizeMB = await getFileSizeMB(GPT_FILE);
       console.log(`📁 GPT file size: ${sizeMB.toFixed(2)} MB`);
-
-      const parser = new ChatGPTParser();
 
       // Read only first 2KB without loading entire file (may be UTF-16)
       const fileHandle = await fs.open(GPT_FILE, 'r');

@@ -24,7 +24,6 @@ import FormData from 'form-data';
 import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
-import EventSource from 'eventsource';
 
 // Test configuration
 const API_URL = process.env.TEST_API_URL || 'http://localhost:4001';
@@ -174,31 +173,34 @@ function countJobs(accountId: string, status?: string): number {
 // Test Suite Setup
 // ============================================================================
 
-before(async () => {
-  console.log('\n🧪 Jobs System Integration Tests');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+before(
+  async () => {
+    console.log('\n🧪 Jobs System Integration Tests');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-  // Open database connection
-  db = new Database(DB_PATH);
+    // Open database connection
+    db = new Database(DB_PATH);
 
-  // Login as admin
-  const adminAuth = await login(ADMIN_CREDENTIALS.email, ADMIN_CREDENTIALS.password);
-  adminToken = adminAuth.token;
-  adminAccountId = adminAuth.accountId;
-  console.log(`✓ Admin logged in (${adminAccountId})`);
+    // Login as admin
+    const adminAuth = await login(ADMIN_CREDENTIALS.email, ADMIN_CREDENTIALS.password);
+    adminToken = adminAuth.token;
+    adminAccountId = adminAuth.accountId;
+    console.log(`✓ Admin logged in (${adminAccountId})`);
 
-  // Login as client
-  const clientAuth = await login(CLIENT_CREDENTIALS.email, CLIENT_CREDENTIALS.password);
-  clientToken = clientAuth.token;
-  clientAccountId = clientAuth.accountId;
-  console.log(`✓ Client logged in (${clientAccountId})`);
+    // Login as client
+    const clientAuth = await login(CLIENT_CREDENTIALS.email, CLIENT_CREDENTIALS.password);
+    clientToken = clientAuth.token;
+    clientAccountId = clientAuth.accountId;
+    console.log(`✓ Client logged in (${clientAccountId})`);
 
-  // Verify test files exist
-  if (!fs.existsSync(TEST_FILES.tiny)) {
-    throw new Error(`Test file not found: ${TEST_FILES.tiny}`);
-  }
-  console.log(`✓ Test files verified\n`);
-}, 30000);
+    // Verify test files exist
+    if (!fs.existsSync(TEST_FILES.tiny)) {
+      throw new Error(`Test file not found: ${TEST_FILES.tiny}`);
+    }
+    console.log(`✓ Test files verified\n`);
+  },
+  { timeout: 30000 }
+);
 
 after(async () => {
   // Cleanup test data

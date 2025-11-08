@@ -184,7 +184,29 @@ export class DatabaseSnapshotManager {
         ).run(acc.userAccountId, acc.userId, acc.id, now, now, now);
       }
 
+      // CRITICAL: Link gamma user to all accounts for multi-account switching tests
+      // The gamma user needs access to alpha and beta accounts to test account switching
+      console.log('   Linking gamma user to multiple accounts for switching tests...');
+      const gammaUserId = 'usr_fixture_gamma';
+
+      // Link gamma user to alpha account
+      db.prepare(
+        `
+        INSERT INTO user_accounts (id, user_id, account_id, permission_level, status, joined_at, created_at, updated_at)
+        VALUES (?, ?, ?, 'senior', 'active', ?, ?, ?)
+      `
+      ).run('ua_gamma_to_alpha', gammaUserId, 'acc_fixture_alpha', now, now, now);
+
+      // Link gamma user to beta account
+      db.prepare(
+        `
+        INSERT INTO user_accounts (id, user_id, account_id, permission_level, status, joined_at, created_at, updated_at)
+        VALUES (?, ?, ?, 'senior', 'active', ?, ?, ?)
+      `
+      ).run('ua_gamma_to_beta', gammaUserId, 'acc_fixture_beta', now, now, now);
+
       console.log(`   ✅ Created ${fixtureAccounts.length} fixture accounts with users`);
+      console.log(`   ✅ Gamma user now has access to all 3 accounts (for switching tests)`);
 
       // Verify snapshot is clean (zero data)
       const sessionCount = db.prepare('SELECT COUNT(*) as count FROM sessions').get() as any;

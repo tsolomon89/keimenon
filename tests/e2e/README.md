@@ -27,6 +27,24 @@ npm run e2e:report
 npm run e2e:dev
 ```
 
+## Before Running Tests
+
+**IMPORTANT:** Always clean up before running tests to avoid zombie processes and stale data:
+
+```bash
+# Clean everything (kills ports, clears databases, removes snapshots)
+npm run e2e:clean
+```
+
+This command:
+
+- ✅ Kills any processes on ports 3000 and 4001 (prevents zombie servers)
+- ✅ Clears login_attempts from main database (fixes account lockout)
+- ✅ Deletes all worker databases (ensures fresh test isolation)
+- ✅ Removes snapshot template (forces regeneration with latest code)
+
+**Best Practice:** Run `npm run e2e:clean` before every test session to ensure a clean environment.
+
 ## Test Organization
 
 ```
@@ -191,9 +209,27 @@ Trace viewer shows:
 BASE_URL=http://localhost:3000           # Frontend URL
 API_BASE_URL=http://localhost:4001       # Backend API URL
 TEST_USER_EMAIL=admin@admin.com          # Test user credentials
-TEST_USER_PASSWORD=admin123              # Test user password
+TEST_USER_PASSWORD=TestPass123!          # Standard test password (meets all validation requirements)
 CI=true                                  # Enables CI-specific behavior
 ```
+
+### Standard Test Password
+
+**All test accounts use the same password:** `TestPass123!`
+
+This password:
+
+- ✅ Meets all password validation requirements (12+ chars, upper/lower/numbers/special)
+- ✅ Consistent across all test fixtures and specs
+- ✅ Easy to remember for manual testing
+- ✅ Not in common password blocklist
+
+**Fixture Accounts** (created in database snapshot):
+
+- `admin@admin.com` / `TestPass123!` - Main test user (admin permissions)
+- `client-alpha@fixture.test` / `TestPass123!` - Multi-tenant test account A
+- `client-beta@fixture.test` / `TestPass123!` - Multi-tenant test account B
+- `client-gamma@fixture.test` / `TestPass123!` - Multi-tenant test account C
 
 ## Best Practices
 
@@ -261,15 +297,27 @@ Claude can control tests via the MCP server. See `.mcp/servers/playwright-e2e/RE
 
 ## Troubleshooting
 
-### Port Already in Use
+### Port Already in Use / Zombie Processes
+
+**Use the cleanup command (recommended):**
 
 ```bash
-# Kill existing servers
+# Clean everything - kills ports, clears databases, removes snapshots
+npm run e2e:clean
+```
+
+**Alternative methods:**
+
+```bash
+# Kill ports only
 npm run kill-ports
 
-# Or manually
+# Or manually (Unix/Linux/Mac)
 lsof -ti:3000 | xargs kill -9
 lsof -ti:4001 | xargs kill -9
+
+# Or manually (Windows)
+npx kill-port 3000 4001
 ```
 
 ### Browsers Not Installed

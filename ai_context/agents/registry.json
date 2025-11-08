@@ -1,0 +1,590 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "meta": {
+    "version": "2025-11-04",
+    "generated_at": "2025-11-04T00:00:00Z",
+    "maintainer": "Agent Architecture WG",
+    "policy_refs": {
+      "limits": "ai_context/agents/policies.json#/limits_policy",
+      "objectivity": "ai_context/agents/policies.json#/objectivity_thresholds",
+      "verification_budget": "ai_context/agents/policies.json#/verification_budget",
+      "allowlist": "ai_context/agents/policies.json#/gatherer_sources_allowlist",
+      "pii": "ai_context/agents/policies.json#/pii_guardrails",
+      "tiers": "ai_context/agents/policies.json#/tier_rules"
+    }
+  },
+  "$defs": {
+    "inputs": {
+      "intent": {
+        "name": "intent",
+        "type": "string",
+        "required": true,
+        "description": "Planner-supplied goal describing why the agent is being invoked."
+      },
+      "seed_sources": {
+        "name": "seed_sources",
+        "type": "array",
+        "items": "SourceRef",
+        "required": true,
+        "description": "Initial set of candidate sources or URLs to expand from."
+      },
+      "budget": {
+        "name": "budget",
+        "type": "Budget",
+        "required": false,
+        "description": "Per-run override for tokens, cost, and timeout."
+      },
+      "board_context": {
+        "name": "board_context",
+        "type": "BoardSnapshotRef",
+        "required": false,
+        "description": "Snapshot of the current board graph used for scoping."
+      },
+      "planner_notes": {
+        "name": "planner_notes",
+        "type": "string",
+        "required": false,
+        "description": "Structured hints provided by the Planner agent."
+      },
+      "sources": {
+        "name": "sources",
+        "type": "array",
+        "items": "SourceRef",
+        "required": true,
+        "description": "List of Source node identifiers to cluster."
+      },
+      "hints": {
+        "name": "hints",
+        "type": "array",
+        "items": "string",
+        "required": false,
+        "description": "Optional grouping hints such as topic tags or manual folders."
+      },
+      "scope_id": {
+        "name": "scope_id",
+        "type": "string",
+        "required": true,
+        "description": "Identifier for the active scope being processed."
+      },
+      "claims_index": {
+        "name": "claims_index",
+        "type": "ClaimsIndexRef",
+        "required": false,
+        "description": "Reference to indexed claims to guide synthesis output."
+      },
+      "verifier_plan": {
+        "name": "verifier_plan",
+        "type": "VerifierPlanRef",
+        "required": true,
+        "description": "Structured verification plan detailing checks to execute."
+      },
+      "claim_ids": {
+        "name": "claim_ids",
+        "type": "array",
+        "items": "ClaimRef",
+        "required": false,
+        "description": "Explicit claim identifiers selected for verification."
+      },
+      "open_questions": {
+        "name": "open_questions",
+        "type": "array",
+        "items": "Question",
+        "required": true,
+        "description": "Outstanding questions or POR gaps discovered in the scope."
+      },
+      "objectivity_deficits": {
+        "name": "objectivity_deficits",
+        "type": "array",
+        "items": "ObjectivityDeficit",
+        "required": true,
+        "description": "Metrics that triggered Planner intervention."
+      },
+      "action": {
+        "name": "action",
+        "type": "ActionNodeRef",
+        "required": true,
+        "description": "Resolved action template with parameters ready for execution."
+      },
+      "approval": {
+        "name": "approval",
+        "type": "ApprovalToken",
+        "required": true,
+        "description": "Verified approval artifact authorizing the workflow run."
+      },
+      "board_graph": {
+        "name": "board_graph",
+        "type": "BoardSnapshotRef",
+        "required": true,
+        "description": "Snapshot of the board graph including trust annotations."
+      },
+      "policies": {
+        "name": "policies",
+        "type": "PolicyBundleRef",
+        "required": true,
+        "description": "Resolved policy bundle governing monitoring thresholds."
+      }
+    },
+    "outputs": {
+      "sources_pending": {
+        "kind": "Source",
+        "status": "pending",
+        "description": "Candidate source nodes sequestered pending verification."
+      },
+      "notes": {
+        "kind": "Note",
+        "description": "Execution notes capturing provenance and follow-ups."
+      },
+      "groups": {
+        "kind": "Group",
+        "description": "Group nodes representing clustered sources."
+      },
+      "contains_edges": {
+        "kind": "CONTAINS",
+        "description": "Edges linking Group nodes to member sources."
+      },
+      "equivalent_to_edges": {
+        "kind": "EQUIVALENT_TO",
+        "description": "Edges capturing deduplicated or mirrored sources."
+      },
+      "dedupe_report": {
+        "kind": "Report",
+        "description": "Structured report describing grouping and dedupe decisions."
+      },
+      "claimset_unverified": {
+        "kind": "ClaimSet",
+        "status": "unverified",
+        "description": "Draft claims extracted from the scoped sources."
+      },
+      "citations": {
+        "kind": "Citation",
+        "description": "Citation records linking claims to evidence."
+      },
+      "verifier_run": {
+        "kind": "VerifierRun",
+        "description": "Verifier run artifact referencing executed checks."
+      },
+      "claim_status_updates": {
+        "kind": "ClaimStatusUpdate",
+        "description": "Status transitions for claims (verified, contested, stale)."
+      },
+      "unified_doc_section": {
+        "kind": "UnifiedDoc.section",
+        "description": "Composed documentation section with citations."
+      },
+      "tasks": {
+        "kind": "TaskList",
+        "description": "Prioritized follow-up tasks with responsible agents."
+      },
+      "workflow_logs": {
+        "kind": "Log",
+        "description": "Execution log lines emitted during workflow actions."
+      },
+      "workflow_artifacts": {
+        "kind": "Artifact",
+        "description": "Artifacts produced by executing the workflow action."
+      },
+      "objective_ack": {
+        "kind": "ObjectiveClaim.ACK",
+        "description": "Acknowledgement claims confirming external action results."
+      },
+      "monitor_diffs": {
+        "kind": "GraphDiff",
+        "description": "Graph change proposals addressing trust drift."
+      },
+      "trust_badges": {
+        "kind": "BadgeUpdate",
+        "description": "Badge adjustments based on objectivity thresholds."
+      },
+      "refresh_proposals": {
+        "kind": "RefreshProposal",
+        "description": "Recommended scopes for refresh or re-verification."
+      }
+    }
+  },
+  "io_contracts": {
+    "gatherer": {
+      "preconditions": [
+        "Intent present and validated against LimitsPolicy.",
+        "Scope sequester rules confirm sources can be staged."
+      ],
+      "emits": [
+        "Pending Source nodes flagged as sequestered.",
+        "SEQUESTERS edges from Source nodes to the active scope.",
+        "Execution notes documenting provenance and gaps."
+      ],
+      "restrictions": [
+        "Never attach IN_SCOPE_FOR edges without explicit approval.",
+        "Respect gatherer_sources_allowlist unless Business override present."
+      ]
+    },
+    "autogrouper": {
+      "preconditions": [
+        "At least one Source node available.",
+        "No active dedupe operations in progress for the same board."
+      ],
+      "emits": [
+        "Group nodes with CONTAINS edges binding members.",
+        "EQUIVALENT_TO edges when sources are canonical duplicates.",
+        "Dedupe report summarizing grouping heuristics and decisions."
+      ],
+      "restrictions": [
+        "Must not delete or merge Source nodes directly.",
+        "Cannot lift sequester flags."
+      ]
+    },
+    "extractor": {
+      "preconditions": [
+        "Scope_id resolves to a valid ScopeSet.",
+        "Sequestered sources remain read-only."
+      ],
+      "emits": [
+        "Unverified ClaimSet with cross-referenced citations.",
+        "Execution notes mapping claims to supporting evidence."
+      ],
+      "restrictions": [
+        "Never mark claims as verified.",
+        "Must tag claims lacking sufficient evidence for follow-up."
+      ]
+    },
+    "verifier": {
+      "preconditions": [
+        "ClaimSet or explicit claim_ids provided.",
+        "Verifier plan enumerates each check with strategy and budget."
+      ],
+      "emits": [
+        "VerifierRun artifact capturing executed checks.",
+        "Claim status updates (verified, contested, stale) with receipts."
+      ],
+      "restrictions": [
+        "Cannot mark success without at least one completed check.",
+        "Must enqueue ApprovalRequest when encountering sequester conflicts."
+      ]
+    },
+    "synthesizer": {
+      "preconditions": [
+        "Scope_id or claims_index resolves to accessible data.",
+        "doc_targets_tokens within budget threshold."
+      ],
+      "emits": ["UnifiedDoc.section with inline citations and ring tag."],
+      "restrictions": [
+        "Must honor tier ring limits (Free → L0 only).",
+        "No deletion of upstream claims or notes."
+      ]
+    },
+    "planner": {
+      "preconditions": [
+        "Open questions or objectivity deficits present.",
+        "Scope health metrics loaded."
+      ],
+      "emits": ["Task list referencing responsible agents and rationale."],
+      "restrictions": ["Cannot execute actions directly; must delegate via agents."]
+    },
+    "workflow_runner": {
+      "preconditions": [
+        "Business-tier approval token verified.",
+        "Action template resolved with guardrail checks."
+      ],
+      "emits": [
+        "Structured logs and artifacts for the completed action.",
+        "Optional ObjectiveClaim acknowledgement when evidence obtained."
+      ],
+      "restrictions": [
+        "Enforce dry-run mode when approval scope is insufficient.",
+        "Write all failures to state/agent_errors.log."
+      ]
+    },
+    "objectivity_monitor": {
+      "preconditions": [
+        "Board graph snapshot and policies loaded.",
+        "LimitsPolicy confirms monitoring slot availability."
+      ],
+      "emits": [
+        "Diff proposals targeting trust degradation.",
+        "Badge updates reflecting current objectivity band.",
+        "Refresh proposals for stale claims."
+      ],
+      "restrictions": [
+        "Must not mutate graph directly; changes go through graph PRs.",
+        "Escalate anomalies exceeding critical thresholds."
+      ]
+    }
+  },
+  "agents": [
+    {
+      "id": "gatherer_v1",
+      "purpose": "Expand the active scope with high-quality candidate sources while respecting sequester limits.",
+      "inputs": {
+        "required": ["intent", "seed_sources"],
+        "optional": ["budget", "board_context", "planner_notes"],
+        "definitions_ref": "#/$defs/inputs"
+      },
+      "outputs": {
+        "produces": ["sources_pending", "notes"],
+        "definitions_ref": "#/$defs/outputs"
+      },
+      "policies": {
+        "limits_policy": "#/meta/policy_refs/limits",
+        "source_allowlist": "#/meta/policy_refs/allowlist",
+        "tier": ["pro", "business"],
+        "privacy": "local_first"
+      },
+      "plans": [
+        "Validate intent and available budget against LimitsPolicy.",
+        "Expand candidate list using gatherer_sources_allowlist domains first.",
+        "Emit new Source nodes with SEQUESTERS edges and provenance notes."
+      ],
+      "io_contract_ref": "#/io_contracts/gatherer",
+      "ethos_compliance": {
+        "professional_rigor_level": "L3",
+        "scope_awareness": ["backend", "docs"],
+        "anticipatory_hooks": [
+          "validate_source_quality",
+          "check_sequester_limits",
+          "propose_verification_plan"
+        ]
+      }
+    },
+    {
+      "id": "autogrouper_v1",
+      "purpose": "Cluster sources into coherent groups and dedupe overlapping material.",
+      "inputs": {
+        "required": ["sources"],
+        "optional": ["hints"],
+        "definitions_ref": "#/$defs/inputs"
+      },
+      "outputs": {
+        "produces": ["groups", "contains_edges", "equivalent_to_edges", "dedupe_report"],
+        "definitions_ref": "#/$defs/outputs"
+      },
+      "policies": {
+        "limits_policy": "#/meta/policy_refs/limits",
+        "tier": ["free", "pro", "business"],
+        "privacy": "local_first"
+      },
+      "plans": [
+        "Confirm available sources and lock overlapping dedupe sessions.",
+        "Generate candidate clusters using semantic and provenance features.",
+        "Emit Group nodes with CONTAINS/EQUIVALENT_TO edges and publish a Dedupe Report."
+      ],
+      "io_contract_ref": "#/io_contracts/autogrouper",
+      "ethos_compliance": {
+        "professional_rigor_level": "L3",
+        "scope_awareness": ["backend", "docs"],
+        "anticipatory_hooks": [
+          "detect_duplicate_patterns",
+          "suggest_group_hierarchy",
+          "flag_ambiguous_clusters"
+        ]
+      }
+    },
+    {
+      "id": "extractor_v1",
+      "purpose": "Transform scoped sources into unverified claims with supporting citations.",
+      "inputs": {
+        "required": ["scope_id"],
+        "optional": ["planner_notes"],
+        "definitions_ref": "#/$defs/inputs"
+      },
+      "outputs": {
+        "produces": ["claimset_unverified", "citations", "notes"],
+        "definitions_ref": "#/$defs/outputs"
+      },
+      "policies": {
+        "limits_policy": "#/meta/policy_refs/limits",
+        "objectivity_thresholds": "#/meta/policy_refs/objectivity",
+        "tier": ["free", "pro", "business"],
+        "privacy": "local_first"
+      },
+      "plans": [
+        "Load scope context and enforce sequester rules.",
+        "Extract candidate claims with citation mapping.",
+        "Annotate gaps requiring Planner or Verifier follow-up."
+      ],
+      "io_contract_ref": "#/io_contracts/extractor",
+      "ethos_compliance": {
+        "professional_rigor_level": "L4",
+        "scope_awareness": ["backend", "docs"],
+        "anticipatory_hooks": [
+          "validate_citations",
+          "flag_low_confidence_claims",
+          "suggest_verification_targets"
+        ]
+      }
+    },
+    {
+      "id": "verifier_v1",
+      "purpose": "Execute verification plans and update claim statuses with receipts.",
+      "inputs": {
+        "required": ["verifier_plan"],
+        "optional": ["claim_ids", "budget"],
+        "definitions_ref": "#/$defs/inputs"
+      },
+      "outputs": {
+        "produces": ["verifier_run", "claim_status_updates", "notes"],
+        "definitions_ref": "#/$defs/outputs"
+      },
+      "policies": {
+        "limits_policy": "#/meta/policy_refs/limits",
+        "verification_budget": "#/meta/policy_refs/verification_budget",
+        "tier": ["pro", "business"],
+        "privacy": "local_first"
+      },
+      "plans": [
+        "Validate claim selection and match against verifier plan capacity.",
+        "Execute verifier checks with budget-aware backoff.",
+        "Write VerifierRun artifacts and update claim statuses."
+      ],
+      "io_contract_ref": "#/io_contracts/verifier",
+      "ethos_compliance": {
+        "professional_rigor_level": "L4",
+        "scope_awareness": ["backend", "tests", "docs"],
+        "anticipatory_hooks": [
+          "propose_additional_checks",
+          "flag_stale_verifications",
+          "suggest_automation"
+        ]
+      }
+    },
+    {
+      "id": "synthesizer_v1",
+      "purpose": "Compose UnifiedDoc sections using verified and pending claims.",
+      "inputs": {
+        "required": ["scope_id"],
+        "optional": ["claims_index", "budget"],
+        "definitions_ref": "#/$defs/inputs"
+      },
+      "outputs": {
+        "produces": ["unified_doc_section", "notes"],
+        "definitions_ref": "#/$defs/outputs"
+      },
+      "policies": {
+        "limits_policy": "#/meta/policy_refs/limits",
+        "objectivity_thresholds": "#/meta/policy_refs/objectivity",
+        "tier": ["free", "pro", "business"],
+        "ring_rules": {
+          "free": "L0",
+          "pro": ["L0", "L1"],
+          "business": ["L0", "L1"]
+        },
+        "privacy": "local_first"
+      },
+      "plans": [
+        "Load claims index and enforce doc_targets_tokens budgets.",
+        "Draft section outline mapped to supporting citations.",
+        "Emit UnifiedDoc section tagged with ring level and outstanding gaps."
+      ],
+      "io_contract_ref": "#/io_contracts/synthesizer",
+      "ethos_compliance": {
+        "professional_rigor_level": "L4",
+        "scope_awareness": ["backend", "docs"],
+        "anticipatory_hooks": [
+          "identify_documentation_gaps",
+          "suggest_doc_structure",
+          "flag_unsupported_assertions"
+        ]
+      }
+    },
+    {
+      "id": "planner_v1",
+      "purpose": "Convert POR gaps and trust deficits into actionable tasks for downstream agents.",
+      "inputs": {
+        "required": ["open_questions", "objectivity_deficits"],
+        "optional": ["scope_id"],
+        "definitions_ref": "#/$defs/inputs"
+      },
+      "outputs": {
+        "produces": ["tasks", "notes"],
+        "definitions_ref": "#/$defs/outputs"
+      },
+      "policies": {
+        "limits_policy": "#/meta/policy_refs/limits",
+        "objectivity_thresholds": "#/meta/policy_refs/objectivity",
+        "tier": ["free", "pro", "business"],
+        "privacy": "local_first"
+      },
+      "plans": [
+        "Aggregate deficits and outstanding questions from receipts.",
+        "Rank gaps by risk and required verification depth.",
+        "Emit task list with suggested agent invocations and success metrics."
+      ],
+      "io_contract_ref": "#/io_contracts/planner",
+      "ethos_compliance": {
+        "professional_rigor_level": "L4",
+        "scope_awareness": ["backend", "frontend", "tests", "docs"],
+        "anticipatory_hooks": [
+          "propose_task_decomposition",
+          "identify_blockers",
+          "suggest_parallel_work"
+        ]
+      }
+    },
+    {
+      "id": "workflow_runner_v1",
+      "purpose": "Execute approved Business-tier workflows and log resulting artifacts.",
+      "inputs": {
+        "required": ["action", "approval"],
+        "optional": ["budget"],
+        "definitions_ref": "#/$defs/inputs"
+      },
+      "outputs": {
+        "produces": ["workflow_logs", "workflow_artifacts", "objective_ack"],
+        "definitions_ref": "#/$defs/outputs"
+      },
+      "policies": {
+        "limits_policy": "#/meta/policy_refs/limits",
+        "pii_guardrails": "#/meta/policy_refs/pii",
+        "tier": ["business"],
+        "privacy": "business_guarded"
+      },
+      "plans": [
+        "Validate approval scope and action readiness.",
+        "Execute workflow with sandboxed connectors and capture artifacts.",
+        "Emit logs and optional ACK claims; route failures to dead-letter queue."
+      ],
+      "io_contract_ref": "#/io_contracts/workflow_runner",
+      "ethos_compliance": {
+        "professional_rigor_level": "L3",
+        "scope_awareness": ["backend", "docs"],
+        "anticipatory_hooks": [
+          "validate_approval_scope",
+          "dry_run_check",
+          "rollback_plan_verification"
+        ]
+      }
+    },
+    {
+      "id": "objectivity_monitor_v1",
+      "purpose": "Monitor trust metrics and recommend refresh operations across boards.",
+      "inputs": {
+        "required": ["board_graph", "policies"],
+        "optional": ["budget"],
+        "definitions_ref": "#/$defs/inputs"
+      },
+      "outputs": {
+        "produces": ["monitor_diffs", "trust_badges", "refresh_proposals"],
+        "definitions_ref": "#/$defs/outputs"
+      },
+      "policies": {
+        "limits_policy": "#/meta/policy_refs/limits",
+        "objectivity_thresholds": "#/meta/policy_refs/objectivity",
+        "tier": ["pro", "business"],
+        "privacy": "local_first"
+      },
+      "plans": [
+        "Load board graph metrics and compare against objectivity bands.",
+        "Detect drift in verification freshness and trust scores.",
+        "Emit diff proposals, badge adjustments, and refresh recommendations."
+      ],
+      "io_contract_ref": "#/io_contracts/objectivity_monitor",
+      "ethos_compliance": {
+        "professional_rigor_level": "L4",
+        "scope_awareness": ["backend", "tests", "docs"],
+        "anticipatory_hooks": [
+          "detect_trust_degradation",
+          "propose_refresh_schedule",
+          "flag_critical_drift"
+        ]
+      }
+    }
+  ]
+}

@@ -15,6 +15,8 @@
 const { spawn } = require('child_process');
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
+const { killPorts } = require('../kill-port');
 
 // Configuration
 const WEB_PORT = 3000;
@@ -67,6 +69,27 @@ async function waitForServer(url, name, timeout = MAX_STARTUP_TIME) {
   return false;
 }
 
+/**
+ * Clean Next.js cache to prevent HMR cache poisoning
+ * This fixes issues where newly created modules (like env.config.ts) are cached as 404s
+ */
+async function cleanNextCache() {
+  const nextCachePath = path.join(__dirname, '../../apps/web/.next/cache');
+
+  try {
+    if (fs.existsSync(nextCachePath)) {
+      log('🗑️  Cleaning Next.js cache to prevent HMR issues...', colors.yellow);
+      fs.rmSync(nextCachePath, { recursive: true, force: true });
+      log('✅ Next.js cache cleaned', colors.green);
+      // Wait a moment for filesystem to catch up
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  } catch (error) {
+    log(`⚠️  Warning: Failed to clean Next.js cache: ${error.message}`, colors.yellow);
+    // Non-fatal - continue anyway
+  }
+}
+
 async function startServer(name, command, args, cwd, env = {}) {
   log(`🚀 Starting ${name}...`, colors.blue);
 
@@ -115,6 +138,16 @@ async function main() {
   process.on('SIGTERM', cleanup);
 
   try {
+    // ALWAYS kill ports first to ensure clean test environment
+    // This prevents issues with zombie processes and ensures servers start in test mode
+    log('🧹 Cleaning up ports to ensure fresh start...', colors.yellow);
+    await killPorts([API_PORT, WEB_PORT], { force: true });
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for cleanup
+    log('✅ Ports cleaned', colors.green);
+
+    // Clean Next.js cache to prevent HMR cache poisoning
+    await cleanNextCache();
+
     // Check if servers are already running
     const apiRunning = await checkServer(`${API_URL}/health`);
     const webRunning = await checkServer(WEB_URL);
@@ -122,11 +155,12 @@ async function main() {
     let apiProc, webProc;
 
     if (!apiRunning) {
-      // Start API server
+      // Start API server with NODE_ENV=test to enable test helper routes
+      // Use dev:test script which properly sets NODE_ENV via cross-env
       apiProc = await startServer(
         'API',
         'npm',
-        ['run', 'dev'],
+        ['run', 'dev:test'],
         path.join(__dirname, '../../apps/api'),
         { PORT: API_PORT }
       );

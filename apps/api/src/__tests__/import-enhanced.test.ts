@@ -10,7 +10,6 @@
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
-import { setupTestDatabase, cleanupTestDatabase } from './utils/test-db';
 import { SQLiteClient } from '@canvas-memory/db';
 import { AuthService } from '../services/auth.service';
 import { randomUUID } from 'crypto';
@@ -30,7 +29,6 @@ describe('Import-Enhanced Integration Tests', () => {
   let adminUserId: string;
   let clientUserId: string;
   let adminToken: string;
-  let clientToken: string;
 
   before(async () => {
     console.log('⏳ Setting up test database and accounts...');
@@ -40,8 +38,10 @@ describe('Import-Enhanced Integration Tests', () => {
       fs.unlinkSync(TEST_DB_PATH);
     }
 
-    db = await setupTestDatabase(TEST_DB_PATH);
-    authService = new AuthService(db as any);
+    db = new SQLiteClient({ databasePath: TEST_DB_PATH });
+    await db.connect();
+    db.enableDirectWrites();
+    authService = new AuthService(db);
 
     // Create admin account
     adminAccountId = randomUUID();
@@ -143,7 +143,9 @@ describe('Import-Enhanced Integration Tests', () => {
 
   after(async () => {
     console.log('🧹 Cleaning up test database...');
-    await cleanupTestDatabase(db);
+    if (db) {
+      await db.disconnect();
+    }
     if (fs.existsSync(TEST_DB_PATH)) {
       fs.unlinkSync(TEST_DB_PATH);
     }

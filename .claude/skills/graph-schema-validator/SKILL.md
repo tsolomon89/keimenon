@@ -4,6 +4,18 @@ description: Validates node and edge operations against JSON schemas in ai_conte
 allowed-tools: Read, Grep, Glob, mcp__canvas-database__query_nodes, mcp__canvas-database__query_edges, mcp__canvas-database__inspect_schema
 ---
 
+---
+
+**Operational Ethos Compliance:** This skill operates under the principles defined in [CLAUDE.md Section 13](../../CLAUDE.md#13-operational-ethos--recursive-intelligence):
+
+- **Context Consolidation**: Automatic, not optional (Section 13.0)
+- **Professional Standards**: Security, testing, documentation mandatory (Section 13.1)
+- **Anticipatory Design**: Think 3 steps ahead (Section 13.2)
+- **Full-Scope Traversal**: Address all layers (Section 13.3)
+- **Recursive Intelligence**: Enrich system with every run (Section 13.4)
+
+---
+
 # Graph Schema Validator
 
 ## Purpose

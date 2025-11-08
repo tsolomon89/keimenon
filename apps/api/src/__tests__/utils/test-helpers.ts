@@ -120,6 +120,45 @@ export async function login(
 
   const data = (await response.json()) as LoginResponse;
 
+  if (data.requiresAccountSelection) {
+    const targetAccount = data.availableAccounts?.[0];
+    if (!targetAccount || !data.tempToken) {
+      throw new Error('Login requires account selection but no account information was returned');
+    }
+
+    const selectResponse = await fetch(`${API_URL}/api/v1/auth/select-account`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tempToken: data.tempToken,
+        accountId: targetAccount.accountId,
+      }),
+    });
+
+    if (!selectResponse.ok) {
+      const error = await selectResponse.text();
+      throw new Error(`Account selection failed (${selectResponse.status}): ${error}`);
+    }
+
+    const selection = (await selectResponse.json()) as {
+      token?: string;
+      account?: { id?: string; account_id?: string };
+      user?: { id?: string };
+    };
+
+    const selectedToken = selection.token;
+    const selectedUserId = selection.user?.id;
+    if (!selectedToken || !selectedUserId) {
+      throw new Error('Account selection did not return full authentication details');
+    }
+
+    return {
+      token: selectedToken,
+      accountId: selection.account?.id || selection.account?.account_id || targetAccount.accountId,
+      userId: selectedUserId,
+    };
+  }
+
   // Extract accountId from various possible locations
   const accountId =
     data.user?.account_id || data.user?.accountId || data.accountId || data.user?.account;

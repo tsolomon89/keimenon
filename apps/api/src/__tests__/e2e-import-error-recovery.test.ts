@@ -17,11 +17,28 @@
  * - Database operations
  */
 
-import { describe, test as it, before, after, beforeEach, afterEach } from 'node:test';
+import { describe, test as it, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { DatabaseWriteQueue } from '../services/DatabaseWriteQueue';
 import { AnyNode, AnyEdge } from '@canvas-memory/types';
+
+// Extended types with database-specific fields
+type DbNode = AnyNode & {
+  account_id: string;
+  created_by: string;
+  data_tag?: string;
+  properties?: Record<string, any>;
+};
+
+type DbEdge = AnyEdge & {
+  from_id: string;
+  to_id: string;
+  account_id: string;
+  created_by: string;
+  data_tag?: string;
+  properties?: Record<string, any>;
+};
 
 let db: Database.Database;
 let mockDbClient: any;
@@ -109,7 +126,7 @@ beforeEach(() => {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
-      const transaction = db.transaction((nodes: AnyNode[]) => {
+      const transaction = db.transaction((nodes: DbNode[]) => {
         for (const node of nodes) {
           const timestamp = Date.now();
           insert.run(
@@ -125,7 +142,7 @@ beforeEach(() => {
         }
       });
 
-      transaction(nodes);
+      transaction(nodes as DbNode[]);
     },
 
     createEdges: async (edges: AnyEdge[]) => {
@@ -136,7 +153,7 @@ beforeEach(() => {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
-      const transaction = db.transaction((edges: AnyEdge[]) => {
+      const transaction = db.transaction((edges: DbEdge[]) => {
         for (const edge of edges) {
           const timestamp = Date.now();
           insert.run(
@@ -154,7 +171,7 @@ beforeEach(() => {
         }
       });
 
-      transaction(edges);
+      transaction(edges as DbEdge[]);
     },
   };
 
@@ -182,28 +199,36 @@ after(async () => {
 });
 
 // Helper: Create test node
-function createNode(id: string, title: string = 'Test'): AnyNode {
+function createNode(id: string, title: string = 'Test'): DbNode {
   return {
     id,
-    kind: 'source',
+    kind: 'Source',
     properties: { title },
     account_id: TEST_ACCOUNT_ID,
     created_by: TEST_USER_ID,
     data_tag: 'test' as const,
+    created_at: Date.now(),
+    updated_at: Date.now(),
+    fingerprint: '',
+    mime_type: 'text/plain',
+    size_bytes: 0,
   };
 }
 
 // Helper: Create test edge
-function createEdge(id: string, fromId: string, toId: string): AnyEdge {
+function createEdge(id: string, fromId: string, toId: string): DbEdge {
   return {
     id,
+    from: fromId,
+    to: toId,
     from_id: fromId,
     to_id: toId,
-    kind: 'contains',
-    properties: null,
+    kind: 'CONTAINS',
+    properties: {},
     account_id: TEST_ACCOUNT_ID,
     created_by: TEST_USER_ID,
     data_tag: 'test' as const,
+    created_at: Date.now(),
   };
 }
 
@@ -224,7 +249,8 @@ async function flushQueue(queue: DatabaseWriteQueue): Promise<void> {
   }
 }
 
-// Helper: Wait for condition
+// Helper: Wait for condition (unused but kept for future use)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function waitForCondition(
   condition: () => boolean,
   timeoutMs = 2000,

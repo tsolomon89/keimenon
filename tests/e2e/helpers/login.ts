@@ -82,6 +82,67 @@ export async function login(page: Page, email: string, password: string): Promis
         throw new Error(`Login failed: ${body.error}`);
       }
 
+      // Parse response body
+      const body = await response.json();
+
+      // Handle multi-account users (requiresAccountSelection)
+      if (body.requiresAccountSelection && body.availableAccounts && body.tempToken) {
+        console.log(
+          `[Login Helper] Multi-account user detected (${body.availableAccounts.length} accounts), selecting first account...`
+        );
+
+        // Store temp token first
+        await page.evaluate((token) => {
+          localStorage.setItem('temp_auth_token', token);
+        }, body.tempToken);
+
+        // Wait for account selection UI or navigate directly
+        // Check if we're on a select-account page or if we need to call the API
+        const currentUrl = page.url();
+
+        if (currentUrl.includes('/select-account') || currentUrl.includes('/login')) {
+          // UI-based account selection - look for account selector
+          const accountSelector = page.getByRole('combobox', { name: /account/i });
+          const hasSelector = await accountSelector.isVisible({ timeout: 3000 }).catch(() => false);
+
+          if (hasSelector) {
+            // Use UI to select account
+            await accountSelector.click();
+            await page.getByRole('option').first().click();
+            await page.getByRole('button', { name: /continue|select|confirm/i }).click();
+          } else {
+            // Fallback: Call API directly and navigate
+            const selectResponse = await page.request.post(
+              'http://127.0.0.1:4001/api/v1/auth/select-account',
+              {
+                data: {
+                  tempToken: body.tempToken,
+                  accountId: body.availableAccounts[0].accountId,
+                },
+              }
+            );
+
+            if (!selectResponse.ok()) {
+              const selectError = await selectResponse
+                .json()
+                .catch(() => ({ error: 'Unknown error' }));
+              throw new Error(`Account selection failed: ${selectError.error}`);
+            }
+
+            const selectBody = await selectResponse.json();
+
+            // Store the real token (use correct key expected by AuthContext)
+            await page.evaluate((token) => {
+              localStorage.setItem('canvas_memory_token', token);
+              localStorage.removeItem('temp_auth_token');
+            }, selectBody.token);
+
+            // Navigate to canvas manually
+            await page.goto('/canvas');
+          }
+        }
+      }
+
       // Success - wait for redirect to canvas
       await page.waitForURL(/\/canvas/, { timeout: 60000 });
       await page.waitForLoadState('domcontentloaded', { timeout: 60000 });

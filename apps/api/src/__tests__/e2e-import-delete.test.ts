@@ -28,7 +28,10 @@ const SAMPLE_FILE = path.join(process.cwd(), '../../ai_context/chat_data/test-sa
 
 const ADMIN = { email: 'admin@admin.com', password: 'admin123', name: 'Admin User' };
 
-process.env.NODE_ENV = process.env.NODE_ENV || 'test';
+// Ensure NODE_ENV defaults to 'test' to keep behavior aligned with test fixtures.
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'test';
+}
 
 interface LoginResult {
   token: string;
@@ -62,9 +65,10 @@ function rebuildFts(db: Database.Database): void {
 }
 
 function ensureAccountAndUser(db: Database.Database, user: typeof ADMIN): string {
-  const accountId =
-    db.prepare('SELECT id FROM accounts WHERE email = ?').get(user.email)?.id ||
-    `acct_${randomUUID()}`;
+  const accountRow = db.prepare('SELECT id FROM accounts WHERE email = ?').get(user.email) as
+    | { id: string }
+    | undefined;
+  const accountId = accountRow?.id || `acct_${randomUUID()}`;
 
   const accountExists =
     db.prepare('SELECT 1 FROM accounts WHERE id = ?').get(accountId) !== undefined;
@@ -181,9 +185,11 @@ test('import job succeeds then delete job clears data', async (_t) => {
   const { token: adminToken } = await login(ADMIN.email, ADMIN.password);
 
   // Ensure account_id on users matches account
-  const initialNodeCount = db
-    .prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?')
-    .get(adminAccountId).count as number;
+  const initialNodeCount = (
+    db.prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?').get(adminAccountId) as {
+      count: number;
+    }
+  ).count;
 
   const form = new FormData();
   form.append('files', fs.createReadStream(SAMPLE_FILE));
@@ -202,9 +208,11 @@ test('import job succeeds then delete job clears data', async (_t) => {
   const importJob = await waitForJob(importJobId, adminToken);
   assert.equal(importJob.state.status || importJob.status, 'succeeded');
 
-  const postImportNodes = db
-    .prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?')
-    .get(adminAccountId).count as number;
+  const postImportNodes = (
+    db.prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?').get(adminAccountId) as {
+      count: number;
+    }
+  ).count;
 
   assert.ok(
     postImportNodes > initialNodeCount,
@@ -228,12 +236,16 @@ test('import job succeeds then delete job clears data', async (_t) => {
   const deleteJob = await waitForJob(deleteJobId, adminToken);
   assert.equal(deleteJob.state.status || deleteJob.status, 'succeeded');
 
-  const postDeleteNodes = db
-    .prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?')
-    .get(adminAccountId).count as number;
-  const postDeleteEdges = db
-    .prepare('SELECT COUNT(*) as count FROM edges WHERE account_id = ?')
-    .get(adminAccountId).count as number;
+  const postDeleteNodes = (
+    db.prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?').get(adminAccountId) as {
+      count: number;
+    }
+  ).count;
+  const postDeleteEdges = (
+    db.prepare('SELECT COUNT(*) as count FROM edges WHERE account_id = ?').get(adminAccountId) as {
+      count: number;
+    }
+  ).count;
 
   assert.equal(postDeleteNodes, 0, 'Expected nodes to be cleared after delete job');
   assert.equal(postDeleteEdges, 0, 'Expected edges to be cleared after delete job');

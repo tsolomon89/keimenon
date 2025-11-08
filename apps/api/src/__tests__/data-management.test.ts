@@ -19,6 +19,7 @@ import { randomUUID } from 'crypto';
 import path from 'path';
 import os from 'os';
 import { login } from './utils/test-helpers';
+import bcrypt from 'bcrypt';
 
 const API_URL = process.env.TEST_API_URL || 'http://localhost:4001';
 const HOME_DIR = process.env.HOME || process.env.USERPROFILE || os.homedir();
@@ -39,12 +40,85 @@ describe('Data Management API', () => {
     db = new SQLiteClient({ databasePath: DB_PATH });
     await db.connect(); // Important: Must connect before use
 
+    const sqliteDb = db.getDatabase();
+
+    const ensureAdminAccount = (): { accountId: string; userId: string } => {
+      const timestamp = Date.now();
+
+      const accountRow = sqliteDb
+        .prepare('SELECT id FROM accounts WHERE email = ?')
+        .get(ADMIN_EMAIL) as { id: string } | undefined;
+
+      const accountId = accountRow?.id ?? `acct_${randomUUID()}`;
+
+      if (!accountRow) {
+        sqliteDb
+          .prepare(
+            `INSERT INTO accounts (
+              id, account_type, account_class, email, name,
+              created_at, updated_at, allow_email_invites
+            ) VALUES (?, 'admin', 'business', ?, 'System Admin', ?, ?, 1)`
+          )
+          .run(accountId, ADMIN_EMAIL, timestamp, timestamp);
+      }
+
+      const userRow = sqliteDb.prepare('SELECT id FROM users WHERE email = ?').get(ADMIN_EMAIL) as
+        | { id: string }
+        | undefined;
+
+      const userId = userRow?.id ?? `user_${randomUUID()}`;
+      const passwordHash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
+
+      if (!userRow) {
+        sqliteDb
+          .prepare(
+            `INSERT INTO users (
+              id, email, password_hash, google_id, name, permission_level,
+              user_class, is_active, created_at, updated_at,
+              primary_account_id, last_login_account_id, global_preferences, email_verified
+            ) VALUES (?, ?, ?, NULL, 'Admin', 'admin', 'person', 1, ?, ?, ?, ?, NULL, 1)`
+          )
+          .run(userId, ADMIN_EMAIL, passwordHash, timestamp, timestamp, accountId, accountId);
+      } else {
+        sqliteDb
+          .prepare(
+            `UPDATE users
+             SET password_hash = ?,
+                 primary_account_id = COALESCE(primary_account_id, ?),
+                 last_login_account_id = COALESCE(last_login_account_id, ?),
+                 email_verified = 1,
+                 updated_at = ?
+             WHERE id = ?`
+          )
+          .run(passwordHash, accountId, accountId, timestamp, userId);
+      }
+
+      const userAccountLink = sqliteDb
+        .prepare('SELECT 1 FROM user_accounts WHERE user_id = ? AND account_id = ?')
+        .get(userId, accountId);
+
+      if (!userAccountLink) {
+        sqliteDb
+          .prepare(
+            `INSERT INTO user_accounts (
+              id, user_id, account_id, permission_level, role_rank, role_overrides,
+              invited_by, status, invited_at, joined_at, last_accessed, created_at, updated_at
+            ) VALUES (?, ?, ?, 'admin', 1, NULL, NULL, 'active', NULL, ?, NULL, ?, ?)`
+          )
+          .run(`ua_${randomUUID()}`, userId, accountId, timestamp, timestamp, timestamp);
+      }
+
+      return { accountId, userId };
+    };
+
+    const { accountId: ensuredAccountId } = ensureAdminAccount();
+
     // Login as admin
     try {
       const adminLogin = await login(ADMIN_EMAIL, ADMIN_PASSWORD);
       console.log('🔍 Login response:', adminLogin); // DEBUG
       adminToken = adminLogin.token;
-      adminAccountId = adminLogin.accountId;
+      adminAccountId = adminLogin.accountId || ensuredAccountId;
       adminUserId = adminLogin.userId;
 
       console.log('🔑 Admin authenticated');
@@ -155,7 +229,7 @@ describe('Data Management API', () => {
 
     assert.strictEqual(response.status, 200, 'Delete should return 200');
 
-    const body = await response.json();
+    const body = (await response.json()) as { success: boolean };
     assert.strictEqual(body.success, true, 'Response should indicate success');
 
     // Verify data deleted
@@ -181,7 +255,7 @@ describe('Data Management API', () => {
 
     assert.strictEqual(response.status, 200, 'Should return 200 even when empty');
 
-    const body = await response.json();
+    const body = (await response.json()) as { success: boolean };
     assert.strictEqual(body.success, true, 'Should indicate success');
 
     console.log('✅ Empty database handled gracefully');

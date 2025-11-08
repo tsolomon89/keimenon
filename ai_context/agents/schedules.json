@@ -1,0 +1,237 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "meta": {
+    "version": "2025-11-04",
+    "generated_at": "2025-11-04T00:00:00Z",
+    "maintainer": "Agent Orchestration WG",
+    "defaults": {
+      "backoff_ref": "ai_context/agents/policies.json#/limits_policy/backoff",
+      "dead_letter": "state/agent_errors.log"
+    }
+  },
+  "queues": {
+    "board_fifo": {
+      "ordering": "FIFO",
+      "scope": "board",
+      "priority": 1,
+      "max_concurrent": 8,
+      "backoff_ref": "#/meta/defaults/backoff_ref",
+      "dead_letter": "state/agent_errors.log"
+    },
+    "business_priority": {
+      "ordering": "FIFO",
+      "scope": "board",
+      "priority": 5,
+      "max_concurrent": 4,
+      "backoff_ref": "#/meta/defaults/backoff_ref",
+      "dead_letter": "state/agent_errors.log"
+    }
+  },
+  "budget_profiles": {
+    "gatherer_refresh": {
+      "ref": "ai_context/agents/policies.json#/verification_budget/pro/per_run",
+      "overrides": {
+        "max_tokens": 6000,
+        "timeout_s": 90
+      }
+    },
+    "verification_batch": {
+      "ref": "ai_context/agents/policies.json#/verification_budget/business/per_run",
+      "overrides": {
+        "max_verifier_runs": 8
+      }
+    },
+    "synthesis_default": {
+      "max_tokens": 4000,
+      "timeout_s": 75
+    },
+    "planner_default": {
+      "max_tokens": 2500,
+      "timeout_s": 45
+    },
+    "monitor_default": {
+      "max_tokens": 2000,
+      "timeout_s": 60
+    }
+  },
+  "schedules": [
+    {
+      "id": "gatherer_pro_scope_refresh",
+      "agent_id": "gatherer_v1",
+      "tier": ["pro", "business"],
+      "queue": "board_fifo",
+      "trigger": {
+        "type": "cron",
+        "expression": "5 */4 * * *",
+        "timezone": "UTC"
+      },
+      "inputs": {
+        "intent": "auto:scope_refresh",
+        "seed_strategy": "planner_hints",
+        "max_sources": 25
+      },
+      "budget_profile": "gatherer_refresh",
+      "retry_policy": {
+        "max_attempts": 3,
+        "backoff_ref": "#/meta/defaults/backoff_ref"
+      }
+    },
+    {
+      "id": "autogrouper_hourly_cluster",
+      "agent_id": "autogrouper_v1",
+      "tier": ["free", "pro", "business"],
+      "queue": "board_fifo",
+      "trigger": {
+        "type": "cron",
+        "expression": "15 * * * *",
+        "timezone": "UTC"
+      },
+      "inputs": {
+        "min_sources": 3,
+        "hints": "auto:recent_tags"
+      },
+      "budget_profile": "planner_default",
+      "retry_policy": {
+        "max_attempts": 2,
+        "backoff_ref": "#/meta/defaults/backoff_ref"
+      }
+    },
+    {
+      "id": "extractor_claim_draft",
+      "agent_id": "extractor_v1",
+      "tier": ["free", "pro", "business"],
+      "queue": "board_fifo",
+      "trigger": {
+        "type": "cron",
+        "expression": "*/30 * * * *",
+        "timezone": "UTC"
+      },
+      "inputs": {
+        "scope_selector": "pending_sources",
+        "max_claims": 20
+      },
+      "budget_profile": "planner_default",
+      "retry_policy": {
+        "max_attempts": 2,
+        "backoff_ref": "#/meta/defaults/backoff_ref"
+      }
+    },
+    {
+      "id": "verifier_batch_windows",
+      "agent_id": "verifier_v1",
+      "tier": ["pro", "business"],
+      "queue": "board_fifo",
+      "trigger": {
+        "type": "cron",
+        "expression": "10 */2 * * *",
+        "timezone": "UTC"
+      },
+      "inputs": {
+        "verifier_plan": "auto:pending_claims",
+        "max_claims": 10
+      },
+      "budget_profile": "verification_batch",
+      "retry_policy": {
+        "max_attempts": 3,
+        "backoff_ref": "#/meta/defaults/backoff_ref"
+      }
+    },
+    {
+      "id": "synthesizer_daily_section",
+      "agent_id": "synthesizer_v1",
+      "tier": ["free", "pro", "business"],
+      "queue": "board_fifo",
+      "trigger": {
+        "type": "cron",
+        "expression": "0 18 * * *",
+        "timezone": "UTC"
+      },
+      "inputs": {
+        "doc_targets_tokens": 1800,
+        "ring": {
+          "free": "L0",
+          "pro": "L1",
+          "business": "L1"
+        }
+      },
+      "budget_profile": "synthesis_default",
+      "retry_policy": {
+        "max_attempts": 2,
+        "backoff_ref": "#/meta/defaults/backoff_ref"
+      }
+    },
+    {
+      "id": "planner_gap_review",
+      "agent_id": "planner_v1",
+      "tier": ["free", "pro", "business"],
+      "queue": "board_fifo",
+      "trigger": {
+        "type": "cron",
+        "expression": "25 */6 * * *",
+        "timezone": "UTC"
+      },
+      "inputs": {
+        "objectivity_threshold": "B",
+        "max_tasks": 12
+      },
+      "budget_profile": "planner_default",
+      "retry_policy": {
+        "max_attempts": 2,
+        "backoff_ref": "#/meta/defaults/backoff_ref"
+      }
+    },
+    {
+      "id": "workflow_runner_manual_gate",
+      "agent_id": "workflow_runner_v1",
+      "tier": ["business"],
+      "queue": "business_priority",
+      "trigger": {
+        "type": "on_demand",
+        "requires_approval": true
+      },
+      "inputs": {
+        "approval_required": true,
+        "dry_run_default": true
+      },
+      "budget_profile": "verification_batch",
+      "retry_policy": {
+        "max_attempts": 1,
+        "backoff_ref": "#/meta/defaults/backoff_ref"
+      }
+    },
+    {
+      "id": "objectivity_monitor_cycle",
+      "agent_id": "objectivity_monitor_v1",
+      "tier": ["pro", "business"],
+      "queue": "board_fifo",
+      "trigger": {
+        "type": "cron",
+        "expression": "0 */12 * * *",
+        "timezone": "UTC"
+      },
+      "inputs": {
+        "threshold_band": "B",
+        "max_boards": 15
+      },
+      "budget_profile": "monitor_default",
+      "retry_policy": {
+        "max_attempts": 2,
+        "backoff_ref": "#/meta/defaults/backoff_ref"
+      }
+    }
+  ],
+  "concurrency_caps": {
+    "global": 12,
+    "per_board": 3,
+    "per_agent": {
+      "gatherer_v1": 1,
+      "autogrouper_v1": 2,
+      "extractor_v1": 2,
+      "verifier_v1": 2,
+      "synthesizer_v1": 3,
+      "planner_v1": 2,
+      "workflow_runner_v1": 1,
+      "objectivity_monitor_v1": 1
+    }
+  }
+}

@@ -11,7 +11,9 @@
 
 import { describe, test, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
-import EventSource from 'eventsource';
+import EventSourceModule from 'eventsource';
+
+const EventSource = EventSourceModule as unknown as typeof globalThis.EventSource;
 import Database from 'better-sqlite3';
 import path from 'path';
 import os from 'os';
@@ -163,7 +165,7 @@ describe('SSE Multi-Account', () => {
   describe('Account-Based Event Filtering', () => {
     test(
       'should only broadcast events to job owner account',
-      async (_t) => {
+      async () => {
         // Create test data for Account A
         createTestNodes(db, adminAccountId, 100);
 
@@ -224,7 +226,7 @@ describe('SSE Multi-Account', () => {
 
     test(
       'should isolate events across different accounts',
-      async (_t) => {
+      async () => {
         // Create test data for both accounts
         createTestNodes(db, adminAccountId, 50);
         createTestNodes(db, userBAccountId, 50);
@@ -290,7 +292,7 @@ describe('SSE Multi-Account', () => {
   describe('Concurrent Jobs Across Accounts', () => {
     test(
       'should handle concurrent jobs from different accounts',
-      async (_t) => {
+      async () => {
         // Create test data for both accounts
         createTestNodes(db, adminAccountId, 100);
         createTestNodes(db, userBAccountId, 100);
@@ -367,7 +369,7 @@ describe('SSE Multi-Account', () => {
   describe('Event Data Validation', () => {
     test(
       'should include accountId in all events',
-      async (_t) => {
+      async () => {
         // Create test data
         createTestNodes(db, adminAccountId, 50);
 
@@ -409,7 +411,7 @@ describe('SSE Multi-Account', () => {
 
     test(
       'should not leak data across accounts',
-      async (_t) => {
+      async () => {
         // Create test data for Account A only
         createTestNodes(db, adminAccountId, 50);
 

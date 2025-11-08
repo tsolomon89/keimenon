@@ -108,7 +108,7 @@ test.describe('Chromium Isolation Debug', () => {
     await page.fill('[type="email"]', 'admin@admin.com');
     console.log(`  - Email filled: admin@admin.com`);
 
-    await page.fill('[type="password"]', '123456');
+    await page.fill('[type="password"]', 'TestPass123!');
     console.log(`  - Password filled: ****`);
 
     // Phase 5: Submit form and monitor
@@ -196,7 +196,7 @@ test.describe('Chromium Isolation Debug', () => {
     console.log(`[Control] Navigated to login: ${page.url()}`);
 
     await page.fill('[type="email"]', 'admin@admin.com');
-    await page.fill('[type="password"]', '123456');
+    await page.fill('[type="password"]', 'TestPass123!');
     console.log(`[Control] Form filled`);
 
     await page.click('button[type="submit"]');

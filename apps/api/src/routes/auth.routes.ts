@@ -160,10 +160,13 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
   /**
    * POST /api/v1/auth/switch-account
    * Switch to a different account without re-authentication
+   * Accepts both camelCase (accountId) and snake_case (account_id) for compatibility
    */
   router.post('/switch-account', requireAuth(authService), async (req: Request, res: Response) => {
     try {
-      const { accountId, accountPassword } = req.body;
+      // Support both naming conventions: accountId (camelCase) and account_id (snake_case)
+      const accountId = req.body.accountId || req.body.account_id;
+      const accountPassword = req.body.accountPassword || req.body.account_password;
 
       if (!accountId) {
         return res.status(400).json({ error: 'Account ID required' });
@@ -178,11 +181,18 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
       const hasAccess = userAccounts.some((a) => a.accountId === accountId);
 
       if (!hasAccess) {
-        return res.status(403).json({ error: 'You do not have access to this account' });
+        return res.status(403).json({ error: 'Forbidden: Account not accessible' });
       }
 
       // Switch to the account
-      const result = await authService.switchAccount(req.user.userId, accountId, accountPassword);
+      const result = await authService.switchAccount(
+        req.user.userId,
+        accountId,
+        accountPassword,
+        req.user.accountId, // fromAccountId for audit logging
+        req.ip || req.socket.remoteAddress, // ipAddress
+        req.headers['user-agent'] // userAgent
+      );
 
       return res.json({
         user: result.user,
@@ -244,6 +254,7 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
   /**
    * GET /api/v1/auth/me
    * Get current user and account info
+   * Returns flattened structure for compatibility with E2E tests
    */
   router.get('/me', requireAuth(authService), async (req: Request, res: Response) => {
     try {
@@ -258,7 +269,20 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         return res.status(404).json({ error: 'User or account not found' });
       }
 
-      return res.json({ user, account });
+      // Return both nested and flattened structure for compatibility
+      return res.json({
+        user,
+        account,
+        // Flattened fields for easier access
+        id: user.id,
+        user_id: user.id,
+        email: user.email,
+        name: user.name,
+        account_id: account.id,
+        selected_account_id: account.id,
+        account_type: account.account_type,
+        account_class: account.account_class,
+      });
     } catch (error: any) {
       console.error('Get current user error:', error);
       return res.status(500).json({ error: error.message || 'Failed to get user' });

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getLocalDocumentStore } from '../services/local-document-store';
+import { getDbClient } from '../utils/get-db-client';
 
 const router = Router();
 const localStore = getLocalDocumentStore();
@@ -21,14 +22,6 @@ export function setAuthDependencies(
   requireAuth = authMiddleware;
   requirePermission = permissionMiddleware;
   isolateByAccount = isolationMiddleware;
-}
-
-// Helper to get database client
-function getDbClient() {
-  if (!global.dbClient) {
-    throw new Error('Database not initialized');
-  }
-  return global.dbClient;
 }
 
 /**
@@ -55,7 +48,7 @@ router.get('/message/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
 
     // Get message node from database to find storage location
-    const db = getDbClient();
+    const db = await getDbClient(req);
     const message = await db.getNode(id);
 
     if (!message || message.kind !== 'Message') {
@@ -141,7 +134,7 @@ router.get('/source/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
 
     // Get source node from database
-    const db = getDbClient();
+    const db = await getDbClient(req);
     const source = await db.getNode(id);
 
     if (!source || source.kind !== 'Source') {
@@ -217,7 +210,7 @@ router.get('/code/:id', async (req: Request, res: Response) => {
 
     const { id } = req.params;
 
-    const db = getDbClient();
+    const db = await getDbClient(req);
     const codeBlock = await db.getNode(id);
 
     if (!codeBlock || codeBlock.kind !== 'CodeBlock') {
@@ -303,7 +296,7 @@ router.get('/conversation/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
 
     // Check if conversation exists in database
-    const db = getDbClient();
+    const db = await getDbClient(req);
     const thread = await db.getNode(id);
 
     if (!thread || thread.kind !== 'ChatThread') {
@@ -384,7 +377,7 @@ router.get('/conversation/:id', async (req: Request, res: Response) => {
 router.get('/stats', async (req: Request, res: Response) => {
   try {
     const stats = await localStore.getStats();
-    const db = getDbClient();
+    const db = await getDbClient(req);
 
     // Get database stats
     let dbStats = {};

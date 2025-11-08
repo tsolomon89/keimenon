@@ -29,7 +29,7 @@ test('debug authentication response', async ({ page }) => {
 
   // Fill login form with admin account (correct password is 123456, not admin123!)
   await page.fill('input[type="email"]', 'admin@admin.com');
-  await page.fill('input[type="password"]', '123456');
+  await page.fill('input[type="password"]', 'TestPass123!');
 
   // Click login and wait for response
   await page.click('button:has-text("Sign In")');

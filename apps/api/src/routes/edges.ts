@@ -6,6 +6,7 @@ import {
   InScopeForEdgeSchema,
 } from '@canvas-memory/types';
 import { nanoid } from 'nanoid';
+import { getDbClient } from '../utils/get-db-client';
 
 const router = Router();
 
@@ -26,14 +27,6 @@ export function setAuthDependencies(
   requireAuth = authMiddleware;
   requirePermission = permissionMiddleware;
   isolateByAccount = isolationMiddleware;
-}
-
-// Helper to get database client
-function getDbClient() {
-  if (!global.dbClient) {
-    throw new Error('Database not initialized');
-  }
-  return global.dbClient;
 }
 
 /**
@@ -58,7 +51,7 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     const { from, to, kind, limit = '100' } = req.query;
-    const db = getDbClient();
+    const db = await getDbClient(req);
     const storageMode = process.env.STORAGE_MODE || 'local';
 
     const limitNum = parseInt(limit as string, 10);
@@ -195,7 +188,7 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    const db = getDbClient();
+    const db = await getDbClient(req);
 
     // Validate kind is allowed
     const allowedKinds = [
@@ -236,11 +229,9 @@ router.post('/', async (req: Request, res: Response) => {
       if (req.user.accountType !== 'admin') {
         // Client accounts can only create edges between their own nodes
         if (fromNodeAccountId !== req.user.accountId || toNodeAccountId !== req.user.accountId) {
-          return res
-            .status(403)
-            .json({
-              error: 'Access denied: You can only create edges between nodes in your account',
-            });
+          return res.status(403).json({
+            error: 'Access denied: You can only create edges between nodes in your account',
+          });
         }
       }
     }
@@ -307,7 +298,7 @@ router.delete('/', async (req: Request, res: Response) => {
       });
     }
 
-    const db = getDbClient();
+    const db = await getDbClient(req);
     const storageMode = process.env.STORAGE_MODE || 'local';
 
     // Verify nodes exist and check ownership
@@ -329,11 +320,9 @@ router.delete('/', async (req: Request, res: Response) => {
       if (req.user.accountType !== 'admin') {
         // Client accounts can only delete edges between their own nodes
         if (fromNodeAccountId !== req.user.accountId || toNodeAccountId !== req.user.accountId) {
-          return res
-            .status(403)
-            .json({
-              error: 'Access denied: You can only delete edges between nodes in your account',
-            });
+          return res.status(403).json({
+            error: 'Access denied: You can only delete edges between nodes in your account',
+          });
         }
       }
     }
@@ -390,7 +379,7 @@ router.get('/node/:nodeId', async (req: Request, res: Response) => {
     }
 
     const { nodeId } = req.params;
-    const db = getDbClient();
+    const db = await getDbClient(req);
 
     // Check if node exists
     const node = await db.getNode(nodeId);

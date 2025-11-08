@@ -12,7 +12,7 @@
  * - Manual disconnect vs automatic reconnection
  */
 
-import { describe, test, before, after, beforeEach, afterEach } from 'node:test';
+import { describe, test, before, afterEach } from 'node:test';
 import assert from 'node:assert';
 import { login, waitFor } from './utils/test-helpers';
 

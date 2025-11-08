@@ -3,6 +3,18 @@ name: pipeline-verifier
 description: Validates complete feature pipeline from backend API to frontend integration to UI/UX functionality to E2E test coverage. Uses MCP servers to verify database state, API responses, and test execution. Use when implementing new features or validating changes end-to-end.
 ---
 
+---
+
+**Operational Ethos Compliance:** This skill operates under the principles defined in [CLAUDE.md Section 13](../../CLAUDE.md#13-operational-ethos--recursive-intelligence):
+
+- **Context Consolidation**: Automatic, not optional (Section 13.0)
+- **Professional Standards**: Security, testing, documentation mandatory (Section 13.1)
+- **Anticipatory Design**: Think 3 steps ahead (Section 13.2)
+- **Full-Scope Traversal**: Address all layers (Section 13.3)
+- **Recursive Intelligence**: Enrich system with every run (Section 13.4)
+
+---
+
 # Pipeline Verifier
 
 ## Purpose

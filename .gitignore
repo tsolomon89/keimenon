@@ -14,7 +14,13 @@ coverage/
 .nyc_output
 junit.xml
 test-results/
+test-results.json
 playwright-report/
+playwright-report-smoke/
+test-*.js
+!tests/**/*.js
+!scripts/**/*.js
+!.mcp/**/*.js
 
 # Next.js
 .next/

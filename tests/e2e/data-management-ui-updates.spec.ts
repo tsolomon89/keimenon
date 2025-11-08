@@ -199,7 +199,7 @@ test.describe.serial('Data Management UI Updates', () => {
   test.setTimeout(60000); // 60 seconds
 
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
-  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || '123456';
+  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'TestPass123!';
 
   // First test: Clear stale jobs before running other tests
   test('cleanup: clear all background operations', async ({ page }) => {

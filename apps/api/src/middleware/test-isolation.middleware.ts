@@ -48,12 +48,28 @@ export function testIsolationMiddleware(req: Request, res: Response, next: NextF
 
   if (testDbPath) {
     // Security: Validate path is safe
-    const normalizedPath = path.normalize(testDbPath);
-    const testDbsDir = path.join(process.cwd(), '.test-dbs');
+    const normalizedPath = path.resolve(path.normalize(testDbPath));
 
-    // Ensure path is within .test-dbs directory
-    if (!normalizedPath.startsWith(testDbsDir)) {
+    // Find project root - either current dir or up two levels from apps/api
+    let projectRoot = process.cwd();
+
+    // If running from apps/api, go up to project root
+    if (projectRoot.endsWith(path.join('apps', 'api'))) {
+      projectRoot = path.resolve(projectRoot, '../..');
+    }
+    const testDbsDir = path.resolve(projectRoot, '.test-dbs');
+
+    // Ensure path is within .test-dbs directory (case-insensitive on Windows)
+    const expectedPrefix = testDbsDir + path.sep;
+    const pathMatches =
+      process.platform === 'win32'
+        ? normalizedPath.toLowerCase().startsWith(expectedPrefix.toLowerCase())
+        : normalizedPath.startsWith(expectedPrefix);
+
+    if (!pathMatches) {
       console.warn(`[Test Isolation] Rejected invalid DB path: ${testDbPath}`);
+      console.warn(`  - Normalized: ${normalizedPath}`);
+      console.warn(`  - Expected prefix: ${testDbsDir}${path.sep}`);
       return res.status(400).json({ error: 'Invalid test DB path' });
     }
 

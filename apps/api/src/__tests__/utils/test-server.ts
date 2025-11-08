@@ -7,6 +7,7 @@
 
 import { spawn, ChildProcess } from 'child_process';
 import path from 'path';
+import { existsSync } from 'fs';
 import fetch from 'node-fetch';
 
 // Singleton state
@@ -69,7 +70,20 @@ export async function startTestServer(): Promise<void> {
 
     // Start server as child process
     const serverPath = path.join(__dirname, '../../index.ts');
-    serverProcess = spawn('tsx', [serverPath], {
+    const projectRoot = path.resolve(__dirname, '../../../../../');
+    const tsxModulePath = (() => {
+      const candidate = path.join(projectRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
+      return existsSync(candidate) ? candidate : null;
+    })();
+
+    // Ensure the spawned process can resolve local binaries (e.g., tsx)
+    const nodeModulesBin = path.join(projectRoot, 'node_modules', '.bin');
+    env.PATH = env.PATH ? `${nodeModulesBin}${path.delimiter}${env.PATH}` : nodeModulesBin;
+
+    const executable = tsxModulePath ? process.execPath : 'tsx';
+    const args = tsxModulePath ? [tsxModulePath, serverPath] : [serverPath];
+
+    serverProcess = spawn(executable, args, {
       env,
       stdio: ['ignore', 'pipe', 'pipe'], // Capture stdout/stderr
       detached: false,

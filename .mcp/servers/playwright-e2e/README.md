@@ -5,10 +5,12 @@ Model Context Protocol server for controlling Playwright E2E tests. Enables Clau
 ## Features
 
 - **Test Control**: List and run tests with filters (grep, tags, browser projects)
-- **App Management**: Start/stop web and API servers
+- **App Management**: Start/stop web and API servers with intelligent process registry
+- **Health Checking**: Cached server health checks (30s TTL) to reduce token usage
 - **Artifact Access**: Read test reports, traces, videos, and screenshots
 - **Test Correlation**: Access backend logs via test IDs
 - **Environment Info**: Check versions and configuration
+- **Token Optimization**: Process registry and health cache reduce redundant HTTP checks by ~3000 tokens per autonomous test run
 
 ## Installation
 
@@ -188,6 +190,86 @@ Stop all servers
   "message": "All servers stopped"
 }
 ```
+
+### `app.health`
+
+Check server health status. **Results are cached for 30 seconds to reduce token usage.**
+
+This tool provides a lightweight way to check if servers are running without repeatedly making HTTP requests. The cache can be forced to refresh if needed.
+
+**Parameters:**
+
+- `force_refresh` (boolean, optional): Force refresh cache (default: false)
+
+**Example:**
+
+```
+Check if servers are healthy
+→ app.health()
+```
+
+**Example (force refresh):**
+
+```
+Get fresh health status
+→ app.health({ force_refresh: true })
+```
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "cached": false,
+  "timestamp": 1705320000000,
+  "api": {
+    "running": true,
+    "healthy": true,
+    "url": "http://localhost:4001",
+    "port": 4001,
+    "pid": 12345,
+    "started_at": 1705319900000
+  },
+  "web": {
+    "running": true,
+    "healthy": true,
+    "url": "http://localhost:3000",
+    "port": 3000,
+    "pid": 12346,
+    "started_at": 1705319900000
+  },
+  "database": {
+    "accessible": true,
+    "path": "/Users/username/.canvas-memory/canvas.db"
+  }
+}
+```
+
+**Cached Response:**
+
+When returning a cached result, the response includes additional fields:
+
+```json
+{
+  "success": true,
+  "cached": true,
+  "cache_age_seconds": 15,
+  ...
+}
+```
+
+**Benefits:**
+
+- **Token Efficiency**: Avoids redundant HTTP health checks
+- **Fast Response**: Cached results return in < 10ms
+- **Process Registry**: Tracks PIDs and start times for accurate state
+- **Auto-Correction**: Detects when processes die and updates registry
+
+**Use Cases:**
+
+1. **Before running tests**: Quickly verify servers are ready
+2. **Autonomous testing**: Reduce token waste in multi-step workflows
+3. **Debugging**: Check server status without side effects
 
 ### `artifacts.list`
 

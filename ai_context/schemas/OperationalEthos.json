@@ -1,0 +1,556 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ai_context/schemas/OperationalEthos.json",
+  "title": "OperationalEthosContract",
+  "description": "Schema defining the operational ethos contract per CLAUDE.md Section 13",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "ethos"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of ethos schema"
+    },
+    "ethos": {
+      "$ref": "#/$defs/Ethos"
+    }
+  },
+  "$defs": {
+    "Ethos": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "axiomatic_context_law",
+        "professional_standards",
+        "anticipatory_design",
+        "full_scope_traversal",
+        "recursive_intelligence"
+      ],
+      "properties": {
+        "axiomatic_context_law": {
+          "$ref": "#/$defs/AxiomaticContextLaw"
+        },
+        "professional_standards": {
+          "$ref": "#/$defs/ProfessionalStandards"
+        },
+        "anticipatory_design": {
+          "$ref": "#/$defs/AnticipatorDesign"
+        },
+        "full_scope_traversal": {
+          "$ref": "#/$defs/FullScopeTraversal"
+        },
+        "recursive_intelligence": {
+          "$ref": "#/$defs/RecursiveIntelligence"
+        }
+      }
+    },
+    "AxiomaticContextLaw": {
+      "type": "object",
+      "description": "Context consolidation operates automatically, not by choice",
+      "additionalProperties": false,
+      "required": ["techniques", "triggers", "never_say", "architecture_constraints"],
+      "properties": {
+        "techniques": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "task_agent_spawning",
+              "incremental_summarization",
+              "schema_driven_state",
+              "receipt_based_continuation"
+            ]
+          },
+          "minItems": 1
+        },
+        "triggers": {
+          "type": "object",
+          "properties": {
+            "token_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Fractional threshold (e.g., 0.8 = 80%)"
+            },
+            "complexity_threshold": {
+              "type": "string",
+              "enum": ["low", "medium", "high", "critical"]
+            },
+            "multi_phase_task": {
+              "type": "boolean"
+            }
+          }
+        },
+        "never_say": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Phrases that indicate non-compliance"
+        },
+        "architecture_constraints": {
+          "type": "object",
+          "description": "Architectural facts about Task agent system (not configurable)",
+          "additionalProperties": false,
+          "required": ["task_agent_spawning"],
+          "properties": {
+            "task_agent_spawning": {
+              "type": "object",
+              "properties": {
+                "hierarchy": {
+                  "type": "string",
+                  "enum": ["flat_only"],
+                  "const": "flat_only",
+                  "description": "Task agents can only spawn from main agent"
+                },
+                "context_model": {
+                  "type": "string",
+                  "enum": ["separate_windows"],
+                  "const": "separate_windows",
+                  "description": "Each Task agent has separate context window"
+                },
+                "cold_start": {
+                  "type": "boolean",
+                  "const": true,
+                  "description": "Task agents start with clean slate"
+                },
+                "resume_via": {
+                  "type": "string",
+                  "enum": ["agent_id"],
+                  "const": "agent_id",
+                  "description": "Long-running Task agents can be resumed via agentId"
+                },
+                "no_recursive_spawning": {
+                  "type": "boolean",
+                  "const": true,
+                  "description": "Task agents cannot spawn other Task agents"
+                }
+              },
+              "required": [
+                "hierarchy",
+                "context_model",
+                "cold_start",
+                "resume_via",
+                "no_recursive_spawning"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "ProfessionalStandards": {
+      "type": "object",
+      "description": "Professional rigor requirements for all implementations",
+      "additionalProperties": false,
+      "required": ["code_quality", "testing", "documentation", "schema_compliance", "architecture"],
+      "properties": {
+        "code_quality": {
+          "type": "object",
+          "properties": {
+            "security_check": {
+              "type": "boolean",
+              "const": true
+            },
+            "multi_tenant_isolation": {
+              "type": "boolean",
+              "const": true
+            },
+            "error_handling": {
+              "type": "boolean",
+              "const": true
+            },
+            "performance_review": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        },
+        "testing": {
+          "type": "object",
+          "properties": {
+            "e2e_coverage": {
+              "type": "number",
+              "minimum": 0.9,
+              "maximum": 1
+            },
+            "unit_coverage": {
+              "type": "number",
+              "minimum": 0.9,
+              "maximum": 1
+            },
+            "isolation_required": {
+              "type": "boolean",
+              "const": true
+            },
+            "data_tag_required": {
+              "type": "string",
+              "const": "test"
+            }
+          }
+        },
+        "documentation": {
+          "type": "object",
+          "properties": {
+            "todo_format": {
+              "type": "string",
+              "enum": ["vscode_compatible"]
+            },
+            "citation_required": {
+              "type": "boolean",
+              "const": true
+            },
+            "cross_reference_required": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        },
+        "schema_compliance": {
+          "type": "object",
+          "properties": {
+            "validation_required": {
+              "type": "boolean",
+              "const": true
+            },
+            "fingerprinting_required": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["Source", "CodeBlock"]
+              }
+            },
+            "edge_semantics_verified": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        },
+        "architecture": {
+          "type": "object",
+          "properties": {
+            "rollback_plan_required": {
+              "type": "boolean",
+              "const": true
+            },
+            "extensibility_required": {
+              "type": "boolean",
+              "const": true
+            },
+            "graph_native_required": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        }
+      }
+    },
+    "AnticipatorDesign": {
+      "type": "object",
+      "description": "Anticipatory design questions that must be answered",
+      "additionalProperties": false,
+      "required": ["required_questions", "enforcement"],
+      "properties": {
+        "required_questions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "scale_10x",
+              "extension_6months",
+              "edge_cases",
+              "security_boundaries",
+              "observability"
+            ]
+          },
+          "minItems": 5
+        },
+        "enforcement": {
+          "type": "string",
+          "enum": ["mandatory"],
+          "const": "mandatory"
+        },
+        "incomplete_design_action": {
+          "type": "string",
+          "enum": ["stop_and_research", "flag_and_continue"]
+        }
+      }
+    },
+    "FullScopeTraversal": {
+      "type": "object",
+      "description": "All five layers must be addressed for feature completeness",
+      "additionalProperties": false,
+      "required": ["required_layers", "traversal_rules"],
+      "properties": {
+        "required_layers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["backend", "frontend", "ui_ux", "tests", "docs"]
+          },
+          "minItems": 5,
+          "uniqueItems": true
+        },
+        "traversal_rules": {
+          "type": "object",
+          "properties": {
+            "sequential_execution": {
+              "type": "boolean",
+              "const": true
+            },
+            "validation_gates": {
+              "type": "boolean",
+              "const": true
+            },
+            "rollback_strategy": {
+              "type": "string",
+              "enum": ["rollback_layers", "mark_incomplete"]
+            }
+          }
+        },
+        "layer_definitions": {
+          "type": "object",
+          "properties": {
+            "backend": {
+              "$ref": "#/$defs/LayerDefinition"
+            },
+            "frontend": {
+              "$ref": "#/$defs/LayerDefinition"
+            },
+            "ui_ux": {
+              "$ref": "#/$defs/LayerDefinition"
+            },
+            "tests": {
+              "$ref": "#/$defs/LayerDefinition"
+            },
+            "docs": {
+              "$ref": "#/$defs/LayerDefinition"
+            }
+          }
+        }
+      }
+    },
+    "LayerDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["must_have", "validation"],
+      "properties": {
+        "must_have": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "validation": {
+          "type": "string",
+          "description": "Human-readable validation criteria"
+        }
+      }
+    },
+    "RecursiveIntelligence": {
+      "type": "object",
+      "description": "Post-task actions that enrich the system",
+      "additionalProperties": false,
+      "required": ["post_task_actions", "checklist_required", "enrichment_mandatory"],
+      "properties": {
+        "post_task_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "update_todos",
+              "add_cross_references",
+              "update_documentation",
+              "propose_schema_extensions",
+              "generate_followup_tasks"
+            ]
+          },
+          "minItems": 1
+        },
+        "checklist_required": {
+          "type": "boolean",
+          "const": true
+        },
+        "enrichment_mandatory": {
+          "type": "boolean",
+          "const": true
+        },
+        "compliance_validation": {
+          "type": "string",
+          "enum": ["self_test", "peer_review", "automated"]
+        }
+      }
+    },
+    "EthosComplianceAgent": {
+      "type": "object",
+      "description": "Ethos compliance fields for agent definitions",
+      "additionalProperties": false,
+      "required": ["professional_rigor_level", "scope_awareness", "anticipatory_hooks"],
+      "properties": {
+        "professional_rigor_level": {
+          "type": "string",
+          "enum": ["L1", "L2", "L3", "L4"],
+          "description": "L1=basic, L2=intermediate, L3=advanced, L4=expert"
+        },
+        "scope_awareness": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["backend", "frontend", "ui_ux", "tests", "docs"]
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Which layers this agent understands"
+        },
+        "anticipatory_hooks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Proactive actions this agent takes automatically"
+        }
+      }
+    },
+    "EnforcementRules": {
+      "type": "object",
+      "description": "How ethos violations are handled",
+      "additionalProperties": false,
+      "required": ["ethos_violations", "user_override_requests", "non_negotiable"],
+      "properties": {
+        "ethos_violations": {
+          "type": "object",
+          "properties": {
+            "user_reference_required": {
+              "type": "string",
+              "pattern": "^CLAUDE\\.md Section \\d+\\.\\d+$"
+            },
+            "agent_must_acknowledge": {
+              "type": "boolean",
+              "const": true
+            },
+            "correction_required": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        },
+        "user_override_requests": {
+          "type": "object",
+          "properties": {
+            "agent_must_explain_violation": {
+              "type": "boolean",
+              "const": true
+            },
+            "propose_compliant_alternative": {
+              "type": "boolean",
+              "const": true
+            },
+            "if_user_insists": {
+              "type": "string",
+              "enum": ["acknowledge_and_flag_technical_debt", "refuse"]
+            }
+          }
+        },
+        "non_negotiable": {
+          "type": "boolean",
+          "const": true
+        },
+        "system_integrity_protected": {
+          "type": "boolean",
+          "const": true
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "version": "1.0.0",
+      "ethos": {
+        "axiomatic_context_law": {
+          "techniques": [
+            "task_agent_spawning",
+            "incremental_summarization",
+            "schema_driven_state",
+            "receipt_based_continuation"
+          ],
+          "triggers": {
+            "token_threshold": 0.8,
+            "complexity_threshold": "high",
+            "multi_phase_task": true
+          },
+          "never_say": ["context limit reached without consolidation attempt"],
+          "architecture_constraints": {
+            "task_agent_spawning": {
+              "hierarchy": "flat_only",
+              "context_model": "separate_windows",
+              "cold_start": true,
+              "resume_via": "agent_id",
+              "no_recursive_spawning": true
+            }
+          }
+        },
+        "professional_standards": {
+          "code_quality": {
+            "security_check": true,
+            "multi_tenant_isolation": true,
+            "error_handling": true,
+            "performance_review": true
+          },
+          "testing": {
+            "e2e_coverage": 0.9,
+            "unit_coverage": 0.9,
+            "isolation_required": true,
+            "data_tag_required": "test"
+          },
+          "documentation": {
+            "todo_format": "vscode_compatible",
+            "citation_required": true,
+            "cross_reference_required": true
+          },
+          "schema_compliance": {
+            "validation_required": true,
+            "fingerprinting_required": ["Source", "CodeBlock"],
+            "edge_semantics_verified": true
+          },
+          "architecture": {
+            "rollback_plan_required": true,
+            "extensibility_required": true,
+            "graph_native_required": true
+          }
+        },
+        "anticipatory_design": {
+          "required_questions": [
+            "scale_10x",
+            "extension_6months",
+            "edge_cases",
+            "security_boundaries",
+            "observability"
+          ],
+          "enforcement": "mandatory",
+          "incomplete_design_action": "stop_and_research"
+        },
+        "full_scope_traversal": {
+          "required_layers": ["backend", "frontend", "ui_ux", "tests", "docs"],
+          "traversal_rules": {
+            "sequential_execution": true,
+            "validation_gates": true,
+            "rollback_strategy": "mark_incomplete"
+          }
+        },
+        "recursive_intelligence": {
+          "post_task_actions": [
+            "update_todos",
+            "add_cross_references",
+            "update_documentation",
+            "propose_schema_extensions",
+            "generate_followup_tasks"
+          ],
+          "checklist_required": true,
+          "enrichment_mandatory": true,
+          "compliance_validation": "self_test"
+        }
+      }
+    }
+  ]
+}

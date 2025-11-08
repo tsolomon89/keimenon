@@ -26,7 +26,6 @@ import {
   createTestNodes,
   cleanupTestData,
   SSECollector,
-  waitFor,
 } from './utils/test-helpers';
 
 // Test configuration
@@ -76,7 +75,7 @@ describe('E2E Delete Workflow', () => {
   describe('Complete Delete Flow', () => {
     test(
       'should complete full delete workflow with SSE updates',
-      async (_t) => {
+      async () => {
         // 1. Create test data (1000 nodes)
         console.log('[Test] Creating 1000 test nodes...');
         const nodeIds = createTestNodes(db, adminAccountId, 1000);
@@ -183,7 +182,7 @@ describe('E2E Delete Workflow', () => {
 
     test(
       'should handle small dataset deletion (< 500 nodes)',
-      async (_t) => {
+      async () => {
         // Create only 100 nodes (single batch)
         console.log('[Test] Creating 100 test nodes...');
         createTestNodes(db, adminAccountId, 100);
@@ -216,7 +215,7 @@ describe('E2E Delete Workflow', () => {
 
     test(
       'should handle empty dataset gracefully',
-      async (_t) => {
+      async () => {
         // No nodes to delete
         const nodesBefore = countNodes(db, adminAccountId);
         assert.strictEqual(nodesBefore, 0);
@@ -246,7 +245,7 @@ describe('E2E Delete Workflow', () => {
   describe('Delete Scope Variations', () => {
     test(
       'should delete canvas scope only (preserve groups/settings)',
-      async (_t) => {
+      async () => {
         // Create nodes with different data_tags
         const canvasNode = db.prepare(`
         INSERT INTO nodes (id, account_id, node_type, data_scope, data_tags)
@@ -295,7 +294,7 @@ describe('E2E Delete Workflow', () => {
 
     test(
       'should delete all-clients scope (everything)',
-      async (_t) => {
+      async () => {
         // Create nodes with different data_tags
         const node = db.prepare(`
         INSERT INTO nodes (id, account_id, node_type, data_scope, data_tags)
@@ -328,7 +327,7 @@ describe('E2E Delete Workflow', () => {
   describe('Concurrent Delete Handling', () => {
     test(
       'should prevent concurrent delete jobs (concurrency_group)',
-      async (_t) => {
+      async () => {
         // Create test data
         createTestNodes(db, adminAccountId, 500);
 
@@ -353,7 +352,7 @@ describe('E2E Delete Workflow', () => {
 
     test(
       'should handle delete while import is running',
-      async (_t) => {
+      async () => {
         // This tests different concurrency_group values
         // Import jobs have different concurrency_group than delete jobs
         // Both should be able to run simultaneously
@@ -378,7 +377,7 @@ describe('E2E Delete Workflow', () => {
   describe('Delete Error Handling', () => {
     test(
       'should handle database errors gracefully',
-      async (_t) => {
+      async () => {
         // Create test data
         createTestNodes(db, adminAccountId, 100);
 
@@ -395,7 +394,7 @@ describe('E2E Delete Workflow', () => {
 
     test(
       'should handle orphaned delete jobs (server restart)',
-      async (_t) => {
+      async () => {
         // Create test data
         createTestNodes(db, adminAccountId, 100);
 
@@ -430,7 +429,7 @@ describe('E2E Delete Workflow', () => {
   describe('Performance Benchmarks', () => {
     test(
       'should delete 1000 nodes in under 30 seconds',
-      async (_t) => {
+      async () => {
         // Create test data
         createTestNodes(db, adminAccountId, 1000);
 
@@ -454,7 +453,7 @@ describe('E2E Delete Workflow', () => {
 
     test(
       'should show progress updates at regular intervals',
-      async (_t) => {
+      async () => {
         // Create large dataset
         createTestNodes(db, adminAccountId, 1000);
 

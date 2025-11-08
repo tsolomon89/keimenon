@@ -13,15 +13,15 @@ import { login } from './helpers/login';
  * 6. Canvas loads graph data from backend
  *
  * This test exercises the full stack from browser to backend database.
- * Tagged with @full for comprehensive test runs.
+ * Tagged with @smoke for critical path and @full for comprehensive test runs.
  */
 
 test.describe('Authentication and Canvas Flow', () => {
-  test.describe.configure({ tag: '@full' });
+  test.describe.configure({ tag: ['@smoke', '@full'] });
 
   // Test credentials - should exist in test database
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
-  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || '123456';
+  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'TestPass123!';
 
   test('complete login flow: redirect → authenticate → canvas', async ({ page, context }) => {
     // Step 1: Navigate to home page

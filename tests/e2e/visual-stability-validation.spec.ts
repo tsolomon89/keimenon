@@ -28,7 +28,7 @@ async function captureBaseline(page: Page, step: string): Promise<void> {
 
 test.describe('Visual Stability Validation', () => {
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
-  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || '123456';
+  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'TestPass123!';
 
   test('should maintain visual consistency across multiple runs', async ({ page }) => {
     // Login for this test (canvas requires auth)

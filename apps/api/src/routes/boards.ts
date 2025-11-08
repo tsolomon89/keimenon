@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { BoardSchema } from '@canvas-memory/types';
 import { nanoid } from 'nanoid';
+import { getDbClient } from '../utils/get-db-client';
 
 const router = Router();
 
@@ -21,14 +22,6 @@ export function setAuthDependencies(
   requireAuth = authMiddleware;
   requirePermission = permissionMiddleware;
   isolateByAccount = isolationMiddleware;
-}
-
-// Helper to get database client
-function getDbClient() {
-  if (!global.dbClient) {
-    throw new Error('Database not initialized');
-  }
-  return global.dbClient;
 }
 
 /**
@@ -53,7 +46,7 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     const { workspace_id = 'default_workspace' } = req.query;
-    const db = getDbClient();
+    const db = await getDbClient(req);
     const storageMode = process.env.STORAGE_MODE || 'local';
 
     let boards: any[];
@@ -129,7 +122,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 
     const { id } = req.params;
-    const db = getDbClient();
+    const db = await getDbClient(req);
 
     const board = await db.getNode(id);
 
@@ -183,7 +176,7 @@ router.get('/:id/graph', async (req: Request, res: Response) => {
 
     const { id } = req.params;
     const { limit = 1000 } = req.query;
-    const db = getDbClient();
+    const db = await getDbClient(req);
     const storageMode = process.env.STORAGE_MODE || 'local';
 
     // Check if board exists and user has access
@@ -348,7 +341,7 @@ router.post('/', async (req: Request, res: Response) => {
     };
 
     const board = BoardSchema.parse(boardData);
-    const db = getDbClient();
+    const db = await getDbClient(req);
 
     // Add account_id and created_by if auth is enabled
     if (req.user) {
@@ -396,7 +389,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     const { id } = req.params;
     const { name, description, settings } = req.body;
-    const db = getDbClient();
+    const db = await getDbClient(req);
     const storageMode = process.env.STORAGE_MODE || 'local';
 
     // Get existing board
@@ -493,7 +486,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     const { id } = req.params;
     const { delete_contents = false } = req.query;
-    const db = getDbClient();
+    const db = await getDbClient(req);
     const storageMode = process.env.STORAGE_MODE || 'local';
 
     // Check if board exists

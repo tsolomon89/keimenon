@@ -2,45 +2,54 @@
   "mcpServers": {
     "canvas-database": {
       "command": "node",
-      "args": ["C:/Development/Projects/ai_convo_parser/.mcp/servers/database/index.js"],
+      "args": [".mcp/servers/database/index.js"],
       "env": {
         "SQLITE_PATH": "${HOME}/.canvas-memory/canvas.db"
       }
     },
     "canvas-docs": {
       "command": "node",
-      "args": ["C:/Development/Projects/ai_convo_parser/.mcp/servers/docs/index.js"]
+      "args": [".mcp/servers/docs/index.js"]
     },
     "canvas-api-testing": {
       "command": "node",
-      "args": ["C:/Development/Projects/ai_convo_parser/.mcp/servers/api-testing/index.js"],
+      "args": [".mcp/servers/api-testing/index.js"],
       "env": {
         "API_BASE_URL": "http://localhost:4001"
       }
     },
     "canvas-chat-import": {
       "command": "node",
-      "args": ["C:/Development/Projects/ai_convo_parser/.mcp/servers/chat-import/index.js"],
+      "args": [".mcp/servers/chat-import/index.js"],
       "env": {
         "API_BASE_URL": "http://localhost:4001"
       }
     },
     "canvas-settings-crm": {
       "command": "node",
-      "args": ["C:/Development/Projects/ai_convo_parser/.mcp/servers/settings-crm/index.js"],
+      "args": [".mcp/servers/settings-crm/index.js"],
       "env": {
         "SQLITE_PATH": "${HOME}/.canvas-memory/canvas.db"
       }
     },
     "playwright-e2e": {
       "command": "node",
-      "args": ["C:/Development/Projects/ai_convo_parser/.mcp/servers/playwright-e2e/index.js"],
+      "args": [".mcp/servers/playwright-e2e/index.js"],
       "env": {
         "BASE_URL": "http://localhost:3000",
         "API_BASE_URL": "http://localhost:4001",
         "TEST_USER_EMAIL": "admin@admin.com",
         "TEST_USER_PASSWORD": "admin123"
       }
+    },
+    "visual-feedback": {
+      "command": "node",
+      "args": [".mcp/servers/visual-feedback/index.js"],
+      "description": "Visual testing and screenshot comparison for E2E test automation"
+    },
+    "playwright-test": {
+      "command": "npx",
+      "args": ["playwright", "run-test-mcp-server"]
     }
   }
 }

@@ -3,6 +3,18 @@ name: mcp-integration-expert
 description: Expert in using project's 6 MCP servers (canvas-database, canvas-docs, canvas-api-testing, canvas-chat-import, canvas-settings-crm, playwright-e2e). Orchestrates multi-server workflows for testing, validation, and debugging. Use when needing to query database, search docs, test APIs, or run E2E tests.
 ---
 
+---
+
+**Operational Ethos Compliance:** This skill operates under the principles defined in [CLAUDE.md Section 13](../../CLAUDE.md#13-operational-ethos--recursive-intelligence):
+
+- **Context Consolidation**: Automatic, not optional (Section 13.0)
+- **Professional Standards**: Security, testing, documentation mandatory (Section 13.1)
+- **Anticipatory Design**: Think 3 steps ahead (Section 13.2)
+- **Full-Scope Traversal**: Address all layers (Section 13.3)
+- **Recursive Intelligence**: Enrich system with every run (Section 13.4)
+
+---
+
 # MCP Integration Expert
 
 ## Purpose

@@ -31,6 +31,8 @@ import { createSettingsRoutes } from './routes/settings.routes';
 import { createAdminRoutes } from './routes/admin.routes';
 import { createDataManagementRoutes } from './routes/data-management';
 import { createDeduplicationRoutes } from './routes/deduplication';
+import { createTestHelperRoutes } from './routes/test-helpers';
+import healthRoutes from './routes/health.routes';
 import { createJobsRoutes } from './modules/jobs/infrastructure/jobs.routes';
 import { createStreamRoutes } from './modules/jobs/infrastructure/stream.routes';
 import { createImportJobsRoutes as createJobBasedImportRoutes } from './modules/jobs/infrastructure/import-jobs.routes';
@@ -49,6 +51,8 @@ import {
   configureHelmet,
   addCustomSecurityHeaders,
 } from './middleware/security.middleware';
+import { testIsolationMiddleware } from './middleware/test-isolation.middleware';
+import { dbContextMiddleware } from './middleware/db-context.middleware';
 import { validateAndFailFast } from './utils/env-validator';
 import { errorLogger, notFoundHandler } from './middleware/error-handler.middleware';
 import { testCorrelationMiddleware } from './middleware/test-correlation.middleware';
@@ -97,39 +101,16 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // Test correlation for E2E testing (adds x-test-id header tracking)
 app.use(testCorrelationMiddleware);
 
-// Health check
-app.get('/health', async (req: Request, res: Response) => {
-  const storageMode = process.env.STORAGE_MODE || 'local';
-  let dbStatus = 'unknown';
+// Test isolation middleware (only in test environment)
+// Must be applied BEFORE routes and AFTER body parsing
+if (process.env.NODE_ENV === 'test') {
+  console.log('🧪 Test isolation middleware enabled');
+  app.use(testIsolationMiddleware); // Validates X-Test-DB-Path header
+  app.use(dbContextMiddleware); // Swaps global.dbClient based on header
+}
 
-  try {
-    if (global.dbClient) {
-      // Try a simple query to verify database is responsive
-      if (storageMode === 'local') {
-        // SQLite test
-        await global.dbClient.execute('SELECT 1');
-        dbStatus = 'connected';
-      } else {
-        // Neo4j test
-        await global.dbClient.execute('RETURN 1');
-        dbStatus = 'connected';
-      }
-    }
-  } catch (error) {
-    dbStatus = 'disconnected';
-  }
-
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    service: 'canvas-memory-api',
-    version: '0.1.0',
-    storageMode,
-    dependencies: {
-      database: dbStatus,
-    },
-  });
-});
+// Health check routes (includes /health and /health/modules)
+app.use('/health', healthRoutes);
 
 // Readiness check
 app.get('/ready', async (req: Request, res: Response) => {
@@ -273,6 +254,7 @@ let duplicatesRoutes: any = null;
 let jobsRoutes: any = null;
 let streamRoutes: any = null;
 let jobBasedImportRoutes: any = null;
+let testHelperRoutes: any = null; // Test-only endpoints (savepoint, cleanup)
 
 // Auth-protected routes (deferred until auth service initializes)
 // These routes require authentication and are registered after authService is ready
@@ -412,6 +394,12 @@ app.use('/api/v1/cluster', (req, res, next) => {
   return clusterRoutes(req, res, next);
 });
 
+// Test helper routes (savepoint, cleanup) - only available in test environment
+app.use('/api/v1/test', (req, res, next) => {
+  if (testHelperRoutes) return testHelperRoutes(req, res, next);
+  return res.status(404).json({ error: 'Test helpers not available (NODE_ENV must be "test")' });
+});
+
 // 404 Not Found Handler - Must be after all routes
 app.use(notFoundHandler);
 
@@ -544,6 +532,7 @@ async function start() {
     // Initialize Auth Service
     console.log('🔐 Initializing auth service...');
     authService = new AuthService(dbClient as any);
+    (global as any).authService = authService; // Expose for health check
     authRoutes = createAuthRoutes(authService);
     accountsRoutes = createAccountsRoutes(dbClient as any, authService);
     usersRoutes = createUsersRoutes(dbClient as any, authService);
@@ -561,6 +550,9 @@ async function start() {
     jobsRoutes = createJobsRoutes(authService, (dbClient as any).db); // Pass SQLite database instance
     // NOTE: jobBasedImportRoutes will be initialized after workerPool is ready (see line ~676)
 
+    // Initialize Test Helper Routes (only in test environment)
+    testHelperRoutes = createTestHelperRoutes(dbClient as any);
+
     // Inject auth dependencies into data routes
     setNodesAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
     setEdgesAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
@@ -577,6 +569,7 @@ async function start() {
       maxSizeBytes: parseInt(process.env.MAX_FILE_SIZE_MB || '10') * 1024 * 1024,
     });
     await storageService.init();
+    (global as any).storageService = storageService; // Expose for health check
     console.log('✅ Storage initialized');
 
     // Initialize Local Document Store
@@ -658,6 +651,7 @@ async function start() {
     // Initialize Worker Pool
     console.log('⚙️ Initializing worker pool...');
     const jobRepository = new SQLiteJobRepository((dbClient as any).db);
+    (global as any).jobRepository = jobRepository; // Expose for health check
     const concurrencyGuard = new ConcurrencyGuard(jobRepository);
     const startJobUseCase = new StartJob(jobRepository);
 
@@ -692,6 +686,7 @@ async function start() {
 
     // Start worker pool (recovers orphaned jobs from previous instance)
     await workerPool.start();
+    (global as any).workerPool = workerPool; // Expose for health check
     console.log('✅ Worker pool initialized and started');
 
     // Initialize job-based import routes NOW that workerPool is ready

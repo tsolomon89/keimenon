@@ -12,6 +12,9 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
 
+  /* Ignore template files - they're documentation, not actual tests */
+  testIgnore: '**/templates/**',
+
   /* Global setup - runs once before all tests */
   globalSetup: './tests/e2e/global-setup.ts',
 
@@ -24,8 +27,14 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
 
-  /* Limit parallel workers to reduce resource contention */
-  workers: process.env.CI ? 1 : 2,
+  /* Parallel workers enabled with savepoint-based isolation */
+  /* Architecture:
+   * - Each worker gets isolated database (worker-0.db, worker-1.db, etc.)
+   * - Each test wrapped in savepoint for atomic cleanup
+   * - testIsolationMiddleware and dbContextMiddleware handle per-request DB routing
+   * - See: tests/e2e/fixtures/test-isolation.ts, tests/e2e/fixtures/database-snapshots.ts
+   */
+  workers: 4, // Parallel execution with perfect test isolation
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
@@ -37,7 +46,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.BASE_URL || 'http://127.0.0.1:3000',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -116,10 +125,28 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: 'npm run dev',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: !process.env.CI,
-  //   timeout: 120 * 1000,
-  // },
+  webServer: [
+    {
+      // Start API server in TEST mode (enables savepoint routes)
+      command: 'cd apps/api && npm run dev:test',
+      url: 'http://localhost:4001/health',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+      env: {
+        NODE_ENV: 'test',
+        PORT: '4001',
+      },
+    },
+    {
+      // Start Web server
+      command: 'cd apps/web && npm run dev',
+      url: 'http://localhost:3000',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+      env: {
+        PORT: '3000',
+        NEXT_PUBLIC_API_URL: 'http://localhost:4001',
+      },
+    },
+  ],
 });

@@ -517,10 +517,10 @@ class DatabaseMCPServer {
           a.account_class,
           a.account_type,
           COUNT(DISTINCT n.id) as node_count,
-          COUNT(DISTINCT u.id) as user_count
+          COUNT(DISTINCT ua.user_id) as user_count
         FROM accounts a
         LEFT JOIN nodes n ON n.account_id = a.id
-        LEFT JOIN users u ON u.account_id = a.id
+        LEFT JOIN user_accounts ua ON ua.account_id = a.id
         GROUP BY a.id
       `
         )

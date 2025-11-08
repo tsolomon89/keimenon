@@ -26,7 +26,7 @@ test('debug env config', async ({ page }) => {
 
   // Try to login and capture network request
   await page.fill('input[type="email"]', 'admin@admin.com');
-  await page.fill('input[type="password"]', '123456');
+  await page.fill('input[type="password"]', 'TestPass123!');
 
   // Capture fetch requests
   const fetchPromise = page

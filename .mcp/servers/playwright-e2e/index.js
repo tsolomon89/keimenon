@@ -17,6 +17,7 @@
  * - pw.lastFailures: Get details of last failed tests
  * - app.start: Start web and API servers for testing
  * - app.stop: Stop running servers
+ * - app.health: Check server health (cached 30s to reduce token usage)
  * - artifacts.list: List available test artifacts
  * - artifacts.read: Read artifact contents
  * - env.info: Get environment and version information
@@ -71,6 +72,15 @@ class PlaywrightE2EMCPServer {
     // Running processes
     this.processes = new Map(); // jobId -> { process, type, startTime, logs }
     this.runningServers = new Map(); // 'web' | 'api' -> process
+
+    // Health check cache (reduces token usage)
+    this.healthCache = { timestamp: 0, data: null };
+
+    // Process state registry (tracks PIDs and health)
+    this.processRegistry = {
+      api: { pid: null, started_at: null, started_by: null, healthy: false },
+      web: { pid: null, started_at: null, started_by: null, healthy: false },
+    };
 
     // Setup handlers
     this.setupHandlers();
@@ -167,6 +177,20 @@ class PlaywrightE2EMCPServer {
           inputSchema: {
             type: 'object',
             properties: {},
+          },
+        },
+        {
+          name: 'app.health',
+          description: 'Check server health status (cached for 30 seconds to reduce token usage)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              force_refresh: {
+                type: 'boolean',
+                description: 'Force refresh cache (skip cached value)',
+                default: false,
+              },
+            },
           },
         },
         {
@@ -285,6 +309,8 @@ class PlaywrightE2EMCPServer {
             return await this.startApp(args);
           case 'app.stop':
             return await this.stopApp(args);
+          case 'app.health':
+            return await this.getHealth(args);
           case 'artifacts.list':
             return await this.listArtifacts(args);
           case 'artifacts.read':
@@ -532,10 +558,80 @@ class PlaywrightE2EMCPServer {
     try {
       console.error('[App] Starting web and API servers...');
 
-      // Check if already running
-      if (await this.checkServer(`${API_URL}/health`)) {
-        console.error('[App] API already running');
-      } else {
+      // FAST PATH: Check process registry first (no HTTP calls)
+      if (this.processRegistry.api.healthy && this.processRegistry.web.healthy) {
+        // Verify processes still exist
+        let apiAlive = false;
+        let webAlive = false;
+
+        try {
+          if (this.processRegistry.api.pid) {
+            process.kill(this.processRegistry.api.pid, 0); // Signal 0 = check if process exists
+            apiAlive = true;
+          }
+        } catch {
+          // Process doesn't exist
+          this.processRegistry.api.healthy = false;
+          this.processRegistry.api.pid = null;
+        }
+
+        try {
+          if (this.processRegistry.web.pid) {
+            process.kill(this.processRegistry.web.pid, 0);
+            webAlive = true;
+          }
+        } catch {
+          // Process doesn't exist
+          this.processRegistry.web.healthy = false;
+          this.processRegistry.web.pid = null;
+        }
+
+        if (apiAlive && webAlive) {
+          console.error('[App] ✅ Servers already running (from registry, no health check needed)');
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    success: true,
+                    cached: true,
+                    servers: {
+                      api: {
+                        url: API_URL,
+                        port: API_PORT,
+                        running: true,
+                        pid: this.processRegistry.api.pid,
+                        started_at: this.processRegistry.api.started_at,
+                        source: 'registry',
+                      },
+                      web: {
+                        url: WEB_URL,
+                        port: WEB_PORT,
+                        running: true,
+                        pid: this.processRegistry.web.pid,
+                        started_at: this.processRegistry.web.started_at,
+                        source: 'registry',
+                      },
+                    },
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+      }
+
+      // SLOW PATH: Verify via health check (cached if recent)
+      console.error('[App] Registry check failed, performing health check...');
+      const healthResult = await this.getHealth({ force_refresh: false });
+      const health = JSON.parse(healthResult.content[0].text);
+
+      // Start API if not running
+      if (!health.api.running && !this.processRegistry.api.healthy) {
+        console.error('[App] Starting API server...');
         const apiProc = await this.startServer(
           'api',
           'npm',
@@ -543,17 +639,35 @@ class PlaywrightE2EMCPServer {
           join(REPO_ROOT, 'apps/api'),
           {
             PORT: API_PORT,
+            NODE_ENV: env === 'ci' ? 'test' : 'development',
           }
         );
+
         this.runningServers.set('api', apiProc);
+
+        // Update registry
+        this.processRegistry.api = {
+          pid: apiProc.pid,
+          started_at: Date.now(),
+          started_by: 'mcp-server',
+          healthy: false, // Will be set to true after waitForServer succeeds
+        };
 
         // Wait for API
         await this.waitForServer(`${API_URL}/health`, 'API', 60000);
+
+        // Mark healthy in registry
+        this.processRegistry.api.healthy = true;
+
+        // Invalidate cache
+        this.healthCache.timestamp = 0;
+      } else {
+        console.error('[App] API already running');
       }
 
-      if (await this.checkServer(WEB_URL)) {
-        console.error('[App] Web already running');
-      } else {
+      // Start Web if not running
+      if (!health.web.running && !this.processRegistry.web.healthy) {
+        console.error('[App] Starting Web server...');
         const webProc = await this.startServer(
           'web',
           'npm',
@@ -561,12 +675,30 @@ class PlaywrightE2EMCPServer {
           join(REPO_ROOT, 'apps/web'),
           {
             PORT: WEB_PORT,
+            NODE_ENV: env === 'ci' ? 'test' : 'development',
           }
         );
+
         this.runningServers.set('web', webProc);
+
+        // Update registry
+        this.processRegistry.web = {
+          pid: webProc.pid,
+          started_at: Date.now(),
+          started_by: 'mcp-server',
+          healthy: false,
+        };
 
         // Wait for Web
         await this.waitForServer(WEB_URL, 'Web', 60000);
+
+        // Mark healthy in registry
+        this.processRegistry.web.healthy = true;
+
+        // Invalidate cache
+        this.healthCache.timestamp = 0;
+      } else {
+        console.error('[App] Web already running');
       }
 
       return {
@@ -577,8 +709,20 @@ class PlaywrightE2EMCPServer {
               {
                 success: true,
                 servers: {
-                  web: { url: WEB_URL, port: WEB_PORT, running: true },
-                  api: { url: API_URL, port: API_PORT, running: true },
+                  api: {
+                    url: API_URL,
+                    port: API_PORT,
+                    running: true,
+                    pid: this.processRegistry.api.pid,
+                    started_at: this.processRegistry.api.started_at,
+                  },
+                  web: {
+                    url: WEB_URL,
+                    port: WEB_PORT,
+                    running: true,
+                    pid: this.processRegistry.web.pid,
+                    started_at: this.processRegistry.web.started_at,
+                  },
                 },
               },
               null,
@@ -616,6 +760,25 @@ class PlaywrightE2EMCPServer {
       }
 
       this.runningServers.clear();
+
+      // Clear process registry
+      this.processRegistry.api = {
+        pid: null,
+        started_at: null,
+        started_by: null,
+        healthy: false,
+      };
+      this.processRegistry.web = {
+        pid: null,
+        started_at: null,
+        started_by: null,
+        healthy: false,
+      };
+
+      // Invalidate health cache
+      this.healthCache.timestamp = 0;
+
+      console.error('[App] ✅ All servers stopped and registry cleared');
 
       return {
         content: [
@@ -856,6 +1019,143 @@ class PlaywrightE2EMCPServer {
             ),
           },
         ],
+      };
+    }
+  }
+
+  async getHealth(args = {}) {
+    const { force_refresh = false } = args;
+
+    try {
+      const now = Date.now();
+      const CACHE_TTL = 30000; // 30 seconds
+
+      // Return cached result if valid
+      if (!force_refresh && this.healthCache.data && now - this.healthCache.timestamp < CACHE_TTL) {
+        console.error(
+          '[Health] Returning cached result (age: ${(now - this.healthCache.timestamp) / 1000}s)'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  ...this.healthCache.data,
+                  cached: true,
+                  cache_age_seconds: Math.floor((now - this.healthCache.timestamp) / 1000),
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      // Refresh health check
+      console.error('[Health] Performing fresh health check...');
+
+      const apiRunning = await this.checkServer(`${API_URL}/health`);
+      const webRunning = await this.checkServer(WEB_URL);
+      const dbPath = join(
+        process.env.HOME || process.env.USERPROFILE,
+        '.canvas-memory',
+        'canvas.db'
+      );
+
+      // Check database accessibility
+      let dbAccessible = false;
+      try {
+        await stat(dbPath);
+        dbAccessible = true;
+      } catch {
+        dbAccessible = false;
+      }
+
+      // Verify process registry accuracy
+      if (this.processRegistry.api.healthy && !apiRunning) {
+        console.error(
+          '[Health] Warning: Process registry shows API healthy but health check failed'
+        );
+        this.processRegistry.api.healthy = false;
+        this.processRegistry.api.pid = null;
+      }
+
+      if (this.processRegistry.web.healthy && !webRunning) {
+        console.error(
+          '[Health] Warning: Process registry shows Web healthy but health check failed'
+        );
+        this.processRegistry.web.healthy = false;
+        this.processRegistry.web.pid = null;
+      }
+
+      const healthData = {
+        success: true,
+        timestamp: now,
+        api: {
+          running: apiRunning,
+          healthy: apiRunning,
+          url: API_URL,
+          port: API_PORT,
+          pid: this.processRegistry.api.pid,
+          started_at: this.processRegistry.api.started_at,
+        },
+        web: {
+          running: webRunning,
+          healthy: webRunning,
+          url: WEB_URL,
+          port: WEB_PORT,
+          pid: this.processRegistry.web.pid,
+          started_at: this.processRegistry.web.started_at,
+        },
+        database: {
+          accessible: dbAccessible,
+          path: dbPath,
+        },
+      };
+
+      // Update cache
+      this.healthCache = {
+        timestamp: now,
+        data: healthData,
+      };
+
+      console.error(
+        `[Health] API: ${apiRunning ? '✅' : '❌'}, Web: ${webRunning ? '✅' : '❌'}, DB: ${dbAccessible ? '✅' : '❌'}`
+      );
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                ...healthData,
+                cached: false,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                success: false,
+                error: error.message,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+        isError: true,
       };
     }
   }

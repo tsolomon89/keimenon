@@ -5,6 +5,7 @@ import { getStorageService } from '../services/storage';
 import { generateFingerprint, generateNodeId } from '../services/fingerprint';
 import { AutogroupService } from '../services/autogroup';
 import { SourceNodeSchema } from '@canvas-memory/types';
+import { getDbClient } from '../utils/get-db-client';
 
 const router = Router();
 
@@ -25,14 +26,6 @@ export function setAuthDependencies(
   requireAuth = authMiddleware;
   requirePermission = permissionMiddleware;
   isolateByAccount = isolationMiddleware;
-}
-
-// Helper to get database client
-function getDbClient() {
-  if (!global.dbClient) {
-    throw new Error('Database not initialized');
-  }
-  return global.dbClient;
 }
 
 // Configure multer for file uploads
@@ -94,7 +87,7 @@ router.post('/files', upload.array('files', 10), async (req: Request, res: Respo
 
     const storage = getStorageService();
     const autogroup = new AutogroupService();
-    const db = getDbClient();
+    const db = await getDbClient(req);
     const sources = [];
 
     // Process each file

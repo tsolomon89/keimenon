@@ -12,7 +12,7 @@ import { login } from './helpers/login';
 
 test.describe('Debug Authentication', () => {
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
-  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || '123456';
+  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'TestPass123!';
 
   test('should have token and API access after login', async ({ page }) => {
     // Enable console logging

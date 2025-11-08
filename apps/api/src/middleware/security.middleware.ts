@@ -44,18 +44,24 @@ function getAllowedOrigins(): string[] {
 /**
  * CORS Configuration
  * Restricts API access to known origins only
+ *
+ * CRITICAL FIX #2: More permissive CORS in test mode
+ * - Detects test mode via NODE_ENV=test or PLAYWRIGHT_TEST env var
+ * - Allows all localhost/127.0.0.1 origins in test mode
+ * - Adds x-test-db-path header for test isolation
  */
 export function configureCors(): RequestHandler {
   const allowedOrigins = getAllowedOrigins();
   const nodeEnv = process.env.NODE_ENV || 'development';
+  const isTestMode = nodeEnv === 'test' || process.env.PLAYWRIGHT_TEST === 'true';
 
-  console.log(`🔒 CORS configured for ${nodeEnv}:`, allowedOrigins);
+  console.log(`🔒 CORS configured for ${nodeEnv} (test mode: ${isTestMode}):`, allowedOrigins);
 
   return cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, curl, Postman)
       if (!origin) {
-        if (nodeEnv === 'development') {
+        if (nodeEnv === 'development' || nodeEnv === 'test' || isTestMode) {
           return callback(null, true);
         } else {
           // Production: require origin header
@@ -63,7 +69,14 @@ export function configureCors(): RequestHandler {
         }
       }
 
-      // Check if origin is allowed
+      // In test mode, allow any localhost/127.0.0.1 origin
+      if (isTestMode) {
+        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+          return callback(null, true);
+        }
+      }
+
+      // Check if origin is in the allowed list
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -82,6 +95,7 @@ export function configureCors(): RequestHandler {
       'X-Operating-Mode',
       'x-test-id',
       'x-test-source',
+      'x-test-db-path', // CRITICAL: Required for test isolation
     ],
     exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
     maxAge: 86400, // Cache preflight for 24 hours

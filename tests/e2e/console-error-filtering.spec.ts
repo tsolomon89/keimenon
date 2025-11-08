@@ -19,7 +19,7 @@ test.describe('Console Footer Error Filtering', () => {
 
   // Test credentials
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
-  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || '123456';
+  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'TestPass123!';
 
   test.beforeEach(async ({ page }) => {
     // Login using WebKit-friendly helper

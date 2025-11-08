@@ -1,32 +1,49 @@
 /**
  * Global Test Setup
  *
- * Starts the test server once before all tests and stops it after.
- * This file should be imported by test files that need the API server.
+ * Starts the test server once before all tests and ensures it is stopped
+ * when the process exits.
  */
 
-import { before, after } from 'node:test';
-import { startTestServer, stopTestServer } from './utils/test-server';
+import { before } from 'node:test';
+import { startTestServer, stopTestServer, isTestServerRunning } from './utils/test-server';
 
-// Track if setup has run
 let setupComplete = false;
 
-// Global setup - runs once before all tests
-before(async () => {
-  if (!setupComplete) {
-    console.log('\n🚀 Starting global test server...');
-    await startTestServer();
-    setupComplete = true;
-    console.log('✅ Global test server ready\n');
-  }
-}, 60000); // 60 second timeout for server startup
+before(
+  async () => {
+    if (!setupComplete) {
+      console.log('\ndYs? Starting global test server...');
+      await startTestServer();
+      setupComplete = true;
+      console.log('?o. Global test server ready\n');
+    }
+  },
+  { timeout: 60000 }
+);
 
-// Global teardown - runs once after all tests
-after(async () => {
-  if (setupComplete) {
-    console.log('\n🧹 Stopping global test server...');
+const handleShutdown = async () => {
+  if (setupComplete && isTestServerRunning()) {
+    console.log('\ndY\u00151 Stopping global test server...');
     await stopTestServer();
     setupComplete = false;
-    console.log('✅ Global test server stopped\n');
+    console.log('?o. Global test server stopped\n');
   }
-}, 30000); // 30 second timeout for cleanup
+};
+
+process.once('SIGINT', async () => {
+  await handleShutdown();
+  process.exit(0);
+});
+
+process.once('SIGTERM', async () => {
+  await handleShutdown();
+  process.exit(0);
+});
+
+process.once('exit', () => {
+  if (setupComplete && isTestServerRunning()) {
+    void stopTestServer();
+    setupComplete = false;
+  }
+});

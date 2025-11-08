@@ -30,7 +30,6 @@ import {
   getJob,
   listJobs,
   getTestFilePath,
-  waitFor,
   sleep,
 } from './utils/test-helpers';
 
@@ -81,7 +80,7 @@ describe('E2E Import Workflow', () => {
   describe('Complete Import Flow', () => {
     test(
       'should complete full import workflow with SSE updates',
-      async (_t) => {
+      async () => {
         // 1. Get initial counts
         const nodesBefore = countNodes(db, adminAccountId);
         const edgesBefore = countEdges(db, adminAccountId);
@@ -207,7 +206,7 @@ describe('E2E Import Workflow', () => {
 
     test(
       'should handle small file import (< 10 conversations)',
-      async (_t) => {
+      async () => {
         const testFile = getTestFilePath('tiny.json');
         const { jobId } = await createImportJob(testFile, adminToken);
 
@@ -226,7 +225,7 @@ describe('E2E Import Workflow', () => {
 
     test(
       'should handle medium file import (10-50 conversations)',
-      async (_t) => {
+      async () => {
         const testFile = getTestFilePath('small.json');
         const { jobId } = await createImportJob(testFile, adminToken);
 
@@ -245,7 +244,7 @@ describe('E2E Import Workflow', () => {
 
     test(
       'should emit progress updates during import',
-      async (_t) => {
+      async () => {
         const sseCollector = new SSECollector(`${API_URL}/api/v1/stream/jobs`, adminToken);
         await sseCollector.connect();
 
@@ -278,7 +277,7 @@ describe('E2E Import Workflow', () => {
 
     test(
       'should include import metadata in job state',
-      async (_t) => {
+      async () => {
         const testFile = getTestFilePath('tiny.json');
         const { jobId } = await createImportJob(testFile, adminToken, {
           export_code: true,
@@ -305,7 +304,7 @@ describe('E2E Import Workflow', () => {
   describe('Import Error Handling', () => {
     test(
       'should fail gracefully on malformed JSON',
-      async (_t) => {
+      async () => {
         // Create a temporary malformed JSON file
         const fs = require('fs');
         const tempFile = path.join(os.tmpdir(), 'malformed.json');
@@ -331,7 +330,7 @@ describe('E2E Import Workflow', () => {
 
     test(
       'should handle empty file',
-      async (_t) => {
+      async () => {
         const fs = require('fs');
         const tempFile = path.join(os.tmpdir(), 'empty.json');
         fs.writeFileSync(tempFile, '[]');
@@ -358,7 +357,7 @@ describe('E2E Import Workflow', () => {
 
     test(
       'should handle missing file gracefully',
-      async (_t) => {
+      async () => {
         const nonExistentFile = '/tmp/does-not-exist.json';
 
         try {
@@ -377,7 +376,7 @@ describe('E2E Import Workflow', () => {
   describe('Import Jobs List API', () => {
     test(
       'should list active import jobs',
-      async (_t) => {
+      async () => {
         // Create multiple import jobs
         const job1 = await createImportJob(getTestFilePath('tiny.json'), adminToken);
         const job2 = await createImportJob(getTestFilePath('tiny.json'), adminToken);
@@ -402,7 +401,7 @@ describe('E2E Import Workflow', () => {
 
     test(
       'should filter jobs by status',
-      async (_t) => {
+      async () => {
         const { jobId } = await createImportJob(getTestFilePath('tiny.json'), adminToken);
         await waitForJobCompletion(jobId, adminToken);
 
@@ -420,7 +419,7 @@ describe('E2E Import Workflow', () => {
 
     test(
       'should limit jobs list results',
-      async (_t) => {
+      async () => {
         const jobs = await listJobs(adminToken, { limit: 5 });
 
         assert.ok(jobs.length <= 5);
@@ -434,7 +433,7 @@ describe('E2E Import Workflow', () => {
   describe('Concurrent Import Jobs', () => {
     test(
       'should handle multiple concurrent imports',
-      async (_t) => {
+      async () => {
         // Start 3 imports simultaneously
         const [job1, job2, job3] = await Promise.all([
           createImportJob(getTestFilePath('tiny.json'), adminToken),
@@ -468,7 +467,7 @@ describe('E2E Import Workflow', () => {
 
     test(
       'should respect worker pool concurrency limits',
-      async (_t) => {
+      async () => {
         const sseCollector = new SSECollector(`${API_URL}/api/v1/stream/jobs`, adminToken);
         await sseCollector.connect();
 
@@ -512,7 +511,7 @@ describe('E2E Import Workflow', () => {
   describe('SSE Integration', () => {
     test(
       'should broadcast to correct account only',
-      async (_t) => {
+      async () => {
         // This test would require a second account
         // For now, verify our account receives events
 
@@ -539,7 +538,7 @@ describe('E2E Import Workflow', () => {
 
     test(
       'should include job type in SSE events',
-      async (_t) => {
+      async () => {
         const sseCollector = new SSECollector(`${API_URL}/api/v1/stream/jobs`, adminToken);
         await sseCollector.connect();
 

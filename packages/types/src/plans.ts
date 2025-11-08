@@ -20,15 +20,17 @@ export type Workspace = z.infer<typeof WorkspaceSchema>;
 // Board
 export const BoardSchema = z.object({
   id: z.string(),
+  kind: z.literal('Board'),
   workspace_id: z.string(),
   name: z.string(),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   created_at: z.number(),
   updated_at: z.number(),
-  settings: z.object({
-    default_lens: z.string().default('2D'),
-    layout_seed: z.number().optional(),
-  }).optional(),
+  settings: z.record(z.any()).optional(),
+  // Node metadata fields
+  account_id: z.string().optional(),
+  created_by: z.string().optional(),
+  data_tag: z.enum(['test', 'real', 'automated', 'manual']).optional(),
 });
 
 export type Board = z.infer<typeof BoardSchema>;

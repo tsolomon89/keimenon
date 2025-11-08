@@ -12,8 +12,12 @@ test.describe('Canvas Operations', () => {
   test.describe.configure({ tag: '@smoke' });
 
   // Test credentials
+  // FIXED: Updated password to match global setup (TestPass123!)
+  // Visual evidence: test-results/canvas-operations.../test-failed-1.png
+  // Issue: Login failed with "Invalid email or password"
+  // Root cause: Password mismatch between test (123456) and setup (TestPass123!)
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
-  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || '123456';
+  const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'TestPass123!';
 
   test.beforeEach(async ({ page }) => {
     // Log in before each test using WebKit-friendly helper

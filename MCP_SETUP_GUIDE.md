@@ -4,7 +4,7 @@
 
 Your MCP servers are installed and ready to use with Claude Code!
 
-## Available MCP Servers (6 Total)
+## Available MCP Servers (7 Total)
 
 ### 1. canvas-database
 
@@ -64,19 +64,46 @@ Your MCP servers are installed and ready to use with Claude Code!
 
 **Full docs:** See `MCP_INTEGRATION_GUIDE.md`
 
+### 7. visual-feedback
+
+**What it does:** Visual regression testing and screenshot comparison for E2E tests
+**Tools:**
+
+- `compare_screenshots` - Compare two screenshots with pixel-level precision
+- `detect_visual_regression` - Detect visual regressions between baseline and current screenshots
+- `analyze_layout` - Analyze screenshot layout for spacing and alignment issues
+- `extract_element_properties` - Extract element properties from screenshot
+- `capture_multi_viewport` - Capture screenshots across multiple viewports
+
+**Configuration:**
+
+- Threshold: 0.05-0.15 (5%-15% pixel difference tolerance)
+- Performance: ~420ms per comparison (1920x1080)
+- Anti-aliasing: Enabled for smooth edges
+- Severity levels: none, minor, moderate, major
+
+**Use Cases:**
+
+- Visual regression testing across test runs
+- Multi-viewport responsive testing
+- Account-specific visual isolation validation
+- Workflow stage visual documentation
+
+**Full docs:** See `VISUAL_FEEDBACK_GUIDE.md`
+
 ---
 
 ## Setup for Claude Code
 
 ### Option 1: Project Scope (Automatic) ✅ ALREADY CONFIGURED
 
-Your `.mcp.json` file is already in the project root, so **Claude Code should auto-detect all 6 servers**.
+Your `.mcp.json` file is already in the project root, so **Claude Code should auto-detect all 7 servers**.
 
 **To verify:**
 
 1. Restart Claude Code (if running)
 2. Run: `/mcp` in Claude Code
-3. You should see all 6 servers listed
+3. You should see all 7 servers listed
 
 **No additional setup needed!**
 
@@ -97,6 +124,8 @@ claude mcp add --transport stdio --scope user canvas-chat-import -- node C:\Deve
 claude mcp add --transport stdio --scope user canvas-settings-crm -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\settings-crm\index.js
 
 claude mcp add --transport stdio --scope user playwright-e2e -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\playwright-e2e\index.js
+
+claude mcp add --transport stdio --scope user visual-feedback -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\visual-feedback\index.js
 ```
 
 ### Option 3: Manual Configuration
@@ -153,6 +182,12 @@ If auto-detection doesn't work, you can manually configure in Claude Code's sett
         "TEST_USER_EMAIL": "admin@admin.com",
         "TEST_USER_PASSWORD": "admin123"
       }
+    },
+    "visual-feedback": {
+      "command": "node",
+      "args": [
+        "C:\\Development\\Projects\\ai_convo_parser\\.mcp\\servers\\visual-feedback\\index.js"
+      ]
     }
   }
 }
@@ -182,7 +217,7 @@ In Claude Code, run:
 /mcp
 ```
 
-You should see all 6 servers listed with their tools.
+You should see all 7 servers listed with their tools.
 
 ### Test 2: Try a Simple Tool
 
@@ -213,6 +248,16 @@ List available chat import test datasets
 ```
 
 Claude should use `list_test_datasets` tool.
+
+### Test 5: Visual Feedback Test
+
+Ask Claude:
+
+```
+Compare two screenshots for visual regression
+```
+
+Claude should use the `compare_screenshots` tool from visual-feedback server.
 
 ---
 
@@ -245,6 +290,17 @@ You: "Show me database stats"
 Claude: [Uses get_stats]
 You: "Query all nodes from last week"
 Claude: [Uses query_nodes with date filter]
+```
+
+### Workflow 4: Visual Regression Testing
+
+```
+You: "Compare the baseline screenshot to the current one for the dashboard"
+Claude: [Uses compare_screenshots, which generates diff image automatically]
+You: "What's the visual difference?"
+Claude: [Uses detect_visual_regression and shows severity with diff image path]
+You: "Extract element properties from that screenshot"
+Claude: [Uses extract_element_properties to analyze specific elements]
 ```
 
 ---
@@ -347,10 +403,13 @@ All servers validate file paths to prevent directory traversal attacks.
 
 - **Playwright E2E Guide:** `MCP_INTEGRATION_GUIDE.md`
 - **E2E Testing Guide:** `E2E_TESTING_GUIDE.md`
+- **Visual Feedback Guide:** `VISUAL_FEEDBACK_GUIDE.md` (NEW - comprehensive developer guide)
+- **Visual Feedback Integration:** `VISUAL_FEEDBACK_INTEGRATION.md` (implementation analysis)
+- **Autonomous Testing:** `AUTONOMOUS_TESTING_IMPLEMENTATION.md`
 - **Server Source Code:** `.mcp/servers/*/index.js`
 - **Claude Code Docs:** https://docs.claude.com/en/docs/claude-code/mcp
 
 ---
 
-**Status:** ✅ All 6 servers tested and functional
-**Last Updated:** October 26, 2025
+**Status:** ✅ All 7 servers tested and functional
+**Last Updated:** 2025-11-01
