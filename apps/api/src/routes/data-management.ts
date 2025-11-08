@@ -36,7 +36,12 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
     asyncHandler(async (req: Request, res: Response) => {
       const accountId = (req as any).user.accountId;
       const userId = (req as any).user.userId;
+      const dataTag = req.query.data_tag as string | undefined;
       const now = Date.now();
+
+      // Build WHERE clause based on whether data_tag filter is provided
+      const dataTagFilter = dataTag ? `AND data_tag = ?` : '';
+      const params = dataTag ? [accountId, dataTag] : [accountId];
 
       // Get counts before deletion for response
       const nodesCounts = database
@@ -45,11 +50,12 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
       SELECT kind, COUNT(*) as count
       FROM nodes
       WHERE account_id = ?
+        ${dataTagFilter}
         AND kind IN ('ChatThread', 'Message', 'Source', 'CodeBlock', 'Group', 'Folder')
       GROUP BY kind
     `
         )
-        .all(accountId) as any[];
+        .all(...params) as any[];
 
       const edgesCount = database
         .prepare(
@@ -57,10 +63,11 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
       SELECT COUNT(*) as count
       FROM edges
       WHERE account_id = ?
+        ${dataTagFilter}
         AND kind IN ('CONTAINS', 'DERIVES_FROM', 'IN_GROUP', 'FOLDS_INTO_FOLDER', 'DUP_OF')
     `
         )
-        .get(accountId) as any;
+        .get(...params) as any;
 
       // Check if there's any data to delete
       const totalNodes = nodesCounts.reduce((sum, n) => sum + n.count, 0);
@@ -99,10 +106,11 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
             `
         DELETE FROM edges
         WHERE account_id = ?
+          ${dataTagFilter}
           AND kind IN ('CONTAINS', 'DERIVES_FROM', 'IN_GROUP', 'FOLDS_INTO_FOLDER', 'DUP_OF')
       `
           )
-          .run(accountId);
+          .run(...params);
 
         // 2. Delete canvas data nodes (FTS trigger will clean up automatically)
         const nodesDeleted = database
@@ -110,10 +118,11 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
             `
         DELETE FROM nodes
         WHERE account_id = ?
+          ${dataTagFilter}
           AND kind IN ('ChatThread', 'Message', 'Source', 'CodeBlock', 'Group', 'Folder')
       `
           )
-          .run(accountId);
+          .run(...params);
 
         // 3. Audit log
         database

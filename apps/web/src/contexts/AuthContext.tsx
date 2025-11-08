@@ -65,6 +65,22 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const TOKEN_KEY = 'canvas_memory_token';
 
 /**
+ * CRITICAL FIX #4: Get test headers for E2E test isolation
+ * Reads X-Test-DB-Path from window (injected by Playwright) and includes it in requests
+ * This ensures frontend fetch() calls use the correct worker-specific test database
+ */
+function getTestHeaders(): Record<string, string> {
+  const testHeaders: Record<string, string> = {};
+
+  // Check if we're in test mode (Playwright injects this)
+  if (typeof window !== 'undefined' && (window as any).__TEST_DB_PATH__) {
+    testHeaders['X-Test-DB-Path'] = (window as any).__TEST_DB_PATH__;
+  }
+
+  return testHeaders;
+}
+
+/**
  * Decode JWT payload (base64)
  * Returns null if invalid
  */
@@ -178,7 +194,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...getTestHeaders(), // CRITICAL FIX #4: Include test DB path for E2E isolation
+          },
           body: JSON.stringify({ email, password }),
         });
 

@@ -223,7 +223,7 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
     // Account B's node SHOULD be in the list
     const foundAccountBNode = nodes.find((n: any) => n.id === nodeBId);
     expect(foundAccountBNode).toBeDefined();
-    expect(foundAccountBNode.title).toBe('Account B Private Source 1');
+    expect(foundAccountBNode.title).toBe('Account B Confidential Source 1');
   });
 
   test('should filter nodes by account_id correctly', async ({ apiRequest }) => {
@@ -331,11 +331,11 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
     });
 
     const data = await listResponse.json();
-    const nodes = (data.nodes || data).filter((n: any) => n.properties?.title === identicalTitle);
+    const nodes = (data.nodes || data).filter((n: any) => n.title === identicalTitle);
 
     // Account B should only see 1 node with this title (their own)
     expect(nodes.length).toBe(1);
-    expect(nodes[0].properties.content).toBe('Account B content');
+    expect(nodes[0].metadata.content).toBe('Account B content');
   });
 
   test('should maintain isolation after account switching', async ({ page, request }) => {

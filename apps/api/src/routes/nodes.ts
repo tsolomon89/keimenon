@@ -61,7 +61,8 @@ router.post('/source', async (req: Request, res: Response) => {
 
     await db.createNode(nodeData);
 
-    return res.status(201).json({ success: true, node: source });
+    // Return the complete node with all fields (account_id, created_by, data_tag, etc.)
+    return res.status(201).json({ success: true, node: nodeData });
   } catch (error: any) {
     console.error('Create source error:', error);
     return res.status(500).json({
@@ -203,10 +204,11 @@ router.get('/', async (req: Request, res: Response) => {
               parsedProperties = {};
             }
 
+            // Spread the parsed node and override with authoritative database values
             return {
+              ...parsedProperties,
               id: row.id,
               kind: row.kind,
-              properties: parsedProperties,
               created_at: row.created_at,
               updated_at: row.updated_at,
             };
@@ -235,10 +237,11 @@ router.get('/', async (req: Request, res: Response) => {
               parsedProperties = {};
             }
 
+            // Spread the parsed node and override with authoritative database values
             return {
+              ...parsedProperties,
               id: row.id,
               kind: row.kind,
-              properties: parsedProperties,
               created_at: row.created_at,
               updated_at: row.updated_at,
             };
@@ -270,10 +273,11 @@ router.get('/', async (req: Request, res: Response) => {
               parsedProperties = {};
             }
 
+            // Spread the parsed node and override with authoritative database values
             return {
+              ...parsedProperties,
               id: row.id,
               kind: row.kind,
-              properties: parsedProperties,
               created_at: row.created_at,
               updated_at: row.updated_at,
             };
@@ -302,10 +306,11 @@ router.get('/', async (req: Request, res: Response) => {
               parsedProperties = {};
             }
 
+            // Spread the parsed node and override with authoritative database values
             return {
+              ...parsedProperties,
               id: row.id,
               kind: row.kind,
-              properties: parsedProperties,
               created_at: row.created_at,
               updated_at: row.updated_at,
             };
