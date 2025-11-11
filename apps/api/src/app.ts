@@ -79,24 +79,26 @@ export function createApp(): { app: Express; context: AppContext } {
     console.log('🧪 Test isolation middleware enabled - using per-worker databases');
   }
 
-  // Body parsing with conditional skip for multipart routes
-  // Skip body parsing for /api/v1/jobs/* routes as they use busboy for streaming multipart uploads
+  // Request logging (before body parsing so we can see ALL requests)
   app.use((req: Request, res: Response, next: NextFunction) => {
-    // Skip body parsing for jobs routes (they handle multipart streams with busboy)
+    console.log(`${req.method} ${req.path}`);
+    return next();
+  });
+
+  // Body parsing - Applied selectively to avoid consuming multipart streams
+  // IMPORTANT: Jobs routes use busboy and must NOT have body-parser applied
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Check if this is a jobs route that handles multipart uploads
     if (req.path.startsWith('/api/v1/jobs')) {
-      return next();
+      console.log(`[Body-Parser] ⏭️  Skipping body-parser for: ${req.method} ${req.path}`);
+      return next(); // Skip body-parser for jobs routes
     }
-    // Apply body parsing for all other routes
+
+    // Apply body-parser for all other routes
     express.json({ limit: '10mb' })(req, res, (err) => {
       if (err) return next(err);
       express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
     });
-  });
-
-  // Request logging
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    console.log(`${req.method} ${req.path}`);
-    return next();
   });
 
   // Context to hold services
