@@ -4,6 +4,9 @@
  * Helper for making authenticated API requests in E2E tests.
  * Automatically extracts JWT token from localStorage and adds Authorization header.
  *
+ * ENHANCED: Logs all non-200 API responses to .test-errors.log for debugging intermittent failures.
+ * See: SESSION6_HANDOFF.md - Intermittent CREATE test failure investigation
+ *
  * Usage:
  * ```typescript
  * const response = await makeAuthenticatedRequest(page, 'POST', '/api/v1/auth/switch-account', {
@@ -12,9 +15,12 @@
  * ```
  */
 
-import { Page } from '@playwright/test';
+import { Page, APIResponse } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const API_BASE_URL = 'http://127.0.0.1:4001';
+const ERROR_LOG_PATH = path.join(process.cwd(), '.test-errors.log');
 
 export interface RequestOptions {
   data?: any;
@@ -23,8 +29,54 @@ export interface RequestOptions {
 }
 
 /**
+ * Log API errors to file for post-test analysis
+ * Helps debug intermittent failures that occur during test runs
+ */
+async function logApiError(
+  method: string,
+  url: string,
+  response: APIResponse,
+  requestData?: any
+): Promise<void> {
+  try {
+    const timestamp = new Date().toISOString();
+    const status = response.status();
+    const statusText = response.statusText();
+
+    // Attempt to get response body
+    let responseBody = '';
+    try {
+      responseBody = await response.text();
+    } catch {
+      responseBody = '<unable to read response body>';
+    }
+
+    // Format log entry
+    const logEntry = [
+      `[${timestamp}] ${method} ${url}`,
+      `Status: ${status} ${statusText}`,
+      `Request: ${requestData ? JSON.stringify(requestData, null, 2) : 'N/A'}`,
+      `Response: ${responseBody}`,
+      '---',
+      '',
+    ].join('\n');
+
+    // Write to log file (append mode)
+    fs.appendFileSync(ERROR_LOG_PATH, logEntry);
+
+    // Also log to console for immediate visibility
+    console.error(`[API ERROR] ${method} ${url} returned ${status}`);
+    console.error(`[API ERROR] Response: ${responseBody.substring(0, 500)}`);
+  } catch (error) {
+    // Don't fail the test if logging fails
+    console.warn('[API ERROR LOGGING] Failed to log error:', error);
+  }
+}
+
+/**
  * Make an authenticated API request
  * Extracts token from localStorage and adds Authorization header
+ * ENHANCED: Automatically logs non-200 responses for debugging
  */
 export async function makeAuthenticatedRequest(
   page: Page,
@@ -65,7 +117,14 @@ export async function makeAuthenticatedRequest(
 
   // Make the request using the appropriate method
   const methodLower = method.toLowerCase() as 'get' | 'post' | 'put' | 'delete';
-  return page.request[methodLower](fullUrl, requestOptions);
+  const response = await page.request[methodLower](fullUrl, requestOptions);
+
+  // ENHANCED: Log non-200 responses for debugging intermittent failures
+  if (!response.ok()) {
+    await logApiError(method, fullUrl, response, options?.data);
+  }
+
+  return response;
 }
 
 /**

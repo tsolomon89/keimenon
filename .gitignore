@@ -21,6 +21,7 @@ test-*.js
 !tests/**/*.js
 !scripts/**/*.js
 !.mcp/**/*.js
+.test-errors.log
 
 # Next.js
 .next/
