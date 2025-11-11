@@ -79,31 +79,19 @@ export function createApp(): { app: Express; context: AppContext } {
     console.log('🧪 Test isolation middleware enabled - using per-worker databases');
   }
 
-  // CRITICAL: Mount multipart routes (jobs/import) BEFORE body parsing
-  // These routes use busboy for streaming multipart uploads and must not have body-parser consume the stream first
-  const createJobsMiddleware = () => {
-    return (req: Request, res: Response, next: NextFunction) => {
-      // Try import routes first (handles /import, /delete with multipart)
-      if (jobBasedImportRoutes) {
-        return jobBasedImportRoutes(req, res, (err?: any) => {
-          // If import router calls next() (no matching route), try general jobs router
-          if (err) return next(err);
-          if (jobsRoutes) return jobsRoutes(req, res, next);
-          return res.status(503).json({ error: 'Jobs service not initialized' });
-        });
-      }
-
-      // If no import routes, go straight to general jobs
-      if (jobsRoutes) return jobsRoutes(req, res, next);
-      return res.status(503).json({ error: 'Jobs service not initialized' });
-    };
-  };
-
-  app.use('/api/v1/jobs', createJobsMiddleware());
-
-  // Body parsing (AFTER multipart routes to avoid consuming their streams)
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  // Body parsing with conditional skip for multipart routes
+  // Skip body parsing for /api/v1/jobs/* routes as they use busboy for streaming multipart uploads
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Skip body parsing for jobs routes (they handle multipart streams with busboy)
+    if (req.path.startsWith('/api/v1/jobs')) {
+      return next();
+    }
+    // Apply body parsing for all other routes
+    express.json({ limit: '10mb' })(req, res, (err) => {
+      if (err) return next(err);
+      express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+    });
+  });
 
   // Request logging
   app.use((req: Request, res: Response, next: NextFunction) => {
@@ -350,7 +338,14 @@ export function createApp(): { app: Express; context: AppContext } {
     return res.status(503).json({ error: 'Auth service not initialized' });
   });
 
-  // NOTE: Jobs routes already mounted earlier (before body parsing) to preserve multipart streams
+  // Jobs routes (body-parser automatically skips /api/v1/jobs/* paths to preserve multipart streams)
+  app.use('/api/v1/jobs', (req, res, next) => {
+    // Try import routes first (they handle /import, /delete with multipart)
+    if (jobBasedImportRoutes) return jobBasedImportRoutes(req, res, next);
+    // Fall back to general jobs routes
+    if (jobsRoutes) return jobsRoutes(req, res, next);
+    return res.status(503).json({ error: 'Jobs service not initialized' });
+  });
 
   // Auth-protected data routes
   app.use('/api/v1/nodes', (req, res, next) => {
