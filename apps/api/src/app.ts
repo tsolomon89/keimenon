@@ -72,27 +72,38 @@ export function createApp(): { app: Express; context: AppContext } {
   app.use(configureCors());
   app.use(addCustomSecurityHeaders());
 
-  // Body parsing
-  // Skip JSON/urlencoded parsing for import routes (they use multipart/form-data with busboy)
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.path.startsWith('/api/v1/import') || req.path.startsWith('/api/import')) {
-      return next(); // Skip body parsing for import routes
-    }
-    return express.json({ limit: '10mb' })(req, res, next);
-  });
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.path.startsWith('/api/v1/import') || req.path.startsWith('/api/import')) {
-      return next(); // Skip body parsing for import routes
-    }
-    return express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
-  });
-
-  // Test isolation (only active in test environment)
+  // Test isolation (only active in test environment) - MUST come before body parsing!
   if (process.env.NODE_ENV === 'test') {
     app.use(testIsolationMiddleware);
     app.use(dbContextMiddleware);
     console.log('🧪 Test isolation middleware enabled - using per-worker databases');
   }
+
+  // CRITICAL: Mount multipart routes (jobs/import) BEFORE body parsing
+  // These routes use busboy for streaming multipart uploads and must not have body-parser consume the stream first
+  const createJobsMiddleware = () => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      // Try import routes first (handles /import, /delete with multipart)
+      if (jobBasedImportRoutes) {
+        return jobBasedImportRoutes(req, res, (err?: any) => {
+          // If import router calls next() (no matching route), try general jobs router
+          if (err) return next(err);
+          if (jobsRoutes) return jobsRoutes(req, res, next);
+          return res.status(503).json({ error: 'Jobs service not initialized' });
+        });
+      }
+
+      // If no import routes, go straight to general jobs
+      if (jobsRoutes) return jobsRoutes(req, res, next);
+      return res.status(503).json({ error: 'Jobs service not initialized' });
+    };
+  };
+
+  app.use('/api/v1/jobs', createJobsMiddleware());
+
+  // Body parsing (AFTER multipart routes to avoid consuming their streams)
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // Request logging
   app.use((req: Request, res: Response, next: NextFunction) => {
@@ -339,17 +350,7 @@ export function createApp(): { app: Express; context: AppContext } {
     return res.status(503).json({ error: 'Auth service not initialized' });
   });
 
-  // Job-based import routes (must come before general /api/v1/jobs)
-  app.use('/api/v1/jobs', (req, res, next) => {
-    if (jobBasedImportRoutes) return jobBasedImportRoutes(req, res, next);
-    return next();
-  });
-
-  // General jobs API routes
-  app.use('/api/v1/jobs', (req, res, next) => {
-    if (jobsRoutes) return jobsRoutes(req, res, next);
-    return res.status(503).json({ error: 'Auth service not initialized' });
-  });
+  // NOTE: Jobs routes already mounted earlier (before body parsing) to preserve multipart streams
 
   // Auth-protected data routes
   app.use('/api/v1/nodes', (req, res, next) => {

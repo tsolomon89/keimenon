@@ -104,6 +104,13 @@ test.describe('Import Workflow', () => {
       },
     });
 
+    // DEBUG: Log response if not OK
+    if (!uploadResponse.ok()) {
+      console.error(`[IMPORT DEBUG] Upload failed with status ${uploadResponse.status()}`);
+      const errorBody = await uploadResponse.text();
+      console.error(`[IMPORT DEBUG] Response body: ${errorBody}`);
+    }
+
     expect(uploadResponse.ok()).toBeTruthy();
     const uploadResult = await uploadResponse.json();
 
