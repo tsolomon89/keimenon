@@ -12,11 +12,7 @@
  */
 
 import Database from 'better-sqlite3';
-import {
-  ClusteringPolicy,
-  getThresholds,
-  GrayBandThresholds,
-} from '@canvas-memory/types';
+import { ClusteringPolicy, getThresholds, GrayBandThresholds } from '@canvas-memory/types';
 import { GroupingStorage } from './grouping-storage';
 import {
   calculateJaccardSimilarity,
@@ -33,27 +29,27 @@ import { ClusterRunTracker } from './cluster-run-tracker';
  * Similarity score with breakdown
  */
 export interface SimilarityScore {
-  total: number;           // Combined score ∈ [0, 1]
-  jaccard: number;         // MinHash similarity
-  cosine?: number;         // TF-IDF similarity (prose)
-  token_sketch?: number;   // Token sketch similarity (code)
-  token_overlap?: number;  // Raw token overlap
+  total: number; // Combined score ∈ [0, 1]
+  jaccard: number; // MinHash similarity
+  cosine?: number; // TF-IDF similarity (prose)
+  token_sketch?: number; // Token sketch similarity (code)
+  token_overlap?: number; // Raw token overlap
 }
 
 /**
  * Reason code for edge/decision
  */
 export type ReasonCode =
-  | 'TOK_OVERLAP'      // High token overlap
-  | 'BLOCK_MATCH'      // Block-level match
-  | 'SENT_MATCH'       // Sentence-level match
-  | 'ORDER_COHE'       // Coherent ordering
-  | 'STRUCT_SIM'       // Structural similarity
-  | 'MINHASH_HIGH'     // High MinHash score
-  | 'TFIDF_HIGH'       // High TF-IDF cosine
-  | 'CODE_SKETCH'      // Code token sketch match
-  | 'MULTI_CANDIDATE'  // Multiple candidates within epsilon
-  | 'BELOW_THRESHOLD'  // Score below threshold
+  | 'TOK_OVERLAP' // High token overlap
+  | 'BLOCK_MATCH' // Block-level match
+  | 'SENT_MATCH' // Sentence-level match
+  | 'ORDER_COHE' // Coherent ordering
+  | 'STRUCT_SIM' // Structural similarity
+  | 'MINHASH_HIGH' // High MinHash score
+  | 'TFIDF_HIGH' // High TF-IDF cosine
+  | 'CODE_SKETCH' // Code token sketch match
+  | 'MULTI_CANDIDATE' // Multiple candidates within epsilon
+  | 'BELOW_THRESHOLD' // Score below threshold
   | 'STRUCTURAL_CONFLICT'; // Structural path conflict
 
 /**
@@ -88,13 +84,13 @@ export type ClusterDecision = 'attach' | 'review' | 'reject';
  */
 export interface DecisionResult {
   decision: ClusterDecision;
-  cluster_id?: string;           // If attach
+  cluster_id?: string; // If attach
   candidates: ClusterCandidate[];
   final_score: number;
   thresholds: GrayBandThresholds;
   reason_code: ReasonCode;
   reason_metadata?: ReasonMetadata;
-  tiebreak_path?: string[];      // Rules applied for tie-breaking
+  tiebreak_path?: string[]; // Rules applied for tie-breaking
 }
 
 /**
@@ -132,11 +128,19 @@ export class ClusteringEngine {
   }
 
   /**
-   * Run clustering pipeline
+   * Run clustering for a specific slice (level × modality)
+   *
+   * @param level - Granularity level (sentence, block, section)
+   * @param modality - Content modality
+   * @param accountId - Account ID for multi-tenant isolation (required for security)
+   * @param seed - Optional seed for deterministic clustering
+   *
+   * TODO: Make accountId required (non-optional) after migration 007 data backfill
    */
   async cluster(
     level: 'sentence' | 'block' | 'section',
     modality: string,
+    accountId?: string,
     seed?: string
   ): Promise<ClusteringResult & { run_id: string }> {
     console.log(`Clustering ${level}/${modality}...`);
@@ -156,7 +160,7 @@ export class ClusteringEngine {
       };
 
       // Get all nodes for this slice (level × modality)
-      const nodes = this.getNodesForSlice(level, modality);
+      const nodes = this.getNodesForSlice(level, modality, accountId);
       console.log(`Found ${nodes.length} nodes to process`);
 
       const createdClusters: string[] = [];
@@ -169,7 +173,7 @@ export class ClusteringEngine {
         }
 
         // Find candidates via LSH
-        const candidates = await this.findCandidates(nodeId, level, modality);
+        const candidates = await this.findCandidates(nodeId, level, modality, accountId);
 
         if (candidates.length === 0) {
           // No candidates → create new cluster
@@ -223,30 +227,39 @@ export class ClusteringEngine {
 
   /**
    * Find candidate clusters via LSH
+   *
+   * @param nodeId - Node ID to find candidates for
+   * @param level - Granularity level
+   * @param modality - Content modality
+   * @param accountId - Account ID for multi-tenant isolation (required for security)
+   *
+   * TODO: Make accountId required (non-optional) after migration 007 data backfill
    */
   private async findCandidates(
     nodeId: string,
     level: string,
-    modality: string
+    modality: string,
+    accountId?: string
   ): Promise<ClusterCandidate[]> {
     // Get node signature
-    const signature = this.storage.getNodeSignature(nodeId);
+    const signature = this.storage.getNodeSignature(nodeId, accountId);
     if (!signature) return [];
 
     // Get LSH bands
     const bands = this.extractBandsFromSignature(signature);
 
     // Find candidates by band hash
-    const bandHashes = bands.map(b => b.bandHash);
+    const bandHashes = bands.map((b) => b.bandHash);
     const candidateNodeIds = this.storage.findCandidatesByBandHashes(
       bandHashes,
+      accountId,
       1 // At least 1 band match
     );
 
     // Filter by level/modality
-    const filteredCandidates = candidateNodeIds.filter(id => {
-      const spans = this.storage.getNodeSpan(id);
-      return spans.some(s => s.level === level && s.modality === modality);
+    const filteredCandidates = candidateNodeIds.filter((id) => {
+      const spans = this.storage.getNodeSpan(id, accountId);
+      return spans.some((s) => s.level === level && s.modality === modality);
     });
 
     // Get cluster representatives
@@ -266,7 +279,7 @@ export class ClusteringEngine {
       if (seenClusters.has(clusterId)) continue;
       seenClusters.add(clusterId);
 
-      const candSignature = this.storage.getNodeSignature(candNodeId);
+      const candSignature = this.storage.getNodeSignature(candNodeId, accountId);
       if (!candSignature) continue;
 
       // Compute similarity
@@ -451,10 +464,7 @@ export class ClusteringEngine {
   /**
    * Determine reason code from similarity
    */
-  private determineReasonCode(
-    similarity: SimilarityScore,
-    modality: string
-  ): ReasonCode {
+  private determineReasonCode(similarity: SimilarityScore, modality: string): ReasonCode {
     if (similarity.jaccard >= 0.9) {
       return 'MINHASH_HIGH';
     } else if (similarity.cosine && similarity.cosine >= 0.85) {
@@ -482,7 +492,9 @@ export class ClusteringEngine {
   /**
    * Extract LSH bands from signature
    */
-  private extractBandsFromSignature(signature: NodeSignature): Array<{ bandHash: string; bandIndex: number }> {
+  private extractBandsFromSignature(
+    signature: NodeSignature
+  ): Array<{ bandHash: string; bandIndex: number }> {
     // Simple band extraction (16 bands, 8 hashes per band)
     const bandsCount = 16;
     const hashesPerBand = Math.ceil(signature.minhash.length / bandsCount);
@@ -514,15 +526,33 @@ export class ClusteringEngine {
 
   /**
    * Get nodes for slice (level × modality)
+   *
+   * @param level - Granularity level
+   * @param modality - Content modality
+   * @param accountId - Account ID for multi-tenant isolation (required for security)
+   *
+   * TODO: Make accountId required (non-optional) after migration 007 data backfill
    */
-  private getNodesForSlice(level: string, modality: string): string[] {
-    const stmt = this.db.prepare(`
-      SELECT DISTINCT node_id FROM node_spans
-      WHERE level = ? AND modality = ?
-    `);
+  private getNodesForSlice(level: string, modality: string, accountId?: string): string[] {
+    let stmt;
+    let rows;
 
-    const rows = stmt.all(level, modality) as any[];
-    return rows.map(r => r.node_id);
+    if (accountId) {
+      stmt = this.db.prepare(`
+        SELECT DISTINCT node_id FROM node_spans
+        WHERE level = ? AND modality = ? AND account_id = ?
+      `);
+      rows = stmt.all(level, modality, accountId) as any[];
+    } else {
+      // Legacy behavior without account filtering (INSECURE - for migration only)
+      stmt = this.db.prepare(`
+        SELECT DISTINCT node_id FROM node_spans
+        WHERE level = ? AND modality = ?
+      `);
+      rows = stmt.all(level, modality) as any[];
+    }
+
+    return rows.map((r) => r.node_id);
   }
 
   /**

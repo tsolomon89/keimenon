@@ -82,7 +82,7 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
       },
     });
     const groupA = await createGroupA.json();
-    groupAId = groupA.id;
+    groupAId = groupA.group?.id || groupA.node?.id || groupA.id;
 
     // Setup Account B: Create nodes and group
     const responseB = await apiRequest.post('/api/v1/auth/login', {
@@ -122,7 +122,7 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
       },
     });
     const groupB = await createGroupB.json();
-    groupBId = groupB.id;
+    groupBId = groupB.group?.id || groupB.node?.id || groupB.id;
   });
 
   test.afterEach(async ({ apiRequest }) => {

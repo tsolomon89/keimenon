@@ -89,8 +89,19 @@ app.use(configureCors()); // CORS with environment-based origin restrictions
 app.use(addCustomSecurityHeaders()); // Additional custom security headers
 
 // Body parsing - skip for file upload routes
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Skip JSON/urlencoded parsing for import routes (they use multipart/form-data with busboy)
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.path.startsWith('/api/v1/import') || req.path.startsWith('/api/import')) {
+    return next(); // Skip body parsing for import routes
+  }
+  return express.json({ limit: '10mb' })(req, res, next);
+});
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.path.startsWith('/api/v1/import') || req.path.startsWith('/api/import')) {
+    return next(); // Skip body parsing for import routes
+  }
+  return express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+});
 
 // Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -255,6 +266,7 @@ let jobsRoutes: any = null;
 let streamRoutes: any = null;
 let jobBasedImportRoutes: any = null;
 let testHelperRoutes: any = null; // Test-only endpoints (savepoint, cleanup)
+let testJobsRoutes: any = null; // Test-only job creation endpoint
 
 // Auth-protected routes (deferred until auth service initializes)
 // These routes require authentication and are registered after authService is ready
@@ -398,6 +410,14 @@ app.use('/api/v1/cluster', (req, res, next) => {
 app.use('/api/v1/test', (req, res, next) => {
   if (testHelperRoutes) return testHelperRoutes(req, res, next);
   return res.status(404).json({ error: 'Test helpers not available (NODE_ENV must be "test")' });
+});
+
+// Test jobs routes (job creation) - only available in test environment
+app.use('/api/v1/test/jobs', (req, res, next) => {
+  if (testJobsRoutes) return testJobsRoutes(req, res, next);
+  return res
+    .status(404)
+    .json({ error: 'Test jobs endpoint not available (NODE_ENV must be "test")' });
 });
 
 // 404 Not Found Handler - Must be after all routes
@@ -552,6 +572,17 @@ async function start() {
 
     // Initialize Test Helper Routes (only in test environment)
     testHelperRoutes = createTestHelperRoutes(dbClient as any);
+
+    // Initialize Test Jobs Routes (only in test environment, requires auth)
+    if (process.env.NODE_ENV === 'test') {
+      const testJobsRouter = require('./routes/test-jobs.routes').default;
+      // Wrap with auth middleware
+      const Router = require('express').Router;
+      const authRouter = Router();
+      authRouter.use(requireAuth(authService));
+      authRouter.use(testJobsRouter);
+      testJobsRoutes = authRouter;
+    }
 
     // Inject auth dependencies into data routes
     setNodesAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);

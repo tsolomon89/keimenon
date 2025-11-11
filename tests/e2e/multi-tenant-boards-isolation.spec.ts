@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/test-isolation';
+import { createTestSourceNode } from './helpers/create-test-node';
 
 /**
  * Multi-Tenant Isolation - Boards
@@ -236,17 +237,19 @@ test.describe('Multi-Tenant Isolation - Boards', () => {
     const responseA = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_A });
     const authA = await responseA.json();
 
+    const secretNodeData = createTestSourceNode({
+      title: 'Secret Node',
+      content: 'This should not be visible to Account B',
+    });
+    secretNodeData.metadata = {
+      ...secretNodeData.metadata,
+      board_id: boardAId,
+      data_tag: 'test',
+    };
+
     await apiRequest.post('/api/v1/nodes/source', {
       headers: { Authorization: `Bearer ${authA.token}` },
-      data: {
-        kind: 'Source',
-        properties: {
-          title: 'Secret Node',
-          board_id: boardAId,
-          secret_content: 'This should not be visible to Account B',
-          data_tag: 'test',
-        },
-      },
+      data: secretNodeData,
     });
 
     // Step 2: Login as Account B
@@ -316,16 +319,19 @@ test.describe('Multi-Tenant Isolation - Boards', () => {
     const responseA = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_A });
     const authA = await responseA.json();
 
+    const importantNodeData = createTestSourceNode({
+      title: 'Important Node',
+      content: 'Content for Important Node',
+    });
+    importantNodeData.metadata = {
+      ...importantNodeData.metadata,
+      board_id: boardAId,
+      data_tag: 'test',
+    };
+
     await apiRequest.post('/api/v1/nodes/source', {
       headers: { Authorization: `Bearer ${authA.token}` },
-      data: {
-        kind: 'Source',
-        properties: {
-          title: 'Important Node',
-          board_id: boardAId,
-          data_tag: 'test',
-        },
-      },
+      data: importantNodeData,
     });
 
     // Step 2: Login as Account B
@@ -457,21 +463,22 @@ test.describe('Multi-Tenant Isolation - Boards', () => {
     const authB = await responseB.json();
 
     // Step 2: Both try to access each other's board simultaneously
+    // CRITICAL FIX #12: Use apiRequest fixture, not undefined 'request'
     const promises = [
       // Account A tries to access Account B's board
-      request.get(`/api/v1/boards/${boardBId}`, {
+      apiRequest.get(`/api/v1/boards/${boardBId}`, {
         headers: { Authorization: `Bearer ${authA.token}` },
       }),
       // Account B tries to access Account A's board
-      request.get(`/api/v1/boards/${boardAId}`, {
+      apiRequest.get(`/api/v1/boards/${boardAId}`, {
         headers: { Authorization: `Bearer ${authB.token}` },
       }),
       // Account A accesses their own board (should succeed)
-      request.get(`/api/v1/boards/${boardAId}`, {
+      apiRequest.get(`/api/v1/boards/${boardAId}`, {
         headers: { Authorization: `Bearer ${authA.token}` },
       }),
       // Account B accesses their own board (should succeed)
-      request.get(`/api/v1/boards/${boardBId}`, {
+      apiRequest.get(`/api/v1/boards/${boardBId}`, {
         headers: { Authorization: `Bearer ${authB.token}` },
       }),
     ];

@@ -1,15 +1,19 @@
 import { randomUUID } from 'crypto';
+import bcrypt from 'bcrypt';
 import { SQLiteClient } from '../sqlite/client';
 
 /**
  * Migration 001: Seed Admin Account
  *
- * Creates the system admin account and admin user.
+ * Creates the system admin account and admin user for testing/development.
  * The admin account owns all existing data in the system.
  *
  * Admin credentials:
  * - Email: admin@admin.com
- * - Password: any (all passwords accepted for admin user)
+ * - Password: admin123 (hashed with bcrypt)
+ *
+ * SECURITY NOTE: This migration creates a test admin account.
+ * In production, delete this account and use proper admin onboarding.
  */
 export async function seedAdminAccount(client: SQLiteClient): Promise<void> {
   const db = client.getDatabase();
@@ -28,14 +32,19 @@ export async function seedAdminAccount(client: SQLiteClient): Promise<void> {
       return;
     }
 
+    // Generate secure password hash for admin123
+    const passwordHash = await bcrypt.hash('admin123', 12);
+
     // Begin transaction
     const transaction = db.transaction(() => {
       // 1. Create admin account
       const adminAccountId = randomUUID();
-      db.prepare(`
+      db.prepare(
+        `
         INSERT INTO accounts (id, account_type, account_class, email, name, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(
+      `
+      ).run(
         adminAccountId,
         'admin',
         'business', // Admin gets business tier features
@@ -47,16 +56,18 @@ export async function seedAdminAccount(client: SQLiteClient): Promise<void> {
 
       console.log(`✅ Created admin account: ${adminAccountId}`);
 
-      // 2. Create admin user
+      // 2. Create admin user with bcrypt-hashed password
       const adminUserId = randomUUID();
-      db.prepare(`
+      db.prepare(
+        `
         INSERT INTO users (id, account_id, email, password_hash, google_id, name, permission_level, user_class, is_active, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
+      `
+      ).run(
         adminUserId,
         adminAccountId,
         'admin@admin.com',
-        null, // No password hash - special handling in auth service
+        passwordHash, // Secure bcrypt hash of 'admin123'
         null, // No Google ID
         'Admin',
         'admin',
@@ -78,15 +89,19 @@ export async function seedAdminAccount(client: SQLiteClient): Promise<void> {
 
         if (hasAccountId) {
           // Update existing nodes - set account_id and created_by to admin
-          db.prepare(`
+          db.prepare(
+            `
             UPDATE nodes
             SET account_id = ?, created_by = ?
             WHERE account_id IS NULL OR account_id = ''
-          `).run(adminAccountId, adminUserId);
+          `
+          ).run(adminAccountId, adminUserId);
 
           console.log(`✅ Migrated ${nodeCount.count} nodes to admin account`);
         } else {
-          console.log('⚠️  Nodes table does not have account_id column yet - will be added by schema update');
+          console.log(
+            '⚠️  Nodes table does not have account_id column yet - will be added by schema update'
+          );
         }
       }
 
@@ -100,23 +115,29 @@ export async function seedAdminAccount(client: SQLiteClient): Promise<void> {
 
         if (hasAccountId) {
           // Update existing edges
-          db.prepare(`
+          db.prepare(
+            `
             UPDATE edges
             SET account_id = ?, created_by = ?
             WHERE account_id IS NULL OR account_id = ''
-          `).run(adminAccountId, adminUserId);
+          `
+          ).run(adminAccountId, adminUserId);
 
           console.log(`✅ Migrated ${edgeCount.count} edges to admin account`);
         } else {
-          console.log('⚠️  Edges table does not have account_id column yet - will be added by schema update');
+          console.log(
+            '⚠️  Edges table does not have account_id column yet - will be added by schema update'
+          );
         }
       }
 
       // 5. Update schema metadata
-      db.prepare(`
+      db.prepare(
+        `
         INSERT OR REPLACE INTO schema_metadata (key, value)
         VALUES ('migration_001', datetime('now'))
-      `).run();
+      `
+      ).run();
     });
 
     // Execute transaction

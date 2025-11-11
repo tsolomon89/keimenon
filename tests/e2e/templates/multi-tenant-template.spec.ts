@@ -369,7 +369,7 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
 
     const ADMIN = {
       email: 'admin@admin.com',
-      password: 'admin123',
+      password: 'TestPass123!',
     };
 
     // Step 1: Login as admin
@@ -512,7 +512,7 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
 
     const ADMIN = {
       email: 'admin@admin.com',
-      password: 'admin123',
+      password: 'TestPass123!',
     };
 
     await login(page, ADMIN.email, ADMIN.password);

@@ -333,18 +333,19 @@ CREATE INDEX IF NOT EXISTS idx_job_items_status ON job_items(status);
 -- FULL-TEXT SEARCH
 -- =============================================================================
 
-CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(id UNINDEXED, content, content=nodes, content_rowid=rowid);
+CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(id UNINDEXED, content);
 
 CREATE TRIGGER IF NOT EXISTS nodes_fts_insert AFTER INSERT ON nodes BEGIN
-  INSERT INTO nodes_fts(rowid, id, content) VALUES (new.rowid, new.id, new.properties);
+  INSERT INTO nodes_fts(id, content) VALUES (new.id, new.properties);
 END;
 
 CREATE TRIGGER IF NOT EXISTS nodes_fts_update AFTER UPDATE ON nodes BEGIN
-  UPDATE nodes_fts SET content = new.properties WHERE rowid = new.rowid;
+  DELETE FROM nodes_fts WHERE id = old.id;
+  INSERT INTO nodes_fts(id, content) VALUES (new.id, new.properties);
 END;
 
 CREATE TRIGGER IF NOT EXISTS nodes_fts_delete AFTER DELETE ON nodes BEGIN
-  DELETE FROM nodes_fts WHERE rowid = old.rowid;
+  DELETE FROM nodes_fts WHERE id = old.id;
 END;
 
 -- =============================================================================
@@ -968,7 +969,7 @@ export class SQLiteClient {
       SELECT n.properties
       FROM nodes n
       JOIN nodes_fts fts ON n.rowid = fts.rowid
-      WHERE nodes_fts MATCH ?
+      WHERE fts MATCH ?
       LIMIT ?
     `);
 

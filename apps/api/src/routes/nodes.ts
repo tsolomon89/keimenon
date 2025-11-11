@@ -65,6 +65,16 @@ router.post('/source', async (req: Request, res: Response) => {
     return res.status(201).json({ success: true, node: nodeData });
   } catch (error: any) {
     console.error('Create source error:', error);
+
+    // Handle Zod validation errors - return 400 instead of 500
+    if (error.name === 'ZodError') {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: error.errors,
+        message: 'Invalid node data provided',
+      });
+    }
+
     return res.status(500).json({
       error: 'Failed to create source node',
       message: error.message,
@@ -465,6 +475,147 @@ router.delete('/:id', async (req: Request, res: Response) => {
     console.error('Delete node error:', error);
     return res.status(500).json({
       error: 'Failed to delete node',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * PUT /api/v1/nodes/:id
+ * Update a node's properties (requires senior permission)
+ *
+ * IMPORTANT: Only allows updating `properties` field (metadata).
+ * Core fields like id, kind, fingerprint, created_at are immutable.
+ *
+ * Related: tests/e2e/nodes-crud-operations.spec.ts:254
+ * Related: E2E_BACKEND_ISSUES.md (Priority 2)
+ */
+router.put('/:id', async (req: Request, res: Response) => {
+  try {
+    // Apply auth if available
+    if (requireAuth && requirePermission && isolateByAccount) {
+      await new Promise<void>((resolve, reject) => {
+        requireAuth(authService)(req, res, (err: any) => {
+          if (err) reject(err);
+          else {
+            requirePermission('senior')(req, res, (err2: any) => {
+              if (err2) reject(err2);
+              else {
+                isolateByAccount(req, res, (err3: any) => {
+                  if (err3) reject(err3);
+                  else resolve();
+                });
+              }
+            });
+          }
+        });
+      });
+    }
+
+    const { id } = req.params;
+    const updates = req.body;
+    const db = await getDbClient(req);
+
+    // Check if node exists first
+    const existingNode = await db.getNode(id);
+    if (!existingNode) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+
+    // Check account access if auth is enabled
+    if (req.user) {
+      const nodeAccountId = (existingNode as any).account_id;
+
+      console.log('[UPDATE Authorization Check]', {
+        nodeId: id,
+        nodeAccountId,
+        userAccountId: req.user.accountId,
+        userType: req.user.accountType,
+      });
+
+      // Admin accounts can update all data
+      if (req.user.accountType !== 'admin') {
+        // CRITICAL SECURITY: Check for NULL account_id (data integrity violation)
+        if (nodeAccountId === null || nodeAccountId === undefined) {
+          console.error('[SECURITY] Node missing account_id on UPDATE:', {
+            nodeId: id,
+            nodeAccountId,
+            requestingUser: req.user.email,
+            userAccountId: req.user.accountId,
+          });
+          return res.status(500).json({
+            error: 'Data integrity error',
+            message: 'Node has no account owner - cannot verify permissions',
+          });
+        }
+
+        // Client accounts can only update their own data
+        if (nodeAccountId !== req.user.accountId) {
+          console.log('[UPDATE DENIED] Account mismatch:', {
+            nodeAccountId,
+            userAccountId: req.user.accountId,
+          });
+          return res.status(403).json({ error: 'Access denied' });
+        }
+      }
+    }
+
+    // SECURITY: Whitelist allowed update fields (prevent core field modification)
+    const allowedUpdates: any = {};
+
+    // Only allow updating properties/metadata - core fields are immutable
+    if (updates.properties !== undefined) {
+      allowedUpdates.properties = updates.properties;
+    }
+    if (updates.metadata !== undefined) {
+      allowedUpdates.metadata = updates.metadata;
+    }
+
+    // Reject if trying to update immutable core fields
+    const immutableFields = ['id', 'kind', 'fingerprint', 'created_at', 'created_by', 'account_id'];
+    const attemptedImmutableUpdates = immutableFields.filter(
+      (field) => updates[field] !== undefined
+    );
+
+    if (attemptedImmutableUpdates.length > 0) {
+      return res.status(400).json({
+        error: 'Cannot update immutable fields',
+        immutableFields: attemptedImmutableUpdates,
+        message: 'Core node fields cannot be modified after creation',
+      });
+    }
+
+    // If no valid updates provided, return error
+    if (Object.keys(allowedUpdates).length === 0) {
+      return res.status(400).json({
+        error: 'No valid update fields provided',
+        message: 'Only properties and metadata fields can be updated',
+      });
+    }
+
+    // Update timestamp
+    allowedUpdates.updated_at = Date.now();
+
+    // Perform update
+    const updatedNode = await db.updateNode(id, allowedUpdates);
+
+    return res.json({
+      success: true,
+      node: updatedNode,
+    });
+  } catch (error: any) {
+    console.error('Update node error:', error);
+
+    // Handle Zod validation errors
+    if (error.name === 'ZodError') {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: error.errors,
+      });
+    }
+
+    return res.status(500).json({
+      error: 'Failed to update node',
       message: error.message,
     });
   }

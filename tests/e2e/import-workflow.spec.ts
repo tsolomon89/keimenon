@@ -291,10 +291,10 @@ test.describe('Import Workflow', () => {
     const nodes = await nodesResponse.json();
     expect(nodes.nodes.length).toBeGreaterThan(0);
 
-    // Verify code block has expected content
+    // Verify code block has expected content (access from metadata, not properties)
     const codeBlock = nodes.nodes[0];
-    expect(codeBlock.properties.code).toContain('function hello()');
-    expect(codeBlock.properties.language).toBe('typescript');
+    expect(codeBlock.metadata?.code || codeBlock.code).toContain('function hello()');
+    expect(codeBlock.metadata?.language || codeBlock.language).toBe('typescript');
   });
 
   // ==================== JOB MONITORING ====================

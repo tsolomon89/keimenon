@@ -100,8 +100,12 @@ export class DeduplicationEngine {
    * 3. Create EXACT_DUP edges
    * 4. Populate canonical_map
    * 5. Compute canonical_stats with evidence weights
+   *
+   * @param accountId - Account ID for multi-tenant isolation (required for security)
+   *
+   * TODO: Make accountId required (non-optional) after migration 007 data backfill
    */
-  async deduplicate(): Promise<DeduplicationResult> {
+  async deduplicate(accountId?: string): Promise<DeduplicationResult> {
     console.log('Starting non-destructive deduplication...');
 
     const result: DeduplicationResult = {
@@ -112,7 +116,7 @@ export class DeduplicationEngine {
     };
 
     // Step 1: Find all content_id groups
-    const contentIdGroups = this.findContentIdGroups();
+    const contentIdGroups = this.findContentIdGroups(accountId);
     console.log(`Found ${contentIdGroups.length} content_id groups`);
 
     // Step 2: Process each group
@@ -122,7 +126,7 @@ export class DeduplicationEngine {
       result.exact_dups_found += group.node_ids.length - 1;
 
       // Pick canonical: smallest NodeKey
-      const canonical = this.pickCanonical(group.node_ids);
+      const canonical = this.pickCanonical(group.node_ids, accountId);
       result.canonicals_created++;
 
       // Create EXACT_DUP edges for all non-canonical nodes
@@ -135,7 +139,7 @@ export class DeduplicationEngine {
       }
 
       // Compute canonical stats
-      this.computeCanonicalStats(canonical, group.node_ids);
+      this.computeCanonicalStats(canonical, group.node_ids, accountId);
       result.stats_computed++;
     }
 
@@ -145,18 +149,40 @@ export class DeduplicationEngine {
 
   /**
    * Find groups of nodes with same content_id
+   *
+   * @param accountId - Account ID for multi-tenant isolation (required for security)
+   *
+   * TODO: Make accountId required (non-optional) after migration 007 data backfill
    */
-  private findContentIdGroups(): Array<{ content_id: string; node_ids: string[] }> {
-    const stmt = this.db.prepare(`
-      SELECT content_id, GROUP_CONCAT(node_id) as node_ids, COUNT(*) as count
-      FROM node_signatures
-      WHERE content_id IS NOT NULL
-      GROUP BY content_id
-      HAVING count > 1
-      ORDER BY count DESC
-    `);
+  private findContentIdGroups(
+    accountId?: string
+  ): Array<{ content_id: string; node_ids: string[] }> {
+    let stmt;
+    let rows;
 
-    const rows = stmt.all() as any[];
+    if (accountId) {
+      stmt = this.db.prepare(`
+        SELECT content_id, GROUP_CONCAT(node_id) as node_ids, COUNT(*) as count
+        FROM node_signatures
+        WHERE content_id IS NOT NULL AND account_id = ?
+        GROUP BY content_id
+        HAVING count > 1
+        ORDER BY count DESC
+      `);
+      rows = stmt.all(accountId) as any[];
+    } else {
+      // Legacy behavior without account filtering (INSECURE - for migration only)
+      stmt = this.db.prepare(`
+        SELECT content_id, GROUP_CONCAT(node_id) as node_ids, COUNT(*) as count
+        FROM node_signatures
+        WHERE content_id IS NOT NULL
+        GROUP BY content_id
+        HAVING count > 1
+        ORDER BY count DESC
+      `);
+      rows = stmt.all() as any[];
+    }
+
     return rows.map((row) => ({
       content_id: row.content_id,
       node_ids: row.node_ids.split(','),
@@ -165,19 +191,39 @@ export class DeduplicationEngine {
 
   /**
    * Pick canonical node: smallest NodeKey (deterministic)
+   *
+   * @param nodeIds - Array of node IDs to choose from
+   * @param accountId - Account ID for multi-tenant isolation (required for security)
+   *
+   * TODO: Make accountId required (non-optional) after migration 007 data backfill
    */
-  private pickCanonical(nodeIds: string[]): string {
+  private pickCanonical(nodeIds: string[], accountId?: string): string {
     // Get node_keys from node_spans
     const placeholders = nodeIds.map(() => '?').join(',');
-    const stmt = this.db.prepare(`
-      SELECT DISTINCT node_id, node_key
-      FROM node_spans
-      WHERE node_id IN (${placeholders})
-      ORDER BY node_key ASC
-      LIMIT 1
-    `);
+    let stmt;
+    let row;
 
-    const row = stmt.get(...nodeIds) as any;
+    if (accountId) {
+      stmt = this.db.prepare(`
+        SELECT DISTINCT node_id, node_key
+        FROM node_spans
+        WHERE node_id IN (${placeholders}) AND account_id = ?
+        ORDER BY node_key ASC
+        LIMIT 1
+      `);
+      row = stmt.get(...nodeIds, accountId) as any;
+    } else {
+      // Legacy behavior without account filtering (INSECURE - for migration only)
+      stmt = this.db.prepare(`
+        SELECT DISTINCT node_id, node_key
+        FROM node_spans
+        WHERE node_id IN (${placeholders})
+        ORDER BY node_key ASC
+        LIMIT 1
+      `);
+      row = stmt.get(...nodeIds) as any;
+    }
+
     if (!row) {
       // Fallback: alphabetically smallest node_id
       return nodeIds.sort()[0];
@@ -224,38 +270,75 @@ export class DeduplicationEngine {
 
   /**
    * Compute canonical_stats with evidence weights
+   *
+   * @param canonicalNodeId - Canonical node ID
+   * @param allNodeIds - All node IDs in this canonical group
+   * @param accountId - Account ID for multi-tenant isolation (required for security)
+   *
+   * TODO: Make accountId required (non-optional) after migration 007 data backfill
    */
-  private computeCanonicalStats(canonicalNodeId: string, allNodeIds: string[]): void {
+  private computeCanonicalStats(
+    canonicalNodeId: string,
+    allNodeIds: string[],
+    accountId?: string
+  ): void {
     const now = Math.floor(Date.now() / 1000);
 
     // Get instance metadata
     const placeholders = allNodeIds.map(() => '?').join(',');
 
-    // Count distinct blobs
-    const blobStmt = this.db.prepare(`
-      SELECT COUNT(DISTINCT blob_hash) as count
-      FROM node_spans
-      WHERE node_id IN (${placeholders})
-    `);
-    const blobRow = blobStmt.get(...allNodeIds) as any;
+    let blobRow, modalityRow, timeRow;
+
+    if (accountId) {
+      // Count distinct blobs (account-scoped)
+      const blobStmt = this.db.prepare(`
+        SELECT COUNT(DISTINCT blob_hash) as count
+        FROM node_spans
+        WHERE node_id IN (${placeholders}) AND account_id = ?
+      `);
+      blobRow = blobStmt.get(...allNodeIds, accountId) as any;
+
+      // Count distinct modalities (account-scoped)
+      const modalityStmt = this.db.prepare(`
+        SELECT COUNT(DISTINCT modality) as count
+        FROM node_spans
+        WHERE node_id IN (${placeholders}) AND account_id = ?
+      `);
+      modalityRow = modalityStmt.get(...allNodeIds, accountId) as any;
+
+      // Get time range (account-scoped)
+      const timeStmt = this.db.prepare(`
+        SELECT MIN(created_at) as first, MAX(created_at) as last
+        FROM node_spans
+        WHERE node_id IN (${placeholders}) AND account_id = ?
+      `);
+      timeRow = timeStmt.get(...allNodeIds, accountId) as any;
+    } else {
+      // Legacy behavior without account filtering (INSECURE - for migration only)
+      const blobStmt = this.db.prepare(`
+        SELECT COUNT(DISTINCT blob_hash) as count
+        FROM node_spans
+        WHERE node_id IN (${placeholders})
+      `);
+      blobRow = blobStmt.get(...allNodeIds) as any;
+
+      const modalityStmt = this.db.prepare(`
+        SELECT COUNT(DISTINCT modality) as count
+        FROM node_spans
+        WHERE node_id IN (${placeholders})
+      `);
+      modalityRow = modalityStmt.get(...allNodeIds) as any;
+
+      const timeStmt = this.db.prepare(`
+        SELECT MIN(created_at) as first, MAX(created_at) as last
+        FROM node_spans
+        WHERE node_id IN (${placeholders})
+      `);
+      timeRow = timeStmt.get(...allNodeIds) as any;
+    }
+
     const distinctBlobs = blobRow?.count || 1;
-
-    // Count distinct modalities
-    const modalityStmt = this.db.prepare(`
-      SELECT COUNT(DISTINCT modality) as count
-      FROM node_spans
-      WHERE node_id IN (${placeholders})
-    `);
-    const modalityRow = modalityStmt.get(...allNodeIds) as any;
     const distinctModalities = modalityRow?.count || 1;
-
-    // Get time range
-    const timeStmt = this.db.prepare(`
-      SELECT MIN(created_at) as first, MAX(created_at) as last
-      FROM node_spans
-      WHERE node_id IN (${placeholders})
-    `);
-    const timeRow = timeStmt.get(...allNodeIds) as any;
     const firstSeenAt = timeRow?.first || now;
     const lastSeenAt = timeRow?.last || now;
 
@@ -318,8 +401,13 @@ export class DeduplicationEngine {
 
   /**
    * Refresh canonical stats for specific canonical node
+   *
+   * @param canonicalNodeId - Canonical node ID to refresh
+   * @param accountId - Account ID for multi-tenant isolation (required for security)
+   *
+   * TODO: Make accountId required (non-optional) after migration 007 data backfill
    */
-  async refreshCanonicalStats(canonicalNodeId: string): Promise<void> {
+  async refreshCanonicalStats(canonicalNodeId: string, accountId?: string): Promise<void> {
     // Get all instances for this canonical
     const stmt = this.db.prepare(`
       SELECT node_id FROM canonical_map WHERE canonical_node_id = ?
@@ -331,7 +419,7 @@ export class DeduplicationEngine {
     const nodeIds = rows.map((r) => r.node_id);
 
     if (nodeIds.length > 0) {
-      this.computeCanonicalStats(canonicalNodeId, nodeIds);
+      this.computeCanonicalStats(canonicalNodeId, nodeIds, accountId);
     }
   }
 
@@ -433,28 +521,58 @@ export class DeduplicationEngine {
 
   /**
    * Get statistics
+   *
+   * @param accountId - Account ID for multi-tenant isolation (required for security)
+   *
+   * TODO: Make accountId required (non-optional) after migration 007 data backfill
    */
-  getStats(): {
+  getStats(accountId?: string): {
     total_nodes: number;
     unique_nodes: number;
     duplicate_nodes: number;
     canonicals_with_dups: number;
     avg_instances_per_canonical: number;
   } {
-    const totalStmt = this.db.prepare('SELECT COUNT(DISTINCT node_id) as count FROM node_spans');
-    const totalRow = totalStmt.get() as any;
+    let totalRow, dupRow, canonRow, avgRow;
+
+    if (accountId) {
+      const totalStmt = this.db.prepare(
+        'SELECT COUNT(DISTINCT node_id) as count FROM node_spans WHERE account_id = ?'
+      );
+      totalRow = totalStmt.get(accountId) as any;
+
+      const dupStmt = this.db.prepare(
+        'SELECT COUNT(*) as count FROM canonical_map WHERE canonical_node_id IN (SELECT DISTINCT node_id FROM node_spans WHERE account_id = ?)'
+      );
+      dupRow = dupStmt.get(accountId) as any;
+
+      const canonStmt = this.db.prepare(
+        'SELECT COUNT(*) as count FROM canonical_stats WHERE canonical_node_id IN (SELECT DISTINCT node_id FROM node_spans WHERE account_id = ?)'
+      );
+      canonRow = canonStmt.get(accountId) as any;
+
+      const avgStmt = this.db.prepare(
+        'SELECT AVG(instances_count) as avg FROM canonical_stats WHERE canonical_node_id IN (SELECT DISTINCT node_id FROM node_spans WHERE account_id = ?)'
+      );
+      avgRow = avgStmt.get(accountId) as any;
+    } else {
+      // Legacy behavior without account filtering (INSECURE - for migration only)
+      const totalStmt = this.db.prepare('SELECT COUNT(DISTINCT node_id) as count FROM node_spans');
+      totalRow = totalStmt.get() as any;
+
+      const dupStmt = this.db.prepare('SELECT COUNT(*) as count FROM canonical_map');
+      dupRow = dupStmt.get() as any;
+
+      const canonStmt = this.db.prepare('SELECT COUNT(*) as count FROM canonical_stats');
+      canonRow = canonStmt.get() as any;
+
+      const avgStmt = this.db.prepare('SELECT AVG(instances_count) as avg FROM canonical_stats');
+      avgRow = avgStmt.get() as any;
+    }
+
     const totalNodes = totalRow?.count || 0;
-
-    const dupStmt = this.db.prepare('SELECT COUNT(*) as count FROM canonical_map');
-    const dupRow = dupStmt.get() as any;
     const duplicateNodes = dupRow?.count || 0;
-
-    const canonStmt = this.db.prepare('SELECT COUNT(*) as count FROM canonical_stats');
-    const canonRow = canonStmt.get() as any;
     const canonicalsWithDups = canonRow?.count || 0;
-
-    const avgStmt = this.db.prepare('SELECT AVG(instances_count) as avg FROM canonical_stats');
-    const avgRow = avgStmt.get() as any;
     const avgInstancesPerCanonical = avgRow?.avg || 0;
 
     return {

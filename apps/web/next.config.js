@@ -15,6 +15,15 @@ const nextConfig = {
       managedPaths: [/^(.+?[\\/]node_modules[\\/])/i],
     };
 
+    // CRITICAL FIX: Add webpack alias for env.config module
+    // Fixes E2E test error: "Failed to fetch dynamically imported module"
+    // Ensures env.config.ts resolves correctly in test environment
+    const path = require('path');
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@/lib/env.config': path.resolve(__dirname, 'src/lib/env.config.ts'),
+    };
+
     return config;
   },
 };

@@ -6,6 +6,7 @@ import * as migration004 from './004_canonical_map_and_stats';
 import * as migration005 from './005_clustering_schema';
 import * as migration006_settings from './006_settings_schema';
 import * as migration006_policy from './006_policy_versions_and_runs';
+import * as migration007 from './007_add_account_isolation_to_phase1_tables';
 
 /**
  * Migration runner for SQLite database
@@ -27,6 +28,7 @@ const MIGRATIONS: Record<string, MigrationModule> = {
   '005': migration005,
   '006_settings': migration006_settings,
   '006_policy': migration006_policy,
+  '007': migration007,
 };
 
 function getDatabasePath(): string {
@@ -53,9 +55,9 @@ async function ensureMigrationsTable(db: Database.Database): Promise<void> {
 async function getAppliedMigrations(db: Database.Database): Promise<string[]> {
   await ensureMigrationsTable(db);
 
-  const rows = db
-    .prepare('SELECT version FROM migrations ORDER BY version')
-    .all() as Array<{ version: string }>;
+  const rows = db.prepare('SELECT version FROM migrations ORDER BY version').all() as Array<{
+    version: string;
+  }>;
 
   return rows.map((row) => row.version);
 }
@@ -71,9 +73,11 @@ async function runMigration(
     module.up(db);
 
     // Record migration
-    db.prepare(
-      'INSERT INTO migrations (version, name, applied_at) VALUES (?, ?, ?)'
-    ).run(version, `migration_${version}`, Date.now());
+    db.prepare('INSERT INTO migrations (version, name, applied_at) VALUES (?, ?, ?)').run(
+      version,
+      `migration_${version}`,
+      Date.now()
+    );
 
     console.log(`✅ Migration ${version} completed successfully`);
   } catch (error) {

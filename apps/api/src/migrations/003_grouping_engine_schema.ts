@@ -11,8 +11,12 @@ import Database from 'better-sqlite3';
  * - clusters and cluster_members tables
  * - New edge kinds for deduplication and clustering
  *
+ * SECURITY: All Phase 1-3 tables include account_id for multi-tenant isolation from day 1.
+ * This prevents the security vulnerability that would require migration 007.
+ *
  * Phase: Foundation (Week 1)
  * Date: 2025-10-13
+ * Updated: 2025-11-08 (added account_id columns)
  */
 
 export const MIGRATION_003_UP = `
@@ -25,10 +29,12 @@ CREATE TABLE IF NOT EXISTS blobs (
   mime_type TEXT,
   encoding TEXT NOT NULL DEFAULT 'utf8',
   storage_path TEXT NOT NULL,     -- Relative path in storage
+  account_id TEXT,                -- Multi-tenant isolation (nullable for migration compatibility)
   data_tag TEXT NOT NULL,         -- For test isolation (e.g., 'test', 'prod')
   created_at INTEGER NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_blobs_account ON blobs(account_id);
 CREATE INDEX IF NOT EXISTS idx_blobs_data_tag ON blobs(data_tag);
 CREATE INDEX IF NOT EXISTS idx_blobs_mime ON blobs(mime_type);
 
@@ -45,12 +51,14 @@ CREATE TABLE IF NOT EXISTS node_spans (
   level TEXT NOT NULL CHECK(level IN ('token','phrase','sentence','block','section','message','conversation')),
   modality TEXT NOT NULL CHECK(modality IN ('code','prose','math','json','csv','markdown','html')),
   parent_node_id TEXT,
+  account_id TEXT,                  -- Multi-tenant isolation (nullable for migration compatibility)
   data_tag TEXT NOT NULL,           -- For test isolation
   created_at INTEGER NOT NULL,
   PRIMARY KEY (node_id, blob_hash, byte_start, byte_end),
   FOREIGN KEY (blob_hash) REFERENCES blobs(hash) ON DELETE CASCADE
 );
 
+CREATE INDEX IF NOT EXISTS idx_spans_account ON node_spans(account_id);
 CREATE INDEX IF NOT EXISTS idx_spans_level_modality ON node_spans(level, modality);
 CREATE INDEX IF NOT EXISTS idx_spans_blob ON node_spans(blob_hash);
 CREATE INDEX IF NOT EXISTS idx_spans_parent ON node_spans(parent_node_id);
@@ -65,10 +73,12 @@ CREATE TABLE IF NOT EXISTS node_signatures (
   tfidf_vector TEXT,                       -- Sparse vector (optional, JSON)
   token_sketch TEXT,                       -- For code: "op|ident|num|..."
   structural_path TEXT NOT NULL,           -- e.g., "h1[2]|h2[5]|p[3]"
+  account_id TEXT,                         -- Multi-tenant isolation (nullable for migration compatibility)
   data_tag TEXT NOT NULL,                  -- For test isolation
   created_at INTEGER NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_sig_account ON node_signatures(account_id);
 CREATE INDEX IF NOT EXISTS idx_sig_node_key ON node_signatures(node_key);
 CREATE INDEX IF NOT EXISTS idx_sig_content_id ON node_signatures(content_id);
 CREATE INDEX IF NOT EXISTS idx_sig_structural ON node_signatures(structural_path);
@@ -79,11 +89,13 @@ CREATE TABLE IF NOT EXISTS lsh_bands (
   band_hash TEXT NOT NULL,
   band_index INTEGER NOT NULL,
   node_id TEXT NOT NULL,
+  account_id TEXT,                         -- Multi-tenant isolation (nullable for migration compatibility)
   data_tag TEXT NOT NULL,                  -- For test isolation
   created_at INTEGER NOT NULL,
   PRIMARY KEY (band_hash, band_index, node_id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_lsh_account ON lsh_bands(account_id);
 CREATE INDEX IF NOT EXISTS idx_lsh_band_hash ON lsh_bands(band_hash);
 CREATE INDEX IF NOT EXISTS idx_lsh_node ON lsh_bands(node_id);
 CREATE INDEX IF NOT EXISTS idx_lsh_data_tag ON lsh_bands(data_tag);
@@ -234,11 +246,23 @@ export async function down(db: Database.Database): Promise<void> {
 
 /**
  * Check if migration has been applied
+ *
+ * Checks if blobs table exists with account_id column.
+ * This ensures we detect both old and new versions of migration 003.
  */
 export function isApplied(db: Database.Database): boolean {
-  const result = db
-    .prepare("SELECT value FROM schema_metadata WHERE key = 'version'")
+  // Check if blobs table exists
+  const tableExists = db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='blobs'")
     .get() as any;
 
-  return result && parseFloat(result.value) >= 3.0;
+  if (!tableExists) {
+    return false;
+  }
+
+  // Check if blobs table has account_id column (new version)
+  const columns = db.prepare('PRAGMA table_info(blobs)').all() as any[];
+  const hasAccountId = columns.some((col: any) => col.name === 'account_id');
+
+  return hasAccountId;
 }

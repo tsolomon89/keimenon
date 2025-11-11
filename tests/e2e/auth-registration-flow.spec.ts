@@ -38,16 +38,11 @@ test.describe('Authentication - Registration Flow', () => {
     await page.goto('/register');
     await page.waitForLoadState('domcontentloaded');
 
-    // Fill registration form
+    // Fill registration form (name is REQUIRED on actual form)
+    await page.getByLabel(/full name|name/i).fill('Test User');
     await page.getByLabel(/email/i).fill(testEmail);
-    await page.getByLabel(/^password/i).fill(testPassword);
+    await page.getByLabel(/^password$/i).fill(testPassword);
     await page.getByLabel(/confirm password/i).fill(testPassword);
-
-    // Optional: Fill additional fields if present
-    const nameField = page.getByLabel(/name/i);
-    if (await nameField.isVisible()) {
-      await nameField.fill('Test User');
-    }
 
     // Submit form
     await page.getByRole('button', { name: /sign up|register|create account/i }).click();
@@ -58,12 +53,11 @@ test.describe('Authentication - Registration Flow', () => {
     // Verify user is logged in
     await expect(page).toHaveURL(/\/canvas|\/dashboard/);
 
-    // Verify user session exists
-    const cookies = await page.context().cookies();
-    const hasAuthCookie = cookies.some(
-      (c) => c.name.includes('token') || c.name.includes('session') || c.name.includes('auth')
-    );
-    expect(hasAuthCookie).toBeTruthy();
+    // Verify auth token exists in localStorage (app uses localStorage, not cookies)
+    const token = await page.evaluate(() => localStorage.getItem('canvas_memory_token'));
+    expect(token).toBeTruthy();
+    expect(typeof token).toBe('string');
+    expect(token.split('.')).toHaveLength(3); // JWT has 3 parts: header.payload.signature
   });
 
   test('should create account automatically for new user', async ({ page, request }) => {
@@ -72,8 +66,9 @@ test.describe('Authentication - Registration Flow', () => {
 
     // Register
     await page.goto('/register');
+    await page.getByLabel(/full name|name/i).fill('Test User');
     await page.getByLabel(/email/i).fill(testEmail);
-    await page.getByLabel(/^password/i).fill(testPassword);
+    await page.getByLabel(/^password$/i).fill(testPassword);
     await page.getByLabel(/confirm password/i).fill(testPassword);
     await page.getByRole('button', { name: /sign up|register|create account/i }).click();
 
@@ -106,8 +101,9 @@ test.describe('Authentication - Registration Flow', () => {
     const invalidEmails = ['notanemail', 'missing@domain', '@nodomain.com', 'spaces in@email.com'];
 
     for (const invalidEmail of invalidEmails) {
+      await page.getByLabel(/full name|name/i).fill('Test User');
       await page.getByLabel(/email/i).fill(invalidEmail);
-      await page.getByLabel(/^password/i).fill('ValidPass123!');
+      await page.getByLabel(/^password$/i).fill('ValidPass123!');
       await page.getByLabel(/confirm password/i).fill('ValidPass123!');
       await page.getByRole('button', { name: /sign up|register|create account/i }).click();
 
@@ -128,6 +124,7 @@ test.describe('Authentication - Registration Flow', () => {
     const testEmail = generateTestEmail();
 
     await page.goto('/register');
+    await page.getByLabel(/full name|name/i).fill('Test User');
     await page.getByLabel(/email/i).fill(testEmail);
 
     // Try weak passwords
@@ -139,7 +136,7 @@ test.describe('Authentication - Registration Flow', () => {
     ];
 
     for (const weakPassword of weakPasswords) {
-      await page.getByLabel(/^password/i).fill(weakPassword);
+      await page.getByLabel(/^password$/i).fill(weakPassword);
       await page.getByLabel(/confirm password/i).fill(weakPassword);
       await page.getByRole('button', { name: /sign up|register|create account/i }).click();
 
@@ -156,7 +153,7 @@ test.describe('Authentication - Registration Flow', () => {
       await expect(page).toHaveURL(/\/register/);
 
       // Clear for next iteration
-      await page.getByLabel(/^password/i).clear();
+      await page.getByLabel(/^password$/i).clear();
       await page.getByLabel(/confirm password/i).clear();
     }
   });
@@ -165,8 +162,9 @@ test.describe('Authentication - Registration Flow', () => {
     const testEmail = generateTestEmail();
 
     await page.goto('/register');
+    await page.getByLabel(/full name|name/i).fill('Test User');
     await page.getByLabel(/email/i).fill(testEmail);
-    await page.getByLabel(/^password/i).fill('SecurePass123!');
+    await page.getByLabel(/^password$/i).fill('SecurePass123!');
     await page.getByLabel(/confirm password/i).fill('DifferentPass123!');
 
     await page.getByRole('button', { name: /sign up|register|create account/i }).click();
@@ -184,8 +182,9 @@ test.describe('Authentication - Registration Flow', () => {
 
     // First registration - should succeed
     await page.goto('/register');
+    await page.getByLabel(/full name|name/i).fill('Test User');
     await page.getByLabel(/email/i).fill(testEmail);
-    await page.getByLabel(/^password/i).fill(testPassword);
+    await page.getByLabel(/^password$/i).fill(testPassword);
     await page.getByLabel(/confirm password/i).fill(testPassword);
     await page.getByRole('button', { name: /sign up|register|create account/i }).click();
 
@@ -197,8 +196,9 @@ test.describe('Authentication - Registration Flow', () => {
 
     // Second registration with same email - should fail
     await page.goto('/register');
+    await page.getByLabel(/full name|name/i).fill('Test User');
     await page.getByLabel(/email/i).fill(testEmail);
-    await page.getByLabel(/^password/i).fill(testPassword);
+    await page.getByLabel(/^password$/i).fill(testPassword);
     await page.getByLabel(/confirm password/i).fill(testPassword);
     await page.getByRole('button', { name: /sign up|register|create account/i }).click();
 
@@ -216,7 +216,7 @@ test.describe('Authentication - Registration Flow', () => {
   test('should show/hide password when toggle clicked', async ({ page }) => {
     await page.goto('/register');
 
-    const passwordInput = page.getByLabel(/^password/i);
+    const passwordInput = page.getByLabel(/^password$/i);
     const toggleButton = page.getByRole('button', { name: /show password|hide password|toggle/i });
 
     // Fill password
@@ -254,8 +254,9 @@ test.describe('Authentication - Registration Flow', () => {
     const testEmail = generateTestEmail();
 
     await page.goto('/register');
+    await page.getByLabel(/full name|name/i).fill('Test User');
     await page.getByLabel(/email/i).fill(testEmail);
-    await page.getByLabel(/^password/i).fill('SecurePass123!');
+    await page.getByLabel(/^password$/i).fill('SecurePass123!');
     await page.getByLabel(/confirm password/i).fill('SecurePass123!');
 
     // Click register button
@@ -293,8 +294,9 @@ test.describe('Authentication - Registration Flow', () => {
     const testEmail = generateTestEmail();
 
     await page.goto('/register');
+    await page.getByLabel(/full name|name/i).fill('Test User');
     await page.getByLabel(/email/i).fill(testEmail);
-    await page.getByLabel(/^password/i).fill('SecurePass123!');
+    await page.getByLabel(/^password$/i).fill('SecurePass123!');
     await page.getByLabel(/confirm password/i).fill('SecurePass123!');
     await page.getByRole('button', { name: /sign up|register|create account/i }).click();
 
@@ -314,8 +316,9 @@ test.describe('Authentication - Registration Flow', () => {
     const testEmail = generateTestEmail();
 
     await page.goto('/register');
+    await page.getByLabel(/full name|name/i).fill('Test User');
     await page.getByLabel(/email/i).fill(testEmail);
-    await page.getByLabel(/^password/i).fill('SecurePass123!');
+    await page.getByLabel(/^password$/i).fill('SecurePass123!');
     await page.getByLabel(/confirm password/i).fill('SecurePass123!');
     await page.getByRole('button', { name: /sign up|register|create account/i }).click();
 

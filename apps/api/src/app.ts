@@ -38,6 +38,7 @@ import { createDeduplicationRoutes } from './routes/deduplication';
 import { createJobsRoutes } from './modules/jobs/infrastructure/jobs.routes';
 import { createStreamRoutes } from './modules/jobs/infrastructure/stream.routes';
 import { createImportJobsRoutes as createJobBasedImportRoutes } from './modules/jobs/infrastructure/import-jobs.routes';
+import { createTestHelperRoutes } from './routes/test-helpers';
 import { SSEBroadcaster } from './modules/jobs/infrastructure/SSEBroadcaster';
 import { WorkerPool } from './modules/workers/domain/WorkerPool';
 import { DatabaseWriteQueue } from './services/DatabaseWriteQueue';
@@ -72,8 +73,19 @@ export function createApp(): { app: Express; context: AppContext } {
   app.use(addCustomSecurityHeaders());
 
   // Body parsing
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  // Skip JSON/urlencoded parsing for import routes (they use multipart/form-data with busboy)
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path.startsWith('/api/v1/import') || req.path.startsWith('/api/import')) {
+      return next(); // Skip body parsing for import routes
+    }
+    return express.json({ limit: '10mb' })(req, res, next);
+  });
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path.startsWith('/api/v1/import') || req.path.startsWith('/api/import')) {
+      return next(); // Skip body parsing for import routes
+    }
+    return express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+  });
 
   // Test isolation (only active in test environment)
   if (process.env.NODE_ENV === 'test') {
@@ -199,6 +211,7 @@ export function createApp(): { app: Express; context: AppContext } {
   let jobsRoutes: any = null;
   let streamRoutes: any = null;
   let jobBasedImportRoutes: any = null;
+  let testHelperRoutes: any = null;
 
   // Initialize routes with services
   const initializeRoutes = (
@@ -224,6 +237,7 @@ export function createApp(): { app: Express; context: AppContext } {
     jobsRoutes = createJobsRoutes(authService, dbClient.db, sseBroadcaster);
     streamRoutes = createStreamRoutes(authService, sseBroadcaster);
     jobBasedImportRoutes = createJobBasedImportRoutes(authService, dbClient.db, workerPool);
+    testHelperRoutes = createTestHelperRoutes(dbClient);
 
     // Inject auth dependencies
     setNodesAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
@@ -398,6 +412,13 @@ export function createApp(): { app: Express; context: AppContext } {
     if (!context.authService)
       return res.status(503).json({ error: 'Auth service not initialized' });
     return clusterRoutes(req, res, next);
+  });
+
+  // Test helper routes (savepoint API, cleanup, etc.)
+  // Only enabled when NODE_ENV=test
+  app.use('/api/v1/test', (req, res, next) => {
+    if (testHelperRoutes) return testHelperRoutes(req, res, next);
+    return res.status(503).json({ error: 'Test helpers not initialized or not in test mode' });
   });
 
   // 404 handler

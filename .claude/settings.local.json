@@ -143,7 +143,20 @@
       "Bash(\"c:/Development/Projects/ai_convo_parser/ai_context/agents/policies_temp.json\")",
       "Bash(\"c:/Development/Projects/ai_convo_parser/ai_context/agents/policies.json\")",
       "Bash(\"c:/Development/Projects/ai_convo_parser/CLAUDE_temp.md\")",
-      "Bash(cmd /c \"taskkill /F /IM node.exe 2>nul && echo All processes stopped\")"
+      "Bash(cmd /c \"taskkill /F /IM node.exe 2>nul && echo All processes stopped\")",
+      "Bash(gh pr create:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
+      "Bash(cmd /c \"taskkill /F /IM node.exe 2>nul && echo All node processes stopped\")",
+      "Bash(xargs:*)",
+      "Bash(cmd /c \"dir .test-dbs\\snapshot-template.db 2>nul || echo Snapshot file not found\")",
+      "Bash(cmd /c \"taskkill /F /IM node.exe 2>nul && echo Successfully killed all node processes || echo No node processes found\")",
+      "Bash(cmd /c \"tasklist | findstr node.exe\")",
+      "Bash(cross-env NODE_ENV=test npx playwright test:*)",
+      "Bash(cmd /c \"taskkill /F /IM node.exe 2>nul && echo All processes stopped successfully\")",
+      "Bash(cmd /c \"taskkill /F /IM node.exe 2>nul && timeout /t 2 /nobreak > nul && echo All processes stopped\")"
     ],
     "deny": [],
     "ask": []

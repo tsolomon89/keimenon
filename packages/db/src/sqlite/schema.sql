@@ -129,6 +129,24 @@ CREATE TABLE IF NOT EXISTS audit_log (
   FOREIGN KEY (actor_account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
 
+-- Password reset tokens table (for secure password reset flow)
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  used_at INTEGER,
+  ip_address TEXT,
+  user_agent TEXT,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires ON password_reset_tokens(expires_at);
+
 -- Settings tables
 CREATE TABLE IF NOT EXISTS settings_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -332,18 +350,19 @@ CREATE INDEX IF NOT EXISTS idx_job_items_data_tag ON job_items(data_tag);
 -- FULL-TEXT SEARCH
 -- =============================================================================
 
-CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(id UNINDEXED, content, content=nodes, content_rowid=rowid);
+CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(id UNINDEXED, content);
 
 CREATE TRIGGER IF NOT EXISTS nodes_fts_insert AFTER INSERT ON nodes BEGIN
-  INSERT INTO nodes_fts(rowid, id, content) VALUES (new.rowid, new.id, new.properties);
+  INSERT INTO nodes_fts(id, content) VALUES (new.id, new.properties);
 END;
 
 CREATE TRIGGER IF NOT EXISTS nodes_fts_update AFTER UPDATE ON nodes BEGIN
-  UPDATE nodes_fts SET content = new.properties WHERE rowid = new.rowid;
+  DELETE FROM nodes_fts WHERE id = old.id;
+  INSERT INTO nodes_fts(id, content) VALUES (new.id, new.properties);
 END;
 
 CREATE TRIGGER IF NOT EXISTS nodes_fts_delete AFTER DELETE ON nodes BEGIN
-  DELETE FROM nodes_fts WHERE rowid = old.rowid;
+  DELETE FROM nodes_fts WHERE id = old.id;
 END;
 
 -- =============================================================================

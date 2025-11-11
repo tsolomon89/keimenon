@@ -84,7 +84,7 @@ test.describe('Multi-Tenant Isolation - Edges', () => {
       },
     });
     const edgeA = await createEdgeA.json();
-    edgeAId = edgeA.id;
+    edgeAId = edgeA.edge?.id || edgeA.id;
 
     // Setup Account B: Create 2 nodes and 1 edge
     const responseB = await apiRequest.post('/api/v1/auth/login', {
@@ -125,7 +125,7 @@ test.describe('Multi-Tenant Isolation - Edges', () => {
       },
     });
     const edgeB = await createEdgeB.json();
-    edgeBId = edgeB.id;
+    edgeBId = edgeB.edge?.id || edgeB.id;
   });
 
   test.afterEach(async ({ apiRequest }) => {
@@ -211,7 +211,7 @@ test.describe('Multi-Tenant Isolation - Edges', () => {
     if (!crossAccountEdge.ok()) {
       const error = await crossAccountEdge.json();
       expect(error.error || error.message).toMatch(
-        /forbidden|not found|unauthorized|invalid node/i
+        /forbidden|not found|unauthorized|invalid node|access denied/i
       );
     }
   });

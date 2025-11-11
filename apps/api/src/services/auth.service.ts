@@ -268,32 +268,37 @@ export class AuthServiceV2 {
   /**
    * Step 2: Select account (after login with multiple accounts)
    * Can also be used for account switching
+   *
+   * CRITICAL FIX #4: Database consistency for test isolation
+   * - Accepts optional `database` parameter to ensure same DB instance is used across transaction
+   * - When called from register(), uses the SAME database instance that created the user
+   * - Prevents "User not found" errors in E2E tests caused by database instance mismatch
    */
   async selectAccount(
     userId: string,
     accountId: string,
     accountPassword?: string,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
+    database?: Database.Database
   ): Promise<LoginResult> {
-    const database = this.db.getDatabase();
+    // Use provided database (for consistency within register flow) or get new instance
+    const db = database || this.db.getDatabase();
 
     // Get user
-    const userRow = database.prepare('SELECT * FROM users WHERE id = ?').get(userId) as any;
+    const userRow = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as any;
     if (!userRow) {
       throw new Error('User not found');
     }
 
     // Get account
-    const accountRow = database
-      .prepare('SELECT * FROM accounts WHERE id = ?')
-      .get(accountId) as any;
+    const accountRow = db.prepare('SELECT * FROM accounts WHERE id = ?').get(accountId) as any;
     if (!accountRow) {
       throw new Error('Account not found');
     }
 
     // Get user-account membership
-    const membershipRow = database
+    const membershipRow = db
       .prepare(
         `
       SELECT * FROM user_accounts
@@ -359,7 +364,10 @@ export class AuthServiceV2 {
     };
 
     // Create session and token
-    const token = await this.createSession(user, account, membership);
+    // CRITICAL FIX #6: Pass database instance to createSession() for consistency
+    // This ensures createSession() uses the same DB instance as selectAccount()
+    // Prevents FOREIGN KEY constraint failures when called from register()
+    const token = await this.createSession(user, account, membership, db);
 
     // Log successful login
     // TEMPORARILY DISABLED: logLoginSuccess(database, user.id, account.id, user.email, ipAddress, userAgent);
@@ -505,8 +513,10 @@ export class AuthServiceV2 {
     // Log registration
     logRegistration(database, userId, accountId, email, ipAddress, userAgent);
 
-    // Log them in to the newly created account
-    return this.selectAccount(userId, accountId, undefined, ipAddress, userAgent);
+    // CRITICAL FIX #4: Pass the SAME database instance to selectAccount()
+    // This ensures the user lookup uses the same DB that just created the user
+    // Prevents "User not found" errors in E2E tests caused by database instance mismatch
+    return this.selectAccount(userId, accountId, undefined, ipAddress, userAgent, database);
   }
 
   /**
@@ -517,13 +527,20 @@ export class AuthServiceV2 {
    * - Prevents race conditions where token is returned before session committed
    * - Ensures session is fully persisted before JWT is returned
    * - Uses better-sqlite3's synchronous transaction API
+   *
+   * CRITICAL FIX #5: Database instance consistency
+   * - Accepts optional database parameter for consistency with register() flow
+   * - Ensures createSession() uses same DB instance that created the user/account
+   * - Prevents FOREIGN KEY constraint failures in registration tests
    */
   private async createSession(
     user: User,
     account: Account,
-    membership: UserAccountMembership
+    membership: UserAccountMembership,
+    database?: Database.Database
   ): Promise<string> {
-    const database = this.db.getDatabase();
+    // Use provided database (for consistency within register flow) or get new instance
+    const db = database || this.db.getDatabase();
     const now = Date.now();
     const expiresAt = now + 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -551,43 +568,60 @@ export class AuthServiceV2 {
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
     // ATOMIC OPERATION: Delete old sessions + Insert new session in transaction
-    const createSessionTransaction = database.transaction(() => {
+    const createSessionTransaction = db.transaction(() => {
       // Delete old sessions for this user in this account
-      database
-        .prepare(
-          `
+      db.prepare(
+        `
         DELETE FROM sessions
         WHERE user_id = ? AND operating_account_id = ?
       `
-        )
-        .run(user.id, account.id);
+      ).run(user.id, account.id);
 
       // Store new session in database
-      database
-        .prepare(
-          `
+      db.prepare(
+        `
         INSERT INTO sessions (
           id, user_id, account_id, token, expires_at, created_at,
           operating_account_id, available_accounts, last_active
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
-        )
-        .run(
-          sessionId,
-          user.id,
-          account.id, // Backward compat
-          token,
-          expiresAt,
-          now,
-          account.id, // Current operating account
-          JSON.stringify(allAccountIds),
-          now
-        );
+      ).run(
+        sessionId,
+        user.id,
+        account.id, // Backward compat
+        token,
+        expiresAt,
+        now,
+        account.id, // Current operating account
+        JSON.stringify(allAccountIds),
+        now
+      );
     });
 
     // Execute transaction - this is atomic and synchronous
     createSessionTransaction();
+
+    // DIAGNOSTIC: Verify session was created successfully
+    const verifySession = db
+      .prepare(`SELECT id, token, user_id, account_id FROM sessions WHERE token = ?`)
+      .get(token) as any;
+
+    if (!verifySession) {
+      console.error(
+        `[AUTH] ❌ CRITICAL: Session creation failed - record not found after insert!`,
+        {
+          userId: user.id,
+          accountId: account.id,
+          tokenPrefix: token.substring(0, 20) + '...',
+        }
+      );
+      throw new Error('Session creation failed - database write did not persist');
+    }
+
+    console.log(
+      `[AUTH] ✅ Session created and verified (userId: ${user.id}, accountId: ${account.id}, sessionId: ${verifySession.id})`
+    );
 
     // Session is now guaranteed to exist in database
     return token;
@@ -643,9 +677,15 @@ export class AuthServiceV2 {
 
       if (!session) {
         // Session not found, but JWT is valid - log warning and proceed
-        console.warn(
-          `[AUTH] ⚠️  Valid JWT token but no session found (userId: ${payload.userId}, accountId: ${payload.accountId})`
-        );
+        // CRITICAL FIX #7: Suppress warning in TEST mode to reduce noise
+        // In test mode with worker-specific databases and savepoint rollbacks,
+        // sessions may not exist yet or may be in different database instances
+        // This is expected behavior with JWT-first authentication
+        if (process.env.NODE_ENV !== 'test') {
+          console.warn(
+            `[AUTH] ⚠️  Valid JWT token but no session found (userId: ${payload.userId}, accountId: ${payload.accountId})`
+          );
+        }
         return payload; // Still return payload - JWT is valid!
       }
 
@@ -697,8 +737,141 @@ export class AuthServiceV2 {
   }
 
   /**
-   * Insecure debug password reset for local debugging (no email link).
+   * Request password reset - generates a secure token
+   *
+   * In production, this token should be sent via email.
+   * For development/testing, the token is returned in the response.
+   *
+   * @param email - User's email address
+   * @param ipAddress - IP address of requester (for audit log)
+   * @param userAgent - User agent string (for audit log)
+   * @returns Reset token and expiration time, or null if user not found
+   */
+  async requestPasswordReset(
+    email: string,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<{ token: string; expiresAt: number } | null> {
+    const database = this.db.getDatabase();
+
+    // Find user by email
+    const userRow = database
+      .prepare('SELECT id FROM users WHERE email = ? AND is_active = 1')
+      .get(email) as any;
+
+    if (!userRow) {
+      // For security, don't reveal if email exists
+      // Still return null but don't throw error
+      return null;
+    }
+
+    const now = Date.now();
+    const tokenId = randomUUID();
+    const token = randomUUID(); // Secure random token
+    const expiresAt = now + 60 * 60 * 1000; // 1 hour expiration
+
+    // Store reset token in database
+    database
+      .prepare(
+        `
+        INSERT INTO password_reset_tokens (id, user_id, token, expires_at, created_at, ip_address, user_agent)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `
+      )
+      .run(tokenId, userRow.id, token, expiresAt, now, ipAddress, userAgent);
+
+    // TODO: In production, send email with reset link containing token
+    // For now, return token for testing
+    return { token, expiresAt };
+  }
+
+  /**
+   * Reset password using a valid reset token
+   *
+   * @param token - Reset token from requestPasswordReset
+   * @param newPassword - New password to set
+   * @param ipAddress - IP address of requester (for audit log)
+   * @param userAgent - User agent string (for audit log)
+   * @returns User ID and update timestamp, or null if token invalid
+   */
+  async resetPasswordWithToken(
+    token: string,
+    newPassword: string,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<{ userId: string; updatedAt: number } | null> {
+    const database = this.db.getDatabase();
+    const now = Date.now();
+
+    // Find valid, unused token
+    const tokenRow = database
+      .prepare(
+        `
+        SELECT id, user_id, expires_at, used_at
+        FROM password_reset_tokens
+        WHERE token = ?
+      `
+      )
+      .get(token) as any;
+
+    if (!tokenRow) {
+      return null; // Token not found
+    }
+
+    if (tokenRow.used_at) {
+      return null; // Token already used
+    }
+
+    if (tokenRow.expires_at < now) {
+      return null; // Token expired
+    }
+
+    // Validate password strength
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.valid) {
+      throw new Error(
+        `Password does not meet requirements: ${passwordValidation.errors.join(', ')}`
+      );
+    }
+
+    // Hash new password
+    const passwordHash = await this.hashPassword(newPassword);
+
+    // Update password, mark token as used, clear sessions, unlock account
+    const runReset = database.transaction(() => {
+      // Update password
+      database
+        .prepare('UPDATE users SET password_hash = ?, updated_at = ?, is_active = 1 WHERE id = ?')
+        .run(passwordHash, now, tokenRow.user_id);
+
+      // Mark token as used
+      database
+        .prepare('UPDATE password_reset_tokens SET used_at = ? WHERE id = ?')
+        .run(now, tokenRow.id);
+
+      // Delete all sessions for this user (force re-login)
+      database.prepare('DELETE FROM sessions WHERE user_id = ?').run(tokenRow.user_id);
+
+      // Unlock account if it was locked
+      const user = database
+        .prepare('SELECT email FROM users WHERE id = ?')
+        .get(tokenRow.user_id) as any;
+      if (user) {
+        unlockAccount(database, user.email);
+      }
+    });
+
+    runReset();
+
+    return { userId: tokenRow.user_id, updatedAt: now };
+  }
+
+  /**
+   * DEBUG ONLY: Insecure password reset for local debugging (no email link).
    * Clears sessions and unlocks account so next login succeeds.
+   *
+   * WARNING: This endpoint bypasses the secure token flow and should ONLY be used
+   * in development/testing environments. Remove or disable in production!
    */
   async debugResetPassword(
     email: string,

@@ -638,46 +638,49 @@ async function runPhase1to3Processing(
   }));
 
   // Phase 1-2: Process each conversation
-  // NOTE: Phase 1-3 tables don't have account_id yet - using data_tag for now
-  // TODO: Add account_id column to Phase 1-3 tables for proper multi-tenancy
-  // Related: packages/db/src/sqlite/schema.sql (add account_id to blobs, node_spans, node_signatures, lsh_bands)
-  // See: packages/parsers/src/services/grouping-storage.ts (update insert methods)
+  // All Phase 1-3 tables now support multi-tenant isolation via account_id
+  // See: migration 007_add_account_isolation_to_phase1_tables.ts
+  // See: packages/parsers/src/services/grouping-storage.ts (all methods updated)
   const dataTag = `account_${accountId.substring(0, 8)}`;
 
   for (const conv of normalizedConvs) {
     const processedMessages = await processor.processConversation(conv);
 
     for (const processed of processedMessages) {
-      // Insert blob
-      storage.insertBlob({
-        ...processed.blob,
-        data_tag: dataTag,
-      });
+      // Insert blob with account_id for multi-tenant isolation
+      storage.insertBlob(
+        {
+          ...processed.blob,
+          data_tag: dataTag,
+        },
+        accountId
+      );
       blobsCreated++;
 
-      // Insert spans
+      // Insert spans with account_id
       const spansWithTag = processed.spans.map((span) => ({
         ...span,
         data_tag: dataTag,
       }));
-      storage.insertNodeSpans(spansWithTag);
+      storage.insertNodeSpans(spansWithTag, accountId);
       spansCreated += processed.spans.length;
 
-      // Insert signatures
+      // Insert signatures with account_id
       const sigsWithTag = processed.signatures.map((sig) => ({
         ...sig,
         data_tag: dataTag,
       }));
-      storage.insertNodeSignatures(sigsWithTag);
+      storage.insertNodeSignatures(sigsWithTag, accountId);
       signaturesCreated += processed.signatures.length;
 
-      // Insert LSH bands
+      // Insert LSH bands with account_id
       for (const signature of processed.signatures) {
         if (signature.minhash_bands) {
           const lshBands = signature.minhash_bands.map((bandHash, bandIndex) => ({
             band_hash: bandHash,
             band_index: bandIndex,
             node_id: signature.node_id,
+            account_id: accountId,
             created_at: signature.created_at,
             data_tag: dataTag,
           }));
@@ -687,27 +690,28 @@ async function runPhase1to3Processing(
     }
   }
 
-  // Phase 3: Exact Deduplication
-  const dedupResult = (await deduper.deduplicate()) as any;
+  // Phase 3: Exact Deduplication (account-scoped)
+  const dedupResult = (await deduper.deduplicate(accountId)) as any;
   const exactDuplicatesFound = dedupResult.canonical_nodes?.length || 0;
 
   // Phase 3: Clustering (run on sentence + block levels, prose + code modalities)
+  // All clustering operations are now account-scoped for multi-tenant isolation
   let clustersCreated = 0;
   let nearDupEdgesCreated = 0;
 
   try {
-    // Cluster sentence-level prose
-    const sentenceProseResult = (await clusterer.cluster('sentence', 'prose')) as any;
+    // Cluster sentence-level prose (account-scoped)
+    const sentenceProseResult = (await clusterer.cluster('sentence', 'prose', accountId)) as any;
     clustersCreated += sentenceProseResult.stats?.total_clusters || 0;
     nearDupEdgesCreated += sentenceProseResult.stats?.edges_created || 0;
 
-    // Cluster block-level prose
-    const blockProseResult = (await clusterer.cluster('block', 'prose')) as any;
+    // Cluster block-level prose (account-scoped)
+    const blockProseResult = (await clusterer.cluster('block', 'prose', accountId)) as any;
     clustersCreated += blockProseResult.stats?.total_clusters || 0;
     nearDupEdgesCreated += blockProseResult.stats?.edges_created || 0;
 
-    // Cluster block-level code
-    const blockCodeResult = (await clusterer.cluster('block', 'code')) as any;
+    // Cluster block-level code (account-scoped)
+    const blockCodeResult = (await clusterer.cluster('block', 'code', accountId)) as any;
     clustersCreated += blockCodeResult.stats?.total_clusters || 0;
     nearDupEdgesCreated += blockCodeResult.stats?.edges_created || 0;
 

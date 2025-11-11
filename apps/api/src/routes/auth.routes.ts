@@ -92,11 +92,102 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
   });
 
   /**
+   * POST /api/v1/auth/reset-password/request
+   * Request a password reset token (secure flow)
+   */
+  router.post('/reset-password/request', authRateLimiter, async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ error: 'Email required' });
+      }
+
+      const ipAddress = req.ip || req.socket.remoteAddress;
+      const userAgent = req.headers['user-agent'];
+
+      const result = await authService.requestPasswordReset(email, ipAddress, userAgent);
+
+      // Always return success to prevent email enumeration
+      // In production, send email with token. For development, return token in response.
+      if (result) {
+        // Development/testing: return token in response
+        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+          return res.json({
+            message: 'Password reset token generated. Check your email for reset instructions.',
+            token: result.token, // Only in dev/test!
+            expiresAt: result.expiresAt,
+          });
+        }
+
+        // Production: don't return token (send via email instead)
+        return res.json({
+          message: 'If an account exists with this email, you will receive reset instructions.',
+        });
+      }
+
+      // User not found - still return success to prevent enumeration
+      return res.json({
+        message: 'If an account exists with this email, you will receive reset instructions.',
+      });
+    } catch (error: any) {
+      console.error('Request password reset error:', error);
+      return res.status(500).json({ error: error.message || 'Password reset request failed' });
+    }
+  });
+
+  /**
+   * POST /api/v1/auth/reset-password/confirm
+   * Reset password using a valid token (secure flow)
+   */
+  router.post('/reset-password/confirm', authRateLimiter, async (req: Request, res: Response) => {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token || !newPassword) {
+        return res.status(400).json({ error: 'Token and new password required' });
+      }
+
+      const ipAddress = req.ip || req.socket.remoteAddress;
+      const userAgent = req.headers['user-agent'];
+
+      const result = await authService.resetPasswordWithToken(
+        token,
+        newPassword,
+        ipAddress,
+        userAgent
+      );
+
+      if (!result) {
+        return res.status(400).json({ error: 'Invalid or expired reset token' });
+      }
+
+      return res.json({
+        message: 'Password reset successful. You can now log in with your new password.',
+        updatedAt: result.updatedAt,
+      });
+    } catch (error: any) {
+      console.error('Reset password error:', error);
+      return res.status(500).json({ error: error.message || 'Password reset failed' });
+    }
+  });
+
+  /**
    * POST /api/v1/auth/reset-password-debug
-   * Insecure debug helper to reset password by email.
+   * DEBUG ONLY: Insecure debug helper to reset password by email.
+   *
+   * WARNING: This endpoint bypasses the secure token flow.
+   * Only use in development/testing. Disable or remove in production!
    */
   router.post('/reset-password-debug', authRateLimiter, async (req: Request, res: Response) => {
     try {
+      // Reject in production
+      if (process.env.NODE_ENV === 'production') {
+        return res
+          .status(403)
+          .json({ error: 'Debug endpoint disabled in production for security' });
+      }
+
       const { email, newPassword } = req.body;
 
       if (!email || !newPassword) {
@@ -111,7 +202,8 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
 
       // HACK(auth): Temporary insecure reset endpoint - remove once real flow ships.
       return res.json({
-        message: 'Password updated. Please log in with the new password.',
+        message:
+          'Password updated (DEBUG MODE). Please log in with the new password. This endpoint is disabled in production.',
         updatedAt: result.updatedAt,
       });
     } catch (error: any) {

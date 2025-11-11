@@ -6,22 +6,11 @@ import { ChatImportModal } from './ChatImportModal';
 import { UploadModal } from './UploadModal';
 import { ENABLE_LEGACY_IMPORTS, ENABLE_HYBRID_LOCAL_FIRST } from '@/lib/env.config';
 
-// Dynamically import legacy components only if their flags are enabled
-const ImportModuleOld = ENABLE_LEGACY_IMPORTS
-  ? dynamic(() => import('./ImportModule.old').then((mod) => ({ default: mod.ImportModule })), {
-      ssr: false,
-    })
-  : null;
-
-const LocalFirstImportModalOld = ENABLE_HYBRID_LOCAL_FIRST
-  ? dynamic(
-      () =>
-        import('./LocalFirstImportModal.old').then((mod) => ({
-          default: mod.LocalFirstImportModal,
-        })),
-      { ssr: false }
-    )
-  : null;
+// Legacy components were removed during consolidation (Oct 24, 2025)
+// These imports cause build errors as the .old files no longer exist
+// Setting to null is safe as ENABLE_LEGACY_IMPORTS and ENABLE_HYBRID_LOCAL_FIRST default to 0
+const ImportModuleOld = null;
+const LocalFirstImportModalOld = null;
 
 type ImportMethod = 'job' | 'hybrid' | 'local' | 'ingest';
 

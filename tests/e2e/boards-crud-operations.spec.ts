@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/test-isolation';
 import { login } from './helpers/login';
+import { createTestSourceNode } from './helpers/create-test-node';
 
 /**
  * Boards CRUD Operations E2E Tests
@@ -211,29 +212,27 @@ test.describe('Boards - CRUD Operations', () => {
     const boardId = board.board.id;
 
     // Step 2: Create nodes associated with this board
+    const node1Data = createTestSourceNode({
+      title: 'Node 1',
+      content: 'Content for Node 1',
+    });
+    node1Data.metadata = { ...node1Data.metadata, board_id: boardId, data_tag: 'test' };
+
     const node1Response = await apiRequest.post('/api/v1/nodes/source', {
       headers: { Authorization: `Bearer ${authToken}` },
-      data: {
-        kind: 'Source',
-        properties: {
-          title: 'Node 1',
-          board_id: boardId,
-          data_tag: 'test',
-        },
-      },
+      data: node1Data,
     });
     const node1 = await node1Response.json();
 
+    const node2Data = createTestSourceNode({
+      title: 'Node 2',
+      content: 'Content for Node 2',
+    });
+    node2Data.metadata = { ...node2Data.metadata, board_id: boardId, data_tag: 'test' };
+
     const node2Response = await apiRequest.post('/api/v1/nodes/source', {
       headers: { Authorization: `Bearer ${authToken}` },
-      data: {
-        kind: 'Source',
-        properties: {
-          title: 'Node 2',
-          board_id: boardId,
-          data_tag: 'test',
-        },
-      },
+      data: node2Data,
     });
     const node2 = await node2Response.json();
 
@@ -263,8 +262,8 @@ test.describe('Boards - CRUD Operations', () => {
     expect(graph.stats.nodeCount).toBeGreaterThanOrEqual(2);
     expect(graph.stats.edgeCount).toBeGreaterThanOrEqual(1);
 
-    // Verify nodes are present
-    const titles = graph.nodes.map((n: any) => n.properties?.title || n.title);
+    // Verify nodes are present (access title directly, not via .properties)
+    const titles = graph.nodes.map((n: any) => n.title);
     expect(titles).toContain('Node 1');
     expect(titles).toContain('Node 2');
 
@@ -287,16 +286,15 @@ test.describe('Boards - CRUD Operations', () => {
 
     // Step 2: Create multiple nodes (more than limit)
     for (let i = 0; i < 5; i++) {
+      const nodeData = createTestSourceNode({
+        title: `Limit Node ${i}`,
+        content: `Content for Limit Node ${i}`,
+      });
+      nodeData.metadata = { ...nodeData.metadata, board_id: boardId, data_tag: 'test' };
+
       await apiRequest.post('/api/v1/nodes/source', {
         headers: { Authorization: `Bearer ${authToken}` },
-        data: {
-          kind: 'Source',
-          properties: {
-            title: `Limit Node ${i}`,
-            board_id: boardId,
-            data_tag: 'test',
-          },
-        },
+        data: nodeData,
       });
     }
 
@@ -439,16 +437,15 @@ test.describe('Boards - CRUD Operations', () => {
     const boardId = created.board.id;
 
     // Step 2: Create a node associated with this board
+    const nodeData = createTestSourceNode({
+      title: 'Node on Board',
+      content: 'Content for Node on Board',
+    });
+    nodeData.metadata = { ...nodeData.metadata, board_id: boardId, data_tag: 'test' };
+
     await apiRequest.post('/api/v1/nodes/source', {
       headers: { Authorization: `Bearer ${authToken}` },
-      data: {
-        kind: 'Source',
-        properties: {
-          title: 'Node on Board',
-          board_id: boardId,
-          data_tag: 'test',
-        },
-      },
+      data: nodeData,
     });
 
     // Step 3: Delete board (without contents)
@@ -473,9 +470,8 @@ test.describe('Boards - CRUD Operations', () => {
       params: { limit: 100 },
     });
     const nodes = await nodesResponse.json();
-    const boardNode = nodes.nodes?.find(
-      (n: any) => (n.properties?.board_id || n.board_id) === boardId
-    );
+    // Access board_id from metadata (not from .properties)
+    const boardNode = nodes.nodes?.find((n: any) => n.metadata?.board_id === boardId);
     expect(boardNode).toBeDefined(); // Node should still exist
   });
 
@@ -492,29 +488,27 @@ test.describe('Boards - CRUD Operations', () => {
     const boardId = created.board.id;
 
     // Step 2: Create nodes associated with this board
+    const node1Data = createTestSourceNode({
+      title: 'Node 1 to Delete',
+      content: 'Content for Node 1 to Delete',
+    });
+    node1Data.metadata = { ...node1Data.metadata, board_id: boardId, data_tag: 'test' };
+
     const node1Response = await apiRequest.post('/api/v1/nodes/source', {
       headers: { Authorization: `Bearer ${authToken}` },
-      data: {
-        kind: 'Source',
-        properties: {
-          title: 'Node 1 to Delete',
-          board_id: boardId,
-          data_tag: 'test',
-        },
-      },
+      data: node1Data,
     });
     const node1 = await node1Response.json();
 
+    const node2Data = createTestSourceNode({
+      title: 'Node 2 to Delete',
+      content: 'Content for Node 2 to Delete',
+    });
+    node2Data.metadata = { ...node2Data.metadata, board_id: boardId, data_tag: 'test' };
+
     const node2Response = await apiRequest.post('/api/v1/nodes/source', {
       headers: { Authorization: `Bearer ${authToken}` },
-      data: {
-        kind: 'Source',
-        properties: {
-          title: 'Node 2 to Delete',
-          board_id: boardId,
-          data_tag: 'test',
-        },
-      },
+      data: node2Data,
     });
     const node2 = await node2Response.json();
 
@@ -537,12 +531,14 @@ test.describe('Boards - CRUD Operations', () => {
     expect(getResponse.status()).toBe(404);
 
     // Step 5: Verify nodes are deleted
-    const node1Get = await apiRequest.get(`/api/v1/nodes/${node1.node.id}`, {
+    const createdNode1 = node1.node || node1;
+    const node1Get = await apiRequest.get(`/api/v1/nodes/${createdNode1.id}`, {
       headers: { Authorization: `Bearer ${authToken}` },
     });
     expect(node1Get.status()).toBe(404);
 
-    const node2Get = await apiRequest.get(`/api/v1/nodes/${node2.node.id}`, {
+    const createdNode2 = node2.node || node2;
+    const node2Get = await apiRequest.get(`/api/v1/nodes/${createdNode2.id}`, {
       headers: { Authorization: `Bearer ${authToken}` },
     });
     expect(node2Get.status()).toBe(404);

@@ -29,13 +29,13 @@ export interface TestSourceNode {
   fingerprint: string;
   mime_type: string;
   size_bytes: number;
-  properties: {
-    title: string;
-    content: string;
+  title: string;
+  url?: string;
+  file_path?: string;
+  metadata: {
     platform: string;
+    content: string;
     data_tag: string;
-    url?: string;
-    file_path?: string;
   };
 }
 
@@ -143,4 +143,33 @@ export function createTestSourceNodeForAccount(
     content: `${contentPrefix} ${accountName}. Document ${index}.`,
     platform: 'test',
   });
+}
+
+/**
+ * Creates a test Group node with all required fields.
+ *
+ * @param input - Group node configuration (name, purpose, etc.)
+ * @returns Complete group node data ready for POST /api/v1/nodes/group
+ */
+export interface TestGroupNodeInput {
+  name: string;
+  purpose?: string;
+}
+
+export function createTestGroupNode(input: TestGroupNodeInput) {
+  const { name, purpose } = input;
+  const now = Date.now();
+
+  return {
+    id: nanoid(),
+    kind: 'Group',
+    created_at: now,
+    updated_at: now,
+    name,
+    ...(purpose && { purpose }),
+    member_count: 0,
+    metadata: {
+      data_tag: 'test',
+    },
+  };
 }

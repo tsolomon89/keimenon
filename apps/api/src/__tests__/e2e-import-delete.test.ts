@@ -50,13 +50,14 @@ function rebuildFts(db: Database.Database): void {
       DROP TABLE IF EXISTS nodes_fts;
       CREATE VIRTUAL TABLE nodes_fts USING fts5(id UNINDEXED, content);
       CREATE TRIGGER nodes_fts_insert AFTER INSERT ON nodes BEGIN
-        INSERT INTO nodes_fts(rowid, id, content) VALUES (new.rowid, new.id, new.properties);
+        INSERT INTO nodes_fts(id, content) VALUES (new.id, new.properties);
       END;
       CREATE TRIGGER nodes_fts_update AFTER UPDATE ON nodes BEGIN
-        UPDATE nodes_fts SET content = new.properties WHERE rowid = new.rowid;
+        DELETE FROM nodes_fts WHERE id = old.id;
+        INSERT INTO nodes_fts(id, content) VALUES (new.id, new.properties);
       END;
       CREATE TRIGGER nodes_fts_delete AFTER DELETE ON nodes BEGIN
-        DELETE FROM nodes_fts WHERE rowid = old.rowid;
+        DELETE FROM nodes_fts WHERE id = old.id;
       END;
     `);
   } catch (err) {

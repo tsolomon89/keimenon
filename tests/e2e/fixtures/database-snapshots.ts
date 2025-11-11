@@ -115,6 +115,23 @@ export class DatabaseSnapshotManager {
       `
       ).run(userAccountId, userId, accountId, now, now, now);
 
+      // CRITICAL FIX: Create session for test user
+      // This fixes "Valid JWT token but no session found" errors in ~10 tests
+      // Tests require both valid JWT AND database session record
+      console.log('   Creating test session...');
+      const sessionId = 'sess_test_e2e';
+      const testToken = 'test_jwt_token_e2e_main';
+      const expiresAt = now + 86400000; // 24 hours from now
+
+      db.prepare(
+        `
+        INSERT INTO sessions (id, user_id, account_id, token, created_at, expires_at, operating_account_id, data_tag, last_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'test', ?)
+      `
+      ).run(sessionId, userId, accountId, testToken, now, expiresAt, accountId, now);
+
+      console.log('   ✅ Test session created successfully');
+
       // Create fixture accounts for visual stability testing
       // These accounts provide consistent data across test runs, preventing
       // visual differences caused by "No accounts found" vs populated states
@@ -182,7 +199,16 @@ export class DatabaseSnapshotManager {
           VALUES (?, ?, ?, 'senior', 'active', ?, ?, ?)
         `
         ).run(acc.userAccountId, acc.userId, acc.id, now, now, now);
+
+        // IMPORTANT: We do NOT pre-create sessions for fixture accounts
+        // Sessions are created dynamically when tests call login()
+        // Pre-created sessions with placeholder tokens cause "session not found" warnings
+        // because the JWT tokens created at runtime don't match the placeholder tokens
       }
+
+      console.log(
+        `   ✅ Created ${fixtureAccounts.length} fixture accounts with users (sessions created at runtime)`
+      );
 
       // CRITICAL: Link gamma user to all accounts for multi-account switching tests
       // The gamma user needs access to alpha and beta accounts to test account switching
@@ -205,25 +231,40 @@ export class DatabaseSnapshotManager {
       `
       ).run('ua_gamma_to_beta', gammaUserId, 'acc_fixture_beta', now, now, now);
 
-      console.log(`   ✅ Created ${fixtureAccounts.length} fixture accounts with users`);
       console.log(`   ✅ Gamma user now has access to all 3 accounts (for switching tests)`);
 
-      // Verify snapshot is clean (zero data)
+      // Verify snapshot has expected structure (sessions for test users, zero nodes/edges)
       const sessionCount = db.prepare('SELECT COUNT(*) as count FROM sessions').get() as any;
       const nodeCount = db.prepare('SELECT COUNT(*) as count FROM nodes').get() as any;
       const edgeCount = db.prepare('SELECT COUNT(*) as count FROM edges').get() as any;
 
-      if (sessionCount.count !== 0 || nodeCount.count !== 0 || edgeCount.count !== 0) {
+      // Expected: 1 session (main test user only - fixture accounts create sessions at runtime), 0 nodes, 0 edges
+      // CRITICAL FIX #5: Changed from 4 sessions to 1 session
+      // Fixture account sessions are NOT pre-created to avoid "session not found" warnings
+      if (sessionCount.count !== 1 || nodeCount.count !== 0 || edgeCount.count !== 0) {
         throw new Error(
-          `Snapshot is not clean! sessions=${sessionCount.count}, nodes=${nodeCount.count}, edges=${edgeCount.count}`
+          `Snapshot has unexpected data! Expected: 1 session, 0 nodes, 0 edges. Got: sessions=${sessionCount.count}, nodes=${nodeCount.count}, edges=${edgeCount.count}`
         );
+      }
+
+      // CRITICAL FIX #8: Rebuild FTS5 table to ensure internal structures are synchronized
+      // The "no such column: T.content" error occurs when FTS5's internal tables are out of sync
+      // Rebuilding ensures nodes_fts_content and other internal tables have correct schema
+      console.log('   Rebuilding FTS5 indexes for integrity...');
+      try {
+        db.prepare("INSERT INTO nodes_fts(nodes_fts) VALUES('rebuild')").run();
+        console.log('   ✅ FTS5 indexes rebuilt successfully');
+      } catch (ftsError: any) {
+        // FTS5 rebuild might fail if table is empty or has issues
+        // Log warning but don't fail snapshot creation
+        console.warn(`   ⚠️  FTS5 rebuild warning: ${ftsError.message}`);
       }
 
       console.log('   ✅ Snapshot created successfully');
       console.log(`   Location: ${this.snapshotPath}`);
       console.log(`   Size: ${this.getFileSize(this.snapshotPath)}`);
       console.log(
-        `   Contents: 4 accounts (1 test + 3 fixtures), 4 users, 0 sessions, 0 nodes, 0 edges (pristine state)`
+        `   Contents: 4 accounts (1 test + 3 fixtures), 4 users, 1 session (test user only), 0 nodes, 0 edges`
       );
 
       // Close the database

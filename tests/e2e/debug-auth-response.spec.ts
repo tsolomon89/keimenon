@@ -27,7 +27,7 @@ test('debug authentication response', async ({ page }) => {
   await page.goto('http://localhost:3000/login');
   await page.waitForLoadState('networkidle');
 
-  // Fill login form with admin account (correct password is 123456, not admin123!)
+  // Fill login form with admin account (correct password is TestPass123!)
   await page.fill('input[type="email"]', 'admin@admin.com');
   await page.fill('input[type="password"]', 'TestPass123!');
 
