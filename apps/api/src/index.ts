@@ -6,7 +6,7 @@ import { getNeo4jClient, DatabaseFactory, StorageMode } from '@canvas-memory/db'
 import { getStorageService } from './services/storage';
 import { getLocalDocumentStore } from './services/local-document-store';
 import ingestRoutes, { setAuthDependencies as setIngestAuthDeps } from './routes/ingest';
-import nodesRoutes, { setAuthDependencies as setNodesAuthDeps } from './routes/nodes';
+import { createNodesRoutes } from './routes/nodes';
 import boardsRoutes, { setAuthDependencies as setBoardsAuthDeps } from './routes/boards';
 import edgesRoutes, { setAuthDependencies as setEdgesAuthDeps } from './routes/edges';
 // LEGACY IMPORTS (quarantined - renamed to .old.ts)
@@ -267,6 +267,7 @@ let streamRoutes: any = null;
 let jobBasedImportRoutes: any = null;
 let testHelperRoutes: any = null; // Test-only endpoints (savepoint, cleanup)
 let testJobsRoutes: any = null; // Test-only job creation endpoint
+let nodesRoutes: any = null; // Nodes CRUD routes (refactored to factory pattern)
 
 // Auth-protected routes (deferred until auth service initializes)
 // These routes require authentication and are registered after authService is ready
@@ -344,8 +345,8 @@ app.use('/api/v1/jobs', (req, res, next) => {
 
 // Auth-protected data routes (deferred)
 app.use('/api/v1/nodes', (req, res, next) => {
-  if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
-  return nodesRoutes(req, res, next);
+  if (nodesRoutes) return nodesRoutes(req, res, next);
+  return res.status(503).json({ error: 'Auth service not initialized' });
 });
 app.use('/api/v1/edges', (req, res, next) => {
   if (!authService) return res.status(503).json({ error: 'Auth service not initialized' });
@@ -567,6 +568,7 @@ async function start() {
     dataManagementRoutes = createDataManagementRoutes(dbClient as any, authService);
     deduplicationRoutes = createDeduplicationRoutes(dbClient as any, authService);
     duplicatesRoutes = createDuplicatesRoutes(dbClient as any, authService);
+    nodesRoutes = createNodesRoutes(authService);
     jobsRoutes = createJobsRoutes(authService, (dbClient as any).db); // Pass SQLite database instance
     // NOTE: jobBasedImportRoutes will be initialized after workerPool is ready (see line ~676)
 
@@ -584,8 +586,7 @@ async function start() {
       testJobsRoutes = authRouter;
     }
 
-    // Inject auth dependencies into data routes
-    setNodesAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
+    // Inject auth dependencies into legacy data routes
     setEdgesAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
     setBoardsAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
     setContentAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);

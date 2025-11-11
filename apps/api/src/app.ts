@@ -16,7 +16,7 @@ import {
 import { errorLogger, notFoundHandler } from './middleware/error-handler.middleware';
 import { initSentry, addSentryErrorHandler } from './services/sentry.service';
 import ingestRoutes, { setAuthDependencies as setIngestAuthDeps } from './routes/ingest';
-import nodesRoutes, { setAuthDependencies as setNodesAuthDeps } from './routes/nodes';
+import { createNodesRoutes } from './routes/nodes';
 import boardsRoutes, { setAuthDependencies as setBoardsAuthDeps } from './routes/boards';
 import edgesRoutes, { setAuthDependencies as setEdgesAuthDeps } from './routes/edges';
 import { createImportDecisionsRoutes } from './routes/import-decisions';
@@ -212,6 +212,7 @@ export function createApp(): { app: Express; context: AppContext } {
   let streamRoutes: any = null;
   let jobBasedImportRoutes: any = null;
   let testHelperRoutes: any = null;
+  let nodesRoutes: any = null;
 
   // Initialize routes with services
   const initializeRoutes = (
@@ -238,9 +239,9 @@ export function createApp(): { app: Express; context: AppContext } {
     streamRoutes = createStreamRoutes(authService, sseBroadcaster);
     jobBasedImportRoutes = createJobBasedImportRoutes(authService, dbClient.db, workerPool);
     testHelperRoutes = createTestHelperRoutes(dbClient);
+    nodesRoutes = createNodesRoutes(authService);
 
-    // Inject auth dependencies
-    setNodesAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
+    // Inject auth dependencies for legacy routes
     setEdgesAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
     setBoardsAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
     setContentAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
@@ -352,9 +353,8 @@ export function createApp(): { app: Express; context: AppContext } {
 
   // Auth-protected data routes
   app.use('/api/v1/nodes', (req, res, next) => {
-    if (!context.authService)
-      return res.status(503).json({ error: 'Auth service not initialized' });
-    return nodesRoutes(req, res, next);
+    if (nodesRoutes) return nodesRoutes(req, res, next);
+    return res.status(503).json({ error: 'Auth service not initialized' });
   });
 
   app.use('/api/v1/edges', (req, res, next) => {

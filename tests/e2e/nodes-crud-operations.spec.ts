@@ -120,9 +120,15 @@ test.describe('Nodes - CRUD Operations', () => {
     });
     nodeData.metadata = { ...nodeData.metadata, data_tag: 'test' };
 
-    const createResponse = await page.request.post('/api/v1/nodes/source', {
+    // CRITICAL FIX #19: Must use API base URL, not relative URL
+    // page.request uses page's current URL as base (web server port 3000)
+    // API is on port 4001
+    const createResponse = await page.request.post('http://127.0.0.1:4001/api/v1/nodes/source', {
       // No Authorization header
       data: nodeData,
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
     expect(createResponse.status()).toBe(401);
