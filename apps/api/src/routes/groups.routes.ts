@@ -26,6 +26,11 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
    */
   router.get('/', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX #16-A: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const accountId = (req as any).user.accountId;
 
       // Get root-level folders and groups (no parent FOLDS_INTO_FOLDER edge)
@@ -115,6 +120,11 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
    */
   router.get('/:id', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX #16-A: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { id } = req.params;
       const accountId = (req as any).user.accountId;
 
@@ -280,6 +290,11 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
    */
   router.get('/:id/nodes', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX #16-A: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { id } = req.params;
       const accountId = (req as any).user.accountId;
       const recursive = req.query.recursive === 'true';
@@ -381,6 +396,11 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
    */
   router.post('/', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX #16-A: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       // CRITICAL FIX #13: Support both formats - properties object AND top-level fields
       // Test format: { kind: 'Group', properties: { name, ... }, member_ids: [] }
       // UI format: { name, kind, group_kind, parentId, query }
@@ -501,6 +521,11 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
    */
   router.patch('/:id', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX #16-A: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { id } = req.params;
       const { name, parentId, query } = req.body;
       const accountId = (req as any).user.accountId;
@@ -614,6 +639,11 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
    */
   router.delete('/:id', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX #16-A: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { id } = req.params;
       const accountId = (req as any).user.accountId;
       const userId = (req as any).user.userId;
@@ -677,6 +707,11 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
     requireAuth(authService),
     async (req: Request, res: Response) => {
       try {
+        // CRITICAL FIX #16-A: Get per-request database client for test isolation
+        const { getDbClient } = await import('../utils/get-db-client');
+        const dbClient = await getDbClient(req);
+        const database = dbClient.getDatabase();
+
         const { nodeId } = req.params;
         const accountId = (req as any).user.accountId;
 
@@ -726,6 +761,11 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
     requireAuth(authService),
     async (req: Request, res: Response) => {
       try {
+        // CRITICAL FIX #16-A: Get per-request database client for test isolation
+        const { getDbClient } = await import('../utils/get-db-client');
+        const dbClient = await getDbClient(req);
+        const database = dbClient.getDatabase();
+
         const { id } = req.params;
         const { add, remove } = req.body;
         const accountId = (req as any).user.accountId;

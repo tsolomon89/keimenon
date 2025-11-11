@@ -335,12 +335,17 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
 
   // ==================== EDGE CASES ====================
 
-  test('should maintain group isolation after account switching', async ({ page, request }) => {
+  test('should maintain group isolation after account switching', async ({ page, apiRequest }) => {
     // Login as Account A
     await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
 
+    // CRITICAL FIX #16-D: Use apiRequest instead of authGet to include X-Test-DB-Path header
+    // Get token from page after login
+    const tokenA = await page.evaluate(() => localStorage.getItem('canvas_memory_token'));
+
     // Verify Account A can list their groups
-    const listA = await authGet(page, '/api/v1/groups', {
+    const listA = await apiRequest.get('/api/v1/groups', {
+      headers: { Authorization: `Bearer ${tokenA}` },
       params: { limit: 1000 },
     });
     const dataA = await listA.json();
@@ -352,8 +357,12 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
     await page.goto('/logout');
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
 
+    // Get token from page after login
+    const tokenB = await page.evaluate(() => localStorage.getItem('canvas_memory_token'));
+
     // Verify Account B cannot see Account A's groups
-    const listB = await authGet(page, '/api/v1/groups', {
+    const listB = await apiRequest.get('/api/v1/groups', {
+      headers: { Authorization: `Bearer ${tokenB}` },
       params: { limit: 1000 },
     });
     const dataB = await listB.json();
