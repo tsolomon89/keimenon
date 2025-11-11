@@ -553,8 +553,11 @@ export function createNodesRoutes(authService: AuthService): Router {
         // Perform update (returns void)
         await db.updateNode(id, allowedUpdates);
 
-        // Read back the updated node to return
-        const updatedNode = await db.getNode(id);
+        // Return merged data directly (no read-back) to avoid SQLite WAL timing issues
+        const updatedNode = {
+          ...existingNode,
+          ...allowedUpdates,
+        };
 
         return res.json({
           success: true,
@@ -603,7 +606,7 @@ export function createNodesRoutes(authService: AuthService): Router {
 
         await db.createNode(nodeData);
 
-        return res.status(201).json({ success: true, node: group });
+        return res.status(201).json({ success: true, node: nodeData });
       } catch (error: any) {
         console.error('Create group error:', error);
         return res.status(500).json({
