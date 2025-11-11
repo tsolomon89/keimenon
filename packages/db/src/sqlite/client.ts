@@ -514,6 +514,18 @@ export class SQLiteClient {
    */
   async disconnect(): Promise<void> {
     if (this.db) {
+      // CRITICAL FIX: Force synchronous WAL checkpoint before close
+      // This prevents race conditions where file deletion happens before checkpoint completes
+      // TRUNCATE mode blocks until checkpoint finishes, ensuring .db-wal and .db-shm are released
+      // See: docs/historical_development/e2e-test-fixes-oct-2025/fix-wal-checkpoint.md
+      try {
+        this.db.pragma('wal_checkpoint(TRUNCATE)');
+        console.log('✅ WAL checkpoint completed before close');
+      } catch (error: any) {
+        // Log warning but don't fail - close should proceed even if checkpoint fails
+        console.warn('⚠️  WAL checkpoint warning:', error.message);
+      }
+
       this.db.close();
       this.db = null;
       console.log('👋 Disconnected from SQLite');
