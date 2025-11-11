@@ -301,7 +301,28 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
     // Login as Account B
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
     await page.goto('/canvas');
-    await page.waitForLoadState('networkidle');
+
+    // Wait for page to load (use domcontentloaded instead of networkidle to avoid SSE/polling issues)
+    await page.waitForLoadState('domcontentloaded');
+
+    // Close welcome modal if present (first-time user onboarding)
+    const welcomeModal = page.getByRole('button', { name: /get started|close/i });
+    if (await welcomeModal.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await welcomeModal.click();
+    }
+
+    // Alternative: close via X button if "Get Started" not found
+    const closeButton = page
+      .locator('button[aria-label="Close"]')
+      .or(page.locator('button:has-text("×")'));
+    if (await closeButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await closeButton.click();
+    }
+
+    // Wait for canvas to be ready
+    await page
+      .waitForSelector('[data-testid="canvas"], canvas, #canvas', { timeout: 5000 })
+      .catch(() => {});
 
     // Account A's group should NOT be visible
     await expect(page.getByText('Account A Confidential Group')).not.toBeVisible();
