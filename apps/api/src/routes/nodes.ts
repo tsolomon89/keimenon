@@ -508,18 +508,7 @@ export function createNodesRoutes(authService: AuthService): Router {
           }
         }
 
-        // SECURITY: Whitelist allowed update fields (prevent core field modification)
-        const allowedUpdates: any = {};
-
-        // Only allow updating properties/metadata - core fields are immutable
-        if (updates.properties !== undefined) {
-          allowedUpdates.properties = updates.properties;
-        }
-        if (updates.metadata !== undefined) {
-          allowedUpdates.metadata = updates.metadata;
-        }
-
-        // Reject if trying to update immutable core fields
+        // SECURITY: Filter out immutable core fields
         const immutableFields = [
           'id',
           'kind',
@@ -528,6 +517,8 @@ export function createNodesRoutes(authService: AuthService): Router {
           'created_by',
           'account_id',
         ];
+
+        // Check if trying to update immutable fields
         const attemptedImmutableUpdates = immutableFields.filter(
           (field) => updates[field] !== undefined
         );
@@ -540,19 +531,30 @@ export function createNodesRoutes(authService: AuthService): Router {
           });
         }
 
+        // Allow updating all fields except immutable ones
+        const allowedUpdates: any = {};
+        Object.keys(updates).forEach((key) => {
+          if (!immutableFields.includes(key)) {
+            allowedUpdates[key] = updates[key];
+          }
+        });
+
         // If no valid updates provided, return error
         if (Object.keys(allowedUpdates).length === 0) {
           return res.status(400).json({
             error: 'No valid update fields provided',
-            message: 'Only properties and metadata fields can be updated',
+            message: 'At least one field must be provided for update',
           });
         }
 
         // Update timestamp
         allowedUpdates.updated_at = Date.now();
 
-        // Perform update
-        const updatedNode = await db.updateNode(id, allowedUpdates);
+        // Perform update (returns void)
+        await db.updateNode(id, allowedUpdates);
+
+        // Read back the updated node to return
+        const updatedNode = await db.getNode(id);
 
         return res.json({
           success: true,

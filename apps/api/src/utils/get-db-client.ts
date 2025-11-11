@@ -32,6 +32,17 @@ import path from 'path';
 const testClientCache = new Map<string, any>();
 
 /**
+ * Cache of pending connection promises by path
+ * Key: absolute database path
+ * Value: Promise<SQLiteClient>
+ *
+ * CRITICAL FIX: This prevents race conditions where multiple concurrent requests
+ * try to create database connections for the same worker database.
+ * All concurrent requests wait for the same connection promise.
+ */
+const connectionPromises = new Map<string, Promise<any>>();
+
+/**
  * Get database client for current request context
  *
  * @param req Express request object (optional)
@@ -47,36 +58,58 @@ export async function getDbClient(req?: Request): Promise<any> {
       return cachedClient;
     }
 
+    // Check if connection is already in progress for this path
+    if (connectionPromises.has(req.testDbPath)) {
+      console.log(
+        `[Get DB Client] Connection already in progress, waiting for ${path.basename(req.testDbPath)}`
+      );
+      return await connectionPromises.get(req.testDbPath);
+    }
+
     console.log(`[Get DB Client] Creating test-specific client:`);
     console.log(`  - Worker DB: ${path.basename(req.testDbPath)}`);
     console.log(`  - Full path: ${req.testDbPath}`);
 
-    try {
-      // Import SQLiteClient directly to bypass DatabaseFactory's singleton
-      const { SQLiteClient } = await import('@canvas-memory/db');
+    // Create connection promise and cache it immediately
+    const connectionPromise = (async () => {
+      try {
+        // Import SQLiteClient directly to bypass DatabaseFactory's singleton
+        const { SQLiteClient } = await import('@canvas-memory/db');
 
-      // Create a new client instance for this worker's database (bypasses singleton)
-      const client = new SQLiteClient({
-        databasePath: req.testDbPath,
-        verbose: false,
-      });
+        // Create a new client instance for this worker's database (bypasses singleton)
+        const client = new SQLiteClient({
+          databasePath: req.testDbPath,
+          verbose: false,
+        });
 
-      // Connect to the database
-      await client.connect();
+        // Connect to the database
+        await client.connect();
 
-      // Enable direct writes for test clients (E2E tests need to create test data)
-      client.enableDirectWrites();
+        // Enable direct writes for test clients (E2E tests need to create test data)
+        client.enableDirectWrites();
 
-      // Cache the client for this database path
-      testClientCache.set(req.testDbPath, client);
+        // Cache the client for this database path
+        testClientCache.set(req.testDbPath, client);
 
-      console.log(`[Get DB Client] ✅ Test client created and cached successfully`);
-      return client;
-    } catch (error) {
-      console.log(`[Get DB Client] ❌ Failed to create test client:`);
-      console.log(`  - Error: ${error}`);
-      throw error;
-    }
+        console.log(`[Get DB Client] ✅ Test client created and cached successfully`);
+        return client;
+      } catch (error) {
+        console.log(`[Get DB Client] ❌ Failed to create test client:`);
+        console.log(`  - Error: ${error}`);
+        // Remove failed promise from cache so next request can retry
+        connectionPromises.delete(req.testDbPath);
+        throw error;
+      } finally {
+        // Remove connection promise after it resolves (success or failure)
+        // The client cache will be used for subsequent requests
+        connectionPromises.delete(req.testDbPath);
+      }
+    })();
+
+    // Cache the promise immediately to prevent concurrent connection attempts
+    connectionPromises.set(req.testDbPath, connectionPromise);
+
+    return await connectionPromise;
   }
 
   // Otherwise, use the global client
@@ -121,15 +154,17 @@ export async function closeDbConnection(testDbPath: string): Promise<boolean> {
       console.log(`[Get DB Client] ✅ Closed connection for ${path.basename(testDbPath)}`);
     }
 
-    // Remove from cache
+    // Remove from both caches
     testClientCache.delete(testDbPath);
+    connectionPromises.delete(testDbPath); // Also clear any pending connection promise
     console.log(`[Get DB Client] ✅ Removed from cache: ${path.basename(testDbPath)}`);
 
     return true;
   } catch (error) {
     console.error(`[Get DB Client] ❌ Error closing connection:`, error);
-    // Still remove from cache even if close failed
+    // Still remove from both caches even if close failed
     testClientCache.delete(testDbPath);
+    connectionPromises.delete(testDbPath);
     return false;
   }
 }
