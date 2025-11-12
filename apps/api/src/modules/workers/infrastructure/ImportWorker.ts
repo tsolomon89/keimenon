@@ -37,6 +37,26 @@ export class ImportWorker extends BaseWorker {
     this.timeoutMs = timeoutMs || parseInt(process.env.IMPORT_WORKER_TIMEOUT_MS || '600000');
   }
 
+  /**
+   * Get database client for job (test DB if testContext, otherwise production DB)
+   *
+   * Test isolation: E2E tests set testContext in job config with path to test database.
+   * This ensures background workers write to the correct test database instead of production.
+   */
+  private async getDbClientForJob(job: Job): Promise<DatabaseClient> {
+    const testDbPath = job.config.testContext?.dbPath;
+
+    if (testDbPath) {
+      const path = await import('path');
+      console.log(`[ImportWorker] Using test database: ${path.basename(testDbPath)}`);
+      const { getDbClient } = await import('../../../utils/get-db-client');
+      const mockReq = { testDbPath } as any;
+      return await getDbClient(mockReq);
+    }
+
+    return this.db; // Production database
+  }
+
   validate(job: Job): boolean {
     // Check required config
     if (!job.config.files || job.config.files.length === 0) {
@@ -123,7 +143,15 @@ export class ImportWorker extends BaseWorker {
         context
       );
 
-      const importService = new EnhancedImportServiceV2(this.db, this.writeQueue);
+      // Get correct database client (test DB for E2E tests, production DB otherwise)
+      const dbClient = await this.getDbClientForJob(job);
+
+      // In test mode, disable write queue to avoid database client mismatch
+      // (writeQueue uses production DB client, but job needs test DB client)
+      const isTestMode = !!job.config.testContext?.dbPath;
+      const writeQueue = isTestMode ? undefined : this.writeQueue;
+
+      const importService = new EnhancedImportServiceV2(dbClient, writeQueue);
 
       // Generate upload hash
       const uploadHash = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;

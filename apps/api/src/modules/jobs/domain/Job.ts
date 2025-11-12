@@ -50,6 +50,13 @@ export interface JobConfig {
     userEmail: string; // For audit logs
   };
 
+  // Test isolation context (E2E testing only)
+  // Propagates test database path from API request → Job → Worker
+  testContext?: {
+    dbPath: string; // Path to worker-specific test database
+    testId?: string; // Optional: test correlation ID for debugging
+  };
+
   // Common config
   metadata?: Record<string, unknown>;
 }

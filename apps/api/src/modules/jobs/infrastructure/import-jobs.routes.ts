@@ -285,6 +285,14 @@ export function createImportJobsRoutes(
           accountMembership, // owner | admin | member
           userEmail, // For audit logs
         },
+        // Test isolation context (E2E testing only)
+        // Propagates test database path from API request to background worker
+        testContext: (req as any).testDbPath
+          ? {
+              dbPath: (req as any).testDbPath,
+              testId: (req as any).testId,
+            }
+          : undefined,
       };
 
       // Create import job

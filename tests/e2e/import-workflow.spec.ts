@@ -99,7 +99,8 @@ test.describe('Import Workflow', () => {
         },
         config: JSON.stringify({
           platform: 'chatgpt',
-          extraction: { includeUser: true, includeAssistant: false },
+          extraction: { includeUser: true, includeAssistant: true },
+          minMessageLength: 10,
         }),
       },
     });
