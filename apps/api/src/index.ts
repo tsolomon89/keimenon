@@ -91,14 +91,23 @@ app.use(addCustomSecurityHeaders()); // Additional custom security headers
 // Body parsing - skip for file upload routes
 // Skip JSON/urlencoded parsing for import routes (they use multipart/form-data with busboy)
 app.use((req: Request, res: Response, next: NextFunction) => {
-  if (req.path.startsWith('/api/v1/import') || req.path.startsWith('/api/import')) {
-    return next(); // Skip body parsing for import routes
+  if (
+    req.path.startsWith('/api/v1/import') ||
+    req.path.startsWith('/api/import') ||
+    req.path.startsWith('/api/v1/jobs')
+  ) {
+    console.log(`[Body-Parser] ⏭️  Skipping body-parser for: ${req.method} ${req.path}`);
+    return next(); // Skip body parsing for import/jobs routes
   }
   return express.json({ limit: '10mb' })(req, res, next);
 });
 app.use((req: Request, res: Response, next: NextFunction) => {
-  if (req.path.startsWith('/api/v1/import') || req.path.startsWith('/api/import')) {
-    return next(); // Skip body parsing for import routes
+  if (
+    req.path.startsWith('/api/v1/import') ||
+    req.path.startsWith('/api/import') ||
+    req.path.startsWith('/api/v1/jobs')
+  ) {
+    return next(); // Skip body parsing for import/jobs routes (already logged above)
   }
   return express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
 });
