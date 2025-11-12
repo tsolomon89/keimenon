@@ -117,7 +117,8 @@ test.describe('Import Workflow', () => {
     // Verify job created
     expect(uploadResult.success).toBe(true);
     expect(uploadResult.jobId).toBeDefined();
-    expect(uploadResult.uploadId).toBeDefined();
+    expect(uploadResult.uploadIds).toBeDefined();
+    expect(uploadResult.uploadIds.length).toBeGreaterThan(0);
 
     const jobId = uploadResult.jobId;
 
@@ -126,7 +127,7 @@ test.describe('Import Workflow', () => {
     let attempts = 0;
     const maxAttempts = 60; // 30 seconds (500ms * 60)
 
-    while (jobStatus !== 'completed' && jobStatus !== 'failed' && attempts < maxAttempts) {
+    while (jobStatus !== 'succeeded' && jobStatus !== 'failed' && attempts < maxAttempts) {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       const statusResponse = await apiRequest.get(`/api/v1/jobs/${jobId}`, {
@@ -145,7 +146,7 @@ test.describe('Import Workflow', () => {
     }
 
     // Verify job completed successfully
-    expect(jobStatus).toBe('completed');
+    expect(jobStatus).toBe('succeeded');
 
     // Step 5: Verify imported data exists
     const nodesResponse = await apiRequest.get('/api/v1/nodes', {

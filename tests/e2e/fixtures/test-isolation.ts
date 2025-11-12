@@ -92,7 +92,8 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
       extraHTTPHeaders: {
         'X-Test-DB-Path': dbPath,
         'x-test-source': 'playwright-e2e',
-        'Content-Type': 'application/json',
+        // NOTE: Don't set Content-Type here - let Playwright set it based on request type
+        // (application/json for data:, multipart/form-data for multipart:, etc.)
         Accept: 'application/json',
       },
     });
