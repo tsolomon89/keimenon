@@ -11,6 +11,7 @@
     "dev": "node scripts/dev.js",
     "dev:clean": "node scripts/dev.js --clean",
     "dev:stop": "node scripts/dev-stop.js",
+    "cleanup:dev": "node scripts/cleanup-dev.js",
     "test": "turbo run test",
     "test:auth": "node tests/auth-suite.js",
     "e2e": "playwright test",
