@@ -286,7 +286,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.error || 'Registration failed');
+          // Server returned an error response
+          throw new Error(error.error || 'Registration failed. Please try again.');
         }
 
         const data = await response.json();
@@ -319,6 +320,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error: any) {
         setIsLoading(false);
         console.error('Registration error:', error);
+
+        // Detect network errors (connection failures, timeouts, etc.)
+        if (
+          error instanceof TypeError &&
+          (error.message.includes('fetch') || error.message.includes('NetworkError'))
+        ) {
+          throw new Error('Network error. Please check your connection and try again.');
+        }
+
+        // Re-throw other errors (server errors, validation errors, etc.)
         throw error;
       }
     },

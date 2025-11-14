@@ -63,6 +63,16 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         return res.status(400).json({ error: 'Email, password, and name required' });
       }
 
+      // Password strength validation (matches client-side rules)
+      if (password.length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+      }
+      const hasLetter = /[a-zA-Z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      if (!hasLetter || !hasNumber) {
+        return res.status(400).json({ error: 'Password must contain both letters and numbers' });
+      }
+
       const result = await authService.register(
         email,
         password,

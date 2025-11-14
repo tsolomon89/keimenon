@@ -216,6 +216,9 @@ test.describe('Multi-Tenant Isolation - Edges', () => {
     }
   });
 
+  // FIXME: Edge filtering by node ownership needs implementation or debugging
+  // GET /api/v1/edges/node/:id may not be properly filtering by account_id
+  // To fix: Verify edges.routes.ts properly filters edges based on node ownership and account isolation
   test('should filter edges by node ownership', async ({ apiRequest }) => {
     // Query edges connected to Account A node using Account B token
     const edgesForANode = await apiRequest.get(`/api/v1/edges/node/${nodeA1Id}`, {
@@ -241,7 +244,8 @@ test.describe('Multi-Tenant Isolation - Edges', () => {
 
     expect(edgesForANodeAsA.ok()).toBeTruthy();
     const dataA = await edgesForANodeAsA.json();
-    const edgesA = dataA.edges || dataA;
+    // API returns {nodeId, outgoing, incoming, total}, combine both arrays
+    const edgesA = [...(dataA.outgoing || []), ...(dataA.incoming || [])];
 
     expect(edgesA.length).toBeGreaterThan(0);
     expect(edgesA.some((e: any) => e.id === edgeAId)).toBeTruthy();
