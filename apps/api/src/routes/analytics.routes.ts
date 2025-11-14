@@ -40,7 +40,8 @@ function calculateEstimatedMRR(database: Database.Database): number {
 
 export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService): Router {
   const router = Router();
-  const database = db.getDatabase();
+  // CRITICAL FIX: Database client must be obtained per-request for test isolation
+  // See: apps/api/src/middleware/db-context.middleware.ts, tests/e2e/fixtures/test-isolation.ts
 
   /**
    * GET /api/v1/analytics/overview
@@ -51,6 +52,11 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
    */
   router.get('/overview', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       // Determine target account and scope
       const isAdmin = req.user?.accountType === 'admin';
       const targetAccountId = req.operating?.accountId || req.user?.accountId;
@@ -321,6 +327,11 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
    */
   router.get('/top-accounts', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const isAdmin = req.user?.accountType === 'admin';
 
       // Only admin users can view top accounts (system-wide metric)
@@ -333,6 +344,7 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
       let query = '';
       if (metric === 'usage') {
         // Top by activity
+        // SECURITY FIX: Filter audit_log by account_id to prevent cross-account activity exposure
         query = `
           SELECT
             a.id, a.name, a.account_class,
@@ -340,7 +352,7 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
           FROM accounts a
           LEFT JOIN user_accounts ua ON ua.account_id = a.id
           LEFT JOIN users u ON u.id = ua.user_id
-          LEFT JOIN audit_log al ON al.actor_user_id = u.id
+          LEFT JOIN audit_log al ON al.actor_user_id = u.id AND al.actor_account_id = a.id
           WHERE a.account_type = 'client'
           GROUP BY a.id
           ORDER BY activity_count DESC
@@ -381,6 +393,11 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
    */
   router.get('/recent-activity', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const isAdmin = req.user?.accountType === 'admin';
       const targetAccountId = req.operating?.accountId || req.user?.accountId;
       const isSystemWideView = isAdmin && !req.operating;
@@ -443,6 +460,11 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
    */
   router.get('/alerts', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const isAdmin = req.user?.accountType === 'admin';
       const targetAccountId = req.operating?.accountId || req.user?.accountId;
       const isSystemWideView = isAdmin && !req.operating;

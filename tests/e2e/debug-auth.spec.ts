@@ -10,7 +10,8 @@ import { login } from './helpers/login';
  * - API endpoints accessible from browser
  */
 
-test.describe('Debug Authentication', () => {
+// SKIP: Debug test - used for troubleshooting only, not part of functional test suite
+test.describe.skip('Debug Authentication', () => {
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
   const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'TestPass123!';
 

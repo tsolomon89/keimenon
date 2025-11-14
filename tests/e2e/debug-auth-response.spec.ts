@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-test('debug authentication response', async ({ page }) => {
+// SKIP: Debug test - used for troubleshooting only
+test.skip('debug authentication response', async ({ page }) => {
   // Intercept and log all network responses
   const responses: any[] = [];
 

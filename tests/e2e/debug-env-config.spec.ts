@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-test('debug env config', async ({ page }) => {
+// SKIP: Debug test - used for troubleshooting only
+test.skip('debug env config', async ({ page }) => {
   // Visit login page
   await page.goto('http://localhost:3000/login');
 

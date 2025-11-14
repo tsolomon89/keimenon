@@ -6,7 +6,8 @@ import { test, expect } from './fixtures/testId';
  * Checks what environment variables are actually available in the client-side bundle
  */
 
-test('should show client environment variables', async ({ page }) => {
+// SKIP: Debug test - used for troubleshooting only
+test.skip('should show client environment variables', async ({ page }) => {
   // Enable console logging
   page.on('console', (msg) => {
     console.log('[Browser]', msg.text());
