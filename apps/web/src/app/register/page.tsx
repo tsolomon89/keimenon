@@ -36,6 +36,7 @@ export default function RegisterPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -55,10 +56,10 @@ export default function RegisterPage() {
   const validatePassword = (password: string): string => {
     if (!password) return '';
     if (password.length < 8) {
-      return 'Password must be at least 8 characters long';
+      return 'Password is too short - at least 8 characters required';
     }
     if (!isPasswordStrong(password)) {
-      return 'Password must contain both letters and numbers';
+      return 'Password is too weak - must contain both letters and numbers';
     }
     return '';
   };
@@ -75,6 +76,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setHasSubmitted(true); // Mark form as submitted to show validation errors
 
     // Validate all fields
     const emailError = validateEmail(formData.email);
@@ -111,12 +113,28 @@ export default function RegisterPage() {
       [name]: value,
     });
 
-    // Clear field-specific error when user starts typing
-    if (name === 'email' || name === 'password' || name === 'confirmPassword') {
-      setFieldErrors({
-        ...fieldErrors,
-        [name]: '',
-      });
+    // If form has been submitted, validate on change for immediate feedback
+    if (hasSubmitted) {
+      if (name === 'email') {
+        setFieldErrors({ ...fieldErrors, email: validateEmail(value) });
+      } else if (name === 'password') {
+        const passwordError = validatePassword(value);
+        const confirmError = validateConfirmPassword(value, formData.confirmPassword);
+        setFieldErrors({ ...fieldErrors, password: passwordError, confirmPassword: confirmError });
+      } else if (name === 'confirmPassword') {
+        setFieldErrors({
+          ...fieldErrors,
+          confirmPassword: validateConfirmPassword(formData.password, value),
+        });
+      }
+    } else {
+      // Clear field-specific error when user starts typing (before first submit)
+      if (name === 'email' || name === 'password' || name === 'confirmPassword') {
+        setFieldErrors({
+          ...fieldErrors,
+          [name]: '',
+        });
+      }
     }
   };
 
