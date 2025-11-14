@@ -16,7 +16,7 @@
  * - apps/api/src/modules/workers/infrastructure/ImportWorker.ts
  */
 
-import { Router, Request, Response } from 'express';
+import express, { Router, Request, Response } from 'express';
 import { AuthService } from '../../../services/auth.service';
 import { requireAuth } from '../../../middleware/auth.middleware';
 import { streamingUploadService } from '../../../services/streaming-upload';
@@ -129,6 +129,10 @@ export function createImportJobsRoutes(
   workerPool?: any // WorkerPool instance for signaling active workers
 ): Router {
   const router = Router();
+
+  // CRITICAL: Add JSON body parser middleware for POST /delete endpoint
+  // The /delete endpoint expects { scope: 'canvas' | 'all-clients' } in request body
+  router.use(express.json());
 
   // Initialize repository and use case
   const jobRepository = new SQLiteJobRepository(db);
