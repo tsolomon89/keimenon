@@ -207,10 +207,12 @@ router.get('/:id/graph', async (req: Request, res: Response) => {
 
     if (storageMode === 'local') {
       // SQLite query for nodes with account filtering
+      // Exclude the Board node itself by checking that board_id equals the requested board
+      // Note: board_id is stored in metadata, not properties
       let nodesQuery = `
         SELECT * FROM nodes
-        WHERE (json_extract(properties, '$.board_id') = ?
-           OR json_extract(properties, '$.board_id') IS NULL)
+        WHERE json_extract(properties, '$.metadata.board_id') = ?
+          AND kind != 'Board'
       `;
       const nodesParams: any[] = [id];
 
@@ -223,7 +225,10 @@ router.get('/:id/graph', async (req: Request, res: Response) => {
       nodesParams.push(limitNum);
 
       const nodesResult = await db.execute(nodesQuery, nodesParams);
-      nodes = nodesResult.records.map((row: any) => JSON.parse(row.properties));
+      nodes = nodesResult.records.map((row: any) => {
+        const props = JSON.parse(row.properties);
+        return props;
+      });
 
       // Get node IDs
       const nodeIds = nodes.map((n: any) => n.id);
@@ -250,9 +255,10 @@ router.get('/:id/graph', async (req: Request, res: Response) => {
       }
     } else {
       // Neo4j query for nodes with account filtering
+      // Exclude the Board node itself
       let nodesQuery = `
         MATCH (n:Node)
-        WHERE (n.board_id = $board_id OR NOT EXISTS(n.board_id))
+        WHERE n.board_id = $board_id AND n.kind <> 'Board'
       `;
       const nodesParams: any = {
         board_id: id,
@@ -329,11 +335,19 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
+    // Validate required fields
+    if (!req.body.name || req.body.name.trim() === '') {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Board name is required',
+      });
+    }
+
     const boardData = {
       id: `board_${nanoid(12)}`,
       kind: 'Board',
       workspace_id: req.body.workspace_id || 'default_workspace',
-      name: req.body.name || 'Untitled Board',
+      name: req.body.name,
       description: req.body.description || null,
       created_at: Date.now(),
       updated_at: Date.now(),
@@ -511,10 +525,10 @@ router.delete('/:id', async (req: Request, res: Response) => {
     if (delete_contents === 'true') {
       // Delete board and all its nodes
       if (storageMode === 'local') {
-        // Count nodes before deletion
+        // Count nodes before deletion (check both metadata and properties)
         const countQuery = `
           SELECT COUNT(*) as count FROM nodes
-          WHERE json_extract(properties, '$.board_id') = ?
+          WHERE json_extract(properties, '$.metadata.board_id') = ?
         `;
         const countResult = await db.execute(countQuery, [id]);
         const nodesDeleted = countResult.records[0].count;
@@ -522,7 +536,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
         // Delete nodes with this board_id
         const deleteNodesQuery = `
           DELETE FROM nodes
-          WHERE json_extract(properties, '$.board_id') = ?
+          WHERE json_extract(properties, '$.metadata.board_id') = ?
         `;
         await db.execute(deleteNodesQuery, [id]);
 
