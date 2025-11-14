@@ -6,8 +6,7 @@ import { test as base, expect } from '@playwright/test';
 
 const test = base;
 
-// SKIP: Debug test - used for troubleshooting only
-test.describe.skip('Network Connectivity Debug', () => {
+test.describe('Network Connectivity Debug', () => {
   test('browser can fetch API health endpoint', async ({ page }) => {
     console.log(
       '\n================================================================================'

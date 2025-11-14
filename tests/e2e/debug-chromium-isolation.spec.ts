@@ -10,8 +10,7 @@
 import { test, expect } from './fixtures/test-isolation';
 import * as fs from 'fs';
 
-// SKIP: Debug test - used for troubleshooting only
-test.describe.skip('Chromium Isolation Debug', () => {
+test.describe('Chromium Isolation Debug', () => {
   test('should authenticate with isolated database', async ({ page, dbPath }) => {
     console.log(`\n${'='.repeat(80)}`);
     console.log(`[Debug] Starting Chromium authentication test with isolated DB`);
