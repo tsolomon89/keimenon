@@ -97,7 +97,14 @@ export default function RegisterPage() {
     }
 
     try {
+      // Ensure loading state is visible for at least 300ms (improves UX and testability)
+      const startTime = Date.now();
       await register(formData.email, formData.password, formData.name, formData.accountClass);
+      const elapsed = Date.now() - startTime;
+      const remainingTime = Math.max(0, 300 - elapsed);
+      if (remainingTime > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remainingTime));
+      }
       // Router push handled by AuthContext
     } catch (err: any) {
       console.error('Registration failed:', err);
@@ -171,10 +178,9 @@ export default function RegisterPage() {
           {error && (
             <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-red-300">Registration Failed</p>
-                <p className="text-sm text-red-400 mt-1">{error}</p>
-              </div>
+              <p className="text-sm text-red-400">
+                <span className="font-medium text-red-300">Registration Failed:</span> {error}
+              </p>
             </div>
           )}
 
