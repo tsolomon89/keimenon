@@ -143,30 +143,47 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
   } = useJobStream();
 
   // ==================== BULK ACTION LOADING STATE MANAGEMENT ====================
-  // Track bulkActionLoading changes for debugging
+  // FIXED: React to SSE job status instead of polling with timeout
+  // This eliminates race conditions and prevents false-positive timeouts for long jobs
   useEffect(() => {
-    console.log(`[ImportsTable] bulkActionLoading changed: ${bulkActionLoading}`);
-
-    // Safety mechanism: Auto-reset if stuck in loading state for more than 30 seconds
-    if (bulkActionLoading) {
-      const timeoutId = setTimeout(() => {
-        console.error('[ImportsTable] ⚠️  bulkActionLoading stuck for 30s, forcing reset!');
-        setBulkActionLoading(false);
-        setJobsBeingOperated(new Set());
-
-        errorCapture.warn('Bulk action loading state was stuck and auto-reset', {
-          domain: 'jobs',
-          operation: 'bulkActionLoadingReset',
-          metadata: {
-            selectedJobIds: Array.from(selectedJobIds),
-            jobsBeingOperated: Array.from(jobsBeingOperated),
-          },
-        });
-      }, 30000);
-
-      return () => clearTimeout(timeoutId);
+    if (jobsBeingOperated.size === 0) {
+      setBulkActionLoading(false);
+      return;
     }
-  }, [bulkActionLoading, selectedJobIds, jobsBeingOperated]);
+
+    console.log(`[ImportsTable] Monitoring ${jobsBeingOperated.size} jobs via SSE`);
+
+    // Check if any operated jobs are still active via SSE
+    const stillActive = Array.from(jobsBeingOperated).some((jobId) => {
+      const job = sseJobs.get(jobId);
+      return job && (job.status === 'queued' || job.status === 'running');
+    });
+
+    if (!stillActive) {
+      // All jobs completed or failed, clear loading state
+      console.log('[ImportsTable] All bulk operations complete via SSE');
+      setBulkActionLoading(false);
+      setJobsBeingOperated(new Set());
+    }
+
+    // Fallback timeout: only trigger if SSE fails for 5 minutes (handles truly stuck jobs)
+    const timeoutId = setTimeout(() => {
+      console.error('[ImportsTable] ⚠️ Bulk action timeout (5 min), forcing reset');
+      setBulkActionLoading(false);
+      setJobsBeingOperated(new Set());
+
+      errorCapture.warn('Bulk action loading state timeout after 5 minutes', {
+        domain: 'jobs',
+        operation: 'bulkActionLoadingTimeout',
+        metadata: {
+          selectedJobIds: Array.from(selectedJobIds),
+          jobsBeingOperated: Array.from(jobsBeingOperated),
+        },
+      });
+    }, 300000); // 5 minutes to match expected job duration
+
+    return () => clearTimeout(timeoutId);
+  }, [sseJobs, jobsBeingOperated, selectedJobIds]);
 
   // Defensive reset on component mount to clear any stuck state
   useEffect(() => {
@@ -489,7 +506,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       setBulkActionLoading(false);
       setJobsBeingOperated(new Set());
 
-      errorCapture.error(new Error('bulkActionLoading was stuck when delete was initiated'), {
+      errorCapture.error('bulkActionLoading was stuck when delete was initiated', {
         domain: 'jobs',
         operation: 'handleDeleteSelected',
         metadata: {

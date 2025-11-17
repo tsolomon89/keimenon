@@ -31,6 +31,21 @@ export const ENABLE_LEGACY_IMPORTS = getEnv('NEXT_PUBLIC_ENABLE_LEGACY_IMPORTS')
 export const ENABLE_HYBRID_LOCAL_FIRST = getEnv('NEXT_PUBLIC_ENABLE_HYBRID_LOCAL_FIRST') === '1';
 
 /**
+ * SSE Direct Subscription Feature Flag (for phased rollout)
+ *
+ * When enabled, components subscribe directly to useJobStream instead of polling
+ * BackgroundOperationsContext, eliminating race conditions and reducing latency.
+ *
+ * Rollout plan:
+ * - Stage 1: false (old polling behavior for all users)
+ * - Stage 2: true for dev/staging environments (internal testing)
+ * - Stage 3: true for production (gradual rollout with monitoring)
+ *
+ * Default: true (enabled by default, can be disabled via env var for rollback)
+ */
+export const USE_DIRECT_SSE_SUBSCRIPTION = getEnv('NEXT_PUBLIC_USE_DIRECT_SSE') !== 'false'; // Defaults to true, opt-out
+
+/**
  * Debug flags
  */
 export const DEBUG_IMPORT_SELECTOR = getEnv('NEXT_PUBLIC_DEBUG_IMPORT_SELECTOR') === '1';

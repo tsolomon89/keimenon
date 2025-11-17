@@ -109,6 +109,7 @@ const JOB_STATUS_TO_OPERATION_STATUS: Record<JobUpdate['status'], OperationStatu
   succeeded: 'done',
   failed: 'error',
   canceled: 'error',
+  deleted: 'done',
 };
 
 function jobTypeToOperationType(jobType: JobUpdate['type']): OperationType {
@@ -401,4 +402,22 @@ export function useOperation(id: string | null) {
 export function useActiveOperations() {
   const { getActiveOperations } = useBackgroundOperations();
   return getActiveOperations();
+}
+
+/**
+ * Hook to get SSE connection status for debugging
+ *
+ * Returns the real-time connection status from useJobStream.
+ * Useful for showing connection health indicators in the UI.
+ *
+ * @returns {Object} { connected: boolean, error: Error | null }
+ * @example
+ * const { connected, error } = useSSEConnectionStatus();
+ * if (!connected) {
+ *   return <div>⚠️ Real-time updates disconnected. Reconnecting...</div>
+ * }
+ */
+export function useSSEConnectionStatus() {
+  const { connected, error } = useJobStream();
+  return { connected, error };
 }
