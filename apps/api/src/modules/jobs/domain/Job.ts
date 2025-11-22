@@ -15,7 +15,7 @@
  */
 
 import { JobStateMachine, JobState, JobStatus, JobTransition } from './JobStateMachine';
-import { JobEvent, JobEventBuilder, JobEventData, JobEventType } from './JobEvent';
+import { JobEvent, JobEventBuilder } from './JobEvent';
 
 export type JobType = 'import' | 'delete' | 'export' | 'analyze';
 
@@ -361,8 +361,9 @@ export class Job {
         error: this._state.error,
         blockedReason: this._state.blockedReason,
         retryCount: this._state.retryCount,
+        progress: this._progress, // ✅ Include progress in state_data for persistence
       },
-      progress: this.progress,
+      progress: this.progress, // Keep for API responses (includes calculated percent)
       eventsCount: this._events.length,
     };
   }
@@ -396,7 +397,7 @@ export class Job {
       retryCount: stateData.retryCount,
     };
 
-    return new Job({
+    const job = new Job({
       id: record.id,
       type: record.type,
       accountId: record.account_id,
@@ -407,6 +408,17 @@ export class Job {
       state,
       events: [], // Events loaded separately
     });
+
+    // ✅ Restore progress from state_data (if present)
+    if (stateData.progress) {
+      (job as any)._progress = {
+        current: stateData.progress.current || 0,
+        total: stateData.progress.total || 0,
+        message: stateData.progress.message,
+      };
+    }
+
+    return job;
   }
 
   // ============================================================================

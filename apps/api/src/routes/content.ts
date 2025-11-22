@@ -395,7 +395,7 @@ router.get('/stats', async (req: Request, res: Response) => {
     const db = await getDbClient(req);
 
     // Get authenticated user's account_id for filtering
-    const accountId = req.user?.account?.id || req.user?.accountId;
+    const accountId = req.user?.accountId;
 
     // Get database stats
     let dbStats = {};

@@ -7,10 +7,12 @@
  * - Incremental batch processing
  * - Cancellation mid-deletion
  * - Performance with 10K+ nodes
+ * - CRITICAL: System nodes preservation (UserNode, AccountNode, Board, Constellation)
  *
  * Related:
  * - apps/api/src/modules/workers/infrastructure/DeleteWorker.ts (batched implementation)
  * - docs/active_development/FINAL_FIX_DELETE_WORKER_BATCHING.md
+ * - BUG FIX (2025-11-16): DeleteWorker now correctly preserves system nodes
  */
 
 import { describe, it, before, after, beforeEach } from 'node:test';
@@ -18,6 +20,7 @@ import assert from 'node:assert/strict';
 import fetch from 'node-fetch';
 import Database from 'better-sqlite3';
 import path from 'path';
+import { getCanvasDataInClause, getSystemNodeInClause } from '@canvas-memory/types';
 
 // Test configuration
 const API_URL = process.env.TEST_API_URL || 'http://localhost:4001';
@@ -159,6 +162,40 @@ function countNodes(accountId: string): number {
 }
 
 /**
+ * Count canvas data nodes (should be deleted)
+ *
+ * Uses node kind constants from packages/types/src/node-kinds.ts
+ * to ensure consistency with DeleteWorker and data-management routes.
+ */
+function countCanvasNodes(accountId: string): number {
+  const result = db
+    .prepare(
+      `SELECT COUNT(*) as count FROM nodes
+       WHERE account_id = ?
+       AND kind IN (${getCanvasDataInClause()})`
+    )
+    .get(accountId) as any;
+  return result.count;
+}
+
+/**
+ * Count system nodes (should NOT be deleted)
+ *
+ * Uses node kind constants from packages/types/src/node-kinds.ts
+ * to ensure consistency with DeleteWorker and data-management routes.
+ */
+function countSystemNodes(accountId: string): number {
+  const result = db
+    .prepare(
+      `SELECT COUNT(*) as count FROM nodes
+       WHERE account_id = ?
+       AND kind IN (${getSystemNodeInClause()})`
+    )
+    .get(accountId) as any;
+  return result.count;
+}
+
+/**
  * Cleanup test data for account
  */
 function cleanupTestData(accountId: string) {
@@ -257,6 +294,70 @@ beforeEach(() => {
 // ============================================================================
 // Batched Deletion Tests
 // ============================================================================
+
+describe('Delete Scope Verification', () => {
+  it('should preserve system nodes when deleting canvas data', async () => {
+    // CRITICAL: This test verifies the fix for the DeleteWorker scope bug
+    // Bug: DeleteWorker was deleting ALL nodes including system nodes
+    // Fix: DeleteWorker now only deletes canvas data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
+    //      and preserves system nodes (UserNode, AccountNode, Board, Constellation)
+
+    console.log('   🧪 Testing system node preservation during canvas deletion...');
+
+    // Get initial system node count (should exist for admin account)
+    const systemNodesBefore = countSystemNodes(adminAccountId);
+    console.log(`   📊 System nodes before deletion: ${systemNodesBefore}`);
+
+    // System nodes should exist (UserNode, AccountNode, etc.)
+    assert.ok(systemNodesBefore > 0, 'Admin account should have system nodes');
+
+    // Create test canvas data nodes
+    const canvasNodeCount = 100;
+    createTestNodes(adminAccountId, canvasNodeCount);
+
+    const canvasNodesBefore = countCanvasNodes(adminAccountId);
+    console.log(`   📊 Canvas nodes before deletion: ${canvasNodesBefore}`);
+
+    // Start delete job with scope='canvas'
+    const response = await fetch(`${API_URL}/api/v1/jobs/delete`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ scope: 'canvas' }),
+    });
+
+    const data = (await response.json()) as any;
+    const jobId = data.jobId;
+    console.log(`   🗑️ Started delete job: ${jobId} (scope: canvas)`);
+
+    // Wait for completion
+    const { job } = await waitForJobCompletion(jobId, adminToken, 60000);
+    assert.strictEqual(job.state.status, 'succeeded');
+
+    // CRITICAL ASSERTIONS:
+    // 1. Canvas nodes should be deleted (0 remaining)
+    const canvasNodesAfter = countCanvasNodes(adminAccountId);
+    assert.strictEqual(
+      canvasNodesAfter,
+      0,
+      `Canvas nodes should be deleted, but ${canvasNodesAfter} remain`
+    );
+
+    // 2. System nodes should be PRESERVED (same count as before)
+    const systemNodesAfter = countSystemNodes(adminAccountId);
+    assert.strictEqual(
+      systemNodesAfter,
+      systemNodesBefore,
+      `System nodes should be preserved! Expected ${systemNodesBefore}, got ${systemNodesAfter}`
+    );
+
+    console.log(`   ✅ System nodes preserved: ${systemNodesBefore} → ${systemNodesAfter}`);
+    console.log(`   ✅ Canvas nodes deleted: ${canvasNodesBefore} → ${canvasNodesAfter}`);
+    console.log('   ✅ DELETE SCOPE FIX VERIFIED!');
+  }, 90000);
+});
 
 describe('Batched Deletion - Small Dataset', () => {
   it('should delete 1000 nodes with progress updates', async () => {
@@ -537,6 +638,187 @@ describe('Batched Deletion - Performance Benchmarks', () => {
 
     console.log(`   ✅ Production-scale deletion completed with responsive event loop`);
   }, 360000); // 6 minute timeout
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Multi-Tenant Isolation Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+describe('Multi-Tenant Deletion Isolation', () => {
+  /**
+   * CRITICAL SECURITY TEST: Verify that delete jobs respect account boundaries
+   *
+   * This test prevents a severe security vulnerability where Account A's delete
+   * operation could accidentally delete Account B's data.
+   *
+   * Test Setup:
+   * 1. Create Account A with 100 canvas nodes
+   * 2. Create Account B with 50 canvas nodes
+   * 3. Run delete job for Account A (scope: canvas)
+   * 4. Verify Account A's data is deleted
+   * 5. Verify Account B's data is UNTOUCHED
+   *
+   * Related:
+   * - apps/api/src/modules/workers/infrastructure/DeleteWorker.ts (WHERE account_id = ?)
+   * - docs/BUG_FIX_DATA_DELETION_2025-11-16.md (multi-tenant security)
+   */
+  it('should NOT delete data from other accounts', async () => {
+    console.log('\n   🔒 Testing multi-tenant deletion isolation...');
+
+    // Create test Account B (in addition to existing adminAccountId)
+    const accountBEmail = `test-account-b-${Date.now()}@example.com`;
+    const accountBPassword = 'TestPass123!';
+
+    // Register Account B
+    const registerResponse = await fetch(`${API_URL}/api/v1/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: accountBEmail,
+        password: accountBPassword,
+        name: 'Test Account B',
+        account_type: 'client',
+      }),
+    });
+
+    assert.strictEqual(registerResponse.status, 201, 'Account B registration should succeed');
+    const registerData = (await registerResponse.json()) as any;
+    const accountBId = registerData.account.id;
+    const _accountBToken = registerData.token;
+
+    // Create data for Account A (admin account)
+    createTestNodes(adminAccountId, 100);
+    const accountANodesBefore = countCanvasNodes(adminAccountId);
+    console.log(`      Account A (admin): ${accountANodesBefore} nodes created`);
+
+    // Create data for Account B
+    createTestNodes(accountBId, 50);
+    const accountBNodesBefore = countCanvasNodes(accountBId);
+    console.log(`      Account B: ${accountBNodesBefore} nodes created`);
+
+    // Run delete job for Account A ONLY
+    console.log(`      Deleting Account A's canvas data...`);
+    const response = await fetch(`${API_URL}/api/v1/jobs/delete`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ scope: 'canvas' }),
+    });
+
+    assert.strictEqual(response.status, 201, 'Delete job should be created');
+    const { jobId } = (await response.json()) as any;
+
+    // Wait for job completion
+    const { job } = await waitForJobCompletion(jobId, adminToken, 60000);
+    assert.strictEqual(job.status, 'done', 'Delete job should complete successfully');
+
+    // CRITICAL ASSERTIONS:
+    // 1. Account A's canvas data should be deleted
+    const accountANodesAfter = countCanvasNodes(adminAccountId);
+    assert.strictEqual(
+      accountANodesAfter,
+      0,
+      `Account A canvas nodes should be deleted. Expected 0, got ${accountANodesAfter}`
+    );
+
+    // 2. Account B's data should be UNTOUCHED
+    const accountBNodesAfter = countCanvasNodes(accountBId);
+    assert.strictEqual(
+      accountBNodesAfter,
+      accountBNodesBefore,
+      `Account B data should NOT be affected! Expected ${accountBNodesBefore}, got ${accountBNodesAfter}`
+    );
+
+    console.log(`      ✅ Account A: ${accountANodesBefore} → 0 nodes (deleted)`);
+    console.log(`      ✅ Account B: ${accountBNodesBefore} → ${accountBNodesAfter} nodes (preserved)`);
+    console.log(`   ✅ Multi-tenant isolation verified: Account boundaries respected`);
+
+    // Cleanup Account B
+    cleanupTestData(accountBId);
+    db.prepare('DELETE FROM users WHERE email = ?').run(accountBEmail);
+    db.prepare('DELETE FROM accounts WHERE id = ?').run(accountBId);
+  }, 90000); // 90 second timeout
+
+  /**
+   * Test concurrent deletion prevention
+   *
+   * Verifies that attempting to create a second delete job while one is running
+   * returns a 409 Conflict error instead of creating duplicate jobs.
+   */
+  it('should prevent concurrent delete jobs for same account', async () => {
+    console.log('\n   🔒 Testing concurrent deletion prevention...');
+
+    // Create test data
+    createTestNodes(adminAccountId, 500);
+
+    // Start first delete job
+    const response1 = await fetch(`${API_URL}/api/v1/jobs/delete`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ scope: 'canvas' }),
+    });
+
+    assert.strictEqual(response1.status, 201, 'First delete job should be created');
+    const { jobId: jobId1 } = (await response1.json()) as any;
+
+    // Immediately try to create second delete job (should be rejected)
+    const response2 = await fetch(`${API_URL}/api/v1/jobs/delete`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ scope: 'canvas' }),
+    });
+
+    // CRITICAL ASSERTION: Second job should be rejected with 409 Conflict
+    assert.strictEqual(
+      response2.status,
+      409,
+      'Second delete job should be rejected with 409 Conflict'
+    );
+
+    const errorData = (await response2.json()) as any;
+    assert.strictEqual(errorData.success, false, 'Response should indicate failure');
+    assert.ok(
+      errorData.error?.includes('already in progress'),
+      'Error message should indicate deletion in progress'
+    );
+    assert.strictEqual(
+      errorData.activeJobId,
+      jobId1,
+      'Error should include active job ID for reference'
+    );
+
+    console.log(`      ✅ Concurrent deletion prevented (409 Conflict returned)`);
+    console.log(`      ✅ Active job ID returned: ${errorData.activeJobId}`);
+
+    // Wait for first job to complete
+    await waitForJobCompletion(jobId1, adminToken, 60000);
+
+    // Now a new delete job should be allowed
+    const response3 = await fetch(`${API_URL}/api/v1/jobs/delete`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ scope: 'canvas' }),
+    });
+
+    assert.strictEqual(
+      response3.status,
+      201,
+      'New delete job should be allowed after previous completion'
+    );
+
+    console.log(`   ✅ Concurrent deletion prevention working correctly`);
+  }, 120000); // 2 minute timeout
 });
 
 console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');

@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "canvas-git-workflow": {
+      "command": "node",
+      "args": ["${workspaceFolder}/.mcp/servers/git-workflow/index.js"],
+      "description": "Git operations and PR creation"
+    },
+    "canvas-api-testing": {
+      "command": "node",
+      "args": ["${workspaceFolder}/.mcp/servers/api-testing/index.js"],
+      "description": "Smoke test execution"
+    },
+    "canvas-database": {
+      "command": "node",
+      "args": ["${workspaceFolder}/.mcp/servers/database/index.js"],
+      "description": "Migration validation"
+    }
+  },
+  "description": "Deploy persona - git, testing, validation (no web, no arbitrary execution)"
+}

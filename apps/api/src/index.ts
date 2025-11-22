@@ -2,7 +2,7 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { Server } from 'http';
-import { getNeo4jClient, DatabaseFactory, StorageMode } from '@canvas-memory/db';
+import { DatabaseFactory, StorageMode } from '@canvas-memory/db';
 import { getStorageService } from './services/storage';
 import { getLocalDocumentStore } from './services/local-document-store';
 import ingestRoutes, { setAuthDependencies as setIngestAuthDeps } from './routes/ingest';
@@ -32,10 +32,12 @@ import { createAdminRoutes } from './routes/admin.routes';
 import { createDataManagementRoutes } from './routes/data-management';
 import { createDeduplicationRoutes } from './routes/deduplication';
 import { createTestHelperRoutes } from './routes/test-helpers';
+import { createMetricsRoutes } from './routes/metrics.routes';
 import healthRoutes from './routes/health.routes';
 import { createJobsRoutes } from './modules/jobs/infrastructure/jobs.routes';
 import { createStreamRoutes } from './modules/jobs/infrastructure/stream.routes';
 import { createImportJobsRoutes as createJobBasedImportRoutes } from './modules/jobs/infrastructure/import-jobs.routes';
+import { createUploadRoutes } from './routes/uploads.routes';
 import { SSEBroadcaster } from './modules/jobs/infrastructure/SSEBroadcaster';
 import { WorkerPool } from './modules/workers/domain/WorkerPool';
 import { ConcurrencyGuard } from './modules/workers/domain/ConcurrencyGuard';
@@ -46,6 +48,8 @@ import { DeleteWorker } from './modules/workers/infrastructure/DeleteWorker';
 import { DatabaseWriteQueue } from './services/DatabaseWriteQueue';
 import { AuthService } from './services/auth.service';
 import { requireAuth, requirePermission, isolateByAccount } from './middleware/auth.middleware';
+import { initializeCleanupService, shutdownCleanupService } from './modules/uploads/application/UploadCleanupService';
+import { SQLiteUploadSessionRepository } from './modules/uploads/infrastructure/UploadSessionRepository';
 import {
   configureCors,
   configureHelmet,
@@ -57,8 +61,7 @@ import { validateAndFailFast } from './utils/env-validator';
 import { errorLogger, notFoundHandler } from './middleware/error-handler.middleware';
 import { testCorrelationMiddleware } from './middleware/test-correlation.middleware';
 import { initSentry, addSentryErrorHandler } from './services/sentry.service';
-// DISABLED: Using clean embedded schema instead of migrations
-// import { MigrationRunner } from '@canvas-memory/db/src/sqlite/MigrationRunner';
+import { recoverOrphanedJobs } from './modules/jobs/infrastructure/OrphanedJobRecovery';
 
 // Load environment variables - override ensures we get the right .env
 dotenv.config({ path: path.join(__dirname, '../.env'), override: true });
@@ -81,6 +84,7 @@ let authService: AuthService | null = null;
 let sseBroadcaster: SSEBroadcaster | null = null;
 let writeQueue: DatabaseWriteQueue | null = null;
 let workerPool: WorkerPool | null = null;
+let uploadCleanupService: any = null;
 let isReady = false;
 
 // Security Middleware - MUST be applied before routes
@@ -91,29 +95,38 @@ app.use(addCustomSecurityHeaders()); // Additional custom security headers
 // Body parsing - skip for file upload routes
 // Skip JSON/urlencoded parsing for import routes (they use multipart/form-data with busboy)
 app.use((req: Request, res: Response, next: NextFunction) => {
+  // Only skip body parsing for chunk upload endpoints (binary data)
+  // Other upload endpoints need JSON body parsing (initiate, status, etc.)
+  const isChunkUpload = req.path.match(/^\/api\/v1\/uploads\/[^\/]+\/chunks\/\d+$/);
+
   if (
     req.path.startsWith('/api/v1/import') ||
     req.path.startsWith('/api/import') ||
-    req.path.startsWith('/api/v1/jobs')
+    req.path.startsWith('/api/v1/jobs') ||
+    isChunkUpload
   ) {
     console.log(`[Body-Parser] ⏭️  Skipping body-parser for: ${req.method} ${req.path}`);
-    return next(); // Skip body parsing for import/jobs routes
+    return next(); // Skip body parsing for import/jobs/chunk-upload routes
   }
   return express.json({ limit: '10mb' })(req, res, next);
 });
 app.use((req: Request, res: Response, next: NextFunction) => {
+  // Only skip body parsing for chunk upload endpoints (binary data)
+  const isChunkUpload = req.path.match(/^\/api\/v1\/uploads\/[^\/]+\/chunks\/\d+$/);
+
   if (
     req.path.startsWith('/api/v1/import') ||
     req.path.startsWith('/api/import') ||
-    req.path.startsWith('/api/v1/jobs')
+    req.path.startsWith('/api/v1/jobs') ||
+    isChunkUpload
   ) {
-    return next(); // Skip body parsing for import/jobs routes (already logged above)
+    return next(); // Skip body parsing for import/jobs/chunk-upload routes (already logged above)
   }
   return express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
 });
 
 // Request logging
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, _res: Response, next: NextFunction) => {
   console.log(`${req.method} ${req.path}`);
   return next();
 });
@@ -133,7 +146,7 @@ if (process.env.NODE_ENV === 'test') {
 app.use('/health', healthRoutes);
 
 // Readiness check
-app.get('/ready', async (req: Request, res: Response) => {
+app.get('/ready', async (_req: Request, res: Response) => {
   const checks = {
     server: isReady,
     database: false,
@@ -177,7 +190,7 @@ app.get('/ready', async (req: Request, res: Response) => {
 });
 
 // API routes
-app.get('/api/v1', (req: Request, res: Response) => {
+app.get('/api/v1', (_req: Request, res: Response) => {
   res.json({
     message: 'Canvas Memory OS API v1',
     version: '0.1.0',
@@ -277,6 +290,8 @@ let jobBasedImportRoutes: any = null;
 let testHelperRoutes: any = null; // Test-only endpoints (savepoint, cleanup)
 let testJobsRoutes: any = null; // Test-only job creation endpoint
 let nodesRoutes: any = null; // Nodes CRUD routes (refactored to factory pattern)
+let metricsRoutes: any = null; // Metrics API routes (delete operations monitoring)
+let uploadRoutes: any = null; // Chunked upload routes (resumable file uploads)
 
 // Auth-protected routes (deferred until auth service initializes)
 // These routes require authentication and are registered after authService is ready
@@ -308,6 +323,10 @@ app.use('/api/v1/settings', (req, res, next) => {
 });
 app.use('/api/v1/admin', (req, res, next) => {
   if (adminRoutes) return adminRoutes(req, res, next);
+  return res.status(503).json({ error: 'Auth service not initialized' });
+});
+app.use('/api/v1/metrics', (req, res, next) => {
+  if (metricsRoutes) return metricsRoutes(req, res, next);
   return res.status(503).json({ error: 'Auth service not initialized' });
 });
 
@@ -430,6 +449,13 @@ app.use('/api/v1/test/jobs', (req, res, next) => {
     .json({ error: 'Test jobs endpoint not available (NODE_ENV must be "test")' });
 });
 
+// Upload routes (chunked resumable uploads)
+// IMPORTANT: Body-parser is skipped for /api/v1/uploads/* paths (see line ~100) to preserve binary streams
+app.use('/api/v1/uploads', (req, res, next) => {
+  if (uploadRoutes) return uploadRoutes(req, res, next);
+  return res.status(503).json({ error: 'Upload service not initialized' });
+});
+
 // 404 Not Found Handler - Must be after all routes
 app.use(notFoundHandler);
 
@@ -480,6 +506,16 @@ async function gracefulShutdown(signal: string) {
       console.log('✅ Worker pool stopped');
     } catch (error) {
       console.error('⚠️  Error stopping worker pool:', error);
+    }
+  }
+
+  // Stop upload cleanup service
+  if (uploadCleanupService) {
+    try {
+      shutdownCleanupService();
+      console.log('✅ Upload cleanup service stopped');
+    } catch (error) {
+      console.error('⚠️  Error stopping upload cleanup service:', error);
     }
   }
 
@@ -552,7 +588,7 @@ async function start() {
       await (dbClient as any).initializeSchema();
     }
 
-    // DISABLED: Using clean embedded schema in client.ts instead of migrations
+    // TODO: Fix migration sequence - missing migrations 004, 005, 006
     // Run pending migrations (automatic migration system)
     // console.log('📦 Running database migrations...');
     // const migrationRunner = new MigrationRunner((dbClient as any).db);
@@ -578,6 +614,8 @@ async function start() {
     deduplicationRoutes = createDeduplicationRoutes(dbClient as any, authService);
     duplicatesRoutes = createDuplicatesRoutes(dbClient as any, authService);
     nodesRoutes = createNodesRoutes(authService);
+    metricsRoutes = createMetricsRoutes(authService);
+    uploadRoutes = createUploadRoutes(authService); // Chunked upload routes
     jobsRoutes = createJobsRoutes(authService, (dbClient as any).db); // Pass SQLite database instance
     // NOTE: jobBasedImportRoutes will be initialized after workerPool is ready (see line ~676)
 
@@ -641,7 +679,7 @@ async function start() {
     console.log('✅ Database write queue initialized and started');
 
     // Debug/Diagnostic endpoints for write queue
-    app.get('/api/v1/debug/queue/status', (req: Request, res: Response) => {
+    app.get('/api/v1/debug/queue/status', (_req: Request, res: Response) => {
       if (!writeQueue) {
         return res.status(503).json({ error: 'Write queue not initialized' });
       }
@@ -652,7 +690,7 @@ async function start() {
       const errorMetrics = writeQueue.getErrorMetrics();
       const deadLetterQueue = writeQueue.getDeadLetterQueue();
 
-      res.json({
+      return res.json({
         queue: {
           nodes: queueSizes.nodes,
           edges: queueSizes.edges,
@@ -669,20 +707,20 @@ async function start() {
       });
     });
 
-    app.post('/api/v1/debug/queue/reset-circuit', (req: Request, res: Response) => {
+    app.post('/api/v1/debug/queue/reset-circuit', (_req: Request, res: Response) => {
       if (!writeQueue) {
         return res.status(503).json({ error: 'Write queue not initialized' });
       }
 
       try {
         writeQueue.resetCircuitBreaker();
-        res.json({
+        return res.json({
           success: true,
           message: 'Circuit breaker reset successfully',
           isOpen: writeQueue.isCircuitOpen(),
         });
       } catch (error: any) {
-        res.status(500).json({
+        return res.status(500).json({
           success: false,
           error: error.message,
         });
@@ -699,9 +737,6 @@ async function start() {
     // Recover orphaned jobs from previous server instance
     // This marks any jobs left in 'queued' or 'running' state as 'failed'
     // Must run BEFORE worker pool starts to prevent race conditions
-    const { recoverOrphanedJobs } = await import(
-      './modules/jobs/infrastructure/OrphanedJobRecovery'
-    );
     await recoverOrphanedJobs(jobRepository);
 
     // Connect SSE broadcaster to job repository for initial state sync
@@ -729,6 +764,13 @@ async function start() {
     await workerPool.start();
     (global as any).workerPool = workerPool; // Expose for health check
     console.log('✅ Worker pool initialized and started');
+
+    // Initialize Upload Cleanup Service
+    console.log('🧹 Initializing upload cleanup service...');
+    const uploadRepo = new SQLiteUploadSessionRepository((dbClient as any).db);
+    const cleanupIntervalMs = parseInt(process.env.UPLOAD_CLEANUP_INTERVAL_MS || '3600000'); // Default: 1 hour
+    uploadCleanupService = initializeCleanupService(uploadRepo, cleanupIntervalMs);
+    console.log(`✅ Upload cleanup service initialized (interval: ${cleanupIntervalMs / 1000}s)`);
 
     // Initialize job-based import routes NOW that workerPool is ready
     jobBasedImportRoutes = createJobBasedImportRoutes(

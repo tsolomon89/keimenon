@@ -19,7 +19,6 @@ import {
  */
 export function createSettingsRoutes(db: SQLiteClient, authService: AuthService): Router {
   const router = Router();
-  const database = db.getDatabase();
 
   /**
    * GET /api/v1/settings - Get all settings for current user
@@ -27,6 +26,11 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
    */
   router.get('/', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const user = (req as any).user;
       const accountId = user.accountId;
       const userId = user.userId;
@@ -99,6 +103,11 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
    */
   router.get('/:id', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const user = (req as any).user;
       const settingId = req.params.id;
       const accountId = user.accountId;
@@ -151,6 +160,11 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
    */
   router.patch('/:id', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const user = (req as any).user;
       const settingId = req.params.id;
       const { value, scope } = req.body;
@@ -229,6 +243,11 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
    */
   router.delete('/:id', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const user = (req as any).user;
       const settingId = req.params.id;
       const accountId = user.accountId;
@@ -290,6 +309,11 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
    */
   router.get('/history/:id', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const user = (req as any).user;
       const settingId = req.params.id;
       const accountId = user.accountId;
@@ -322,6 +346,11 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
    */
   router.get('/registry/all', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const user = (req as any).user;
       const permissionLevel = user.permissionLevel;
       const accountType = user.accountType;

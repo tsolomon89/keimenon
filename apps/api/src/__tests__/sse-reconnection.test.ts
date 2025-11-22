@@ -12,13 +12,13 @@
  * - Manual disconnect vs automatic reconnection
  */
 
-import { describe, test, before, afterEach } from 'node:test';
+import { describe, test, before, type TestContext } from 'node:test';
 import assert from 'node:assert';
 import { login, waitFor } from './utils/test-helpers';
 
 // Import EventSource correctly for Node.js
-// The 'eventsource' package exports a default class
-import EventSource from 'eventsource';
+// The 'eventsource' package is CommonJS, use require syntax
+import EventSource = require('eventsource');
 
 // Test configuration
 const API_BASE_URL = process.env.API_URL || 'http://localhost:4001';
@@ -42,7 +42,7 @@ describe('SSE Reconnection', () => {
   describe('Connection Lifecycle', () => {
     test(
       'should establish initial connection successfully',
-      async (_t) => {
+      async (_t: TestContext) => {
         const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
         const eventSource = new EventSource(sseUrl);
 
@@ -62,7 +62,7 @@ describe('SSE Reconnection', () => {
 
     test(
       'should receive heartbeat events',
-      async (_t) => {
+      async (_t: TestContext) => {
         const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
         const eventSource = new EventSource(sseUrl);
         const heartbeats: any[] = [];
@@ -91,7 +91,7 @@ describe('SSE Reconnection', () => {
 
     test(
       'should handle manual close gracefully',
-      async (_t) => {
+      async (_t: TestContext) => {
         const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
         const eventSource = new EventSource(sseUrl);
 
@@ -113,7 +113,7 @@ describe('SSE Reconnection', () => {
 
     test(
       'should cleanup connection on client disconnect',
-      async (_t) => {
+      async (_t: TestContext) => {
         const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
 
         // Create multiple connections
@@ -163,7 +163,7 @@ describe('SSE Reconnection', () => {
   describe('Automatic Reconnection', () => {
     test(
       'should reconnect automatically on disconnect',
-      async (_t) => {
+      async (_t: TestContext) => {
         const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
         let eventSource = new EventSource(sseUrl);
         let connectionCount = 0;
@@ -210,7 +210,7 @@ describe('SSE Reconnection', () => {
 
     test(
       'should use exponential backoff for reconnection attempts',
-      async (_t) => {
+      async (_t: TestContext) => {
         // This test simulates the client-side reconnection logic
         const reconnectDelays: number[] = [];
         let currentDelay = 1000; // Start at 1 second
@@ -241,7 +241,7 @@ describe('SSE Reconnection', () => {
 
     test(
       'should limit maximum reconnection attempts',
-      async (_t) => {
+      async (_t: TestContext) => {
         // This test verifies the reconnection limit logic
         const MAX_RECONNECT_ATTEMPTS = 10;
         let reconnectAttempts = 0;
@@ -266,7 +266,7 @@ describe('SSE Reconnection', () => {
   describe('Error Handling', () => {
     test(
       'should handle connection errors',
-      async (_t) => {
+      async (_t: TestContext) => {
         // Try to connect with invalid token
         const sseUrl = `${SSE_BASE_URL}?token=invalid-token`;
         const eventSource = new EventSource(sseUrl);
@@ -288,7 +288,7 @@ describe('SSE Reconnection', () => {
 
     test(
       'should handle network errors gracefully',
-      async (_t) => {
+      async (_t: TestContext) => {
         // Connect to non-existent endpoint
         const sseUrl = `${API_BASE_URL}/api/v1/nonexistent/stream?token=${adminToken}`;
         const eventSource = new EventSource(sseUrl);
@@ -310,7 +310,7 @@ describe('SSE Reconnection', () => {
 
     test(
       'should handle malformed event data',
-      async (_t) => {
+      async (_t: TestContext) => {
         const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
         const eventSource = new EventSource(sseUrl);
         const parseErrors: any[] = [];
@@ -346,7 +346,7 @@ describe('SSE Reconnection', () => {
   describe('Connection State Tracking', () => {
     test(
       'should track connection state transitions',
-      async (_t) => {
+      async (_t: TestContext) => {
         const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
         const eventSource = new EventSource(sseUrl);
         const states: number[] = [];
@@ -381,7 +381,7 @@ describe('SSE Reconnection', () => {
 
     test(
       'should maintain connection state during active session',
-      async (_t) => {
+      async (_t: TestContext) => {
         const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
         const eventSource = new EventSource(sseUrl);
 
@@ -411,7 +411,7 @@ describe('SSE Reconnection', () => {
   describe('Multiple Connections', () => {
     test(
       'should handle multiple simultaneous connections',
-      async (_t) => {
+      async (_t: TestContext) => {
         const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
         const connections: EventSource[] = [];
 
@@ -449,7 +449,7 @@ describe('SSE Reconnection', () => {
 
     test(
       'should deliver events to all active connections',
-      async (_t) => {
+      async (_t: TestContext) => {
         const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
         const connection1 = new EventSource(sseUrl);
         const connection2 = new EventSource(sseUrl);

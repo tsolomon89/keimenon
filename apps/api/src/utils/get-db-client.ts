@@ -51,24 +51,27 @@ const connectionPromises = new Map<string, Promise<any>>();
 export async function getDbClient(req?: Request): Promise<any> {
   // When test DB path is present (from E2E tests), use worker-specific database
   if (req?.testDbPath) {
+    // Capture testDbPath in a const to help TypeScript understand it's non-undefined
+    const testDbPath: string = req.testDbPath;
+
     // Check cache first to ensure same client instance is used across requests
-    if (testClientCache.has(req.testDbPath)) {
-      const cachedClient = testClientCache.get(req.testDbPath);
-      console.log(`[Get DB Client] Using cached test client for ${path.basename(req.testDbPath)}`);
+    if (testClientCache.has(testDbPath)) {
+      const cachedClient = testClientCache.get(testDbPath);
+      console.log(`[Get DB Client] Using cached test client for ${path.basename(testDbPath)}`);
       return cachedClient;
     }
 
     // Check if connection is already in progress for this path
-    if (connectionPromises.has(req.testDbPath)) {
+    if (connectionPromises.has(testDbPath)) {
       console.log(
-        `[Get DB Client] Connection already in progress, waiting for ${path.basename(req.testDbPath)}`
+        `[Get DB Client] Connection already in progress, waiting for ${path.basename(testDbPath)}`
       );
-      return await connectionPromises.get(req.testDbPath);
+      return await connectionPromises.get(testDbPath);
     }
 
     console.log(`[Get DB Client] Creating test-specific client:`);
-    console.log(`  - Worker DB: ${path.basename(req.testDbPath)}`);
-    console.log(`  - Full path: ${req.testDbPath}`);
+    console.log(`  - Worker DB: ${path.basename(testDbPath)}`);
+    console.log(`  - Full path: ${testDbPath}`);
 
     // Create connection promise and cache it immediately
     const connectionPromise = (async () => {
@@ -78,7 +81,7 @@ export async function getDbClient(req?: Request): Promise<any> {
 
         // Create a new client instance for this worker's database (bypasses singleton)
         const client = new SQLiteClient({
-          databasePath: req.testDbPath,
+          databasePath: testDbPath,
           verbose: false,
         });
 
@@ -89,7 +92,7 @@ export async function getDbClient(req?: Request): Promise<any> {
         client.enableDirectWrites();
 
         // Cache the client for this database path
-        testClientCache.set(req.testDbPath, client);
+        testClientCache.set(testDbPath, client);
 
         console.log(`[Get DB Client] ✅ Test client created and cached successfully`);
         return client;
@@ -97,17 +100,17 @@ export async function getDbClient(req?: Request): Promise<any> {
         console.log(`[Get DB Client] ❌ Failed to create test client:`);
         console.log(`  - Error: ${error}`);
         // Remove failed promise from cache so next request can retry
-        connectionPromises.delete(req.testDbPath);
+        connectionPromises.delete(testDbPath);
         throw error;
       } finally {
         // Remove connection promise after it resolves (success or failure)
         // The client cache will be used for subsequent requests
-        connectionPromises.delete(req.testDbPath);
+        connectionPromises.delete(testDbPath);
       }
     })();
 
     // Cache the promise immediately to prevent concurrent connection attempts
-    connectionPromises.set(req.testDbPath, connectionPromise);
+    connectionPromises.set(testDbPath, connectionPromise);
 
     return await connectionPromise;
   }

@@ -193,7 +193,7 @@ export function checkPermission(options: PermissionOptions) {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const { capability, resourceType, requireServiceMode, projection } = options;
+      const { capability, resourceType, requireServiceMode } = options;
 
       // Check if user has the capability
       const capCheck = hasCapability(req, capability, resourceType);

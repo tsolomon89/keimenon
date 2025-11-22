@@ -182,7 +182,7 @@ export function initSentry(): void {
     },
 
     // Only send errors in production (avoid noise in development)
-    enabled: environment === 'production',
+    enabled: SENTRY_ENVIRONMENT === 'production',
   });
 
   console.log('📊 Sentry: Initialized successfully');

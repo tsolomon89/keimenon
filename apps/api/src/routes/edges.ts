@@ -1,10 +1,4 @@
 import { Router, Request, Response } from 'express';
-import {
-  ContainsEdgeSchema,
-  SequestersEdgeSchema,
-  DerivesFromEdgeSchema,
-  InScopeForEdgeSchema,
-} from '@canvas-memory/types';
 import { nanoid } from 'nanoid';
 import { getDbClient } from '../utils/get-db-client';
 

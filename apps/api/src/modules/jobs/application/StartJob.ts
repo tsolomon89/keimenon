@@ -54,11 +54,28 @@ export class StartJob {
         };
       }
 
-      // 3. Transition to running
+      // 3. Transition to running (in-memory state update)
       job.start();
 
-      // 4. Persist
-      await this.jobRepository.save(job);
+      // 4. Persist with optimistic locking (atomic transition)
+      // This prevents race conditions where multiple worker pool instances
+      // try to claim the same queued job
+      const stateData = JSON.stringify(job.state);
+      const claimed = await this.jobRepository.atomicTransition(
+        job.id,
+        job.accountId,
+        'queued', // fromStatus - must still be queued
+        'running', // toStatus - transition to running
+        stateData
+      );
+
+      if (!claimed) {
+        // Another worker instance already claimed this job
+        return {
+          success: false,
+          error: 'Job already claimed by another worker',
+        };
+      }
 
       return {
         success: true,

@@ -1,5 +1,6 @@
 // Core type exports
 export * from './nodes';
+export * from './node-kinds';
 export * from './edges';
 export * from './policies';
 export * from './receipts';

@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthServiceV2 } from '../services/auth.service';
-import { AuditService } from '../services/audit.service';
-import { SQLiteClient } from '@canvas-memory/db';
 
 // Extend Express Request to include auth data
 declare global {
@@ -301,7 +299,7 @@ export function requireProfessional(req: Request, res: Response, next: NextFunct
  * Just attaches user data if valid token exists
  */
 export function optionalAuth(authService: AuthServiceV2) {
-  return async (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, _res: Response, next: NextFunction) => {
     try {
       const authHeader = req.headers.authorization;
 

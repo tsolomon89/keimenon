@@ -81,16 +81,70 @@ async function initializeWorkerDb(workerIndex: number, dbPath: string): Promise<
   // Future: could add worker-specific data initialization here if needed
 }
 
+/**
+ * Create a wrapped API request context that automatically merges the X-Test-DB-Path header
+ * with all request-specific headers.
+ *
+ * PROBLEM: Playwright's extraHTTPHeaders are NOT automatically merged when you specify
+ * headers in individual requests. When you call apiRequest.post('/path', { headers: {...} }),
+ * the request-specific headers OVERRIDE extraHTTPHeaders instead of merging them.
+ *
+ * SOLUTION: Wrap the APIRequestContext to automatically merge the X-Test-DB-Path header
+ * with any request-specific headers for all HTTP methods (GET, POST, PUT, DELETE, PATCH, HEAD).
+ *
+ * This ensures test isolation works correctly even when tests specify their own headers
+ * (like Authorization headers for authenticated requests).
+ */
+function createWrappedApiContext(rawContext: any, dbPath: string) {
+  /**
+   * Merge X-Test-DB-Path header with request-specific headers
+   * The dbPath header is added FIRST so request headers can override if needed
+   */
+  const mergeHeaders = (requestOptions: any = {}) => {
+    const merged = { ...requestOptions };
+    merged.headers = {
+      'X-Test-DB-Path': dbPath, // Always include the test DB path header
+      ...(requestOptions.headers || {}), // Merge with request-specific headers (e.g., Authorization)
+    };
+    return merged;
+  };
+
+  // Create a wrapper object that proxies all HTTP methods and merges headers automatically
+  return {
+    // Proxy all standard HTTP methods to merge headers
+    get: (url: string, options?: any) => rawContext.get(url, mergeHeaders(options)),
+    post: (url: string, options?: any) => rawContext.post(url, mergeHeaders(options)),
+    put: (url: string, options?: any) => rawContext.put(url, mergeHeaders(options)),
+    patch: (url: string, options?: any) => rawContext.patch(url, mergeHeaders(options)),
+    delete: (url: string, options?: any) => rawContext.delete(url, mergeHeaders(options)),
+    head: (url: string, options?: any) => rawContext.head(url, mergeHeaders(options)),
+
+    // Proxy fetch() method (used for custom HTTP methods)
+    fetch: (urlOrRequest: string | any, options?: any) =>
+      rawContext.fetch(urlOrRequest, mergeHeaders(options)),
+
+    // Proxy utility methods without modification
+    dispose: () => rawContext.dispose(),
+    storageState: (options?: any) => rawContext.storageState(options),
+
+    // Expose the raw context for advanced use cases (if needed)
+    _rawContext: rawContext,
+    _dbPath: dbPath, // Expose dbPath for debugging
+  };
+}
+
 export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtures>({
   // Test-scoped: Provide API request context with correct baseURL
   // NEW: Wrap each test in savepoint for atomic cleanup (same as page fixture)
+  // NEW: Automatically merge X-Test-DB-Path header with all requests
   apiRequest: async ({ playwright, dbPath }, use, testInfo) => {
     const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4001';
 
-    const apiContext = await playwright.request.newContext({
+    // Create raw API context (without X-Test-DB-Path in extraHTTPHeaders)
+    // We'll add X-Test-DB-Path via the wrapper instead
+    const rawApiContext = await playwright.request.newContext({
       baseURL: API_BASE_URL,
       extraHTTPHeaders: {
-        'X-Test-DB-Path': dbPath,
         'x-test-source': 'playwright-e2e',
         // NOTE: Don't set Content-Type here - let Playwright set it based on request type
         // (application/json for data:, multipart/form-data for multipart:, etc.)
@@ -98,15 +152,19 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
       },
     });
 
+    // Wrap the raw context to automatically merge X-Test-DB-Path header
+    const apiContext = createWrappedApiContext(rawApiContext, dbPath);
+
     console.log(`[Test Isolation] API Request context created with baseURL: ${API_BASE_URL}`);
+    console.log(`[Test Isolation] Auto-injecting X-Test-DB-Path: ${dbPath}`);
 
     // Generate unique savepoint ID for this test
     const testId = `test_${testInfo.testId.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
 
     try {
       // BEGIN SAVEPOINT before test
+      // NOTE: No need to manually add X-Test-DB-Path header - wrapper handles it automatically
       const beginResponse = await apiContext.post(`${API_BASE_URL}/api/v1/test/savepoint`, {
-        headers: { 'X-Test-DB-Path': dbPath },
         data: { action: 'begin', savepointId: testId },
       });
 
@@ -117,13 +175,13 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
         console.log(`[Test Isolation] ✅ Savepoint created: ${testId}`);
       }
 
-      // Run the test
+      // Run the test with the wrapped context
       await use(apiContext);
     } finally {
       // ROLLBACK TO SAVEPOINT after test (even if test failed)
       try {
+        // NOTE: No need to manually add X-Test-DB-Path header - wrapper handles it automatically
         const rollbackResponse = await apiContext.post(`${API_BASE_URL}/api/v1/test/savepoint`, {
-          headers: { 'X-Test-DB-Path': dbPath },
           data: { action: 'rollback', savepointId: testId },
         });
 
@@ -139,8 +197,8 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
         // Don't fail the test if cleanup fails
       }
 
-      // Cleanup
-      await apiContext.dispose();
+      // Cleanup - dispose the raw context
+      await rawApiContext.dispose();
     }
   },
 
@@ -215,7 +273,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
 
     // Only attempt to clear storage if page is at a valid URL (not about:blank)
     // This prevents SecurityError warnings when page hasn't navigated yet
-    const currentUrl = page.url();
+    const currentUrl = page?.url() || 'about:blank';
     if (currentUrl && currentUrl !== 'about:blank' && !currentUrl.startsWith('chrome-error://')) {
       try {
         await page.evaluate(() => {

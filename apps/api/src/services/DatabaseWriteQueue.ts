@@ -111,6 +111,12 @@ export class DatabaseWriteQueue {
     console.log(`   Flush interval: ${this.FLUSH_INTERVAL_MS}ms`);
     console.log(`   Batch threshold: ${this.BATCH_SIZE_THRESHOLD} items`);
 
+    // ✅ Clear stale dead letter queue items from previous session
+    const clearedCount = this.errorHandler.clearDeadLetterQueue();
+    if (clearedCount > 0) {
+      console.log(`🧹 Cleared ${clearedCount} stale items from dead letter queue`);
+    }
+
     // Start periodic flushing
     this.flushInterval = setInterval(() => {
       this.flush().catch((error) => {

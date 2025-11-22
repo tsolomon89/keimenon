@@ -11,9 +11,7 @@
 
 import { describe, test, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
-import EventSourceModule from 'eventsource';
-
-const EventSource = EventSourceModule as unknown as typeof globalThis.EventSource;
+import EventSource = require('eventsource');
 import Database from 'better-sqlite3';
 import path from 'path';
 import os from 'os';

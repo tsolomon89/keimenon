@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "canvas-docs": {
+      "command": "node",
+      "args": ["${workspaceFolder}/.mcp/servers/docs/index.js"],
+      "description": "Documentation search and TODO extraction"
+    }
+  },
+  "description": "Research persona - web tools and docs only, no execution"
+}

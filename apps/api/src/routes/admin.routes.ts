@@ -6,7 +6,8 @@ import { randomUUID } from 'crypto';
 
 export function createAdminRoutes(db: SQLiteClient, authService: AuthService): Router {
   const router = Router();
-  const database = db.getDatabase();
+  // CRITICAL FIX: Database client must be obtained per-request for test isolation
+  // See: apps/api/src/middleware/db-context.middleware.ts, tests/e2e/fixtures/test-isolation.ts
 
   /**
    * POST /api/v1/admin/accounts
@@ -18,6 +19,11 @@ export function createAdminRoutes(db: SQLiteClient, authService: AuthService): R
     requireAdmin,
     async (req: Request, res: Response) => {
       try {
+        // CRITICAL FIX: Get per-request database client for test isolation
+        const { getDbClient } = await import('../utils/get-db-client');
+        const dbClient = await getDbClient(req);
+        const database = dbClient.getDatabase();
+
         const { accountName, accountEmail, accountClass, userName, userEmail, userPassword } =
           req.body;
 

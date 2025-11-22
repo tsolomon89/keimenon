@@ -110,7 +110,7 @@ test.describe('Boards - CRUD Operations', () => {
     });
 
     expect(createResponse.ok()).toBeFalsy();
-    expect(createResponse.status()).toBe(500); // Validation error
+    expect(createResponse.status()).toBe(400); // Validation error
   });
 
   test('should require senior permission to create Board', async ({ apiRequest }) => {

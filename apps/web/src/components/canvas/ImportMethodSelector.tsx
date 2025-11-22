@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { ChatImportModal } from './ChatImportModal';
 import { UploadModal } from './UploadModal';
@@ -9,8 +9,8 @@ import { ENABLE_LEGACY_IMPORTS, ENABLE_HYBRID_LOCAL_FIRST } from '@/lib/env.conf
 // Legacy components were removed during consolidation (Oct 24, 2025)
 // These imports cause build errors as the .old files no longer exist
 // Setting to null is safe as ENABLE_LEGACY_IMPORTS and ENABLE_HYBRID_LOCAL_FIRST default to 0
-const ImportModuleOld = null;
-const LocalFirstImportModalOld = null;
+const ImportModuleOld: React.ComponentType<any> | null = null;
+const LocalFirstImportModalOld: React.ComponentType<any> | null = null;
 
 type ImportMethod = 'job' | 'hybrid' | 'local' | 'ingest';
 

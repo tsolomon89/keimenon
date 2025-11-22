@@ -115,6 +115,7 @@ describe('Settings Workflow E2E', () => {
     exitOperatingMode: vi.fn(),
     getOperatingHeaders: vi.fn(() => ({})),
     isOperatingMode: false,
+    operatingContextVersion: 0,
   };
 
   const renderWithProviders = (

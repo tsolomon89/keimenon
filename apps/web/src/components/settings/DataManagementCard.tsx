@@ -18,6 +18,7 @@ import {
 import { logJobEvent } from '@/lib/error-handler';
 import { API_BASE_URL } from '@/lib/env.config';
 import { useJobStream } from '@/hooks/useJobStream';
+import { useCanvasStore } from '@/store/canvasStore';
 
 interface DataStats {
   nodes: Array<{ kind: string; count: number }>;
@@ -47,6 +48,14 @@ export function DataManagementCard() {
     // Job completed successfully
     if (job?.status === 'succeeded') {
       console.log('[DataManagementCard] Deletion complete via SSE');
+      console.log('[DataManagementCard] Job details:', job);
+
+      // CRITICAL: Refresh canvas data immediately so stale nodes disappear
+      // Without this, canvas shows old cached nodes until page refresh
+      console.log('[DataManagementCard] Calling loadGraphData() to refresh canvas...');
+      useCanvasStore.getState().loadGraphData();
+      console.log('[DataManagementCard] loadGraphData() called successfully');
+
       setSuccess('Data cleared successfully! Canvas is now empty.');
 
       // Clear deletion state after showing success
@@ -140,7 +149,14 @@ export function DataManagementCard() {
       setError(null);
     }
 
-    await loadStats();
+    // Try to load stats, but show modal even if it fails
+    try {
+      await loadStats();
+    } catch (err) {
+      console.warn('[DataManagementCard] Failed to load stats before deletion, continuing anyway:', err);
+      // Stats will show as unknown in modal, but user can still proceed
+    }
+
     setShowClearModal(true);
   };
 

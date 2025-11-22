@@ -22,6 +22,7 @@ import {
   applyDuplicateDecisions,
 } from '@/lib/api-client';
 import { useJobStream, type JobUpdate } from '@/hooks/useJobStream';
+import { useChunkedUpload } from '@/hooks/useChunkedUpload';
 import { logApiEvent, logJobEvent } from '@/lib/error-handler';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOperating } from '@/contexts/OperatingContext';
@@ -37,6 +38,9 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
   // Auth and operating context
   const { user } = useAuth();
   const { operating } = useOperating();
+
+  // Chunked upload hook
+  const chunkedUpload = useChunkedUpload();
 
   // State
   const [stage, setStage] = useState<Stage>('select');
@@ -106,6 +110,28 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       });
     }
   }, [currentJobId, jobs]);
+
+  // Track chunked upload progress
+  useEffect(() => {
+    const uploadProgress = chunkedUpload.progress;
+
+    if (uploadProgress.status === 'uploading') {
+      setProgress({
+        stage: 'uploading',
+        percent: uploadProgress.percentage,
+        message: `Uploading chunks: ${uploadProgress.chunksUploaded}/${uploadProgress.totalChunks} (${uploadProgress.percentage}%)`,
+      });
+    } else if (uploadProgress.status === 'completed') {
+      console.log('[ChatImportModal] Chunked upload completed, import job created');
+    } else if (uploadProgress.status === 'failed') {
+      setProgress({
+        stage: 'error',
+        percent: 0,
+        message: uploadProgress.error || 'Upload failed',
+      });
+      setIsImporting(false);
+    }
+  }, [chunkedUpload.progress]);
 
   const processFiles = async (filesToProcess: File[]) => {
     try {
@@ -180,7 +206,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
 
   const handleImport = async () => {
     try {
-      console.log('[ChatImportModal] Starting import with config:', config);
+      console.log('[ChatImportModal] Starting chunked upload with config:', config);
       console.log(
         '[ChatImportModal] Files to import:',
         files.map((f) => f.name)
@@ -194,49 +220,58 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       // Set importing state and show loading
       setIsImporting(true);
       setStage('processing');
-      setProgress({ stage: 'uploading', percent: 10, message: 'Creating import job...' });
+      setProgress({ stage: 'uploading', percent: 0, message: 'Initiating chunked upload...' });
 
-      console.log('[ChatImportModal] Calling importChatFilesAsJob...');
+      console.log('[ChatImportModal] Using chunked upload for large file support');
       console.log('[ChatImportModal] Detected platform:', platformDetection?.platform);
 
-      // Create import job (returns immediately with job ID)
-      // Pass detected platform to enable platform-specific parsers
-      const response = await importChatFilesAsJob(
-        files,
-        config,
-        platformDetection?.platform as 'chatgpt' | 'claude' | 'gemini' | 'generic' | undefined
-      );
+      // Prepare import config to be stored with upload session
+      const importConfig = {
+        platform: platformDetection?.platform || 'generic',
+        ...config,
+      };
 
-      console.log('[ChatImportModal] Job created:', response);
+      // Upload files using chunked upload (supports multiple files)
+      // For now, we handle one file at a time (most imports are single file)
+      // TODO: Add support for parallel multi-file uploads if needed
+      const file = files[0]; // Start with first file
 
-      if (!response.success || !response.jobId) {
-        console.error('[ChatImportModal] Job creation failed:', response);
+      console.log(`[ChatImportModal] Uploading file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+
+      // Upload with chunked upload hook
+      const uploadResult = await chunkedUpload.upload(file, importConfig);
+
+      if (!uploadResult.success || !uploadResult.jobId) {
+        console.error('[ChatImportModal] Chunked upload failed:', uploadResult.error);
         setIsImporting(false);
-        alert(`Failed to create import job: ${response.message || 'Unknown error'}`);
+        alert(`Failed to upload file: ${uploadResult.error || 'Unknown error'}`);
         return;
       }
 
+      console.log('[ChatImportModal] Chunked upload complete, import job created:', uploadResult.jobId);
+
       // Store job ID to track progress via SSE
-      setCurrentJobId(response.jobId);
+      setCurrentJobId(uploadResult.jobId);
 
       // Log event for canvas console
       logJobEvent(
-        `Import job created: ${files.map((f) => f.name).join(', ')}`,
+        `Import job created via chunked upload: ${file.name}`,
         'import.jobCreated',
         {
-          jobId: response.jobId,
-          fileCount: files.length,
-          fileNames: files.map((f) => f.name),
+          jobId: uploadResult.jobId,
+          fileName: file.name,
+          fileSize: file.size,
+          uploadMethod: 'chunked',
         }
       );
 
       console.log(
-        `[ChatImportModal] Import job ${response.jobId} created. Tracking progress via SSE...`
+        `[ChatImportModal] Import job ${uploadResult.jobId} created. Tracking progress via SSE...`
       );
       setProgress({
-        stage: 'uploading',
-        percent: 20,
-        message: `Job created. Monitoring progress... (Job ID: ${response.jobId.substring(0, 8)}...)`,
+        stage: 'analyzing',
+        percent: 10,
+        message: `Chunked upload complete. Import processing started... (Job ID: ${uploadResult.jobId.substring(0, 8)}...)`,
       });
 
       // SSE will handle progress updates via useEffect

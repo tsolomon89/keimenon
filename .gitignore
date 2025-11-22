@@ -135,3 +135,7 @@ apps/api/uploads/*
 *.pem
 *.key
 *.cert
+
+# Temp generated docs
+docs/PROJECT_STATUS.md
+docs/OVERVIEW.md

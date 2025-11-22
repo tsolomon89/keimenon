@@ -42,6 +42,7 @@ import { useJobStream, type JobUpdate } from '@/hooks/useJobStream';
 import { errorCapture } from '@/services/error-capture.service';
 import { cancelJob, pauseJob, resumeJob } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/env.config';
+import { useCanvasStore } from '@/store/canvasStore';
 
 // Import job status
 export type ImportStatus =
@@ -162,6 +163,11 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
     if (!stillActive) {
       // All jobs completed or failed, clear loading state
       console.log('[ImportsTable] All bulk operations complete via SSE');
+
+      // CRITICAL: Refresh canvas data when bulk deletion completes
+      // This ensures deleted jobs' data disappears from canvas immediately
+      useCanvasStore.getState().loadGraphData();
+
       setBulkActionLoading(false);
       setJobsBeingOperated(new Set());
     }

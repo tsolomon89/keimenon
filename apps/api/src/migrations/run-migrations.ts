@@ -112,7 +112,7 @@ async function showStatus(db: Database.Database): Promise<void> {
   console.log('\n📊 Migration Status\n');
   console.log('Available Migrations:');
 
-  for (const [version, module] of Object.entries(MIGRATIONS)) {
+  for (const [version] of Object.entries(MIGRATIONS)) {
     const isApplied = appliedMigrations.includes(version);
     const status = isApplied ? '✅ Applied' : '⏳ Pending';
     console.log(`  ${version}: ${status}`);

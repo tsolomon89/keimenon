@@ -27,7 +27,7 @@ import fs from 'fs';
  *   }
  */
 
-export function testIsolationMiddleware(req: Request, res: Response, next: NextFunction) {
+export function testIsolationMiddleware(req: Request, res: Response, next: NextFunction): void {
   // Debug: Log request details
   const userAgent = req.headers['user-agent'] || 'unknown';
   const browser = userAgent.includes('Chrome')
@@ -70,13 +70,15 @@ export function testIsolationMiddleware(req: Request, res: Response, next: NextF
       console.warn(`[Test Isolation] Rejected invalid DB path: ${testDbPath}`);
       console.warn(`  - Normalized: ${normalizedPath}`);
       console.warn(`  - Expected prefix: ${testDbsDir}${path.sep}`);
-      return res.status(400).json({ error: 'Invalid test DB path' });
+      res.status(400).json({ error: 'Invalid test DB path' });
+      return;
     }
 
     // Ensure file exists or can be created
     if (!fs.existsSync(normalizedPath) && !fs.existsSync(path.dirname(normalizedPath))) {
       console.warn(`[Test Isolation] DB directory does not exist: ${path.dirname(normalizedPath)}`);
-      return res.status(400).json({ error: 'Test DB directory not found' });
+      res.status(400).json({ error: 'Test DB directory not found' });
+      return;
     }
 
     // Attach DB path to request for database client to use

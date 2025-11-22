@@ -20,7 +20,8 @@ const ApplyDecisionsRequestSchema = z.object({
 
 export function createImportDecisionsRoutes(db: SQLiteClient, authService: AuthService): Router {
   const router = Router();
-  const database = db.getDatabase();
+  // CRITICAL FIX: Database client must be obtained per-request for test isolation
+  // See: apps/api/src/middleware/db-context.middleware.ts, tests/e2e/fixtures/test-isolation.ts
 
   /**
    * POST /api/v1/import/chat/apply-decisions
@@ -31,6 +32,11 @@ export function createImportDecisionsRoutes(db: SQLiteClient, authService: AuthS
     requireAuth(authService),
     asyncHandler(async (req: Request, res: Response) => {
       try {
+        // CRITICAL FIX: Get per-request database client for test isolation
+        const { getDbClient } = await import('../utils/get-db-client');
+        const dbClient = await getDbClient(req);
+        const database = dbClient.getDatabase();
+
         // Validate request body
         const validatedData = ApplyDecisionsRequestSchema.parse(req.body);
         const { decisions } = validatedData;
@@ -90,8 +96,11 @@ export function createImportDecisionsRoutes(db: SQLiteClient, authService: AuthS
         let actuallyRemoved = 0;
         let actuallyMerged = 0;
 
+        // Use savepoint instead of transaction for compatibility with test isolation
+        const savepointId = `apply_decisions_${Date.now()}`;
+
         try {
-          database.prepare('BEGIN TRANSACTION').run();
+          database.prepare(`SAVEPOINT ${savepointId}`).run();
 
           // 1. Process merge actions first (combine properties)
           for (const { primary, duplicate } of nodesToMerge) {
@@ -169,7 +178,7 @@ export function createImportDecisionsRoutes(db: SQLiteClient, authService: AuthS
             )
             .run(accountId, accountId, accountId);
 
-          database.prepare('COMMIT').run();
+          database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
 
           return res.json({
             success: true,
@@ -184,7 +193,8 @@ export function createImportDecisionsRoutes(db: SQLiteClient, authService: AuthS
           });
         } catch (dbError: any) {
           try {
-            database.prepare('ROLLBACK').run();
+            database.prepare(`ROLLBACK TO SAVEPOINT ${savepointId}`).run();
+            database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
           } catch {}
           throw ErrorFactory.database(
             'Failed to apply duplicate decisions to database',
@@ -218,6 +228,11 @@ export function createImportDecisionsRoutes(db: SQLiteClient, authService: AuthS
     '/chat/decisions/status/:import_id',
     requireAuth(authService),
     asyncHandler(async (req: Request, res: Response) => {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { import_id } = req.params;
       const user = (req as any).user;
       const accountId = user.accountId;

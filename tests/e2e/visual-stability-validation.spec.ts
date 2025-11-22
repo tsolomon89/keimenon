@@ -30,6 +30,9 @@ test.describe('Visual Stability Validation', () => {
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
   const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'TestPass123!';
 
+  // FIXME: Visual regression test failing due to dynamic content or animation timing
+  // Screenshots don't match baselines, possibly due to timestamps, loading states, or animations
+  // To fix: Increase threshold, mask dynamic areas, or stabilize animations before capture
   test('should maintain visual consistency across multiple runs', async ({ page }) => {
     // Login for this test (canvas requires auth)
     await login(page, TEST_EMAIL, TEST_PASSWORD);
@@ -78,6 +81,9 @@ test.describe('Visual Stability Validation', () => {
     await captureBaseline(page, '06-back-to-top');
   });
 
+  // FIXME: Login page visual regression test failing - likely due to dynamic UI elements
+  // Screenshots vary between runs, possibly due to loading states or conditional rendering
+  // To fix: Ensure all dynamic elements are loaded/stabilized before taking screenshots
   test('should have consistent login page visuals', async ({ page, context }) => {
     // Navigate to login page first (needed to access localStorage)
     await page.goto('/login');

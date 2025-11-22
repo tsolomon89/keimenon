@@ -322,10 +322,11 @@ describe('Job Domain Model', () => {
 
       assert.strictEqual(json.type, 'import');
       assert.strictEqual(json.accountId, 'acc_test');
-      assert.strictEqual(json.state.status, 'running');
+      // Type assertions needed because toJSON() returns Record<string, unknown>
+      assert.strictEqual((json.state as any).status, 'running');
       assert.ok(json.id, 'Should have job ID');
       assert.ok(json.state, 'Should have state object');
-      assert.deepStrictEqual(json.config.files[0].fileName, 'test.json');
+      assert.deepStrictEqual((json.config as any).files[0].fileName, 'test.json');
     });
   });
 });

@@ -133,6 +133,9 @@ export class MigrationRunner {
     const sql = await fs.readFile(migration.path, 'utf-8');
     const checksum = this.calculateChecksum(sql);
 
+    // Extract version number from filename (e.g., "002" from "002_add_data_tags.sql")
+    const version = migration.name.split('_')[0];
+
     try {
       // Execute migration in a transaction
       const runMigration = this.db.transaction(() => {
@@ -141,9 +144,9 @@ export class MigrationRunner {
 
         // Record migration as applied
         const stmt = this.db.prepare(
-          'INSERT INTO migrations (name, applied_at, checksum) VALUES (?, ?, ?)'
+          'INSERT INTO migrations (version, name, applied_at, checksum) VALUES (?, ?, ?, ?)'
         );
-        stmt.run(migration.name, Date.now(), checksum);
+        stmt.run(version, migration.name, Date.now(), checksum);
       });
 
       runMigration();
@@ -158,9 +161,9 @@ export class MigrationRunner {
         // Record migration as applied (outside transaction since SQL failed)
         try {
           const stmt = this.db.prepare(
-            'INSERT OR IGNORE INTO migrations (name, applied_at, checksum) VALUES (?, ?, ?)'
+            'INSERT OR IGNORE INTO migrations (version, name, applied_at, checksum) VALUES (?, ?, ?, ?)'
           );
-          stmt.run(migration.name, Date.now(), checksum);
+          stmt.run(version, migration.name, Date.now(), checksum);
           console.log(`      ✅ Migration ${migration.name} marked as applied`);
           return; // Continue to next migration
         } catch (recordError: any) {

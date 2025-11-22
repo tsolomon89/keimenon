@@ -247,17 +247,42 @@ export class DatabaseSnapshotManager {
         );
       }
 
-      // CRITICAL FIX #8: Rebuild FTS5 table to ensure internal structures are synchronized
-      // The "no such column: T.content" error occurs when FTS5's internal tables are out of sync
-      // Rebuilding ensures nodes_fts_content and other internal tables have correct schema
+      // CRITICAL FIX #8: Drop and recreate FTS5 table to fix "no such column: T.content" error
+      // This error occurs when FTS5's internal tables (nodes_fts_content, nodes_fts_data) are out of sync
+      // Simply rebuilding doesn't fix corrupted internal tables - we need to drop and recreate
       console.log('   Rebuilding FTS5 indexes for integrity...');
       try {
-        db.prepare("INSERT INTO nodes_fts(nodes_fts) VALUES('rebuild')").run();
-        console.log('   ✅ FTS5 indexes rebuilt successfully');
+        // Drop existing FTS table and its triggers
+        db.prepare('DROP TABLE IF EXISTS nodes_fts').run();
+
+        // Recreate FTS table with correct schema (from schema.sql)
+        db.prepare('CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(id UNINDEXED, content)').run();
+
+        // Recreate FTS triggers (from schema.sql)
+        db.prepare(`
+          CREATE TRIGGER IF NOT EXISTS nodes_fts_insert AFTER INSERT ON nodes BEGIN
+            INSERT INTO nodes_fts(id, content) VALUES (new.id, new.properties);
+          END
+        `).run();
+
+        db.prepare(`
+          CREATE TRIGGER IF NOT EXISTS nodes_fts_update AFTER UPDATE ON nodes BEGIN
+            DELETE FROM nodes_fts WHERE id = old.id;
+            INSERT INTO nodes_fts(id, content) VALUES (new.id, new.properties);
+          END
+        `).run();
+
+        db.prepare(`
+          CREATE TRIGGER IF NOT EXISTS nodes_fts_delete AFTER DELETE ON nodes BEGIN
+            DELETE FROM nodes_fts WHERE id = old.id;
+          END
+        `).run();
+
+        console.log('   ✅ FTS5 table and triggers recreated successfully');
       } catch (ftsError: any) {
-        // FTS5 rebuild might fail if table is empty or has issues
+        // FTS5 recreation might fail if there are schema issues
         // Log warning but don't fail snapshot creation
-        console.warn(`   ⚠️  FTS5 rebuild warning: ${ftsError.message}`);
+        console.warn(`   ⚠️  FTS5 recreation warning: ${ftsError.message}`);
       }
 
       console.log('   ✅ Snapshot created successfully');

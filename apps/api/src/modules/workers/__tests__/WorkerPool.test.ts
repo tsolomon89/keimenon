@@ -94,6 +94,40 @@ class MockJobRepository implements JobRepository {
     return this.find({ accountId, status }).then((jobs) => jobs.length);
   }
 
+  // Additional methods required by JobRepository interface
+  async appendEvent(event: any): Promise<void> {
+    // No-op for tests
+  }
+
+  async loadEvents(jobId: string, accountId: string): Promise<any[]> {
+    return [];
+  }
+
+  async countActiveInGroup(concurrencyGroup: string, accountId: string): Promise<number> {
+    const jobs = Array.from(this.jobs.values()).filter(
+      (job) =>
+        job.accountId === accountId &&
+        job.concurrencyGroup === concurrencyGroup &&
+        job.status === 'running'
+    );
+    return jobs.length;
+  }
+
+  async atomicTransition(
+    jobId: string,
+    accountId: string,
+    fromStatus: any,
+    toStatus: any,
+    stateData: string
+  ): Promise<boolean> {
+    const job = this.jobs.get(jobId);
+    if (!job || job.accountId !== accountId || job.status !== fromStatus) {
+      return false;
+    }
+    // Simulate successful transition
+    return true;
+  }
+
   getJob(id: string): Job | undefined {
     return this.jobs.get(id);
   }
@@ -113,8 +147,9 @@ class MockConcurrencyGuard extends ConcurrencyGuard {
     job.block(reason);
   }
 
-  async unblockWaitingJobs(completedJob: Job): Promise<void> {
-    // No-op for tests
+  async unblockWaitingJobs(completedJob: Job): Promise<Job[]> {
+    // No-op for tests - return empty array
+    return [];
   }
 }
 

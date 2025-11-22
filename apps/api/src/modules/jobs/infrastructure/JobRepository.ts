@@ -36,6 +36,13 @@ export interface JobRepository {
   loadEvents(jobId: string, accountId: string): Promise<JobEvent[]>;
   existsByIdempotencyKey(key: string, accountId: string): Promise<Job | null>;
   countActiveInGroup(concurrencyGroup: string, accountId: string): Promise<number>;
+  atomicTransition(
+    jobId: string,
+    accountId: string,
+    fromStatus: JobStatus,
+    toStatus: JobStatus,
+    stateData: string
+  ): Promise<boolean>;
   delete(id: string, accountId: string): Promise<void>;
 }
 
@@ -380,5 +387,34 @@ export class SQLiteJobRepository implements JobRepository {
         state_data: record.state_data,
       })
     );
+  }
+
+  /**
+   * Atomic state transition with optimistic locking
+   * Prevents race conditions in multi-instance deployments
+   */
+  async atomicTransition(
+    jobId: string,
+    accountId: string,
+    fromStatus: JobStatus,
+    toStatus: JobStatus,
+    stateData: string
+  ): Promise<boolean> {
+    const stmt = this.db.prepare(`
+      UPDATE jobs
+      SET status = ?, state_data = ?, updated_at = ?
+      WHERE id = ? AND account_id = ? AND status = ?
+    `);
+
+    const result = stmt.run(toStatus, stateData, Date.now(), jobId, accountId, fromStatus);
+    const succeeded = result.changes > 0;
+
+    if (succeeded) {
+      console.log(`[JobRepository] ✅ Atomic transition ${jobId}: ${fromStatus} → ${toStatus}`);
+    } else {
+      console.log(`[JobRepository] ⚠️ Atomic transition failed for ${jobId}: job already claimed`);
+    }
+
+    return succeeded;
   }
 }

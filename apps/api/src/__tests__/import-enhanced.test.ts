@@ -29,6 +29,7 @@ describe('Import-Enhanced Integration Tests', () => {
   let adminUserId: string;
   let clientUserId: string;
   let adminToken: string;
+  let clientToken: string;
 
   before(async () => {
     console.log('⏳ Setting up test database and accounts...');

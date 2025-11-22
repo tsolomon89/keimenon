@@ -64,7 +64,10 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
     }
 
     try {
-      const database = db.getDatabase();
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
 
       if (action === 'begin') {
         // Create savepoint (transaction checkpoint)
@@ -119,6 +122,9 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
           activeSavepoints: Array.from(activeSavepoints.get(dbPath) || []),
         });
       }
+
+      // This should never be reached due to validation above, but TypeScript requires it
+      return res.status(400).json({ error: 'Invalid action' });
     } catch (error: any) {
       console.error(`[Test Helpers] ❌ Savepoint error:`, error.message);
       return res.status(500).json({
@@ -148,7 +154,11 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
     const dbPath = req.testDbPath || 'global';
 
     try {
-      const database = db.getDatabase();
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const deletedCounts: Record<string, number> = {};
 
       // Use transaction for atomic cleanup
@@ -297,7 +307,10 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
     const dbPath = req.testDbPath || 'global';
 
     try {
-      const database = db.getDatabase();
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
 
       // Count records by data_tag
       const counts: Record<string, any> = {};

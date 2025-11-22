@@ -17,6 +17,35 @@ import Database from 'better-sqlite3';
 import { WriteQueueErrorHandler } from '../WriteQueueErrorHandler';
 import { AnyNode, AnyEdge } from '@canvas-memory/types';
 
+// Database-level types for testing (matches actual DB schema, not application types)
+type DBNode = {
+  id: string;
+  kind: string;
+  properties: Record<string, any>;
+  account_id: string;
+  created_by: string;
+  created_at?: number;
+  updated_at?: number;
+  data_tag?: 'test' | 'real';
+  content_hash?: string;
+  canonical_content?: string;
+  is_duplicate?: number;
+  original_node_id?: string;
+};
+
+type DBEdge = {
+  id: string;
+  from_id: string;
+  to_id: string;
+  kind: string;
+  properties?: Record<string, any> | null;
+  account_id: string;
+  created_by: string;
+  created_at?: number;
+  updated_at?: number;
+  data_tag?: 'test' | 'real';
+};
+
 // Test database setup
 let db: Database.Database;
 
@@ -110,7 +139,7 @@ class MockFailingDatabase {
     this.callCount = 0;
   }
 
-  createNodes(nodes: AnyNode[]): void {
+  createNodes(nodes: DBNode[]): void {
     this.callCount++;
 
     if (this.shouldFail()) {
@@ -137,7 +166,7 @@ class MockFailingDatabase {
     }
   }
 
-  createNode(node: AnyNode): void {
+  createNode(node: DBNode): void {
     this.callCount++;
 
     if (this.shouldFail()) {
@@ -163,7 +192,7 @@ class MockFailingDatabase {
       );
   }
 
-  createEdges(edges: AnyEdge[]): void {
+  createEdges(edges: DBEdge[]): void {
     this.callCount++;
 
     if (this.shouldFail()) {
@@ -191,7 +220,7 @@ class MockFailingDatabase {
     }
   }
 
-  createEdge(edge: AnyEdge): void {
+  createEdge(edge: DBEdge): void {
     this.callCount++;
 
     if (this.shouldFail()) {
@@ -242,7 +271,9 @@ class MockFailingDatabase {
 }
 
 // Helper: Create test nodes
-function createTestNodes(count: number, prefix = 'node'): AnyNode[] {
+// Note: Returns DBNode[] but can be cast to AnyNode[] for test purposes
+// The MockFailingDatabase internally uses DBNode to insert directly into SQLite
+function createTestNodes(count: number, prefix = 'node'): DBNode[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `${prefix}_${i}`,
     kind: 'source',
@@ -254,7 +285,9 @@ function createTestNodes(count: number, prefix = 'node'): AnyNode[] {
 }
 
 // Helper: Create test edges
-function createTestEdges(count: number, fromId: string, toId: string): AnyEdge[] {
+// Note: Returns DBEdge[] but can be cast to AnyEdge[] for test purposes
+// The MockFailingDatabase internally uses DBEdge to insert directly into SQLite
+function createTestEdges(count: number, fromId: string, toId: string): DBEdge[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `edge_${i}`,
     from_id: fromId,
@@ -272,6 +305,18 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Helper: Cast DBNode[] to AnyNode[] for handleFlush calls
+// This is safe because MockFailingDatabase expects DBNode internally
+function asAnyNodes(nodes: DBNode[]): AnyNode[] {
+  return nodes as unknown as AnyNode[];
+}
+
+// Helper: Cast DBEdge[] to AnyEdge[] for handleFlush calls
+// This is safe because MockFailingDatabase expects DBEdge internally
+function asAnyEdges(edges: DBEdge[]): AnyEdge[] {
+  return edges as unknown as AnyEdge[];
+}
+
 describe('WriteQueueErrorHandler', () => {
   describe('Circuit Breaker', () => {
     it('should open circuit after max consecutive failures', async () => {
@@ -287,9 +332,9 @@ describe('WriteQueueErrorHandler', () => {
       const nodes = createTestNodes(1);
 
       // First 3 failures should open circuit
-      await handler.handleFlush(nodes, []).catch(() => {});
-      await handler.handleFlush(nodes, []).catch(() => {});
-      await handler.handleFlush(nodes, []).catch(() => {});
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([])).catch(() => {});
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([])).catch(() => {});
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([])).catch(() => {});
 
       assert.strictEqual(handler.isCircuitOpen(), true, 'Circuit should be open after 3 failures');
 
@@ -310,12 +355,12 @@ describe('WriteQueueErrorHandler', () => {
       const nodes = createTestNodes(1);
 
       // Open circuit
-      await handler.handleFlush(nodes, []).catch(() => {});
-      await handler.handleFlush(nodes, []).catch(() => {});
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([])).catch(() => {});
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([])).catch(() => {});
 
       // Next call should throw CircuitBreakerOpenError
       try {
-        await handler.handleFlush(nodes, []);
+        await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
         assert.fail('Should have thrown CircuitBreakerOpenError');
       } catch (error: any) {
         assert.ok(
@@ -340,9 +385,9 @@ describe('WriteQueueErrorHandler', () => {
       const nodes = createTestNodes(1, 'circuit_test');
 
       // Open circuit
-      await handler.handleFlush(nodes, []).catch(() => {});
-      await handler.handleFlush(nodes, []).catch(() => {});
-      await handler.handleFlush(nodes, []).catch(() => {});
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([])).catch(() => {});
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([])).catch(() => {});
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([])).catch(() => {});
 
       assert.strictEqual(handler.isCircuitOpen(), true, 'Circuit should be open');
 
@@ -354,7 +399,7 @@ describe('WriteQueueErrorHandler', () => {
       // Now operations should work (mockDb now succeeds)
       mockDb.setFailureMode('none');
       const newNodes = createTestNodes(1, 'after_close'); // Use different ID to avoid constraint error
-      const result = await handler.handleFlush(newNodes, []);
+      const result = await handler.handleFlush(asAnyNodes(newNodes), asAnyEdges([]));
       assert.strictEqual(result, 1, 'Should write 1 node after circuit closes');
     });
 
@@ -370,21 +415,21 @@ describe('WriteQueueErrorHandler', () => {
       // Fail twice (below threshold)
       mockDb.setFailureMode('first-n', 2);
       const nodes1 = createTestNodes(1, 'reset_1');
-      await handler.handleFlush(nodes1, []).catch(() => {});
+      await handler.handleFlush(asAnyNodes(nodes1), asAnyEdges([])).catch(() => {});
       const nodes2 = createTestNodes(1, 'reset_2');
-      await handler.handleFlush(nodes2, []).catch(() => {});
+      await handler.handleFlush(asAnyNodes(nodes2), asAnyEdges([])).catch(() => {});
 
       // Succeed once (should reset counter)
       mockDb.setFailureMode('none');
       const nodes3 = createTestNodes(1, 'reset_3');
-      await handler.handleFlush(nodes3, []);
+      await handler.handleFlush(asAnyNodes(nodes3), asAnyEdges([]));
 
       // Fail twice more (different nodes)
       mockDb.setFailureMode('first-n', 2);
       const nodes4 = createTestNodes(1, 'reset_4');
-      await handler.handleFlush(nodes4, []).catch(() => {});
+      await handler.handleFlush(asAnyNodes(nodes4), asAnyEdges([])).catch(() => {});
       const nodes5 = createTestNodes(1, 'reset_5');
-      await handler.handleFlush(nodes5, []).catch(() => {});
+      await handler.handleFlush(asAnyNodes(nodes5), asAnyEdges([])).catch(() => {});
 
       // Circuit should still be closed (counter was reset after success)
       assert.strictEqual(handler.isCircuitOpen(), false, 'Circuit should remain closed');
@@ -407,7 +452,7 @@ describe('WriteQueueErrorHandler', () => {
       const nodes = createTestNodes(1, 'retry_test');
 
       const startTime = Date.now();
-      const result = await handler.handleFlush(nodes, []);
+      const result = await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
       const duration = Date.now() - startTime;
 
       // Should succeed after retries
@@ -453,7 +498,7 @@ describe('WriteQueueErrorHandler', () => {
 
       const nodes = createTestNodes(3);
 
-      await handler.handleFlush(nodes, []);
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
 
       const deadLetterQueue = handler.getDeadLetterQueue();
       assert.strictEqual(deadLetterQueue.length, 3, 'All 3 nodes should be in dead letter queue');
@@ -481,7 +526,7 @@ describe('WriteQueueErrorHandler', () => {
 
       const nodes = createTestNodes(3);
 
-      const result = await handler.handleFlush(nodes, []);
+      const result = await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
 
       // All 3 should succeed via individual writes
       assert.strictEqual(result, 3, 'Should write all 3 nodes individually');
@@ -500,7 +545,7 @@ describe('WriteQueueErrorHandler', () => {
 
       let individualCallCount = 0;
       const originalCreateNode = mockDb.createNode.bind(mockDb);
-      mockDb.createNode = (node: AnyNode) => {
+      mockDb.createNode = (node: DBNode) => {
         individualCallCount++;
         if (individualCallCount === 1) {
           throw new Error('First node failed');
@@ -516,7 +561,7 @@ describe('WriteQueueErrorHandler', () => {
 
       const nodes = createTestNodes(3, 'partial_test');
 
-      const result = await handler.handleFlush(nodes, []);
+      const result = await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
 
       // 2 should succeed, 1 should fail (first one fails)
       assert.strictEqual(result, 2, 'Should write 2 nodes');
@@ -544,7 +589,7 @@ describe('WriteQueueErrorHandler', () => {
 
       const nodes = createTestNodes(2);
 
-      await handler.handleFlush(nodes, []);
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
 
       const deadLetterQueue = handler.getDeadLetterQueue();
 
@@ -570,7 +615,7 @@ describe('WriteQueueErrorHandler', () => {
 
       const nodes = createTestNodes(10);
 
-      await handler.handleFlush(nodes, []);
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
 
       const deadLetterQueue = handler.getDeadLetterQueue();
       assert.strictEqual(deadLetterQueue.length, 5, 'Queue should be limited to 5 items');
@@ -587,7 +632,7 @@ describe('WriteQueueErrorHandler', () => {
 
       const nodes = createTestNodes(3);
 
-      await handler.handleFlush(nodes, []);
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
 
       assert.strictEqual(
         handler.getDeadLetterQueue().length,
@@ -618,7 +663,7 @@ describe('WriteQueueErrorHandler', () => {
 
       const nodes = createTestNodes(2, 'metrics_test');
 
-      await handler.handleFlush(nodes, []);
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
 
       const metrics = handler.getMetrics();
 
@@ -638,9 +683,9 @@ describe('WriteQueueErrorHandler', () => {
 
       const nodes = createTestNodes(1);
 
-      await handler.handleFlush(nodes, []);
-      await handler.handleFlush(nodes, []);
-      await handler.handleFlush(nodes, []);
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
 
       const metrics = handler.getMetrics();
       assert.strictEqual(metrics.totalAttempts, 3, 'Should have 3 total attempts');
@@ -655,7 +700,7 @@ describe('WriteQueueErrorHandler', () => {
         enableCircuitBreaker: false,
       });
 
-      const result = await handler.handleFlush([], []);
+      const result = await handler.handleFlush(asAnyNodes([]), asAnyEdges([]));
       assert.strictEqual(result, 0, 'Should return 0 for empty batch');
     });
 
@@ -669,11 +714,11 @@ describe('WriteQueueErrorHandler', () => {
 
       // First create nodes so edges can reference them
       const nodes = createTestNodes(2);
-      await handler.handleFlush(nodes, []);
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
 
       // Now create edges
       const edges = createTestEdges(2, nodes[0].id, nodes[1].id);
-      const result = await handler.handleFlush([], edges);
+      const result = await handler.handleFlush(asAnyNodes([]), asAnyEdges(edges));
 
       assert.strictEqual(result, 2, 'Should write 2 edges');
     });
@@ -690,10 +735,10 @@ describe('WriteQueueErrorHandler', () => {
       const nodes = createTestNodes(2);
 
       // Insert first batch successfully
-      await handler.handleFlush(nodes, []);
+      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
 
       // Try to insert same nodes again (should fail with constraint error)
-      const result = await handler.handleFlush(nodes, []);
+      const result = await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
 
       // Should fail and go to dead letter queue
       const deadLetterQueue = handler.getDeadLetterQueue();

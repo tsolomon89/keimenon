@@ -6,7 +6,8 @@ import { randomUUID } from 'crypto';
 
 export function createAccountsRoutes(db: SQLiteClient, authService: AuthService): Router {
   const router = Router();
-  const database = db.getDatabase();
+  // CRITICAL FIX: Database client must be obtained per-request for test isolation
+  // See: apps/api/src/middleware/db-context.middleware.ts, tests/e2e/fixtures/test-isolation.ts
 
   /**
    * GET /api/v1/accounts
@@ -14,6 +15,11 @@ export function createAccountsRoutes(db: SQLiteClient, authService: AuthService)
    */
   router.get('/', requireAuth(authService), requireAdmin, async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const accounts = database.prepare('SELECT * FROM accounts ORDER BY created_at DESC').all();
 
       return res.json({ accounts });
@@ -29,6 +35,11 @@ export function createAccountsRoutes(db: SQLiteClient, authService: AuthService)
    */
   router.get('/:id', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { id } = req.params;
 
       // Check permission: admin or own account
@@ -59,6 +70,11 @@ export function createAccountsRoutes(db: SQLiteClient, authService: AuthService)
     requireAdmin,
     async (req: Request, res: Response) => {
       try {
+        // CRITICAL FIX: Get per-request database client for test isolation
+        const { getDbClient } = await import('../utils/get-db-client');
+        const dbClient = await getDbClient(req);
+        const database = dbClient.getDatabase();
+
         const { id } = req.params;
         const { account_class, name } = req.body;
 
@@ -101,6 +117,11 @@ export function createAccountsRoutes(db: SQLiteClient, authService: AuthService)
    */
   router.get('/:id/users', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { id } = req.params;
 
       // Check permission
@@ -138,6 +159,11 @@ export function createAccountsRoutes(db: SQLiteClient, authService: AuthService)
     requirePermission('admin'),
     async (req: Request, res: Response) => {
       try {
+        // CRITICAL FIX: Get per-request database client for test isolation
+        const { getDbClient } = await import('../utils/get-db-client');
+        const dbClient = await getDbClient(req);
+        const database = dbClient.getDatabase();
+
         const { id } = req.params;
         const { email, name, permission_level, user_class, password } = req.body;
 
@@ -235,6 +261,11 @@ export function createAccountsRoutes(db: SQLiteClient, authService: AuthService)
    */
   router.get('/:id/stats', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { id } = req.params;
 
       // Check permission

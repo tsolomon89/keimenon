@@ -251,7 +251,7 @@ async function flushQueue(queue: DatabaseWriteQueue): Promise<void> {
 
 // Helper: Wait for condition (unused but kept for future use)
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function waitForCondition(
+async function _waitForCondition(
   condition: () => boolean,
   timeoutMs = 2000,
   checkIntervalMs = 50

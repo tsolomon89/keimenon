@@ -5,7 +5,7 @@ import { DatabaseClient } from '@canvas-memory/db';
  * Create an in-memory SQLite database for testing
  * Includes all tables from the main schema
  */
-export function createTestDb(): DatabaseClient {
+export function createTestDb(): Database.Database {
   const db = new Database(':memory:');
   db.pragma('journal_mode = WAL');
 
@@ -99,13 +99,13 @@ export function createTestDb(): DatabaseClient {
     CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log(user_id);
   `);
 
-  return db as unknown as DatabaseClient;
+  return db;
 }
 
 /**
  * Clear all data from test database
  */
-export function clearTestDb(db: DatabaseClient) {
+export function clearTestDb(db: Database.Database) {
   db.exec(`
     DELETE FROM audit_log;
     DELETE FROM edges;

@@ -166,7 +166,7 @@ test.describe('Multi-Tenant Isolation - Users', () => {
     // Step 1: Get Account A's account_id
     const responseA = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_A });
     const authA = await responseA.json();
-    const accountAId = authA.accountId;
+    const accountAId = authA.account?.id;
 
     // Step 2: Login as Account B
     const responseB = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_B });
@@ -190,7 +190,7 @@ test.describe('Multi-Tenant Isolation - Users', () => {
 
       // The user should be created with Account B's account_id, NOT Account A's
       expect(result.user.accountId).not.toBe(accountAId);
-      expect(result.user.accountId).toBe(authB.accountId);
+      expect(result.user.accountId).toBe(authB.account?.id);
 
       // Verify Account A cannot see this user
       const listResponseA = await apiRequest.get('/api/v1/users', {

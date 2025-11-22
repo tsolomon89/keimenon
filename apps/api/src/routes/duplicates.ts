@@ -77,6 +77,11 @@ export function createDuplicatesRoutes(db: SQLiteClient, authService: AuthServic
    */
   router.get('/groups/:groupId', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { groupId } = req.params;
       const accountId = (req as any).user?.accountId;
 
@@ -85,7 +90,6 @@ export function createDuplicatesRoutes(db: SQLiteClient, authService: AuthServic
       }
 
       // Query NEAR_DUP edges for this group
-      const database = db.getDatabase();
       const edges = database
         .prepare(
           `
@@ -138,6 +142,11 @@ export function createDuplicatesRoutes(db: SQLiteClient, authService: AuthServic
    */
   router.post('/resolve', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { candidateId, decision, primaryNodeId, duplicateNodeId } = req.body;
       const accountId = (req as any).user?.accountId;
       const userId = (req as any).user?.userId;
@@ -165,7 +174,6 @@ export function createDuplicatesRoutes(db: SQLiteClient, authService: AuthServic
         });
       }
 
-      const database = db.getDatabase();
       const now = Date.now();
       let edgesCreated = 0;
       let edgeKind = '';
@@ -283,6 +291,11 @@ export function createDuplicatesRoutes(db: SQLiteClient, authService: AuthServic
    */
   router.post('/:id/ignore', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { id } = req.params;
       const { primaryNodeId, duplicateNodeId } = req.body;
       const accountId = (req as any).user?.accountId;
@@ -298,7 +311,6 @@ export function createDuplicatesRoutes(db: SQLiteClient, authService: AuthServic
         });
       }
 
-      const database = db.getDatabase();
       const now = Date.now();
       const edgeId = `edge_ignore_${primaryNodeId}_${duplicateNodeId}_${now}`;
 

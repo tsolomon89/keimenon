@@ -179,6 +179,9 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
     expect(group.properties.name).toBe('Account A Confidential Group');
   });
 
+  // FIXME: Group deletion isolation needs to return proper status code
+  // DELETE /api/v1/groups/:id may not be returning 403/404 for cross-account access
+  // To fix: Verify groups.routes.ts DELETE endpoint checks account_id and returns proper error
   test('should prevent Account B from deleting Account A group via API', async ({ apiRequest }) => {
     // Attempt to delete Account A's group using Account B token
     const deleteResponse = await apiRequest.delete(`/api/v1/groups/${groupAId}`, {
@@ -243,6 +246,9 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
     expect(nodesA.length).toBeGreaterThan(0);
   });
 
+  // FIXME: Cross-account group membership prevention needs implementation
+  // POST /api/v1/groups/:id/nodes should validate that nodes belong to same account as group
+  // To fix: Add account_id validation in groups.routes.ts when adding nodes to groups
   test('should prevent adding Account A nodes to Account B group', async ({ apiRequest }) => {
     // Attempt to add Account A's node to Account B's group
     const addMemberResponse = await apiRequest.post(`/api/v1/groups/${groupBId}/members:batch`, {
@@ -268,6 +274,9 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
     expect(hasAccountANode).toBeFalsy();
   });
 
+  // FIXME: Groups query isolation for nodes endpoint needs investigation
+  // GET /api/v1/nodes with group_id filter may not be properly enforcing account isolation
+  // To fix: Verify nodes query properly joins with groups and filters by account_id
   test('should isolate groups for nodes query', async ({ apiRequest }) => {
     // Query groups containing Account A's node using Account B token
     const groupsForANode = await apiRequest.get(`/api/v1/groups/nodes/${nodeA1Id}/groups`, {
@@ -356,6 +365,9 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
 
   // ==================== EDGE CASES ====================
 
+  // FIXME: Account switching UI test requires complete UI workflow implementation
+  // Test involves complex UI interactions that may not be fully implemented
+  // To fix: Verify account switching dropdown and group list refresh work correctly
   test('should maintain group isolation after account switching', async ({ page, apiRequest }) => {
     // Login as Account A
     await login(page, ACCOUNT_A.email, ACCOUNT_A.password);

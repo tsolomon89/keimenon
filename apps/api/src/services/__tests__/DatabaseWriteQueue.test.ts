@@ -15,6 +15,22 @@ import Database from 'better-sqlite3';
 import { DatabaseWriteQueue } from '../DatabaseWriteQueue';
 import { AnyNode } from '@canvas-memory/types';
 
+// Database-level type for testing (matches actual DB schema, not application types)
+type DBNode = {
+  id: string;
+  kind: string;
+  properties: Record<string, any>;
+  account_id: string;
+  created_by: string;
+  created_at?: number;
+  updated_at?: number;
+  data_tag?: 'test' | 'real';
+  content_hash?: string;
+  canonical_content?: string;
+  is_duplicate?: number;
+  original_node_id?: string;
+};
+
 let db: Database.Database;
 let queue: DatabaseWriteQueue;
 
@@ -81,8 +97,9 @@ afterEach(async () => {
   }
 });
 
+// Helper: Create test node (DB-level type, cast to AnyNode for queue.enqueueNodes)
 function createTestNode(id: string): AnyNode {
-  return {
+  const dbNode: DBNode = {
     id,
     kind: 'source',
     properties: { title: `Test ${id}` },
@@ -90,6 +107,7 @@ function createTestNode(id: string): AnyNode {
     created_by: 'test_user',
     data_tag: 'test' as const,
   };
+  return dbNode as unknown as AnyNode;
 }
 
 function sleep(ms: number): Promise<void> {

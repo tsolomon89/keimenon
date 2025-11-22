@@ -1,0 +1,30 @@
+{
+  "mcpServers": {
+    "canvas-playwright-e2e": {
+      "command": "node",
+      "args": ["${workspaceFolder}/.mcp/servers/playwright-e2e/index.js"],
+      "description": "Playwright test execution and debugging"
+    },
+    "canvas-api-testing": {
+      "command": "node",
+      "args": ["${workspaceFolder}/.mcp/servers/api-testing/index.js"],
+      "description": "API endpoint testing and CRUD validation"
+    },
+    "canvas-chat-import": {
+      "command": "node",
+      "args": ["${workspaceFolder}/.mcp/servers/chat-import/index.js"],
+      "description": "Chat import pipeline testing"
+    },
+    "canvas-visual-feedback": {
+      "command": "node",
+      "args": ["${workspaceFolder}/.mcp/servers/visual-feedback/index.js"],
+      "description": "Visual regression detection"
+    },
+    "canvas-database": {
+      "command": "node",
+      "args": ["${workspaceFolder}/.mcp/servers/database/index.js"],
+      "description": "Test data validation and cleanup"
+    }
+  },
+  "description": "Test persona - all testing MCPs for generation, healing, validation"
+}

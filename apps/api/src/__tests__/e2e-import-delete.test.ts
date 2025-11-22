@@ -10,7 +10,7 @@
  * Run with:  npm run test:e2e
  */
 
-import test from 'node:test';
+import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'path';
 import fs from 'fs';
@@ -175,7 +175,7 @@ async function waitForJob(
   throw new Error(`Job ${jobId} did not reach "${desired}" within ${timeoutMs}ms`);
 }
 
-test('import job succeeds then delete job clears data', async (_t) => {
+test('import job succeeds then delete job clears data', async (_t: TestContext) => {
   assert.ok(fs.existsSync(SAMPLE_FILE), 'Sample chat file is required for the test');
 
   const db = new Database(DB_PATH);

@@ -71,7 +71,7 @@ export default function CanvasPage() {
     // Related: apps/web/src/components/canvas/CanvasViewport.tsx (keyboard event handling)
     // See: docs/features/CANVAS_KEYBOARD_SHORTCUTS.md (needs creation)
     // Use: React synthetic events or window.addEventListener for keyboard shortcuts
-    if (typeof window !== 'undefined' && window.event?.shiftKey) {
+    if (typeof window !== 'undefined' && (window.event as KeyboardEvent | undefined)?.shiftKey) {
       setShowUploadModal(true);
     } else {
       setShowImportModule(true);

@@ -8,13 +8,15 @@ import { SQLiteClient } from '@canvas-memory/db';
 import { AuthService } from '../services/auth.service';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import { asyncHandler, ErrorFactory } from '../middleware/error-handler.middleware';
+import { getCanvasDataInClause } from '@canvas-memory/types';
 import path from 'path';
 import os from 'os';
 import { randomUUID } from 'crypto';
 
 export function createDataManagementRoutes(db: SQLiteClient, authService: AuthService): Router {
   const router = Router();
-  const database = db.getDatabase();
+  // CRITICAL FIX: Database client must be obtained per-request for test isolation
+  // See: apps/api/src/middleware/db-context.middleware.ts, tests/e2e/fixtures/test-isolation.ts
 
   /**
    * DELETE /api/v1/data/canvas
@@ -34,6 +36,11 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
     '/canvas',
     requireAuth(authService),
     asyncHandler(async (req: Request, res: Response) => {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const accountId = (req as any).user.accountId;
       const userId = (req as any).user.userId;
       const dataTag = req.query.data_tag as string | undefined;
@@ -44,6 +51,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
       const params = dataTag ? [accountId, dataTag] : [accountId];
 
       // Get counts before deletion for response
+      // Uses node kind constants from packages/types/src/node-kinds.ts
       const nodesCounts = database
         .prepare(
           `
@@ -51,7 +59,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
       FROM nodes
       WHERE account_id = ?
         ${dataTagFilter}
-        AND kind IN ('ChatThread', 'Message', 'Source', 'CodeBlock', 'Group', 'Folder')
+        AND kind IN (${getCanvasDataInClause()})
       GROUP BY kind
     `
         )
@@ -82,9 +90,12 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
         });
       }
 
-      // Start transaction for atomic deletion
+      // Use savepoint instead of transaction for compatibility with test isolation
+      // Savepoints work within existing transactions (e.g., from E2E test fixtures)
+      const savepointId = `clear_canvas_${Date.now()}`;
+
       try {
-        database.prepare('BEGIN TRANSACTION').run();
+        database.prepare(`SAVEPOINT ${savepointId}`).run();
       } catch (error: any) {
         if (
           error.message?.includes('SQLITE_BUSY') ||
@@ -113,13 +124,14 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
           .run(...params);
 
         // 2. Delete canvas data nodes (FTS trigger will clean up automatically)
+        // Uses node kind constants from packages/types/src/node-kinds.ts
         const nodesDeleted = database
           .prepare(
             `
         DELETE FROM nodes
         WHERE account_id = ?
           ${dataTagFilter}
-          AND kind IN ('ChatThread', 'Message', 'Source', 'CodeBlock', 'Group', 'Folder')
+          AND kind IN (${getCanvasDataInClause()})
       `
           )
           .run(...params);
@@ -153,8 +165,8 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
             now
           );
 
-        // Commit transaction
-        database.prepare('COMMIT').run();
+        // Release savepoint (commit)
+        database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
 
         return res.json({
           success: true,
@@ -165,9 +177,10 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
           },
         });
       } catch (error: any) {
-        // Rollback on error
+        // Rollback to savepoint on error
         try {
-          database.prepare('ROLLBACK').run();
+          database.prepare(`ROLLBACK TO SAVEPOINT ${savepointId}`).run();
+          database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
         } catch (rollbackError: any) {
           console.error('[Data Management] Rollback failed:', rollbackError);
         }
@@ -222,6 +235,11 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
     requireAuth(authService),
     requireAdmin,
     asyncHandler(async (req: Request, res: Response) => {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const adminUserId = (req as any).user.userId;
       const adminAccountId = (req as any).user.accountId;
       const now = Date.now();
@@ -245,9 +263,11 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
         });
       }
 
-      // Start transaction
+      // Use savepoint instead of transaction for compatibility with test isolation
+      const savepointId = `clear_all_clients_${Date.now()}`;
+
       try {
-        database.prepare('BEGIN TRANSACTION').run();
+        database.prepare(`SAVEPOINT ${savepointId}`).run();
       } catch (error: any) {
         if (
           error.message?.includes('SQLITE_BUSY') ||
@@ -281,12 +301,13 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
           totalEdgesDeleted += edgesResult.changes;
 
           // Delete canvas data nodes (FTS trigger will clean up automatically)
+          // Uses node kind constants from packages/types/src/node-kinds.ts
           const nodesResult = database
             .prepare(
               `
           DELETE FROM nodes
           WHERE account_id = ?
-            AND kind IN ('ChatThread', 'Message', 'Source', 'CodeBlock', 'Group', 'Folder')
+            AND kind IN (${getCanvasDataInClause()})
         `
             )
             .run(account_id);
@@ -323,8 +344,8 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
             now
           );
 
-        // Commit transaction
-        database.prepare('COMMIT').run();
+        // Release savepoint (commit)
+        database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
 
         return res.json({
           success: true,
@@ -336,9 +357,10 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
           },
         });
       } catch (error: any) {
-        // Rollback on error
+        // Rollback to savepoint on error
         try {
-          database.prepare('ROLLBACK').run();
+          database.prepare(`ROLLBACK TO SAVEPOINT ${savepointId}`).run();
+          database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
         } catch (rollbackError: any) {
           console.error('[Data Management] Rollback failed:', rollbackError);
         }
@@ -382,17 +404,23 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
     '/stats',
     requireAuth(authService),
     asyncHandler(async (req: Request, res: Response) => {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const accountId = (req as any).user.accountId;
 
       try {
         // Get node counts by kind
+        // Uses node kind constants from packages/types/src/node-kinds.ts
         const nodeCounts = database
           .prepare(
             `
         SELECT kind, COUNT(*) as count
         FROM nodes
         WHERE account_id = ?
-          AND kind IN ('ChatThread', 'Message', 'Source', 'CodeBlock', 'Group', 'Folder')
+          AND kind IN (${getCanvasDataInClause()})
         GROUP BY kind
       `
           )

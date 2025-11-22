@@ -341,6 +341,9 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
     expect(nodes[0].metadata.content).toBe('Account B content');
   });
 
+  // FIXME: Account switching for nodes requires complete UI implementation
+  // Complex UI workflow involving account dropdown, node list refresh, and state management
+  // To fix: Verify account switching properly clears and reloads node list with correct account_id filter
   test('should maintain isolation after account switching', async ({ page, request }) => {
     // Login as Account A
     await login(page, ACCOUNT_A.email, ACCOUNT_A.password);

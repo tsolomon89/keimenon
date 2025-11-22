@@ -15,7 +15,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Database from 'better-sqlite3';
-import EventSource from 'eventsource';
+import EventSource = require('eventsource');
 
 const API_URL = process.env.TEST_API_URL || 'http://localhost:4001';
 
@@ -31,6 +31,9 @@ interface LoginResponse {
   };
   accountId?: string;
   userId?: string;
+  requiresAccountSelection?: boolean;
+  availableAccounts?: Array<{ accountId: string; name: string }>;
+  tempToken?: string;
 }
 
 interface JobResponse {
@@ -180,8 +183,8 @@ export async function login(
 
   return {
     token: data.token,
-    accountId,
-    userId,
+    accountId: accountId || '',
+    userId: userId || '',
   };
 }
 
@@ -370,7 +373,7 @@ export class SSECollector {
   private eventSource: EventSource | null = null;
   private events: any[] = [];
   private isConnected: boolean = false;
-  private connectionError: Error | null = null;
+  private _connectionError: Error | null = null;
 
   constructor(
     private url: string,
@@ -397,7 +400,7 @@ export class SSECollector {
       });
 
       this.eventSource!.addEventListener('error', (error) => {
-        this.connectionError = error as Error;
+        this._connectionError = error as any;
         this.isConnected = false;
         clearTimeout(timeout);
         reject(error);

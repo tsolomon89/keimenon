@@ -103,9 +103,8 @@ test.describe('Nodes - CRUD Operations', () => {
       data: invalidData,
     });
 
-    // Backend currently returns 500 for Zod validation errors (should be 400/422)
-    // TODO: Update backend to return 400 for validation errors - see apps/api/src/routes/nodes.ts:66
-    expect([400, 422, 500]).toContain(createResponse.status());
+    // Backend returns 400 for Zod validation errors (per nodes.ts:46)
+    expect(createResponse.status()).toBe(400);
 
     const error = await createResponse.json();
     expect(error.error || error.message).toMatch(/fingerprint|required|invalid|failed/i);
@@ -171,6 +170,9 @@ test.describe('Nodes - CRUD Operations', () => {
     expect(readResponse.status()).toBe(404);
   });
 
+  // FIXME: Node listing pagination test has intermittent failures
+  // May be related to timing issues or node creation not completing before query
+  // To fix: Add proper wait conditions or verify node creation completes before listing
   test('should list nodes with pagination', async ({ page }) => {
     // Create multiple nodes
     const nodesToCreate = 5;
@@ -257,6 +259,9 @@ test.describe('Nodes - CRUD Operations', () => {
 
   // ==================== UPDATE ====================
 
+  // FIXME: Node update test failing - PUT endpoint may not be handling metadata updates correctly
+  // Update response may not include updated fields or endpoint doesn't support partial updates
+  // To fix: Verify nodes.routes.ts PUT endpoint properly merges metadata and returns updated node
   test('should update node properties successfully', async ({ page }) => {
     // Create a node
     const nodeData = createTestSourceNode({

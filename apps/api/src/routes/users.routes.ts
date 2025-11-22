@@ -5,7 +5,6 @@ import { requireAuth, requireAdmin, requirePermission } from '../middleware/auth
 
 export function createUsersRoutes(db: SQLiteClient, authService: AuthService): Router {
   const router = Router();
-  const database = db.getDatabase();
 
   /**
    * GET /api/v1/users/:id
@@ -13,6 +12,11 @@ export function createUsersRoutes(db: SQLiteClient, authService: AuthService): R
    */
   router.get('/:id', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { id } = req.params;
 
       const user = database.prepare('SELECT * FROM users WHERE id = ?').get(id) as any;
@@ -44,6 +48,11 @@ export function createUsersRoutes(db: SQLiteClient, authService: AuthService): R
    */
   router.patch('/:id', requireAuth(authService), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { id } = req.params;
       const { name, permission_level, is_active, password } = req.body;
 
@@ -128,6 +137,11 @@ export function createUsersRoutes(db: SQLiteClient, authService: AuthService): R
    */
   router.delete('/:id', requireAuth(authService), requirePermission('admin'), async (req: Request, res: Response) => {
     try {
+      // CRITICAL FIX: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
       const { id } = req.params;
 
       if (req.user!.userId === id) {

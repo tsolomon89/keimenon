@@ -6,7 +6,6 @@
  */
 
 import express, { Express, Request, Response, NextFunction } from 'express';
-import path from 'path';
 import { requireAuth, requirePermission, isolateByAccount } from './middleware/auth.middleware';
 import {
   configureCors,
@@ -39,6 +38,7 @@ import { createJobsRoutes } from './modules/jobs/infrastructure/jobs.routes';
 import { createStreamRoutes } from './modules/jobs/infrastructure/stream.routes';
 import { createImportJobsRoutes as createJobBasedImportRoutes } from './modules/jobs/infrastructure/import-jobs.routes';
 import { createTestHelperRoutes } from './routes/test-helpers';
+import { createUploadRoutes } from './routes/uploads.routes';
 import { SSEBroadcaster } from './modules/jobs/infrastructure/SSEBroadcaster';
 import { WorkerPool } from './modules/workers/domain/WorkerPool';
 import { DatabaseWriteQueue } from './services/DatabaseWriteQueue';
@@ -80,18 +80,18 @@ export function createApp(): { app: Express; context: AppContext } {
   }
 
   // Request logging (before body parsing so we can see ALL requests)
-  app.use((req: Request, res: Response, next: NextFunction) => {
+  app.use((req: Request, _res: Response, next: NextFunction) => {
     console.log(`${req.method} ${req.path}`);
     return next();
   });
 
   // Body parsing - Applied selectively to avoid consuming multipart streams
-  // IMPORTANT: Jobs routes use busboy and must NOT have body-parser applied
+  // IMPORTANT: Jobs routes and upload routes use busboy and must NOT have body-parser applied
   app.use((req: Request, res: Response, next: NextFunction) => {
-    // Check if this is a jobs route that handles multipart uploads
-    if (req.path.startsWith('/api/v1/jobs')) {
+    // Check if this is a jobs route or upload route that handles multipart/binary uploads
+    if (req.path.startsWith('/api/v1/jobs') || req.path.startsWith('/api/v1/uploads')) {
       console.log(`[Body-Parser] ⏭️  Skipping body-parser for: ${req.method} ${req.path}`);
-      return next(); // Skip body-parser for jobs routes
+      return next(); // Skip body-parser for jobs and upload routes
     }
 
     // Apply body-parser for all other routes
@@ -112,7 +112,7 @@ export function createApp(): { app: Express; context: AppContext } {
   };
 
   // Health check
-  app.get('/health', async (req: Request, res: Response) => {
+  app.get('/health', async (_req: Request, res: Response) => {
     const storageMode = process.env.STORAGE_MODE || 'local';
     let dbStatus = 'unknown';
 
@@ -130,7 +130,7 @@ export function createApp(): { app: Express; context: AppContext } {
       dbStatus = 'disconnected';
     }
 
-    res.json({
+    return res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
       service: 'canvas-memory-api',
@@ -143,7 +143,7 @@ export function createApp(): { app: Express; context: AppContext } {
   });
 
   // Readiness check
-  app.get('/ready', async (req: Request, res: Response) => {
+  app.get('/ready', async (_req: Request, res: Response) => {
     const checks = {
       server: context.isReady,
       database: false,
@@ -170,7 +170,7 @@ export function createApp(): { app: Express; context: AppContext } {
     const ready = Object.values(checks).every((c) => c);
     const statusCode = ready ? 200 : 503;
 
-    res.status(statusCode).json({
+    return res.status(statusCode).json({
       ready,
       checks,
       storageMode: process.env.STORAGE_MODE || 'local',
@@ -179,8 +179,8 @@ export function createApp(): { app: Express; context: AppContext } {
   });
 
   // API routes
-  app.get('/api/v1', (req: Request, res: Response) => {
-    res.json({
+  app.get('/api/v1', (_req: Request, res: Response) => {
+    return res.json({
       message: 'Canvas Memory OS API v1',
       version: '0.1.0',
       endpoints: {
@@ -214,6 +214,7 @@ export function createApp(): { app: Express; context: AppContext } {
   let jobBasedImportRoutes: any = null;
   let testHelperRoutes: any = null;
   let nodesRoutes: any = null;
+  let uploadRoutes: any = null;
 
   // Initialize routes with services
   const initializeRoutes = (
@@ -241,6 +242,7 @@ export function createApp(): { app: Express; context: AppContext } {
     jobBasedImportRoutes = createJobBasedImportRoutes(authService, dbClient.db, workerPool);
     testHelperRoutes = createTestHelperRoutes(dbClient);
     nodesRoutes = createNodesRoutes(authService);
+    uploadRoutes = createUploadRoutes(authService);
 
     // Inject auth dependencies for legacy routes
     setEdgesAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
@@ -249,12 +251,12 @@ export function createApp(): { app: Express; context: AppContext } {
     setIngestAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
 
     // Debug endpoints for write queue
-    app.get('/api/v1/debug/queue/status', (req: Request, res: Response) => {
+    app.get('/api/v1/debug/queue/status', (_req: Request, res: Response) => {
       if (!writeQueue) {
         return res.status(503).json({ error: 'Write queue not initialized' });
       }
 
-      res.json({
+      return res.json({
         queue: writeQueue.getQueueSizes(),
         stats: writeQueue.getStats(),
         circuitBreaker: {
@@ -268,20 +270,20 @@ export function createApp(): { app: Express; context: AppContext } {
       });
     });
 
-    app.post('/api/v1/debug/queue/reset-circuit', (req: Request, res: Response) => {
+    app.post('/api/v1/debug/queue/reset-circuit', (_req: Request, res: Response) => {
       if (!writeQueue) {
         return res.status(503).json({ error: 'Write queue not initialized' });
       }
 
       try {
         writeQueue.resetCircuitBreaker();
-        res.json({
+        return res.json({
           success: true,
           message: 'Circuit breaker reset successfully',
           isOpen: writeQueue.isCircuitOpen(),
         });
       } catch (error: any) {
-        res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({ success: false, error: error.message });
       }
     });
   };
@@ -338,6 +340,12 @@ export function createApp(): { app: Express; context: AppContext } {
   app.use('/api/v1/stream', (req, res, next) => {
     if (streamRoutes) return streamRoutes(req, res, next);
     return res.status(503).json({ error: 'Auth service not initialized' });
+  });
+
+  // Upload routes (body-parser automatically skips /api/v1/uploads/* paths to preserve binary streams)
+  app.use('/api/v1/uploads', (req, res, next) => {
+    if (uploadRoutes) return uploadRoutes(req, res, next);
+    return res.status(503).json({ error: 'Upload service not initialized' });
   });
 
   // Jobs routes (body-parser automatically skips /api/v1/jobs/* paths to preserve multipart streams)

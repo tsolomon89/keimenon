@@ -108,7 +108,7 @@ export function configureCors(): RequestHandler {
  */
 export function configureHelmet(): RequestHandler {
   const nodeEnv = process.env.NODE_ENV || 'development';
-  const isDev = nodeEnv === 'development';
+  const _isDev = nodeEnv === 'development';
 
   return helmet({
     // Content Security Policy
@@ -166,7 +166,7 @@ export function configureHelmet(): RequestHandler {
  * Custom security headers for additional protection
  */
 export function addCustomSecurityHeaders(): RequestHandler {
-  return (req, res, next) => {
+  return (_req, res, next) => {
     // Prevent browsers from caching sensitive data
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');

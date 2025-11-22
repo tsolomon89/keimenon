@@ -378,6 +378,32 @@ export function createImportJobsRoutes(
         });
       }
 
+      // CONCURRENT DELETION PREVENTION: Check for active delete jobs
+      // Prevents data corruption and race conditions from simultaneous deletions
+      const activeDeleteJobs = await jobRepository.find({
+        accountId: targetAccountId,
+        type: 'delete',
+        status: ['queued', 'running'],
+        limit: 1,
+      });
+
+      if (activeDeleteJobs.length > 0) {
+        const activeJob = activeDeleteJobs[0];
+
+        // ⏱️ Record concurrent deletion attempt for metrics
+        const { getDeleteMetrics } = await import('../../../services/metrics/DeleteMetrics');
+        const deleteMetrics = getDeleteMetrics();
+        deleteMetrics.recordConcurrentAttempt(targetAccountId, scope);
+
+        return res.status(409).json({
+          success: false,
+          error: 'A delete operation is already in progress for this account',
+          activeJobId: activeJob.id,
+          activeJobStatus: activeJob.status,
+          message: 'Please wait for the current deletion to complete before starting a new one',
+        });
+      }
+
       // Create delete job with exclusive lock and tenancy metadata
       const command: EnqueueJobCommand = {
         type: 'delete',
@@ -633,8 +659,9 @@ export function createImportJobsRoutes(
 
       console.log(`⛔ Job canceled in DB: ${jobId} (type: ${job.type})`);
 
-      // If WorkerPool is available and job is running, signal the worker to stop
-      if (workerPool && job.status === 'canceled') {
+      // If WorkerPool is available, signal the worker to stop
+      // Note: job.cancel() was already called above, so status is now 'canceled'
+      if (workerPool) {
         const signaled = await workerPool.cancelJob(jobId, targetAccountId);
         if (signaled) {
           console.log(`📡 Sent abort signal to worker for job ${jobId}`);

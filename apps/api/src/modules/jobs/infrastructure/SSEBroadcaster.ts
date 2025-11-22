@@ -196,13 +196,9 @@ export class SSEBroadcaster {
               jobId: job.id,
               type: job.type,
               status: job.status,
-              progress: job.stateData.progress || {
-                current: 0,
-                total: 0,
-                percent: 0,
-              },
+              progress: job.progress, // ✅ Use job.progress getter (not job.stateData)
               config: configMetadata,
-              timestamp: job.updatedAt,
+              timestamp: Date.now(), // ✅ Timestamp of when update was sent
             };
           });
 

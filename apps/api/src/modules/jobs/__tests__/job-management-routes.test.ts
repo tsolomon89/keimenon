@@ -220,7 +220,8 @@ describe('Job Management API Endpoints', () => {
 
       // In real endpoint, this would return 400 error
       // Here we just verify the status check
-      const canRetry = succeededJob.status === 'failed' || succeededJob.status === 'canceled';
+      // Use string comparison to avoid TypeScript literal type narrowing
+      const canRetry = String(succeededJob.status) === 'failed' || String(succeededJob.status) === 'canceled';
       assert.strictEqual(canRetry, false, 'Should not be able to retry succeeded job');
     });
 

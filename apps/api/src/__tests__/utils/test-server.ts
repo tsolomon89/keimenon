@@ -59,7 +59,7 @@ export async function startTestServer(): Promise<void> {
     console.log('\n🧪 Starting test server on port 4001...');
 
     // Set environment variables for test mode
-    const env = {
+    const env: NodeJS.ProcessEnv = {
       ...process.env,
       PORT: '4001',
       NODE_ENV: 'test',

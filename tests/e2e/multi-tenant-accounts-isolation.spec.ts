@@ -37,7 +37,7 @@ test.describe('Multi-Tenant Isolation - Accounts', () => {
     // Step 1: Get Account A's account_id
     const responseA = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_A });
     const authA = await responseA.json();
-    const accountAId = authA.accountId;
+    const accountAId = authA.account?.id;
 
     // Step 2: Login as Account B
     const responseB = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_B });
@@ -58,7 +58,7 @@ test.describe('Multi-Tenant Isolation - Accounts', () => {
     // Step 1: Get Account A's account_id
     const responseA = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_A });
     const authA = await responseA.json();
-    const accountAId = authA.accountId;
+    const accountAId = authA.account?.id;
 
     // Step 2: Get original account details
     const originalResponse = await apiRequest.get(`/api/v1/accounts/${accountAId}`, {
@@ -107,7 +107,7 @@ test.describe('Multi-Tenant Isolation - Accounts', () => {
     // Step 1: Get Account A's account_id
     const responseA = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_A });
     const authA = await responseA.json();
-    const accountAId = authA.accountId;
+    const accountAId = authA.account?.id;
 
     // Step 2: Login as Account B
     const responseB = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_B });
@@ -140,9 +140,9 @@ test.describe('Multi-Tenant Isolation - Accounts', () => {
       const data = await listResponse.json();
 
       // Client users should only see their own account
-      if (authA.accountType === 'client' && data.accounts) {
+      if (authA.account?.account_type === 'client' && data.accounts) {
         expect(data.accounts).toHaveLength(1);
-        expect(data.accounts[0].id).toBe(authA.accountId);
+        expect(data.accounts[0].id).toBe(authA.account?.id);
       }
     } else {
       // If endpoint doesn't allow listing, that's fine (403/404)
@@ -154,7 +154,7 @@ test.describe('Multi-Tenant Isolation - Accounts', () => {
     // Step 1: Get Account A's account_id
     const responseA = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_A });
     const authA = await responseA.json();
-    const accountAId = authA.accountId;
+    const accountAId = authA.account?.id;
 
     // Get original tier
     const originalResponse = await apiRequest.get(`/api/v1/accounts/${accountAId}`, {
@@ -200,7 +200,7 @@ test.describe('Multi-Tenant Isolation - Accounts', () => {
     // Step 1: Get Account A's account_id
     const responseA = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_A });
     const authA = await responseA.json();
-    const accountAId = authA.accountId;
+    const accountAId = authA.account?.id;
 
     // Step 2: Login as Account B
     const responseB = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_B });
@@ -219,7 +219,7 @@ test.describe('Multi-Tenant Isolation - Accounts', () => {
     // Step 1: Get Account A's account_id
     const responseA = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_A });
     const authA = await responseA.json();
-    const accountAId = authA.accountId;
+    const accountAId = authA.account?.id;
 
     // Step 2: Login as Account B
     const responseB = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_B });
@@ -240,11 +240,11 @@ test.describe('Multi-Tenant Isolation - Accounts', () => {
     // Step 1: Login both accounts
     const responseA = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_A });
     const authA = await responseA.json();
-    const accountAId = authA.accountId;
+    const accountAId = authA.account?.id;
 
     const responseB = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_B });
     const authB = await responseB.json();
-    const accountBId = authB.accountId;
+    const accountBId = authB.account?.id;
 
     // Step 2: Both try to access each other's account simultaneously
     const promises = [
@@ -281,7 +281,7 @@ test.describe('Multi-Tenant Isolation - Accounts', () => {
     // Step 1: Get Account A's account_id
     const responseA = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_A });
     const authA = await responseA.json();
-    const accountAId = authA.accountId;
+    const accountAId = authA.account?.id;
 
     // Step 2: Login as Account B
     const responseB = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_B });

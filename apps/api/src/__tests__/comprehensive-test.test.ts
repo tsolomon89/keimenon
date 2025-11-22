@@ -11,7 +11,7 @@
  * =============================================================================
  */
 
-import { describe, test, before, after } from 'node:test';
+import { describe, test, before, after, type TestContext } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs/promises';
@@ -100,7 +100,7 @@ describe('Comprehensive System Test - ALL Implementations', () => {
    */
 
   describe('Phase 1: Platform Detection & Parsing', () => {
-    test('1.1 Platform Detection - Claude Format', async (_t) => {
+    test('1.1 Platform Detection - Claude Format', async (_t: TestContext) => {
       const exists = await fileExists(CLAUDE_FILE);
       if (!exists) {
         console.log('⚠️  claude_conversations.json not found, skipping');
@@ -134,7 +134,7 @@ describe('Comprehensive System Test - ALL Implementations', () => {
       console.log(`✅ Claude format detected (${sizeMB.toFixed(2)} MB file)\n`);
     });
 
-    test('1.2 Platform Detection - GPT Format', async (_t) => {
+    test('1.2 Platform Detection - GPT Format', async (_t: TestContext) => {
       const exists = await fileExists(GPT_FILE);
       if (!exists) {
         console.log('⚠️  gpt_conversations.json not found, skipping');
@@ -162,7 +162,7 @@ describe('Comprehensive System Test - ALL Implementations', () => {
       console.log(`✅ GPT format detected (${sizeMB.toFixed(2)} MB file)\n`);
     });
 
-    test('1.3 Parse Small File - Full Pipeline', async (_t) => {
+    test('1.3 Parse Small File - Full Pipeline', async (_t: TestContext) => {
       const exists = await fileExists(SMALL_FILE);
       if (!exists) {
         console.log('⚠️  small.json not found, skipping');
@@ -199,7 +199,7 @@ describe('Comprehensive System Test - ALL Implementations', () => {
    */
 
   describe('Phase 2: Content Processing & Grouping', () => {
-    test('2.1 Multi-Level Breaking with ContentProcessor', async (_t) => {
+    test('2.1 Multi-Level Breaking with ContentProcessor', async (_t: TestContext) => {
       const processor = new ContentProcessor({
         extractTokens: false,
         extractPhrases: false,
@@ -240,7 +240,7 @@ Another paragraph here with more content.
    */
 
   describe('Performance Benchmarks', () => {
-    test('Performance - Small File (9.8MB)', async (_t) => {
+    test('Performance - Small File (9.8MB)', async (_t: TestContext) => {
       const exists = await fileExists(SMALL_FILE);
       if (!exists) {
         console.log('⚠️  small.json not found, skipping');
@@ -275,7 +275,7 @@ Another paragraph here with more content.
    */
 
   describe('Phase 3: Grouping, Deduplication & Clustering', () => {
-    test('3.1 Verify Phase 1-3 Processing on Small File', async (_t) => {
+    test('3.1 Verify Phase 1-3 Processing on Small File', async (_t: TestContext) => {
       const exists = await fileExists(SMALL_FILE);
       if (!exists) {
         console.log('⚠️  small.json not found, skipping Phase 3 test');
@@ -483,7 +483,7 @@ Another paragraph here with more content.
    */
 
   describe('Database Cleanup', () => {
-    test('4.1 Clean Test Data from Database', async (_t) => {
+    test('4.1 Clean Test Data from Database', async (_t: TestContext) => {
       try {
         const db = new Database(TEST_DB_PATH);
 

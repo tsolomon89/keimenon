@@ -152,7 +152,7 @@ export function errorLogger(
  *
  * Handles 404 errors for undefined routes
  */
-export function notFoundHandler(req: Request, res: Response, next: NextFunction) {
+export function notFoundHandler(req: Request, _res: Response, next: NextFunction) {
   const error = new APIError(
     `Route ${req.method} ${req.path} not found`,
     404,

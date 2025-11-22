@@ -12,7 +12,7 @@
 // Start test server before running tests
 import './setup-global';
 
-import { describe, test, before, after } from 'node:test';
+import { describe, test, before, after, type TestContext } from 'node:test';
 import assert from 'node:assert';
 import { SQLiteClient } from '@canvas-memory/db';
 import { randomUUID } from 'crypto';
@@ -206,7 +206,7 @@ describe('Data Management API', () => {
     console.log('✅ Test data creation verified');
   });
 
-  test('should clear canvas data via API', async (_t) => {
+  test('should clear canvas data via API', async (_t: TestContext) => {
     // Create test data
     const database = db.getDatabase();
     database.prepare('DELETE FROM nodes WHERE account_id = ?').run(adminAccountId);
@@ -239,7 +239,7 @@ describe('Data Management API', () => {
     console.log('✅ Data cleared successfully via API');
   });
 
-  test('should handle empty database gracefully', async (_t) => {
+  test('should handle empty database gracefully', async (_t: TestContext) => {
     // Ensure database is empty
     const database = db.getDatabase();
     database.prepare('DELETE FROM nodes WHERE account_id = ?').run(adminAccountId);
@@ -261,7 +261,7 @@ describe('Data Management API', () => {
     console.log('✅ Empty database handled gracefully');
   });
 
-  test('should require authentication', async (_t) => {
+  test('should require authentication', async (_t: TestContext) => {
     const response = await fetch(`${API_URL}/api/v1/data/canvas`, {
       method: 'DELETE',
       headers: {

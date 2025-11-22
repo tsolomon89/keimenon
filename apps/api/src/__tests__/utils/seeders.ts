@@ -1,11 +1,11 @@
-import { DatabaseClient } from '@canvas-memory/db';
+import Database from 'better-sqlite3';
 import { nanoid } from 'nanoid';
 import bcrypt from 'bcrypt';
 
 /**
  * Seed test accounts
  */
-export async function seedAccounts(db: DatabaseClient) {
+export async function seedAccounts(db: Database.Database) {
   const now = Date.now();
 
   const accounts = [
@@ -70,7 +70,7 @@ export async function seedAccounts(db: DatabaseClient) {
 /**
  * Seed test users
  */
-export async function seedUsers(db: DatabaseClient) {
+export async function seedUsers(db: Database.Database) {
   const now = Date.now();
   const password = await bcrypt.hash('Test123!', 10);
 
@@ -157,7 +157,7 @@ export async function seedUsers(db: DatabaseClient) {
 /**
  * Seed account links (admin manages clients)
  */
-export function seedAccountLinks(db: DatabaseClient) {
+export function seedAccountLinks(db: Database.Database) {
   const now = Date.now();
 
   const links = [
@@ -198,7 +198,7 @@ export function seedAccountLinks(db: DatabaseClient) {
 /**
  * Seed test nodes
  */
-export function seedNodes(db: DatabaseClient) {
+export function seedNodes(db: Database.Database) {
   const now = Date.now();
 
   const nodes = [
@@ -250,7 +250,7 @@ export function seedNodes(db: DatabaseClient) {
 /**
  * Seed all test data
  */
-export async function seedAll(db: DatabaseClient) {
+export async function seedAll(db: Database.Database) {
   const accounts = await seedAccounts(db);
   const users = await seedUsers(db);
   const links = seedAccountLinks(db);

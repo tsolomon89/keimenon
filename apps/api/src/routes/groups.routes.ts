@@ -18,7 +18,6 @@ import { randomUUID } from 'crypto';
 
 export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): Router {
   const router = Router();
-  const database = db.getDatabase();
 
   /**
    * GET /api/v1/groups

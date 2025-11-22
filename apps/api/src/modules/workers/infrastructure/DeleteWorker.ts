@@ -21,6 +21,15 @@ import { BaseWorker, WorkerContext, WorkerResult } from '../domain/Worker';
 import { Job } from '../../jobs/domain/Job';
 import { DatabaseClient } from '@canvas-memory/db';
 import { getLocalDocumentStore } from '../../../services/local-document-store';
+import {
+  ChangeTracker,
+  createChangeTracker,
+  trackNodesDeleted,
+  trackEdgesDeleted,
+  serializeChangeTracker,
+} from '../../jobs/domain/ChangeTracker';
+import { getCanvasDataInClause, getSystemNodeInClause } from '@canvas-memory/types';
+import { getDeleteMetrics } from '../../../services/metrics/DeleteMetrics';
 
 export class DeleteWorker extends BaseWorker {
   readonly type = 'delete' as const;
@@ -49,6 +58,13 @@ export class DeleteWorker extends BaseWorker {
 
     console.log(`🗑️ Delete worker processing ${scope} for job ${job.id}`);
 
+    // ⏱️ Start performance timing for metrics
+    const startTime = Date.now();
+    const deleteMetrics = getDeleteMetrics();
+
+    // ✅ Initialize change tracker for rollback support
+    let changeTracker: ChangeTracker = createChangeTracker();
+
     try {
       // Step 1: Count nodes to delete
       await this.reportProgress(job, 0, 100, 'Counting nodes...', context);
@@ -64,6 +80,7 @@ export class DeleteWorker extends BaseWorker {
             scope,
             nodesDeleted: 0,
             edgesDeleted: 0,
+            changeTracker: serializeChangeTracker(changeTracker),
           },
         };
       }
@@ -72,7 +89,9 @@ export class DeleteWorker extends BaseWorker {
       await this.reportProgress(job, 10, 100, `Deleting ${nodeCount} nodes...`, context);
 
       // @ts-ignore - TypeScript incorrectly infers accountId as potentially undefined
-      const deletedNodes = await this.deleteNodes(scope, job.accountId, job, context);
+      const deleteResult = await this.deleteNodes(scope, job.accountId, changeTracker, job, context);
+      const deletedNodes = deleteResult.deletedCount;
+      changeTracker = deleteResult.changeTracker;
 
       if (this.shouldCancel(context.signal)) {
         return {
@@ -81,6 +100,9 @@ export class DeleteWorker extends BaseWorker {
             code: 'CANCELED',
             message: 'Job was canceled during deletion',
           },
+          metadata: {
+            changeTracker: serializeChangeTracker(changeTracker), // ✅ Include for potential rollback
+          },
         };
       }
 
@@ -88,7 +110,9 @@ export class DeleteWorker extends BaseWorker {
       await this.reportProgress(job, 80, 100, 'Cleaning up edges...', context);
 
       // @ts-ignore - TypeScript incorrectly infers accountId as potentially undefined
-      const deletedEdges = await this.deleteOrphanedEdges(job.accountId);
+      const edgeResult = await this.deleteOrphanedEdges(job.accountId, changeTracker);
+      const deletedEdges = edgeResult.deletedCount;
+      changeTracker = edgeResult.changeTracker;
 
       // Step 4: Clean up local files
       await this.reportProgress(job, 90, 100, 'Cleaning up files...', context);
@@ -99,7 +123,17 @@ export class DeleteWorker extends BaseWorker {
       // Step 5: Complete
       await this.reportProgress(job, 100, 100, 'Deletion complete', context);
 
-      console.log(`✅ Delete worker completed job ${job.id}: ${deletedNodes} nodes deleted`);
+      // ⏱️ Record metrics for successful completion
+      const durationMs = Date.now() - startTime;
+      deleteMetrics.recordJobCompletion({
+        jobId: job.id,
+        accountId: job.accountId,
+        scope: scope as 'canvas' | 'all-clients',
+        nodesDeleted: deletedNodes,
+        durationMs,
+      });
+
+      console.log(`✅ Delete worker completed job ${job.id}: ${deletedNodes} nodes deleted in ${durationMs}ms`);
 
       return {
         success: true,
@@ -107,10 +141,21 @@ export class DeleteWorker extends BaseWorker {
           scope,
           nodesDeleted: deletedNodes,
           edgesDeleted: deletedEdges,
+          durationMs, // ⏱️ Include duration in metadata
+          changeTracker: serializeChangeTracker(changeTracker), // ✅ Include for audit trail
         },
       };
     } catch (error: any) {
       console.error(`❌ Delete worker failed for job ${job.id}:`, error);
+
+      // ⏱️ Record metrics for failure
+      deleteMetrics.recordJobFailure({
+        jobId: job.id,
+        accountId: job.accountId,
+        scope: scope as 'canvas' | 'all-clients',
+        errorCode: error.code || 'DELETE_FAILED',
+        errorMessage: error.message || 'Deletion failed',
+      });
 
       return {
         success: false,
@@ -119,28 +164,38 @@ export class DeleteWorker extends BaseWorker {
           message: error.message || 'Deletion failed',
           stack: error.stack,
         },
+        metadata: {
+          changeTracker: serializeChangeTracker(changeTracker), // ✅ Include for potential rollback
+        },
       };
     }
   }
 
   /**
    * Count nodes to delete
+   *
+   * Uses node kind constants from packages/types/src/node-kinds.ts
+   * to ensure consistency across delete operations.
+   *
+   * See also: getNodeIdBatch() for matching deletion logic
    */
   private async countNodesToDelete(scope: string, accountId: string): Promise<number> {
     if (scope === 'canvas') {
-      // Count all nodes for this account
+      // Only count canvas data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
+      // System nodes are excluded: UserNode, AccountNode, Board, Constellation
       const result = await this.db.execute(
-        'SELECT COUNT(*) as count FROM nodes WHERE account_id = ?',
+        `SELECT COUNT(*) as count FROM nodes
+         WHERE account_id = ?
+         AND kind IN (${getCanvasDataInClause()})`,
         [accountId]
       );
       return result.records[0]?.count || 0;
     } else if (scope === 'all-clients') {
-      // Count all client (non-system) nodes for this account
-      // System nodes: UserNode, Constellation
+      // Count all client data (exclude system nodes only)
       const result = await this.db.execute(
         `SELECT COUNT(*) as count FROM nodes
          WHERE account_id = ?
-         AND kind NOT IN ('UserNode', 'Constellation')`,
+         AND kind NOT IN (${getSystemNodeInClause()})`,
         [accountId]
       );
       return result.records[0]?.count || 0;
@@ -163,20 +218,22 @@ export class DeleteWorker extends BaseWorker {
   private async deleteNodes(
     scope: string,
     accountId: string,
+    changeTracker: ChangeTracker,
     job?: Job,
     context?: WorkerContext
-  ): Promise<number> {
+  ): Promise<{ deletedCount: number; changeTracker: ChangeTracker }> {
     console.log(`🗑️ Deleting nodes for scope: ${scope}, account: ${accountId}`);
 
     const BATCH_SIZE = 500;
     let totalDeleted = 0;
     let batchNumber = 0;
+    let tracker = changeTracker;
 
     // Get total count for progress calculation
     const totalNodes = await this.countNodesToDelete(scope, accountId);
 
     if (totalNodes === 0) {
-      return 0;
+      return { deletedCount: 0, changeTracker: tracker };
     }
 
     console.log(`   Total nodes to delete: ${totalNodes}`);
@@ -200,6 +257,9 @@ export class DeleteWorker extends BaseWorker {
         // No more nodes to delete
         break;
       }
+
+      // ✅ Track node IDs BEFORE deletion (for potential rollback)
+      tracker = trackNodesDeleted(tracker, nodeIds);
 
       // Delete this batch (with CASCADE for edges)
       const batchDeleted = await this.deleteBatch(nodeIds, accountId);
@@ -230,11 +290,16 @@ export class DeleteWorker extends BaseWorker {
     }
 
     console.log(`   ✅ Deletion complete: ${totalDeleted} nodes deleted in ${batchNumber} batches`);
-    return totalDeleted;
+    return { deletedCount: totalDeleted, changeTracker: tracker };
   }
 
   /**
    * Get batch of node IDs to delete
+   *
+   * Uses node kind constants from packages/types/src/node-kinds.ts
+   * to ensure consistency with countNodesToDelete().
+   *
+   * See also: countNodesToDelete() for matching count logic
    */
   private async getNodeIdBatch(
     scope: string,
@@ -245,14 +310,18 @@ export class DeleteWorker extends BaseWorker {
     let params: any[];
 
     if (scope === 'canvas') {
-      // Get all nodes for this account
-      query = `SELECT id FROM nodes WHERE account_id = ? LIMIT ?`;
-      params = [accountId, batchSize];
-    } else if (scope === 'all-clients') {
-      // Get client data nodes (exclude system nodes)
+      // Only delete canvas data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
+      // System nodes are preserved: UserNode, AccountNode, Board, Constellation
       query = `SELECT id FROM nodes
                WHERE account_id = ?
-               AND kind NOT IN ('UserNode', 'Constellation')
+               AND kind IN (${getCanvasDataInClause()})
+               LIMIT ?`;
+      params = [accountId, batchSize];
+    } else if (scope === 'all-clients') {
+      // Get client data nodes (exclude system nodes only)
+      query = `SELECT id FROM nodes
+               WHERE account_id = ?
+               AND kind NOT IN (${getSystemNodeInClause()})
                LIMIT ?`;
       params = [accountId, batchSize];
     } else {
@@ -294,10 +363,31 @@ export class DeleteWorker extends BaseWorker {
   /**
    * Delete orphaned edges (edges without valid from/to nodes)
    */
-  private async deleteOrphanedEdges(accountId: string): Promise<number> {
-    // Find edges where from_id or to_id no longer exists
-    // Note: With CASCADE DELETE enabled in schema, this should rarely happen
-    // But we check anyway for data integrity
+  private async deleteOrphanedEdges(
+    accountId: string,
+    changeTracker: ChangeTracker
+  ): Promise<{ deletedCount: number; changeTracker: ChangeTracker }> {
+    // ✅ First, get the IDs of edges to be deleted (for tracking)
+    const edgeIdsResult = await this.db.execute(
+      `SELECT id FROM edges
+       WHERE account_id = ?
+       AND (
+         from_id NOT IN (SELECT id FROM nodes)
+         OR to_id NOT IN (SELECT id FROM nodes)
+       )`,
+      [accountId]
+    );
+
+    const edgeIds = edgeIdsResult.records.map((r: any) => r.id);
+
+    if (edgeIds.length === 0) {
+      return { deletedCount: 0, changeTracker };
+    }
+
+    // ✅ Track edge IDs BEFORE deletion
+    let tracker = trackEdgesDeleted(changeTracker, edgeIds);
+
+    // Now delete the edges
     const result = await this.db.execute(
       `DELETE FROM edges
        WHERE account_id = ?
@@ -314,7 +404,7 @@ export class DeleteWorker extends BaseWorker {
       console.log(`   Cleaned up ${deletedCount} orphaned edges`);
     }
 
-    return deletedCount;
+    return { deletedCount, changeTracker: tracker };
   }
 
   /**

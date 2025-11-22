@@ -312,6 +312,9 @@ test.describe('Multi-Tenant Isolation - Boards', () => {
 
   // ==================== CROSS-ACCOUNT OPERATIONS ====================
 
+  // FIXME: Board deletion with contents isolation needs verification
+  // Test may be failing due to DELETE endpoint not properly checking account ownership
+  // To fix: Verify boards.ts DELETE endpoint properly validates account_id before deletion
   test('should prevent Account B from deleting Account A board with contents', async ({
     apiRequest,
   }) => {

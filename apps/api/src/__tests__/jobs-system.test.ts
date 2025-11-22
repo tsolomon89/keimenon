@@ -155,7 +155,7 @@ function countNodes(accountId: string): number {
 /**
  * Count jobs for account
  */
-function countJobs(accountId: string, status?: string): number {
+function _countJobs(accountId: string, status?: string): number {
   if (status) {
     const result = db
       .prepare('SELECT COUNT(*) as count FROM jobs WHERE account_id = ? AND status = ?')

@@ -380,8 +380,8 @@ export async function importChatFilesAsJob(
         const controller = new AbortController();
         const timeout = setTimeout(() => {
           controller.abort();
-          console.error('[importChatFilesAsJob] Request timed out after 60 seconds');
-        }, 60000); // 60 second timeout
+          console.error('[importChatFilesAsJob] Request timed out after 5 minutes');
+        }, 300000); // 5 minute timeout (matches backend UPLOAD_TIMEOUT_MS)
 
         try {
           const response = await fetch(endpoint, {
@@ -412,7 +412,7 @@ export async function importChatFilesAsJob(
           clearTimeout(timeout);
           if (error instanceof Error && error.name === 'AbortError') {
             throw new Error(
-              'Import job creation timed out after 60 seconds. The file may be too large or the server is not responding.'
+              'Import job creation timed out after 5 minutes. The file may be too large or the server is not responding.'
             );
           }
           throw error;

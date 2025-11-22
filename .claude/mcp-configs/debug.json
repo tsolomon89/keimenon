@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "canvas-code-execution": {
+      "command": "node",
+      "args": ["${workspaceFolder}/.mcp/servers/code-execution/dist/index.js"],
+      "description": "Code execution for data analysis"
+    },
+    "canvas-database": {
+      "command": "node",
+      "args": ["${workspaceFolder}/.mcp/servers/database/index.js"],
+      "description": "Database querying and state inspection"
+    },
+    "canvas-playwright-e2e": {
+      "command": "node",
+      "args": ["${workspaceFolder}/.mcp/servers/playwright-e2e/index.js"],
+      "description": "E2E test debugging and artifacts"
+    }
+  },
+  "description": "Debug persona - execution, database, testing (no web)"
+}
