@@ -162,34 +162,30 @@ test.describe('Import Workflow', () => {
     console.log(`✅ Import successful: ${nodes.nodes.length} nodes created`);
   });
 
-  // TODO: Implement Claude import format parser
-  // Feature not yet implemented - Claude conversation JSON format parser needed
-  // See: apps/api/src/modules/jobs/workers/ImportWorker.ts
-  // Related: ChatGPT parser is working, use as reference
-  // Estimated effort: 4-6 hours
-  // Priority: Low (feature not prioritized)
-  test.fixme('should import Claude export file successfully', async ({ apiRequest }) => {
-    // Create a minimal Claude-format test file
-    const claudeExport = {
-      conversations: [
-        {
-          id: 'conv_test_123',
-          title: 'Test Conversation',
-          messages: [
-            {
-              role: 'user',
-              content: 'Test message from user in Claude format',
-              timestamp: Date.now(),
-            },
-            {
-              role: 'assistant',
-              content: 'Test response from Claude assistant',
-              timestamp: Date.now() + 1000,
-            },
-          ],
-        },
-      ],
-    };
+  test('should import Claude export file successfully', async ({ apiRequest }) => {
+    // Create a Claude-format test file (matching actual Claude export structure)
+    const claudeExport = [
+      {
+        uuid: 'conv_test_123',
+        name: 'Test Conversation',
+        created_at: Math.floor(Date.now() / 1000),
+        updated_at: Math.floor(Date.now() / 1000),
+        chat_messages: [
+          {
+            uuid: 'msg_001',
+            text: 'Test message from user in Claude format with sufficient length to pass filtering',
+            sender: 'human',
+            created_at: Math.floor(Date.now() / 1000),
+          },
+          {
+            uuid: 'msg_002',
+            text: 'Test response from Claude assistant with enough content to be meaningful and pass any length requirements',
+            sender: 'assistant',
+            created_at: Math.floor(Date.now() / 1000) + 1,
+          },
+        ],
+      },
+    ];
 
     const fileContent = Buffer.from(JSON.stringify(claudeExport));
 
@@ -205,6 +201,7 @@ test.describe('Import Workflow', () => {
         config: JSON.stringify({
           platform: 'claude',
           extraction: { includeUser: true, includeAssistant: false },
+          minMessageLength: 10, // Allow short test messages (default is 400)
         }),
       },
     });
@@ -239,25 +236,15 @@ test.describe('Import Workflow', () => {
     expect(nodes.nodes.length).toBeGreaterThan(0);
   });
 
-  // TODO: Fix code block extraction in Claude import
-  // Code extraction works for ChatGPT format but not Claude format
-  // See: apps/api/src/modules/jobs/workers/ImportWorker.ts
-  // Related to: Claude format parser (above test)
-  // Estimated effort: 2-3 hours
-  test.fixme('should extract code blocks during import', async ({ apiRequest }) => {
+  test('should extract code blocks during import', async ({ apiRequest }) => {
+    // Generic format expects messages array at top level
     const exportWithCode = {
-      conversations: [
+      messages: [
         {
-          id: 'conv_code_test',
-          title: 'Coding Conversation',
-          messages: [
-            {
-              role: 'user',
-              content:
-                'Here is some code:\n\n```typescript\nfunction hello() {\n  console.log("Hello World");\n}\n```',
-              timestamp: Date.now(),
-            },
-          ],
+          role: 'assistant', // Code extraction only runs on assistant messages
+          content:
+            'Here is some code with sufficient length to pass message filters:\n\n```typescript\nfunction hello() {\n  console.log("Hello World");\n  return "test";\n}\n```\n\nThis message has enough content to be processed.',
+          timestamp: Date.now(),
         },
       ],
     };
@@ -275,6 +262,7 @@ test.describe('Import Workflow', () => {
         config: JSON.stringify({
           platform: 'generic',
           extractCode: true,
+          minMessageLength: 10, // Allow short test messages (default is 400)
           codeSettings: {
             minLength: 10,
             deduplicate: true,
@@ -319,14 +307,7 @@ test.describe('Import Workflow', () => {
 
   // ==================== JOB MONITORING ====================
 
-  // FIXME: Job status retrieval endpoint returns unexpected structure or times out
-  // The GET /api/v1/jobs/:id endpoint may not be returning data in expected format
-  // To fix: Verify JobRepository.findById() returns complete job data with state.status
-  // TODO: Implement GET /api/v1/jobs/:id endpoint
-  // Endpoint not yet implemented - need to add to jobs.routes.ts
-  // See: apps/api/src/routes/jobs.routes.ts
-  // Estimated effort: 1-2 hours
-  test.fixme('should retrieve job status by ID', async ({ apiRequest }) => {
+  test('should retrieve job status by ID', async ({ apiRequest }) => {
     const testFile = path.join(
       process.cwd(),
       'ai_context',
@@ -359,22 +340,24 @@ test.describe('Import Workflow', () => {
     expect(statusResponse.ok()).toBeTruthy();
     const statusData = await statusResponse.json();
 
-    // Verify job structure
-    expect(statusData.job.jobId).toBe(jobId);
+    // Verify response structure
+    expect(statusData.success).toBe(true);
+    expect(statusData.job).toBeDefined();
+
+    // Verify job structure (API returns job.toJSON() format)
+    expect(statusData.job.id).toBe(jobId);
     expect(statusData.job.type).toBe('import');
+    expect(statusData.job.state).toBeDefined();
     expect(statusData.job.state.status).toMatch(/queued|running|succeeded/);
-    expect(statusData.job.state.createdAt).toBeDefined();
-    expect(statusData.job.payload).toBeDefined();
+    expect(statusData.job.state.queuedAt).toBeDefined();
+    expect(statusData.job.config).toBeDefined();
+    expect(statusData.job.accountId).toBeDefined();
+    expect(statusData.job.createdBy).toBeDefined();
+
+    console.log(`✅ Job status retrieved: ${jobId} (status: ${statusData.job.state.status})`);
   });
 
-  // FIXME: Job listing endpoint returns unexpected data structure
-  // GET /api/v1/jobs should return {jobs: Job[], count: number} but may be returning different format
-  // To fix: Verify jobs.routes.ts list endpoint returns correct structure matching test expectations
-  // TODO: Implement GET /api/v1/jobs endpoint
-  // Endpoint not yet implemented - need to add to jobs.routes.ts
-  // See: apps/api/src/routes/jobs.routes.ts
-  // Estimated effort: 1-2 hours
-  test.fixme('should list all jobs for authenticated user', async ({ apiRequest }) => {
+  test('should list all jobs for authenticated user', async ({ apiRequest }) => {
     // Create multiple jobs
     const testFile = path.join(
       process.cwd(),
@@ -407,36 +390,38 @@ test.describe('Import Workflow', () => {
       },
     });
 
-    // List jobs
+    // List jobs (filter by import type to avoid delete jobs from cleanup)
     const listResponse = await apiRequest.get('/api/v1/jobs', {
       headers: { Authorization: `Bearer ${authToken}` },
+      params: { type: 'import' }, // Filter to only import jobs
     });
 
     expect(listResponse.ok()).toBeTruthy();
     const listData = await listResponse.json();
 
-    // Verify multiple jobs returned
+    // Verify response structure (API returns {success, jobs, total})
+    expect(listData.success).toBe(true);
     expect(listData.jobs).toBeDefined();
-    expect(listData.jobs.length).toBeGreaterThanOrEqual(2);
-    expect(listData.count).toBeGreaterThanOrEqual(2);
+    expect(listData.total).toBeDefined();
 
-    // Verify all are import jobs
+    // Verify multiple jobs returned
+    expect(listData.jobs.length).toBeGreaterThanOrEqual(2);
+    expect(listData.total).toBeGreaterThanOrEqual(2);
+
+    // Verify all are import jobs with correct structure
     listData.jobs.forEach((job: any) => {
+      expect(job.id).toBeDefined();
       expect(job.type).toBe('import');
+      expect(job.state).toBeDefined();
+      expect(job.accountId).toBeDefined();
     });
+
+    console.log(`✅ Job list retrieved: ${listData.total} jobs found`);
   });
 
   // ==================== ERROR HANDLING ====================
 
-  // FIXME: Invalid JSON handling may not match test expectations
-  // Job creation may succeed but fail during processing, or error format differs
-  // To fix: Verify ImportWorker.ts properly validates JSON and sets job.state.status='failed'
-  // TODO: Depends on GET /api/v1/jobs/:id endpoint
-  // Cannot verify job failure without job status endpoint
-  // See: apps/api/src/routes/jobs.routes.ts (needs to be created)
-  // Related to: "should retrieve job status by ID" test above
-  // Estimated effort: 1-2 hours (implement endpoint first)
-  test.fixme('should reject invalid JSON file', async ({ apiRequest }) => {
+  test('should reject invalid JSON file', async ({ apiRequest }) => {
     const invalidContent = Buffer.from('This is not valid JSON');
 
     const uploadResponse = await apiRequest.post('/api/v1/jobs/import', {
@@ -455,18 +440,43 @@ test.describe('Import Workflow', () => {
       const uploadResult = await uploadResponse.json();
       const jobId = uploadResult.jobId;
 
-      // Wait for job to process and fail
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      console.log(`⏳ Waiting for invalid JSON job to fail: ${jobId}`);
 
-      const statusResponse = await apiRequest.get(`/api/v1/jobs/${jobId}`, {
+      // Poll job status until it fails or times out
+      let jobStatus = 'queued';
+      let attempts = 0;
+      const maxAttempts = 20; // 10 seconds max (500ms * 20)
+
+      while (jobStatus !== 'failed' && jobStatus !== 'succeeded' && attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const statusResponse = await apiRequest.get(`/api/v1/jobs/${jobId}`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+
+        const statusData = await statusResponse.json();
+        jobStatus = statusData.job.state.status;
+        attempts++;
+
+        console.log(`  Attempt ${attempts}/${maxAttempts}: status=${jobStatus}`);
+      }
+
+      // Verify job failed
+      expect(jobStatus).toBe('failed');
+
+      // Get final job state
+      const finalResponse = await apiRequest.get(`/api/v1/jobs/${jobId}`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
+      const finalData = await finalResponse.json();
 
-      const statusData = await statusResponse.json();
-      expect(statusData.job.state.status).toBe('failed');
-      expect(statusData.job.state.error).toBeDefined();
+      expect(finalData.job.state.error).toBeDefined();
+      expect(finalData.job.state.error.message).toBeDefined();
+
+      console.log(`✅ Invalid JSON rejected correctly: ${finalData.job.state.error.message}`);
     } else {
       // Or server rejects it immediately
+      console.log(`✅ Server rejected invalid JSON immediately: ${uploadResponse.status()}`);
       expect(uploadResponse.ok()).toBeFalsy();
     }
   });
@@ -545,15 +555,16 @@ test.describe('Import Workflow', () => {
 
   // ==================== DUPLICATE DETECTION ====================
 
-  // FIXME: Duplicate detection not creating DUP_OF edges as expected
-  // Import completes but no duplicate edges are found in database after import
-  // To fix: Verify duplicate detection logic in ImportWorker.ts actually creates edges
-  // TODO: Implement deduplication algorithm in Claude import
-  // Feature working for ChatGPT, needs adaptation for Claude format
-  // See: apps/api/src/modules/jobs/workers/ImportWorker.ts
-  // Related to: Claude format parser (first test)
-  // Estimated effort: 2-3 hours
-  test.fixme('should detect and handle duplicate messages', async ({ apiRequest }) => {
+  // 🔍 DIAGNOSTIC RUN: Debug logging added to duplicate-detection.ts to diagnose why DUP_OF edges aren't created
+  // This test uses identical messages across two conversations to test cross-conversation duplicate detection
+  //
+  // Debug logging added (Phase 1.2):
+  // - apps/api/src/services/duplicate-detection.ts:74-78 (message extraction)
+  // - apps/api/src/services/duplicate-detection.ts:131 (candidates found)
+  // - apps/api/src/services/duplicate-detection.ts:136 (groups created)
+  //
+  // See implementation: apps/api/src/services/import-enhanced-v2.ts:510-607
+  test('should detect and handle duplicate messages', async ({ apiRequest }) => {
     const exportWithDuplicates = {
       conversations: [
         {
@@ -593,6 +604,7 @@ test.describe('Import Workflow', () => {
         },
         config: JSON.stringify({
           platform: 'generic',
+          minMessageLength: 10, // Allow short test messages (default is 400)
           duplicateDetection: {
             enabled: true,
             exactMatch: true,

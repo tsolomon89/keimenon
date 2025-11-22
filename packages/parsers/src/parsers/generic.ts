@@ -26,7 +26,44 @@ export class GenericParser implements ChatParser {
     };
 
     try {
-      // Try to extract messages from data structure
+      // Check if data has a 'conversations' array (multi-conversation format)
+      if (data && typeof data === 'object' && 'conversations' in data) {
+        const obj = data as any;
+        if (Array.isArray(obj.conversations)) {
+          // Handle each conversation separately
+          for (const convData of obj.conversations) {
+            const messages = this.extractMessages(convData);
+            if (messages.length > 0) {
+              const conv: NormalizedConversation = {
+                conversation_id: convData.id || `conv_${nanoid()}`,
+                platform: convData.platform || 'unknown',
+                title: convData.title || 'Imported Conversation',
+                created_at: convData.created_at || Math.floor(Date.now() / 1000),
+                messages,
+                metadata: {
+                  source_file: sourceFile,
+                  format: 'generic',
+                  ...(convData.metadata || {}),
+                },
+              };
+              conversations.push(conv);
+              stats.total_conversations++;
+              this.updateStats(conv, stats);
+            }
+          }
+          // Successfully processed conversations array
+          if (conversations.length > 0) {
+            return {
+              conversations,
+              platform: 'unknown',
+              source_file: sourceFile,
+              stats,
+            };
+          }
+        }
+      }
+
+      // Fallback: Try to extract messages from data structure (single conversation)
       const messages = this.extractMessages(data);
 
       if (messages.length > 0) {
@@ -179,11 +216,7 @@ export class GenericParser implements ChatParser {
 
     const normalized = role.toLowerCase();
 
-    if (
-      normalized.includes('user') ||
-      normalized.includes('human') ||
-      normalized === 'you'
-    ) {
+    if (normalized.includes('user') || normalized.includes('human') || normalized === 'you') {
       return 'user';
     }
 

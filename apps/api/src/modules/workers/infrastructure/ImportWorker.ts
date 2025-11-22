@@ -22,6 +22,13 @@ import { ImportConfiguration } from '@canvas-memory/types';
 import { ParserRegistry } from '@canvas-memory/parsers';
 import { ImportJobStage, IMPORT_STAGE_LABELS } from '@canvas-memory/types/src/import-job-stages';
 import * as fs from 'fs/promises';
+import {
+  ChangeTracker,
+  createChangeTracker,
+  trackNodesCreated,
+  trackEdgesCreated,
+  serializeChangeTracker,
+} from '../../jobs/domain/ChangeTracker';
 
 export class ImportWorker extends BaseWorker {
   readonly type = 'import' as const;
@@ -98,6 +105,9 @@ export class ImportWorker extends BaseWorker {
     const importOptions = job.config.importOptions || {};
     let allConversations: ImportConversation[] = []; // Declare at function scope for error handling
 
+    // ✅ Initialize change tracker for rollback support
+    let changeTracker: ChangeTracker = createChangeTracker();
+
     console.log(`📥 Import worker processing ${files.length} file(s) for job ${job.id}`);
     console.log(`⏱️  Timeout: ${Math.round(this.timeoutMs / 1000)}s`);
 
@@ -127,9 +137,18 @@ export class ImportWorker extends BaseWorker {
         );
 
         // Parse file based on mime type
+        console.log(
+          `[ImportWorker] Parsing file: ${file.fileName}, size: ${file.fileSize}, mime: ${file.mimeType}`
+        );
         const conversations = await this.parseFile(file);
+        console.log(
+          `[ImportWorker] Parsed ${conversations.length} conversations from ${file.fileName}`
+        );
         allConversations.push(...conversations);
       }
+      console.log(
+        `[ImportWorker] Total conversations after parsing all files: ${allConversations.length}`
+      );
 
       // Step 2: Build import configuration
       const config: ImportConfiguration = this.buildImportConfig(importOptions);
@@ -168,7 +187,50 @@ export class ImportWorker extends BaseWorker {
             code: 'CANCELED',
             message: 'Job was canceled during import',
           },
+          metadata: {
+            changeTracker: serializeChangeTracker(changeTracker), // ✅ Include for potential rollback
+          },
         };
+      }
+
+      // ✅ Step 3.5: Track created nodes/edges for rollback support
+      // Query nodes created by this import (identified by upload_hash in metadata)
+      try {
+        const createdNodesQuery = await dbClient.execute(
+          `SELECT id FROM nodes
+           WHERE account_id = ?
+           AND json_extract(properties, '$.metadata.uploadHash') = ?`,
+          [job.accountId, uploadHash]
+        );
+
+        const createdNodeIds = createdNodesQuery.records.map((r: any) => r.id);
+        if (createdNodeIds.length > 0) {
+          changeTracker = trackNodesCreated(changeTracker, createdNodeIds);
+          console.log(`[ImportWorker] Tracked ${createdNodeIds.length} created nodes for rollback`);
+        }
+
+        // Query edges created by this import
+        // Edges are connected to nodes with this uploadHash, so find edges between those nodes
+        if (createdNodeIds.length > 0) {
+          const createdEdgesQuery = await dbClient.execute(
+            `SELECT DISTINCT e.id FROM edges e
+             WHERE e.account_id = ?
+             AND (e.from_id IN (${createdNodeIds.map(() => '?').join(',')})
+                  OR e.to_id IN (${createdNodeIds.map(() => '?').join(',')}))`,
+            [job.accountId, ...createdNodeIds, ...createdNodeIds]
+          );
+
+          const createdEdgeIds = createdEdgesQuery.records.map((r: any) => r.id);
+          if (createdEdgeIds.length > 0) {
+            changeTracker = trackEdgesCreated(changeTracker, createdEdgeIds);
+            console.log(
+              `[ImportWorker] Tracked ${createdEdgeIds.length} created edges for rollback`
+            );
+          }
+        }
+      } catch (trackingError: any) {
+        console.warn(`[ImportWorker] Failed to track created entities:`, trackingError.message);
+        // Non-fatal - continue with import success
       }
 
       // Step 4: Complete (SUCCEEDED stage)
@@ -201,6 +263,8 @@ export class ImportWorker extends BaseWorker {
             totalFiles: files.length,
             completedAt: new Date().toISOString(),
           },
+          // ✅ Change tracker for rollback support
+          changeTracker: serializeChangeTracker(changeTracker),
         },
       };
     } catch (error: any) {
@@ -227,6 +291,9 @@ export class ImportWorker extends BaseWorker {
           code: isTimeout ? 'TIMEOUT' : error.code || 'IMPORT_FAILED',
           message: errorMessage,
           stack: error.stack,
+        },
+        metadata: {
+          changeTracker: serializeChangeTracker(changeTracker), // ✅ Include for potential rollback
         },
       };
     }
@@ -359,7 +426,7 @@ export class ImportWorker extends BaseWorker {
       duplicates: {
         // FIX: Respect user's enabled preference
         enabled: dupeEnabled,
-        level: 'message',
+        level: dupeConfig.level || 'both', // Default to 'both' (message + conversation)
         detectExact: dupeConfig.exactMatch ?? true,
         detectNear: true,
         // Use new threshold if available, fallback to legacy field

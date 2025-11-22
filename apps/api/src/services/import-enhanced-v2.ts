@@ -136,6 +136,18 @@ export class EnhancedImportServiceV2 {
     this.context = context;
     const startTime = Date.now();
 
+    // DIAGNOSTIC: Log conversations at start
+    const fs = require('fs');
+    const path = require('path');
+    const debugPath = path.join(process.cwd(), 'duplicate-detection-debug.txt');
+    fs.writeFileSync(
+      debugPath,
+      `[${new Date().toISOString()}] import() called\n` +
+        `- conversations at START: ${conversations.length}\n` +
+        `- total messages at START: ${conversations.reduce((sum, c) => sum + c.messages.length, 0)}\n`,
+      { flag: 'a' }
+    );
+
     try {
       // Step 1: Save upload metadata
       await this.saveUploadMetadata(uploadHash, conversations, config);
@@ -163,8 +175,22 @@ export class EnhancedImportServiceV2 {
 
       // Step 7: Detect duplicates (if enabled)
       let duplicatesForReview = 0;
+      console.log(
+        `[Import] Step 7: Duplicate detection ${config.duplicates.enabled ? 'ENABLED' : 'DISABLED'}`
+      );
+      console.log(`[Import] Conversations to check: ${conversations.length}`);
+      console.log(
+        `[Import] Total messages: ${conversations.reduce((sum, c) => sum + c.messages.length, 0)}`
+      );
       if (config.duplicates.enabled) {
-        duplicatesForReview = await this.detectDuplicates(sources, groupResult.groups, config);
+        console.log(
+          `[Import] Calling detectDuplicates() with config:`,
+          JSON.stringify(config.duplicates, null, 2)
+        );
+        duplicatesForReview = await this.detectDuplicates(conversations, config);
+        console.log(
+          `[Import] detectDuplicates() returned: ${duplicatesForReview} duplicates for review`
+        );
       }
 
       // Step 8: Create bundles (if enabled)
@@ -367,23 +393,74 @@ export class EnhancedImportServiceV2 {
     messages: ImportMessage[],
     groups: Group[],
     config: ImportConfiguration
-  ): Promise<any[]> {
-    const sources: any[] = [];
+  ): Promise<string[]> {
+    const sourceIds: string[] = [];
 
-    // For now, sources are just the messages themselves
+    // Create Source nodes from messages
     // In future: stitch messages together, create bundles, etc.
 
     for (const msg of messages) {
-      sources.push({
-        id: msg.id,
-        type: config.sources.scope,
-        role: msg.role,
-        content_location: `local://messages/${msg.conversationId}/${msg.id}.md`,
-        groups: groups.filter((g) => g.sources.includes(msg.id)).map((g) => g.id),
+      const sourceId = `src_${nanoid()}`;
+
+      // Save content to local store
+      const contentMeta = await this.localStore.saveSource(sourceId, msg.content);
+
+      // Calculate fingerprint for deduplication
+      const fingerprint = `src:${msg.conversationId}:${msg.id}`;
+
+      // Determine which groups this source belongs to
+      const sourceGroups = groups.filter((g) => g.sources.includes(msg.id)).map((g) => g.id);
+
+      // Create Source node in database
+      await this.writeNode({
+        id: sourceId,
+        kind: 'Source',
+        title: `Message from ${msg.role} (${new Date(msg.timestamp).toISOString()})`,
+        fingerprint,
+        mime_type: 'text/markdown',
+        size_bytes: msg.content.length,
+        content_location: this.localStore.getStorageLocation(contentMeta),
+        content_hash: contentMeta.hash,
+        created_at: msg.timestamp,
+        updated_at: Date.now(),
+        metadata: {
+          type: 'message_source',
+          role: msg.role,
+          conversation_id: msg.conversationId,
+          message_id: msg.id,
+          message_index: msg.index,
+          scope: config.sources.scope,
+          groups: sourceGroups,
+        },
       });
+
+      // Create COMPILED_FROM edge from Source to Message
+      await this.writeEdge({
+        id: `edge_${nanoid()}`,
+        kind: 'COMPILED_FROM',
+        from: sourceId,
+        to: msg.id,
+        created_at: Date.now(),
+        metadata: {
+          derivation_type: 'message_extraction',
+        },
+      });
+
+      // Create edges to groups if needed
+      for (const groupId of sourceGroups) {
+        await this.writeEdge({
+          id: `edge_${nanoid()}`,
+          kind: 'IN_GROUP',
+          from: sourceId,
+          to: groupId,
+          created_at: Date.now(),
+        });
+      }
+
+      sourceIds.push(sourceId);
     }
 
-    return sources;
+    return sourceIds;
   }
 
   /**
@@ -419,6 +496,7 @@ export class EnhancedImportServiceV2 {
               id: codeId,
               kind: 'CodeBlock',
               language,
+              code, // Store code content directly in node for easy access
               content_location: this.localStore.getStorageLocation(codeMeta),
               content_hash: codeMeta.hash,
               line_count: code.split('\n').length,
@@ -450,50 +528,154 @@ export class EnhancedImportServiceV2 {
 
   /**
    * Detect duplicates using DuplicateDetectionService
+   * ✅ Now integrated with the import pipeline
+   *
+   * ARCHITECTURAL NOTE: This runs AFTER messages are saved to database,
+   * so we have access to real database node IDs via ImportConversation.messages[].id
    */
   private async detectDuplicates(
-    sources: any[],
-    groups: Group[],
+    conversations: ImportConversation[],
     config: ImportConfiguration
   ): Promise<number> {
+    // DIAGNOSTIC: Write to file to confirm this is being called
+    const fs = require('fs');
+    const path = require('path');
+    const debugPath = path.join(process.cwd(), 'duplicate-detection-debug.txt');
+    fs.writeFileSync(
+      debugPath,
+      `[${new Date().toISOString()}] detectDuplicates called\n` +
+        `- enabled: ${config.duplicates.enabled}\n` +
+        `- conversations: ${conversations.length}\n` +
+        `- total messages: ${conversations.reduce((sum, c) => sum + c.messages.length, 0)}\n` +
+        `- config: ${JSON.stringify(config.duplicates, null, 2)}\n`,
+      { flag: 'a' }
+    );
+
     if (!config.duplicates.enabled) {
+      fs.writeFileSync(
+        debugPath,
+        `[${new Date().toISOString()}] EARLY RETURN: duplicates.enabled is false\n`,
+        { flag: 'a' }
+      );
       return 0;
     }
+
+    console.log(`🔍 Starting duplicate detection for ${conversations.length} conversations`);
 
     // Build detection config from ImportConfiguration
     const detectionConfig: DuplicateDetectionConfig = {
       enabled: config.duplicates.enabled,
-      exactMatch: config.duplicates.exactMatch ?? true,
-      similarityThreshold: config.duplicates.similarityThreshold ?? 0.85,
-      crossConversation: config.duplicates.crossConversation ?? true,
-      algorithm: (config.duplicates.algorithm as any) ?? 'jaccard',
-      normalizeTokens: config.duplicates.normalizeTokens ?? true,
-      minTokenOverlap: config.duplicates.minTokenOverlap ?? 3,
-      lengthRatioTolerance: config.duplicates.lengthRatioTolerance ?? 0.2,
-      ignoreWhitespace: config.duplicates.ignoreWhitespace ?? true,
-      ignoreCase: config.duplicates.ignoreCase ?? true,
-      ignoreTimestamp: config.duplicates.ignoreTimestamp ?? false,
-      requireReview: config.duplicates.requireReview ?? true,
-      autoApproveExact: config.duplicates.autoApproveExact ?? false,
-      autoMergeThreshold: config.duplicates.autoMergeThreshold ?? 0.95,
+      exactMatch: config.duplicates.detectExact ?? true,
+      similarityThreshold: config.duplicates.nearThreshold ?? 0.85,
+      crossConversation:
+        config.duplicates.level === 'both' || config.duplicates.level === 'conversation',
+      algorithm: 'jaccard',
+      normalizeTokens: true,
+      minTokenOverlap: 3,
+      lengthRatioTolerance: 0.2,
+      ignoreWhitespace: true,
+      ignoreCase: true,
+      ignoreTimestamp: false,
+      requireReview: config.duplicates.createReviewFolders ?? true,
+      autoApproveExact: config.duplicates.autoMergeSuggestions ?? false,
+      autoMergeThreshold: config.duplicates.autoMergeSuggestions ? 0.95 : 1.0,
     };
 
-    // Note: DuplicateDetectionService expects NormalizedConversation[]
-    // For now, we'll skip this until we have the right data structure
-    // This is an architectural mismatch - the service expects parsed conversations
-    // but we have already-processed sources at this stage.
+    // Convert ImportConversation to NormalizedConversation format
+    // CRITICAL: We store the real database node ID in metadata.dbNodeId
+    // The DuplicateDetectionService will preserve this metadata through to results
+    const normalizedConvs = conversations.map((conv) => ({
+      conversation_id: conv.id,
+      platform: conv.platform,
+      title: conv.title,
+      created_at: conv.created_at,
+      messages: conv.messages.map((msg, index) => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp,
+        index: index,
+        hash: msg.hash || '',
+        metadata: {
+          dbNodeId: msg.id, // Real database node ID - CRITICAL for edge creation
+        },
+      })),
+      metadata: {},
+    }));
 
-    // TODO(architecture): Refactor to run duplicate detection earlier in pipeline
-    // when we still have conversation data structure, or create a new method
-    // that works with source documents instead of conversations
+    // Call duplicate detection service
+    const duplicateService = new DuplicateDetectionService();
+    const duplicateGroups = await duplicateService.findDuplicates(normalizedConvs, detectionConfig);
 
-    return 0; // No duplicates detected (deferred to earlier in pipeline)
+    console.log(`📊 Found ${duplicateGroups.length} duplicate groups`);
+
+    // DIAGNOSTIC: Write duplicate groups to file
+    fs.writeFileSync(
+      debugPath,
+      `[${new Date().toISOString()}] Duplicate groups found: ${duplicateGroups.length}\n`,
+      { flag: 'a' }
+    );
+    if (duplicateGroups.length > 0) {
+      fs.writeFileSync(debugPath, `First group: ${JSON.stringify(duplicateGroups[0], null, 2)}\n`, {
+        flag: 'a',
+      });
+    }
+
+    // Create DUP_OF edges for detected duplicates
+    let edgeCount = 0;
+    for (const group of duplicateGroups) {
+      for (const candidate of group.candidates) {
+        // Extract real database node IDs
+        // After the extractMessages fix, candidate IDs are now correct database node IDs
+        // Fall back to metadata.dbNodeId for backwards compatibility
+        const duplicateNodeId = candidate.duplicate.id || candidate.duplicate.metadata?.dbNodeId;
+        const primaryNodeId = candidate.primary.id || candidate.primary.metadata?.dbNodeId;
+
+        if (!duplicateNodeId || !primaryNodeId) {
+          const msg = `⚠️  Skipping duplicate edge: missing node IDs (dup: ${duplicateNodeId}, primary: ${primaryNodeId})`;
+          console.warn(msg);
+          fs.writeFileSync(debugPath, `[${new Date().toISOString()}] ${msg}\n`, { flag: 'a' });
+          continue;
+        }
+
+        console.log(
+          `🔗 Creating DUP_OF edge: ${duplicateNodeId} -> ${primaryNodeId} (similarity: ${candidate.similarity.toFixed(2)})`
+        );
+        fs.writeFileSync(
+          debugPath,
+          `[${new Date().toISOString()}] Creating DUP_OF edge: ${duplicateNodeId} -> ${primaryNodeId}\n`,
+          { flag: 'a' }
+        );
+
+        // Create DUP_OF edge from duplicate to primary
+        await this.writeEdge({
+          id: `edge_${nanoid()}`,
+          kind: 'DUP_OF',
+          from: duplicateNodeId,
+          to: primaryNodeId,
+          created_at: Date.now(),
+          metadata: {
+            similarity: candidate.similarity,
+            metrics: candidate.metrics,
+            requiresReview: detectionConfig.requireReview,
+          },
+        });
+        edgeCount++;
+      }
+    }
+
+    console.log(`✅ Created ${edgeCount} DUP_OF edges`);
+    fs.writeFileSync(
+      debugPath,
+      `[${new Date().toISOString()}] COMPLETE: Created ${edgeCount} DUP_OF edges\n\n`,
+      { flag: 'a' }
+    );
+    return edgeCount;
   }
 
   /**
    * Create bundles using SourcesStitcher
    */
-  private async createBundles(sources: any[], config: ImportConfiguration): Promise<number> {
+  private async createBundles(sources: string[], config: ImportConfiguration): Promise<number> {
     if (!config.sources.bundling.enabled) {
       return 0;
     }

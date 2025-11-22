@@ -71,6 +71,18 @@ export class DuplicateDetectionService {
     // Extract all messages with metadata
     const allMessages = this.extractMessages(conversations);
 
+    console.log(
+      `[DuplicateDetection] 📊 Extracted ${allMessages.length} messages from ${conversations.length} conversations`
+    );
+    console.log(
+      `[DuplicateDetection] Config: crossConversation=${config.crossConversation}, threshold=${config.similarityThreshold}`
+    );
+    if (allMessages.length > 0) {
+      console.log(
+        `[DuplicateDetection] Sample message: "${allMessages[0].content.substring(0, 50)}..."`
+      );
+    }
+
     // Find duplicate pairs
     const candidates: DuplicateCandidate[] = [];
 
@@ -79,8 +91,8 @@ export class DuplicateDetectionService {
         const msgA = allMessages[i];
         const msgB = allMessages[j];
 
-        // Skip if same conversation and crossConversation is false
-        if (!config.crossConversation && msgA.conversationId === msgB.conversationId) {
+        // Skip cross-conversation pairs when crossConversation detection is disabled
+        if (!config.crossConversation && msgA.conversationId !== msgB.conversationId) {
           continue;
         }
 
@@ -122,8 +134,12 @@ export class DuplicateDetectionService {
       }
     }
 
+    console.log(`[DuplicateDetection] ✅ Found ${candidates.length} duplicate candidates`);
+
     // Group candidates by conversation pairs
     const groups = this.groupCandidates(candidates);
+
+    console.log(`[DuplicateDetection] 📦 Grouped into ${groups.length} duplicate groups`);
 
     return groups;
   }
@@ -150,8 +166,12 @@ export class DuplicateDetectionService {
 
     for (const conv of conversations) {
       for (const msg of conv.messages) {
+        // Use database node ID from metadata if available, otherwise generate synthetic ID
+        // CRITICAL: dbNodeId must be preserved for edge creation to work
+        const messageId = msg.metadata?.dbNodeId || `${conv.conversation_id}_msg_${msg.index}`;
+
         messages.push({
-          id: `${conv.conversation_id}_msg_${msg.index}`,
+          id: messageId,
           conversationId: conv.conversation_id,
           conversationTitle: conv.title,
           content: msg.content,
