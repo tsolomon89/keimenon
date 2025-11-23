@@ -1,0 +1,146 @@
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 2)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 2 messages (account: acc_RV3md6Xqich4RyxRKPwM8)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 0 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 4 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 2 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 1 (0 exact + 1 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 2ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 0.5x (2 vs 1 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 32ms | Speedup: 1.0x | Groups: 1
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 1.0x below target 10x
+▶ FTS5 Duplicate Detection - Integration Tests
+  ▶ End-to-End Duplicate Detection
+    ✔ should detect exact duplicates via FTS5 with real database (122.2849ms)
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 2)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 2 messages (account: acc_OomTQLn5iL4LzrbG3Wu7_)
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 4 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 2 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 1 (0 exact + 1 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 2ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 0.5x (2 vs 1 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 1.0x below target 10x
+[IntegratedDuplicateDetection] ⏱️  Duration: 3ms | Speedup: 1.0x | Groups: 1
+    ✔ should detect fuzzy duplicates via FTS5 trigrams (80.7572ms)
+    ✔ should handle UPDATE trigger when canonical_content changes (89.7467ms)
+    ✔ should handle DELETE trigger when Message node is deleted (105.0188ms)
+  ✔ End-to-End Duplicate Detection (399.5194ms)
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 5)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 5 messages (account: acc_8kh2vVuxN34d7Twj5ToUN)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 2 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 25 FTS5 candidates
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 1.0x below target 10x
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 20 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 2 (2 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 7ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 0.5x (20 vs 10 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 8ms | Speedup: 1.0x | Groups: 1
+[IntegratedDuplicateDetection] 🎯 Strategy: baseline (available: true, enabled: true, messages: 5)
+[IntegratedDuplicateDetection] ⚠️  Using baseline O(n²) algorithm (strategy: baseline, FTS5 available: true, enabled: true)
+[DuplicateDetection] 📊 Extracted 5 messages from 2 conversations
+[DuplicateDetection] Config: crossConversation=true, threshold=1
+[DuplicateDetection] Sample message: "Duplicate message A..."
+[DuplicateDetection] ⚡ Early exit optimization: Skipped 0/10 (0.0%) comparisons
+[DuplicateDetection] ✅ Found 2 duplicate candidates
+[DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 4ms | Speedup: 1.0x | Groups: 1
+  ▶ Accuracy Validation: FTS5 vs Baseline
+    ✖ should achieve 100% recall compared to baseline (no false negatives) (154.8568ms)
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 2)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 2 messages (account: acc_ir8jkIIUeouX48z1dWvQQ)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 0 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 4 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 2 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 0 (0 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 3ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 0.5x (2 vs 1 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 0 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 5ms | Speedup: 1.0x | Groups: 0
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 1.0x below target 10x
+    ✔ should not produce false positives (precision check) (90.9355ms)
+  ✖ Accuracy Validation: FTS5 vs Baseline (246.8538ms)
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 2)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 2 messages (account: acc_A_3bdiAoZZ3---2gGt7HQ3g)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 0 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 4 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 2 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 1 (0 exact + 1 FTS5)
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 1.0x below target 10x
+[FTS5-DuplicateDetection] ⏱️  Duration: 2ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 0.5x (2 vs 1 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 5ms | Speedup: 1.0x | Groups: 1
+  ▶ Multi-Tenant Isolation
+    ✔ should isolate duplicates by account_id with real data (124.0961ms)
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 1)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 1 messages (account: acc_B_aUxolEoEnPTgzCAa6JNq7)
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 1 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 1.0x below target 10x
+[FTS5-DuplicateDetection] 📊 Total candidates: 0 (0 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 1ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 0.0x (0 vs 0 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 0 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 2ms | Speedup: 1.0x | Groups: 0
+    ✔ should not leak data across accounts via FTS5 MATCH (74.5366ms)
+  ✔ Multi-Tenant Isolation (199.3765ms)
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 100)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 20)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 100 messages (account: acc_DrCA0BIa0fI1WXLGtP-Wj)
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 2000 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 1,980 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 0 (0 exact + 0 FTS5)
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 2.5x below target 10x
+[FTS5-DuplicateDetection] ⏱️  Duration: 178ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 2.5x (1,980 vs 4,950 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 0 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 179ms | Speedup: 2.5x | Groups: 0
+✅ Performance: FTS5 performed 2,000 comparisons vs 4,950 baseline (2.5x speedup)
+  ▶ Performance Characteristics
+    ✔ should reduce comparisons vs O(n²) baseline on larger dataset (1606.5062ms)
+  ✔ Performance Characteristics (1606.7633ms)
+✖ FTS5 Duplicate Detection - Integration Tests (2454.2624ms)
+ℹ tests 9
+ℹ suites 5
+ℹ pass 8
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3052.2668
+
+✖ failing tests:
+
+test at apps\api\src\__tests__\duplicate-detection-fts5-integration.test.ts:19:955
+✖ should achieve 100% recall compared to baseline (no false negatives) (154.8568ms)
+  AssertionError [ERR_ASSERTION]: Should find 2 duplicate groups
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (c:\Development\Projects\ai_convo_parser\apps\api\src\__tests__\duplicate-detection-fts5-integration.test.ts:412:14)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1516:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

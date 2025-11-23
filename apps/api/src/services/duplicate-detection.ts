@@ -59,6 +59,7 @@ export interface DuplicateGroup {
 export class DuplicateDetectionService {
   /**
    * Find duplicate messages across all conversations
+   * OPTIMIZED: Uses early exit pre-filtering to skip obvious non-duplicates
    */
   async findDuplicates(
     conversations: NormalizedConversation[],
@@ -83,17 +84,32 @@ export class DuplicateDetectionService {
       );
     }
 
-    // Find duplicate pairs
+    // Find duplicate pairs with early exit optimization
     const candidates: DuplicateCandidate[] = [];
+    let totalComparisons = 0;
+    let skippedByEarlyExit = 0;
 
     for (let i = 0; i < allMessages.length; i++) {
       for (let j = i + 1; j < allMessages.length; j++) {
         const msgA = allMessages[i];
         const msgB = allMessages[j];
 
+        totalComparisons++;
+
         // Skip cross-conversation pairs when crossConversation detection is disabled
         if (!config.crossConversation && msgA.conversationId !== msgB.conversationId) {
           continue;
+        }
+
+        // OPTIMIZATION: Early exit based on length ratio (fast pre-filter)
+        // Skip expensive similarity calculation if lengths are too different
+        const lengthRatio =
+          Math.min(msgA.content.length, msgB.content.length) /
+          Math.max(msgA.content.length, msgB.content.length);
+
+        if (lengthRatio < 1 - config.lengthRatioTolerance) {
+          skippedByEarlyExit++;
+          continue; // Skip - too different in length
         }
 
         // Check if messages are duplicates
@@ -134,6 +150,10 @@ export class DuplicateDetectionService {
       }
     }
 
+    const skipPct = ((skippedByEarlyExit / totalComparisons) * 100).toFixed(1);
+    console.log(
+      `[DuplicateDetection] ⚡ Early exit optimization: Skipped ${skippedByEarlyExit.toLocaleString()}/${totalComparisons.toLocaleString()} (${skipPct}%) comparisons`
+    );
     console.log(`[DuplicateDetection] ✅ Found ${candidates.length} duplicate candidates`);
 
     // Group candidates by conversation pairs

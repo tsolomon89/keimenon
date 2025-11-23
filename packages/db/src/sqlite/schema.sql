@@ -401,6 +401,52 @@ CREATE TRIGGER IF NOT EXISTS nodes_fts_delete AFTER DELETE ON nodes BEGIN
   DELETE FROM nodes_fts WHERE id = old.id;
 END;
 
+-- FTS5 Duplicate Detection (Added in Migration 022)
+-- Purpose: Fast similarity search for near-duplicate message detection
+-- Strategy: Trigram tokenization for fuzzy matching (typo tolerance)
+-- Performance: O(log n) candidate search vs O(n²) brute force
+-- Usage: See apps/api/src/services/duplicate-detection-fts5.ts
+--
+-- Note: This table is automatically populated via triggers on nodes table.
+--       Only Message nodes with canonical_content are indexed.
+--       Trigrams enable fuzzy matching: "hello" → ["hel", "ell", "llo"]
+--
+-- See: Migration 022 for full implementation details and performance notes
+-- See: DUPLICATE_DETECTION_BASELINE_METRICS.md for performance benchmarks
+--
+CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts_duplicate USING fts5(
+  node_id UNINDEXED,          -- Message node reference (not FTS indexed)
+  content,                     -- Canonical message content (FTS indexed with trigrams)
+  account_id UNINDEXED,        -- Multi-tenant isolation (filter in application layer)
+  tokenize = 'trigram'         -- Trigram tokenizer for fuzzy/typo-tolerant matching
+);
+
+CREATE TRIGGER IF NOT EXISTS messages_fts_duplicate_insert
+AFTER INSERT ON nodes
+WHEN new.kind = 'Message' AND new.canonical_content IS NOT NULL
+BEGIN
+  INSERT INTO messages_fts_duplicate(node_id, content, account_id)
+  VALUES (new.id, new.canonical_content, new.account_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS messages_fts_duplicate_update
+AFTER UPDATE ON nodes
+WHEN new.kind = 'Message'
+  AND (old.canonical_content != new.canonical_content OR old.canonical_content IS NULL)
+  AND new.canonical_content IS NOT NULL
+BEGIN
+  DELETE FROM messages_fts_duplicate WHERE node_id = old.id;
+  INSERT INTO messages_fts_duplicate(node_id, content, account_id)
+  VALUES (new.id, new.canonical_content, new.account_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS messages_fts_duplicate_delete
+AFTER DELETE ON nodes
+WHEN old.kind = 'Message'
+BEGIN
+  DELETE FROM messages_fts_duplicate WHERE node_id = old.id;
+END;
+
 -- =============================================================================
 -- METADATA
 -- =============================================================================
