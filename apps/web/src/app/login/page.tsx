@@ -1,18 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Lock, ArrowRight, AlertCircle, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  // Check if user was redirected due to token expiration
+  const isExpired = searchParams.get('reason') === 'expired';
 
   // Redirect if already authenticated (in useEffect to avoid render-time navigation)
   useEffect(() => {
@@ -50,6 +54,20 @@ export default function LoginPage() {
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="mt-8 space-y-6">
+          {/* Session expired notification */}
+          {isExpired && (
+            <div className="bg-yellow-900/20 border border-yellow-500/50 rounded-lg p-4 flex items-start gap-3">
+              <Clock className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-yellow-300">Session Expired</p>
+                <p className="text-sm text-yellow-400 mt-1">
+                  Your session has expired. Please log in again to continue.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Login error notification */}
           {error && (
             <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />

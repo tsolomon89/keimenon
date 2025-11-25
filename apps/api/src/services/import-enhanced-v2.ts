@@ -9,11 +9,11 @@ import { EnhancedAutogroupService, type Group } from './autogroup-enhanced';
 import { getLocalDocumentStore } from './local-document-store';
 import { DatabaseWriteQueue } from './DatabaseWriteQueue';
 import type { ImportConfiguration } from '@canvas-memory/types';
+import { DuplicateDetectionConfig, DuplicateGroup } from './duplicate-detection';
 import {
-  DuplicateDetectionService,
-  DuplicateDetectionConfig,
-  DuplicateGroup,
-} from './duplicate-detection';
+  IntegratedDuplicateDetectionService,
+  type DuplicateDetectionResult,
+} from './duplicate-detection-integrated';
 import { SourcesStitcher } from '@canvas-memory/parsers';
 
 export interface ImportMessage {
@@ -65,7 +65,7 @@ export class EnhancedImportServiceV2 {
   private writeQueue: DatabaseWriteQueue | null;
   private localStore: ReturnType<typeof getLocalDocumentStore>;
   private autogroupService: EnhancedAutogroupService;
-  private duplicateService: DuplicateDetectionService;
+  private duplicateService: IntegratedDuplicateDetectionService;
   private context: { accountId: string; userId: string } | null = null;
 
   constructor(db: DatabaseClient, writeQueue?: DatabaseWriteQueue) {
@@ -73,7 +73,7 @@ export class EnhancedImportServiceV2 {
     this.writeQueue = writeQueue || null;
     this.localStore = getLocalDocumentStore();
     this.autogroupService = new EnhancedAutogroupService();
-    this.duplicateService = new DuplicateDetectionService();
+    this.duplicateService = new IntegratedDuplicateDetectionService(db);
   }
 
   /**
@@ -527,8 +527,8 @@ export class EnhancedImportServiceV2 {
   }
 
   /**
-   * Detect duplicates using DuplicateDetectionService
-   * ✅ Now integrated with the import pipeline
+   * Detect duplicates using IntegratedDuplicateDetectionService
+   * ✅ Now using FTS5 optimization for 10x+ speedup on large imports
    *
    * ARCHITECTURAL NOTE: This runs AFTER messages are saved to database,
    * so we have access to real database node IDs via ImportConversation.messages[].id
@@ -537,30 +537,34 @@ export class EnhancedImportServiceV2 {
     conversations: ImportConversation[],
     config: ImportConfiguration
   ): Promise<number> {
-    // DIAGNOSTIC: Write to file to confirm this is being called
-    const fs = require('fs');
-    const path = require('path');
-    const debugPath = path.join(process.cwd(), 'duplicate-detection-debug.txt');
-    fs.writeFileSync(
-      debugPath,
-      `[${new Date().toISOString()}] detectDuplicates called\n` +
-        `- enabled: ${config.duplicates.enabled}\n` +
-        `- conversations: ${conversations.length}\n` +
-        `- total messages: ${conversations.reduce((sum, c) => sum + c.messages.length, 0)}\n` +
-        `- config: ${JSON.stringify(config.duplicates, null, 2)}\n`,
-      { flag: 'a' }
-    );
-
     if (!config.duplicates.enabled) {
-      fs.writeFileSync(
-        debugPath,
-        `[${new Date().toISOString()}] EARLY RETURN: duplicates.enabled is false\n`,
-        { flag: 'a' }
-      );
       return 0;
     }
 
-    console.log(`🔍 Starting duplicate detection for ${conversations.length} conversations`);
+    if (!this.context) {
+      console.warn('⚠️  Skipping duplicate detection: no context (accountId required)');
+      return 0;
+    }
+
+    // Flatten all messages from all conversations into a single array
+    const allMessages = conversations.flatMap((conv) =>
+      conv.messages.map((msg) => ({
+        id: msg.id, // Real database node ID
+        content: msg.content,
+        timestamp: msg.timestamp,
+        conversationId: conv.id,
+        conversationTitle: conv.title,
+        metadata: {
+          role: msg.role,
+          platform: conv.platform,
+          hash: msg.hash,
+        },
+        // Add content_hash for exact duplicate detection
+        content_hash: msg.hash || undefined,
+      }))
+    );
+
+    console.log(`🔍 Starting FTS5 duplicate detection for ${allMessages.length} messages`);
 
     // Build detection config from ImportConfiguration
     const detectionConfig: DuplicateDetectionConfig = {
@@ -581,69 +585,39 @@ export class EnhancedImportServiceV2 {
       autoMergeThreshold: config.duplicates.autoMergeSuggestions ? 0.95 : 1.0,
     };
 
-    // Convert ImportConversation to NormalizedConversation format
-    // CRITICAL: We store the real database node ID in metadata.dbNodeId
-    // The DuplicateDetectionService will preserve this metadata through to results
-    const normalizedConvs = conversations.map((conv) => ({
-      conversation_id: conv.id,
-      platform: conv.platform,
-      title: conv.title,
-      created_at: conv.created_at,
-      messages: conv.messages.map((msg, index) => ({
-        role: msg.role,
-        content: msg.content,
-        timestamp: msg.timestamp,
-        index: index,
-        hash: msg.hash || '',
-        metadata: {
-          dbNodeId: msg.id, // Real database node ID - CRITICAL for edge creation
-        },
-      })),
-      metadata: {},
-    }));
-
-    // Call duplicate detection service
-    const duplicateService = new DuplicateDetectionService();
-    const duplicateGroups = await duplicateService.findDuplicates(normalizedConvs, detectionConfig);
-
-    console.log(`📊 Found ${duplicateGroups.length} duplicate groups`);
-
-    // DIAGNOSTIC: Write duplicate groups to file
-    fs.writeFileSync(
-      debugPath,
-      `[${new Date().toISOString()}] Duplicate groups found: ${duplicateGroups.length}\n`,
-      { flag: 'a' }
+    // Call integrated duplicate detection service (uses FTS5 if available)
+    const result = await this.duplicateService.findDuplicates(
+      allMessages,
+      detectionConfig,
+      this.context.accountId
     );
-    if (duplicateGroups.length > 0) {
-      fs.writeFileSync(debugPath, `First group: ${JSON.stringify(duplicateGroups[0], null, 2)}\n`, {
-        flag: 'a',
-      });
-    }
+
+    const { groups: duplicateGroups, metadata } = result;
+
+    console.log(
+      `📊 Found ${duplicateGroups.length} duplicate groups ` +
+        `(strategy: ${metadata.strategy}, ` +
+        `duration: ${metadata.duration}ms, ` +
+        `speedup: ${metadata.speedupVsBaseline.toFixed(1)}x)`
+    );
 
     // Create DUP_OF edges for detected duplicates
     let edgeCount = 0;
     for (const group of duplicateGroups) {
       for (const candidate of group.candidates) {
         // Extract real database node IDs
-        // After the extractMessages fix, candidate IDs are now correct database node IDs
-        // Fall back to metadata.dbNodeId for backwards compatibility
         const duplicateNodeId = candidate.duplicate.id || candidate.duplicate.metadata?.dbNodeId;
         const primaryNodeId = candidate.primary.id || candidate.primary.metadata?.dbNodeId;
 
         if (!duplicateNodeId || !primaryNodeId) {
-          const msg = `⚠️  Skipping duplicate edge: missing node IDs (dup: ${duplicateNodeId}, primary: ${primaryNodeId})`;
-          console.warn(msg);
-          fs.writeFileSync(debugPath, `[${new Date().toISOString()}] ${msg}\n`, { flag: 'a' });
+          console.warn(
+            `⚠️  Skipping duplicate edge: missing node IDs (dup: ${duplicateNodeId}, primary: ${primaryNodeId})`
+          );
           continue;
         }
 
         console.log(
           `🔗 Creating DUP_OF edge: ${duplicateNodeId} -> ${primaryNodeId} (similarity: ${candidate.similarity.toFixed(2)})`
-        );
-        fs.writeFileSync(
-          debugPath,
-          `[${new Date().toISOString()}] Creating DUP_OF edge: ${duplicateNodeId} -> ${primaryNodeId}\n`,
-          { flag: 'a' }
         );
 
         // Create DUP_OF edge from duplicate to primary
@@ -663,12 +637,7 @@ export class EnhancedImportServiceV2 {
       }
     }
 
-    console.log(`✅ Created ${edgeCount} DUP_OF edges`);
-    fs.writeFileSync(
-      debugPath,
-      `[${new Date().toISOString()}] COMPLETE: Created ${edgeCount} DUP_OF edges\n\n`,
-      { flag: 'a' }
-    );
+    console.log(`✅ Created ${edgeCount} DUP_OF edges (using ${metadata.strategy} strategy)`);
     return edgeCount;
   }
 

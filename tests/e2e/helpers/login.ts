@@ -28,12 +28,74 @@ export async function login(page: Page, email: string, password: string): Promis
       const emailInput = page.locator('#email');
       const passwordInput = page.locator('#password');
 
-      // Click to focus, then fill (helps with WebKit React onChange)
-      await emailInput.click();
+      // CRITICAL FIX: Wait for elements to be stable (prevents WebKit detachment errors)
+      // WebKit can have unstable DOM during account switching/logout transitions
+      await emailInput.waitFor({ state: 'visible', timeout: 10000 });
+      await passwordInput.waitFor({ state: 'visible', timeout: 10000 });
+
+      // CRITICAL FIX: Retry click if element detaches (WebKit-specific concurrency issue)
+      // Increased retries and timeout for WebKit's slower DOM stabilization after logout
+      let emailClickSuccess = false;
+      for (let clickAttempt = 1; clickAttempt <= 5; clickAttempt++) {
+        try {
+          // Longer timeout for WebKit (5s per attempt)
+          await emailInput.click({ timeout: 5000 });
+          emailClickSuccess = true;
+          break;
+        } catch (e: any) {
+          if (
+            clickAttempt < 5 &&
+            (e.message.includes('detached') ||
+              e.message.includes('not stable') ||
+              e.message.includes('Timeout'))
+          ) {
+            const backoffMs = 200 * clickAttempt; // Progressive backoff: 200ms, 400ms, 600ms, 800ms
+            console.warn(
+              `[Login Helper] Email input unstable (attempt ${clickAttempt}/5), retrying after ${backoffMs}ms...`
+            );
+            await page.waitForTimeout(backoffMs);
+            continue;
+          }
+          throw e;
+        }
+      }
+      if (!emailClickSuccess) {
+        throw new Error('Email input remained unstable after 5 attempts');
+      }
+
       await emailInput.fill(email);
       await emailInput.press('Tab'); // Trigger blur event
 
-      await passwordInput.click();
+      // CRITICAL FIX: Retry click for password input (WebKit element stability)
+      // Increased retries and timeout for WebKit's slower DOM stabilization after logout
+      let passwordClickSuccess = false;
+      for (let clickAttempt = 1; clickAttempt <= 5; clickAttempt++) {
+        try {
+          // Longer timeout for WebKit (5s per attempt)
+          await passwordInput.click({ timeout: 5000 });
+          passwordClickSuccess = true;
+          break;
+        } catch (e: any) {
+          if (
+            clickAttempt < 5 &&
+            (e.message.includes('detached') ||
+              e.message.includes('not stable') ||
+              e.message.includes('Timeout'))
+          ) {
+            const backoffMs = 200 * clickAttempt; // Progressive backoff: 200ms, 400ms, 600ms, 800ms
+            console.warn(
+              `[Login Helper] Password input unstable (attempt ${clickAttempt}/5), retrying after ${backoffMs}ms...`
+            );
+            await page.waitForTimeout(backoffMs);
+            continue;
+          }
+          throw e;
+        }
+      }
+      if (!passwordClickSuccess) {
+        throw new Error('Password input remained unstable after 5 attempts');
+      }
+
       await passwordInput.fill(password);
 
       // Set up response promise BEFORE clicking submit

@@ -4,7 +4,7 @@ import { getToken, useAuth } from '../contexts/AuthContext';
 import { SettingCategory, SettingSection, SettingControl } from '@canvas-memory/types/src/settings';
 import * as Icons from 'lucide-react';
 import { errorCapture } from '@/services/error-capture.service';
-import { API_BASE_URL } from '@/lib/env.config';
+import { apiClient } from '@/lib/api-client';
 
 /**
  * useSettingsTree Hook
@@ -12,6 +12,12 @@ import { API_BASE_URL } from '@/lib/env.config';
  * Fetches settings registry from API and transforms to TreeNode format
  * for use in NavigationBar component. Automatically filters based on
  * user permissions (returned from backend).
+ *
+ * Now includes automatic token expiration handling - if token is expired,
+ * user will be automatically logged out and redirected to login.
+ *
+ * Related: apps/web/src/lib/api-client.ts:42 (handleTokenExpiration)
+ * Related: apps/web/src/contexts/AuthContext.tsx:506 (logout function)
  */
 export function useSettingsTree() {
   const [tree, setTree] = useState<TreeNode[]>([]);
@@ -31,20 +37,8 @@ export function useSettingsTree() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/settings/registry/all`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            errorData.error || `Failed to fetch settings registry (${response.status})`
-          );
-        }
-
-        const data = await response.json();
+        // Use apiClient which includes automatic token validation and 401/403 handling
+        const { data } = await apiClient.get('/api/v1/settings/registry/all');
 
         if (!data.success || !data.registry) {
           throw new Error('Invalid registry response');

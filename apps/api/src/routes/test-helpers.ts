@@ -88,16 +88,32 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
           activeSavepoints: Array.from(activeSavepoints.get(dbPath) || []),
         });
       } else if (action === 'rollback') {
-        // Rollback to savepoint (undo all changes since BEGIN)
-        database.prepare(`ROLLBACK TO SAVEPOINT ${savepointId}`).run();
+        // CRITICAL FIX: Robust savepoint rollback with error handling
+        // If savepoint doesn't exist, treat as success (desired state achieved)
+        try {
+          // Rollback to savepoint (undo all changes since BEGIN)
+          database.prepare(`ROLLBACK TO SAVEPOINT ${savepointId}`).run();
 
-        // Release savepoint (free resources)
-        database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
+          // Release savepoint (free resources)
+          database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
+
+          console.log(`[Test Helpers] ✅ Rolled back to savepoint: ${savepointId}`);
+        } catch (rollbackError: any) {
+          // Check if error is "no such savepoint"
+          if (rollbackError.message?.includes('no such savepoint')) {
+            console.log(
+              `[Test Helpers] ⚠️ Savepoint already released: ${savepointId} (treating as success)`
+            );
+            // Don't throw - this is actually fine, the savepoint is already gone
+          } else {
+            // Other error - this is a real problem
+            throw rollbackError;
+          }
+        }
 
         // Untrack savepoint
         activeSavepoints.get(dbPath)?.delete(savepointId);
 
-        console.log(`[Test Helpers] ✅ Rolled back to savepoint: ${savepointId}`);
         console.log(
           `[Test Helpers] Remaining savepoints: ${activeSavepoints.get(dbPath)?.size || 0}`
         );

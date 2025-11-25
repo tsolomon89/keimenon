@@ -434,6 +434,7 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
         updated_at: now,
       };
 
+      // Insert node into database
       database
         .prepare(
           `

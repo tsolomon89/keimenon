@@ -162,7 +162,8 @@ export class IntegratedDuplicateDetectionService {
 
     const duration = Date.now() - startTime;
     const baselineComparisons = (messages.length * (messages.length - 1)) / 2;
-    const speedup = baselineComparisons > 0 ? baselineComparisons / Math.max(comparisonsPerformed, 1) : 1;
+    const speedup =
+      baselineComparisons > 0 ? baselineComparisons / Math.max(comparisonsPerformed, 1) : 1;
 
     // Log performance metrics
     if (this.loggingConfig.logPerformanceMetrics) {
@@ -195,10 +196,7 @@ export class IntegratedDuplicateDetectionService {
    * @param fts5Enabled - Is FTS5 enabled in configuration?
    * @returns Selected strategy ('fts5' or 'baseline')
    */
-  private selectStrategy(
-    fts5Available: boolean,
-    fts5Enabled: boolean
-  ): 'fts5' | 'baseline' {
+  private selectStrategy(fts5Available: boolean, fts5Enabled: boolean): 'fts5' | 'baseline' {
     switch (this.strategy) {
       case 'fts5':
         // Force FTS5 (throw if unavailable)
@@ -260,11 +258,7 @@ export class IntegratedDuplicateDetectionService {
    * @param comparisons - Number of comparisons performed
    * @param speedup - Speedup vs baseline O(n²)
    */
-  private checkPerformanceThresholds(
-    duration: number,
-    comparisons: number,
-    speedup: number
-  ): void {
+  private checkPerformanceThresholds(duration: number, comparisons: number, speedup: number): void {
     if (duration > this.thresholds.maxDurationMs) {
       console.warn(
         `[IntegratedDuplicateDetection] ⚠️  Performance degradation: Duration ${duration}ms exceeds threshold ${this.thresholds.maxDurationMs}ms`
@@ -317,12 +311,13 @@ export class IntegratedDuplicateDetectionService {
         conversation_id: conversationId,
         title: convMessages[0]?.conversationTitle || 'Untitled Conversation',
         create_time: convMessages[0]?.timestamp || Date.now(),
-        update_time: Math.max(...convMessages.map(m => m.timestamp || 0)) || Date.now(),
+        update_time: Math.max(...convMessages.map((m) => m.timestamp || 0)) || Date.now(),
         messages: convMessages.map((msg, index) => ({
           index,
           role: 'user', // Default role (baseline doesn't use role for duplicate detection)
           content: msg.content,
           timestamp: msg.timestamp || Date.now(),
+          hash: msg.content_hash || '', // Content hash for exact matching
           metadata: {
             ...msg.metadata,
             dbNodeId: msg.id, // Preserve node ID for edge creation

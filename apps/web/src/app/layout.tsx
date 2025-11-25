@@ -7,6 +7,7 @@ import { ShellProvider } from '@/contexts/ShellContext';
 import { UIVersionProvider } from '@/contexts/UIVersionContext';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { SentryProvider } from '@/components/providers/SentryProvider';
+import { TokenExpirationListener } from '@/components/auth/TokenExpirationListener';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -24,7 +25,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AuthProvider>
               <OperatingProvider>
                 <ShellProvider>
-                  <UIVersionProvider>{children}</UIVersionProvider>
+                  <UIVersionProvider>
+                    {children}
+                    {/* Global token expiration listener - shows toast on auth errors */}
+                    <TokenExpirationListener />
+                  </UIVersionProvider>
                 </ShellProvider>
               </OperatingProvider>
             </AuthProvider>

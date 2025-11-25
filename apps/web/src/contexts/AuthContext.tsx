@@ -392,6 +392,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Switch to a different account
+   *
+   * CRITICAL SECURITY FIX: Comprehensive cache clearing to prevent cross-account data leakage
+   * This function clears ALL cached data before switching accounts to ensure complete isolation
    */
   const switchAccount = useCallback(async (accountId: string, accountPassword?: string) => {
     setIsLoading(true);
@@ -402,6 +405,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Not authenticated');
       }
 
+      // CRITICAL FIX #1: Clear canvas store BEFORE API call
+      // This prevents cached nodes/edges from Account A appearing in Account B
+      console.log('🧹 Clearing canvas store before account switch...');
+      useCanvasStore.getState().reset();
+
+      // CRITICAL FIX #2: Clear window globals that might cache account data
+      if (typeof window !== 'undefined') {
+        // Clear operating context globals
+        delete (window as any).__operatingAccount;
+        delete (window as any).__operatingMode;
+
+        // Clear any other cached window properties
+        delete (window as any).__cachedNodes;
+        delete (window as any).__cachedEdges;
+        delete (window as any).__cachedGroups;
+        delete (window as any).__cachedBoards;
+      }
+
+      // CRITICAL FIX #3: Clear sessionStorage (except sensitive data)
+      // sessionStorage can cache API responses that should be account-specific
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          if (key && !key.startsWith('__SENSITIVE__')) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((key) => sessionStorage.removeItem(key));
+        console.log(`🧹 Cleared ${keysToRemove.length} sessionStorage items`);
+      }
+
+      // Make API call to switch account
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/switch-account`, {
         method: 'POST',
         headers: {
@@ -433,7 +469,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setUser(parsedUser);
-      setIsLoading(false);
 
       // Log account switch event
       logApiEvent(`Switched to account: ${parsedUser.accountId}`, {
@@ -446,16 +481,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       });
 
-      console.log('Account switched:', {
+      console.log('✅ Account switched successfully:', {
         accountId: parsedUser.accountId,
         email: parsedUser.email,
       });
 
-      // Reload page to refresh data for new account
+      setIsLoading(false);
+
+      // CRITICAL FIX #4: Force hard reload to clear all React state and caches
+      // This ensures Background Operations, any SWR/React Query caches, and all
+      // component state is completely reset for the new account
+      console.log('🔄 Performing hard reload to clear all application state...');
       window.location.reload();
     } catch (error: any) {
       setIsLoading(false);
-      console.error('Account switch error:', error);
+      console.error('❌ Account switch error:', error);
       throw error;
     }
   }, []);

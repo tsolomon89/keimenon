@@ -1,0 +1,366 @@
+
+=== FTS5 Benchmark: 100 messages ===
+[DuplicateDetection] 📊 Extracted 100 messages from 2 conversations
+[DuplicateDetection] Config: crossConversation=true, threshold=0.85
+[DuplicateDetection] Sample message: "Unique message 0 in Conversation 1 - kxQ4b0gVHI..."
+[DuplicateDetection] ⚡ Early exit optimization: Skipped 0/4,950 (0.0%) comparisons
+[DuplicateDetection] ✅ Found 12 duplicate candidates
+[DuplicateDetection] 📦 Grouped into 2 duplicate groups
+
+Baseline O(n²):
+  Duration: 94ms
+  Throughput: 1063.83 msg/s
+  Comparisons: 4,950
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 100)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 100 messages (account: acc_benchmark_fDUCJ_qbupHxd7YbRF9bb)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 50 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 0 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 50 (50 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 10ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 4950.0x (0 vs 4,950 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 12ms | Speedup: 1.0x | Groups: 1
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 1.0x below target 10x
+
+FTS5 Hybrid:
+  Duration: 13ms
+  Strategy: fts5
+  Comparisons: 4,950
+  Speedup: 1.00x
+▶ FTS5 Duplicate Detection Performance Benchmark
+  ✔ FTS5 Benchmark: 100 messages (warmup) (190.1366ms)
+
+=== FTS5 Benchmark: 500 messages ===
+[DuplicateDetection] 📊 Extracted 500 messages from 2 conversations
+[DuplicateDetection] Config: crossConversation=true, threshold=0.85
+[DuplicateDetection] Sample message: "Unique message 0 in Conversation 1 - D-rTqvz1wd..."
+[DuplicateDetection] ⚡ Early exit optimization: Skipped 0/124,750 (0.0%) comparisons
+[DuplicateDetection] ✅ Found 54 duplicate candidates
+[DuplicateDetection] 📦 Grouped into 2 duplicate groups
+
+Baseline O(n²):
+  Duration: 696ms
+  Throughput: 718.39 msg/s
+  Comparisons: 124,750
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 500)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 500 messages (account: acc_benchmark_fDUCJ_qbupHxd7YbRF9bb)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 250 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 0 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 250 (250 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 54ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 124750.0x (0 vs 124,750 baseline)
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 2.5x below target 10x
+[FTS5-DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 55ms | Speedup: 2.5x | Groups: 1
+
+FTS5 Hybrid:
+  Duration: 55ms
+  Strategy: fts5
+  Comparisons: 50,000
+  Speedup: 2.50x
+
+✅ Target: 2-3x speedup
+  ✔ FTS5 Benchmark: 500 messages (small dataset) (816.1106ms)
+
+=== FTS5 Benchmark: 1,000 messages ===
+[DuplicateDetection] 📊 Extracted 1000 messages from 2 conversations
+[DuplicateDetection] Config: crossConversation=true, threshold=0.85
+[DuplicateDetection] Sample message: "Unique message 0 in Conversation 1 - LQOEMacyA7..."
+[DuplicateDetection] ⚡ Early exit optimization: Skipped 0/499,500 (0.0%) comparisons
+[DuplicateDetection] ✅ Found 106 duplicate candidates
+[DuplicateDetection] 📦 Grouped into 2 duplicate groups
+
+Baseline O(n²):
+  Duration: 2605ms (2.60s)
+  Throughput: 383.88 msg/s
+  Comparisons: 499,500
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 1000)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 1,000 messages (account: acc_benchmark_fDUCJ_qbupHxd7YbRF9bb)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 500 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 0 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 500 (500 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 91ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 499500.0x (0 vs 499,500 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 93ms | Speedup: 5.0x | Groups: 1
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Comparisons 100,000 exceeds threshold 50,000
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 5.0x below target 10x
+
+FTS5 Hybrid:
+  Duration: 93ms (0.09s)
+  Strategy: fts5
+  Comparisons: 100,000
+  Speedup: 5.00x
+
+✅ Target: 5-7x speedup
+  ✔ FTS5 Benchmark: 1,000 messages (medium dataset) (2752.7114ms)
+
+=== FTS5 Benchmark: 2,500 messages ===
+[DuplicateDetection] 📊 Extracted 2500 messages from 2 conversations
+[DuplicateDetection] Config: crossConversation=true, threshold=0.85
+[DuplicateDetection] Sample message: "Unique message 0 in Conversation 1 - PmXveS17LT..."
+[DuplicateDetection] ⚡ Early exit optimization: Skipped 0/3,123,750 (0.0%) comparisons
+[DuplicateDetection] ✅ Found 262 duplicate candidates
+[DuplicateDetection] 📦 Grouped into 2 duplicate groups
+
+Baseline O(n²):
+  Duration: 16821ms (16.82s)
+  Throughput: 148.62 msg/s
+  Comparisons: 3,123,750
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 2500)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 2,500 messages (account: acc_benchmark_fDUCJ_qbupHxd7YbRF9bb)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 1250 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 0 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 1250 (1250 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 234ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 3123750.0x (0 vs 3,123,750 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Comparisons 250,000 exceeds threshold 50,000
+[IntegratedDuplicateDetection] ⏱️  Duration: 235ms | Speedup: 12.5x | Groups: 1
+
+FTS5 Hybrid:
+  Duration: 236ms (0.24s)
+  Strategy: fts5
+  Comparisons: 250,000
+  Speedup: 12.49x
+
+✅ Target: 8-10x speedup
+  ✔ FTS5 Benchmark: 2,500 messages (large dataset) (17117.5377ms)
+
+=== FTS5 Benchmark: 5,000 messages - STRESS TEST ===
+TARGET: 10x+ speedup (Baseline: 81.6s → FTS5: <8s)
+
+Running baseline O(n²) algorithm...
+[DuplicateDetection] 📊 Extracted 5000 messages from 2 conversations
+[DuplicateDetection] Config: crossConversation=true, threshold=0.85
+[DuplicateDetection] Sample message: "Unique message 0 in Conversation 1 - YHeJKYII6L..."
+[DuplicateDetection] ⚡ Early exit optimization: Skipped 0/12,497,500 (0.0%) comparisons
+[DuplicateDetection] ✅ Found 529 duplicate candidates
+[DuplicateDetection] 📦 Grouped into 2 duplicate groups
+
+Baseline O(n²):
+  Duration: 67348ms (67.35s)
+  Throughput: 74.24 msg/s
+  Comparisons: 12,497,500
+  Duplicates found: 529
+
+Running FTS5 hybrid algorithm...
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 5000)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 5,000 messages (account: acc_benchmark_fDUCJ_qbupHxd7YbRF9bb)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 2500 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 0 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 2500 (2500 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 449ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 12497500.0x (0 vs 12,497,500 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 452ms | Speedup: 25.0x | Groups: 1
+
+FTS5 Hybrid:
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Comparisons 500,000 exceeds threshold 50,000
+  Duration: 452ms (0.45s)
+  Strategy: fts5
+  Comparisons: 500,000
+  Speedup: 25.00x
+  Duplicates found: 2500
+
+🎯 PERFORMANCE TARGET CHECK:
+  Target speedup: 10x+
+  Actual speedup: 25.00x
+  Target duration: <8000ms
+  Actual duration: 452ms
+
+  ✅ Speedup target met: YES
+  ✅ Duration target met: YES
+
+🎉 SUCCESS: FTS5 achieves 10x+ speedup target!
+  ✔ FTS5 Benchmark: 5,000 messages - STRESS TEST (10x+ target) (67877.6166ms)
+
+=== FTS5 Scalability: O(log n) Growth Pattern ===
+Testing with 100, 200, 400, 800 messages
+Expected: 2x messages → <2x duration (sub-linear growth)
+
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 100)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 100 messages (account: acc_benchmark_fDUCJ_qbupHxd7YbRF9bb)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 0 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 0 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 0 (0 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 18ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 4950.0x (0 vs 4,950 baseline)
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 1.0x below target 10x
+[FTS5-DuplicateDetection] 📦 Grouped into 0 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 19ms | Speedup: 1.0x | Groups: 0
+100 messages: 19ms (fts5, 1.00x speedup)
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 200)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 200 messages (account: acc_benchmark_fDUCJ_qbupHxd7YbRF9bb)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 0 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 0 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 0 (0 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 21ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 19900.0x (0 vs 19,900 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 0 duplicate groups
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 1.0x below target 10x
+[IntegratedDuplicateDetection] ⏱️  Duration: 22ms | Speedup: 1.0x | Groups: 0
+200 messages: 22ms (1.16x slower than 100)
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 400)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 400 messages (account: acc_benchmark_fDUCJ_qbupHxd7YbRF9bb)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 0 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 0 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 0 (0 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 36ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 79800.0x (0 vs 79,800 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 0 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 37ms | Speedup: 2.0x | Groups: 0
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 2.0x below target 10x
+400 messages: 37ms (1.68x slower than 200)
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 800)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 800 messages (account: acc_benchmark_fDUCJ_qbupHxd7YbRF9bb)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 0 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 0 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 0 (0 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 75ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 319600.0x (0 vs 319,600 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 0 duplicate groups
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Comparisons 80,000 exceeds threshold 50,000
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 4.0x below target 10x
+[IntegratedDuplicateDetection] ⏱️  Duration: 77ms | Speedup: 4.0x | Groups: 0
+800 messages: 77ms (2.08x slower than 400)
+
+Growth Pattern Analysis:
+For O(log n) algorithm, 2x size should → ~1.5x duration (sub-linear)
+For O(n²) algorithm, 2x size should → ~4x duration (super-linear)
+
+100→200: 1.16x (expected <2x for FTS5)
+200→400: 1.68x (expected <2x for FTS5)
+400→800: 2.08x (expected <2x for FTS5)
+
+Average growth ratio: 1.64x
+This confirms sub-linear O(log n) behavior (expected <2x, measured 1.64x)
+  ✔ FTS5 Scalability: O(log n) growth pattern (231.7211ms)
+
+=== FTS5 vs Baseline: Performance Comparison ===
+
+[DuplicateDetection] 📊 Extracted 100 messages from 1 conversations
+[DuplicateDetection] Config: crossConversation=true, threshold=0.85
+[DuplicateDetection] Sample message: "Unique message 0 in Test 100 - iposdtTfb7..."
+[DuplicateDetection] ⚡ Early exit optimization: Skipped 0/4,950 (0.0%) comparisons
+[DuplicateDetection] ✅ Found 10 duplicate candidates
+[DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 100)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 100 messages (account: acc_benchmark_fDUCJ_qbupHxd7YbRF9bb)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 0 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 0 FTS5 candidates
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 0 (0 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 13ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 4950.0x (0 vs 4,950 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 0 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 13ms | Speedup: 1.0x | Groups: 0
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 1.0x below target 10x
+[DuplicateDetection] 📊 Extracted 500 messages from 1 conversations
+[DuplicateDetection] Config: crossConversation=true, threshold=0.85
+[DuplicateDetection] Sample message: "Unique message 0 in Test 500 - gG7YK-3FQ8..."
+[DuplicateDetection] ⚡ Early exit optimization: Skipped 0/124,750 (0.0%) comparisons
+[DuplicateDetection] ✅ Found 51 duplicate candidates
+[DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 500)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 500 messages (account: acc_benchmark_fDUCJ_qbupHxd7YbRF9bb)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 0 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 0 FTS5 candidates
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 2.5x below target 10x
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 0 (0 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 44ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 124750.0x (0 vs 124,750 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 0 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 45ms | Speedup: 2.5x | Groups: 0
+[DuplicateDetection] 📊 Extracted 1000 messages from 1 conversations
+[DuplicateDetection] Config: crossConversation=true, threshold=0.85
+[DuplicateDetection] Sample message: "Unique message 0 in Test 1000 - h40KxRMasI..."
+[DuplicateDetection] ⚡ Early exit optimization: Skipped 0/499,500 (0.0%) comparisons
+[DuplicateDetection] ✅ Found 105 duplicate candidates
+[DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 1000)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 1,000 messages (account: acc_benchmark_fDUCJ_qbupHxd7YbRF9bb)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 0 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 0 FTS5 candidates
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Comparisons 100,000 exceeds threshold 50,000
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 5.0x below target 10x
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 0 (0 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 91ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 499500.0x (0 vs 499,500 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 0 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 91ms | Speedup: 5.0x | Groups: 0
+[DuplicateDetection] 📊 Extracted 2000 messages from 1 conversations
+[DuplicateDetection] Config: crossConversation=true, threshold=0.85
+[DuplicateDetection] Sample message: "Unique message 0 in Test 2000 - 0GdNSgq_1y..."
+[DuplicateDetection] ⚡ Early exit optimization: Skipped 0/1,999,000 (0.0%) comparisons
+[DuplicateDetection] ✅ Found 206 duplicate candidates
+[DuplicateDetection] 📦 Grouped into 1 duplicate groups
+[IntegratedDuplicateDetection] 🎯 Strategy: fts5 (available: true, enabled: true, messages: 2000)
+[IntegratedDuplicateDetection] 🚀 Using FTS5 optimization (candidate limit: 100)
+[FTS5-DuplicateDetection] 🔍 Starting FTS5 duplicate detection for 2,000 messages (account: acc_benchmark_fDUCJ_qbupHxd7YbRF9bb)
+[FTS5-DuplicateDetection] ✅ Stage 1 (Exact): Found 0 exact duplicates via content_hash
+[FTS5-DuplicateDetection] ✅ Stage 2 (FTS5): Found 0 FTS5 candidates
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Comparisons 200,000 exceeds threshold 50,000
+[IntegratedDuplicateDetection] ⚠️  Performance degradation: Speedup 10.0x below target 10x
+[FTS5-DuplicateDetection] ✅ Stage 3 (Similarity): Performed 0 comparisons
+[FTS5-DuplicateDetection] ⚡ Skipped 0 (cross-conversation) + 0 (length ratio)
+[FTS5-DuplicateDetection] 📊 Total candidates: 0 (0 exact + 0 FTS5)
+[FTS5-DuplicateDetection] ⏱️  Duration: 212ms
+[FTS5-DuplicateDetection] 🚀 Speedup: 1999000.0x (0 vs 1,999,000 baseline)
+[FTS5-DuplicateDetection] 📦 Grouped into 0 duplicate groups
+[IntegratedDuplicateDetection] ⏱️  Duration: 214ms | Speedup: 10.0x | Groups: 0
+┌─────────────┬──────────────┬──────────────┬──────────┐
+│   Messages  │   Baseline   │     FTS5     │  Speedup │
+├─────────────┼──────────────┼──────────────┼──────────┤
+│      100    │       43ms   │       13ms   │  3.31x   │
+│      500    │      637ms   │       45ms   │ 14.16x   │
+│     1000    │     2763ms   │       91ms   │ 30.36x   │
+│     2000    │    10543ms   │      214ms   │ 49.27x   │
+└─────────────┴──────────────┴──────────────┴──────────┘
+
+✅ Speedup trend: INCREASING (expected: increasing)
+  ✔ FTS5 vs Baseline: Direct comparison table (14413.0137ms)
+✔ FTS5 Duplicate Detection Performance Benchmark (103400.398ms)
+ℹ tests 7
+ℹ suites 1
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 104005.3803

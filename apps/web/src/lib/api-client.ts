@@ -3,16 +3,81 @@ import { handleApiError, withRetry, FileError } from './error-handler';
 import { getToken } from '@/contexts/AuthContext';
 import { API_BASE_URL } from './env.config';
 
+// TODO: Add token refresh endpoint support
+// Related: apps/api/src/routes/auth.routes.ts (needs refresh endpoint)
+// See: docs/features/AUTH_TOKEN_LIFECYCLE.md (needs creation)
+
+/**
+ * Decode JWT payload (base64)
+ * Returns null if invalid
+ */
+function decodeJWT(token: string): any {
+  try {
+    const payload = token.split('.')[1];
+    const decoded = atob(payload);
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.error('Failed to decode JWT:', error);
+    return null;
+  }
+}
+
+/**
+ * Check if JWT is expired
+ */
+function isTokenExpired(token: string): boolean {
+  const payload = decodeJWT(token);
+  if (!payload || !payload.exp) return true;
+
+  // exp is in seconds, Date.now() is in milliseconds
+  // Add 30 second buffer to refresh before actual expiration
+  const now = Math.floor(Date.now() / 1000);
+  return payload.exp - 30 < now;
+}
+
+/**
+ * Handle token expiration by clearing storage and redirecting to login
+ * This is called when a token is expired or API returns 401/403
+ */
+function handleTokenExpiration(reason: string = 'Token expired'): void {
+  console.warn(`🔒 ${reason} - logging out user`);
+
+  // Clear token from storage
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('canvas_memory_token');
+
+    // Show user-friendly message
+    const event = new CustomEvent('auth:token-expired', {
+      detail: { reason },
+    });
+    window.dispatchEvent(event);
+
+    // Redirect to login after a short delay to allow error display
+    setTimeout(() => {
+      window.location.href = '/login?reason=expired';
+    }, 1000);
+  }
+}
+
 /**
  * Get authorization headers with token and operating context
  * Note: Operating context is obtained from global state
+ *
+ * IMPORTANT: This function now validates token expiration before returning headers
+ * If token is expired, it triggers logout and throws an error
  */
 function getAuthHeaders(): HeadersInit {
   const headers: HeadersInit = {};
 
-  // Add auth token
+  // Add auth token (with expiration check)
   const token = getToken();
   if (token) {
+    // Check if token is expired BEFORE making the API call
+    if (isTokenExpired(token)) {
+      handleTokenExpiration('Token expired');
+      throw new Error('Token expired. Please log in again.');
+    }
+
     headers['Authorization'] = `Bearer ${token}`;
   }
 
@@ -30,6 +95,36 @@ function getAuthHeaders(): HeadersInit {
   }
 
   return headers;
+}
+
+/**
+ * Wrap fetch with 401/403 error interceptor
+ * Automatically handles auth failures by logging out user
+ *
+ * Related: apps/web/src/contexts/AuthContext.tsx:506 (logout function)
+ */
+async function fetchWithAuthInterceptor(
+  url: string | URL | Request,
+  init?: RequestInit
+): Promise<Response> {
+  try {
+    const response = await fetch(url, init);
+
+    // Check for authentication errors
+    if (response.status === 401 || response.status === 403) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error || 'Authentication failed';
+
+      // Handle token expiration
+      handleTokenExpiration(errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    return response;
+  } catch (error) {
+    // Re-throw for upstream handling
+    throw error;
+  }
 }
 
 export interface ImportResponse {
@@ -145,7 +240,7 @@ export async function cancelJob(jobId: string): Promise<{
   message?: string;
   error?: string;
 }> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/cancel`, {
+  const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/jobs/${jobId}/cancel`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -178,7 +273,7 @@ export async function retryJob(jobId: string): Promise<{
   message?: string;
   error?: string;
 }> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/retry`, {
+  const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/jobs/${jobId}/retry`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -209,7 +304,7 @@ export async function pauseJob(jobId: string): Promise<{
   message?: string;
   error?: string;
 }> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/pause`, {
+  const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/jobs/${jobId}/pause`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -240,7 +335,7 @@ export async function resumeJob(jobId: string): Promise<{
   message?: string;
   error?: string;
 }> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/resume`, {
+  const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/jobs/${jobId}/resume`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -384,7 +479,7 @@ export async function importChatFilesAsJob(
         }, 300000); // 5 minute timeout (matches backend UPLOAD_TIMEOUT_MS)
 
         try {
-          const response = await fetch(endpoint, {
+          const response = await fetchWithAuthInterceptor(endpoint, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: formData,
@@ -497,7 +592,7 @@ export async function importChatFiles(
   try {
     return await withRetry(
       async () => {
-        const response = await fetch(endpoint, {
+        const response = await fetchWithAuthInterceptor(endpoint, {
           method: 'POST',
           headers: getAuthHeaders(),
           body: formData,
@@ -716,9 +811,12 @@ export interface StorageStats {
  */
 export async function getMessageContent(messageId: string): Promise<MessageContent> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/message/${messageId}`, {
-      headers: getAuthHeaders(),
-    });
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/content/message/${messageId}`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -735,9 +833,12 @@ export async function getMessageContent(messageId: string): Promise<MessageConte
  */
 export async function getSourceContent(sourceId: string): Promise<SourceContent> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/source/${sourceId}`, {
-      headers: getAuthHeaders(),
-    });
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/content/source/${sourceId}`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -754,9 +855,12 @@ export async function getSourceContent(sourceId: string): Promise<SourceContent>
  */
 export async function getCodeContent(codeId: string): Promise<CodeContent> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/code/${codeId}`, {
-      headers: getAuthHeaders(),
-    });
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/content/code/${codeId}`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -773,9 +877,12 @@ export async function getCodeContent(codeId: string): Promise<CodeContent> {
  */
 export async function getConversationContent(conversationId: string): Promise<ConversationContent> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/conversation/${conversationId}`, {
-      headers: getAuthHeaders(),
-    });
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/content/conversation/${conversationId}`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -792,7 +899,7 @@ export async function getConversationContent(conversationId: string): Promise<Co
  */
 export async function getStorageStats(): Promise<StorageStats> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/content/stats`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/content/stats`, {
       headers: getAuthHeaders(),
     });
 
@@ -842,7 +949,7 @@ export interface AutoGroupResult {
  */
 export async function getGroups(): Promise<{ groups: GroupTreeNode[]; count: number }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/groups`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/groups`, {
       headers: getAuthHeaders(),
     });
 
@@ -867,7 +974,7 @@ export async function getGroupById(id: string): Promise<{
   count: number;
 }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/groups/${id}`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/groups/${id}`, {
       headers: getAuthHeaders(),
     });
 
@@ -915,7 +1022,7 @@ export async function createGroup(data: {
   query?: string;
 }): Promise<{ success: boolean; group: GraphNode }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/groups`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/groups`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -939,7 +1046,7 @@ export async function updateGroup(
   data: Partial<{ name: string; parentId: string; query: string }>
 ): Promise<{ success: boolean; group: GraphNode }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/groups/${id}`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/groups/${id}`, {
       method: 'PATCH',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -960,7 +1067,7 @@ export async function updateGroup(
  */
 export async function deleteGroup(id: string): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/groups/${id}`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/groups/${id}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -983,11 +1090,14 @@ export async function batchUpdateMembers(
   { add, remove }: { add?: string[]; remove?: string[] }
 ): Promise<{ success: boolean; added: number; removed: number }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/groups/${groupId}/members:batch`, {
-      method: 'POST',
-      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ add, remove }),
-    });
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/groups/${groupId}/members:batch`,
+      {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ add, remove }),
+      }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -1011,7 +1121,7 @@ export async function autoGenerateGroups(
   }
 ): Promise<AutoGroupResult> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/groups/auto`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/groups/auto`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages, config }),
@@ -1079,7 +1189,7 @@ export async function resolveDuplicate(
   duplicateNodeId: string
 ): Promise<DuplicateResolutionResult> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/duplicates/resolve`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/duplicates/resolve`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1114,11 +1224,14 @@ export async function ignoreDuplicate(
   duplicateNodeId: string
 ): Promise<{ success: boolean; edgeId: string; message: string }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/duplicates/${duplicateId}/ignore`, {
-      method: 'POST',
-      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ primaryNodeId, duplicateNodeId }),
-    });
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/duplicates/${duplicateId}/ignore`,
+      {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ primaryNodeId, duplicateNodeId }),
+      }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -1137,10 +1250,13 @@ export async function ignoreDuplicate(
 export async function deleteDuplicate(duplicateId: string): Promise<{ success: boolean }> {
   console.warn('deleteDuplicate() is deprecated - use ignoreDuplicate() instead');
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/duplicates/${duplicateId}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders(),
-    });
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/duplicates/${duplicateId}`,
+      {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -1184,17 +1300,20 @@ export async function applyDuplicateDecisions(
   };
 }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/import/chat/apply-decisions`, {
-      method: 'POST',
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        decisions,
-        import_id: importId,
-      }),
-    });
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/import/chat/apply-decisions`,
+      {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          decisions,
+          import_id: importId,
+        }),
+      }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -1312,7 +1431,7 @@ export async function getEdges(params?: {
  */
 export async function getNode(id: string): Promise<GraphNode> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/nodes/${id}`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/nodes/${id}`, {
       headers: getAuthHeaders(),
     });
 
@@ -1353,7 +1472,7 @@ export interface AccountStats {
  */
 export async function getAccounts(): Promise<{ accounts: Account[] }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/accounts`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/accounts`, {
       headers: getAuthHeaders(),
     });
 
@@ -1372,9 +1491,12 @@ export async function getAccounts(): Promise<{ accounts: Account[] }> {
  */
 export async function getAccountStats(accountId: string): Promise<AccountStats> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/accounts/${accountId}/stats`, {
-      headers: getAuthHeaders(),
-    });
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/accounts/${accountId}/stats`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -1461,7 +1583,7 @@ export interface SystemAlert {
  */
 export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/analytics/overview`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/analytics/overview`, {
       headers: getAuthHeaders(),
     });
 
@@ -1529,7 +1651,7 @@ export async function getRecentActivity(
  */
 export async function getSystemAlerts(): Promise<{ alerts: SystemAlert[] }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/analytics/alerts`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/analytics/alerts`, {
       headers: getAuthHeaders(),
     });
 
@@ -1564,9 +1686,12 @@ export interface User {
  */
 export async function getAccountUsers(accountId: string): Promise<{ users: User[] }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/accounts/${accountId}/users`, {
-      headers: getAuthHeaders(),
-    });
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/accounts/${accountId}/users`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -1583,7 +1708,7 @@ export async function getAccountUsers(accountId: string): Promise<{ users: User[
  */
 export async function getUser(userId: string): Promise<{ user: User }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/users/${userId}`, {
       headers: getAuthHeaders(),
     });
 
@@ -1611,11 +1736,14 @@ export async function createUser(
   }
 ): Promise<{ user: User }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/accounts/${accountId}/users`, {
-      method: 'POST',
-      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData),
-    });
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/accounts/${accountId}/users`,
+      {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -1640,7 +1768,7 @@ export async function updateUser(
   }
 ): Promise<{ user: User }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/users/${userId}`, {
       method: 'PATCH',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -1661,7 +1789,7 @@ export async function updateUser(
  */
 export async function deleteUser(userId: string): Promise<{ message: string }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/users/${userId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -1689,9 +1817,12 @@ export function getAuthToken(): string {
  * Settings API functions
  */
 export async function fetchSettings(accountId: string): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/settings?accountId=${accountId}`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await fetchWithAuthInterceptor(
+    `${API_BASE_URL}/api/v1/settings?accountId=${accountId}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
   if (!response.ok) await handleApiError({ response });
   return response.json();
 }
@@ -1700,7 +1831,7 @@ export async function updateSetting(id: string, value: any): Promise<any> {
   const token = getToken();
   if (!token) throw new Error('Not authenticated');
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/settings/${id}`, {
+  const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/settings/${id}`, {
     method: 'PATCH',
     headers: {
       ...getAuthHeaders(),
@@ -1716,7 +1847,7 @@ export async function bulkUpdateSettings(updates: Array<{ id: string; value: any
   const token = getToken();
   if (!token) throw new Error('Not authenticated');
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/settings/bulk`, {
+  const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/settings/bulk`, {
     method: 'PATCH',
     headers: {
       ...getAuthHeaders(),
@@ -1730,10 +1861,11 @@ export async function bulkUpdateSettings(updates: Array<{ id: string; value: any
 
 /**
  * Axios-style API client for compatibility with existing code
+ * Now includes automatic token expiration handling and 401/403 interception
  */
 export const apiClient = {
   get: async (url: string, config?: { headers?: HeadersInit }) => {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}${url}`, {
       method: 'GET',
       headers: { ...getAuthHeaders(), ...config?.headers },
     });
@@ -1743,7 +1875,7 @@ export const apiClient = {
 
   post: async (url: string, data?: any, config?: { headers?: HeadersInit }) => {
     const isFormData = data instanceof FormData;
-    const response = await fetch(`${API_BASE_URL}${url}`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}${url}`, {
       method: 'POST',
       headers: {
         ...getAuthHeaders(),
@@ -1757,7 +1889,7 @@ export const apiClient = {
   },
 
   patch: async (url: string, data?: any, config?: { headers?: HeadersInit }) => {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}${url}`, {
       method: 'PATCH',
       headers: {
         ...getAuthHeaders(),
@@ -1771,7 +1903,7 @@ export const apiClient = {
   },
 
   delete: async (url: string, config?: { headers?: HeadersInit }) => {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}${url}`, {
       method: 'DELETE',
       headers: { ...getAuthHeaders(), ...config?.headers },
     });
