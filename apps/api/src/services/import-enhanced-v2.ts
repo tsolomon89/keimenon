@@ -4,7 +4,7 @@
  */
 
 import { nanoid } from 'nanoid';
-import { DatabaseClient } from '@canvas-memory/db';
+import { DatabaseClient, SQLiteClient } from '@canvas-memory/db';
 import { EnhancedAutogroupService, type Group } from './autogroup-enhanced';
 import { getLocalDocumentStore } from './local-document-store';
 import { DatabaseWriteQueue } from './DatabaseWriteQueue';
@@ -73,7 +73,13 @@ export class EnhancedImportServiceV2 {
     this.writeQueue = writeQueue || null;
     this.localStore = getLocalDocumentStore();
     this.autogroupService = new EnhancedAutogroupService();
-    this.duplicateService = new IntegratedDuplicateDetectionService(db);
+
+    // CRITICAL FIX: FTS5 service needs the underlying better-sqlite3 Database instance
+    // DatabaseClient is an interface, but IntegratedDuplicateDetectionService expects Database.Database
+    // Cast to SQLiteClient to access getDatabase() method
+    // See: apps/api/src/services/duplicate-detection-fts5.ts:78 (requires db.prepare method)
+    const sqliteDb = (db as SQLiteClient).getDatabase();
+    this.duplicateService = new IntegratedDuplicateDetectionService(sqliteDb);
   }
 
   /**
