@@ -53,13 +53,37 @@ export class SQLiteJobRepository implements JobRepository {
   constructor(private db: Database.Database) {}
 
   /**
+   * Get the correct database for a job (test DB if job has testContext, otherwise production)
+   * CRITICAL FIX: Ensures test jobs are saved to test databases, not production
+   * Similar to FTS5 fix - test jobs must use worker-specific databases
+   */
+  private async getDbForJob(job: Job): Promise<Database.Database> {
+    const testDbPath = job.config.testContext?.dbPath;
+
+    if (testDbPath) {
+      // Job belongs to a test - use test database
+      const { getDbClient } = await import('../../../utils/get-db-client');
+      const mockReq = { testDbPath } as any;
+      const testClient = await getDbClient(mockReq);
+      // Cast to SQLiteClient to access getDatabase()
+      const { SQLiteClient } = await import('@canvas-memory/db');
+      return (testClient as SQLiteClient).getDatabase();
+    }
+
+    // Production job - use production database
+    return this.db;
+  }
+
+  /**
    * Save job state to database
    */
   async save(job: Job): Promise<void> {
     try {
       const now = Date.now();
 
-      const stmt = this.db.prepare(`
+      // CRITICAL FIX: Use correct database (test or production)
+      const db = await this.getDbForJob(job);
+      const stmt = db.prepare(`
         INSERT INTO jobs (
           id, type, account_id, created_by, config, status,
           state_data, created_at, updated_at, idempotency_key,
@@ -90,9 +114,9 @@ export class SQLiteJobRepository implements JobRepository {
         `[JobRepository] ✅ Saved job ${job.id} (status: ${job.status}, type: ${job.type})`
       );
 
-      // Save events (append-only)
+      // Save events (append-only) - use same database as job
       for (const event of job.events) {
-        await this.appendEvent(event);
+        await this.appendEvent(event, db);
       }
     } catch (error: any) {
       console.error(`[JobRepository] ❌ Failed to save job ${job.id}:`);
@@ -206,15 +230,17 @@ export class SQLiteJobRepository implements JobRepository {
   /**
    * Append event to event log
    */
-  async appendEvent(event: JobEvent): Promise<void> {
-    const stmt = this.db.prepare(`
+  async appendEvent(event: JobEvent, db?: Database.Database): Promise<void> {
+    // Use provided db or fall back to production db
+    const database = db || this.db;
+    const stmt = database.prepare(`
       INSERT OR IGNORE INTO job_events (
         id, job_id, type, data, sequence_number, timestamp, account_id
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
-    // Get account_id from job
-    const jobStmt = this.db.prepare('SELECT account_id FROM jobs WHERE id = ?');
+    // Get account_id from job (use same database as statement)
+    const jobStmt = database.prepare('SELECT account_id FROM jobs WHERE id = ?');
     const job = jobStmt.get(event.jobId) as any;
     if (!job) {
       throw new Error(`Job not found: ${event.jobId}`);
