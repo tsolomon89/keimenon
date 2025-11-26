@@ -134,6 +134,18 @@ export function isTestIsolationActive(req: Request): boolean {
 }
 
 /**
+ * Get all active test database paths
+ *
+ * CRITICAL FIX: Enables WorkerPool to query all test databases when polling for jobs
+ * This solves the issue where test jobs are saved to test DBs but worker pool only queries production
+ *
+ * @returns Array of absolute paths to all active test databases
+ */
+export function getActiveTestDatabases(): string[] {
+  return Array.from(testClientCache.keys());
+}
+
+/**
  * Close and remove cached database connection for a specific test DB path
  *
  * CRITICAL FIX #8: This function releases Windows file locks by closing

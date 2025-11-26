@@ -175,9 +175,19 @@ export class WorkerPool {
 
   /**
    * Find queued jobs ready to process
+   *
+   * CRITICAL FIX: In test mode, queries BOTH production database AND all active test databases
+   * This solves the test timeout issue where test jobs were saved to test DBs but never discovered
    */
   private async findQueuedJobs(limit: number): Promise<Job[]> {
-    // If accountId is specified in config, only fetch jobs for that account
+    const isTestMode = process.env.NODE_ENV === 'test';
+
+    // In test mode, query all databases (production + active test DBs)
+    if (isTestMode) {
+      return await this.findQueuedJobsMultiDatabase(limit);
+    }
+
+    // Production mode: existing logic
     if (this.config.accountId) {
       return await this.jobRepository.find({
         status: 'queued',
@@ -195,6 +205,71 @@ export class WorkerPool {
     });
 
     return allQueued;
+  }
+
+  /**
+   * Find queued jobs across multiple databases (test mode only)
+   *
+   * Queries:
+   * 1. Production database (for any production jobs)
+   * 2. All active test databases (for E2E test jobs)
+   *
+   * Then combines, deduplicates, and returns up to limit jobs.
+   */
+  private async findQueuedJobsMultiDatabase(limit: number): Promise<Job[]> {
+    const allJobs: Job[] = [];
+
+    // 1. Query production database
+    try {
+      const productionJobs = await this.jobRepository.find({
+        status: 'queued',
+        limit,
+      });
+      console.log(`[WorkerPool] Found ${productionJobs.length} queued jobs in production DB`);
+      allJobs.push(...productionJobs);
+    } catch (error: any) {
+      console.error('[WorkerPool] Error querying production DB:', error.message);
+    }
+
+    // 2. Query all active test databases
+    const { getActiveTestDatabases } = await import('../../../utils/get-db-client');
+    const testDbPaths = getActiveTestDatabases();
+
+    if (testDbPaths.length > 0) {
+      console.log(`[WorkerPool] Querying ${testDbPaths.length} active test database(s)...`);
+
+      for (const testDbPath of testDbPaths) {
+        try {
+          // Create mock request with testDbPath for database routing
+          const mockReq = { testDbPath } as any;
+
+          const testJobs = await this.jobRepository.find(
+            {
+              status: 'queued',
+              limit,
+            },
+            mockReq
+          );
+
+          const dbName = testDbPath.split(/[/\\]/).pop(); // Extract filename
+          console.log(`[WorkerPool] Found ${testJobs.length} queued jobs in ${dbName}`);
+          allJobs.push(...testJobs);
+        } catch (error: any) {
+          const dbName = testDbPath.split(/[/\\]/).pop();
+          console.error(`[WorkerPool] Error querying test DB ${dbName}:`, error.message);
+        }
+      }
+    }
+
+    // 3. Deduplicate by job ID (in case same job appears in multiple DBs)
+    const uniqueJobs = Array.from(new Map(allJobs.map((job) => [job.id, job])).values());
+
+    console.log(
+      `[WorkerPool] Combined ${allJobs.length} jobs, ${uniqueJobs.length} unique after deduplication`
+    );
+
+    // 4. Return up to limit jobs
+    return uniqueJobs.slice(0, limit);
   }
 
   /**
