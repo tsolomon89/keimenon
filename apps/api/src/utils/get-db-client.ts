@@ -124,6 +124,89 @@ export async function getDbClient(req?: Request): Promise<any> {
 }
 
 /**
+ * Get non-transactional database client for jobs in test mode
+ *
+ * CRITICAL FIX: In test mode, jobs are saved inside SAVEPOINT transactions.
+ * This makes them invisible to WorkerPool queries which use separate connections.
+ *
+ * Solution: Use a separate database connection for job save operations.
+ * This connection bypasses the savepoint, making jobs immediately visible to WorkerPool.
+ *
+ * Architecture:
+ * - Normal operations: Use transactional connection (getDbClient)
+ * - Job saves only: Use non-transactional connection (this function)
+ * - Production mode: Returns global client (no special behavior needed)
+ *
+ * @param req Express request object (optional)
+ * @returns Database client bypassing savepoint transactions
+ */
+export async function getNonTransactionalJobsClient(req?: Request): Promise<any> {
+  // In production mode, just return the global client (no savepoints exist)
+  const isTestMode = process.env.NODE_ENV === 'test';
+  if (!isTestMode || !req?.testDbPath) {
+    return global.dbClient;
+  }
+
+  // In test mode with testDbPath, create a separate connection to the same DB
+  // This connection will NOT be inside the savepoint transaction
+  const testDbPath: string = req.testDbPath;
+  const jobsClientKey = `${testDbPath}_jobs`; // Separate cache key for jobs connection
+
+  // Check cache first
+  if (testClientCache.has(jobsClientKey)) {
+    const cachedClient = testClientCache.get(jobsClientKey);
+    console.log(
+      `[Get DB Client] Using cached non-transactional jobs client for ${path.basename(testDbPath)}`
+    );
+    return cachedClient;
+  }
+
+  // Check if connection is already in progress
+  if (connectionPromises.has(jobsClientKey)) {
+    console.log(
+      `[Get DB Client] Non-transactional jobs connection in progress, waiting for ${path.basename(testDbPath)}`
+    );
+    return await connectionPromises.get(jobsClientKey);
+  }
+
+  console.log(`[Get DB Client] Creating non-transactional jobs client:`);
+  console.log(`  - Worker DB: ${path.basename(testDbPath)}`);
+  console.log(`  - Purpose: Job saves (bypasses savepoint isolation)`);
+
+  // Create connection promise
+  const connectionPromise = (async () => {
+    try {
+      const { SQLiteClient } = await import('@canvas-memory/db');
+
+      // Create a new client instance for jobs (separate connection to same DB)
+      const client = new SQLiteClient({
+        databasePath: testDbPath,
+        verbose: false,
+      });
+
+      await client.connect();
+      client.enableDirectWrites();
+
+      // Cache under separate key
+      testClientCache.set(jobsClientKey, client);
+
+      console.log(`[Get DB Client] ✅ Non-transactional jobs client created successfully`);
+      return client;
+    } catch (error) {
+      console.log(`[Get DB Client] ❌ Failed to create non-transactional jobs client:`);
+      console.log(`  - Error: ${error}`);
+      connectionPromises.delete(jobsClientKey);
+      throw error;
+    } finally {
+      connectionPromises.delete(jobsClientKey);
+    }
+  })();
+
+  connectionPromises.set(jobsClientKey, connectionPromise);
+  return await connectionPromise;
+}
+
+/**
  * Check if request should use test isolation
  *
  * @param req Express request object

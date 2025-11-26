@@ -54,8 +54,16 @@ export class SQLiteJobRepository implements JobRepository {
 
   /**
    * Get the correct database for a job (test DB if job has testContext, otherwise production)
-   * CRITICAL FIX: Ensures test jobs are saved to test databases, not production
-   * Similar to FTS5 fix - test jobs must use worker-specific databases
+   * CRITICAL FIX: Uses non-transactional connection for job saves in test mode
+   *
+   * Why non-transactional:
+   * - In test mode, jobs are saved inside SAVEPOINT transactions
+   * - Savepoint isolation makes jobs invisible to WorkerPool (separate connection)
+   * - Using non-transactional connection bypasses savepoint, making jobs visible
+   *
+   * Architecture:
+   * - Test mode: Uses getNonTransactionalJobsClient (bypasses savepoint)
+   * - Production: Uses global database (no savepoints exist)
    */
   private async getDbForJob(job: Job): Promise<Database.Database> {
     const testDbPath = job.config.testContext?.dbPath;
@@ -65,13 +73,14 @@ export class SQLiteJobRepository implements JobRepository {
     const isTestMode = process.env.NODE_ENV === 'test';
 
     if (testDbPath && isTestMode) {
-      // Job belongs to an active test - use test database
-      const { getDbClient } = await import('../../../utils/get-db-client');
+      // CRITICAL FIX: Use non-transactional connection for job saves
+      // This makes jobs immediately visible to WorkerPool queries
+      const { getNonTransactionalJobsClient } = await import('../../../utils/get-db-client');
       const mockReq = { testDbPath } as any;
-      const testClient = await getDbClient(mockReq);
+      const jobsClient = await getNonTransactionalJobsClient(mockReq);
       // Cast to SQLiteClient to access getDatabase()
       const { SQLiteClient } = await import('@canvas-memory/db');
-      return (testClient as SQLiteClient).getDatabase();
+      return (jobsClient as SQLiteClient).getDatabase();
     }
 
     // Production job OR test job in production mode - use production database
@@ -116,7 +125,7 @@ export class SQLiteJobRepository implements JobRepository {
           updated_at = excluded.updated_at
       `);
 
-      stmt.run(
+      const result = stmt.run(
         job.id,
         job.type,
         job.accountId,
@@ -132,7 +141,15 @@ export class SQLiteJobRepository implements JobRepository {
       );
 
       console.log(
-        `[JobRepository] ✅ Saved job ${job.id} (status: ${job.status}, type: ${job.type})`
+        `[JobRepository] ✅ Saved job ${job.id} (status: ${job.status}, type: ${job.type}, changes: ${result.changes})`
+      );
+
+      // DEBUG: Verify job exists immediately after save
+      const verify = db
+        .prepare('SELECT COUNT(*) as count FROM jobs WHERE id = ?')
+        .get(job.id) as any;
+      console.log(
+        `[JobRepository] 🔍 Post-save verification: ${verify.count} job(s) found with ID ${job.id}`
       );
 
       // Save events (append-only) - use same database as job
