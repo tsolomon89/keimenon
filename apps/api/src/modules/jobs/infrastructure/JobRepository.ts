@@ -60,8 +60,12 @@ export class SQLiteJobRepository implements JobRepository {
   private async getDbForJob(job: Job): Promise<Database.Database> {
     const testDbPath = job.config.testContext?.dbPath;
 
-    if (testDbPath) {
-      // Job belongs to a test - use test database
+    // SAFETY CHECK: Only use test databases when NODE_ENV=test
+    // This prevents trying to load non-existent test DBs for orphaned jobs from old test runs
+    const isTestMode = process.env.NODE_ENV === 'test';
+
+    if (testDbPath && isTestMode) {
+      // Job belongs to an active test - use test database
       const { getDbClient } = await import('../../../utils/get-db-client');
       const mockReq = { testDbPath } as any;
       const testClient = await getDbClient(mockReq);
@@ -70,7 +74,7 @@ export class SQLiteJobRepository implements JobRepository {
       return (testClient as SQLiteClient).getDatabase();
     }
 
-    // Production job - use production database
+    // Production job OR test job in production mode - use production database
     return this.db;
   }
 
