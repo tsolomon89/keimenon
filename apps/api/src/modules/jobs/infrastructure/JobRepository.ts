@@ -30,10 +30,10 @@ export interface JobFilters {
 
 export interface JobRepository {
   save(job: Job): Promise<void>;
-  findById(id: string, accountId: string): Promise<Job | null>;
-  find(filters: JobFilters): Promise<Job[]>;
+  findById(id: string, accountId: string, req?: any): Promise<Job | null>;
+  find(filters: JobFilters, req?: any): Promise<Job[]>;
   appendEvent(event: JobEvent): Promise<void>;
-  loadEvents(jobId: string, accountId: string): Promise<JobEvent[]>;
+  loadEvents(jobId: string, accountId: string, req?: any): Promise<JobEvent[]>;
   existsByIdempotencyKey(key: string, accountId: string): Promise<Job | null>;
   countActiveInGroup(concurrencyGroup: string, accountId: string): Promise<number>;
   atomicTransition(
@@ -75,6 +75,23 @@ export class SQLiteJobRepository implements JobRepository {
     }
 
     // Production job OR test job in production mode - use production database
+    return this.db;
+  }
+
+  /**
+   * Get the correct database for a request (test DB if request has testDbPath, otherwise production)
+   * CRITICAL FIX: Enables query methods to route to correct database based on request context
+   */
+  private async getDbForRequest(req?: any): Promise<Database.Database> {
+    // If request has testDbPath (from test isolation middleware), use test database
+    if (req?.testDbPath) {
+      const { getDbClient } = await import('../../../utils/get-db-client');
+      const testClient = await getDbClient(req);
+      const { SQLiteClient } = await import('@canvas-memory/db');
+      return (testClient as SQLiteClient).getDatabase();
+    }
+
+    // Otherwise use production database
     return this.db;
   }
 
@@ -144,9 +161,13 @@ export class SQLiteJobRepository implements JobRepository {
 
   /**
    * Load job by ID with full event history
+   * CRITICAL FIX: Routes to correct database (test or production) based on request context
    */
-  async findById(id: string, accountId: string): Promise<Job | null> {
-    const stmt = this.db.prepare(`
+  async findById(id: string, accountId: string, req?: any): Promise<Job | null> {
+    // CRITICAL FIX: Use request-scoped database if available
+    const db = await this.getDbForRequest(req);
+
+    const stmt = db.prepare(`
       SELECT * FROM jobs
       WHERE id = ? AND account_id = ?
     `);
@@ -156,8 +177,8 @@ export class SQLiteJobRepository implements JobRepository {
       return null;
     }
 
-    // Load events
-    const events = await this.loadEvents(id, accountId);
+    // Load events using same database
+    const events = await this.loadEvents(id, accountId, req);
 
     // Reconstruct job from database
     return Job.fromDatabase({
@@ -168,9 +189,13 @@ export class SQLiteJobRepository implements JobRepository {
 
   /**
    * Find jobs by filters
+   * CRITICAL FIX: Routes to correct database (test or production) based on request context
    */
-  async find(filters: JobFilters): Promise<Job[]> {
+  async find(filters: JobFilters, req?: any): Promise<Job[]> {
     const { accountId, status, type, limit = 100, offset = 0 } = filters;
+
+    // CRITICAL FIX: Use request-scoped database if available
+    const db = await this.getDbForRequest(req);
 
     // Build query dynamically based on which filters are provided
     let query = 'SELECT * FROM jobs WHERE 1=1';
@@ -200,7 +225,7 @@ export class SQLiteJobRepository implements JobRepository {
     query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
-    const stmt = this.db.prepare(query);
+    const stmt = db.prepare(query);
     const records = stmt.all(...params) as any[];
 
     console.log(`[JobRepository] Query returned ${records.length} records`);
@@ -263,9 +288,13 @@ export class SQLiteJobRepository implements JobRepository {
 
   /**
    * Load all events for a job
+   * CRITICAL FIX: Routes to correct database (test or production) based on request context
    */
-  async loadEvents(jobId: string, accountId: string): Promise<JobEvent[]> {
-    const stmt = this.db.prepare(`
+  async loadEvents(jobId: string, accountId: string, req?: any): Promise<JobEvent[]> {
+    // CRITICAL FIX: Use request-scoped database if available
+    const db = await this.getDbForRequest(req);
+
+    const stmt = db.prepare(`
       SELECT * FROM job_events
       WHERE job_id = ? AND account_id = ?
       ORDER BY sequence_number ASC

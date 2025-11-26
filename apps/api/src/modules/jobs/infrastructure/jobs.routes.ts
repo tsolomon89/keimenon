@@ -127,8 +127,8 @@ export function createJobsRoutes(
       // Determine target account based on operating context
       const targetAccountId = operating?.accountId || userAccountId;
 
-      // Get job
-      const job = await jobRepository.findById(id, targetAccountId);
+      // Get job - CRITICAL FIX: Pass request for database routing
+      const job = await jobRepository.findById(id, targetAccountId, req);
 
       if (!job) {
         throw ErrorFactory.notFound('Job', 'jobs.get');
@@ -229,14 +229,17 @@ export function createJobsRoutes(
       const status = req.query.status as any;
       const type = req.query.type as any;
 
-      // Find jobs
-      const jobs = await jobRepository.find({
-        accountId: targetAccountId,
-        status,
-        type,
-        limit,
-        offset,
-      });
+      // Find jobs - CRITICAL FIX: Pass request for database routing
+      const jobs = await jobRepository.find(
+        {
+          accountId: targetAccountId,
+          status,
+          type,
+          limit,
+          offset,
+        },
+        req
+      );
 
       return res.json({
         success: true,
@@ -272,8 +275,8 @@ export function createJobsRoutes(
       // Determine target account based on operating context
       const targetAccountId = operating?.accountId || userAccountId;
 
-      // Get job
-      const job = await jobRepository.findById(id, targetAccountId);
+      // Get job - CRITICAL FIX: Pass request for database routing
+      const job = await jobRepository.findById(id, targetAccountId, req);
       if (!job) {
         throw ErrorFactory.notFound('Job', 'jobs.pause');
       }
@@ -324,8 +327,8 @@ export function createJobsRoutes(
       // Determine target account based on operating context
       const targetAccountId = operating?.accountId || userAccountId;
 
-      // Get job
-      const job = await jobRepository.findById(id, targetAccountId);
+      // Get job - CRITICAL FIX: Pass request for database routing
+      const job = await jobRepository.findById(id, targetAccountId, req);
       if (!job) {
         throw ErrorFactory.notFound('Job', 'jobs.resume');
       }
@@ -379,8 +382,8 @@ export function createJobsRoutes(
       // Determine target account based on operating context
       const targetAccountId = operating?.accountId || userAccountId;
 
-      // Verify job exists and belongs to account
-      const job = await jobRepository.findById(id, targetAccountId);
+      // Verify job exists and belongs to account - CRITICAL FIX: Pass request for database routing
+      const job = await jobRepository.findById(id, targetAccountId, req);
       if (!job) {
         throw ErrorFactory.notFound('Job', 'jobs.delete');
       }
