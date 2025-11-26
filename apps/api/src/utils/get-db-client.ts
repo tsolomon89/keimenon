@@ -155,21 +155,20 @@ export async function getJobsDbClient(req?: Request): Promise<any> {
   // Test mode: jobs are in separate database file
   const testDbPath: string = req.testDbPath;
   const jobsDbPath = testDbPath.replace('.db', '-jobs.db'); // worker-0.db → worker-0-jobs.db
-  const jobsClientKey = `${jobsDbPath}_jobs`;
 
   // Check cache first
-  if (testClientCache.has(jobsClientKey)) {
-    const cachedClient = testClientCache.get(jobsClientKey);
+  if (testClientCache.has(jobsDbPath)) {
+    const cachedClient = testClientCache.get(jobsDbPath);
     console.log(`[Get DB Client] Using cached jobs DB client for ${path.basename(jobsDbPath)}`);
     return cachedClient;
   }
 
   // Check if connection is already in progress
-  if (connectionPromises.has(jobsClientKey)) {
+  if (connectionPromises.has(jobsDbPath)) {
     console.log(
       `[Get DB Client] Jobs DB connection in progress, waiting for ${path.basename(jobsDbPath)}`
     );
-    return await connectionPromises.get(jobsClientKey);
+    return await connectionPromises.get(jobsDbPath);
   }
 
   console.log(`[Get DB Client] Creating jobs database client:`);
@@ -190,22 +189,22 @@ export async function getJobsDbClient(req?: Request): Promise<any> {
       await client.connect();
       client.enableDirectWrites();
 
-      // Cache under jobs-specific key
-      testClientCache.set(jobsClientKey, client);
+      // Cache the client for this database path
+      testClientCache.set(jobsDbPath, client);
 
       console.log(`[Get DB Client] ✅ Jobs database client created successfully`);
       return client;
     } catch (error) {
       console.log(`[Get DB Client] ❌ Failed to create jobs database client:`);
       console.log(`  - Error: ${error}`);
-      connectionPromises.delete(jobsClientKey);
+      connectionPromises.delete(jobsDbPath);
       throw error;
     } finally {
-      connectionPromises.delete(jobsClientKey);
+      connectionPromises.delete(jobsDbPath);
     }
   })();
 
-  connectionPromises.set(jobsClientKey, connectionPromise);
+  connectionPromises.set(jobsDbPath, connectionPromise);
   return await connectionPromise;
 }
 
@@ -274,11 +273,10 @@ export async function closeDbConnection(testDbPath: string): Promise<boolean> {
 
   // Close jobs database connection
   const jobsDbPath = testDbPath.replace('.db', '-jobs.db');
-  const jobsClientKey = `${jobsDbPath}_jobs`;
 
-  if (testClientCache.has(jobsClientKey)) {
+  if (testClientCache.has(jobsDbPath)) {
     try {
-      const jobsClient = testClientCache.get(jobsClientKey);
+      const jobsClient = testClientCache.get(jobsDbPath);
 
       // Close the jobs database connection (releases file lock)
       if (jobsClient && typeof jobsClient.close === 'function') {
@@ -287,15 +285,15 @@ export async function closeDbConnection(testDbPath: string): Promise<boolean> {
       }
 
       // Remove from both caches
-      testClientCache.delete(jobsClientKey);
-      connectionPromises.delete(jobsClientKey);
+      testClientCache.delete(jobsDbPath);
+      connectionPromises.delete(jobsDbPath);
       console.log(`[Get DB Client] ✅ Removed jobs DB from cache: ${path.basename(jobsDbPath)}`);
       closedAny = true;
     } catch (error) {
       console.error(`[Get DB Client] ❌ Error closing jobs DB connection:`, error);
       // Still remove from caches even if close failed
-      testClientCache.delete(jobsClientKey);
-      connectionPromises.delete(jobsClientKey);
+      testClientCache.delete(jobsDbPath);
+      connectionPromises.delete(jobsDbPath);
     }
   }
 
