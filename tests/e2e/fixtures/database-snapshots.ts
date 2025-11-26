@@ -35,11 +35,13 @@ import bcrypt from 'bcrypt';
 
 export class DatabaseSnapshotManager {
   private snapshotPath: string;
+  private jobsSnapshotPath: string;
   private testDbsDir: string;
 
   constructor() {
     this.testDbsDir = path.join(process.cwd(), '.test-dbs');
     this.snapshotPath = path.join(this.testDbsDir, 'snapshot-template.db');
+    this.jobsSnapshotPath = path.join(this.testDbsDir, 'snapshot-template-jobs.db');
   }
 
   /**
@@ -256,27 +258,35 @@ export class DatabaseSnapshotManager {
         db.prepare('DROP TABLE IF EXISTS nodes_fts').run();
 
         // Recreate FTS table with correct schema (from schema.sql)
-        db.prepare('CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(id UNINDEXED, content)').run();
+        db.prepare(
+          'CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(id UNINDEXED, content)'
+        ).run();
 
         // Recreate FTS triggers (from schema.sql)
-        db.prepare(`
+        db.prepare(
+          `
           CREATE TRIGGER IF NOT EXISTS nodes_fts_insert AFTER INSERT ON nodes BEGIN
             INSERT INTO nodes_fts(id, content) VALUES (new.id, new.properties);
           END
-        `).run();
+        `
+        ).run();
 
-        db.prepare(`
+        db.prepare(
+          `
           CREATE TRIGGER IF NOT EXISTS nodes_fts_update AFTER UPDATE ON nodes BEGIN
             DELETE FROM nodes_fts WHERE id = old.id;
             INSERT INTO nodes_fts(id, content) VALUES (new.id, new.properties);
           END
-        `).run();
+        `
+        ).run();
 
-        db.prepare(`
+        db.prepare(
+          `
           CREATE TRIGGER IF NOT EXISTS nodes_fts_delete AFTER DELETE ON nodes BEGIN
             DELETE FROM nodes_fts WHERE id = old.id;
           END
-        `).run();
+        `
+        ).run();
 
         console.log('   ✅ FTS5 table and triggers recreated successfully');
       } catch (ftsError: any) {
@@ -294,6 +304,52 @@ export class DatabaseSnapshotManager {
 
       // Close the database
       db.close();
+
+      // CRITICAL FIX: Create separate jobs database for test mode
+      // This avoids SQLite locking conflicts when jobs are created inside SAVEPOINT transactions
+      console.log('\n📁 Creating separate jobs database template...');
+
+      // Delete old jobs snapshot if exists
+      if (fs.existsSync(this.jobsSnapshotPath)) {
+        fs.unlinkSync(this.jobsSnapshotPath);
+        console.log('   Deleted old jobs snapshot');
+      }
+
+      // Create jobs database
+      const jobsDb = new Database(this.jobsSnapshotPath);
+
+      // Load jobs schema
+      const jobsSchemaPath = path.join(process.cwd(), 'packages/db/src/sqlite/jobs-schema.sql');
+      if (!fs.existsSync(jobsSchemaPath)) {
+        throw new Error(`Jobs schema file not found: ${jobsSchemaPath}`);
+      }
+
+      const jobsSchemaSQL = fs.readFileSync(jobsSchemaPath, 'utf-8');
+
+      // Execute jobs schema
+      console.log('   Executing jobs schema...');
+      jobsDb.exec(jobsSchemaSQL);
+
+      // Verify jobs database has expected structure
+      const jobsTableCount = jobsDb
+        .prepare(
+          "SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name IN ('jobs', 'job_events', 'job_items')"
+        )
+        .get() as any;
+
+      if (jobsTableCount.count !== 3) {
+        throw new Error(
+          `Jobs database has unexpected structure! Expected 3 tables (jobs, job_events, job_items), got ${jobsTableCount.count}`
+        );
+      }
+
+      console.log('   ✅ Jobs snapshot created successfully');
+      console.log(`   Location: ${this.jobsSnapshotPath}`);
+      console.log(`   Size: ${this.getFileSize(this.jobsSnapshotPath)}`);
+      console.log(`   Contents: 3 tables (jobs, job_events, job_items), 0 jobs`);
+
+      // Close jobs database
+      jobsDb.close();
     } catch (error: any) {
       console.error('❌ Failed to create snapshot:', error.message);
       throw error;
@@ -366,11 +422,22 @@ export class DatabaseSnapshotManager {
     await deleteFileWithRetry(`${workerDbPath}-wal`);
     await deleteFileWithRetry(`${workerDbPath}-shm`);
 
-    // Copy snapshot to worker DB
+    // CRITICAL FIX: Also delete jobs database files
+    const jobsDbPath = workerDbPath.replace('.db', '-jobs.db');
+    await deleteFileWithRetry(jobsDbPath);
+    await deleteFileWithRetry(`${jobsDbPath}-wal`);
+    await deleteFileWithRetry(`${jobsDbPath}-shm`);
+
+    // Copy data snapshot to worker DB
     fs.copyFileSync(this.snapshotPath, workerDbPath);
 
+    // CRITICAL FIX: Also copy jobs snapshot to worker jobs DB
+    fs.copyFileSync(this.jobsSnapshotPath, jobsDbPath);
+
     console.log(
-      `[Worker ${workerIndex}] Restored database from snapshot (${this.getFileSize(workerDbPath)})`
+      `[Worker ${workerIndex}] Restored databases from snapshots:\n` +
+        `                       - Data DB: ${this.getFileSize(workerDbPath)}\n` +
+        `                       - Jobs DB: ${this.getFileSize(jobsDbPath)}`
     );
 
     return workerDbPath;

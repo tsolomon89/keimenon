@@ -232,16 +232,27 @@ export class WorkerPool {
     }
 
     // 2. Query all active test databases
+    // CRITICAL FIX: In test mode with separate jobs database architecture,
+    // we need to query jobs databases (worker-0-jobs.db) not data databases (worker-0.db)
     const { getActiveTestDatabases } = await import('../../../utils/get-db-client');
     const testDbPaths = getActiveTestDatabases();
 
-    if (testDbPaths.length > 0) {
-      console.log(`[WorkerPool] Querying ${testDbPaths.length} active test database(s)...`);
+    // Filter to only jobs database paths (exclude data database paths)
+    // Jobs databases end with "-jobs.db", data databases end with ".db" (no "-jobs")
+    const jobsDbPaths = testDbPaths.filter((path) => path.includes('-jobs.db'));
 
-      for (const testDbPath of testDbPaths) {
+    if (jobsDbPaths.length > 0) {
+      console.log(`[WorkerPool] Querying ${jobsDbPaths.length} active test jobs database(s)...`);
+
+      for (const jobsDbPath of jobsDbPaths) {
         try {
-          // Create mock request with testDbPath for database routing
-          const mockReq = { testDbPath } as any;
+          // Convert jobs DB path back to data DB path for testDbPath
+          // (JobRepository expects data DB path, then internally routes to jobs DB)
+          // worker-0-jobs.db → worker-0.db
+          const dataDbPath = jobsDbPath.replace('-jobs.db', '.db');
+
+          // Create mock request with data DB path (repository will route to jobs DB internally)
+          const mockReq = { testDbPath: dataDbPath } as any;
 
           const testJobs = await this.jobRepository.find(
             {
@@ -251,12 +262,12 @@ export class WorkerPool {
             mockReq
           );
 
-          const dbName = testDbPath.split(/[/\\]/).pop(); // Extract filename
+          const dbName = jobsDbPath.split(/[/\\]/).pop(); // Extract filename
           console.log(`[WorkerPool] Found ${testJobs.length} queued jobs in ${dbName}`);
           allJobs.push(...testJobs);
         } catch (error: any) {
-          const dbName = testDbPath.split(/[/\\]/).pop();
-          console.error(`[WorkerPool] Error querying test DB ${dbName}:`, error.message);
+          const dbName = jobsDbPath.split(/[/\\]/).pop();
+          console.error(`[WorkerPool] Error querying jobs DB ${dbName}:`, error.message);
         }
       }
     }

@@ -54,16 +54,17 @@ export class SQLiteJobRepository implements JobRepository {
 
   /**
    * Get the correct database for a job (test DB if job has testContext, otherwise production)
-   * CRITICAL FIX: Uses non-transactional connection for job saves in test mode
+   * CRITICAL FIX: Uses separate jobs database for job saves in test mode
    *
-   * Why non-transactional:
-   * - In test mode, jobs are saved inside SAVEPOINT transactions
-   * - Savepoint isolation makes jobs invisible to WorkerPool (separate connection)
-   * - Using non-transactional connection bypasses savepoint, making jobs visible
+   * Why separate database:
+   * - In test mode, data DB has SAVEPOINT transactions for test isolation
+   * - Jobs DB is separate file with NO savepoints, avoiding database locking
+   * - SQLite doesn't allow second connection to DB with active SAVEPOINT
+   * - Separate database files = no lock contention, jobs globally visible
    *
    * Architecture:
-   * - Test mode: Uses getNonTransactionalJobsClient (bypasses savepoint)
-   * - Production: Uses global database (no savepoints exist)
+   * - Test mode: Uses getJobsDbClient (separate database file: worker-0-jobs.db)
+   * - Production: Uses global database (single file: canvas.db with all data)
    */
   private async getDbForJob(job: Job): Promise<Database.Database> {
     const testDbPath = job.config.testContext?.dbPath;
@@ -73,11 +74,11 @@ export class SQLiteJobRepository implements JobRepository {
     const isTestMode = process.env.NODE_ENV === 'test';
 
     if (testDbPath && isTestMode) {
-      // CRITICAL FIX: Use non-transactional connection for job saves
-      // This makes jobs immediately visible to WorkerPool queries
-      const { getNonTransactionalJobsClient } = await import('../../../utils/get-db-client');
+      // CRITICAL FIX: Use separate jobs database connection
+      // Jobs are saved to worker-0-jobs.db (not worker-0.db)
+      const { getJobsDbClient } = await import('../../../utils/get-db-client');
       const mockReq = { testDbPath } as any;
-      const jobsClient = await getNonTransactionalJobsClient(mockReq);
+      const jobsClient = await getJobsDbClient(mockReq);
       // Cast to SQLiteClient to access getDatabase()
       const { SQLiteClient } = await import('@canvas-memory/db');
       return (jobsClient as SQLiteClient).getDatabase();

@@ -124,76 +124,79 @@ export async function getDbClient(req?: Request): Promise<any> {
 }
 
 /**
- * Get non-transactional database client for jobs in test mode
+ * Get jobs database client (separate database file in test mode)
  *
- * CRITICAL FIX: In test mode, jobs are saved inside SAVEPOINT transactions.
- * This makes them invisible to WorkerPool queries which use separate connections.
- *
- * Solution: Use a separate database connection for job save operations.
- * This connection bypasses the savepoint, making jobs immediately visible to WorkerPool.
+ * CRITICAL FIX: In test mode, jobs are saved to a completely separate database file
+ * to avoid SQLite locking conflicts when creating jobs inside SAVEPOINT transactions.
  *
  * Architecture:
- * - Normal operations: Use transactional connection (getDbClient)
- * - Job saves only: Use non-transactional connection (this function)
- * - Production mode: Returns global client (no special behavior needed)
+ *   Test Mode:
+ *     - Data database: worker-0.db (has SAVEPOINT transactions for test isolation)
+ *     - Jobs database: worker-0-jobs.db (NO savepoints, jobs globally visible)
+ *   Production Mode:
+ *     - Single database: canvas.db (contains all data including jobs)
+ *
+ * Why separate database:
+ * - SQLite does not allow creating a second connection to a database with active SAVEPOINT
+ * - Separate database files = no lock contention
+ * - Jobs remain visible to WorkerPool while data remains isolated
  *
  * @param req Express request object (optional)
- * @returns Database client bypassing savepoint transactions
+ * @returns Database client for jobs operations
  */
-export async function getNonTransactionalJobsClient(req?: Request): Promise<any> {
-  // In production mode, just return the global client (no savepoints exist)
+export async function getJobsDbClient(req?: Request): Promise<any> {
   const isTestMode = process.env.NODE_ENV === 'test';
+
   if (!isTestMode || !req?.testDbPath) {
+    // Production mode: jobs are in main database
     return global.dbClient;
   }
 
-  // In test mode with testDbPath, create a separate connection to the same DB
-  // This connection will NOT be inside the savepoint transaction
+  // Test mode: jobs are in separate database file
   const testDbPath: string = req.testDbPath;
-  const jobsClientKey = `${testDbPath}_jobs`; // Separate cache key for jobs connection
+  const jobsDbPath = testDbPath.replace('.db', '-jobs.db'); // worker-0.db → worker-0-jobs.db
+  const jobsClientKey = `${jobsDbPath}_jobs`;
 
   // Check cache first
   if (testClientCache.has(jobsClientKey)) {
     const cachedClient = testClientCache.get(jobsClientKey);
-    console.log(
-      `[Get DB Client] Using cached non-transactional jobs client for ${path.basename(testDbPath)}`
-    );
+    console.log(`[Get DB Client] Using cached jobs DB client for ${path.basename(jobsDbPath)}`);
     return cachedClient;
   }
 
   // Check if connection is already in progress
   if (connectionPromises.has(jobsClientKey)) {
     console.log(
-      `[Get DB Client] Non-transactional jobs connection in progress, waiting for ${path.basename(testDbPath)}`
+      `[Get DB Client] Jobs DB connection in progress, waiting for ${path.basename(jobsDbPath)}`
     );
     return await connectionPromises.get(jobsClientKey);
   }
 
-  console.log(`[Get DB Client] Creating non-transactional jobs client:`);
-  console.log(`  - Worker DB: ${path.basename(testDbPath)}`);
-  console.log(`  - Purpose: Job saves (bypasses savepoint isolation)`);
+  console.log(`[Get DB Client] Creating jobs database client:`);
+  console.log(`  - Jobs DB: ${path.basename(jobsDbPath)}`);
+  console.log(`  - Purpose: Separate database for jobs (avoids SAVEPOINT locking)`);
 
   // Create connection promise
   const connectionPromise = (async () => {
     try {
       const { SQLiteClient } = await import('@canvas-memory/db');
 
-      // Create a new client instance for jobs (separate connection to same DB)
+      // Create client instance for jobs database (separate file from data database)
       const client = new SQLiteClient({
-        databasePath: testDbPath,
+        databasePath: jobsDbPath,
         verbose: false,
       });
 
       await client.connect();
       client.enableDirectWrites();
 
-      // Cache under separate key
+      // Cache under jobs-specific key
       testClientCache.set(jobsClientKey, client);
 
-      console.log(`[Get DB Client] ✅ Non-transactional jobs client created successfully`);
+      console.log(`[Get DB Client] ✅ Jobs database client created successfully`);
       return client;
     } catch (error) {
-      console.log(`[Get DB Client] ❌ Failed to create non-transactional jobs client:`);
+      console.log(`[Get DB Client] ❌ Failed to create jobs database client:`);
       console.log(`  - Error: ${error}`);
       connectionPromises.delete(jobsClientKey);
       throw error;
@@ -229,40 +232,76 @@ export function getActiveTestDatabases(): string[] {
 }
 
 /**
- * Close and remove cached database connection for a specific test DB path
+ * Close and remove cached database connections for a specific test DB path
  *
  * CRITICAL FIX #8: This function releases Windows file locks by closing
- * the database connection before snapshot restoration attempts file deletion.
+ * both data and jobs database connections before snapshot restoration.
  *
- * @param testDbPath Absolute path to worker database file
- * @returns true if connection was closed, false if not found in cache
+ * In test mode with separate jobs database:
+ *   - Closes data database connection (worker-0.db)
+ *   - Closes jobs database connection (worker-0-jobs.db)
+ *   - Removes both from cache
+ *
+ * @param testDbPath Absolute path to worker data database file
+ * @returns true if any connection was closed, false if none found
  */
 export async function closeDbConnection(testDbPath: string): Promise<boolean> {
-  if (!testClientCache.has(testDbPath)) {
-    console.log(`[Get DB Client] No cached connection for ${path.basename(testDbPath)}`);
-    return false;
-  }
+  let closedAny = false;
 
-  try {
-    const client = testClientCache.get(testDbPath);
+  // Close data database connection
+  if (testClientCache.has(testDbPath)) {
+    try {
+      const client = testClientCache.get(testDbPath);
 
-    // Close the database connection (releases file lock)
-    if (client && typeof client.close === 'function') {
-      await client.close();
-      console.log(`[Get DB Client] ✅ Closed connection for ${path.basename(testDbPath)}`);
+      // Close the database connection (releases file lock)
+      if (client && typeof client.close === 'function') {
+        await client.close();
+        console.log(`[Get DB Client] ✅ Closed data DB connection: ${path.basename(testDbPath)}`);
+      }
+
+      // Remove from both caches
+      testClientCache.delete(testDbPath);
+      connectionPromises.delete(testDbPath);
+      console.log(`[Get DB Client] ✅ Removed data DB from cache: ${path.basename(testDbPath)}`);
+      closedAny = true;
+    } catch (error) {
+      console.error(`[Get DB Client] ❌ Error closing data DB connection:`, error);
+      // Still remove from caches even if close failed
+      testClientCache.delete(testDbPath);
+      connectionPromises.delete(testDbPath);
     }
-
-    // Remove from both caches
-    testClientCache.delete(testDbPath);
-    connectionPromises.delete(testDbPath); // Also clear any pending connection promise
-    console.log(`[Get DB Client] ✅ Removed from cache: ${path.basename(testDbPath)}`);
-
-    return true;
-  } catch (error) {
-    console.error(`[Get DB Client] ❌ Error closing connection:`, error);
-    // Still remove from both caches even if close failed
-    testClientCache.delete(testDbPath);
-    connectionPromises.delete(testDbPath);
-    return false;
   }
+
+  // Close jobs database connection
+  const jobsDbPath = testDbPath.replace('.db', '-jobs.db');
+  const jobsClientKey = `${jobsDbPath}_jobs`;
+
+  if (testClientCache.has(jobsClientKey)) {
+    try {
+      const jobsClient = testClientCache.get(jobsClientKey);
+
+      // Close the jobs database connection (releases file lock)
+      if (jobsClient && typeof jobsClient.close === 'function') {
+        await jobsClient.close();
+        console.log(`[Get DB Client] ✅ Closed jobs DB connection: ${path.basename(jobsDbPath)}`);
+      }
+
+      // Remove from both caches
+      testClientCache.delete(jobsClientKey);
+      connectionPromises.delete(jobsClientKey);
+      console.log(`[Get DB Client] ✅ Removed jobs DB from cache: ${path.basename(jobsDbPath)}`);
+      closedAny = true;
+    } catch (error) {
+      console.error(`[Get DB Client] ❌ Error closing jobs DB connection:`, error);
+      // Still remove from caches even if close failed
+      testClientCache.delete(jobsClientKey);
+      connectionPromises.delete(jobsClientKey);
+    }
+  }
+
+  if (!closedAny) {
+    console.log(`[Get DB Client] No cached connections for ${path.basename(testDbPath)}`);
+  }
+
+  return closedAny;
 }
