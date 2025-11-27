@@ -91,14 +91,17 @@ export class SQLiteJobRepository implements JobRepository {
   /**
    * Get the correct database for a request (test DB if request has testDbPath, otherwise production)
    * CRITICAL FIX: Enables query methods to route to correct database based on request context
+   *
+   * CRITICAL FIX #9: Use jobs database (worker-0-jobs.db) for job queries in test mode
+   * This matches the save behavior which saves to jobs database, ensuring queries find the jobs.
    */
   private async getDbForRequest(req?: any): Promise<Database.Database> {
-    // If request has testDbPath (from test isolation middleware), use test database
+    // If request has testDbPath (from test isolation middleware), use jobs database (not data database)
     if (req?.testDbPath) {
-      const { getDbClient } = await import('../../../utils/get-db-client');
-      const testClient = await getDbClient(req);
+      const { getJobsDbClient } = await import('../../../utils/get-db-client');
+      const jobsClient = await getJobsDbClient(req);
       const { SQLiteClient } = await import('@canvas-memory/db');
-      return (testClient as SQLiteClient).getDatabase();
+      return (jobsClient as SQLiteClient).getDatabase();
     }
 
     // Otherwise use production database
