@@ -48,7 +48,10 @@ import { DeleteWorker } from './modules/workers/infrastructure/DeleteWorker';
 import { DatabaseWriteQueue } from './services/DatabaseWriteQueue';
 import { AuthService } from './services/auth.service';
 import { requireAuth, requirePermission, isolateByAccount } from './middleware/auth.middleware';
-import { initializeCleanupService, shutdownCleanupService } from './modules/uploads/application/UploadCleanupService';
+import {
+  initializeCleanupService,
+  shutdownCleanupService,
+} from './modules/uploads/application/UploadCleanupService';
 import { SQLiteUploadSessionRepository } from './modules/uploads/infrastructure/UploadSessionRepository';
 import {
   configureCors,
@@ -588,7 +591,9 @@ async function start() {
       await (dbClient as any).initializeSchema();
     }
 
-    // TODO: Fix migration sequence - missing migrations 004, 005, 006
+    // TODO: Enable migration runner after verifying all migrations
+    // NOTE: Project has two migration systems (SQL and TypeScript)
+    // See: apps/api/src/migrations/README.md for details
     // Run pending migrations (automatic migration system)
     // console.log('📦 Running database migrations...');
     // const migrationRunner = new MigrationRunner((dbClient as any).db);

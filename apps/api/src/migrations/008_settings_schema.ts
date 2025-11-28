@@ -1,11 +1,12 @@
 import Database from 'better-sqlite3';
 
 /**
- * Migration 006: Settings Schema
+ * Migration 008: Settings Schema
  * JSON-driven configuration with scope hierarchy
+ * Note: Renumbered from 006 to 008 to resolve duplicate migration numbers (2025-11-28)
  */
 export function up(db: Database.Database): void {
-  console.log('Running migration 006: Settings Schema');
+  console.log('Running migration 008: Settings Schema');
 
   // Settings configuration table
   db.exec(`
@@ -46,7 +47,7 @@ export function up(db: Database.Database): void {
 }
 
 export function down(db: Database.Database): void {
-  console.log('Rolling back migration 006: Settings Schema');
+  console.log('Rolling back migration 008: Settings Schema');
 
   db.exec(`
     DROP TABLE IF EXISTS settings_config;

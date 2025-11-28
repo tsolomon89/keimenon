@@ -126,9 +126,10 @@ test.describe('Authentication - Registration Flow', () => {
     }
   });
 
-  // FIXME: Password validation is not implemented in the registration UI or backend
-  // The backend accepts any password without strength requirements, and the UI doesn't show validation errors
-  // To fix: Add password strength validation in RegisterForm.tsx and/or auth.routes.ts
+  // NOTE: Password validation is now FULLY IMPLEMENTED in both frontend and backend
+  // Backend: apps/api/src/utils/password-validator.ts (12+ chars, uppercase, lowercase, numbers, special chars)
+  // Frontend: apps/web/src/app/register/page.tsx (matching backend requirements)
+  // Test environment uses lenient validation (6+ chars) to allow test passwords
   test('should reject registration with weak password', async ({ page }) => {
     const testEmail = generateTestEmail();
 

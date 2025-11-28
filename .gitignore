@@ -23,6 +23,25 @@ test-*.js
 !.mcp/**/*.js
 .test-errors.log
 
+# Test output files (logs, debug files, server outputs)
+*-test*.txt
+test-*.txt
+*-debug*.txt
+debug-*.txt
+*-server*.txt
+*-verification*.txt
+*-fix*.txt
+*-LOGS.txt
+*-TEST.txt
+*-FIX*.txt
+verification-*.txt
+
+# Test databases
+.test-dbs/
+
+# Windows artifacts
+nul
+
 # Next.js
 .next/
 out/
