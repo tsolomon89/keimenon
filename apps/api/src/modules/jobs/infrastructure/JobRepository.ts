@@ -73,9 +73,16 @@ export class SQLiteJobRepository implements JobRepository {
     // This prevents trying to load non-existent test DBs for orphaned jobs from old test runs
     const isTestMode = process.env.NODE_ENV === 'test';
 
+    console.log(`[JobRepository.getDbForJob] Job ID: ${job.id}`);
+    console.log(`  - testDbPath from job.config.testContext: ${testDbPath || 'NONE'}`);
+    console.log(`  - NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`  - isTestMode: ${isTestMode}`);
+    console.log(`  - Will use separate jobs DB: ${!!(testDbPath && isTestMode)}`);
+
     if (testDbPath && isTestMode) {
       // CRITICAL FIX: Use separate jobs database connection
       // Jobs are saved to worker-0-jobs.db (not worker-0.db)
+      console.log(`[JobRepository.getDbForJob] ✅ Using separate jobs database for test mode`);
       const { getJobsDbClient } = await import('../../../utils/get-db-client');
       const mockReq = { testDbPath } as any;
       const jobsClient = await getJobsDbClient(mockReq);
@@ -85,6 +92,7 @@ export class SQLiteJobRepository implements JobRepository {
     }
 
     // Production job OR test job in production mode - use production database
+    console.log(`[JobRepository.getDbForJob] ℹ️ Using production database`);
     return this.db;
   }
 
@@ -98,13 +106,19 @@ export class SQLiteJobRepository implements JobRepository {
   private async getDbForRequest(req?: any): Promise<Database.Database> {
     // If request has testDbPath (from test isolation middleware), use jobs database (not data database)
     if (req?.testDbPath) {
+      console.log(
+        `[JobRepository.getDbForRequest] Using jobs database for test: ${req.testDbPath}`
+      );
       const { getJobsDbClient } = await import('../../../utils/get-db-client');
       const jobsClient = await getJobsDbClient(req);
       const { SQLiteClient } = await import('@canvas-memory/db');
-      return (jobsClient as SQLiteClient).getDatabase();
+      const db = (jobsClient as SQLiteClient).getDatabase();
+      console.log(`[JobRepository.getDbForRequest] ✅ Got database connection`);
+      return db;
     }
 
     // Otherwise use production database
+    console.log(`[JobRepository.getDbForRequest] Using production database`);
     return this.db;
   }
 
@@ -156,6 +170,15 @@ export class SQLiteJobRepository implements JobRepository {
         `[JobRepository] 🔍 Post-save verification: ${verify.count} job(s) found with ID ${job.id}`
       );
 
+      // CRITICAL FIX: Force WAL checkpoint to make job immediately visible to other connections
+      // Without this, jobs may remain in WAL buffer and not be visible to WorkerPool queries
+      try {
+        db.pragma('wal_checkpoint(PASSIVE)');
+        console.log(`[JobRepository] 📝 WAL checkpoint executed for job ${job.id}`);
+      } catch (walError: any) {
+        console.warn(`[JobRepository] ⚠️ WAL checkpoint failed (non-fatal): ${walError.message}`);
+      }
+
       // Save events (append-only) - use same database as job
       for (const event of job.events) {
         await this.appendEvent(event, db);
@@ -188,12 +211,25 @@ export class SQLiteJobRepository implements JobRepository {
     // CRITICAL FIX: Use request-scoped database if available
     const db = await this.getDbForRequest(req);
 
+    // DEBUG: Log query details
+    console.log(`[JobRepository.findById] Querying for job ${id}`);
+    console.log(`  - Account ID: ${accountId}`);
+    console.log(`  - Has testDbPath: ${!!(req as any)?.testDbPath}`);
+    console.log(`  - testDbPath value: ${(req as any)?.testDbPath}`);
+
     const stmt = db.prepare(`
       SELECT * FROM jobs
       WHERE id = ? AND account_id = ?
     `);
 
     const record = stmt.get(id, accountId) as any;
+
+    // DEBUG: Log query result
+    console.log(`  - Query result: ${record ? 'FOUND' : 'NOT FOUND'}`);
+    if (record) {
+      console.log(`  - Job status: ${record.status}`);
+    }
+
     if (!record) {
       return null;
     }

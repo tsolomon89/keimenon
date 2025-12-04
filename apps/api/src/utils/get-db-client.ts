@@ -189,6 +189,15 @@ export async function getJobsDbClient(req?: Request): Promise<any> {
       await client.connect();
       client.enableDirectWrites();
 
+      // CRITICAL FIX: Disable WAL mode for jobs database to ensure immediate visibility
+      // WAL checkpoint fails when SAVEPOINT transactions are active, leaving jobs invisible
+      // DELETE mode ensures writes are immediately visible to all connections
+      const db = client.getDatabase();
+      db.pragma('journal_mode = DELETE');
+      console.log(
+        `[Get DB Client] 📝 Disabled WAL mode for jobs database (using DELETE journal mode)`
+      );
+
       // Cache the client for this database path
       testClientCache.set(jobsDbPath, client);
 

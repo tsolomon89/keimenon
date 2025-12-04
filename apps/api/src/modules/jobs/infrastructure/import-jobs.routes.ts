@@ -299,6 +299,16 @@ export function createImportJobsRoutes(
           : undefined,
       };
 
+      // DEBUG: Verify testContext is set correctly
+      if (jobConfig.testContext?.dbPath) {
+        console.log(
+          `[IMPORT JOB CREATE] ✅ Test context set in job config:`,
+          jobConfig.testContext.dbPath
+        );
+      } else {
+        console.log(`[IMPORT JOB CREATE] ℹ️ No test context (production mode)`);
+      }
+
       // Create import job
       const command: EnqueueJobCommand = {
         type: 'import',
