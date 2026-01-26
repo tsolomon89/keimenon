@@ -12,3 +12,4 @@ export * from './chat-record';
 export * from './policy';
 export * from './policy-loader';
 export * from './policy-versions';
+export * from './agents';

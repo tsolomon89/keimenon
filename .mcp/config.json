@@ -8,7 +8,7 @@
       "enabled": true,
       "permissions": ["read", "write"],
       "env": {
-        "SQLITE_PATH": "${env:HOME}/.canvas-memory/canvas.db"
+        "SQLITE_PATH": "${env:HOME}/.keimenon/canvas.db"
       }
     },
     "canvas-docs": {

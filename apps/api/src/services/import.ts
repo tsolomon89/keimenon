@@ -9,8 +9,8 @@ import {
   deduplicateCodeAssets,
   extractCodeBlocks,
   CodeAsset,
-} from '@canvas-memory/parsers';
-import { getNeo4jClient } from '@canvas-memory/db';
+} from '@keimenon/parsers';
+import { getNeo4jClient } from '@keimenon/db';
 import {
   DuplicateDetectionService,
   DuplicateGroup,
@@ -93,10 +93,7 @@ export class ImportService {
         autoMergeThreshold: config.duplicate_auto_merge_threshold,
       };
 
-      duplicateGroups = await duplicateService.findDuplicates(
-        parseResult.conversations,
-        dupConfig
-      );
+      duplicateGroups = await duplicateService.findDuplicates(parseResult.conversations, dupConfig);
     }
 
     // 4. Build Sources Mode documents if enabled
@@ -115,7 +112,7 @@ export class ImportService {
 
     // 6. Build result
     const result: ImportResult = {
-      conversations: parseResult.conversations.map(conv => ({
+      conversations: parseResult.conversations.map((conv) => ({
         id: conv.conversation_id,
         title: conv.title,
         platform: conv.platform,

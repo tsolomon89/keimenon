@@ -1,8 +1,8 @@
 import Database from 'better-sqlite3';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { AnyNode, AnyEdge } from '@canvas-memory/types';
-import { contentHashForNodeType, canonicalizeForNodeType } from '@canvas-memory/parsers';
+import { AnyNode, AnyEdge } from '@keimenon/types';
+import { contentHashForNodeType, canonicalizeForNodeType } from '@keimenon/parsers';
 
 export interface SQLiteConfig {
   databasePath: string;

@@ -5,7 +5,7 @@ import { FileText, FolderPlus, Upload } from 'lucide-react';
 import { useCanvasStore } from '@/store/canvasStore';
 import { Canvas2D, Canvas2DHandle } from './Canvas2D';
 import { ProgressVisualization } from './ProgressVisualization';
-import { GraphNode, GraphEdge } from '@canvas-memory/graph';
+import { GraphNode, GraphEdge } from '@keimenon/graph';
 import { useJobStream } from '@/hooks/useJobStream';
 import { logDataEvent } from '@/lib/error-handler';
 

@@ -21,29 +21,51 @@
  */
 
 import { describe, test, before, after, type TestContext } from 'node:test';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load env vars
+dotenv.config({ path: path.join(__dirname, '../../.env'), override: true });
+(process.env as any).NODE_ENV = 'test';
+
 import assert from 'node:assert';
 import fs from 'fs';
-import path from 'path';
+// path imported above
 import os from 'os';
 import FormData from 'form-data';
 import fetch from 'node-fetch';
 import Database from 'better-sqlite3';
-import EventSource = require('eventsource');
+import { EventSource } from 'eventsource';
+import { createApp } from '../app';
+import { Server } from 'http';
+import { register } from './utils/test-helpers';
+import { DatabaseFactory } from '@keimenon/db';
+import { AuthService } from '../services/auth.service';
+import { SSEBroadcaster } from '../modules/jobs/infrastructure/SSEBroadcaster';
+import { WorkerPool } from '../modules/workers/domain/WorkerPool';
+import { DatabaseWriteQueue } from '../services/DatabaseWriteQueue';
+import { JobRepository, SQLiteJobRepository } from '../modules/jobs/infrastructure/JobRepository';
+import { ConcurrencyGuard } from '../modules/workers/domain/ConcurrencyGuard';
+import { StartJob } from '../modules/jobs/application/StartJob';
+import { ImportWorker } from '../modules/workers/infrastructure/ImportWorker';
 
 // Test Configuration
-const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:4001';
+let PORT = 0;
+let API_BASE_URL = '';
 const DB_PATH = process.env.DB_PATH || path.join(os.homedir(), '.canvas-memory', 'canvas.db');
 const TEST_FILES_DIR = path.join(process.cwd(), '../../ai_context/chat_data/test-samples');
 
-// Test Credentials (from migration 001_seed_admin.ts)
+// Test Credentials
 const ADMIN_CREDENTIALS = {
   email: 'admin@admin.com',
   password: 'admin123',
+  name: 'Admin User',
 };
 
 const CLIENT_CREDENTIALS = {
   email: 'client@client.com',
   password: 'client123',
+  name: 'Client User',
 };
 
 // Global test state
@@ -52,6 +74,10 @@ let clientToken: string;
 let adminAccountId: string;
 let clientAccountId: string;
 let db: Database.Database;
+let server: Server;
+let sseBroadcaster: SSEBroadcaster;
+let workerPool: WorkerPool;
+let writeQueue: DatabaseWriteQueue;
 
 /**
  * Setup: Authenticate and get tokens
@@ -59,41 +85,82 @@ let db: Database.Database;
 before(async () => {
   console.log('\n🔧 Setting up UI Integration Tests...\n');
 
-  // Open database connection
+  // Initialize DB
+  const dbClient = await DatabaseFactory.getClient({
+    mode: 'local',
+    local: { databasePath: DB_PATH },
+  });
+
+  // Set global for routes
+  (global as any).dbClient = dbClient;
+
+  // Initialize Schema
+  if ((dbClient as any).initializeSchema) {
+    await (dbClient as any).initializeSchema();
+  }
+
+  // Initialize Services
+  const authService = new AuthService(dbClient as any);
+  sseBroadcaster = new SSEBroadcaster(500, 15000);
+  sseBroadcaster.start();
+
+  // Initialize Job System
+  const jobRepository = new SQLiteJobRepository((dbClient as any).db);
+  const concurrencyGuard = new ConcurrencyGuard(jobRepository);
+  const startJob = new StartJob(jobRepository);
+
+  writeQueue = new DatabaseWriteQueue(dbClient as any);
+
+  workerPool = new WorkerPool(jobRepository, concurrencyGuard, startJob, {
+    maxConcurrentJobs: 2,
+    pollIntervalMs: 5000,
+  });
+
+  // Register Workers
+  const importWorker = new ImportWorker(dbClient as any, writeQueue);
+  workerPool.registerWorker('import', importWorker);
+
+  workerPool.start();
+
+  // Create App and Wire Routes
+  const { app, context } = createApp();
+  (context as any).initializeRoutes(authService, sseBroadcaster, workerPool, writeQueue);
+
+  // Start server
+  await new Promise<void>((resolve) => {
+    server = app.listen(0, () => {
+      const address = server.address();
+      if (address && typeof address === 'object') {
+        PORT = address.port;
+        API_BASE_URL = `http://localhost:${PORT}`;
+        process.env.TEST_API_URL = API_BASE_URL; // Verify helpers see this
+        console.log(`[UI Test] Server started on port ${PORT}`);
+      }
+      resolve();
+    });
+  });
+
+  // Open database connection for test verification helpers
   db = new Database(DB_PATH);
 
-  // Login as admin
-  const adminLoginRes = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(ADMIN_CREDENTIALS),
-  });
-
-  if (!adminLoginRes.ok) {
-    throw new Error(`Admin login failed: ${adminLoginRes.status}`);
-  }
-
-  const adminLoginData = await adminLoginRes.json();
-  adminToken = adminLoginData.token;
-  adminAccountId = adminLoginData.user.accountId;
-
+  // Login/Register as admin
+  const adminAuth = await register(
+    ADMIN_CREDENTIALS.email,
+    ADMIN_CREDENTIALS.password,
+    ADMIN_CREDENTIALS.name
+  );
+  adminToken = adminAuth.token;
+  adminAccountId = adminAuth.accountId;
   console.log(`✅ Admin authenticated (account: ${adminAccountId})`);
 
-  // Login as client
-  const clientLoginRes = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(CLIENT_CREDENTIALS),
-  });
-
-  if (!clientLoginRes.ok) {
-    throw new Error(`Client login failed: ${clientLoginRes.status}`);
-  }
-
-  const clientLoginData = await clientLoginRes.json();
-  clientToken = clientLoginData.token;
-  clientAccountId = clientLoginData.user.accountId;
-
+  // Login/Register as client
+  const clientAuth = await register(
+    CLIENT_CREDENTIALS.email,
+    CLIENT_CREDENTIALS.password,
+    CLIENT_CREDENTIALS.name
+  );
+  clientToken = clientAuth.token;
+  clientAccountId = clientAuth.accountId;
   console.log(`✅ Client authenticated (account: ${clientAccountId})\n`);
 });
 
@@ -103,6 +170,15 @@ before(async () => {
 after(() => {
   if (db) {
     db.close();
+  }
+  if (server) {
+    server.close();
+  }
+  if (workerPool) {
+    workerPool.stop();
+  }
+  if (sseBroadcaster) {
+    sseBroadcaster.stop();
   }
   console.log('\n✅ UI Integration Tests Complete\n');
 });

@@ -24,8 +24,8 @@ import {
   DeduplicationEngine,
   ClusteringEngine,
   ClusterEvidenceComputer,
-} from '@canvas-memory/parsers';
-import { DEFAULT_POLICY } from '@canvas-memory/types';
+} from '@keimenon/parsers';
+import { DEFAULT_POLICY } from '@keimenon/types';
 import Database from 'better-sqlite3';
 import os from 'os';
 

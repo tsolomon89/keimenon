@@ -2,11 +2,7 @@
 
 import { useState } from 'react';
 import { RotateCcw, Info, Lock, AlertCircle } from 'lucide-react';
-import {
-  SettingControl,
-  EffectiveSettingValue,
-  ConfigScope,
-} from '@canvas-memory/types/src/settings';
+import { SettingControl, EffectiveSettingValue, ConfigScope } from '@keimenon/types/src/settings';
 
 interface SettingsCardProps {
   control: SettingControl;
@@ -64,16 +60,10 @@ export function SettingsCard({
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="text-sm font-semibold text-slate-200">{control.label}</h3>
-            {control.required && (
-              <span className="text-xs text-red-400">*</span>
-            )}
-            {!isEditable && (
-              <Lock className="w-3 h-3 text-slate-500" />
-            )}
+            {control.required && <span className="text-xs text-red-400">*</span>}
+            {!isEditable && <Lock className="w-3 h-3 text-slate-500" />}
           </div>
-          {control.description && (
-            <p className="text-xs text-slate-400">{control.description}</p>
-          )}
+          {control.description && <p className="text-xs text-slate-400">{control.description}</p>}
         </div>
 
         <div className="flex items-center gap-2">
@@ -119,11 +109,7 @@ export function SettingsCard({
       {/* Control Input */}
       <div className="mb-3">
         {control.type === 'boolean' && (
-          <BooleanControl
-            value={localValue}
-            onChange={handleChange}
-            disabled={!isEditable}
-          />
+          <BooleanControl value={localValue} onChange={handleChange} disabled={!isEditable} />
         )}
 
         {control.type === 'string' && (
@@ -167,11 +153,7 @@ export function SettingsCard({
         )}
 
         {control.type === 'color' && (
-          <ColorControl
-            value={localValue}
-            onChange={handleChange}
-            disabled={!isEditable}
-          />
+          <ColorControl value={localValue} onChange={handleChange} disabled={!isEditable} />
         )}
 
         {control.type === 'slider' && (
@@ -187,11 +169,7 @@ export function SettingsCard({
         )}
 
         {control.type === 'json' && (
-          <JsonControl
-            value={localValue}
-            onChange={handleChange}
-            disabled={!isEditable}
-          />
+          <JsonControl value={localValue} onChange={handleChange} disabled={!isEditable} />
         )}
       </div>
 
@@ -213,9 +191,7 @@ export function SettingsCard({
             <span className="px-2 py-0.5 bg-slate-700 rounded text-slate-400">Default</span>
           )}
         </div>
-        {control.requiresRestart && (
-          <span className="text-yellow-400">Requires restart</span>
-        )}
+        {control.requiresRestart && <span className="text-yellow-400">Requires restart</span>}
       </div>
     </div>
   );

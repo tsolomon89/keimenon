@@ -77,6 +77,18 @@ export class StartJob {
         };
       }
 
+      // ✅ CRITICAL FIX: Persist 'started' event
+      // atomicTransition only updates the job table, not the event log.
+      // We must explicitly save the event to maintain the event stream and sequence numbers.
+      const startedEvent = job.events[job.events.length - 1];
+      if (startedEvent.type === 'job.started') {
+        await this.jobRepository.appendEvent(startedEvent);
+      } else {
+        console.warn(
+          `[StartJob] Expected last event to be job.started, found ${startedEvent.type}`
+        );
+      }
+
       return {
         success: true,
         job,

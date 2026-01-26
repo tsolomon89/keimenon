@@ -11,7 +11,7 @@
  *   npm run migrate:to-local -- --batch-size=50
  */
 
-import { getNeo4jClient } from '@canvas-memory/db';
+import { getNeo4jClient } from '@keimenon/db';
 import { getLocalDocumentStore } from '../apps/api/src/services/local-document-store';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -71,17 +71,23 @@ class MigrationService {
     // 1. Migrate Messages
     console.log('💬 Migrating Messages...');
     await this.migrateMessages(stats);
-    console.log(`   ✅ ${stats.messages.migrated} migrated, ${stats.messages.skipped} skipped, ${stats.messages.errors} errors\n`);
+    console.log(
+      `   ✅ ${stats.messages.migrated} migrated, ${stats.messages.skipped} skipped, ${stats.messages.errors} errors\n`
+    );
 
     // 2. Migrate Sources
     console.log('📄 Migrating Sources...');
     await this.migrateSources(stats);
-    console.log(`   ✅ ${stats.sources.migrated} migrated, ${stats.sources.skipped} skipped, ${stats.sources.errors} errors\n`);
+    console.log(
+      `   ✅ ${stats.sources.migrated} migrated, ${stats.sources.skipped} skipped, ${stats.sources.errors} errors\n`
+    );
 
     // 3. Migrate Code Blocks
     console.log('💻 Migrating Code Blocks...');
     await this.migrateCodeBlocks(stats);
-    console.log(`   ✅ ${stats.codeBlocks.migrated} migrated, ${stats.codeBlocks.skipped} skipped, ${stats.codeBlocks.errors} errors\n`);
+    console.log(
+      `   ✅ ${stats.codeBlocks.migrated} migrated, ${stats.codeBlocks.skipped} skipped, ${stats.codeBlocks.errors} errors\n`
+    );
 
     return stats;
   }
@@ -206,10 +212,7 @@ class MigrationService {
 
             if (!this.dryRun) {
               // Save to local storage
-              const docMetadata = await this.localStore.saveSource(
-                source.id,
-                content
-              );
+              const docMetadata = await this.localStore.saveSource(source.id, content);
 
               stats.totalBytes += docMetadata.size;
 
@@ -292,11 +295,7 @@ class MigrationService {
 
             if (!this.dryRun) {
               // Save to local storage
-              const docMetadata = await this.localStore.saveCodeBlock(
-                codeBlock.id,
-                code,
-                language
-              );
+              const docMetadata = await this.localStore.saveCodeBlock(codeBlock.id, code, language);
 
               stats.totalBytes += docMetadata.size;
 
@@ -399,7 +398,6 @@ class MigrationService {
       } else {
         console.log('✅ All code blocks migrated');
       }
-
     } finally {
       await session.close();
     }
@@ -419,7 +417,7 @@ class MigrationService {
 async function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
-  const batchSizeArg = args.find(arg => arg.startsWith('--batch-size='));
+  const batchSizeArg = args.find((arg) => arg.startsWith('--batch-size='));
   const batchSize = batchSizeArg ? parseInt(batchSizeArg.split('=')[1]) : 100;
 
   console.log('╔════════════════════════════════════════════════════╗');
@@ -440,7 +438,9 @@ async function main() {
     console.log(`Sources:      ${stats.sources.migrated}/${stats.sources.total} migrated`);
     console.log(`Code Blocks:  ${stats.codeBlocks.migrated}/${stats.codeBlocks.total} migrated`);
     console.log(`\nTotal Bytes:  ${(stats.totalBytes / 1024 / 1024).toFixed(2)} MB`);
-    console.log(`Errors:       ${stats.messages.errors + stats.sources.errors + stats.codeBlocks.errors}`);
+    console.log(
+      `Errors:       ${stats.messages.errors + stats.sources.errors + stats.codeBlocks.errors}`
+    );
 
     if (!dryRun) {
       const verified = await migrationService.verify();
@@ -455,7 +455,6 @@ async function main() {
     } else {
       console.log('\n✅ Dry run completed. Run without --dry-run to perform migration.');
     }
-
   } catch (error: any) {
     console.error('\n❌ Migration failed:', error.message);
     console.error(error.stack);

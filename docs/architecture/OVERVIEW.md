@@ -214,7 +214,7 @@ Canvas Memory OS is a **graph-native, local-first knowledge management system** 
 - **Inspector**: Right-hand sidebar for node/edge details
 - **Auth**: Login/register forms with JWT token management
 
-**Status**: Partially implemented. Canvas works, but auth integration pending.
+**Status**: Partially implemented. Canvas works, User Management (Settings) implemented.
 
 ### Backend Layer (apps/api)
 
@@ -231,6 +231,7 @@ Canvas Memory OS is a **graph-native, local-first knowledge management system** 
 - `import-stream.ts` - Streaming upload for large files (2GB)
 - `ingest.ts` - File upload and fingerprinting
 - `duplicates.ts` - Duplicate detection and merging
+- `agents.ts` - AI Agent execution endpoints (Gatherer, Autogrouper, Verifier)
 
 **Service Modules**:
 
@@ -240,6 +241,20 @@ Canvas Memory OS is a **graph-native, local-first knowledge management system** 
 - `code-extractor.ts` - Code block extraction with 20+ languages
 - `similarity-engine.ts` - 3 duplicate detection algorithms
 - `autogroup.ts` - Rule-based clustering by type/domain
+
+**Middleware**:
+
+- `auth.middleware.ts` - JWT verification, user attachment
+- `cors.middleware.ts` - Cross-origin resource sharing
+- `error.middleware.ts` - Structured error responses
+
+### Agents Layer (packages/agents)
+
+**Technology**: TypeScript, Shared Types
+
+- `gatherer.ts` - Collects and aggregates information
+- `autogrouper.ts` - groups nodes based on semantic rules
+- `verifier.ts` - Validates claims and structures
 
 **Middleware**:
 
@@ -729,10 +744,8 @@ NEO4J_PASSWORD=your-password
 
 - [ ] UnifiedDoc generation (L0-L3 rings)
 - [ ] Claim extraction with LLM
-- [ ] Verifiers (HTTP_CHECK, SCHEMA_MATCH, COMPUTE)
 - [ ] Galaxy lens (3D trust-warped visualization)
 - [ ] Embedding-based similarity (vector search)
-- [ ] Agent framework (scheduled runs)
 
 ### Phase 3 (Business Features)
 

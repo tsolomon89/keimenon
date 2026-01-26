@@ -59,9 +59,26 @@
       "Bash(cmd /c \"ping 127.0.0.1 -n 31 > nul && echo ✅ API should be initialized\")",
       "Bash(cmd /c \"ping 127.0.0.1 -n 31 > nul && echo ✅ Waiting for API compilation\")",
       "Bash(cmd /c \"ping 127.0.0.1 -n 16 > nul && echo ✅ Checking server status\")",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(cmd /c \"cd /d C:\\\\Development\\\\Projects\\\\keimenon\\\\.mcp\\\\servers\\\\database && npm install\")",
+      "Bash(timeout 3 node:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "canvas-database",
+    "canvas-docs",
+    "canvas-api-testing",
+    "canvas-chat-import",
+    "canvas-settings-crm",
+    "playwright-e2e",
+    "visual-feedback",
+    "playwright-test"
+  ]
 }

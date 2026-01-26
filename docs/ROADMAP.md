@@ -1,8 +1,23 @@
 # Project Roadmap
 
-**Last Updated**: November 15, 2025
+**Last Updated**: December 10, 2025
 
 This document provides a comprehensive overview of the project's status, including tasks currently in progress and those planned for the future.
+
+---
+
+---
+
+# ✅ Recently Completed (November 16, 2025)
+
+## Critical Bug Fixes: Data Deletion System
+
+**Status**: 🚀 Deployed & Verified
+
+- **Fixed**: DeleteWorker no longer deletes system-critical nodes (UserNode, AccountNode, Board, Constellation) when scope is 'canvas'.
+- **Fixed**: "Clear Canvas Data" button no longer gets stuck in disabled state (added robust timeouts).
+- **Fixed**: Delete API endpoint scope mismatch.
+- **Documentation**: See `legacy_archive_2025/active_development/BUG_FIX_DATA_DELETION_2025-11-16.md` (Archived with context)
 
 ---
 
@@ -16,6 +31,24 @@ This document provides a comprehensive overview of the project's status, includi
 - ✅ Dynamic & Scalable Error Handling (Universal)
 - ✅ Progress Visualization in Main Graph (Game Dev Techniques)
 - ✅ User Management UI (Invitation/Edit/Delete)
+
+---
+
+## 🤖 AI Agents Framework (New Workstream)
+
+### Status: Backend Complete | Frontend Pending
+
+**What's Done:**
+
+- ✅ **Agents Package**: `packages/agents` created with Gatherer, Autogrouper, and Verifier.
+- ✅ **API Integration**: `/api/v1/agents/*` routes implemented and secured.
+- ✅ **Input Validation**: Zod schemas shared via `packages/types`.
+
+**What's Missing:**
+
+- ⏳ **Frontend UI**: No user interface for running agents yet.
+- ⏳ **Canvas Integration**: Agents cannot be triggered from the graph.
+- ⏳ **Visual Feedback**: No progress visualization for agent runs.
 
 ---
 
@@ -63,7 +96,7 @@ This document tracks all tasks, features, and initiatives that have been **start
 
 **Related Docs:**
 
-- `docs/historical_development/PRODUCTION_READY_PROGRESS.md` - Original tracking document
+- `docs/legacy_archive_2025/historical_development/PRODUCTION_READY_PROGRESS.md` - Original tracking document
 - `docs/architecture/ERROR_HANDLING.md` - Error handling architecture
 
 **Optional Enhancements (NOT_STARTED.md Task 16):**
@@ -106,8 +139,8 @@ This document tracks all tasks, features, and initiatives that have been **start
 
 **Related Docs:**
 
-- `docs/historical_development/FRONTEND_RESPONSIVENESS_ANALYSIS.md` - Complete analysis
-- `docs/historical_development/OCTOBER_2025_PRIORITIES_COMPLETE.md` - Implementation summary
+- `docs/legacy_archive_2025/historical_development/FRONTEND_RESPONSIVENESS_ANALYSIS.md` - Complete analysis
+- `docs/legacy_archive_2025/historical_development/OCTOBER_2025_PRIORITIES_COMPLETE.md` - Implementation summary
 
 ---
 
@@ -143,8 +176,8 @@ This document tracks all tasks, features, and initiatives that have been **start
 
 **Related Docs:**
 
-- `docs/historical_development/PRODUCTION_READY_JOBS_SYSTEM.md` - Backend implementation
-- `docs/historical_development/JOBS_SYSTEM_TESTING_GUIDE.md` - Testing guide
+- `docs/legacy_archive_2025/historical_development/PRODUCTION_READY_JOBS_SYSTEM.md` - Backend implementation
+- `docs/legacy_archive_2025/historical_development/JOBS_SYSTEM_TESTING_GUIDE.md` - Testing guide
 
 **Verification Needed:**
 
@@ -226,7 +259,7 @@ This document tracks all tasks, features, and initiatives that have been **start
 
 - `apps/web/src/components/canvas/ProgressVisualization.tsx` - Particle system implementation
 - `apps/web/src/lib/error-handler.ts:47-348` - Universal error handling
-- `docs/historical_development/DATABASE_WRITE_QUEUE_IMPLEMENTATION.md` - Write queue system
+- `docs/legacy_archive_2025/historical_development/DATABASE_WRITE_QUEUE_IMPLEMENTATION.md` - Write queue system
 - `docs/features/CHAT_IMPORT.md` - Import feature docs
 
 ---
@@ -340,8 +373,8 @@ This document tracks all tasks, features, and initiatives that have been **start
 **Related Docs:**
 
 - `docs/architecture/AUTHENTICATION.md` - Auth architecture
-- `docs/archive_development/AUTH_IMPLEMENTATION_COMPLETE.md` - Backend implementation
-- `docs/historical_development/PHASE_2_COMPLETE.md` - Phase 2 security work
+- `docs/legacy_archive_2025/archive_development/AUTH_IMPLEMENTATION_COMPLETE.md` - Backend implementation
+- `docs/legacy_archive_2025/historical_development/PHASE_2_COMPLETE.md` - Phase 2 security work
 
 **Verification Needed:**
 
@@ -377,7 +410,7 @@ This document tracks all tasks, features, and initiatives that have been **start
 
 **Related Docs:**
 
-- `docs/historical_development/CURRENT_STATUS.md` - Super admin status
+- `docs/legacy_archive_2025/historical_development/CURRENT_STATUS.md` - Super admin status
 - Root: `SUPER_ADMIN_SETUP_COMPLETE.md` - Setup documentation
 
 **Action Required:**
@@ -431,9 +464,9 @@ See "User Management UI" section above in Frontend Features for complete details
 
 **Related Docs:**
 
-- `docs/archive_development/M2N_IMPLEMENTATION_COMPLETE.md` - Full implementation
-- `docs/archive_development/M2N_FINAL_SUMMARY.md` - Summary
-- `docs/archive_development/MCP_IMPLEMENTATION_COMPLETE.md` - MCP integration
+- `docs/legacy_archive_2025/archive_development/M2N_IMPLEMENTATION_COMPLETE.md` - Full implementation
+- `docs/legacy_archive_2025/archive_development/M2N_FINAL_SUMMARY.md` - Summary
+- `docs/legacy_archive_2025/archive_development/MCP_IMPLEMENTATION_COMPLETE.md` - MCP integration
 
 **Next Steps:**
 
@@ -462,7 +495,7 @@ See "User Management UI" section above in Frontend Features for complete details
 
 **Related Docs:**
 
-- `docs/archive_development/SQLITE_PERFORMANCE_FIX.md` - Performance fixes
+- `docs/legacy_archive_2025/archive_development/SQLITE_PERFORMANCE_FIX.md` - Performance fixes
 - `docs/architecture/DATABASE.md` - Database architecture
 
 **Next Steps:**
@@ -497,13 +530,13 @@ See "User Management UI" section above in Frontend Features for complete details
 1. ❌ `data-management.test.ts` - Structure exists, no assertions (0.6ms runtime = empty)
 2. ❌ `e2e-delete-workflow.test.ts` - 12 tests defined, 0 implemented (<2ms runtime = empty)
 3. ❌ `e2e-import-delete.test.ts` - Framework only, no data flow verification
-4. ❌ `e2e-import-workflow.test.ts` - 16 tests defined, 0 implemented (<1ms runtime = empty)
+4. ✅ `e2e-import-workflow.test.ts` - Fully Implemented (16 tests) - _Verification blocked by environment_
 5. ❌ `import-enhanced.test.ts` - Setup/teardown works, test bodies empty
 6. ❌ `jobs-batched-delete.test.ts` - Creates 25K test nodes ✅, tests lack assertions
-7. ❌ `jobs-system.test.ts` - 11 tests, setup works, test bodies empty
+7. ✅ `jobs-system.test.ts` - Fully Implemented (11 tests) - Status: **PASSING**. (Fixed progress update and event persistence issues)
 8. ❌ `sse-multi-account.test.ts` - Infrastructure exists, account isolation tests fail
-9. ❌ `sse-reconnection.test.ts` - BROKEN: EventSource import issue
-10. ❌ `ui-integration-test.test.ts` - BROKEN: Generic failure
+9. ✅ `sse-reconnection.test.ts` - Implemented (Code valid) - _Verification blocked by environment_
+10. ✅ `ui-integration-test.test.ts` - Implemented (Code valid) - _Verification blocked by environment_
 
 **What's Not Done (Critical Gaps):**
 
@@ -529,9 +562,9 @@ See "User Management UI" section above in Frontend Features for complete details
 
 **Related Docs:**
 
-- `docs/archive_development/COMPREHENSIVE_TEST_SUITE_COMPLETE.md` - Test suite setup
-- `docs/archive_development/ALL_TESTS_READY.md` - Test readiness
-- `docs/historical_development/OCTOBER_2025_PRIORITIES_COMPLETE.md` - Conversion summary
+- `docs/legacy_archive_2025/archive_development/COMPREHENSIVE_TEST_SUITE_COMPLETE.md` - Test suite setup
+- `docs/legacy_archive_2025/archive_development/ALL_TESTS_READY.md` - Test readiness
+- `docs/legacy_archive_2025/historical_development/OCTOBER_2025_PRIORITIES_COMPLETE.md` - Conversion summary
 
 **Next Steps:**
 
@@ -547,45 +580,45 @@ See "User Management UI" section above in Frontend Features for complete details
 
 ### Status: Partial Coverage
 
-#### API Documentation **[NOT STARTED]**
+#### API Documentation **[IN PROGRESS]**
 
 **What's Done:**
 
 - ✅ README.md updated with basic info
 - ✅ Some architecture docs exist
+- ✅ `docs/specifications/API_REFERENCE.md` created (High-level Map)
 
 **What's Not Done:**
 
 - ⏳ OpenAPI/Swagger docs NOT generated
-- ⏳ API endpoint documentation incomplete
 - ⏳ Request/response examples missing
 - ⏳ Authentication flow NOT documented for developers
 
 **Next Steps:**
 
-1. Generate OpenAPI specification
-2. Add Swagger UI
-3. Document all endpoints with examples
-4. Create API quick start guide
+1. Create `docs/specifications/API_REFERENCE.md`
+2. Generate OpenAPI specification
+3. Add Swagger UI
+4. Document all endpoints with examples
 
 ---
 
-#### Deployment Documentation **[NOT STARTED]**
+#### Deployment Documentation **[PARTIAL]**
 
 **What's Done:**
 
 - ✅ .env.example created
+- ✅ `docs/deployment/PRODUCTION.md` restored (was archived)
 
 **What's Not Done:**
 
-- ⏳ Deployment guide NOT written
 - ⏳ Production setup checklist NOT created
 - ⏳ Scaling guide NOT documented
 - ⏳ Backup/restore procedures NOT documented
 
 **Next Steps:**
 
-1. Write deployment guide
+1. Refine `PRODUCTION.md` for current version
 2. Create production checklist
 3. Document backup procedures
 4. Add scaling recommendations
@@ -638,7 +671,7 @@ See "User Management UI" section above in Frontend Features for complete details
 
 - `docs/guides/ERROR_TRACKING_SENTRY.md` - Complete Sentry integration guide
 - `docs/architecture/ERROR_HANDLING.md` - Error handling architecture
-- `docs/historical_development/OCTOBER_2025_PRIORITIES_COMPLETE.md` - UI integration summary
+- `docs/legacy_archive_2025/historical_development/OCTOBER_2025_PRIORITIES_COMPLETE.md` - UI integration summary
 
 **Implementation Details:**
 
@@ -678,8 +711,8 @@ See "User Management UI" section above in Frontend Features for complete details
 
 **Related Docs:**
 
-- `docs/historical_development/JOBS_DATABASE_CLEANUP.md` - Jobs cleanup
-- `docs/historical_development/PRODUCTION_READY_JOBS_SYSTEM.md` - Jobs system
+- `docs/legacy_archive_2025/historical_development/JOBS_DATABASE_CLEANUP.md` - Jobs cleanup
+- `docs/legacy_archive_2025/historical_development/PRODUCTION_READY_JOBS_SYSTEM.md` - Jobs system
 
 **Next Steps:**
 
@@ -770,7 +803,7 @@ These must be completed before production:
 
 This document tracks all planned tasks, features, and initiatives that have **not yet been started**. These are organized by phase according to the production readiness roadmap.
 
-**Reference**: See `docs/historical_development/PRODUCTION_READY_PROGRESS.md` for the complete roadmap.
+**Reference**: See `docs/legacy_archive_2025/historical_development/PRODUCTION_READY_PROGRESS.md` for the complete roadmap.
 
 ---
 
@@ -842,7 +875,7 @@ This document tracks all planned tasks, features, and initiatives that have **no
 
 **Status**: ✅ Fully complete including Settings UI toggle
 
-**See**: `docs/historical_development/OCTOBER_2025_PRIORITIES_COMPLETE.md` for implementation details
+**See**: `docs/legacy_archive_2025/historical_development/OCTOBER_2025_PRIORITIES_COMPLETE.md` for implementation details
 
 ---
 
@@ -960,7 +993,7 @@ This document tracks all planned tasks, features, and initiatives that have **no
 
 **Status**: ✅ Fully complete - All 11/11 integration tests converted (100%)
 
-**See**: `docs/historical_development/OCTOBER_2025_PRIORITIES_COMPLETE.md` for conversion details
+**See**: `docs/legacy_archive_2025/historical_development/OCTOBER_2025_PRIORITIES_COMPLETE.md` for conversion details
 
 ---
 
@@ -1125,6 +1158,7 @@ This document tracks all planned tasks, features, and initiatives that have **no
 
 **Estimated Effort**: 2-3 days
 **Priority**: MEDIUM
+
 - Dependencies: None
 
 ---
@@ -1538,6 +1572,7 @@ This document tracks all planned tasks, features, and initiatives that have **no
 **Goal**: Final go-live checklist
 
 **Requirements**:.
+
 - Review all tasks completed
 - Verify backups working
 - Verify monitoring working

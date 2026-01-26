@@ -12,12 +12,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import {
-  ClusteringPolicy,
-  DEFAULT_POLICY,
-  validatePolicy,
-  signPolicy,
-} from './policy';
+import { ClusteringPolicy, DEFAULT_POLICY, validatePolicy, signPolicy } from './policy';
 
 /**
  * Load policy from YAML file
@@ -114,7 +109,7 @@ export function getPolicyDiff(
 
   const allKeys = new Set([...Object.keys(flattenedOld), ...Object.keys(flattenedNew)]);
 
-  for (const key of allKeys) {
+  for (const key of Array.from(allKeys)) {
     if (JSON.stringify(flattenedOld[key]) !== JSON.stringify(flattenedNew[key])) {
       diff[key] = {
         old: flattenedOld[key],

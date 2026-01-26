@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { GraphNode, GraphEdge } from '@canvas-memory/graph';
+import { GraphNode, GraphEdge } from '@keimenon/graph';
 import { Canvas2D } from './Canvas2D';
 import { Loader2, Grid3x3 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/env.config';

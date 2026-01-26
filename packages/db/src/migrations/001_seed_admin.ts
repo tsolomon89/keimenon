@@ -48,7 +48,7 @@ export async function seedAdminAccount(client: SQLiteClient): Promise<void> {
         adminAccountId,
         'admin',
         'business', // Admin gets business tier features
-        'admin@canvas-memory.com',
+        'admin@keimenon.com',
         'System Admin',
         now,
         now

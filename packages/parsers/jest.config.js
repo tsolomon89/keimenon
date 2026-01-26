@@ -20,6 +20,6 @@ module.exports = {
     },
   },
   moduleNameMapper: {
-    '^@canvas-memory/types$': '<rootDir>/../types/src',
+    '^@keimenon/types$': '<rootDir>/../types/src',
   },
 };

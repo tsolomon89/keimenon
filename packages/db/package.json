@@ -1,5 +1,5 @@
 {
-  "name": "@canvas-memory/db",
+  "name": "@keimenon/db",
   "version": "0.1.0",
   "private": true,
   "main": "./dist/index.js",
@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@canvas-memory/types": "*",
+    "@keimenon/types": "*",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^12.4.1",
     "neo4j-driver": "^5.19.0"

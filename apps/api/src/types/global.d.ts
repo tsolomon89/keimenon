@@ -1,4 +1,4 @@
-import { DatabaseClient } from '@canvas-memory/db';
+import { DatabaseClient } from '@keimenon/db';
 
 declare global {
   var dbClient: DatabaseClient | undefined;

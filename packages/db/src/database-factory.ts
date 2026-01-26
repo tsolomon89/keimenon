@@ -1,6 +1,6 @@
 import { Neo4jClient } from './neo4j';
 import { SQLiteClient } from './sqlite/client';
-import { AnyNode, AnyEdge } from '@canvas-memory/types';
+import { AnyNode, AnyEdge } from '@keimenon/types';
 
 /**
  * Storage modes

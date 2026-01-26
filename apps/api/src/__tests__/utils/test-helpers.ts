@@ -15,9 +15,49 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Database from 'better-sqlite3';
-import EventSource = require('eventsource');
+import { EventSource } from 'eventsource';
 
-const API_URL = process.env.TEST_API_URL || 'http://localhost:4001';
+// Dynamic API URL getter
+const getApiUrl = () => process.env.TEST_API_URL || 'http://localhost:4001';
+
+/**
+ * Register a new user or login if exists
+ */
+export async function register(
+  email: string,
+  password: string,
+  name: string
+): Promise<{ token: string; accountId: string; userId: string }> {
+  try {
+    const response = await fetch(`${getApiUrl()}/api/v1/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      if (text.includes('already exists')) {
+        return login(email, password);
+      }
+      // If registration disabled (e.g. production), try login
+      if (response.status === 403 || response.status === 404) {
+        return login(email, password);
+      }
+      throw new Error(`Registration failed: ${response.status} ${text}`);
+    }
+
+    const data = (await response.json()) as any;
+    return {
+      token: data.token,
+      accountId: data.user.account_id || data.account.id,
+      userId: data.user.id,
+    };
+  } catch (e) {
+    console.log('[test-helpers] Register failed, falling back to login:', e);
+    return login(email, password);
+  }
+}
 
 // Type definitions for API responses
 interface LoginResponse {
@@ -110,7 +150,7 @@ export async function login(
     }
   }
 
-  const response = await fetch(`${API_URL}/api/v1/auth/login`, {
+  const response = await fetch(`${getApiUrl()}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -129,7 +169,7 @@ export async function login(
       throw new Error('Login requires account selection but no account information was returned');
     }
 
-    const selectResponse = await fetch(`${API_URL}/api/v1/auth/select-account`, {
+    const selectResponse = await fetch(`${getApiUrl()}/api/v1/auth/select-account`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -213,7 +253,7 @@ export async function waitForJobCompletion(
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeoutMs) {
-    const response = await fetch(`${API_URL}/api/v1/jobs/${jobId}`, {
+    const response = await fetch(`${getApiUrl()}/api/v1/jobs/${jobId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -247,7 +287,7 @@ export async function createImportJob(
 ): Promise<{ jobId: string; uploadId: string }> {
   const form = createFormData(filePath, config);
 
-  const response = await fetch(`${API_URL}/api/v1/jobs/import`, {
+  const response = await fetch(`${getApiUrl()}/api/v1/jobs/import`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -277,7 +317,7 @@ export async function createDeleteJob(
   scope: 'canvas' | 'all-clients',
   token: string
 ): Promise<{ jobId: string }> {
-  const response = await fetch(`${API_URL}/api/v1/jobs/delete`, {
+  const response = await fetch(`${getApiUrl()}/api/v1/jobs/delete`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -313,7 +353,7 @@ export function countNodes(db: Database.Database, accountId: string): number {
 export function countEdges(db: Database.Database, accountId: string): number {
   const result = db
     .prepare(
-      'SELECT COUNT(*) as count FROM edges WHERE from_node IN (SELECT id FROM nodes WHERE account_id = ?)'
+      'SELECT COUNT(*) as count FROM edges WHERE from_id IN (SELECT id FROM nodes WHERE account_id = ?)'
     )
     .get(accountId) as CountResult;
   return result.count;
@@ -386,7 +426,13 @@ export class SSECollector {
    */
   async connect(): Promise<void> {
     const fullUrl = `${this.url}?token=${this.token}`;
-    this.eventSource = new EventSource(fullUrl);
+    console.log('[SSECollector] EventSource Constructor:', EventSource);
+    try {
+      this.eventSource = new EventSource(fullUrl);
+    } catch (e) {
+      console.error('[SSECollector] EventSource constructor threw:', e);
+      throw e;
+    }
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -514,25 +560,28 @@ export function sleep(ms: number): Promise<void> {
  * Cleanup test data for an account
  */
 export function cleanupTestData(db: Database.Database, accountId: string): void {
-  // Delete in correct order (respecting foreign keys)
-  db.prepare(
-    'DELETE FROM edges WHERE from_node IN (SELECT id FROM nodes WHERE account_id = ?)'
-  ).run(accountId);
-  db.prepare('DELETE FROM nodes WHERE account_id = ?').run(accountId);
-  db.prepare(
-    'DELETE FROM job_events WHERE job_id IN (SELECT id FROM jobs WHERE account_id = ?)'
-  ).run(accountId);
-  db.prepare(
-    'DELETE FROM job_items WHERE job_id IN (SELECT id FROM jobs WHERE account_id = ?)'
-  ).run(accountId);
-  db.prepare('DELETE FROM jobs WHERE account_id = ?').run(accountId);
+  try {
+    // Delete in correct order (respecting foreign keys)
+    db.prepare('DELETE FROM edges WHERE account_id = ?').run(accountId);
+    db.prepare('DELETE FROM nodes WHERE account_id = ?').run(accountId);
+    db.prepare(
+      'DELETE FROM job_events WHERE job_id IN (SELECT id FROM jobs WHERE account_id = ?)'
+    ).run(accountId);
+    db.prepare(
+      'DELETE FROM job_items WHERE job_id IN (SELECT id FROM jobs WHERE account_id = ?)'
+    ).run(accountId);
+    db.prepare('DELETE FROM jobs WHERE account_id = ?').run(accountId);
+  } catch (error: any) {
+    console.error(`[test-helpers] Cleanup failed for account ${accountId}:`, error);
+    throw error;
+  }
 }
 
 /**
  * Get job by ID
  */
 export async function getJob(jobId: string, token: string): Promise<any> {
-  const response = await fetch(`${API_URL}/api/v1/jobs/${jobId}`, {
+  const response = await fetch(`${getApiUrl()}/api/v1/jobs/${jobId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -555,7 +604,7 @@ export async function listJobs(
   if (filters?.status) params.append('status', filters.status);
   if (filters?.limit) params.append('limit', filters.limit.toString());
 
-  const url = `${API_URL}/api/v1/jobs?${params.toString()}`;
+  const url = `${getApiUrl()}/api/v1/jobs?${params.toString()}`;
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -572,7 +621,7 @@ export async function listJobs(
  * Cancel job
  */
 export async function cancelJob(jobId: string, token: string): Promise<void> {
-  const response = await fetch(`${API_URL}/api/v1/jobs/${jobId}/cancel`, {
+  const response = await fetch(`${getApiUrl()}/api/v1/jobs/${jobId}/cancel`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   });

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { Request } from 'express';
-import { SQLiteClient } from '@canvas-memory/db';
+import { SQLiteClient } from '@keimenon/db';
 
 export interface AuditLogEntry {
   id: string;
@@ -70,9 +70,8 @@ export class AuditService {
 
     // Determine mode and target account
     const mode = req.operating?.mode || 'native';
-    const targetAccountId = req.operating?.accountId !== req.user.accountId
-      ? req.operating?.accountId
-      : undefined;
+    const targetAccountId =
+      req.operating?.accountId !== req.user.accountId ? req.operating?.accountId : undefined;
 
     const entry: AuditLogEntry = {
       id,

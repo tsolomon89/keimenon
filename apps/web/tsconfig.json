@@ -17,8 +17,8 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@canvas-memory/types": ["../../packages/types/src"],
-      "@canvas-memory/ui": ["../../packages/ui/src"]
+      "@keimenon/types": ["../../packages/types/src"],
+      "@keimenon/ui": ["../../packages/ui/src"]
     }
   },
   "include": [

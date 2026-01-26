@@ -1,7 +1,7 @@
 'use client';
 
 import { File, X, Loader2, CheckCircle2 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@canvas-memory/ui';
+import { Card, CardHeader, CardTitle, CardContent } from '@keimenon/ui';
 
 interface UploadProgressProps {
   files: File[];
@@ -9,11 +9,7 @@ interface UploadProgressProps {
   onRemove: (index: number) => void;
 }
 
-export function UploadProgress({
-  files,
-  uploading,
-  onRemove,
-}: UploadProgressProps) {
+export function UploadProgress({ files, uploading, onRemove }: UploadProgressProps) {
   return (
     <Card>
       <CardHeader>

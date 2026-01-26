@@ -394,7 +394,7 @@ Expected response: List of TODO comments with file paths and line numbers
 2. **Check database file exists**:
 
    ```bash
-   ls -la ~/.canvas-memory/canvas.db
+   ls -la ~/.keimenon/canvas.db
    # Should show file with size > 0
    ```
 
@@ -404,7 +404,7 @@ Expected response: List of TODO comments with file paths and line numbers
    # Windows: No action needed
 
    # Linux/Mac:
-   chmod 644 ~/.canvas-memory/canvas.db
+   chmod 644 ~/.keimenon/canvas.db
    ```
 
 ### If Documentation Search Fails
@@ -428,7 +428,7 @@ Expected response: List of TODO comments with file paths and line numbers
 Use this checklist to verify your installation:
 
 - [x] Node.js 18+ installed
-- [x] Database file exists (`~/.canvas-memory/canvas.db`)
+- [x] Database file exists (`~/.keimenon/canvas.db`)
 - [x] Database server dependencies installed
 - [x] Docs server dependencies installed
 - [x] Database server starts without errors

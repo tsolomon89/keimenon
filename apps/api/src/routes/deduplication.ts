@@ -16,7 +16,7 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { AuthService } from '../services/auth.service';
-import { SQLiteClient } from '@canvas-memory/db';
+import { SQLiteClient } from '@keimenon/db';
 
 export function createDeduplicationRoutes(db: SQLiteClient, authService: AuthService): Router {
   const router = Router();

@@ -70,6 +70,8 @@ export interface JobSpec {
   concurrencyGroup?: string;
 }
 
+console.error('!!!!!!! WORKER POOL MODULE LOADED !!!!!!!');
+
 /**
  * Job Aggregate Root
  */
@@ -371,17 +373,20 @@ export class Job {
   /**
    * Deserialize from database record
    */
-  static fromDatabase(record: {
-    id: string;
-    type: JobType;
-    account_id: string;
-    created_by: string;
-    config: string;
-    status: JobStatus;
-    state_data: string;
-    idempotency_key?: string;
-    concurrency_group?: string;
-  }): Job {
+  static fromDatabase(
+    record: {
+      id: string;
+      type: JobType;
+      account_id: string;
+      created_by: string;
+      config: string;
+      status: JobStatus;
+      state_data: string;
+      idempotency_key?: string;
+      concurrency_group?: string;
+    },
+    events?: JobEvent[]
+  ): Job {
     const config = JSON.parse(record.config);
     const stateData = JSON.parse(record.state_data);
 
@@ -406,7 +411,7 @@ export class Job {
       idempotencyKey: record.idempotency_key,
       concurrencyGroup: record.concurrency_group,
       state,
-      events: [], // Events loaded separately
+      events: events || [], // ✅ Pass events to constructor
     });
 
     // ✅ Restore progress from state_data (if present)

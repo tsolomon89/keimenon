@@ -341,5 +341,5 @@ You now have Canvas Memory OS running locally with:
 
 ---
 
-**Last Updated**: 2025-10-15
+**Last Updated**: 2025-12-10
 **Related Docs**: [Installation](INSTALLATION.md) | [Configuration](CONFIGURATION.md) | [Troubleshooting](TROUBLESHOOTING.md)

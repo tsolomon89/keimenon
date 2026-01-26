@@ -4,7 +4,7 @@
  */
 
 import { SQLiteClient } from './client';
-import { SourceNode, GroupNode, ContainsEdge } from '@canvas-memory/types';
+import { SourceNode, GroupNode, ContainsEdge } from '@keimenon/types';
 import path from 'path';
 import os from 'os';
 

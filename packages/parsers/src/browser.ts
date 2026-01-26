@@ -1,5 +1,5 @@
 /**
- * Browser-safe exports from @canvas-memory/parsers
+ * Browser-safe exports from @keimenon/parsers
  *
  * This entry point excludes Node.js-only services that depend on better-sqlite3
  * Use this in Next.js client components and browser environments
@@ -9,7 +9,13 @@
 export * from './types';
 
 // Parser exports
-export { ParserRegistry, ChatGPTParser, ClaudeParser, GeminiParser, GenericParser } from './parsers';
+export {
+  ParserRegistry,
+  ChatGPTParser,
+  ClaudeParser,
+  GeminiParser,
+  GenericParser,
+} from './parsers';
 
 // Utility exports
 export { fingerprint, normalizeText, tokenize, jaccard, normalizeTitle } from './utils/fingerprint';

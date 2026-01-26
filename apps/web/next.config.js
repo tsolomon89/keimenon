@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   reactStrictMode: true,
-  transpilePackages: ['@canvas-memory/types', '@canvas-memory/ui'],
+  transpilePackages: ['@keimenon/types', '@keimenon/ui'],
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },

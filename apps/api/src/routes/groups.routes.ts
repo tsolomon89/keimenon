@@ -11,7 +11,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { SQLiteClient } from '@canvas-memory/db';
+import { SQLiteClient } from '@keimenon/db';
 import { AuthService } from '../services/auth.service';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import { randomUUID } from 'crypto';

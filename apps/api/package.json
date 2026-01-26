@@ -1,5 +1,5 @@
 {
-  "name": "@canvas-memory/api",
+  "name": "@keimenon/api",
   "version": "0.1.0",
   "private": true,
   "main": "dist/index.js",
@@ -17,12 +17,14 @@
     "test:coverage": "c8 --reporter=lcov --reporter=text node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@canvas-memory/db": "*",
-    "@canvas-memory/parsers": "*",
-    "@canvas-memory/types": "*",
+    "@keimenon/agents": "*",
+    "@keimenon/db": "*",
+    "@keimenon/parsers": "*",
+    "@keimenon/types": "*",
     "@sentry/node": "^10.20.0",
     "@sentry/profiling-node": "^10.20.0",
     "@types/busboy": "^1.5.4",
+    "better-sqlite3": "^12.6.2",
     "busboy": "^1.6.0",
     "clarinet": "^0.12.6",
     "cors": "^2.8.5",
@@ -39,6 +41,7 @@
     "zod": "^3.23.6"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.17",
     "@types/crypto-js": "^4.2.2",
     "@types/eventsource": "^1.1.15",

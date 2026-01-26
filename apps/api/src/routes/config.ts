@@ -12,7 +12,7 @@ import {
   DEFAULT_IMPORT_CONFIGURATION,
   type AppConfig,
   type ImportConfiguration,
-} from '@canvas-memory/types';
+} from '@keimenon/types';
 
 const router = Router();
 

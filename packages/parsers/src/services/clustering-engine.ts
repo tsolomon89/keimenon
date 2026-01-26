@@ -12,7 +12,7 @@
  */
 
 import Database from 'better-sqlite3';
-import { ClusteringPolicy, getThresholds, GrayBandThresholds } from '@canvas-memory/types';
+import { ClusteringPolicy, getThresholds, GrayBandThresholds } from '@keimenon/types';
 import { GroupingStorage } from './grouping-storage';
 import {
   calculateJaccardSimilarity,

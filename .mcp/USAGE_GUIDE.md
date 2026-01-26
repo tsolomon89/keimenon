@@ -468,7 +468,7 @@ Cross-reference information:
 
 **Solutions**:
 
-1. Check `~/.canvas-memory/canvas.db` exists
+1. Check `~/.keimenon/canvas.db` exists
 2. Start API server once to initialize: `cd apps/api && npm run dev`
 3. Verify environment variable in `.vscode/settings.json`
 
@@ -480,7 +480,7 @@ Cross-reference information:
 
 ```bash
 # Fix database permissions
-chmod 644 ~/.canvas-memory/canvas.db
+chmod 644 ~/.keimenon/canvas.db
 
 # Fix server script permissions
 chmod +x .mcp/servers/*/index.js

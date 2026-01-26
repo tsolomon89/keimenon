@@ -19,7 +19,7 @@
  * See: apps/api/src/services/duplicate-detection.ts
  */
 
-import type Database from 'better-sqlite3';
+import Database from 'better-sqlite3';
 import {
   DuplicateDetectionFTS5Service,
   type MessageWithMetadata,
@@ -29,7 +29,7 @@ import {
   type DuplicateDetectionConfig,
   type DuplicateGroup,
 } from './duplicate-detection';
-import type { NormalizedConversation, NormalizedMessage } from '@canvas-memory/parsers';
+import type { NormalizedConversation, NormalizedMessage } from '@keimenon/parsers';
 import {
   getFTS5Config,
   getDuplicateDetectionStrategy,
@@ -309,9 +309,10 @@ export class IntegratedDuplicateDetectionService {
     for (const [conversationId, convMessages] of conversationMap.entries()) {
       const conversation: NormalizedConversation = {
         conversation_id: conversationId,
+        platform: 'unknown',
         title: convMessages[0]?.conversationTitle || 'Untitled Conversation',
-        create_time: convMessages[0]?.timestamp || Date.now(),
-        update_time: Math.max(...convMessages.map((m) => m.timestamp || 0)) || Date.now(),
+        created_at: convMessages[0]?.timestamp || Date.now(),
+        updated_at: Math.max(...convMessages.map((m) => m.timestamp || 0)) || Date.now(),
         messages: convMessages.map((msg, index) => ({
           index,
           role: 'user', // Default role (baseline doesn't use role for duplicate detection)
@@ -323,7 +324,7 @@ export class IntegratedDuplicateDetectionService {
             dbNodeId: msg.id, // Preserve node ID for edge creation
           },
         })),
-        mapping: {}, // Not used by duplicate detection
+        metadata: {},
       };
 
       conversations.push(conversation);
@@ -341,7 +342,7 @@ export class IntegratedDuplicateDetectionService {
     fts5Available: boolean;
     fts5Enabled: boolean;
     strategy: DuplicateDetectionStrategy;
-    fts5Stats: ReturnType<typeof this.fts5Service.getStatistics>;
+    fts5Stats: ReturnType<DuplicateDetectionFTS5Service['getStatistics']>;
     thresholds: ReturnType<typeof getDuplicateDetectionPerformanceThresholds>;
   } {
     return {

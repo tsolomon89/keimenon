@@ -13,7 +13,7 @@ import { describe, test as it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { DatabaseWriteQueue } from '../DatabaseWriteQueue';
-import { AnyNode } from '@canvas-memory/types';
+import { AnyNode } from '@keimenon/types';
 
 // Database-level type for testing (matches actual DB schema, not application types)
 type DBNode = {

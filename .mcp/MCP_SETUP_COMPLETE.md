@@ -17,7 +17,7 @@ I've successfully set up and configured **4 MCP servers** for Canvas Memory OS t
 **Evidence of Working**:
 
 ```
-[Database MCP] Connected to database at: C:\Users\Audna\.canvas-memory\canvas.db
+[Database MCP] Connected to database at: C:\Users\Audna\.keimenon\canvas.db
 [Database MCP] Server running on stdio
 ```
 

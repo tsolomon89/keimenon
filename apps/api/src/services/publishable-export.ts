@@ -15,7 +15,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import Database from 'better-sqlite3';
-import { ClusteringPolicy } from '@canvas-memory/types';
+import { ClusteringPolicy } from '@keimenon/types';
 
 /**
  * Hashed edge (no plaintext)

@@ -6,7 +6,7 @@
     "jsx": "react",
     "lib": ["dom", "dom.iterable", "esnext"],
     "paths": {
-      "@canvas-memory/types": ["../types/src"]
+      "@keimenon/types": ["../types/src"]
     }
   },
   "include": ["src/**/*"],

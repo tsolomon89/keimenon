@@ -18,8 +18,8 @@
  * Related: Product Directive - "Desktop-class app with live canvas updates"
  */
 
-import { DatabaseClient } from '@canvas-memory/db';
-import { AnyNode, AnyEdge } from '@canvas-memory/types';
+import { DatabaseClient } from '@keimenon/db';
+import { AnyNode, AnyEdge } from '@keimenon/types';
 import { SSEBroadcaster } from '../modules/jobs/infrastructure/SSEBroadcaster';
 import { WriteQueueErrorHandler } from './WriteQueueErrorHandler';
 

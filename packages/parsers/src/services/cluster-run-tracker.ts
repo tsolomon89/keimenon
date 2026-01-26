@@ -6,7 +6,7 @@
  */
 
 import Database from 'better-sqlite3';
-import { ClusteringPolicy, getThresholds } from '@canvas-memory/types';
+import { ClusteringPolicy, getThresholds } from '@keimenon/types';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface ClusterRun {
@@ -45,12 +45,7 @@ export class ClusterRunTracker {
   /**
    * Start a new cluster run
    */
-  startRun(
-    level: string,
-    modality: string,
-    policy: ClusteringPolicy,
-    seed?: string
-  ): string {
+  startRun(level: string, modality: string, policy: ClusteringPolicy, seed?: string): string {
     const runId = `run_${uuidv4()}`;
     const now = Date.now();
 

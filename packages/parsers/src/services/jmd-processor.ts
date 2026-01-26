@@ -12,7 +12,7 @@
  */
 
 import * as crypto from 'crypto';
-import { ChatRecord, ContentIsland } from '@canvas-memory/types';
+import { ChatRecord, ContentIsland } from '@keimenon/types';
 import { NormalizedMessage } from '../types';
 import { MarkdownNormalizer } from '../normalizers/markdown-normalizer';
 import { NodeSpan, ProcessedContent } from './content-processor';
@@ -68,10 +68,7 @@ export class JmdProcessor {
   /**
    * Convert NormalizedMessage to ChatRecord
    */
-  convertMessage(
-    message: NormalizedMessage,
-    conversationId: string
-  ): JmdConversionResult {
+  convertMessage(message: NormalizedMessage, conversationId: string): JmdConversionResult {
     const rawText = message.content;
 
     // Normalize to Markdown
@@ -109,18 +106,12 @@ export class JmdProcessor {
   /**
    * Map existing node spans to J+MD coordinates
    */
-  mapSpansToJmd(
-    processed: ProcessedContent,
-    chatRecord: ChatRecord
-  ): JmdSpanMapping[] {
+  mapSpansToJmd(processed: ProcessedContent, chatRecord: ChatRecord): JmdSpanMapping[] {
     const mappings: JmdSpanMapping[] = [];
 
     for (const span of processed.spans) {
       // Extract text from blob using byte offsets
-      const spanText = processed.normalization.normalized.substring(
-        span.byte_start,
-        span.byte_end
-      );
+      const spanText = processed.normalization.normalized.substring(span.byte_start, span.byte_end);
 
       // Find span in md (approximate)
       const mdCharStart = chatRecord.md.indexOf(spanText);
@@ -250,10 +241,7 @@ export class JmdProcessor {
   ): { index: number; type: 'code' | 'math' } | null {
     for (let i = 0; i < islands.length; i++) {
       const island = islands[i];
-      if (
-        mdCharStart >= island.md_char_start &&
-        mdCharEnd <= island.md_char_end
-      ) {
+      if (mdCharStart >= island.md_char_start && mdCharEnd <= island.md_char_end) {
         return { index: i, type: island.type };
       }
     }
@@ -270,57 +258,42 @@ export class JmdProcessor {
   /**
    * Batch convert messages to ChatRecords
    */
-  convertMessages(
-    messages: NormalizedMessage[],
-    conversationId: string
-  ): JmdConversionResult[] {
-    return messages.map(msg => this.convertMessage(msg, conversationId));
+  convertMessages(messages: NormalizedMessage[], conversationId: string): JmdConversionResult[] {
+    return messages.map((msg) => this.convertMessage(msg, conversationId));
   }
 
   /**
    * Extract code islands from ChatRecord
    */
   getCodeIslands(chatRecord: ChatRecord): ContentIsland[] {
-    return chatRecord.islands.filter(i => i.type === 'code');
+    return chatRecord.islands.filter((i) => i.type === 'code');
   }
 
   /**
    * Extract math islands from ChatRecord
    */
   getMathIslands(chatRecord: ChatRecord): ContentIsland[] {
-    return chatRecord.islands.filter(i => i.type === 'math');
+    return chatRecord.islands.filter((i) => i.type === 'math');
   }
 
   /**
    * Get text from ChatRecord by md coordinates
    */
-  getTextByMdCoords(
-    chatRecord: ChatRecord,
-    mdCharStart: number,
-    mdCharEnd: number
-  ): string {
+  getTextByMdCoords(chatRecord: ChatRecord, mdCharStart: number, mdCharEnd: number): string {
     return chatRecord.md.substring(mdCharStart, mdCharEnd);
   }
 
   /**
    * Get text from ChatRecord by raw_text coordinates
    */
-  getTextByRawCoords(
-    chatRecord: ChatRecord,
-    rawTextStart: number,
-    rawTextEnd: number
-  ): string {
+  getTextByRawCoords(chatRecord: ChatRecord, rawTextStart: number, rawTextEnd: number): string {
     return chatRecord.raw_text.substring(rawTextStart, rawTextEnd);
   }
 
   /**
    * Check if span is inside an island
    */
-  isInIsland(
-    chatRecord: ChatRecord,
-    mdCharStart: number,
-    mdCharEnd: number
-  ): boolean {
+  isInIsland(chatRecord: ChatRecord, mdCharStart: number, mdCharEnd: number): boolean {
     return this.findContainingIsland(chatRecord.islands, mdCharStart, mdCharEnd) !== null;
   }
 }

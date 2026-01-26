@@ -23,7 +23,7 @@
 import { Job } from '../domain/Job';
 import { JobRepository } from '../infrastructure/JobRepository';
 import { ChangeTracker, deserializeChangeTracker } from '../domain/ChangeTracker';
-import { DatabaseClient } from '@canvas-memory/db';
+import { DatabaseClient } from '@keimenon/db';
 
 export interface CompensateJobCommand {
   jobId: string;
@@ -136,7 +136,9 @@ export class CompensateJob {
 
       // TODO: Implement JobRepository.updateStateData() method or add Job.compensate() domain method
       // await this.jobRepository.updateStateData(job.id, JSON.stringify(stateData));
-      console.warn('[CompensateJob] State data update skipped - updateStateData() not implemented yet');
+      console.warn(
+        '[CompensateJob] State data update skipped - updateStateData() not implemented yet'
+      );
 
       console.log(`[CompensateJob] ✅ Compensation complete for job ${job.id}`);
       console.log(`   Deleted: ${nodesDeleted} nodes, ${edgesDeleted} edges`);
@@ -170,7 +172,9 @@ export class CompensateJob {
         // The current DatabaseClient doesn't expose prepare() method
         // Option 1: Change db type to Database.Database from better-sqlite3
         // Option 2: Add batch delete methods to DatabaseClient interface
-        console.warn(`[CompensateJob] Edge deletion not implemented - DatabaseClient missing prepare() method`);
+        console.warn(
+          `[CompensateJob] Edge deletion not implemented - DatabaseClient missing prepare() method`
+        );
 
         // FIXME: Placeholder implementation
         // const placeholders = batch.map(() => '?').join(',');
@@ -207,7 +211,9 @@ export class CompensateJob {
       try {
         // TODO: Implement using DatabaseClient interface instead of prepare()
         // See deleteEdgesInBatches for implementation options
-        console.warn(`[CompensateJob] Node deletion not implemented - DatabaseClient missing prepare() method`);
+        console.warn(
+          `[CompensateJob] Node deletion not implemented - DatabaseClient missing prepare() method`
+        );
 
         // FIXME: Placeholder implementation
         // const placeholders = batch.map(() => '?').join(',');

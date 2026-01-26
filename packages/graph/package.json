@@ -1,5 +1,5 @@
 {
-  "name": "@canvas-memory/graph",
+  "name": "@keimenon/graph",
   "version": "0.1.0",
   "private": true,
   "main": "./dist/index.js",
@@ -12,7 +12,7 @@
   "dependencies": {
     "d3-force": "^3.0.0",
     "d3-quadtree": "^3.0.1",
-    "@canvas-memory/types": "*"
+    "@keimenon/types": "*"
   },
   "devDependencies": {
     "@types/d3-force": "^3.0.9",

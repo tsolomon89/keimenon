@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { TreeNode } from '../components/common/NavigationBar';
 import { getToken, useAuth } from '../contexts/AuthContext';
-import { SettingCategory, SettingSection, SettingControl } from '@canvas-memory/types/src/settings';
+import { SettingCategory, SettingSection, SettingControl } from '@keimenon/types/src/settings';
 import * as Icons from 'lucide-react';
 import { errorCapture } from '@/services/error-capture.service';
 import { apiClient } from '@/lib/api-client';

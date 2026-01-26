@@ -19,7 +19,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { BaseWorker, WorkerContext, WorkerResult } from '../domain/Worker';
 import { Job } from '../../jobs/domain/Job';
-import { DatabaseClient } from '@canvas-memory/db';
+import { DatabaseClient } from '@keimenon/db';
 import { getLocalDocumentStore } from '../../../services/local-document-store';
 import {
   ChangeTracker,
@@ -28,7 +28,7 @@ import {
   trackEdgesDeleted,
   serializeChangeTracker,
 } from '../../jobs/domain/ChangeTracker';
-import { getCanvasDataInClause, getSystemNodeInClause } from '@canvas-memory/types';
+import { getCanvasDataInClause, getSystemNodeInClause } from '@keimenon/types';
 import { getDeleteMetrics } from '../../../services/metrics/DeleteMetrics';
 
 export class DeleteWorker extends BaseWorker {
@@ -89,7 +89,13 @@ export class DeleteWorker extends BaseWorker {
       await this.reportProgress(job, 10, 100, `Deleting ${nodeCount} nodes...`, context);
 
       // @ts-ignore - TypeScript incorrectly infers accountId as potentially undefined
-      const deleteResult = await this.deleteNodes(scope, job.accountId, changeTracker, job, context);
+      const deleteResult = await this.deleteNodes(
+        scope,
+        job.accountId,
+        changeTracker,
+        job,
+        context
+      );
       const deletedNodes = deleteResult.deletedCount;
       changeTracker = deleteResult.changeTracker;
 
@@ -133,7 +139,9 @@ export class DeleteWorker extends BaseWorker {
         durationMs,
       });
 
-      console.log(`✅ Delete worker completed job ${job.id}: ${deletedNodes} nodes deleted in ${durationMs}ms`);
+      console.log(
+        `✅ Delete worker completed job ${job.id}: ${deletedNodes} nodes deleted in ${durationMs}ms`
+      );
 
       return {
         success: true,

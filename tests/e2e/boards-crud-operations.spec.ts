@@ -19,7 +19,7 @@ import { createTestSourceNode } from './helpers/create-test-node';
  *
  * Priority: HIGH (CRITICAL GAP - was 0% coverage)
  * Related: apps/api/src/routes/boards.ts
- * Schema: @canvas-memory/types BoardSchema
+ * Schema: @keimenon/types BoardSchema
  */
 
 test.describe('Boards - CRUD Operations', () => {

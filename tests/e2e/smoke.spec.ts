@@ -21,7 +21,7 @@ test.describe('Smoke Tests', () => {
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
 
     // Verify key elements are visible
-    await expect(page.getByRole('heading', { name: /Canvas Memory OS/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Keimenon OS/i })).toBeVisible();
     await expect(page.getByText(/Sign in to your workspace/i)).toBeVisible();
   });
 

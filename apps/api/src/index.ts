@@ -2,7 +2,7 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { Server } from 'http';
-import { DatabaseFactory, StorageMode } from '@canvas-memory/db';
+import { DatabaseFactory, StorageMode } from '@keimenon/db';
 import { getStorageService } from './services/storage';
 import { getLocalDocumentStore } from './services/local-document-store';
 import ingestRoutes, { setAuthDependencies as setIngestAuthDeps } from './routes/ingest';
@@ -38,6 +38,7 @@ import { createJobsRoutes } from './modules/jobs/infrastructure/jobs.routes';
 import { createStreamRoutes } from './modules/jobs/infrastructure/stream.routes';
 import { createImportJobsRoutes as createJobBasedImportRoutes } from './modules/jobs/infrastructure/import-jobs.routes';
 import { createUploadRoutes } from './routes/uploads.routes';
+import { createAgentsRoutes } from './routes/agents.routes';
 import { SSEBroadcaster } from './modules/jobs/infrastructure/SSEBroadcaster';
 import { WorkerPool } from './modules/workers/domain/WorkerPool';
 import { ConcurrencyGuard } from './modules/workers/domain/ConcurrencyGuard';
@@ -295,6 +296,7 @@ let testJobsRoutes: any = null; // Test-only job creation endpoint
 let nodesRoutes: any = null; // Nodes CRUD routes (refactored to factory pattern)
 let metricsRoutes: any = null; // Metrics API routes (delete operations monitoring)
 let uploadRoutes: any = null; // Chunked upload routes (resumable file uploads)
+let agentsRoutes: any = null; // Agent routes
 
 // Auth-protected routes (deferred until auth service initializes)
 // These routes require authentication and are registered after authService is ready
@@ -330,6 +332,10 @@ app.use('/api/v1/admin', (req, res, next) => {
 });
 app.use('/api/v1/metrics', (req, res, next) => {
   if (metricsRoutes) return metricsRoutes(req, res, next);
+  return res.status(503).json({ error: 'Auth service not initialized' });
+});
+app.use('/api/v1/agents', (req, res, next) => {
+  if (agentsRoutes) return agentsRoutes(req, res, next);
   return res.status(503).json({ error: 'Auth service not initialized' });
 });
 
@@ -621,6 +627,7 @@ async function start() {
     nodesRoutes = createNodesRoutes(authService);
     metricsRoutes = createMetricsRoutes(authService);
     uploadRoutes = createUploadRoutes(authService); // Chunked upload routes
+    agentsRoutes = createAgentsRoutes(authService);
     jobsRoutes = createJobsRoutes(authService, (dbClient as any).db); // Pass SQLite database instance
     // NOTE: jobBasedImportRoutes will be initialized after workerPool is ready (see line ~676)
 

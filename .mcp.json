@@ -4,7 +4,7 @@
       "command": "node",
       "args": [".mcp/servers/database/index.js"],
       "env": {
-        "SQLITE_PATH": "${HOME}/.canvas-memory/canvas.db"
+        "SQLITE_PATH": "${HOME}/.keimenon/canvas.db"
       }
     },
     "canvas-docs": {
@@ -29,7 +29,7 @@
       "command": "node",
       "args": [".mcp/servers/settings-crm/index.js"],
       "env": {
-        "SQLITE_PATH": "${HOME}/.canvas-memory/canvas.db"
+        "SQLITE_PATH": "${HOME}/.keimenon/canvas.db"
       }
     },
     "playwright-e2e": {

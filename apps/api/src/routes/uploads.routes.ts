@@ -29,7 +29,7 @@ import {
   getProgressBroadcaster,
   UploadProgressEvent,
 } from '../modules/uploads/application/UploadProgressBroadcaster';
-import { Database } from 'better-sqlite3';
+import Database from 'better-sqlite3';
 import busboy from 'busboy';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -165,7 +165,7 @@ export function createUploadRoutes(authService: AuthService): Router {
 
       // Get database client
       const db = await getDbClient(req);
-      const sqliteDb = (db as any).db as Database; // Access underlying SQLite database
+      const sqliteDb = (db as any).db as Database.Database; // Access underlying SQLite database
 
       // Create repository
       const uploadRepo: UploadSessionRepository = new SQLiteUploadSessionRepository(sqliteDb);
@@ -276,7 +276,7 @@ export function createUploadRoutes(authService: AuthService): Router {
 
         // Get database client
         const db = await getDbClient(req);
-        const sqliteDb = (db as any).db as Database;
+        const sqliteDb = (db as any).db as Database.Database;
         const uploadRepo: UploadSessionRepository = new SQLiteUploadSessionRepository(sqliteDb);
 
         // Load session with account isolation
@@ -386,7 +386,7 @@ export function createUploadRoutes(authService: AuthService): Router {
               const dbClient = await getDbClient(req);
 
               // Access underlying SQLite database from wrapper
-              const testDb = (dbClient as any).db as Database;
+              const testDb = (dbClient as any).db as Database.Database;
 
               // Create job repository with test database
               const jobRepo = new SQLiteJobRepository(testDb);
@@ -540,7 +540,7 @@ export function createUploadRoutes(authService: AuthService): Router {
       // Verify session exists and belongs to user's account
       try {
         const db = await getDbClient(req);
-        const sqliteDb = (db as any).db as Database;
+        const sqliteDb = (db as any).db as Database.Database;
         const uploadRepo: UploadSessionRepository = new SQLiteUploadSessionRepository(sqliteDb);
 
         const session = await uploadRepo.findById(sessionId, accountId);
@@ -623,7 +623,7 @@ export function createUploadRoutes(authService: AuthService): Router {
 
       // Get database client
       const db = await getDbClient(req);
-      const sqliteDb = (db as any).db as Database;
+      const sqliteDb = (db as any).db as Database.Database;
       const uploadRepo: UploadSessionRepository = new SQLiteUploadSessionRepository(sqliteDb);
 
       // Load session with account isolation
@@ -640,15 +640,20 @@ export function createUploadRoutes(authService: AuthService): Router {
       const sessionData = session.toJSON();
 
       console.log(
-        `  Progress: ${sessionData.progress}% (${sessionData.chunksUploaded.length}/${session.totalChunks})`
+        `  Progress: ${sessionData.progress || 0}% (${(sessionData.chunksUploaded || []).length}/${session.totalChunks})`
       );
       console.log(`  Status: ${session.status}`);
-      console.log(`  Missing chunks: ${sessionData.missingChunks.length}`);
+      console.log(`  Missing chunks: ${(sessionData.missingChunks || []).length}`);
 
       // Return session status (use toJSON() to include all computed fields)
       const response: SessionStatusResponse = {
         success: true,
-        session: sessionData, // Use toJSON() to include progress, chunksPath, chunksUploaded, missingChunks
+        session: {
+          ...sessionData,
+          chunksReceived: Object.keys(sessionData.chunksReceived).length,
+          progress: sessionData.progress || 0,
+          missingChunks: sessionData.missingChunks || [],
+        },
       };
 
       return res.status(200).json(response);
@@ -695,7 +700,7 @@ export function createUploadRoutes(authService: AuthService): Router {
 
       // Get database client
       const db = await getDbClient(req);
-      const sqliteDb = (db as any).db as Database;
+      const sqliteDb = (db as any).db as Database.Database;
       const uploadRepo: UploadSessionRepository = new SQLiteUploadSessionRepository(sqliteDb);
 
       // Load session to get chunks path
@@ -760,7 +765,7 @@ async function triggerImportJobFromAssembledFile(
   assembledFilePath: string,
   fileSize: number,
   accountId: string,
-  db: Database,
+  db: Database.Database,
   uploadRepo: UploadSessionRepository,
   req: Request // ✅ For test isolation context (testDbPath)
 ): Promise<void> {

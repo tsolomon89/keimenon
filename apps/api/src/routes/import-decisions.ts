@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { SQLiteClient } from '@canvas-memory/db';
+import { SQLiteClient } from '@keimenon/db';
 import { AuthService } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { asyncHandler, ErrorFactory } from '../middleware/error-handler.middleware';

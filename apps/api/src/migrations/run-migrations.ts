@@ -4,7 +4,7 @@ import os from 'os';
 import * as migration003 from './003_grouping_engine_schema';
 import * as migration004 from './004_canonical_map_and_stats';
 import * as migration005 from './005_clustering_schema';
-import * as migration006_settings from './006_settings_schema';
+import * as migration008 from './008_settings_schema';
 import * as migration006_policy from './006_policy_versions_and_runs';
 import * as migration007 from './007_add_account_isolation_to_phase1_tables';
 
@@ -26,14 +26,14 @@ const MIGRATIONS: Record<string, MigrationModule> = {
   '003': migration003,
   '004': migration004,
   '005': migration005,
-  '006_settings': migration006_settings,
   '006_policy': migration006_policy,
   '007': migration007,
+  '008': migration008,
 };
 
 function getDatabasePath(): string {
   // Default to ~/.canvas-memory/canvas.db
-  const defaultPath = path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+  const defaultPath = path.join(os.homedir(), '.keimenon', 'canvas.db');
 
   // Check environment variable
   const envPath = process.env.DB_PATH || process.env.DATABASE_PATH;

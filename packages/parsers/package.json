@@ -1,5 +1,5 @@
 {
-  "name": "@canvas-memory/parsers",
+  "name": "@keimenon/parsers",
   "version": "0.1.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,10 +18,11 @@
     "dev": "tsc --watch",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@canvas-memory/types": "*",
+    "@keimenon/types": "*",
     "nanoid": "^3.3.7",
     "ulid": "^3.0.1",
     "uuid": "^13.0.0"

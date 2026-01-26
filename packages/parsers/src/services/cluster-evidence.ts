@@ -8,7 +8,7 @@
  */
 
 import Database from 'better-sqlite3';
-import { ClusteringPolicy } from '@canvas-memory/types';
+import { ClusteringPolicy } from '@keimenon/types';
 import { CanonicalStats } from './deduplication-engine';
 
 /**
@@ -285,7 +285,10 @@ export class ClusterEvidenceComputer {
   /**
    * Compute cluster coherence (average edge scores)
    */
-  private computeCoherence(clusterId: string, memberNodeIds: string[]): {
+  private computeCoherence(
+    clusterId: string,
+    memberNodeIds: string[]
+  ): {
     avg_score: number;
     min_score: number;
     max_score: number;
@@ -322,7 +325,7 @@ export class ClusterEvidenceComputer {
     `);
 
     const rows = stmt.all(clusterId) as any[];
-    return rows.map(r => r.node_id);
+    return rows.map((r) => r.node_id);
   }
 
   /**

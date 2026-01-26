@@ -53,6 +53,9 @@ export interface UploadSessionJSON {
   isLocal: boolean;
   dataTag: string;
   metadata: Record<string, any> | null;
+  progress?: number;
+  chunksUploaded?: number[];
+  missingChunks?: number[];
 }
 
 /**

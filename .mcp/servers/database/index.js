@@ -33,7 +33,7 @@ import { homedir } from 'os';
 import { existsSync, readFileSync } from 'fs';
 
 // Database path (default to user's home directory)
-const DB_PATH = process.env.SQLITE_PATH || resolve(homedir(), '.canvas-memory', 'canvas.db');
+const DB_PATH = process.env.SQLITE_PATH || resolve(homedir(), '.keimenon', 'canvas.db');
 
 class DatabaseMCPServer {
   constructor() {

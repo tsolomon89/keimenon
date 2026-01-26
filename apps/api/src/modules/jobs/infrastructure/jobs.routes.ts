@@ -226,7 +226,10 @@ export function createJobsRoutes(
       // Parse query params
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
       const offset = parseInt(req.query.offset as string) || 0;
-      const status = req.query.status as any;
+      let status = req.query.status as any;
+      if (status === 'all') {
+        status = undefined;
+      }
       const type = req.query.type as any;
 
       // Find jobs - CRITICAL FIX: Pass request for database routing

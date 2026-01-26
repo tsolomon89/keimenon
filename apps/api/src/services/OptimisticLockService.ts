@@ -16,7 +16,7 @@
  * - Client must fetch latest version and retry
  */
 
-import { SQLiteClient } from '@canvas-memory/db';
+import { SQLiteClient } from '@keimenon/db';
 
 export interface OptimisticLockError extends Error {
   name: 'OptimisticLockError';

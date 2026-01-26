@@ -61,13 +61,13 @@ const ENV_VARS: EnvVarDefinition[] = [
     name: 'LOCAL_DOCS_PATH',
     required: false, // Required if STORAGE_MODE includes 'local'
     description: 'Path to local document storage',
-    example: '~/.canvas-memory',
+    example: '~/.keimenon',
   },
   {
     name: 'SQLITE_PATH',
     required: false, // Required if STORAGE_MODE includes 'local'
     description: 'Path to SQLite database file',
-    example: '~/.canvas-memory/canvas.db',
+    example: '~/.keimenon/canvas.db',
   },
   {
     name: 'STORAGE_PATH',

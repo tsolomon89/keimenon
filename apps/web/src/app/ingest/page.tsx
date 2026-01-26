@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FourRegionLayout } from '@canvas-memory/ui';
+import { FourRegionLayout } from '@keimenon/ui';
 import { FileUploadZone } from '@/components/ingest/FileUploadZone';
 import { UploadProgress } from '@/components/ingest/UploadProgress';
 import { IngestResults } from '@/components/ingest/IngestResults';

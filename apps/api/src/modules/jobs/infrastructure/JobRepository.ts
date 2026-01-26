@@ -87,8 +87,8 @@ export class SQLiteJobRepository implements JobRepository {
       const mockReq = { testDbPath } as any;
       const jobsClient = await getJobsDbClient(mockReq);
       // Cast to SQLiteClient to access getDatabase()
-      const { SQLiteClient } = await import('@canvas-memory/db');
-      return (jobsClient as SQLiteClient).getDatabase();
+      const { SQLiteClient } = await import('@keimenon/db');
+      return (jobsClient as InstanceType<typeof SQLiteClient>).getDatabase();
     }
 
     // Production job OR test job in production mode - use production database
@@ -111,8 +111,8 @@ export class SQLiteJobRepository implements JobRepository {
       );
       const { getJobsDbClient } = await import('../../../utils/get-db-client');
       const jobsClient = await getJobsDbClient(req);
-      const { SQLiteClient } = await import('@canvas-memory/db');
-      const db = (jobsClient as SQLiteClient).getDatabase();
+      const { SQLiteClient } = await import('@keimenon/db');
+      const db = (jobsClient as InstanceType<typeof SQLiteClient>).getDatabase();
       console.log(`[JobRepository.getDbForRequest] ✅ Got database connection`);
       return db;
     }
@@ -150,7 +150,7 @@ export class SQLiteJobRepository implements JobRepository {
         job.createdBy,
         JSON.stringify(job.config),
         job.status,
-        JSON.stringify(job.state),
+        JSON.stringify({ ...job.state, progress: job.progress }),
         now,
         now,
         job.idempotencyKey || null,
@@ -238,10 +238,13 @@ export class SQLiteJobRepository implements JobRepository {
     const events = await this.loadEvents(id, accountId, req);
 
     // Reconstruct job from database
-    return Job.fromDatabase({
-      ...record,
-      state_data: record.state_data,
-    });
+    return Job.fromDatabase(
+      {
+        ...record,
+        state_data: record.state_data,
+      },
+      events
+    ); // ✅ Pass events to factory method
   }
 
   /**
@@ -316,7 +319,7 @@ export class SQLiteJobRepository implements JobRepository {
   /**
    * Append event to event log
    */
-  async appendEvent(event: JobEvent, db?: Database.Database): Promise<void> {
+  async appendEvent(event: JobEvent, db?: any): Promise<void> {
     // Use provided db or fall back to production db
     const database = db || this.db;
     const stmt = database.prepare(`

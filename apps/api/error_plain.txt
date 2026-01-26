@@ -1,0 +1,10 @@
+src/migrations/run-migrations.ts(7,40): error TS2307: Cannot find module './006_settings_schema' or its corresponding type declarations.
+src/modules/uploads/domain/UploadSession.ts(399,7): error TS2353: Object literal may only specify known properties, and 'progress' does not exist in type 'UploadSessionJSON'.
+src/routes/uploads.routes.ts(643,36): error TS2339: Property 'progress' does not exist on type 'UploadSessionJSON'.
+src/routes/uploads.routes.ts(643,62): error TS2339: Property 'chunksUploaded' does not exist on type 'UploadSessionJSON'.
+src/routes/uploads.routes.ts(646,52): error TS2339: Property 'missingChunks' does not exist on type 'UploadSessionJSON'.
+src/routes/uploads.routes.ts(651,9): error TS2739: Type 'UploadSessionJSON' is missing the following properties from type '{ id: string; fileName: string; fileSize: number; chunkSize: number; totalChunks: number; chunksReceived: number; missingChunks: number[]; progress: number; status: string; expiresAt: number; errorMessage: string | null; }': missingChunks, progress
+src/services/__tests__/duplicate-detection-fts5.test.ts(31,34): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/services/__tests__/duplicate-detection-integrated.test.ts(22,34): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/services/duplicate-detection-integrated.ts(313,9): error TS2353: Object literal may only specify known properties, and 'create_time' does not exist in type '{ conversation_id: string; platform: "unknown" | "chatgpt" | "claude" | "gemini"; title: string; created_at: number; messages: { role: "system" | "user" | "assistant"; content: string; ... 4 more ...; metadata?: Record<...> | undefined; }[]; metadata?: Record<...> | undefined; updated_at?: number | undefined; }'.
+src/services/duplicate-detection-integrated.ts(344,34): error TS2683: 'this' implicitly has type 'any' because it does not have a type annotation.

@@ -19,8 +19,8 @@ import {
   ClusterEvidenceComputer,
   ClusterRunTracker,
   ClusterManualOps,
-} from '@canvas-memory/parsers';
-import { loadPolicyFromFile, savePolicyVersion } from '@canvas-memory/types';
+} from '@keimenon/parsers';
+import { loadPolicyFromFile, savePolicyVersion } from '@keimenon/types';
 import { PublishableExport } from '../services/publishable-export';
 import * as path from 'path';
 

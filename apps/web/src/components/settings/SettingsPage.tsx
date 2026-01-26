@@ -10,7 +10,7 @@ import { UsersListCard } from './UsersListCard';
 import { ErrorTrackingCard } from './ErrorTrackingCard';
 import { DebugModalsCard } from './DebugModalsCard';
 import { DeduplicationCard } from './DeduplicationCard';
-import { SETTINGS_REGISTRY } from '@canvas-memory/types/src/settings';
+import { SETTINGS_REGISTRY } from '@keimenon/types/src/settings';
 
 interface SettingsPageProps {
   selectedSectionId?: string; // section_categoryId_sectionId from navigation

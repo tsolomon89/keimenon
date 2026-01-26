@@ -4,9 +4,9 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { DatabaseFactory } from '@canvas-memory/db';
+import { DatabaseFactory } from '@keimenon/db';
 import { EnhancedAutogroupService } from '../services/autogroup-enhanced';
-import type { GroupingConfig } from '@canvas-memory/types';
+import type { GroupingConfig } from '@keimenon/types';
 import path from 'path';
 import os from 'os';
 

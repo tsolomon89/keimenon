@@ -248,7 +248,8 @@ The AI will use the `import_test_file` tool and verify the import.
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.5.0"
+    "@modelcontextprotocol/sdk": "^1.25.0",
+    "zod": "^3.25.0"
   }
 }
 ```
@@ -302,10 +303,10 @@ npx @modelcontextprotocol/inspector
 
 ```bash
 # Ensure database file is accessible
-ls -la ~/.canvas-memory/canvas.db
+ls -la ~/.keimenon/canvas.db
 
 # Check SQLite file permissions
-chmod 644 ~/.canvas-memory/canvas.db
+chmod 644 ~/.keimenon/canvas.db
 ```
 
 ### MCP Server Crashes
@@ -350,6 +351,6 @@ For issues with MCP servers:
 
 ---
 
-**Last Updated**: 2025-10-19
-**MCP SDK Version**: 0.5.0+
+**Last Updated**: 2026-01-26
+**MCP SDK Version**: 1.25.0+
 **Compatible with**: VSCode 1.102+, Claude Desktop, Claude Code

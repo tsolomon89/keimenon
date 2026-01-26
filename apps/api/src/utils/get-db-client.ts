@@ -77,7 +77,7 @@ export async function getDbClient(req?: Request): Promise<any> {
     const connectionPromise = (async () => {
       try {
         // Import SQLiteClient directly to bypass DatabaseFactory's singleton
-        const { SQLiteClient } = await import('@canvas-memory/db');
+        const { SQLiteClient } = await import('@keimenon/db');
 
         // Create a new client instance for this worker's database (bypasses singleton)
         const client = new SQLiteClient({
@@ -178,7 +178,7 @@ export async function getJobsDbClient(req?: Request): Promise<any> {
   // Create connection promise
   const connectionPromise = (async () => {
     try {
-      const { SQLiteClient } = await import('@canvas-memory/db');
+      const { SQLiteClient } = await import('@keimenon/db');
 
       // Create client instance for jobs database (separate file from data database)
       const client = new SQLiteClient({

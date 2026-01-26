@@ -19,8 +19,14 @@ function getEnv(key: string, fallback: string = ''): string {
 
 /**
  * API Base URL - used for all backend API calls
+ * On the server, we prefer the internal URL (docker container to container)
+ * On the client, we use the public URL
  */
-export const API_BASE_URL = getEnv('NEXT_PUBLIC_API_URL', 'http://localhost:4001');
+const internalUrl = getEnv('INTERNAL_API_URL');
+export const API_BASE_URL =
+  typeof window === 'undefined' && internalUrl
+    ? internalUrl
+    : getEnv('NEXT_PUBLIC_API_URL', 'http://localhost:4001');
 
 /**
  * Feature flags

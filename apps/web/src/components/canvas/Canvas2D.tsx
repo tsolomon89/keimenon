@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
-import { GraphNode, GraphEdge, calculateLayout } from '@canvas-memory/graph';
+import { GraphNode, GraphEdge, calculateLayout } from '@keimenon/graph';
 import { errorCapture } from '@/services/error-capture.service';
 
 interface Canvas2DProps {

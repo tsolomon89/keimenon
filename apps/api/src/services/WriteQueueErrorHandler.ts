@@ -11,8 +11,8 @@
  * Prevents infinite error loops and data loss during imports.
  */
 
-import { DatabaseClient } from '@canvas-memory/db';
-import { AnyNode, AnyEdge } from '@canvas-memory/types';
+import { DatabaseClient } from '@keimenon/db';
+import { AnyNode, AnyEdge } from '@keimenon/types';
 
 export interface WriteQueueMetrics {
   totalAttempts: number;

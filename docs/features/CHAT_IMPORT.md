@@ -202,18 +202,19 @@ curl -X POST http://localhost:3001/api/v1/import/enhanced \
   }"
 ```
 
-### Method 4: Streaming Import (Large Files)
+### Method 4: Background Job Import (Recommended for Large Files)
 
-For files >50MB or when you want real-time progress:
+For files >50MB or to run in background:
 
 ```bash
-curl -X POST http://localhost:3001/api/v1/import-stream \
+curl -X POST http://localhost:3001/api/v1/import/job \
   -F "file=@large_conversations.json" \
-  -F "config={...}" \
-  --no-buffer
+  -F "config={...}"
 ```
 
-Progress updates stream back as Server-Sent Events.
+**Progress Tracking**:
+Connect to the Jobs SSE stream to receive real-time updates:
+`GET /api/v1/stream/jobs?token=YOUR_TOKEN`
 
 ### Method 5: Batch Import
 

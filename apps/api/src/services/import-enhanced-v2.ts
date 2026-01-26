@@ -4,17 +4,17 @@
  */
 
 import { nanoid } from 'nanoid';
-import { DatabaseClient, SQLiteClient } from '@canvas-memory/db';
+import { DatabaseClient, SQLiteClient } from '@keimenon/db';
 import { EnhancedAutogroupService, type Group } from './autogroup-enhanced';
 import { getLocalDocumentStore } from './local-document-store';
 import { DatabaseWriteQueue } from './DatabaseWriteQueue';
-import type { ImportConfiguration } from '@canvas-memory/types';
+import type { ImportConfiguration } from '@keimenon/types';
 import { DuplicateDetectionConfig, DuplicateGroup } from './duplicate-detection';
 import {
   IntegratedDuplicateDetectionService,
   type DuplicateDetectionResult,
 } from './duplicate-detection-integrated';
-import { SourcesStitcher } from '@canvas-memory/parsers';
+import { SourcesStitcher } from '@keimenon/parsers';
 
 export interface ImportMessage {
   id: string;

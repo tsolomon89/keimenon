@@ -1,7 +1,7 @@
 'use client';
 
 import { CheckCircle2, AlertCircle, FolderTree, Copy } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent, Badge } from '@canvas-memory/ui';
+import { Card, CardHeader, CardTitle, CardContent, Badge } from '@keimenon/ui';
 import Link from 'next/link';
 
 interface IngestResultsProps {
@@ -29,9 +29,7 @@ export function IngestResults({ results }: IngestResultsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-red-300">
-            An error occurred during upload. Please try again.
-          </p>
+          <p className="text-sm text-red-300">An error occurred during upload. Please try again.</p>
         </CardContent>
       </Card>
     );
@@ -50,21 +48,15 @@ export function IngestResults({ results }: IngestResultsProps) {
         <CardContent>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-green-400">
-                {results.stats.uploaded}
-              </p>
+              <p className="text-2xl font-bold text-green-400">{results.stats.uploaded}</p>
               <p className="text-sm text-slate-400">Files Uploaded</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-purple-400">
-                {results.stats.groups}
-              </p>
+              <p className="text-2xl font-bold text-purple-400">{results.stats.groups}</p>
               <p className="text-sm text-slate-400">Groups Created</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-yellow-400">
-                {results.stats.duplicates}
-              </p>
+              <p className="text-2xl font-bold text-yellow-400">{results.stats.duplicates}</p>
               <p className="text-sm text-slate-400">Duplicates Detected</p>
             </div>
           </div>
@@ -94,9 +86,7 @@ export function IngestResults({ results }: IngestResultsProps) {
                     </span>
                   </div>
                 </div>
-                <code className="text-xs text-slate-500 font-mono">
-                  {source.id}
-                </code>
+                <code className="text-xs text-slate-500 font-mono">{source.id}</code>
               </div>
             ))}
           </div>
@@ -122,9 +112,7 @@ export function IngestResults({ results }: IngestResultsProps) {
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <h4 className="font-semibold">{group.name}</h4>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {group.reason}
-                      </p>
+                      <p className="text-xs text-slate-400 mt-1">{group.reason}</p>
                     </div>
                     <Badge>{group.members.length} items</Badge>
                   </div>

@@ -14,7 +14,7 @@ import './setup-global';
 
 import { describe, test, before, after, type TestContext } from 'node:test';
 import assert from 'node:assert';
-import { SQLiteClient } from '@canvas-memory/db';
+import { SQLiteClient } from '@keimenon/db';
 import { randomUUID } from 'crypto';
 import path from 'path';
 import os from 'os';

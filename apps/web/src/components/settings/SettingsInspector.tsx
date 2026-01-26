@@ -2,7 +2,7 @@
 
 import { AlertCircle, Clock, User, Info, ExternalLink, History as HistoryIcon } from 'lucide-react';
 import { useSettingDetails } from '@/hooks/useSettings';
-import { ConfigScope } from '@canvas-memory/types/src/settings';
+import { ConfigScope } from '@keimenon/types/src/settings';
 
 interface SettingsInspectorProps {
   selectedControlId: string | null;
@@ -20,17 +20,8 @@ interface SettingsInspectorProps {
  * - Validation rules
  */
 export function SettingsInspector({ selectedControlId }: SettingsInspectorProps) {
-  const {
-    control,
-    effectiveValue,
-    source,
-    canEdit,
-    canReset,
-    isDefault,
-    history,
-    loading,
-    error,
-  } = useSettingDetails(selectedControlId);
+  const { control, effectiveValue, source, canEdit, canReset, isDefault, history, loading, error } =
+    useSettingDetails(selectedControlId);
 
   if (!selectedControlId) {
     return (
@@ -47,9 +38,7 @@ export function SettingsInspector({ selectedControlId }: SettingsInspectorProps)
             <div className="flex items-start gap-3 p-4 bg-blue-600/10 border border-blue-500/30 rounded-lg">
               <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-sm font-semibold text-blue-300 mb-2">
-                  How to use Settings
-                </h4>
+                <h4 className="text-sm font-semibold text-blue-300 mb-2">How to use Settings</h4>
                 <ul className="text-xs text-blue-400/80 space-y-2">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 flex-shrink-0">1.</span>
@@ -125,9 +114,7 @@ export function SettingsInspector({ selectedControlId }: SettingsInspectorProps)
       {/* Header */}
       <div className="px-4 py-4 border-b border-slate-800">
         <h3 className="text-sm font-semibold text-white mb-1">{control.label}</h3>
-        {control.description && (
-          <p className="text-xs text-slate-400">{control.description}</p>
-        )}
+        {control.description && <p className="text-xs text-slate-400">{control.description}</p>}
       </div>
 
       {/* Content */}

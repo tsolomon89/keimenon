@@ -21,7 +21,7 @@ import {
   type SourceDoc,
   type CodeAsset,
   type ImportConfig,
-} from '@canvas-memory/parsers/browser';
+} from '@keimenon/parsers/browser';
 
 export interface LocalImportConfig {
   // Role & length filters

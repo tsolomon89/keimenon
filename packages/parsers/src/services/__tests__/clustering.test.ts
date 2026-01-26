@@ -28,7 +28,7 @@ import {
   loadPolicyFromString,
   loadDefaultPolicy,
   getPolicyDiff,
-} from '@canvas-memory/types';
+} from '@keimenon/types';
 
 // Service imports
 import { ContentProcessor } from '../content-processor';
@@ -93,12 +93,12 @@ gray_band:
     it('should validate threshold ordering', () => {
       const badPolicy = { ...DEFAULT_POLICY };
       badPolicy.gray_band.prose.sentence.reject_below = 0.95;
-      badPolicy.gray_band.prose.sentence.review_lower = 0.80;
+      badPolicy.gray_band.prose.sentence.review_lower = 0.8;
       badPolicy.gray_band.prose.sentence.attach = 0.88;
 
       const errors = validatePolicy(badPolicy);
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors.some(e => e.includes('reject_below must be <'))).toBe(true);
+      expect(errors.some((e) => e.includes('reject_below must be <'))).toBe(true);
     });
 
     it('should validate threshold ranges', () => {
@@ -107,7 +107,7 @@ gray_band:
 
       const errors = validatePolicy(badPolicy);
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors.some(e => e.includes('must be in [0, 1]'))).toBe(true);
+      expect(errors.some((e) => e.includes('must be in [0, 1]'))).toBe(true);
     });
 
     it('should accept valid policy', () => {
@@ -152,7 +152,7 @@ gray_band:
     it('should get thresholds by modality and level', () => {
       const thresholds = getThresholds(DEFAULT_POLICY, 'code', 'block');
       expect(thresholds.attach).toBe(0.92);
-      expect(thresholds.review_lower).toBe(0.80);
+      expect(thresholds.review_lower).toBe(0.8);
       expect(thresholds.reject_below).toBe(0.65);
     });
 
@@ -563,9 +563,7 @@ describe('Phase 3: Clustering Engine - Integration Tests', () => {
       const result = await engine.cluster('block', 'prose');
 
       // Check review queue
-      const reviewItems = db
-        .prepare('SELECT * FROM review_queue WHERE reviewed_at IS NULL')
-        .all();
+      const reviewItems = db.prepare('SELECT * FROM review_queue WHERE reviewed_at IS NULL').all();
 
       expect(reviewItems.length).toBeGreaterThan(0);
     });
@@ -770,17 +768,11 @@ describe('Phase 3: Clustering Engine - Integration Tests', () => {
       await engine.cluster('block', 'prose');
 
       // Check for bidirectional edges
-      const edges = db
-        .prepare('SELECT * FROM edges WHERE kind = ?')
-        .all('NEAR_DUP') as any[];
+      const edges = db.prepare('SELECT * FROM edges WHERE kind = ?').all('NEAR_DUP') as any[];
 
       if (edges.length > 0) {
-        const forward = edges.find(
-          (e) => e.from_node === 'node_1' && e.to_node === 'node_2'
-        );
-        const backward = edges.find(
-          (e) => e.from_node === 'node_2' && e.to_node === 'node_1'
-        );
+        const forward = edges.find((e) => e.from_node === 'node_1' && e.to_node === 'node_2');
+        const backward = edges.find((e) => e.from_node === 'node_2' && e.to_node === 'node_1');
 
         expect(forward || backward).toBeTruthy();
       }
@@ -838,9 +830,7 @@ describe('Phase 3: Clustering Engine - Integration Tests', () => {
 
       await engine.cluster('block', 'prose');
 
-      const edges = db
-        .prepare('SELECT * FROM edges WHERE kind = ?')
-        .all('NEAR_DUP') as any[];
+      const edges = db.prepare('SELECT * FROM edges WHERE kind = ?').all('NEAR_DUP') as any[];
 
       if (edges.length > 0) {
         const metadata = JSON.parse(edges[0].metadata);
@@ -1029,7 +1019,7 @@ describe('Phase 3: Publishable Export', () => {
     });
 
     it('should filter by minimum score', () => {
-      const snapshot = exporter.exportEdgesOnly({ minScore: 0.80 });
+      const snapshot = exporter.exportEdgesOnly({ minScore: 0.8 });
 
       expect(snapshot.edges.length).toBe(2); // Only edges >= 0.80
     });

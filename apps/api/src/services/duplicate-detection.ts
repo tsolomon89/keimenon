@@ -1,5 +1,5 @@
-import { NormalizedConversation } from '@canvas-memory/parsers';
-import { tokenize, jaccard, normalizeText } from '@canvas-memory/parsers';
+import { NormalizedConversation } from '@keimenon/parsers';
+import { tokenize, jaccard, normalizeText } from '@keimenon/parsers';
 
 export interface DuplicateDetectionConfig {
   enabled: boolean;

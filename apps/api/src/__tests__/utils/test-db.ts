@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { DatabaseClient } from '@canvas-memory/db';
+import { DatabaseClient } from '@keimenon/db';
 
 /**
  * Create an in-memory SQLite database for testing

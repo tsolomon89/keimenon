@@ -28,7 +28,7 @@ export function clusterByType(nodes: GraphNode[]): Cluster[] {
   const result: Cluster[] = [];
   let index = 0;
 
-  for (const [kind, clusterNodes] of clusters.entries()) {
+  for (const [kind, clusterNodes] of clusters) {
     const centroid = calculateCentroid(clusterNodes);
     result.push({
       id: `cluster_${kind}_${index++}`,
@@ -44,10 +44,7 @@ export function clusterByType(nodes: GraphNode[]): Cluster[] {
 /**
  * Cluster nodes by a metadata property (e.g., mime_type, domain)
  */
-export function clusterByProperty(
-  nodes: GraphNode[],
-  property: string
-): Cluster[] {
+export function clusterByProperty(nodes: GraphNode[], property: string): Cluster[] {
   const clusters = new Map<string, GraphNode[]>();
 
   for (const node of nodes) {
@@ -61,7 +58,7 @@ export function clusterByProperty(
   const result: Cluster[] = [];
   let index = 0;
 
-  for (const [value, clusterNodes] of clusters.entries()) {
+  for (const [value, clusterNodes] of clusters) {
     const centroid = calculateCentroid(clusterNodes);
     result.push({
       id: `cluster_${property}_${value}_${index++}`,
@@ -95,10 +92,7 @@ export function calculateCentroid(nodes: GraphNode[]): { x: number; y: number } 
  * Create constellation nodes from clusters
  * (aggregated view for large graphs)
  */
-export function createConstellations(
-  clusters: Cluster[],
-  minSize = 3
-): Cluster[] {
+export function createConstellations(clusters: Cluster[], minSize = 3): Cluster[] {
   // Only create constellations for clusters with enough nodes
   return clusters.filter((cluster) => cluster.nodeIds.length >= minSize);
 }
@@ -106,17 +100,11 @@ export function createConstellations(
 /**
  * K-means clustering (simple implementation for spatial grouping)
  */
-export function kMeansClustering(
-  nodes: GraphNode[],
-  k: number,
-  maxIterations = 50
-): Cluster[] {
+export function kMeansClustering(nodes: GraphNode[], k: number, maxIterations = 50): Cluster[] {
   if (nodes.length === 0 || k <= 0) return [];
 
   // Initialize centroids randomly
-  const centroids = nodes
-    .slice(0, k)
-    .map((n) => ({ x: n.x ?? 0, y: n.y ?? 0 }));
+  const centroids = nodes.slice(0, k).map((n) => ({ x: n.x ?? 0, y: n.y ?? 0 }));
 
   let assignments = new Array(nodes.length).fill(0);
 
@@ -173,10 +161,7 @@ export function kMeansClustering(
   return clusters;
 }
 
-function euclideanDistance(
-  a: { x: number; y: number },
-  b: { x: number; y: number }
-): number {
+function euclideanDistance(a: { x: number; y: number }, b: { x: number; y: number }): number {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
   return Math.sqrt(dx * dx + dy * dy);

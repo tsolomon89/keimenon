@@ -15,12 +15,12 @@
 
 import { BaseWorker, WorkerContext, WorkerResult } from '../domain/Worker';
 import { Job } from '../../jobs/domain/Job';
-import { DatabaseClient } from '@canvas-memory/db';
+import { DatabaseClient } from '@keimenon/db';
 import { EnhancedImportServiceV2, ImportConversation } from '../../../services/import-enhanced-v2';
 import { DatabaseWriteQueue } from '../../../services/DatabaseWriteQueue';
-import { ImportConfiguration } from '@canvas-memory/types';
-import { ParserRegistry } from '@canvas-memory/parsers';
-import { ImportJobStage, IMPORT_STAGE_LABELS } from '@canvas-memory/types/src/import-job-stages';
+import { ImportConfiguration } from '@keimenon/types';
+import { ParserRegistry } from '@keimenon/parsers';
+import { ImportJobStage, IMPORT_STAGE_LABELS } from '@keimenon/types/src/import-job-stages';
 import * as fs from 'fs/promises';
 import {
   ChangeTracker,

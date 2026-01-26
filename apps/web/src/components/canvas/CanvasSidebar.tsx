@@ -22,7 +22,7 @@ import { useGroupsTree, fetchGroupMembers, fetchFolderChildren } from '@/hooks/u
 import { useSettingsTree } from '@/hooks/useSettingsTree';
 import { useNodeGroupLookup } from '@/hooks/useNodeGroupLookup';
 import { useCanvasStore } from '@/store/canvasStore';
-import { NavigationModelFactory } from '@canvas-memory/types/src/navigation.model';
+import { NavigationModelFactory } from '@keimenon/types/src/navigation.model';
 import { logDataEvent } from '@/lib/error-handler';
 import { errorCapture } from '@/services/error-capture.service';
 import type { Operation } from '@/contexts/BackgroundOperationsContext';

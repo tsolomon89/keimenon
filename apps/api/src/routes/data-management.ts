@@ -4,11 +4,11 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { SQLiteClient } from '@canvas-memory/db';
+import { SQLiteClient } from '@keimenon/db';
 import { AuthService } from '../services/auth.service';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import { asyncHandler, ErrorFactory } from '../middleware/error-handler.middleware';
-import { getCanvasDataInClause } from '@canvas-memory/types';
+import { getCanvasDataInClause } from '@keimenon/types';
 import path from 'path';
 import os from 'os';
 import { randomUUID } from 'crypto';

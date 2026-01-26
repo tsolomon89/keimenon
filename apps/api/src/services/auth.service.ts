@@ -12,7 +12,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import Database from 'better-sqlite3';
-import { SQLiteClient } from '@canvas-memory/db';
+import { SQLiteClient } from '@keimenon/db';
 import { validatePassword, getPasswordRequirementsText } from '../utils/password-validator';
 import {
   checkAccountLockout,

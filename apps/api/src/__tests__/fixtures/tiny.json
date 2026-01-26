@@ -1,0 +1,101 @@
+[
+  {
+    "title": "Test Conversation 1",
+    "create_time": 1673323085.123,
+    "update_time": 1673323105.456,
+    "mapping": {
+      "id-1": {
+        "id": "id-1",
+        "message": {
+          "id": "id-1",
+          "author": { "role": "system", "name": null, "metadata": {} },
+          "create_time": 1673323085.123,
+          "update_time": null,
+          "content": { "content_type": "text", "parts": [""] },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 0,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": ["id-2"]
+      },
+      "id-2": {
+        "id": "id-2",
+        "message": {
+          "id": "id-2",
+          "author": { "role": "user", "name": null, "metadata": {} },
+          "create_time": 1673323090.456,
+          "update_time": null,
+          "content": { "content_type": "text", "parts": ["Hello AI"] },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "id-1",
+        "children": ["id-3"]
+      },
+      "id-3": {
+        "id": "id-3",
+        "message": {
+          "id": "id-3",
+          "author": { "role": "assistant", "name": null, "metadata": {} },
+          "create_time": 1673323095.789,
+          "update_time": null,
+          "content": { "content_type": "text", "parts": ["Hello User"] },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "id-2",
+        "children": []
+      }
+    }
+  },
+  {
+    "title": "Test Conversation 2",
+    "create_time": 1673423085.123,
+    "update_time": 1673423105.456,
+    "mapping": {
+      "id-4": {
+        "id": "id-4",
+        "message": {
+          "id": "id-4",
+          "author": { "role": "user", "name": null, "metadata": {} },
+          "create_time": 1673423090.456,
+          "update_time": null,
+          "content": { "content_type": "text", "parts": ["Question 2"] },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": null,
+        "children": ["id-5"]
+      },
+      "id-5": {
+        "id": "id-5",
+        "message": {
+          "id": "id-5",
+          "author": { "role": "assistant", "name": null, "metadata": {} },
+          "create_time": 1673423095.789,
+          "update_time": null,
+          "content": { "content_type": "text", "parts": ["Answer 2"] },
+          "status": "finished_successfully",
+          "end_turn": true,
+          "weight": 1,
+          "metadata": {},
+          "recipient": "all"
+        },
+        "parent": "id-4",
+        "children": []
+      }
+    }
+  }
+]

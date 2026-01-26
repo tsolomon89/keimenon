@@ -378,8 +378,10 @@ export class WorkerPool {
       // Update job status based on result (only if not already terminal)
       if (!updatedJob.isTerminal) {
         if (result.success) {
+          if (updatedJob.progress.percent < 100) {
+            updatedJob.updateProgress(100, 100, 'Completed');
+          }
           updatedJob.succeed('Job completed successfully');
-          console.log(`✅ Job ${job.id} completed successfully`);
         } else {
           updatedJob.fail(result.error!);
           console.log(`❌ Job ${job.id} failed: ${result.error?.message}`);

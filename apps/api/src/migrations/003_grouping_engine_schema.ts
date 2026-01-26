@@ -217,7 +217,7 @@ DROP TABLE IF EXISTS blobs;
 /**
  * Apply migration
  */
-export async function up(db: Database.Database): Promise<void> {
+export function up(db: Database.Database): void {
   console.log('Running migration 003: Grouping Engine Schema...');
 
   try {
@@ -232,7 +232,7 @@ export async function up(db: Database.Database): Promise<void> {
 /**
  * Rollback migration
  */
-export async function down(db: Database.Database): Promise<void> {
+export function down(db: Database.Database): void {
   console.log('Rolling back migration 003: Grouping Engine Schema...');
 
   try {

@@ -15,7 +15,7 @@ import { describe, test as it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { WriteQueueErrorHandler } from '../WriteQueueErrorHandler';
-import { AnyNode, AnyEdge } from '@canvas-memory/types';
+import { AnyNode, AnyEdge } from '@keimenon/types';
 
 // Database-level types for testing (matches actual DB schema, not application types)
 type DBNode = {

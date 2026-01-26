@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { BoardSchema } from '@canvas-memory/types';
+import { BoardSchema } from '@keimenon/types';
 import { nanoid } from 'nanoid';
 import { getDbClient } from '../utils/get-db-client';
 

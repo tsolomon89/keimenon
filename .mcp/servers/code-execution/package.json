@@ -12,7 +12,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@modelcontextprotocol/sdk": "^1.25.0",
     "vm2": "^3.9.19",
     "isolated-vm": "^5.0.1",
     "python-shell": "^5.0.0",
@@ -20,7 +20,7 @@
     "p-queue": "^8.0.1",
     "p-timeout": "^6.1.2",
     "nanoid": "^5.0.7",
-    "zod": "^3.23.8"
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",

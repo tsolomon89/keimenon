@@ -4,7 +4,7 @@ import { StreamingJSONParserV2 } from '../services/streaming-json-parser-v2';
 import { SourcesBuilder } from '../services/sources-builder';
 import { CodeExtractor } from '../services/code-extractor';
 import { similarityEngine, SimilarityAlgorithm } from '../services/similarity-engine';
-import { getNeo4jClient } from '@canvas-memory/db';
+import { getNeo4jClient } from '@keimenon/db';
 import { AuthService } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { z } from 'zod';
@@ -22,8 +22,8 @@ import {
   DeduplicationEngine,
   ClusteringEngine,
   ClusterEvidenceComputer,
-} from '@canvas-memory/parsers';
-import { loadPolicyFromFile } from '@canvas-memory/types';
+} from '@keimenon/parsers';
+import { loadPolicyFromFile } from '@keimenon/types';
 import path from 'path';
 import os from 'os';
 

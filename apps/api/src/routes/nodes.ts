@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { SourceNodeSchema, GroupNodeSchema, ObjectiveClaimSchema } from '@canvas-memory/types';
+import { SourceNodeSchema, GroupNodeSchema, ObjectiveClaimSchema } from '@keimenon/types';
 import { getDbClient } from '../utils/get-db-client';
 import { requireAuth, requirePermission, isolateByAccount } from '../middleware/auth.middleware';
 import { AuthService } from '../services/auth.service';

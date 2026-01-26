@@ -20,7 +20,7 @@ import assert from 'node:assert/strict';
 import fetch from 'node-fetch';
 import Database from 'better-sqlite3';
 import path from 'path';
-import { getCanvasDataInClause, getSystemNodeInClause } from '@canvas-memory/types';
+import { getCanvasDataInClause, getSystemNodeInClause } from '@keimenon/types';
 
 // Test configuration
 const API_URL = process.env.TEST_API_URL || 'http://localhost:4001';
@@ -732,7 +732,9 @@ describe('Multi-Tenant Deletion Isolation', () => {
     );
 
     console.log(`      ✅ Account A: ${accountANodesBefore} → 0 nodes (deleted)`);
-    console.log(`      ✅ Account B: ${accountBNodesBefore} → ${accountBNodesAfter} nodes (preserved)`);
+    console.log(
+      `      ✅ Account B: ${accountBNodesBefore} → ${accountBNodesAfter} nodes (preserved)`
+    );
     console.log(`   ✅ Multi-tenant isolation verified: Account boundaries respected`);
 
     // Cleanup Account B

@@ -16,15 +16,15 @@ import {
   ClusteringEngine,
   ClusterEvidenceComputer,
   type ProcessingConfig,
-} from '@canvas-memory/parsers';
-import { SQLiteClient, DatabaseClient } from '@canvas-memory/db';
+} from '@keimenon/parsers';
+import { SQLiteClient, DatabaseClient } from '@keimenon/db';
 import {
   DuplicateDetectionService,
   DuplicateGroup,
   DuplicateDetectionConfig,
 } from './duplicate-detection';
 import { getLocalDocumentStore, LocalDocumentStore } from './local-document-store';
-import { loadPolicyFromFile } from '@canvas-memory/types';
+import { loadPolicyFromFile } from '@keimenon/types';
 import path from 'path';
 import os from 'os';
 

@@ -10,7 +10,7 @@
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
-import { SQLiteClient } from '@canvas-memory/db';
+import { SQLiteClient } from '@keimenon/db';
 import { AuthService } from '../services/auth.service';
 import { randomUUID } from 'crypto';
 import * as fs from 'fs';

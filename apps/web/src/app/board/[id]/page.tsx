@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { FourRegionLayout } from '@canvas-memory/ui';
+import { FourRegionLayout } from '@keimenon/ui';
 import { Canvas2D } from '@/components/canvas/Canvas2D';
-import { GraphNode, GraphEdge } from '@canvas-memory/graph';
+import { GraphNode, GraphEdge } from '@keimenon/graph';
 import { Grid3x3, Zap } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/env.config';
 

@@ -1,10 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getToken } from '../contexts/AuthContext';
-import {
-  SettingControl,
-  EffectiveSettingValue,
-  SettingChange,
-} from '@canvas-memory/types/src/settings';
+import { SettingControl, EffectiveSettingValue, SettingChange } from '@keimenon/types/src/settings';
 import { errorCapture } from '@/services/error-capture.service';
 import { API_BASE_URL } from '@/lib/env.config';
 

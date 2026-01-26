@@ -124,7 +124,7 @@ The MCP (Model Context Protocol) servers provide me (Claude Code) with comprehen
 
 **How It Integrates**:
 
-- Uses same DB path as tests (`~/.canvas-memory/canvas.db`)
+- Uses same DB path as tests (`~/.keimenon/canvas.db`)
 - Runs same queries as `test-helpers.ts::countNodes()`, `getNodesByKind()`
 - Read-only mode for safety
 
@@ -366,7 +366,7 @@ npm run dev
 
 ```bash
 # Check if database exists
-ls -la ~/.canvas-memory/canvas.db
+ls -la ~/.keimenon/canvas.db
 
 # If missing, start API server once to initialize:
 cd apps/api

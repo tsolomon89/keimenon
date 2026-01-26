@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid';
 import { getStorageService } from '../services/storage';
 import { generateFingerprint, generateNodeId } from '../services/fingerprint';
 import { AutogroupService } from '../services/autogroup';
-import { SourceNodeSchema } from '@canvas-memory/types';
+import { SourceNodeSchema } from '@keimenon/types';
 import { getDbClient } from '../utils/get-db-client';
 
 const router = Router();

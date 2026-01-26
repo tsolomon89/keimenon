@@ -1,4 +1,4 @@
-import { SourceNode } from '@canvas-memory/types';
+import { SourceNode } from '@keimenon/types';
 import mime from 'mime-types';
 
 export interface GroupSuggestion {
@@ -134,9 +134,7 @@ export class AutogroupService {
   /**
    * Merge groups with significant overlap
    */
-  private mergeOverlappingGroups(
-    groups: GroupSuggestion[]
-  ): GroupSuggestion[] {
+  private mergeOverlappingGroups(groups: GroupSuggestion[]): GroupSuggestion[] {
     // For MVP, just return as-is
     // Future: implement sophisticated merging based on Jaccard similarity
     return groups;

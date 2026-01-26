@@ -13,7 +13,7 @@ import {
   type KeywordScore,
   type Message,
 } from './keyword-extractor';
-import type { GroupingConfig } from '@canvas-memory/types';
+import type { GroupingConfig } from '@keimenon/types';
 
 export interface Group {
   id: string;

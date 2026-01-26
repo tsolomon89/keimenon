@@ -15,7 +15,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { SQLiteClient } from '@canvas-memory/db';
+import { SQLiteClient } from '@keimenon/db';
 import { closeDbConnection } from '../utils/get-db-client';
 
 export function createTestHelperRoutes(db: SQLiteClient): Router {
