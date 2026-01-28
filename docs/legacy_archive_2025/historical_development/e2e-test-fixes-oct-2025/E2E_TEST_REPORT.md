@@ -10,7 +10,7 @@
 ## Executive Summary
 
 ✅ **DELETE Request Fix**: Successfully resolved the Playwright cross-origin DELETE bug
-⚠️ **Pre-existing Issues**: Multiple test failures unrelated to DELETE fix (console-error-filtering, canvas operations timeouts)
+⚠️ **Pre-existing Issues**: Multiple test failures unrelated to DELETE fix (console-error-filtering, keimenon operations timeouts)
 📊 **Overall Pass Rate**: 45% (42/93 tests passed)
 🎯 **DELETE Tests Status**: Skipped during full suite (blocked by earlier test failures)
 
@@ -57,7 +57,7 @@
 
 All 8 test files were executed across all 3 browsers:
 
-1. **canvas-operations.spec.ts** (3 tests)
+1. **keimenon-operations.spec.ts** (3 tests)
    - Chromium: ✅ All passed
    - Firefox: ✅ All passed
    - WebKit: ❌ All failed (20+ second timeouts)
@@ -81,7 +81,7 @@ All 8 test files were executed across all 3 browsers:
 5. **debug-client-env.spec.ts** (1 test)
    - ✅ All browsers passed
 
-6. **flow-auth-canvas.spec.ts** (4 tests)
+6. **flow-auth-keimenon.spec.ts** (4 tests)
    - Chromium: ✅ All 4 passed
    - Firefox: ✅ All 4 passed
    - WebKit: ✅ 1 passed, ❌ 3 failed (20+ second timeouts)
@@ -123,14 +123,14 @@ Error: page.evaluate: ReferenceError: require is not defined
 
 **Failed Tests**:
 
-- Canvas Operations (3 tests) - 20+ second timeouts
-- Flow auth canvas (3 tests) - 20+ second timeouts
+- Keimenon Operations (3 tests) - 20+ second timeouts
+- Flow auth keimenon (3 tests) - 20+ second timeouts
 - Settings navigation (2 tests) - 21+ second timeouts
 - Debug auth (1 test) - 21.6s timeout
 
 ### Category 3: Data Management UI Updates (3 failures)
 
-**Error**: "should update UI without reload after canvas data deletion"
+**Error**: "should update UI without reload after keimenon data deletion"
 **Affected**: All browsers
 **Duration**: 12-22 seconds
 **Root Cause**: Test timing or assertion issue (not related to DELETE fix)
@@ -215,7 +215,7 @@ Tests verified:
 
 ### Priority 2: Fix Data Management UI Test
 
-- **Action**: Debug "should update UI without reload after canvas data deletion" test
+- **Action**: Debug "should update UI without reload after keimenon data deletion" test
 - **Impact**: Will unblock 7 DELETE tests and allow proper verification of the DELETE fix
 - **File to update**: [tests/e2e/data-management-ui-updates.spec.ts:231](tests/e2e/data-management-ui-updates.spec.ts:231)
 
@@ -250,7 +250,7 @@ Each failure includes an error-context.md file with full stack traces and debugg
 **Example locations**:
 
 - `test-results/console-error-filtering-Co-e10f6-h-different-severity-levels-chromium/error-context.md`
-- `test-results/data-management-ui-updates-0f7ca--after-canvas-data-deletion-chromium/error-context.md`
+- `test-results/data-management-ui-updates-0f7ca--after-keimenon-data-deletion-chromium/error-context.md`
 
 ---
 

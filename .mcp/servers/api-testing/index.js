@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Canvas Memory OS - API Testing MCP Server
+ * Keimenon - API Testing MCP Server
  *
  * Provides comprehensive tools for testing API endpoints with proper authentication,
  * multi-tenant testing, and CRUD operation validation.
@@ -37,7 +37,7 @@ class APITestingMCPServer {
   constructor() {
     this.server = new Server(
       {
-        name: 'canvas-api-testing',
+        name: 'keimenon-api-testing',
         version: '1.0.0',
       },
       {

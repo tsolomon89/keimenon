@@ -3,13 +3,13 @@
 **Status:** Canonical
 **Last Updated:** 2025-10-23
 **Replaces:** All prior architecture documents
-**Authority:** This document defines the immutable contracts for the Canvas Memory OS
+**Authority:** This document defines the immutable contracts for the Keimenon
 
 ---
 
 ## Purpose
 
-This contract establishes the foundational principles, invariants, and non-negotiable rules that govern the Canvas Memory OS architecture. All code, documentation, and decisions must conform to these contracts.
+This contract establishes the foundational principles, invariants, and non-negotiable rules that govern the Keimenon architecture. All code, documentation, and decisions must conform to these contracts.
 
 ---
 
@@ -573,7 +573,7 @@ paths:
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://canvas.memory/schemas/node.message.v1.json",
+  "$id": "https://keimenon.memory/schemas/node.message.v1.json",
   "title": "Message Node",
   "examples": [
     {

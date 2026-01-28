@@ -44,7 +44,7 @@ function handleTokenExpiration(reason: string = 'Token expired'): void {
 
   // Clear token from storage
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('canvas_memory_token');
+    localStorage.removeItem('keimenon_token');
 
     // Show user-friendly message
     const event = new CustomEvent('auth:token-expired', {
@@ -357,7 +357,7 @@ export async function resumeJob(jobId: string): Promise<{
  *
  * Related: apps/api/src/modules/jobs/infrastructure/import-jobs.routes.ts:76 (POST /api/v1/jobs/import)
  * Related: apps/web/src/hooks/useJobStream.ts (SSE progress updates)
- * Related: apps/web/src/components/canvas/ImportsTableCard.tsx (job history display)
+ * Related: apps/web/src/components/keimenon/ImportsTableCard.tsx (job history display)
  */
 export async function importChatFilesAsJob(
   files: File[],
@@ -538,7 +538,7 @@ export async function importChatFiles(
   config: ChatImportConfig
 ): Promise<BatchImportResponse> {
   // TODO: Add validation for empty files array
-  // Related: apps/web/src/components/canvas/ChatImportModal.tsx (file upload UI)
+  // Related: apps/web/src/components/keimenon/ChatImportModal.tsx (file upload UI)
   // See: docs/features/INPUT_VALIDATION.md (needs creation)
   // Validate: files.length > 0, each file has valid size/type
   const formData = new FormData();

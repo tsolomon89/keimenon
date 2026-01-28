@@ -8,15 +8,15 @@
 
 ## Quick Status Overview
 
-| Phase                          | Status         | Completion | Priority |
-| ------------------------------ | -------------- | ---------- | -------- |
-| Phase 1A: Foundation           | ✅ Complete    | 100%       | -        |
-| Phase 1B: Ingest & Autogroup   | ✅ Complete    | 100%       | -        |
-| Phase 1C: Canvas Visualization | ✅ Complete    | 100%       | -        |
-| Phase 1D: Claims & Docs        | 🔄 In Progress | 30%        | **HIGH** |
-| Infrastructure Improvements    | 🔄 In Progress | 40%        | **HIGH** |
-| Phase 2: Pro Features          | 📋 Planned     | 0%         | MEDIUM   |
-| Phase 3: Business Features     | 📋 Planned     | 0%         | LOW      |
+| Phase                            | Status         | Completion | Priority |
+| -------------------------------- | -------------- | ---------- | -------- |
+| Phase 1A: Foundation             | ✅ Complete    | 100%       | -        |
+| Phase 1B: Ingest & Autogroup     | ✅ Complete    | 100%       | -        |
+| Phase 1C: Keimenon Visualization | ✅ Complete    | 100%       | -        |
+| Phase 1D: Claims & Docs          | 🔄 In Progress | 30%        | **HIGH** |
+| Infrastructure Improvements      | 🔄 In Progress | 40%        | **HIGH** |
+| Phase 2: Pro Features            | 📋 Planned     | 0%         | MEDIUM   |
+| Phase 3: Business Features       | 📋 Planned     | 0%         | LOW      |
 
 ---
 
@@ -26,7 +26,7 @@
 
 - [ ] **Add error boundaries to React components** - Prevents full app crashes
   - Location: `apps/web/src/components/ErrorBoundary.tsx`
-  - Wrap Canvas2D, IngestPage, BoardPage
+  - Wrap Keimenon2D, IngestPage, BoardPage
 
 - [ ] **Implement rate limiting** - Prevent abuse
   - Use `express-rate-limit` (already in dependencies)
@@ -49,12 +49,12 @@
 ### User Experience
 
 - [ ] **Add loading states** - Currently blank screens
-  - Canvas layout calculation (show spinner)
+  - Keimenon layout calculation (show spinner)
   - File upload progress (per-file progress bars exist, but no global loader)
   - Board graph fetch (skeleton UI)
 
 - [ ] **Add empty states** - Better UX when no data
-  - Empty canvas (show "Upload files to get started")
+  - Empty keimenon (show "Upload files to get started")
   - No groups (show "Groups will appear here")
   - No claims (show "Extract claims to populate")
 
@@ -73,7 +73,7 @@
   - Location: `apps/web/src/app/claims/page.tsx`
   - Form: claim_text, claim_type, sources to cite
   - Preview extracted claims from selected sources
-  - Add to scope from canvas selection
+  - Add to scope from keimenon selection
 
 - [ ] **Rule-based claim extraction service** (4-6 hours)
   - Location: `apps/api/src/services/claims.ts`
@@ -131,7 +131,7 @@
 
 - [ ] **Citation links** (1 hour)
   - Clickable citations in UnifiedDocs
-  - Click → jump to source on canvas
+  - Click → jump to source on keimenon
   - Hover → show snippet preview
 
 ---
@@ -143,7 +143,7 @@
 - [ ] **Layout persistence** (2-3 hours)
   - Store node positions in Neo4j
   - Properties: `x`, `y`, `z`, `layout_version`
-  - Load saved layout on canvas mount
+  - Load saved layout on keimenon mount
   - Button to "Reset Layout"
 
 - [ ] **Query optimization** (2-4 hours)
@@ -182,8 +182,8 @@
 
 ### Frontend
 
-- [ ] **Canvas performance optimization** (4-6 hours)
-  - Use OffscreenCanvas for better perf
+- [ ] **Keimenon performance optimization** (4-6 hours)
+  - Use OffscreenKeimenon for better perf
   - Move layout calculation to Web Worker
   - Implement viewport culling (only render visible nodes)
   - Cache expensive calculations (memoization)
@@ -198,7 +198,7 @@
   - Cmd/Ctrl+K: Command palette
   - Delete: Remove selected nodes
   - Escape: Clear selection
-  - Space+drag: Pan canvas
+  - Space+drag: Pan keimenon
   - Cmd/Ctrl+A: Select all
 
 ### Development Experience
@@ -367,7 +367,7 @@ Core for multi-tier support.
 
 ### Galaxy Lens
 
-- [ ] **3D canvas** (8-12 hours)
+- [ ] **3D keimenon** (8-12 hours)
   - Use Three.js + React Three Fiber
   - Add ObjectiveClaim nodes as third dimension
   - Camera controls (OrbitControls)
@@ -613,7 +613,7 @@ Core for multi-tier support.
 ### Medium Value (Nice to Have)
 
 1. Workspace system
-2. Advanced canvas features
+2. Advanced keimenon features
 3. Performance optimizations
 4. CI/CD pipeline
 
@@ -647,7 +647,7 @@ These can be knocked out quickly for immediate value:
 | ---------------- | ----------------------------------- | ---------- |
 | Chat with scope  | Workspace system, Model integration | ⏸️ Waiting |
 | Verifiers        | Workspace quotas, Job queue         | ⏸️ Waiting |
-| Galaxy lens      | 3D canvas implementation            | ⏸️ Waiting |
+| Galaxy lens      | 3D keimenon implementation          | ⏸️ Waiting |
 | Action nodes     | Business tier, CRM integrations     | ⏸️ Waiting |
 | Scheduled agents | Agent framework, Job queue          | ⏸️ Waiting |
 

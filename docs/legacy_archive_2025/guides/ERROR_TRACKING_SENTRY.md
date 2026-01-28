@@ -5,7 +5,7 @@
 
 ## Overview
 
-Canvas Memory OS now supports **optional, privacy-respecting error tracking** via Sentry. This integration is designed with our **local-first philosophy** in mind:
+Keimenon now supports **optional, privacy-respecting error tracking** via Sentry. This integration is designed with our **local-first philosophy** in mind:
 
 - ✅ **Opt-in only** - Never sends data without explicit user consent
 - ✅ **PII scrubbing** - Automatically removes sensitive data before sending
@@ -269,7 +269,7 @@ function SettingsPage() {
           checked={consentGiven}
           onChange={(e) => handleConsentChange(e.target.checked)}
         />
-        Help improve Canvas Memory OS by sending error reports
+        Help improve Keimenon by sending error reports
       </label>
       <p className="text-sm text-gray-500">
         We respect your privacy. Error reports are anonymized and contain no personal data.

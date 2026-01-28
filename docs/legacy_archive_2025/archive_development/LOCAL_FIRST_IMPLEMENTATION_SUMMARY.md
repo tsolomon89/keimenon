@@ -14,7 +14,7 @@ A complete **local-first storage architecture** that separates document content 
 
 Core service that manages document storage on the local filesystem:
 
-- Stores documents in `~/.canvas-memory/documents/`
+- Stores documents in `~/.keimenon/documents/`
 - Content-addressable storage with SHA256 deduplication
 - Handles conversations, messages, sources, and code blocks
 - Returns metadata with storage location pointers for Neo4j
@@ -107,7 +107,7 @@ New REST endpoints for fetching content from local storage:
 Automated tool to migrate existing Neo4j content to local storage:
 
 - Processes Messages, Sources, and CodeBlocks in batches
-- Moves content from Neo4j to `~/.canvas-memory/`
+- Moves content from Neo4j to `~/.keimenon/`
 - Updates Neo4j nodes with `content_location` pointers
 - Removes content fields from Neo4j
 - Verification step ensures integrity
@@ -167,7 +167,7 @@ User uploads → Parser extracts → ALL content stored in Neo4j
 ### **New Architecture** ✅
 
 ```
-User uploads → Parser extracts → Content saved to ~/.canvas-memory/
+User uploads → Parser extracts → Content saved to ~/.keimenon/
                                   ↓
                                   Metadata saved to Neo4j
                                   (with content_location pointers)
@@ -202,7 +202,7 @@ User uploads → Parser extracts → Content saved to ~/.canvas-memory/
 
 - Handle millions of messages without Neo4j bloat
 - Filesystem scales better than graph DB for text
-- Easy backup: copy `~/.canvas-memory/`
+- Easy backup: copy `~/.keimenon/`
 
 ---
 
@@ -228,7 +228,7 @@ Relationships {
 ### **What Goes in Local Storage** (Content)
 
 ```
-~/.canvas-memory/
+~/.keimenon/
   documents/
     conversations/{id}/conversation.json  (full exports)
     messages/{conv_id}/{msg_id}.md        (message content)
@@ -310,7 +310,7 @@ Offline: Each device independent
 const { nodes, edges } = await api.getGraph(boardId);
 
 // 2. Render nodes
-<Canvas nodes={nodes} edges={edges} />
+<Keimenon nodes={nodes} edges={edges} />
 
 // 3. Lazy-load content on click
 const handleNodeClick = async (nodeId) => {
@@ -332,7 +332,7 @@ npm run dev:boot
 ### **2. Check local storage initialization**
 
 ```bash
-ls -la ~/.canvas-memory/
+ls -la ~/.keimenon/
 # Should see: documents/ and metadata/ folders
 ```
 
@@ -346,8 +346,8 @@ curl -X POST http://localhost:4001/api/v1/import/enhanced \
 ### **4. Check content was saved locally**
 
 ```bash
-ls ~/.canvas-memory/documents/messages/
-ls ~/.canvas-memory/documents/sources/
+ls ~/.keimenon/documents/messages/
+ls ~/.keimenon/documents/sources/
 ```
 
 ### **5. Test content retrieval**
@@ -382,7 +382,7 @@ NEO4J_USER=neo4j
 NEO4J_PASSWORD=password
 
 # Local storage path (optional)
-LOCAL_DOCS_PATH=~/.canvas-memory  # Default
+LOCAL_DOCS_PATH=~/.keimenon  # Default
 # Or custom: LOCAL_DOCS_PATH=/custom/path
 ```
 
@@ -443,7 +443,7 @@ Savings: $90-180/month + better privacy + faster queries
 
 ---
 
-## Alignment with Canvas Memory OS Philosophy
+## Alignment with Keimenon Philosophy
 
 ✅ **Local-first** - Documents stay on user's machine
 ✅ **Graph-native** - Neo4j does what it's designed for (relationships)

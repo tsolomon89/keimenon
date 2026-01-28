@@ -1,5 +1,5 @@
 {
-  "name": "@canvas/mcp-code-execution",
+  "name": "@keimenon/mcp-code-execution",
   "version": "1.0.0",
   "description": "MCP server for code execution with progressive tool loading - implements 2025 breakthrough pattern for 98.7% token savings",
   "type": "module",

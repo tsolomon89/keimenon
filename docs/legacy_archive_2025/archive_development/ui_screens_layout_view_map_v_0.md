@@ -118,7 +118,7 @@ _(MVP enables A; Pro adds B/C; Admin can access all for testing.)_
 - **Context ring** on selection with radial menu: Add to Scope • Sequester • Derive Claim • Open in RHS • Pin
 - **Edge sculpting:** drag to reroute; click edge to toggle policy chips
 - **Zoom HUD:** slider + +/- + fit‑to‑selection
-- **Lens dial:** on‑canvas control to morph metrics (semantic↔provenance↔verification)
+- **Lens dial:** on‑keimenon control to morph metrics (semantic↔provenance↔verification)
 
 ---
 
@@ -133,7 +133,7 @@ _(MVP enables A; Pro adds B/C; Admin can access all for testing.)_
 ## 9) Overlay precedence & region interlock
 
 - **RHS overlay ON** → Main and Footer hide; LHS remains; Header stays.
-- **LHS expanded to max** → RHS overlay width reduces to preserve min 20% off‑canvas gutter.
+- **LHS expanded to max** → RHS overlay width reduces to preserve min 20% off‑keimenon gutter.
 - **Footer expanded** → RHS cannot overlay; prompt to collapse Footer.
 
 ---
@@ -163,9 +163,9 @@ _(MVP enables A; Pro adds B/C; Admin can access all for testing.)_
 
 ## 11) Screens / Routes (thin set)
 
-1. **/board/\*\***:id\*\* — Main canvas with lenses (all regions present)
+1. **/board/\*\***:id\*\* — Main keimenon with lenses (all regions present)
 2. **/ingest** — Dropzone + ingest queue + autogroup log (RHS shows latest items)
-3. **/claims** — Claims table & filters; click to center on canvas
+3. **/claims** — Claims table & filters; click to center on keimenon
 4. **/docs/\*\***:docId\*\* — UnifiedDoc full view, ring selector, diff mode
 5. **/verify** — Verifier runs, artifacts, schedules (Pro/Business)
 6. **/admin** — Instance Emulator + Config Registry CRUD (schemas from spec)
@@ -177,8 +177,8 @@ _(Free exposes /board and /ingest; others visible but disabled with tooltips.)_
 
 ## 12) Responsiveness
 
-- **Mobile:** LHS collapses to bottom sheet; RHS opens full; canvas gestures prioritized.
-- **Tablet:** split view allowed (LHS 25%, canvas 50%, RHS 25%).
+- **Mobile:** LHS collapses to bottom sheet; RHS opens full; keimenon gestures prioritized.
+- **Tablet:** split view allowed (LHS 25%, keimenon 50%, RHS 25%).
 - **Desktop:** defaults per RuntimeManifest; remembers per‑board layout.
 
 ---
@@ -208,5 +208,5 @@ _(Free exposes /board and /ingest; others visible but disabled with tooltips.)_
 ## 16) Open questions
 
 - Should Matrix/Adjacency be Pro‑only or available to Free for audits?
-- Minimum gutter when both sidebars are expanded? (current 20% off‑canvas)
+- Minimum gutter when both sidebars are expanded? (current 20% off‑keimenon)
 - Do we allow RHS overlay + Header tool drawer simultaneously?

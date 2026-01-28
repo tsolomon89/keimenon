@@ -195,18 +195,18 @@ export async function login(page: Page, email: string, password: string): Promis
 
             // Store the real token (use correct key expected by AuthContext)
             await page.evaluate((token) => {
-              localStorage.setItem('canvas_memory_token', token);
+              localStorage.setItem('keimenon_token', token);
               localStorage.removeItem('temp_auth_token');
             }, selectBody.token);
 
-            // Navigate to canvas manually
-            await page.goto('/canvas');
+            // Navigate to keimenon manually
+            await page.goto('/keimenon');
           }
         }
       }
 
-      // Success - wait for redirect to canvas
-      await page.waitForURL(/\/canvas/, { timeout: 60000 });
+      // Success - wait for redirect to keimenon
+      await page.waitForURL(/\/keimenon/, { timeout: 60000 });
       await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
 
       // Log successful login (helpful for debugging)

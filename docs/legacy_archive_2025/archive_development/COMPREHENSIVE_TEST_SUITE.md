@@ -349,7 +349,7 @@ Tests run against YOUR actual data:
 ### Phase 4: API & UI Integration (📋 PLANNED)
 
 - Frontend API endpoints
-- Canvas visualization
+- Keimenon visualization
 - Inspector panel
 - Search UI
 - Upload UI

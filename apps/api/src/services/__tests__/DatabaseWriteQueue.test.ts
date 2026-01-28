@@ -9,7 +9,7 @@
  * - Normal operations still work (no regression)
  */
 
-import { describe, test as it, beforeEach, afterEach } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { DatabaseWriteQueue } from '../DatabaseWriteQueue';
@@ -34,7 +34,7 @@ type DBNode = {
 let db: Database.Database;
 let queue: DatabaseWriteQueue;
 
-beforeEach(() => {
+beforeAll(async () => {
   // Create in-memory test database
   db = new Database(':memory:');
   db.pragma('journal_mode = WAL');
@@ -88,7 +88,7 @@ beforeEach(() => {
   queue.start();
 });
 
-afterEach(async () => {
+afterAll(async () => {
   if (queue) {
     await queue.stop();
   }

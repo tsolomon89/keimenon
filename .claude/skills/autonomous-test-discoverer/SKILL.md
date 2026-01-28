@@ -1,7 +1,7 @@
 ---
 name: autonomous-test-discoverer
 description: Discovers testable endpoints and user flows, analyzes E2E coverage, generates coverage matrix. Use when assessing test coverage or planning test implementation.
-allowed-tools: Read, Glob, Grep, mcp__canvas-database__query_nodes, mcp__canvas-docs__search_docs, mcp__playwright-e2e__pw_listTests
+allowed-tools: Read, Glob, Grep, mcp__keimenon-database__query_nodes, mcp__keimenon-docs__search_docs, mcp__playwright-e2e__pw_listTests
 context: fork
 agent: Explore
 ---
@@ -12,7 +12,7 @@ agent: Explore
 
 ## Purpose
 
-Automatically discovers all testable endpoints and user flows in the Canvas Memory OS application, analyzes existing E2E test coverage, and generates a comprehensive coverage matrix identifying gaps that need test implementation.
+Automatically discovers all testable endpoints and user flows in the Keimenon application, analyzes existing E2E test coverage, and generates a comprehensive coverage matrix identifying gaps that need test implementation.
 
 ## Usage
 
@@ -78,7 +78,7 @@ For each major page/route, perform visual reconnaissance:
 
 - `/` - Landing/home page
 - `/login` - Authentication
-- `/canvas` - Main workspace/dashboard
+- `/keimenon` - Main workspace/dashboard
 - `/settings` - User settings
 - `/settings/account` - Account settings
 - `/settings/crm` - CRM dashboard (admin only)
@@ -262,8 +262,8 @@ Merge visual discoveries with Phase 2 static analysis:
     {
       "component": "NodeCreateButton.tsx", // From static
       "locator": "getByRole('button', { name: /create node/i })", // From visual
-      "page": "/canvas",
-      "screenshot": "visual-crawl/canvas-full.png"
+      "page": "/keimenon",
+      "screenshot": "visual-crawl/keimenon-full.png"
     }
   ]
 }
@@ -397,8 +397,8 @@ Return a JSON object with:
   "visual_coverage": {
     "pages_analyzed": [
       {
-        "page": "/canvas",
-        "screenshot": "visual-crawl/canvas-full.png",
+        "page": "/keimenon",
+        "screenshot": "visual-crawl/keimenon-full.png",
         "ui_elements_count": 42,
         "api_calls_observed": 8,
         "tested_elements": 35,
@@ -420,11 +420,11 @@ Return a JSON object with:
         "type": "button",
         "text": "Create Node",
         "locator": "page.getByRole('button', { name: /create node/i })",
-        "page": "/canvas",
+        "page": "/keimenon",
         "triggers_endpoint": "POST /api/v1/nodes",
         "has_test": true,
         "test_file": "tests/e2e/nodes/create-node.spec.ts",
-        "screenshot": "visual-crawl/canvas-full.png",
+        "screenshot": "visual-crawl/keimenon-full.png",
         "position": { "x": 850, "y": 120 }
       },
       {
@@ -445,7 +445,7 @@ Return a JSON object with:
         { "element": "Switch Account", "page": "/settings" }
       ],
       "shared": [
-        { "element": "Canvas Workspace", "page": "/canvas" },
+        { "element": "Keimenon Workspace", "page": "/keimenon" },
         { "element": "User Settings", "page": "/settings" }
       ]
     }
@@ -489,12 +489,12 @@ Return a JSON object with:
     {
       "element": "Context Menu: Delete Multiple",
       "type": "contextmenu",
-      "page": "/canvas",
+      "page": "/keimenon",
       "trigger": "right-click on selected nodes",
       "endpoints": ["DELETE /api/v1/nodes:batch"],
       "priority": "medium",
       "reason": "Power user feature, not discoverable from static analysis",
-      "screenshot": "visual-crawl/canvas-contextmenu.png"
+      "screenshot": "visual-crawl/keimenon-contextmenu.png"
     }
   ],
   "test_roadmap": [

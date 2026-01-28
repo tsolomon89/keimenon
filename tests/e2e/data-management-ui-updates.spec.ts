@@ -5,7 +5,7 @@ import { login } from './helpers/login';
  * Data Management UI Updates Test
  *
  * Validates that UI updates correctly without page reloads after:
- * - Canvas data deletion
+ * - Keimenon data deletion
  * - Job deletion (single & bulk)
  * - SSE job completion events
  * - Operating context switches (CRM mode)
@@ -47,13 +47,13 @@ async function dismissWelcomeModal(page: Page): Promise<void> {
 }
 
 /**
- * Helper: Navigate to settings view within canvas
+ * Helper: Navigate to settings view within keimenon
  *
- * Settings are embedded in /canvas via CanvasLayout, not a standalone page.
- * Must navigate to canvas first, then switch to settings view.
+ * Settings are embedded in /keimenon via KeimenonLayout, not a standalone page.
+ * Must navigate to keimenon first, then switch to settings view.
  */
 async function navigateToSettings(page: Page): Promise<void> {
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
   await page.waitForLoadState('domcontentloaded');
 
   // Dismiss welcome modal if present
@@ -87,8 +87,8 @@ async function navigateToSettings(page: Page): Promise<void> {
   await dataManagementSection.click();
   await page.waitForTimeout(500);
 
-  // Verify DataManagementCard is visible by looking for "Clear Canvas Data" button
-  await page.getByRole('button', { name: 'Clear Canvas Data' }).waitFor({ timeout: 10000 });
+  // Verify DataManagementCard is visible by looking for "Clear Keimenon Data" button
+  await page.getByRole('button', { name: 'Clear Keimenon Data' }).waitFor({ timeout: 10000 });
 
   console.log('[Test Helper] Navigated to Data Management settings');
 }
@@ -100,7 +100,7 @@ async function navigateToSettings(page: Page): Promise<void> {
  * This ensures frontend-backend synchronization is working correctly.
  */
 async function clearAllBackgroundOperations(page: Page): Promise<void> {
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
   await page.waitForLoadState('domcontentloaded');
 
   // Dismiss welcome modal if present
@@ -150,17 +150,17 @@ async function clearAllBackgroundOperations(page: Page): Promise<void> {
  * Helper: Wait for background operations table to be visible
  *
  * The table is in ImportsTableCard with heading "Background Operations".
- * Must dismiss welcome modal first and ensure we're in canvas mode (not settings).
+ * Must dismiss welcome modal first and ensure we're in keimenon mode (not settings).
  */
 async function waitForOperationsTable(page: Page): Promise<typeof page.locator> {
-  // Always navigate to canvas page explicitly
-  await page.goto('/canvas');
+  // Always navigate to keimenon page explicitly
+  await page.goto('/keimenon');
   await page.waitForLoadState('domcontentloaded');
 
   // Dismiss welcome modal if present
   await dismissWelcomeModal(page);
 
-  // Background Operations table is in Dashboard view, not Canvas view
+  // Background Operations table is in Dashboard view, not Keimenon view
   // Click Dashboard button to ensure we see the operations table
   const dashboardButton = page.getByRole('button', { name: 'Dashboard' });
   if (await dashboardButton.isVisible({ timeout: 5000 }).catch(() => false)) {
@@ -272,36 +272,36 @@ test.describe.serial('Data Management UI Updates', () => {
 
   test.beforeEach(async ({ page }) => {
     // Welcome modal is automatically disabled during E2E tests via NEXT_PUBLIC_E2E_TESTING environment variable
-    // No need to manipulate localStorage - the canvas page checks the env var and skips the modal entirely
+    // No need to manipulate localStorage - the keimenon page checks the env var and skips the modal entirely
 
     // Login using WebKit-friendly helper
     await login(page, TEST_EMAIL, TEST_PASSWORD);
 
     // IMPORTANT: Wait for AuthContext to fully initialize
-    // The canvas page makes API calls that require auth token from localStorage.
+    // The keimenon page makes API calls that require auth token from localStorage.
     // Give it time to initialize before interacting with the page.
     await page.waitForTimeout(2000);
 
-    // Verify canvas has loaded by checking for key UI elements
+    // Verify keimenon has loaded by checking for key UI elements
     // This ensures the page is fully ready before tests interact with it
     await page
-      .getByRole('button', { name: /canvas/i })
+      .getByRole('button', { name: /keimenon/i })
       .first()
       .waitFor({ state: 'visible', timeout: 10000 });
   });
 
-  test('should update UI without reload after canvas data deletion', async ({ page }) => {
-    // FIXED: Verifies that canvas data deletion:
-    // 1. Only deletes canvas data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
+  test('should update UI without reload after keimenon data deletion', async ({ page }) => {
+    // FIXED: Verifies that keimenon data deletion:
+    // 1. Only deletes keimenon data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
     // 2. Preserves system nodes (UserNode, AccountNode, Constellation, Board)
     // 3. Shows correct UI feedback without page reload
     // 4. Creates background job with correct scope
 
-    // Navigate to settings view (embedded in canvas)
+    // Navigate to settings view (embedded in keimenon)
     await navigateToSettings(page);
 
-    // Find "Clear Canvas Data" button using role (avoids strict mode violation with heading)
-    const clearButton = page.getByRole('button', { name: 'Clear Canvas Data' });
+    // Find "Clear Keimenon Data" button using role (avoids strict mode violation with heading)
+    const clearButton = page.getByRole('button', { name: 'Clear Keimenon Data' });
     await expect(clearButton).toBeVisible({ timeout: 10000 });
 
     // Verify button is NOT disabled (should be clickable)
@@ -315,7 +315,7 @@ test.describe.serial('Data Management UI Updates', () => {
 
     // Wait for confirmation modal using role="dialog"
     // The modal now has proper ARIA roles for both accessibility and testing
-    const confirmModal = page.getByRole('dialog', { name: /Clear All Canvas Data/i });
+    const confirmModal = page.getByRole('dialog', { name: /Clear All Keimenon Data/i });
     await expect(confirmModal).toBeVisible({ timeout: 5000 });
 
     // ADDED: Verify modal shows stats (if any data exists)
@@ -335,10 +335,10 @@ test.describe.serial('Data Management UI Updates', () => {
       page.getByText(/Delete job created.*Monitor progress in Background Operations/i)
     ).toBeVisible({ timeout: 10000 });
 
-    // Verify we're still on canvas (no reload occurred)
-    await expect(page).toHaveURL(/\/canvas/);
+    // Verify we're still on keimenon (no reload occurred)
+    await expect(page).toHaveURL(/\/keimenon/);
 
-    // Verify we're still in settings mode (not switched to canvas view)
+    // Verify we're still in settings mode (not switched to keimenon view)
     // The page should still show the Data Management heading
     await expect(page.getByRole('heading', { name: 'Data Management', level: 1 })).toBeVisible();
 
@@ -353,7 +353,7 @@ test.describe.serial('Data Management UI Updates', () => {
     await expect(operationsTable).toBeVisible({ timeout: 5000 });
 
     // Look for a "delete" or "deletion" job in the table
-    const deleteJobRow = page.getByText(/clearing canvas data|delete/i).first();
+    const deleteJobRow = page.getByText(/clearing keimenon data|delete/i).first();
     await expect(deleteJobRow).toBeVisible({ timeout: 5000 });
 
     console.log('[Test] Successfully verified delete job creation and UI state');
@@ -711,7 +711,7 @@ test.describe.serial('Data Management UI Updates', () => {
     await navigateToSettings(page);
 
     // Find clear button using role (avoids strict mode violation with heading)
-    const clearButton = page.getByRole('button', { name: 'Clear Canvas Data' });
+    const clearButton = page.getByRole('button', { name: 'Clear Keimenon Data' });
     await expect(clearButton).toBeVisible({ timeout: 10000 });
 
     // Click and look for loading indicator
@@ -721,7 +721,7 @@ test.describe.serial('Data Management UI Updates', () => {
     await page.waitForTimeout(500);
 
     // Use semantic selector with ARIA role
-    const confirmModal = page.getByRole('dialog', { name: /Clear All Canvas Data/i });
+    const confirmModal = page.getByRole('dialog', { name: /Clear All Keimenon Data/i });
     await expect(confirmModal).toBeVisible({ timeout: 5000 });
 
     // Click confirm button
@@ -740,8 +740,8 @@ test.describe.serial('Data Management UI Updates', () => {
     // Navigate to Data Management settings
     await navigateToSettings(page);
 
-    // Find "Clear Canvas Data" button
-    const clearButton = page.getByRole('button', { name: 'Clear Canvas Data' });
+    // Find "Clear Keimenon Data" button
+    const clearButton = page.getByRole('button', { name: 'Clear Keimenon Data' });
     await expect(clearButton).toBeVisible({ timeout: 10000 });
     await expect(clearButton).not.toBeDisabled();
 
@@ -749,7 +749,7 @@ test.describe.serial('Data Management UI Updates', () => {
     await clearButton.click();
     await page.waitForTimeout(500);
 
-    const confirmModal = page.getByRole('dialog', { name: /Clear All Canvas Data/i });
+    const confirmModal = page.getByRole('dialog', { name: /Clear All Keimenon Data/i });
     await expect(confirmModal).toBeVisible({ timeout: 5000 });
 
     const confirmButton = confirmModal.getByText('Clear Data', { exact: false });
@@ -895,7 +895,7 @@ test.describe.serial('Data Management UI Updates', () => {
     // Start deletion job
     await navigateToSettings(page);
 
-    const clearButton = page.getByRole('button', { name: 'Clear Canvas Data' });
+    const clearButton = page.getByRole('button', { name: 'Clear Keimenon Data' });
     await clearButton.click();
     await page.waitForTimeout(500);
 
@@ -951,7 +951,7 @@ test.describe.serial('Data Management UI Updates', () => {
     // Attempt deletion
     await navigateToSettings(page);
 
-    const clearButton = page.getByRole('button', { name: 'Clear Canvas Data' });
+    const clearButton = page.getByRole('button', { name: 'Clear Keimenon Data' });
     await clearButton.click();
     await page.waitForTimeout(500);
 

@@ -1,4 +1,4 @@
-# Canvas Memory OS - Validated Project Status
+# Keimenon - Validated Project Status
 
 **Date**: November 19, 2025
 **Status**: Core backend is stable. Frontend features are implemented but carry significant "testing debt". The project is NOT production-ready.
@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 
-This document provides a validated summary of the Canvas Memory OS project, superseding all previous completion reports found in `docs/archive_development` and `docs/historical_development`. The primary sources for this summary are the living documents: `docs/active_development/IN_PROGRESS.md` and `docs/active_development/NOT_STARTED.md`.
+This document provides a validated summary of the Keimenon project, superseding all previous completion reports found in `docs/archive_development` and `docs/historical_development`. The primary sources for this summary are the living documents: `docs/active_development/IN_PROGRESS.md` and `docs/active_development/NOT_STARTED.md`.
 
 The project's backend is substantially complete and stable, featuring a robust multi-tenant authentication system, a flexible dual-database architecture, and a comprehensive API. However, the majority of frontend features, while coded, have not been validated with end-to-end testing. A significant **"testing debt"** exists across the application, meaning many features are implemented but not verified to work correctly.
 
@@ -75,7 +75,7 @@ The project has a detailed roadmap of features that have not been started. The m
 
 ## 4. Conclusion & Realistic Next Steps
 
-**Conclusion:** Canvas Memory OS is a project with a solid architectural foundation and a mature backend. However, its status has been repeatedly overstated in historical documents. The frontend, while visually impressive and feature-rich in code, is unverified and likely contains numerous bugs. The "testing debt" is the single largest risk to the project.
+**Conclusion:** Keimenon is a project with a solid architectural foundation and a mature backend. However, its status has been repeatedly overstated in historical documents. The frontend, while visually impressive and feature-rich in code, is unverified and likely contains numerous bugs. The "testing debt" is the single largest risk to the project.
 
 **The project is significantly further from production-readiness than documents like `FINAL_COMPLETION_REPORT.md` would suggest.**
 

@@ -284,7 +284,7 @@ Usage: applyBasicProjection();
 
 ## Migration Results
 
-### Database: `packages/db/data/canvas.db`
+### Database: `packages/db/data/keimenon.db`
 
 **Migration Output:**
 
@@ -352,7 +352,7 @@ Usage: applyBasicProjection();
 id: 38466216-c442-41ff-949b-4fd5999ef727
 type: client
 class: business
-email: debug@canvas-memory.com
+email: debug@keimenon.com
 name: Debug Playground
 mode_service: 1 ← Enabled for nested portal access
 parent_account_id: 1f539cf5-6bbe-47bd-b19c-67144c15a4ac (admin)
@@ -429,7 +429,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 # Get the debug account ID
-DEBUG_ACCOUNT=$(sqlite3 packages/db/data/canvas.db \
+DEBUG_ACCOUNT=$(sqlite3 packages/db/data/keimenon.db \
   "SELECT id FROM accounts WHERE mode_service=1" 2>/dev/null)
 
 echo "Debug Account: $DEBUG_ACCOUNT"
@@ -472,7 +472,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 ### 8. Check Audit Log
 
 ```bash
-sqlite3 packages/db/data/canvas.db \
+sqlite3 packages/db/data/keimenon.db \
   "SELECT datetime(timestamp/1000, 'unixepoch') as time,
           action, resource_type, mode, success, reason
    FROM audit_log

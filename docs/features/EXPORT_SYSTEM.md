@@ -2,7 +2,7 @@
 
 **Purpose:** Define the privacy-preserving export format for NEAR_DUP similarity graphs with hashed node IDs and no plaintext content.
 
-**Audience:** Backend engineers, data analysts, researchers consuming Canvas Memory exports.
+**Audience:** Backend engineers, data analysts, researchers consuming Keimenon exports.
 
 ---
 
@@ -421,7 +421,7 @@ export function verifySnapshot(version: string): VerificationResult {
 ### Running Verification
 
 ```typescript
-import { createPublishableExport } from '@canvas/api';
+import { createPublishableExport } from '@keimenon/api';
 
 const exporter = createPublishableExport(db, policy);
 
@@ -456,7 +456,7 @@ if (result.valid) {
 ### Basic Export
 
 ```typescript
-import { createPublishableExport } from '@canvas/api';
+import { createPublishableExport } from '@keimenon/api';
 
 const exporter = createPublishableExport(db, policy);
 

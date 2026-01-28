@@ -5,7 +5,7 @@
 This guide documents best practices for subscribing to Server-Sent Events (SSE) in React components to avoid race conditions and stuck loading states.
 
 **Related Bug Fix**: UI Loading State Bug (2025-11-17)
-**Implementation**: See `apps/web/src/components/settings/DataManagementCard.tsx` and `apps/web/src/components/canvas/ImportsTableCard.tsx`
+**Implementation**: See `apps/web/src/components/settings/DataManagementCard.tsx` and `apps/web/src/components/keimenon/ImportsTableCard.tsx`
 
 ---
 

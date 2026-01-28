@@ -300,7 +300,7 @@ import {
   type SourceDoc,
   type CodeAsset,
   type ImportConfig,
-} from '@canvas-memory/parsers/browser';
+} from '@keimenon/parsers/browser';
 ```
 
 **Add new progress stages:**
@@ -486,7 +486,7 @@ async importFile(file: File, config: LocalImportConfig): Promise<LocalImportResu
 
 ## Phase 4: Update ImportModule UI (30 minutes)
 
-### File: `apps/web/src/components/canvas/ImportModule.tsx`
+### File: `apps/web/src/components/keimenon/ImportModule.tsx`
 
 **Update STEP_ORDER:**
 
@@ -623,7 +623,7 @@ const getProgressWeight = (stage: LocalImportProgress['stage']): number => {
 
 ```typescript
 // IndexedDB schema
-const DB_NAME = 'canvas-memory-local';
+const DB_NAME = 'keimenon-local';
 const DB_VERSION = 1;
 
 const STORES = {

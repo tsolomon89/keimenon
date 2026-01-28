@@ -1,6 +1,6 @@
 # MCP Testing & Integration Guide
 
-**Complete guide to using MCP servers for end-to-end testing and debugging of Canvas Memory OS**
+**Complete guide to using MCP servers for end-to-end testing and debugging of Keimenon**
 
 ---
 
@@ -67,7 +67,7 @@ The MCP (Model Context Protocol) servers provide me (Claude Code) with comprehen
 
 ## 🛠️ Available MCP Servers
 
-### 1. ✅ canvas-api-testing (NEW)
+### 1. ✅ keimenon-api-testing (NEW)
 
 **Purpose**: Comprehensive API endpoint testing with authentication
 
@@ -89,7 +89,7 @@ The MCP (Model Context Protocol) servers provide me (Claude Code) with comprehen
 - Supports same auth patterns (JWT tokens)
 - Can create test data like `e2e-import-workflow.test.ts`
 
-### 2. ✅ canvas-chat-import (NEW)
+### 2. ✅ keimenon-chat-import (NEW)
 
 **Purpose**: Import testing with pre-built test datasets
 
@@ -110,7 +110,7 @@ The MCP (Model Context Protocol) servers provide me (Claude Code) with comprehen
 - Verifies results with same DB queries as `countNodes()`, `countEdges()`
 - Compatible with existing import configurations
 
-### 3. ✅ canvas-database
+### 3. ✅ keimenon-database
 
 **Purpose**: Direct SQLite database inspection
 
@@ -124,11 +124,11 @@ The MCP (Model Context Protocol) servers provide me (Claude Code) with comprehen
 
 **How It Integrates**:
 
-- Uses same DB path as tests (`~/.keimenon/canvas.db`)
+- Uses same DB path as tests (`~/.keimenon/keimenon.db`)
 - Runs same queries as `test-helpers.ts::countNodes()`, `getNodesByKind()`
 - Read-only mode for safety
 
-### 4. ✅ canvas-docs
+### 4. ✅ keimenon-docs
 
 **Purpose**: Search and navigate project documentation
 
@@ -319,7 +319,7 @@ Use api-testing to cleanup test data with:
 **Check 1**: Verify servers are enabled in config
 
 ```bash
-cat .mcp/config.json | grep -A 3 "canvas-api-testing"
+cat .mcp/config.json | grep -A 3 "keimenon-api-testing"
 # Should show: "enabled": true
 ```
 
@@ -366,7 +366,7 @@ npm run dev
 
 ```bash
 # Check if database exists
-ls -la ~/.keimenon/canvas.db
+ls -la ~/.keimenon/keimenon.db
 
 # If missing, start API server once to initialize:
 cd apps/api

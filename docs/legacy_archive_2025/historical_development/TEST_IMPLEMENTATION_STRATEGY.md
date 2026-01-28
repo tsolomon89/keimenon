@@ -87,13 +87,13 @@ Instead of fixing unit tests, write high-level E2E tests:
 ```typescript
 // tests/e2e/import-flow.spec.ts
 test('import chat file and see visualization', async ({ page }) => {
-  await page.goto('http://localhost:3000/canvas');
+  await page.goto('http://localhost:3000/keimenon');
   await page.click('button:has-text("Import")');
   await page.setInputFiles('input[type="file"]', 'test-data/small.json');
   await page.click('button:has-text("Upload")');
 
   // Verify particle visualization appears
-  await expect(page.locator('canvas')).toBeVisible();
+  await expect(page.locator('keimenon')).toBeVisible();
 
   // Verify progress bar shows
   await expect(page.locator('text=Importing:')).toBeVisible();

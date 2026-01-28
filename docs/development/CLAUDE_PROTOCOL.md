@@ -1,6 +1,6 @@
-# claude.md — Operating Guide for Canvas Memory Agents (Claude-compatible)
+# claude.md — Operating Guide for Keimenon Agents (Claude-compatible)
 
-**Purpose:** Give the model exact guardrails and formats so it works inside the Canvas Memory OS without leaking data, hallucinating scope, or breaking cost/plan rules.
+**Purpose:** Give the model exact guardrails and formats so it works inside the Keimenon without leaking data, hallucinating scope, or breaking cost/plan rules.
 
 **Read me first:** All supporting artifacts live in **`ai_context/`**. If a file is missing, create a stub and reference it.
 
@@ -110,7 +110,7 @@ Use `UnifiedDocSection` from `ai_context/schemas/UnifiedDoc.json`:
 ## 5) Tier behavior (must enforce)
 
 - **Free:**
-  - Work entirely within the canvas graph. No web, no hosted models.
+  - Work entirely within the keimenon graph. No web, no hosted models.
   - If `client_side_llm_allowed=false`, return instructions but do not call a model.
   - Produce only **L0** doc sections; never exceed token ceilings in `LimitsPolicy`.
 - **Pro:**
@@ -347,11 +347,11 @@ Three templates guide test generation:
 
 The autonomous system uses these MCP servers:
 
-- **canvas-database**: Query nodes/edges, inspect schema
-- **canvas-docs**: Search documentation, extract TODOs
-- **canvas-api-testing**: Test endpoints, validate isolation
-- **canvas-chat-import**: Test import pipeline
-- **canvas-settings-crm**: Manage users/accounts
+- **keimenon-database**: Query nodes/edges, inspect schema
+- **keimenon-docs**: Search documentation, extract TODOs
+- **keimenon-api-testing**: Test endpoints, validate isolation
+- **keimenon-chat-import**: Test import pipeline
+- **keimenon-settings-crm**: Manage users/accounts
 - **playwright-e2e**: Execute tests, debug failures
 
 ### Playwright Agents

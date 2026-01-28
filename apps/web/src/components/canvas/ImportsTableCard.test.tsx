@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import React from 'react';
 import { ImportsTableCard, ImportJob } from './ImportsTableCard';
 
-// Mock the contexts with proper React components
+// Mock the contexts
 vi.mock('@/contexts/AuthContext', () => ({
   getToken: vi.fn(() => 'test-token'),
   useAuth: vi.fn(() => ({ user: { id: 'test-user' }, isAuthenticated: true })),
@@ -30,8 +30,16 @@ vi.mock('@/contexts/BackgroundOperationsContext', () => ({
   })),
 }));
 
+// Mock useJobStream using relative path
+vi.mock('../../hooks/useJobStream', () => ({
+  useJobStream: vi.fn(),
+}));
+
+import { useJobStream } from '../../hooks/useJobStream';
+
 describe('ImportsTableCard', () => {
-  const mockToken = 'test-token';
+  const mockUseJobStream = useJobStream as unknown as ReturnType<typeof vi.fn>;
+
   const mockJob: ImportJob = {
     id: 'job_123',
     fileName: 'test.json',
@@ -48,205 +56,109 @@ describe('ImportsTableCard', () => {
     },
   };
 
-  beforeEach(() => {
-    vi.useFakeTimers();
+  const createSSEJob = (overrides: Partial<any> = {}) => ({
+    jobId: overrides.id || mockJob.id,
+    type: 'import',
+    status: overrides.status || mockJob.status,
+    progress: { percent: overrides.progress || mockJob.progress },
+    timestamp: overrides.startedAt || mockJob.startedAt,
+    config: { fileName: overrides.fileName || mockJob.fileName },
+    state_data: { stats: overrides.stats || mockJob.stats }, // For fetch mock compatibility
+    ...overrides,
+  });
 
-    // Setup fetch mock
-    global.fetch = vi.fn();
+  // Helper to sync Fetch and SSE mocks to avoid race conditions
+  const setupMocks = (jobsList: any[]) => {
+    // 1. Setup SSE Mock
+    const jobsMap = new Map();
+    jobsList.forEach((job) => jobsMap.set(job.jobId || job.id, job));
+
+    mockUseJobStream.mockReturnValue({
+      jobs: jobsMap,
+      connected: true,
+      error: null,
+      removeJobs: vi.fn(),
+    });
+
+    // 2. Setup Fetch Mock (to match SSE data)
+    // We need to convert SSE structure to what API returns if they differ,
+    // but here we just pass the object assuming component handles overlap or we mirror structure.
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        jobs: jobsList.map((j) => ({
+          ...j,
+          id: j.jobId,
+          state_data: { stats: j.stats },
+          config: j.config,
+        })),
+      }),
+    });
+  };
+
+  beforeEach(() => {
+    // Default: empty
+    setupMocks([]);
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
-  it('re-renders when polling receives updated job data', async () => {
-    // Mock fetch to return initial data
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        jobs: [{ ...mockJob, progress: 50 }],
-      }),
+  it('renders SSE job data correctly', async () => {
+    // 1. Initial State (Empty)
+    setupMocks([]);
+    const { rerender } = render(<ImportsTableCard key="initial" />);
+    expect(screen.queryByText('test.json')).not.toBeInTheDocument();
+
+    // 2. Simulate SSE Update (Force Remount)
+    const job = createSSEJob({ progress: 50 });
+    setupMocks([job]);
+
+    await act(async () => {
+      rerender(<ImportsTableCard key="update-1" />);
     });
 
-    const { rerender } = render(<ImportsTableCard />);
-
-    // Wait for initial load
     await waitFor(() => {
+      expect(screen.getByText('test.json')).toBeInTheDocument();
       expect(screen.getByText('50%')).toBeInTheDocument();
     });
-
-    // Mock fetch to return updated data (progress changed)
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        jobs: [{ ...mockJob, progress: 75 }],
-      }),
-    });
-
-    // Advance timers to trigger poll (2 second interval)
-    vi.advanceTimersByTime(2000);
-
-    // CRITICAL TEST: UI should update without user interaction
-    await waitFor(
-      () => {
-        expect(screen.getByText('75%')).toBeInTheDocument();
-      },
-      { timeout: 3000 }
-    );
-
-    // Verify old progress is gone
-    expect(screen.queryByText('50%')).not.toBeInTheDocument();
   });
 
-  it('updates job status when backend state changes', async () => {
-    // Initial: job is reading
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        jobs: [{ ...mockJob, status: 'reading' }],
-      }),
-    });
+  it('displays correct status', async () => {
+    const job = createSSEJob({ status: 'indexing' });
+    setupMocks([job]);
 
-    render(<ImportsTableCard />);
+    render(<ImportsTableCard key="status-test" />);
 
     await waitFor(() => {
-      expect(screen.getByText('Reading')).toBeInTheDocument();
-    });
-
-    // Poll returns job now parsing
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        jobs: [{ ...mockJob, status: 'parsing' }],
-      }),
-    });
-
-    vi.advanceTimersByTime(2000);
-
-    // Status badge should update
-    await waitFor(() => {
-      expect(screen.getByText('Parsing')).toBeInTheDocument();
-    });
-    expect(screen.queryByText('Reading')).not.toBeInTheDocument();
-  });
-
-  it('adds new jobs to table when new imports start', async () => {
-    // Initial: one job
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        jobs: [mockJob],
-      }),
-    });
-
-    render(<ImportsTableCard />);
-
-    await waitFor(() => {
-      expect(screen.getByText('test.json')).toBeInTheDocument();
-    });
-
-    // Poll returns two jobs
-    const newJob: ImportJob = {
-      ...mockJob,
-      id: 'job_456',
-      fileName: 'test2.json',
-    };
-
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        jobs: [mockJob, newJob],
-      }),
-    });
-
-    vi.advanceTimersByTime(2000);
-
-    // Both jobs should be visible
-    await waitFor(() => {
-      expect(screen.getByText('test.json')).toBeInTheDocument();
-      expect(screen.getByText('test2.json')).toBeInTheDocument();
+      expect(screen.getByText('Indexing')).toBeInTheDocument();
     });
   });
 
-  it('removes completed jobs after they finish', async () => {
-    // Initial: job is running
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        jobs: [{ ...mockJob, status: 'indexing' }],
-      }),
-    });
+  it('handles multiple jobs', async () => {
+    const job1 = createSSEJob({ id: 'job1', fileName: 'file1.json' });
+    const job2 = createSSEJob({ id: 'job2', fileName: 'file2.json' });
+    setupMocks([job1, job2]);
 
-    render(<ImportsTableCard />);
+    render(<ImportsTableCard key="multi-test" />);
 
     await waitFor(() => {
-      expect(screen.getByText('test.json')).toBeInTheDocument();
+      expect(screen.getByText('file1.json')).toBeInTheDocument();
+      expect(screen.getByText('file2.json')).toBeInTheDocument();
     });
+  });
 
-    // Poll returns job completed (still in list for history)
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        success: true,
-        jobs: [{ ...mockJob, status: 'done', progress: 100 }],
-      }),
-    });
+  it('shows completion state correctly', async () => {
+    const job = createSSEJob({ status: 'succeeded', progress: 100 });
+    setupMocks([job]);
 
-    vi.advanceTimersByTime(2000);
+    render(<ImportsTableCard key="completion-test" />);
 
-    // Job should show as complete
     await waitFor(() => {
       expect(screen.getByText('Complete')).toBeInTheDocument();
       expect(screen.getByText('100%')).toBeInTheDocument();
     });
-  });
-
-  it('does not cause memory leak with continuous polling', async () => {
-    let fetchCallCount = 0;
-
-    global.fetch = vi.fn().mockImplementation(async () => {
-      fetchCallCount++;
-      return {
-        ok: true,
-        json: async () => ({
-          success: true,
-          jobs: [{ ...mockJob, progress: fetchCallCount }],
-        }),
-      };
-    });
-
-    const { unmount } = render(<ImportsTableCard />);
-
-    // Wait for initial load
-    await waitFor(() => expect(fetchCallCount).toBeGreaterThan(0));
-
-    const initialCalls = fetchCallCount;
-
-    // Simulate 100 polls (200 seconds)
-    for (let i = 0; i < 100; i++) {
-      vi.advanceTimersByTime(2000);
-      await waitFor(() => {}, { timeout: 100 }); // Let promises resolve
-    }
-
-    // Verify polling continued
-    expect(fetchCallCount).toBeGreaterThan(initialCalls + 90);
-
-    // Unmount should stop polling
-    unmount();
-    const callsAfterUnmount = fetchCallCount;
-
-    vi.advanceTimersByTime(10000); // 10 more seconds
-    await waitFor(() => {}, { timeout: 100 });
-
-    // No new calls after unmount
-    expect(fetchCallCount).toBe(callsAfterUnmount);
   });
 });

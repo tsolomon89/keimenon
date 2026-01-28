@@ -243,7 +243,7 @@ npm run migrate  # or equivalent command for your setup
 **Verify**:
 
 ```bash
-sqlite3 .data/canvas-memory.db "PRAGMA table_info(sessions)" | grep data_tag
+sqlite3 .data/keimenon.db "PRAGMA table_info(sessions)" | grep data_tag
 # Should output: data_tag|TEXT|0||real
 ```
 
@@ -266,7 +266,7 @@ NODE_ENV=test
 
 ```bash
 # Run a single test to verify savepoint mechanism
-npx playwright test tests/e2e/canvas-operations.spec.ts --workers=1
+npx playwright test tests/e2e/keimenon-operations.spec.ts --workers=1
 
 # Check logs for:
 # [Test Isolation] ✅ Savepoint created: test_...

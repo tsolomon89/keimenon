@@ -457,7 +457,7 @@ class ErrorCaptureService {
 
   private persistError(error: CapturedError) {
     try {
-      const key = 'canvas_memory_critical_errors';
+      const key = 'keimenon_critical_errors';
       const stored = localStorage.getItem(key);
       const errors = stored ? JSON.parse(stored) : [];
 
@@ -475,7 +475,7 @@ class ErrorCaptureService {
 
   private clearPersistedErrors() {
     try {
-      localStorage.removeItem('canvas_memory_critical_errors');
+      localStorage.removeItem('keimenon_critical_errors');
     } catch (err) {
       console.error('[ErrorCaptureService] Failed to clear persisted errors:', err);
     }

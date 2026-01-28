@@ -25,7 +25,7 @@
 **Startup Test**:
 
 ```
-[Database MCP] Connected to database at: C:\Users\Audna\.canvas-memory\canvas.db
+[Database MCP] Connected to database at: C:\Users\Audna\.keimenon\keimenon.db
 [Database MCP] Server running on stdio
 ```
 
@@ -67,8 +67,8 @@ node --version
 ### Test 2: Database File Exists ✅
 
 ```bash
-ls -la ~/.canvas-memory/canvas.db
-# Result: -rw-r--r-- 1 user group 4096 Oct 20 05:35 canvas.db
+ls -la ~/.keimenon/keimenon.db
+# Result: -rw-r--r-- 1 user group 4096 Oct 20 05:35 keimenon.db
 ```
 
 ✅ Database file present and accessible
@@ -176,8 +176,8 @@ node index.js
 {
   "chat.mcp.discovery.enabled": true,
   "chat.mcp.servers": {
-    "canvas-database": { ... },
-    "canvas-docs": { ... }
+    "keimenon-database": { ... },
+    "keimenon-docs": { ... }
   }
 }
 ```
@@ -190,8 +190,8 @@ After VSCode restart:
 
 1. **Command Palette** → "MCP: List Servers"
 2. Should show:
-   - `canvas-database` - Query and inspect Canvas Memory OS SQLite database
-   - `canvas-docs` - Search and navigate project documentation
+   - `keimenon-database` - Query and inspect Keimenon SQLite database
+   - `keimenon-docs` - Search and navigate project documentation
 
 ---
 
@@ -304,7 +304,7 @@ Command Palette → "Developer: Reload Window"
 
 ```
 Command Palette → "MCP: List Servers"
-Expected: See canvas-database and canvas-docs
+Expected: See keimenon-database and keimenon-docs
 ```
 
 ### 3. Test Database Query
@@ -394,7 +394,7 @@ Expected response: List of TODO comments with file paths and line numbers
 2. **Check database file exists**:
 
    ```bash
-   ls -la ~/.keimenon/canvas.db
+   ls -la ~/.keimenon/keimenon.db
    # Should show file with size > 0
    ```
 
@@ -404,7 +404,7 @@ Expected response: List of TODO comments with file paths and line numbers
    # Windows: No action needed
 
    # Linux/Mac:
-   chmod 644 ~/.keimenon/canvas.db
+   chmod 644 ~/.keimenon/keimenon.db
    ```
 
 ### If Documentation Search Fails
@@ -428,7 +428,7 @@ Expected response: List of TODO comments with file paths and line numbers
 Use this checklist to verify your installation:
 
 - [x] Node.js 18+ installed
-- [x] Database file exists (`~/.keimenon/canvas.db`)
+- [x] Database file exists (`~/.keimenon/keimenon.db`)
 - [x] Database server dependencies installed
 - [x] Docs server dependencies installed
 - [x] Database server starts without errors

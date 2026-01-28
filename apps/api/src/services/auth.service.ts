@@ -29,7 +29,7 @@ import {
   logAccountSwitch,
 } from '../utils/audit-logger';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'canvas-memory-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'keimenon-secret-change-in-production';
 const JWT_EXPIRES_IN = '7d'; // 7 days
 const JWT_TEMP_EXPIRES_IN = '15m'; // 15 minutes for account selection
 const BCRYPT_ROUNDS = 12; // Production-grade security (2^12 = 4096 iterations)

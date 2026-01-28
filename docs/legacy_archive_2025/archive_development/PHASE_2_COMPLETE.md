@@ -21,7 +21,7 @@ Successfully implemented a complete duplicate review interface with **three-pane
 
 ### 3. Integration (1 file modified)
 
-- ✅ [apps/web/src/components/canvas/ChatImportModal.tsx](apps/web/src/components/canvas/ChatImportModal.tsx) - Added review stage and mock data
+- ✅ [apps/web/src/components/keimenon/ChatImportModal.tsx](apps/web/src/components/keimenon/ChatImportModal.tsx) - Added review stage and mock data
 
 ---
 
@@ -202,12 +202,12 @@ npm run dev
 - [ ] Add token normalization
 - [ ] Add whitespace/case ignore options
 
-### Canvas Integration (Phase 3 original scope)
+### Keimenon Integration (Phase 3 original scope)
 
 - [ ] Create `SourceTreeView.tsx` for LHS sidebar
 - [ ] Create `SourceInspector.tsx` for RHS sidebar
-- [ ] Create `GroupCard.tsx` for canvas visualization
-- [ ] Implement selection synchronization between tree and canvas
+- [ ] Create `GroupCard.tsx` for keimenon visualization
+- [ ] Implement selection synchronization between tree and keimenon
 - [ ] Add drag-and-drop for grouping
 - [ ] Add search and filter for sources
 
@@ -295,4 +295,4 @@ Phase 2 is **100% complete** with all key features:
 - ✅ Builds successfully
 - ✅ Dev server runs successfully
 
-**Ready to proceed to backend integration or Phase 3 (Canvas Integration)** 🚀
+**Ready to proceed to backend integration or Phase 3 (Keimenon Integration)** 🚀

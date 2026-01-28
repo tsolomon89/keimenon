@@ -5,22 +5,19 @@
  * when the process exits.
  */
 
-import { before } from 'node:test';
+import { beforeAll } from 'vitest';
 import { startTestServer, stopTestServer, isTestServerRunning } from './utils/test-server';
 
 let setupComplete = false;
 
-before(
-  async () => {
-    if (!setupComplete) {
-      console.log('\ndYs? Starting global test server...');
-      await startTestServer();
-      setupComplete = true;
-      console.log('?o. Global test server ready\n');
-    }
-  },
-  { timeout: 60000 }
-);
+beforeAll(async () => {
+  if (!setupComplete) {
+    console.log('\ndYs? Starting global test server...');
+    await startTestServer();
+    setupComplete = true;
+    console.log('?o. Global test server ready\n');
+  }
+}, 60000);
 
 const handleShutdown = async () => {
   if (setupComplete && isTestServerRunning()) {

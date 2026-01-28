@@ -61,7 +61,7 @@ router.post('/run', requireAuth, async (req: Request, res: Response) => {
     savePolicyVersion(db, policy, require('fs').readFileSync(policyPath, 'utf8'), userId);
 
     // Create services - GroupingStorage expects dbPath string, but we'll use existing db
-    const dbPath = process.env.DATABASE_PATH || './data/canvas.db';
+    const dbPath = process.env.DATABASE_PATH || './data/keimenon.db';
     const storage = new GroupingStorage(dbPath);
     const engine = new ClusteringEngine(db, storage, policy);
 

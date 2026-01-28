@@ -1,4 +1,4 @@
-# Quick Fix Checklist - Canvas Memory OS
+# Quick Fix Checklist - Keimenon
 
 **Status:** 🔴 CRITICAL ISSUES FOUND - DO NOT DEPLOY TO PRODUCTION
 **Created:** October 17, 2025
@@ -138,7 +138,7 @@ router.post('/files',
 
 ---
 
-### 5. Canvas Store Account Switch Leak 🟠 HIGH
+### 5. Keimenon Store Account Switch Leak 🟠 HIGH
 
 **Problem:** Previous account's data remains in store after switching
 **Impact:** User sees cross-account data (reported by user)
@@ -146,7 +146,7 @@ router.post('/files',
 **Files:**
 
 - `apps/web/src/contexts/AuthContext.tsx`
-- `apps/web/src/store/canvasStore.ts`
+- `apps/web/src/store/keimenonStore.ts`
 
 **Quick Fix:**
 
@@ -157,10 +157,10 @@ const switchAccount = useCallback(
     const newToken = await generateToken(newAccountId);
     setUser(newUser);
 
-    // ✅ Clear canvas store when account changes
-    useCanvasStore.getState().reset();
+    // ✅ Clear keimenon store when account changes
+    useKeimenonStore.getState().reset();
 
-    router.push('/canvas');
+    router.push('/keimenon');
   },
   [router]
 );
@@ -188,7 +188,7 @@ curl http://localhost:4001/api/v1/nodes
 # Create test script or use existing tests:
 npm test -- -t "tenant isolation"
 
-# 4. Canvas Store Verification
+# 4. Keimenon Store Verification
 # Manual test in browser:
 # 1. Login as Tim → Import data → Note selected node in inspector
 # 2. Logout
@@ -207,7 +207,7 @@ npm test -- -t "tenant isolation"
 3. Data management security (1.5h)
 4. File upload ordering (1h)
 
-**Week 2 (10-12 hours):** 5. Canvas store account switch (2h) 6. Transaction wrapping (2h) 7. Multi-tenancy tests (4-5h) 8. Rate limiting (1.5h) 9. FTS schema fix (30min)
+**Week 2 (10-12 hours):** 5. Keimenon store account switch (2h) 6. Transaction wrapping (2h) 7. Multi-tenancy tests (4-5h) 8. Rate limiting (1.5h) 9. FTS schema fix (30min)
 
 **Week 3 (Optional - 6-8 hours):** 10. Database indexes (2h) 11. Error boundaries (2h) 12. Additional test coverage (2-3h) 13. Documentation updates (1h)
 
@@ -220,7 +220,7 @@ npm test -- -t "tenant isolation"
 - ✅ Added comprehensive debug logging to import pipeline
 - ✅ Fixed FTS schema in database (Migration 003)
 - ✅ Fixed UNIQUE constraint error (INSERT OR REPLACE)
-- ✅ Added canvas store reset on logout
+- ✅ Added keimenon store reset on logout
 - ✅ Restarted servers with clean state
 
 ---

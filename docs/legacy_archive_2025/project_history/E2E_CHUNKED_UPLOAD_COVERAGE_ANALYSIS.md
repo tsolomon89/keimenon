@@ -49,7 +49,7 @@ Your requirements for E2E test coverage:
 
 **What it tests:**
 
-- ✅ Canvas data deletion via UI
+- ✅ Keimenon data deletion via UI
 - ✅ Delete job creation and monitoring
 - ✅ Background operations table updates
 - ✅ Job deletion (single & bulk)
@@ -137,7 +137,7 @@ Your requirements for E2E test coverage:
 
 **Existing Coverage:**
 
-- ✅ Canvas data deletion (nodes, edges)
+- ✅ Keimenon data deletion (nodes, edges)
 - ✅ Job deletion (single & bulk)
 - ✅ Background operations table updates after deletion
 - ✅ SSE events for job completion
@@ -319,9 +319,9 @@ Instead of creating a new test file, extend existing tests:
 
 2. **Extend [data-management-ui-updates.spec.ts](tests/e2e/data-management-ui-updates.spec.ts)**:
    ```typescript
-   test('should delete upload sessions when clearing canvas data', async ({ page }) => {
+   test('should delete upload sessions when clearing keimenon data', async ({ page }) => {
      // 1. Create upload session with chunks
-     // 2. Clear canvas data
+     // 2. Clear keimenon data
      // 3. Verify upload session deleted
      // 4. Verify temp files cleaned up
    });

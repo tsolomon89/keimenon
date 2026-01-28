@@ -16,10 +16,10 @@ The console-error-filtering test suite was failing with 18 failures across all b
    - Browser JavaScript doesn't have Node.js `require()` function
    - File: [tests/e2e/console-error-filtering.spec.ts](tests/e2e/console-error-filtering.spec.ts)
 
-2. **ConsoleContext and CanvasLayout State Synchronization Issue**
+2. **ConsoleContext and KeimenonLayout State Synchronization Issue**
    - `ConsoleContext` managed its own `isOpen` state with backtick key listener
-   - `CanvasLayout` managed separate `footerOpen` state
-   - Pressing backtick toggled ConsoleContext's state but CanvasLayout's footer didn't update
+   - `KeimenonLayout` managed separate `footerOpen` state
+   - Pressing backtick toggled ConsoleContext's state but KeimenonLayout's footer didn't update
    - Result: Console footer never opened when pressing backtick key
 
 3. **Playwright Strict Mode Violations**
@@ -83,9 +83,9 @@ await page.evaluate(() => {
 
 ---
 
-### Fix 3: Synchronize ConsoleContext and CanvasLayout
+### Fix 3: Synchronize ConsoleContext and KeimenonLayout
 
-**File**: [apps/web/src/components/canvas/CanvasLayout.tsx:24](apps/web/src/components/canvas/CanvasLayout.tsx#L24)
+**File**: [apps/web/src/components/keimenon/KeimenonLayout.tsx:24](apps/web/src/components/keimenon/KeimenonLayout.tsx#L24)
 
 **Changes**:
 
@@ -184,21 +184,21 @@ The console footer system consists of three key components working together:
    - Subscribes to ErrorCaptureService
    - Manages filters and active tab
 
-3. **CanvasFooter** ([apps/web/src/components/canvas/CanvasFooter.tsx](apps/web/src/components/canvas/CanvasFooter.tsx))
+3. **KeimenonFooter** ([apps/web/src/components/keimenon/KeimenonFooter.tsx](apps/web/src/components/keimenon/KeimenonFooter.tsx))
    - Visual UI component
    - Displays errors with filtering
-   - Receives `isOpen` prop from CanvasLayout
+   - Receives `isOpen` prop from KeimenonLayout
 
 ### Key Integration Point
 
-`CanvasLayout` must use `ConsoleContext`'s state:
+`KeimenonLayout` must use `ConsoleContext`'s state:
 
 ```typescript
-// In CanvasLayout.tsx
+// In KeimenonLayout.tsx
 const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
 
-// Pass to CanvasFooter
-<CanvasFooter isOpen={footerOpen} />
+// Pass to KeimenonFooter
+<KeimenonFooter isOpen={footerOpen} />
 ```
 
 This ensures the keyboard listener in ConsoleContext correctly controls the footer visibility.
@@ -232,7 +232,7 @@ This ensures the keyboard listener in ConsoleContext correctly controls the foot
 ### Modified Files
 
 1. [apps/web/src/services/error-capture.service.ts](apps/web/src/services/error-capture.service.ts) - Expose errorCapture on window
-2. [apps/web/src/components/canvas/CanvasLayout.tsx](apps/web/src/components/canvas/CanvasLayout.tsx) - Use ConsoleContext state
+2. [apps/web/src/components/keimenon/KeimenonLayout.tsx](apps/web/src/components/keimenon/KeimenonLayout.tsx) - Use ConsoleContext state
 3. [tests/e2e/console-error-filtering.spec.ts](tests/e2e/console-error-filtering.spec.ts) - Use window.errorCapture + .first()
 
 ### Related Documentation
@@ -246,7 +246,7 @@ This ensures the keyboard listener in ConsoleContext correctly controls the foot
 
 ### Priority 2: Fix Data Management UI Test
 
-- **Issue**: "should update UI without reload after canvas data deletion" failing
+- **Issue**: "should update UI without reload after keimenon data deletion" failing
 - **Impact**: Blocks 7 DELETE tests from running
 - **File**: [tests/e2e/data-management-ui-updates.spec.ts:231](tests/e2e/data-management-ui-updates.spec.ts#L231)
 
@@ -254,7 +254,7 @@ This ensures the keyboard listener in ConsoleContext correctly controls the foot
 
 - **Issue**: 9 WebKit-specific timeouts (21-22 seconds)
 - **Impact**: WebKit compatibility
-- **Tests**: Canvas operations, auth flows, settings navigation
+- **Tests**: Keimenon operations, auth flows, settings navigation
 
 ### Priority 4: Re-run Full Suite
 

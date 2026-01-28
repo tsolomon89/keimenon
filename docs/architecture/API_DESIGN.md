@@ -1,8 +1,8 @@
 # API Design & Architecture
 
-**Canvas Memory OS - REST API Design Patterns and Conventions**
+**Keimenon - REST API Design Patterns and Conventions**
 
-This document describes the API architecture, design patterns, endpoint organization, error handling, and middleware stack for Canvas Memory OS.
+This document describes the API architecture, design patterns, endpoint organization, error handling, and middleware stack for Keimenon.
 
 ---
 
@@ -29,7 +29,7 @@ This document describes the API architecture, design patterns, endpoint organiza
 http://localhost:4001/api/v1
 ```
 
-**Production**: Replace with your domain (e.g., `https://api.canvas-memory.com/api/v1`)
+**Production**: Replace with your domain (e.g., `https://api.keimenon.com/api/v1`)
 
 ### Versioning
 
@@ -496,7 +496,7 @@ Created at startup and shared across all routes:
 
 ```typescript
 // apps/api/src/index.ts
-import { DatabaseFactory } from '@canvas-memory/db';
+import { DatabaseFactory } from '@keimenon/db';
 
 const storageMode = process.env.STORAGE_MODE || 'local';
 const dbClient = DatabaseFactory.create(storageMode);
@@ -506,7 +506,7 @@ global.dbClient = dbClient;
 
 // Start server
 app.listen(4001, () => {
-  console.log('Canvas Memory API running on port 4001');
+  console.log('Keimenon API running on port 4001');
   console.log(`Storage mode: ${storageMode}`);
 });
 ```

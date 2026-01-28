@@ -34,7 +34,7 @@ Successfully completed Phase 1 of technical debt remediation, focusing on wiring
 
 **Changes**:
 
-- Added import for `SourcesStitcher` from `@canvas-memory/parsers`
+- Added import for `SourcesStitcher` from `@keimenon/parsers`
 - Implemented `createBundles()` method
 - **Architectural Finding**: Similar data structure mismatch
   - Stitcher expects `UserSegment[]` from parsing phase

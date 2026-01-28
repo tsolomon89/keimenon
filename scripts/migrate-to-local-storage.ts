@@ -447,7 +447,7 @@ async function main() {
 
       if (verified) {
         console.log('\n🎉 Migration completed successfully!');
-        console.log('📁 Documents are now stored in ~/.canvas-memory/documents/');
+        console.log('📁 Documents are now stored in ~/.keimenon/documents/');
         console.log('🗄️  Neo4j now contains only metadata and graph structure');
       } else {
         console.log('\n⚠️  Migration completed with warnings. Please review above.');

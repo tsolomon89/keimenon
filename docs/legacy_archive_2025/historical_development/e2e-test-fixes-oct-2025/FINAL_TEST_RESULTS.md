@@ -22,15 +22,15 @@
 
 **Passing Tests** (Core Functionality):
 
-- ✅ Canvas Operations (3/3):
-  - Load canvas page successfully
-  - Display canvas sidebar
-  - Accessible canvas content
+- ✅ Keimenon Operations (3/3):
+  - Load keimenon page successfully
+  - Display keimenon sidebar
+  - Accessible keimenon content
 
 - ✅ Authentication & Flow (6/6):
   - Complete login flow
   - Invalid credentials error handling
-  - Authenticated user canvas access
+  - Authenticated user keimenon access
   - Logout functionality
   - Debug auth with API access
   - Debug auth response
@@ -63,7 +63,7 @@
 
 **Passing Tests**:
 
-- ✅ Canvas Operations (3/3)
+- ✅ Keimenon Operations (3/3)
 - ✅ Authentication (2/2)
 - ✅ Debug tests
 - ✅ (Additional tests likely passed - output truncated)
@@ -79,12 +79,12 @@
 
 **Test Sample Results**:
 
-- ✅ Canvas Operations (3/3) - **100% pass rate!**
+- ✅ Keimenon Operations (3/3) - **100% pass rate!**
 
   ```
-  ✓ [webkit] › canvas-operations.spec.ts:32 › should display canvas sidebar (2.9s)
-  ✓ [webkit] › canvas-operations.spec.ts:23 › should load canvas page (2.9s)
-  ✓ [webkit] › canvas-operations.spec.ts:40 › accessible canvas content (2.6s)
+  ✓ [webkit] › keimenon-operations.spec.ts:32 › should display keimenon sidebar (2.9s)
+  ✓ [webkit] › keimenon-operations.spec.ts:23 › should load keimenon page (2.9s)
+  ✓ [webkit] › keimenon-operations.spec.ts:40 › accessible keimenon content (2.6s)
 
   3 passed (7.2s)
   ```
@@ -100,13 +100,13 @@
 **Fixed Files**:
 
 - `tests/e2e/global-setup.ts`
-- `tests/e2e/canvas-operations.spec.ts`
+- `tests/e2e/keimenon-operations.spec.ts`
 - `tests/e2e/console-error-filtering.spec.ts`
 - `tests/e2e/data-management-ui-updates.spec.ts`
 - `tests/e2e/debug-auth.spec.ts`
 - `tests/e2e/debug-chromium-isolation.spec.ts`
 - `tests/e2e/debug-env-config.spec.ts`
-- `tests/e2e/flow-auth-canvas.spec.ts`
+- `tests/e2e/flow-auth-keimenon.spec.ts`
 - `tests/e2e/settings-navigation.spec.ts`
 - `tests/e2e/debug-auth-response.spec.ts`
 
@@ -125,11 +125,11 @@ await emailInput.press('Tab'); // Trigger onChange/blur
 
 **Applied To**:
 
-- `canvas-operations.spec.ts` ✅
+- `keimenon-operations.spec.ts` ✅
 - `console-error-filtering.spec.ts` ✅
 - `data-management-ui-updates.spec.ts` ✅
 - `debug-auth.spec.ts` ✅
-- `flow-auth-canvas.spec.ts` ✅
+- `flow-auth-keimenon.spec.ts` ✅
 - `settings-navigation.spec.ts` ✅
 
 ### 3. Browser-Safe Environment Variables
@@ -166,7 +166,7 @@ await emailInput.press('Tab'); // Trigger onChange/blur
 - Logout functionality ✅
 - Invalid credentials handling ✅
 
-### ✅ **Canvas Operations** - **FULLY WORKING**
+### ✅ **Keimenon Operations** - **FULLY WORKING**
 
 - Page loading ✅
 - Sidebar display ✅
@@ -192,7 +192,7 @@ await emailInput.press('Tab'); // Trigger onChange/blur
 
 ### 1. Data Management UI Test (Both browsers)
 
-**Error**: `strict mode violation: getByRole('button', { name: /canvas/i }) resolved to 2 elements`
+**Error**: `strict mode violation: getByRole('button', { name: /keimenon/i }) resolved to 2 elements`
 
 **Type**: Selector specificity issue
 **Impact**: Low - Single test failure, not application bug

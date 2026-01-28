@@ -31,7 +31,7 @@ TypeError: Failed to fetch
 
 **Flow Analysis**:
 
-1. User clicks "Clear Canvas Data" → Job created in `queued` state
+1. User clicks "Clear Keimenon Data" → Job created in `queued` state
 2. WorkerPool polls and finds job
 3. ConcurrencyGuard.canStart() checks if job can run
 4. **Problem**: Another delete job is already running
@@ -164,7 +164,7 @@ npm run dev:clean
 
    - **Format**: 0-100 integer
 
-4. **Frontend Conversion (BEFORE FIX)** [ImportsTableCard.tsx:188](../../apps/web/src/components/canvas/ImportsTableCard.tsx#L188):
+4. **Frontend Conversion (BEFORE FIX)** [ImportsTableCard.tsx:188](../../apps/web/src/components/keimenon/ImportsTableCard.tsx#L188):
 
    ```typescript
    progress: Math.round(sseJob.progress.percent * 100),  // 50 * 100 = 5000 ❌
@@ -180,7 +180,7 @@ npm run dev:clean
 - Previous session incorrectly added multiplication
 - This was based on assumption backend sent 0-1 (decimal)
 
-**Fix Applied**: [ImportsTableCard.tsx:188](../../apps/web/src/components/canvas/ImportsTableCard.tsx#L188)
+**Fix Applied**: [ImportsTableCard.tsx:188](../../apps/web/src/components/keimenon/ImportsTableCard.tsx#L188)
 
 ```typescript
 progress: Math.round(sseJob.progress.percent),  // ✅ Just round, don't multiply
@@ -198,7 +198,7 @@ progress: Math.round(sseJob.progress.percent),  // ✅ Just round, don't multipl
    - Line 68: Changed `block: null` to `block: 'blocked'`
    - Lines 9-23: Updated state diagram documentation
 
-2. **apps/web/src/components/canvas/ImportsTableCard.tsx**
+2. **apps/web/src/components/keimenon/ImportsTableCard.tsx**
    - Line 188: Removed `* 100` multiplication from progress conversion
 
 ### Root Causes Addressed:

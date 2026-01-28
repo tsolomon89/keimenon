@@ -13,7 +13,7 @@ const fs = require('fs');
 // Determine database path
 const DB_PATH =
   process.env.DB_PATH ||
-  path.join(process.env.HOME || process.env.USERPROFILE, '.canvas-memory', 'canvas.db');
+  path.join(process.env.HOME || process.env.USERPROFILE, '.keimenon', 'keimenon.db');
 
 console.log('🔓 Clearing Account Lockouts...\n');
 console.log(`📂 Database: ${DB_PATH}\n`);

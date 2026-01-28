@@ -286,7 +286,7 @@ $ ls -lh .test-dbs/
 ### Why This Happens
 
 - Tests create data with `data_tag: 'test'` but don't clean it up
-- Template database (`.data/canvas-memory.db`) is copied from production DB
+- Template database (`.data/keimenon.db`) is copied from production DB
 - Each worker gets a copy of all accumulated test data
 - VACUUM not run to reclaim space
 
@@ -387,7 +387,7 @@ The login helper has **60-second timeouts** that mask underlying issues.
 ```typescript
 // tests/e2e/helpers/login.ts
 await page.waitForLoadState('load', { timeout: 60000 }); // 60s
-await page.waitForURL(/\/canvas/, { timeout: 60000 }); // 60s
+await page.waitForURL(/\/keimenon/, { timeout: 60000 }); // 60s
 await page.waitForLoadState('domcontentloaded', { timeout: 60000 }); // 60s
 ```
 
@@ -403,12 +403,12 @@ await page.waitForLoadState('domcontentloaded', { timeout: 60000 }); // 60s
 ```
 Expected:
   - Login navigation: 1-2s
-  - Canvas load: 2-3s
+  - Keimenon load: 2-3s
   - Total login time: ~5s
 
 Actual (with issues):
   - Login navigation: 5-10s (why?)
-  - Canvas load: 10-20s (why?)
+  - Keimenon load: 10-20s (why?)
   - Multiple retries before success (why?)
 ```
 
@@ -417,7 +417,7 @@ Actual (with issues):
 1. **No test isolation** → wrong database → multiple auth attempts
 2. **AuthService database mismatch** → token validation fails → retry
 3. **Large database** → slow session lookups
-4. **SSE connection delays** → canvas page waits for job status
+4. **SSE connection delays** → keimenon page waits for job status
 5. **API route inefficiency** → N+1 queries for user data
 
 ### Fix Strategy
@@ -425,7 +425,7 @@ Actual (with issues):
 Reduce timeouts to **realistic values** and fix root causes:
 
 ```typescript
-await page.waitForURL(/\/canvas/, { timeout: 10000 }); // 10s max
+await page.waitForURL(/\/keimenon/, { timeout: 10000 }); // 10s max
 ```
 
 If login takes >10s, it's a bug that should FAIL the test, not be hidden.
@@ -580,9 +580,9 @@ sqlite3 .test-dbs/worker-0.db "SELECT COUNT(*) FROM sessions"
 
 ### Potential Issues Not Yet Analyzed
 
-1. **SSE connection handling**: May contribute to slow canvas loads
+1. **SSE connection handling**: May contribute to slow keimenon loads
 2. **API N+1 queries**: User auth might be making redundant DB calls
-3. **React re-render loops**: Canvas page might be re-fetching unnecessarily
+3. **React re-render loops**: Keimenon page might be re-fetching unnecessarily
 4. **CORS preflight delays**: OPTIONS requests adding latency
 5. **Worker pool initialization**: Job system startup might block requests
 

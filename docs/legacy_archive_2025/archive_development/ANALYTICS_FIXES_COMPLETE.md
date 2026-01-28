@@ -49,7 +49,7 @@ ORDER BY al.timestamp DESC
 **Files Modified**:
 
 - `apps/web/src/lib/api-client.ts` (RecentActivity interface, line 1007)
-- `apps/web/src/components/canvas/CRMDashboard.tsx` (line 378)
+- `apps/web/src/components/keimenon/CRMDashboard.tsx` (line 378)
 
 **Changes**:
 
@@ -157,7 +157,7 @@ When API server runs with actual audit_log data:
 
 ## Additional Fix: Cluster Routes Disabled
 
-**Issue**: Server failing to start due to missing `@canvas/parsers` dependency
+**Issue**: Server failing to start due to missing `@keimenon/parsers` dependency
 
 **Fix**: Temporarily disabled cluster routes
 
@@ -185,7 +185,7 @@ When API server runs with actual audit_log data:
 3. `apps/web/src/lib/api-client.ts`
    - Fixed RecentActivity interface
 
-4. `apps/web/src/components/canvas/CRMDashboard.tsx`
+4. `apps/web/src/components/keimenon/CRMDashboard.tsx`
    - Fixed timestamp display
 
 ---

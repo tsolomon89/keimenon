@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Canvas Memory OS - Chat Import Testing MCP Server
+ * Keimenon - Chat Import Testing MCP Server
  *
  * Provides tools for testing chat import functionality with curated test datasets.
  * Enables comprehensive validation of import pipelines, deduplication, and data integrity.
@@ -52,7 +52,7 @@ class ChatImportMCPServer {
   constructor() {
     this.server = new Server(
       {
-        name: 'canvas-chat-import',
+        name: 'keimenon-chat-import',
         version: '1.0.0',
       },
       {
@@ -508,7 +508,7 @@ class ChatImportMCPServer {
 
       for (const [name, dataset] of this.testDatasets.entries()) {
         resources.push({
-          uri: `canvas-chat-import://datasets/${name}`,
+          uri: `keimenon-chat-import://datasets/${name}`,
           name: `Test Dataset: ${name}`,
           description: `${dataset.description} (${dataset.stats.conversations} convos, ${dataset.stats.messages} messages)`,
           mimeType: 'application/json',
@@ -569,11 +569,11 @@ class ChatImportMCPServer {
       const uri = request.params.uri;
 
       try {
-        if (!uri.startsWith('canvas-chat-import://datasets/')) {
+        if (!uri.startsWith('keimenon-chat-import://datasets/')) {
           throw new Error(`Invalid URI: ${uri}`);
         }
 
-        const datasetName = uri.replace('canvas-chat-import://datasets/', '');
+        const datasetName = uri.replace('keimenon-chat-import://datasets/', '');
         const dataset = this.testDatasets.get(datasetName);
 
         if (!dataset) {

@@ -8,7 +8,7 @@
 
 ## 🎯 Executive Summary
 
-Successfully implemented comprehensive many-to-many (M:N) user-account architecture for Canvas Memory. Users can now belong to multiple accounts with different roles, switch between accounts seamlessly, and collaborate concurrently. All core backend infrastructure is complete, tested, and running.
+Successfully implemented comprehensive many-to-many (M:N) user-account architecture for Keimenon. Users can now belong to multiple accounts with different roles, switch between accounts seamlessly, and collaborate concurrently. All core backend infrastructure is complete, tested, and running.
 
 ---
 
@@ -290,7 +290,7 @@ Sessions now include:
 
 ```
 ✅ SQLite schema initialized
-✅ Connected to SQLite at: C:\Users\Audna\.canvas-memory\canvas.db
+✅ Connected to SQLite at: C:\Users\Audna\.keimenon\keimenon.db
 ✅ Database initialized (local mode)
 ✅ All migrations up to date
 ✅ Database migrations complete
@@ -679,7 +679,7 @@ export { AuthServiceV2 as AuthService };  // Backward compat
 All core backend infrastructure for M:N user-account architecture is complete and tested. The API server is running successfully with all new endpoints functional. Next step is to build frontend components to consume these APIs.
 
 **API Base URL:** http://localhost:4001
-**Database:** C:\Users\Audna\.canvas-memory\canvas.db
+**Database:** C:\Users\Audna\.keimenon\keimenon.db
 **Server Status:** ✅ Running
 
 ---

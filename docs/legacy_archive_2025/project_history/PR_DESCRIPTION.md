@@ -90,7 +90,7 @@ This PR consolidates settings and CRM functionality while establishing a compreh
 
 - **Chromium**: 18+ core tests passing (100% auth success)
 - **Firefox**: Maintained 100% pass rate
-- **WebKit**: 3/3 canvas operations passing
+- **WebKit**: 3/3 keimenon operations passing
 - **Overall**: 80%+ pass rate across all browsers
 
 ### Unit/Integration Tests

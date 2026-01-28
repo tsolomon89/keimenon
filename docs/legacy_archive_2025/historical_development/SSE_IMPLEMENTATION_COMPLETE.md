@@ -266,7 +266,7 @@ Registered import jobs routes in main API server:
 ### Created
 
 - `apps/api/src/routes/import-jobs.ts` (242 lines)
-- `apps/web/src/components/canvas/ImportsTableCard.tsx`
+- `apps/web/src/components/keimenon/ImportsTableCard.tsx`
 - `apps/web/src/components/import/ImportPipelineProgress.tsx`
 - `apps/web/src/components/import/ImportMiniGraph.tsx`
 - `apps/web/src/components/import/ImportStatsPanel.tsx`
@@ -282,7 +282,7 @@ Registered import jobs routes in main API server:
 - `apps/api/src/services/streaming-upload.ts` (lines 9-29, 245-277: extended interface + methods)
 - `apps/api/src/index.ts` (lines 19, 241, 284-287, 454: registered import jobs routes)
 - `apps/web/src/lib/api-client.ts` (lines 1257-1314: added getAuthToken + apiClient exports)
-- `apps/web/src/components/canvas/CanvasLayout.tsx` (line 104: fixed syntax error)
+- `apps/web/src/components/keimenon/KeimenonLayout.tsx` (line 104: fixed syntax error)
 
 ## Known Limitations
 
@@ -299,7 +299,7 @@ Registered import jobs routes in main API server:
 - [ ] Start API server (`npm run dev` in apps/api)
 - [ ] Start Web server (`npm run dev` in apps/web)
 - [ ] Login as admin user
-- [ ] Navigate to Canvas page
+- [ ] Navigate to Keimenon page
 - [ ] Open ImportFlowPanel
 - [ ] Upload small test file (5-10 conversations)
 - [ ] Open browser DevTools → Network tab

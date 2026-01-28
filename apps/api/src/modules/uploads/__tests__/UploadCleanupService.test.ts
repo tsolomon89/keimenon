@@ -7,8 +7,14 @@
  * Related: Chunked Upload System - Phase 7 (Testing)
  */
 
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { UploadCleanupService, CleanupStats } from '../application/UploadCleanupService';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach, expect, vi } from 'vitest';
+import {
+  UploadCleanupService,
+  CleanupStats,
+  initializeCleanupService,
+  getCleanupService,
+  shutdownCleanupService,
+} from '../application/UploadCleanupService';
 import { UploadSession, UploadSessionSpec } from '../domain/UploadSession';
 import { UploadSessionRepository } from '../infrastructure/UploadSessionRepository';
 import { promises as fs } from 'fs';
@@ -70,7 +76,7 @@ describe('UploadCleanupService', () => {
   let service: UploadCleanupService;
   let testDir: string;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     repository = new MockUploadSessionRepository();
 
     // Create test directory
@@ -127,7 +133,9 @@ describe('UploadCleanupService', () => {
     }
 
     // Manually expire the session
-    (session as any).expiresAt = Date.now() - 1000; // 1 second ago
+    // NOTE: accessing private property _expiresAt via casting to any
+    // because expiresAt is a getter and setting it on the instance doesn't update the backing field
+    (session as any)._expiresAt = Date.now() - 1000; // 1 second ago
 
     await repository.save(session);
 
@@ -202,13 +210,11 @@ describe('UploadCleanupService', () => {
       service = new UploadCleanupService(repository, 1000);
 
       service.start();
-      const consoleSpy = jest.spyOn(console, 'log');
+      const consoleSpy = vi.spyOn(console, 'log');
 
       service.start(); // Try to start again
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Service already running')
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Service already running'));
 
       service.stop();
       consoleSpy.mockRestore();
@@ -217,7 +223,7 @@ describe('UploadCleanupService', () => {
     it('should not stop if not running', () => {
       service = new UploadCleanupService(repository, 1000);
 
-      const consoleSpy = jest.spyOn(console, 'log');
+      const consoleSpy = vi.spyOn(console, 'log');
 
       service.stop(); // Try to stop without starting
 
@@ -231,7 +237,7 @@ describe('UploadCleanupService', () => {
 
       service = new UploadCleanupService(repository, 60000); // 1 minute interval
 
-      const cleanupSpy = jest.spyOn(service, 'runCleanup');
+      const cleanupSpy = vi.spyOn(service, 'runCleanup');
 
       service.start();
 
@@ -247,7 +253,7 @@ describe('UploadCleanupService', () => {
     it('should run cleanup on interval', async () => {
       service = new UploadCleanupService(repository, 100); // 100ms interval
 
-      const cleanupSpy = jest.spyOn(service, 'runCleanup');
+      const cleanupSpy = vi.spyOn(service, 'runCleanup');
 
       service.start();
 
@@ -381,19 +387,19 @@ describe('UploadCleanupService', () => {
     it('should handle cleanup errors gracefully', async () => {
       const session = await createExpiredSession({ withChunkFiles: true });
 
-      // Make chunks directory read-only to trigger error
-      const chunksPath = (session as any).chunksPath;
-      try {
-        await fs.chmod(chunksPath, 0o444);
+      // Spy on fs.unlink to throw error for this session's chunks
+      const unlinkSpy = vi
+        .spyOn(fs, 'unlink')
+        .mockRejectedValueOnce(new Error('Permission denied'));
 
-        const stats = await service.runCleanup();
+      const stats = await service.runCleanup();
 
-        // Should still report session as found, but may have errors
-        expect(stats.sessionsFound).toBe(1);
-      } finally {
-        // Restore permissions for cleanup
-        await fs.chmod(chunksPath, 0o755);
-      }
+      // Should still report session as found
+      expect(stats.sessionsFound).toBe(1);
+      // And should report error
+      expect(stats.errors).toBe(1);
+
+      unlinkSpy.mockRestore();
     });
 
     it('should continue cleanup even if one session fails', async () => {
@@ -401,25 +407,35 @@ describe('UploadCleanupService', () => {
       const failingSession = await createExpiredSession({ withChunkFiles: true });
       await createExpiredSession({ withChunkFiles: true });
 
-      // Make one session's chunks directory fail
-      const failingChunksPath = (failingSession as any).chunksPath;
-      await fs.chmod(failingChunksPath, 0o444);
+      // Mock cleanupChunkFiles on the service instance
+      // We spy on the method to make it throw for one session
+      // Note: testing private method via casting
+      const cleanupSpy = vi
+        .spyOn(service as any, 'cleanupChunkFiles')
+        .mockImplementation(async (session: any) => {
+          if (session.id === failingSession.id) {
+            throw new Error('Cleanup failed');
+          }
+          // For others, return success (we simulate success without actual FS ops if we want,
+          // but here we are mocking the whole method, so no FS ops happen for others either.
+          // We can just return success stats.)
+          return { freedBytes: 100, filesDeleted: 1 };
+        });
 
-      try {
-        const stats = await service.runCleanup();
+      const stats = await service.runCleanup();
 
-        expect(stats.sessionsFound).toBe(3);
-        // Should clean up other sessions even if one fails
-        expect(stats.sessionsDeleted).toBeGreaterThanOrEqual(2);
-      } finally {
-        await fs.chmod(failingChunksPath, 0o755);
-      }
+      expect(stats.sessionsFound).toBe(3);
+      // Should clean up other sessions even if one fails
+      expect(stats.sessionsDeleted).toBe(2);
+      expect(stats.errors).toBe(1);
+
+      cleanupSpy.mockRestore();
     });
 
     it('should log cleanup statistics', async () => {
       await createExpiredSession({ withChunkFiles: true });
 
-      const consoleSpy = jest.spyOn(console, 'log');
+      const consoleSpy = vi.spyOn(console, 'log');
 
       await service.runCleanup();
 
@@ -460,13 +476,11 @@ describe('UploadCleanupService', () => {
     });
 
     it('should log manual cleanup trigger', async () => {
-      const consoleSpy = jest.spyOn(console, 'log');
+      const consoleSpy = vi.spyOn(console, 'log');
 
       await service.triggerManualCleanup();
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Manual cleanup triggered')
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Manual cleanup triggered'));
 
       consoleSpy.mockRestore();
     });
@@ -505,12 +519,6 @@ describe('UploadCleanupService', () => {
 
   describe('Singleton Functions', () => {
     it('should initialize cleanup service singleton', () => {
-      const {
-        initializeCleanupService,
-        getCleanupService,
-        shutdownCleanupService,
-      } = require('../application/UploadCleanupService');
-
       const instance = initializeCleanupService(repository);
 
       expect(instance).toBeInstanceOf(UploadCleanupService);
@@ -525,12 +533,7 @@ describe('UploadCleanupService', () => {
     });
 
     it('should warn if already initialized', () => {
-      const {
-        initializeCleanupService,
-        shutdownCleanupService,
-      } = require('../application/UploadCleanupService');
-
-      const consoleSpy = jest.spyOn(console, 'warn');
+      const consoleSpy = vi.spyOn(console, 'warn');
 
       initializeCleanupService(repository);
       initializeCleanupService(repository); // Try to initialize again
@@ -624,10 +627,7 @@ describe('UploadCleanupService', () => {
       await createExpiredSession({ withChunkFiles: true });
 
       // Run cleanup concurrently
-      const results = await Promise.allSettled([
-        service.runCleanup(),
-        service.runCleanup(),
-      ]);
+      const results = await Promise.allSettled([service.runCleanup(), service.runCleanup()]);
 
       // Both should complete without errors
       expect(results.every((r) => r.status === 'fulfilled')).toBe(true);

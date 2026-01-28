@@ -39,9 +39,9 @@ This session continued E2E test improvement work with focus on test reliability,
 
 **Files Modified**:
 
-- `tests/e2e/canvas-operations.spec.ts` (line 25)
+- `tests/e2e/keimenon-operations.spec.ts` (line 25)
 - `tests/e2e/settings-navigation.spec.ts` (line 25)
-- `tests/e2e/flow-auth-canvas.spec.ts` (lines 62, 101, 119)
+- `tests/e2e/flow-auth-keimenon.spec.ts` (lines 62, 101, 119)
 - `tests/e2e/debug-auth.spec.ts` (line 34)
 - `tests/e2e/data-management-ui-updates.spec.ts` (lines 197, 216)
 
@@ -244,7 +244,7 @@ Skipped:       20 (22%)
 
 #### Chromium/Firefox (2 failures each)
 
-1. **data-management-ui-updates** › should update UI without reload after canvas data deletion
+1. **data-management-ui-updates** › should update UI without reload after keimenon data deletion
    - Settings API returning 401 errors in parallel execution
    - Root cause: Token timing/resource contention
    - Solution: Test isolation (Option 2 full implementation)
@@ -269,9 +269,9 @@ Skipped:       20 (22%)
 
 ### Test Files (5 modified)
 
-1. `tests/e2e/canvas-operations.spec.ts`
+1. `tests/e2e/keimenon-operations.spec.ts`
 2. `tests/e2e/settings-navigation.spec.ts`
-3. `tests/e2e/flow-auth-canvas.spec.ts`
+3. `tests/e2e/flow-auth-keimenon.spec.ts`
 4. `tests/e2e/debug-auth.spec.ts`
 5. `tests/e2e/data-management-ui-updates.spec.ts`
 

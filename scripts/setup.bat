@@ -1,10 +1,10 @@
 @echo off
-REM Canvas Memory OS - Quick Setup Script
+REM Keimenon - Quick Setup Script
 REM This script streamlines the initial setup process
 
 echo.
 echo ========================================
-echo   Canvas Memory OS - Quick Setup
+echo   Keimenon - Quick Setup
 echo ========================================
 echo.
 

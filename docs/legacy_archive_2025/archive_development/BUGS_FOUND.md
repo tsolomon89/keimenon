@@ -161,12 +161,12 @@ const limit = parseInt(req.query.limit as string) || 10; // ✅ Correct
 **Claim**: Documentation says system supports 3 storage modes:
 
 - **Local** (SQLite only)
-- **Canvas** (Neo4j only)
+- **Keimenon** (Neo4j only)
 - **Hybrid** (both)
 
 **Reality**: Currently reports "local-first" mode, but:
 
-1. No SQLite data found in ~/.canvas-memory
+1. No SQLite data found in ~/.keimenon
 2. Neo4j save functions exist but don't work
 3. No clear way to switch storage modes
 4. Hybrid mode not functional

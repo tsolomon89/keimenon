@@ -1,6 +1,6 @@
 # Integration Tests
 
-End-to-end integration tests for Canvas Memory OS chat import pipeline.
+End-to-end integration tests for Keimenon chat import pipeline.
 
 ## Overview
 
@@ -294,7 +294,7 @@ npm run dev
 docker-compose -f docker-compose.dev.yml up -d neo4j
 
 # Check connection
-docker logs canvas-neo4j
+docker logs keimenon-neo4j
 
 # Test connection
 node scripts/wait-for.js bolt://localhost:7687
@@ -474,4 +474,4 @@ When adding new tests:
 
 ## License
 
-Part of Canvas Memory OS - see root LICENSE file.
+Part of Keimenon - see root LICENSE file.

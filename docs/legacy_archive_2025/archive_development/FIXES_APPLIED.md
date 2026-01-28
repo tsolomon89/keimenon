@@ -23,8 +23,8 @@ After conducting a comprehensive gap analysis (see [GAPS_ANALYSIS.md](GAPS_ANALY
 ```json
 {
   "dependencies": {
-    "@canvas-memory/types": "*",
-    "@canvas-memory/db": "*",
+    "@keimenon/types": "*",
+    "@keimenon/db": "*",
     "express-rate-limit": "^7.1.5"
   }
 }
@@ -107,7 +107,7 @@ const createNodeQuery = `
 await neo4j.execute(createNodeQuery, { ... });
 ```
 
-**Impact**: Uploaded files now persist, visible on canvas
+**Impact**: Uploaded files now persist, visible on keimenon
 
 ---
 
@@ -236,7 +236,7 @@ curl -X POST http://localhost:3001/api/v1/edges \
   }'
 ```
 
-### 4. Test Canvas Visualization
+### 4. Test Keimenon Visualization
 
 1. Upload files at http://localhost:3000/ingest
 2. Go to http://localhost:3000/board/default_board
@@ -273,7 +273,7 @@ curl -X POST http://localhost:3001/api/v1/edges \
 9. Return results with groups
 ```
 
-### Canvas Load Flow
+### Keimenon Load Flow
 
 ```
 1. User visits /board/:id
@@ -284,7 +284,7 @@ curl -X POST http://localhost:3001/api/v1/edges \
    ↓
 4. Calculate D3-force layout
    ↓
-5. Render on canvas
+5. Render on keimenon
    ↓
 6. User can select/pan/zoom
 ```
@@ -303,7 +303,7 @@ curl -X POST http://localhost:3001/api/v1/edges \
 6. **Edge creation**
 7. **Board management**
 8. **Graph retrieval with edges**
-9. Canvas visualization
+9. Keimenon visualization
 10. Pan/zoom/selection
 
 ### 🔧 What Still Needs Work
@@ -336,13 +336,13 @@ curl -X POST http://localhost:3001/api/v1/edges \
 ### Before Fixes
 
 - Upload: Files uploaded but lost
-- Canvas: Empty (no data)
+- Keimenon: Empty (no data)
 - Load time: N/A (nothing to load)
 
 ### After Fixes
 
 - Upload: ~200-500ms per file (includes DB write)
-- Canvas: ~300-800ms initial load
+- Keimenon: ~300-800ms initial load
 - Graph query: ~50-200ms for <1000 nodes
 - Edge creation: ~10-50ms per edge
 
@@ -434,7 +434,7 @@ Run these tests to verify fixes:
 - [ ] `npm run dev` starts both services
 - [ ] Upload file at `/ingest`
 - [ ] See "Upload Successful" with groups
-- [ ] Click "View on Canvas"
+- [ ] Click "View on Keimenon"
 - [ ] See nodes and edges rendered
 - [ ] Can select nodes
 - [ ] Can pan and zoom
@@ -464,14 +464,14 @@ Run these tests to verify fixes:
 - ❌ MVP non-functional
 - ❌ Can't test end-to-end
 - ❌ No data persistence
-- ❌ Empty canvas
+- ❌ Empty keimenon
 
 ### After Fixes
 
 - ✅ **MVP fully functional**
 - ✅ **Complete end-to-end flow**
 - ✅ **Full data persistence**
-- ✅ **Working canvas with data**
+- ✅ **Working keimenon with data**
 
 ---
 

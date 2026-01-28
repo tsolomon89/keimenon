@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Restore the Canvas Memory database from a backup
+ * Restore the Keimenon database from a backup
  * Usage: npm run restore -- --file <backup-file>
  * Options:
  *   --file <path>    - Path to backup file (required)
@@ -13,7 +13,7 @@ const path = require('path');
 const os = require('os');
 const readline = require('readline');
 
-const DEFAULT_DB_PATH = path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+const DEFAULT_DB_PATH = path.join(os.homedir(), '.keimenon', 'keimenon.db');
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -39,13 +39,13 @@ function formatBytes(bytes) {
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
 async function askConfirmation(message) {
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   });
 
   return new Promise((resolve) => {
@@ -59,7 +59,7 @@ async function askConfirmation(message) {
 async function main() {
   const options = parseArgs();
 
-  console.log('♻️  Canvas Memory Database Restore\n');
+  console.log('♻️  Keimenon Database Restore\n');
 
   // Validate backup file
   if (!options.file) {
@@ -67,7 +67,7 @@ async function main() {
     console.error('\n💡 Usage:');
     console.error('   npm run restore -- --file <path-to-backup>');
     console.error('\n📚 List backups:');
-    console.error('   ls ~/.canvas-memory/backups/');
+    console.error('   ls ~/.keimenon/backups/');
     process.exit(1);
   }
 
@@ -86,9 +86,7 @@ async function main() {
     const gunzip = zlib.createGunzip();
 
     await new Promise((resolve, reject) => {
-      source.pipe(gunzip).pipe(destination)
-        .on('finish', resolve)
-        .on('error', reject);
+      source.pipe(gunzip).pipe(destination).on('finish', resolve).on('error', reject);
     });
 
     backupPath = tempPath;
@@ -161,7 +159,6 @@ async function main() {
     if (isCompressed && backupPath !== options.file) {
       fs.unlinkSync(backupPath);
     }
-
   } catch (error) {
     console.error('❌ Restore failed:', error.message);
 
@@ -181,7 +178,7 @@ async function main() {
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('Error:', error.message);
   process.exit(1);
 });

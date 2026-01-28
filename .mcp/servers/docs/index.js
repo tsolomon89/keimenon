@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Canvas Memory OS - Documentation MCP Server
+ * Keimenon - Documentation MCP Server
  *
  * Provides tools for searching and navigating project documentation.
  * Enables AI assistants to find relevant docs, TODOs, and architecture info.
@@ -41,7 +41,7 @@ class DocsMCPServer {
   constructor() {
     this.server = new Server(
       {
-        name: 'canvas-docs',
+        name: 'keimenon-docs',
         version: '1.0.0',
       },
       {
@@ -250,7 +250,7 @@ class DocsMCPServer {
       // Add all cached docs as resources
       for (const [path, doc] of this.docsCache.entries()) {
         resources.push({
-          uri: `canvas-docs://${path}`,
+          uri: `keimenon-docs://${path}`,
           name: path,
           description: `Documentation file: ${path}`,
           mimeType: 'text/markdown',
@@ -297,11 +297,11 @@ class DocsMCPServer {
       const uri = request.params.uri;
 
       try {
-        if (!uri.startsWith('canvas-docs://')) {
+        if (!uri.startsWith('keimenon-docs://')) {
           throw new Error(`Invalid URI scheme: ${uri}`);
         }
 
-        const path = uri.replace('canvas-docs://', '');
+        const path = uri.replace('keimenon-docs://', '');
         const doc = this.docsCache.get(path);
 
         if (!doc) {

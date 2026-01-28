@@ -41,9 +41,9 @@ export interface OperatingContextType {
 
 export interface ShellContextType {
   shellMode: 'admin' | 'client';
-  canvasMode: 'auth' | 'dashboard' | 'settings' | 'canvas';
+  keimenonMode: 'auth' | 'dashboard' | 'settings' | 'keimenon';
   setShellMode: (mode: 'admin' | 'client') => void;
-  setCanvasMode: (mode: 'auth' | 'dashboard' | 'settings' | 'canvas') => void;
+  setKeimenonMode: (mode: 'auth' | 'dashboard' | 'settings' | 'keimenon') => void;
   canAccessPortal: () => boolean;
 }
 
@@ -113,9 +113,9 @@ export function mockOperatingContext(
 export function mockShellContext(overrides?: Partial<ShellContextType>): ShellContextType {
   return {
     shellMode: 'admin',
-    canvasMode: 'canvas',
+    keimenonMode: 'keimenon',
     setShellMode: () => {},
-    setCanvasMode: () => {},
+    setKeimenonMode: () => {},
     canAccessPortal: () => true,
     ...overrides,
   };

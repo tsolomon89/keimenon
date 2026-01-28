@@ -20,7 +20,7 @@
  * - Stage 3: Similarity scoring on candidates only (O(c²) where c << n)
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import * as assert from 'node:assert';
 import Database from 'better-sqlite3';
 import { nanoid } from 'nanoid';
@@ -68,7 +68,7 @@ function generateMessages(
       conversationTitle,
       metadata: {
         role: 'user',
-        platform: 'benchmark',
+        platform: 'unknown',
         index: i,
       },
       content_hash: `hash_${i}`, // Unique hash for exact matching
@@ -126,7 +126,7 @@ async function benchmarkBaseline(
   const conversations = Array.from(conversationMap.entries()).map(
     ([conversationId, convMessages]) => ({
       conversation_id: conversationId,
-      platform: 'benchmark' as const,
+      platform: 'unknown' as const,
       title: convMessages[0]?.conversationTitle || 'Untitled',
       created_at: Math.floor(Date.now() / 1000),
       messages: convMessages.map((msg, index) => ({
@@ -189,7 +189,7 @@ describe('FTS5 Duplicate Detection Performance Benchmark', () => {
   let baseConfig: DuplicateDetectionConfig;
   const accountId = 'acc_benchmark_' + nanoid();
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     // Create temporary database
     dbPath = path.join(__dirname, `test-fts5-benchmark-${nanoid()}.db`);
     db = new Database(dbPath);

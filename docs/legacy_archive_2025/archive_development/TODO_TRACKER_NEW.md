@@ -13,7 +13,7 @@
 | Phase 1A: Foundation               | ✅ Complete    | 100%       | -        |
 | Phase 1B: Ingest & Autogroup       | ✅ Complete    | 100%       | -        |
 | **Phase 1B.5: Chat Import System** | ✅ Complete    | 90%        | -        |
-| Phase 1C: Canvas Visualization     | ✅ Complete    | 100%       | -        |
+| Phase 1C: Keimenon Visualization   | ✅ Complete    | 100%       | -        |
 | Phase 1D: UnifiedDocs              | 🔄 In Progress | 25%        | **HIGH** |
 | Infrastructure & Polish            | ✅ Mostly Done | 85%        | MEDIUM   |
 | Testing & Documentation            | 🔄 In Progress | 40%        | **HIGH** |
@@ -53,7 +53,7 @@
 
 ### Frontend (80% Complete)
 
-- [x] 2D Canvas with D3-force layout
+- [x] 2D Keimenon with D3-force layout
 - [x] File upload with drag-and-drop
 - [x] Node selection (single and multi-select)
 - [x] Pan and zoom controls
@@ -105,11 +105,11 @@
 **UI Polish** (5-6 hours)
 
 - [ ] **Error boundaries** (2 hours)
-  - Wrap Canvas2D, IngestPage, BoardPage
+  - Wrap Keimenon2D, IngestPage, BoardPage
   - ErrorFallback component with "Try again" button
 
 - [ ] **Loading states** (2 hours)
-  - Canvas layout spinner
+  - Keimenon layout spinner
   - Import progress indicators (enhance existing)
   - Skeleton UIs for data fetching
 
@@ -119,7 +119,7 @@
   - Success/error/info variants
 
 - [ ] **Empty states** (30 min)
-  - Empty canvas message
+  - Empty keimenon message
   - No imports yet message
   - No sources in group
 
@@ -320,7 +320,7 @@ Nice to have but not blocking MVP:
 ### UI Improvements
 
 - [ ] Mobile responsiveness
-- [ ] Canvas performance optimization (viewport culling)
+- [ ] Keimenon performance optimization (viewport culling)
 - [ ] Advanced keyboard shortcuts
 - [ ] Command palette (Cmd+K)
 - [ ] Sequester UI controls
@@ -355,7 +355,7 @@ Nice to have but not blocking MVP:
 
 ### Nice to Have Tests:
 
-1. Canvas rendering tests
+1. Keimenon rendering tests
 2. API endpoint tests (all 30+)
 3. E2E user flows (Playwright)
 4. Performance benchmarks

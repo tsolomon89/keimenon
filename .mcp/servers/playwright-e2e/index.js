@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Canvas Memory OS - Playwright E2E MCP Server
+ * Keimenon - Playwright E2E MCP Server
  *
  * Provides comprehensive tools for controlling and monitoring Playwright E2E tests.
  * This server enables Claude to:
@@ -1058,11 +1058,7 @@ class PlaywrightE2EMCPServer {
 
       const apiRunning = await this.checkServer(`${API_URL}/health`);
       const webRunning = await this.checkServer(WEB_URL);
-      const dbPath = join(
-        process.env.HOME || process.env.USERPROFILE,
-        '.canvas-memory',
-        'canvas.db'
-      );
+      const dbPath = join(process.env.HOME || process.env.USERPROFILE, '.keimenon', 'keimenon.db');
 
       // Check database accessibility
       let dbAccessible = false;

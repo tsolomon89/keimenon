@@ -1,9 +1,9 @@
 @echo off
-REM Canvas Memory OS - MCP Servers Installation Script (Windows)
+REM Keimenon - MCP Servers Installation Script (Windows)
 REM This script installs dependencies for all MCP servers
 
 echo ========================================
-echo Canvas Memory OS - MCP Servers Setup
+echo Keimenon - MCP Servers Setup
 echo ========================================
 echo.
 

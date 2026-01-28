@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { CanvasHeader } from './CanvasHeader';
-import { CanvasToolbar } from './CanvasToolbar';
-import { CanvasSidebar, type InspectorPanel } from './CanvasSidebar';
-import { CanvasFooter } from './CanvasFooter';
-import { CanvasViewport, CanvasViewportHandle } from './CanvasViewport';
+import { KeimenonHeader } from './KeimenonHeader';
+import { KeimenonToolbar } from './KeimenonToolbar';
+import { KeimenonSidebar, type InspectorPanel } from './KeimenonSidebar';
+import { KeimenonFooter } from './KeimenonFooter';
+import { KeimenonViewport, KeimenonViewportHandle } from './KeimenonViewport';
 import { CRMDashboard } from './CRMDashboard';
 import { StorageStatsDashboard } from './StorageStatsDashboard';
 import { LegacyBoardPreview } from './LegacyBoardPreview';
-import { ProcessingCanvasView } from './ProcessingCanvasView';
+import { ProcessingKeimenonView } from './ProcessingKeimenonView';
 import { PortalWrapper } from './PortalWrapper';
 import { SettingsPage } from '../settings/SettingsPage';
 import { UploadModal } from './UploadModal';
@@ -24,7 +24,7 @@ import { useBackgroundOperations, type Operation } from '@/contexts/BackgroundOp
 import { useConsole } from '@/contexts/ConsoleContext';
 import type { ImportJob } from './ImportsTableCard';
 
-interface CanvasLayoutProps {
+interface KeimenonLayoutProps {
   showUploadModal: boolean;
   onShowUploadModal: (show: boolean) => void;
   onOpenUpload: () => void;
@@ -35,7 +35,7 @@ interface CanvasLayoutProps {
   onClearRestoredOperation?: () => void;
 }
 
-export function CanvasLayout({
+export function KeimenonLayout({
   showUploadModal,
   onShowUploadModal,
   onOpenUpload,
@@ -44,19 +44,21 @@ export function CanvasLayout({
   onOpenChatImport,
   restoredOperation,
   onClearRestoredOperation,
-}: CanvasLayoutProps) {
+}: KeimenonLayoutProps) {
   const { user } = useAuth();
-  const { shellMode, canvasMode } = useShell();
+  const { shellMode, keimenonMode } = useShell();
   const { operating } = useOperating();
   const { uiVersion } = useUIVersion();
   const { operations, getOperation, getActiveOperations, addOperation, updateOperation } =
     useBackgroundOperations();
   const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
-  const canvasViewportRef = useRef<CanvasViewportHandle>(null);
+  const keimenonViewportRef = useRef<KeimenonViewportHandle>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-  const [canvasSurface, setCanvasSurface] = useState<'canvas' | 'legacy' | 'processing'>('canvas');
+  const [keimenonSurface, setKeimenonSurface] = useState<'keimenon' | 'legacy' | 'processing'>(
+    'keimenon'
+  );
   const [dashboardView, setDashboardView] = useState<'analytics' | 'storage'>('analytics');
   const [selectedSettingsSectionId, setSelectedSettingsSectionId] = useState<string | undefined>(
     undefined
@@ -113,11 +115,15 @@ export function CanvasLayout({
         ].includes(op.status)
     );
 
-    // Auto-switch to processing view when import starts (if we're in canvas mode)
+    // Auto-switch to processing view when import starts (if we're in keimenon mode)
     // Shows minigraph visualization and real-time pipeline progress
-    if (canvasMode === 'canvas' && runningImports.length > 0 && canvasSurface !== 'processing') {
-      console.log('[CanvasLayout] Auto-switching to processing view for import job');
-      setCanvasSurface('processing');
+    if (
+      keimenonMode === 'keimenon' &&
+      runningImports.length > 0 &&
+      keimenonSurface !== 'processing'
+    ) {
+      console.log('[KeimenonLayout] Auto-switching to processing view for import job');
+      setKeimenonSurface('processing');
 
       // Set the first running import as active if none is selected
       if (
@@ -128,14 +134,14 @@ export function CanvasLayout({
         setActiveOperation(runningImports[0]);
       }
     }
-  }, [operations, canvasMode, canvasSurface, activeOperation]);
+  }, [operations, keimenonMode, keimenonSurface, activeOperation]);
 
   // Reset processing surface when there is no active operation
   useEffect(() => {
-    if (canvasSurface === 'processing' && !activeOperation) {
-      setCanvasSurface('canvas');
+    if (keimenonSurface === 'processing' && !activeOperation) {
+      setKeimenonSurface('keimenon');
     }
-  }, [canvasSurface, activeOperation]);
+  }, [keimenonSurface, activeOperation]);
 
   const hasProcessingOperations = Array.from(operations.values()).some((op) =>
     ['queued', 'reading', 'parsing', 'normalizing', 'indexing', 'linking', 'processing'].includes(
@@ -145,7 +151,7 @@ export function CanvasLayout({
 
   const processingAvailable = hasProcessingOperations || !!activeOperation;
   // Handler to open import flow in Inspector Bar
-  // NOTE(import-flow): ImportModule (panel variant) is rendered for this scope via CanvasSidebar. Swap back to ImportOperationInspector there if the legacy server upload UI is required.
+  // NOTE(import-flow): ImportModule (panel variant) is rendered for this scope via KeimenonSidebar. Swap back to ImportOperationInspector there if the legacy server upload UI is required.
   const handleOpenImportFlow = () => {
     // Open import flow in Inspector Bar (no modals)
     setInspectorPanel('import-flow');
@@ -265,35 +271,35 @@ export function CanvasLayout({
 
   // Set default settings section when entering settings mode
   useEffect(() => {
-    console.log('[CanvasLayout] Settings mode check:', {
-      canvasMode,
+    console.log('[KeimenonLayout] Settings mode check:', {
+      keimenonMode,
       selectedSettingsSectionId,
       hasDefault: !selectedSettingsSectionId,
     });
-    if (canvasMode === 'settings' && !selectedSettingsSectionId) {
-      console.log('[CanvasLayout] Setting default section: section_general_language');
+    if (keimenonMode === 'settings' && !selectedSettingsSectionId) {
+      console.log('[KeimenonLayout] Setting default section: section_general_language');
       setSelectedSettingsSectionId('section_general_language');
     }
-  }, [canvasMode, selectedSettingsSectionId]);
+  }, [keimenonMode, selectedSettingsSectionId]);
 
   // Reset dashboard view when leaving dashboard mode
   useEffect(() => {
-    if (canvasMode !== 'dashboard' && dashboardView !== 'analytics') {
+    if (keimenonMode !== 'dashboard' && dashboardView !== 'analytics') {
       setDashboardView('analytics');
     }
-  }, [canvasMode, dashboardView]);
+  }, [keimenonMode, dashboardView]);
 
-  // Reset legacy view when switching away from canvas mode
+  // Reset legacy view when switching away from keimenon mode
   useEffect(() => {
-    if (canvasMode !== 'canvas' && canvasSurface !== 'canvas') {
-      setCanvasSurface('canvas');
+    if (keimenonMode !== 'keimenon' && keimenonSurface !== 'keimenon') {
+      setKeimenonSurface('keimenon');
     }
-  }, [canvasMode, canvasSurface]);
+  }, [keimenonMode, keimenonSurface]);
 
   return (
     <div className="h-screen flex flex-col bg-slate-900 text-white overflow-hidden">
       {/* Header */}
-      <CanvasHeader />
+      <KeimenonHeader />
 
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden">
@@ -305,7 +311,7 @@ export function CanvasLayout({
           /* Legacy UI */
           <>
             {/* Left Sidebar */}
-            <CanvasSidebar
+            <KeimenonSidebar
               side="left"
               isOpen={leftSidebarOpen}
               onToggle={() => setLeftSidebarOpen(!leftSidebarOpen)}
@@ -315,7 +321,7 @@ export function CanvasLayout({
             {/* Main viewport + toolbar */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Toolbar */}
-              <CanvasToolbar
+              <KeimenonToolbar
                 onUploadClick={handleOpenImportFlow}
                 onLeftSidebarToggle={() => setLeftSidebarOpen(!leftSidebarOpen)}
                 onRightSidebarToggle={() => setRightSidebarOpen(!rightSidebarOpen)}
@@ -323,24 +329,24 @@ export function CanvasLayout({
                 leftSidebarVisible={leftSidebarOpen}
                 rightSidebarVisible={rightSidebarOpen}
                 footerVisible={footerOpen}
-                canvasSurface={canvasSurface}
-                onCanvasSurfaceChange={setCanvasSurface}
+                keimenonSurface={keimenonSurface}
+                onKeimenonSurfaceChange={setKeimenonSurface}
                 dashboardView={dashboardView}
                 onDashboardViewChange={setDashboardView}
                 processingAvailable={processingAvailable}
-                onZoomIn={() => canvasViewportRef.current?.zoomIn()}
-                onZoomOut={() => canvasViewportRef.current?.zoomOut()}
-                onCenterView={() => canvasViewportRef.current?.centerView()}
+                onZoomIn={() => keimenonViewportRef.current?.zoomIn()}
+                onZoomOut={() => keimenonViewportRef.current?.zoomOut()}
+                onCenterView={() => keimenonViewportRef.current?.centerView()}
               />
 
-              {/* Viewport - conditional based on canvas mode and operating context */}
+              {/* Viewport - conditional based on keimenon mode and operating context */}
               {isAdminOperatingMode && !hasAccountSelected && !isNativeMode ? (
                 // Admin in operating mode but no account selected - show message
                 <div className="flex-1 flex items-center justify-center p-6">
                   <div className="text-center max-w-md">
                     <h2 className="text-xl font-bold mb-2">Select an Account</h2>
                     <p className="text-sm text-slate-400 mb-4">
-                      Select a client account from the Accounts Tree to view their canvas.
+                      Select a client account from the Accounts Tree to view their keimenon.
                     </p>
                     <button
                       onClick={() => {}}
@@ -354,27 +360,27 @@ export function CanvasLayout({
               ) : (
                 // Wrap content with PortalWrapper if admin is operating on an account
                 <PortalWrapper>
-                  {canvasMode === 'canvas' &&
-                    (canvasSurface === 'canvas' ? (
-                      <CanvasViewport
-                        ref={canvasViewportRef}
+                  {keimenonMode === 'keimenon' &&
+                    (keimenonSurface === 'keimenon' ? (
+                      <KeimenonViewport
+                        ref={keimenonViewportRef}
                         onOpenUpload={handleOpenImportFlow}
                         onOpenChatImport={handleOpenImportFlow}
                       />
-                    ) : canvasSurface === 'legacy' ? (
+                    ) : keimenonSurface === 'legacy' ? (
                       <LegacyBoardPreview />
                     ) : (
-                      <ProcessingCanvasView operation={activeOperation} />
+                      <ProcessingKeimenonView operation={activeOperation} />
                     ))}
 
-                  {canvasMode === 'dashboard' &&
+                  {keimenonMode === 'dashboard' &&
                     (dashboardView === 'analytics' ? (
                       <CRMDashboard onJobSelect={focusOperationFromJob} />
                     ) : (
                       <StorageStatsDashboard />
                     ))}
 
-                  {canvasMode === 'settings' && (
+                  {keimenonMode === 'settings' && (
                     <SettingsPage
                       selectedSectionId={selectedSettingsSectionId}
                       onControlSelect={setSelectedSettingsControlId}
@@ -386,7 +392,7 @@ export function CanvasLayout({
             </div>
 
             {/* Right Sidebar */}
-            <CanvasSidebar
+            <KeimenonSidebar
               side="right"
               isOpen={rightSidebarOpen}
               onToggle={() => setRightSidebarOpen(!rightSidebarOpen)}
@@ -396,14 +402,14 @@ export function CanvasLayout({
               selectedUser={selectedUser}
               onUserUpdate={handleUserUpdate}
               activeOperation={activeOperation}
-              onViewProcessing={() => setCanvasSurface('processing')}
+              onViewProcessing={() => setKeimenonSurface('processing')}
             />
           </>
         )}
       </div>
 
       {/* Footer */}
-      <CanvasFooter isOpen={footerOpen} />
+      <KeimenonFooter isOpen={footerOpen} />
 
       {/* Upload Modal */}
       {showUploadModal && <UploadModal onClose={() => onShowUploadModal(false)} />}

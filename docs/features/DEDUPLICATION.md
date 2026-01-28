@@ -114,11 +114,11 @@ All instances are preserved in the graph. The edge just indicates "this node is 
 ### Basic Deduplication
 
 ```typescript
-import { DeduplicationEngine, GroupingStorage } from '@canvas/parsers';
+import { DeduplicationEngine, GroupingStorage } from '@keimenon/parsers';
 import Database from 'better-sqlite3';
 
-const db = new Database('./canvas.db');
-const storage = new GroupingStorage('./canvas.db');
+const db = new Database('./keimenon.db');
+const storage = new GroupingStorage('./keimenon.db');
 const deduper = new DeduplicationEngine(db, storage);
 
 // Run full deduplication pipeline

@@ -50,7 +50,10 @@ export function PortalWrapper({ children }: PortalWrapperProps) {
               <span className="text-sm font-medium text-purple-100">Portal Mode</span>
             </div>
             <div className="text-sm text-purple-300">
-              Viewing: <span className="font-medium text-white">{operating.accountName || operating.accountId}</span>
+              Viewing:{' '}
+              <span className="font-medium text-white">
+                {operating.accountName || operating.accountId}
+              </span>
             </div>
             {operating.accountType && (
               <div className="px-2 py-0.5 bg-purple-700/50 border border-purple-500/30 rounded text-xs text-purple-200">
@@ -68,7 +71,9 @@ export function PortalWrapper({ children }: PortalWrapperProps) {
                   ? 'bg-green-600 text-white hover:bg-green-700'
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
               }`}
-              title={operating.serviceMode ? 'Service Mode: Write access enabled' : 'Read-only mode'}
+              title={
+                operating.serviceMode ? 'Service Mode: Write access enabled' : 'Read-only mode'
+              }
             >
               {operating.serviceMode ? (
                 <>
@@ -112,7 +117,8 @@ export function PortalWrapper({ children }: PortalWrapperProps) {
                 <div className="text-sm text-purple-200">
                   <p className="font-medium mb-1">Portal Mode</p>
                   <p className="text-purple-300">
-                    You are viewing this account's canvas as they would see it. Your actions are tagged as admin operations.
+                    You are viewing this account's keimenon as they would see it. Your actions are
+                    tagged as admin operations.
                   </p>
                 </div>
               </div>
@@ -124,7 +130,8 @@ export function PortalWrapper({ children }: PortalWrapperProps) {
                     <div className="text-sm">
                       <p className="font-medium text-green-300 mb-1">Service Mode Active</p>
                       <p className="text-purple-300">
-                        You have write access. Changes will be logged in the audit trail with your admin identity.
+                        You have write access. Changes will be logged in the audit trail with your
+                        admin identity.
                       </p>
                     </div>
                   </>

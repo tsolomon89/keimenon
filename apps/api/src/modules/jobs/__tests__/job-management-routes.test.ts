@@ -13,7 +13,7 @@
  * - Error handling
  */
 
-import { describe, test as it, before, after, beforeEach } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { Job } from '../domain/Job';
@@ -28,7 +28,7 @@ const CLIENT_ACCOUNT_ID = 'client_account';
 const ADMIN_USER_ID = 'admin_user';
 const CLIENT_USER_ID = 'client_user';
 
-beforeEach(() => {
+beforeAll(async () => {
   // Create in-memory test database
   db = new Database(':memory:');
   db.pragma('journal_mode = WAL');
@@ -70,7 +70,7 @@ beforeEach(() => {
   jobRepository = new SQLiteJobRepository(db);
 });
 
-after(() => {
+afterAll(async () => {
   if (db) {
     db.close();
   }
@@ -221,7 +221,8 @@ describe('Job Management API Endpoints', () => {
       // In real endpoint, this would return 400 error
       // Here we just verify the status check
       // Use string comparison to avoid TypeScript literal type narrowing
-      const canRetry = String(succeededJob.status) === 'failed' || String(succeededJob.status) === 'canceled';
+      const canRetry =
+        String(succeededJob.status) === 'failed' || String(succeededJob.status) === 'canceled';
       assert.strictEqual(canRetry, false, 'Should not be able to retry succeeded job');
     });
 

@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-**Common issues and solutions for Canvas Memory OS**
+**Common issues and solutions for Keimenon**
 
 Quick reference for diagnosing and fixing common problems. For installation issues, see the [Installation Guide](INSTALLATION.md).
 
@@ -76,15 +76,15 @@ lsof -i :4001
 
 ```bash
 # Check database location
-ls -la ~/.canvas-memory/canvas.db  # Mac/Linux
-dir %USERPROFILE%\.canvas-memory\canvas.db  # Windows
+ls -la ~/.keimenon/keimenon.db  # Mac/Linux
+dir %USERPROFILE%\.keimenon\keimenon.db  # Windows
 
 # Fix permissions
-mkdir -p ~/.canvas-memory
-chmod 755 ~/.canvas-memory
+mkdir -p ~/.keimenon
+chmod 755 ~/.keimenon
 
 # Delete corrupted database (WARNING: loses data)
-rm ~/.canvas-memory/canvas.db
+rm ~/.keimenon/keimenon.db
 npm run dev  # Recreates fresh database
 
 # Backup before deleting
@@ -191,7 +191,7 @@ npm run dev
 
 **Symptoms:**
 
-- "Cannot find module '@canvas-memory/types'"
+- "Cannot find module '@keimenon/types'"
 - "Module not found"
 - TypeScript compilation errors
 
@@ -259,7 +259,7 @@ curl -X POST http://localhost:4001/api/v1/import/stream \
 
 ```bash
 # For SQLite: Vacuum and optimize
-sqlite3 ~/.canvas-memory/canvas.db "VACUUM; ANALYZE;"
+sqlite3 ~/.keimenon/keimenon.db "VACUUM; ANALYZE;"
 
 # For Neo4j: Check indexes
 # In Neo4j Browser: SHOW INDEXES
@@ -312,7 +312,7 @@ npm run kill-ports
 npm run dev
 ```
 
-#### Canvas not rendering
+#### Keimenon not rendering
 
 **Solutions:**
 
@@ -344,9 +344,9 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
 ```bash
 # Use forward slashes or double backslashes
-SQLITE_PATH=C:/Users/YourName/.canvas-memory/canvas.db
+SQLITE_PATH=C:/Users/YourName/.keimenon/keimenon.db
 # OR
-SQLITE_PATH=C:\\Users\\YourName\\.canvas-memory\\canvas.db
+SQLITE_PATH=C:\\Users\\YourName\\.keimenon\\keimenon.db
 ```
 
 ### Mac
@@ -369,7 +369,7 @@ nvm use 18
 ```bash
 # Don't run as root
 # If you accidentally did:
-sudo chown -R $USER:$USER ~/.canvas-memory
+sudo chown -R $USER:$USER ~/.keimenon
 sudo chown -R $USER:$USER ./node_modules
 ```
 
@@ -391,7 +391,7 @@ Restart server and check detailed logs.
 **SQLite:**
 
 ```bash
-sqlite3 ~/.canvas-memory/canvas.db "PRAGMA integrity_check;"
+sqlite3 ~/.keimenon/keimenon.db "PRAGMA integrity_check;"
 ```
 
 **Neo4j:**
@@ -460,11 +460,11 @@ npm update
 
 # Monthly: Clear old data
 npm run backup
-sqlite3 ~/.canvas-memory/canvas.db "VACUUM;"
+sqlite3 ~/.keimenon/keimenon.db "VACUUM;"
 
 # Check disk space
-df -h ~/.canvas-memory  # Mac/Linux
-dir %USERPROFILE%\.canvas-memory  # Windows
+df -h ~/.keimenon  # Mac/Linux
+dir %USERPROFILE%\.keimenon  # Windows
 ```
 
 ### Backup Strategy

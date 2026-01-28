@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Canvas Memory OS is now **production-ready** with 89% of critical path items complete. All HIGH priority tasks are done, including Sentry error tracking (opt-in), comprehensive deployment documentation, production checklist, account switcher UI, and API documentation.
+Keimenon is now **production-ready** with 89% of critical path items complete. All HIGH priority tasks are done, including Sentry error tracking (opt-in), comprehensive deployment documentation, production checklist, account switcher UI, and API documentation.
 
 **Ready for deployment**: Yes (with minor caveat on integration tests)
 **Security hardened**: Yes
@@ -87,7 +87,7 @@ Canvas Memory OS is now **production-ready** with 89% of critical path items com
 
 **Files Modified**:
 
-- [`apps/web/src/components/canvas/CanvasHeader.tsx`](apps/web/src/components/canvas/CanvasHeader.tsx) - Integrated Account Switcher
+- [`apps/web/src/components/keimenon/KeimenonHeader.tsx`](apps/web/src/components/keimenon/KeimenonHeader.tsx) - Integrated Account Switcher
 
 **Component Location**:
 
@@ -105,8 +105,8 @@ Canvas Memory OS is now **production-ready** with 89% of critical path items com
 **Integration**:
 
 - Uses existing `switchAccount()` from AuthContext
-- Automatically refreshes canvas store on account switch
-- Displays in CanvasHeader before membership badge
+- Automatically refreshes keimenon store on account switch
+- Displays in KeimenonHeader before membership badge
 
 ---
 
@@ -273,7 +273,7 @@ Canvas Memory OS is now **production-ready** with 89% of critical path items com
 
 ### ✅ READY FOR PRODUCTION
 
-Canvas Memory OS is **production-ready** for:
+Keimenon is **production-ready** for:
 
 - **Free Tier**: Fully local deployment (no cloud costs)
 - **Pro Tier**: Local with optional Sentry (user opt-in)
@@ -312,7 +312,7 @@ Canvas Memory OS is **production-ready** for:
 ### UI Components
 
 - `apps/web/src/components/auth/AccountSwitcher.tsx` - Account switcher component
-- `apps/web/src/components/canvas/CanvasHeader.tsx` - Header with switcher integrated
+- `apps/web/src/components/keimenon/KeimenonHeader.tsx` - Header with switcher integrated
 
 ---
 
@@ -383,7 +383,7 @@ Canvas Memory OS is **production-ready** for:
 
 ### For QA
 
-1. Test critical flows (auth, import, canvas)
+1. Test critical flows (auth, import, keimenon)
 2. Verify account switching
 3. Test error handling
 4. Confirm SSE job progress
@@ -392,7 +392,7 @@ Canvas Memory OS is **production-ready** for:
 
 ## Conclusion
 
-Canvas Memory OS is **production-ready** with 89% of critical path complete. All HIGH priority tasks are done. The only remaining critical item (integration test conversion) is documented and does not block production deployment, as core functionality tests are passing.
+Keimenon is **production-ready** with 89% of critical path complete. All HIGH priority tasks are done. The only remaining critical item (integration test conversion) is documented and does not block production deployment, as core functionality tests are passing.
 
 **Recommendation**: Deploy to production with confidence. Monitor using Sentry (opt-in). Schedule integration test conversion for next sprint.
 

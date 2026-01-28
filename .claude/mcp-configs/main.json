@@ -1,16 +1,16 @@
 {
   "mcpServers": {
-    "canvas-code-execution": {
+    "keimenon-code-execution": {
       "command": "node",
       "args": ["${workspaceFolder}/.mcp/servers/code-execution/dist/index.js"],
       "description": "Code execution with MCP modules for 98.7% token savings"
     },
-    "canvas-database": {
+    "keimenon-database": {
       "command": "node",
       "args": ["${workspaceFolder}/.mcp/servers/database/index.js"],
       "description": "Database querying and schema inspection"
     },
-    "canvas-docs": {
+    "keimenon-docs": {
       "command": "node",
       "args": ["${workspaceFolder}/.mcp/servers/docs/index.js"],
       "description": "Documentation search and architecture info"

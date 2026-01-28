@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Canvas Memory OS - MCP Servers Installation Script (Linux/Mac)
+# Keimenon - MCP Servers Installation Script (Linux/Mac)
 # This script installs dependencies for all MCP servers
 
 set -e  # Exit on error
 
 echo "========================================"
-echo "Canvas Memory OS - MCP Servers Setup"
+echo "Keimenon - MCP Servers Setup"
 echo "========================================"
 echo ""
 

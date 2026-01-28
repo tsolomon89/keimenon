@@ -1,14 +1,14 @@
 /**
  * Progress Visualization Overlay
  *
- * Game developer techniques for visualizing import progress on the canvas:
+ * Game developer techniques for visualizing import progress on the keimenon:
  * - Particle effects for nodes being created
  * - Animated progress bars
  * - Real-time node spawn animations
  * - FPS-optimized rendering loop
  *
  * Related: apps/web/src/hooks/useJobStream.ts (SSE updates)
- * Related: apps/web/src/components/canvas/Canvas2D.tsx (main graph canvas)
+ * Related: apps/web/src/components/keimenon/Keimenon2D.tsx (main graph keimenon)
  */
 
 'use client';
@@ -35,7 +35,7 @@ interface ProgressVisualizationProps {
 }
 
 export function ProgressVisualization({ width, height, jobId }: ProgressVisualizationProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const keimenonRef = useRef<HTMLKeimenonElement>(null);
   const animationFrameRef = useRef<number>();
   const particlesRef = useRef<Particle[]>([]);
   const lastSpawnTimeRef = useRef<number>(0);
@@ -96,8 +96,8 @@ export function ProgressVisualization({ width, height, jobId }: ProgressVisualiz
   };
 
   // Update and render particles - optimized render loop (game dev pattern)
-  const updateAndRender = (ctx: CanvasRenderingContext2D, deltaTime: number) => {
-    // Clear canvas
+  const updateAndRender = (ctx: KeimenonRenderingContext2D, deltaTime: number) => {
+    // Clear keimenon
     ctx.clearRect(0, 0, width, height);
 
     // Update particles
@@ -136,14 +136,14 @@ export function ProgressVisualization({ width, height, jobId }: ProgressVisualiz
       }
     }
 
-    // Draw progress bar overlay (top of canvas)
+    // Draw progress bar overlay (top of keimenon)
     if (isActive) {
       drawProgressBar(ctx);
     }
   };
 
   // Progress bar rendering
-  const drawProgressBar = (ctx: CanvasRenderingContext2D) => {
+  const drawProgressBar = (ctx: KeimenonRenderingContext2D) => {
     const barHeight = 4;
     const barY = 20;
     const barX = 40;
@@ -186,10 +186,10 @@ export function ProgressVisualization({ width, height, jobId }: ProgressVisualiz
 
   // Animation loop - game dev pattern (requestAnimationFrame)
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const keimenon = keimenonRef.current;
+    if (!keimenon) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = keimenon.getContext('2d');
     if (!ctx) return;
 
     let lastTime = performance.now();
@@ -216,8 +216,8 @@ export function ProgressVisualization({ width, height, jobId }: ProgressVisualiz
   if (!isActive) return null;
 
   return (
-    <canvas
-      ref={canvasRef}
+    <keimenon
+      ref={keimenonRef}
       width={width}
       height={height}
       className="absolute inset-0 pointer-events-none z-10"

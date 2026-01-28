@@ -1,7 +1,7 @@
 /**
  * Content-Addressable Storage (CAS) Utilities
  *
- * Implements content addressing for the Canvas Memory OS graph database.
+ * Implements content addressing for the Keimenon graph database.
  * Content is addressed by cryptographic hash of its canonical form.
  *
  * Key properties:

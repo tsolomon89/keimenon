@@ -231,5 +231,5 @@ npm test
 
 ---
 
-**Maintainer**: Canvas Memory Team
+**Maintainer**: Keimenon Team
 **Last Updated**: 2025-10-25

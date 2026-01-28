@@ -8,7 +8,7 @@
  * Related: Chunked Upload System - Phase 7 (Testing)
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach, expect } from 'vitest';
 import express, { Express } from 'express';
 import request from 'supertest';
 import Database from 'better-sqlite3';

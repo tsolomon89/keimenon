@@ -20,7 +20,7 @@
  * Together: Complete system validation from upload button to rendered UI
  */
 
-import { describe, test, before, after, type TestContext } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -52,7 +52,7 @@ import { ImportWorker } from '../modules/workers/infrastructure/ImportWorker';
 // Test Configuration
 let PORT = 0;
 let API_BASE_URL = '';
-const DB_PATH = process.env.DB_PATH || path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+const DB_PATH = process.env.DB_PATH || path.join(os.homedir(), '.keimenon', 'keimenon.db');
 const TEST_FILES_DIR = path.join(process.cwd(), '../../ai_context/chat_data/test-samples');
 
 // Test Credentials
@@ -82,7 +82,7 @@ let writeQueue: DatabaseWriteQueue;
 /**
  * Setup: Authenticate and get tokens
  */
-before(async () => {
+beforeAll(async () => {
   console.log('\n🔧 Setting up UI Integration Tests...\n');
 
   // Initialize DB
@@ -118,7 +118,7 @@ before(async () => {
 
   // Register Workers
   const importWorker = new ImportWorker(dbClient as any, writeQueue);
-  workerPool.registerWorker('import', importWorker);
+  workerPool.registerWorker(importWorker);
 
   workerPool.start();
 
@@ -167,7 +167,7 @@ before(async () => {
 /**
  * Cleanup: Close database
  */
-after(() => {
+afterAll(() => {
   if (db) {
     db.close();
   }
@@ -255,7 +255,7 @@ function cleanupTestData(accountId: string) {
  * ============================================================================
  */
 describe('API Upload Endpoint', () => {
-  test('should accept multipart form data with files and config', async (_t: TestContext) => {
+  it('should accept multipart form data with files and config', async () => {
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
 
     if (!fs.existsSync(testFile)) {
@@ -274,7 +274,7 @@ describe('API Upload Endpoint', () => {
     assert.strictEqual(data.success, true);
   }, 60000); // 60s timeout
 
-  test('should reject unauthenticated requests', async (_t: TestContext) => {
+  it('should reject unauthenticated requests', async () => {
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
 
     if (!fs.existsSync(testFile)) {
@@ -292,7 +292,7 @@ describe('API Upload Endpoint', () => {
     assert.strictEqual(response.status, 401);
   });
 
-  test('should parse config from form fields', async (_t: TestContext) => {
+  it('should parse config from form fields', async () => {
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
 
     if (!fs.existsSync(testFile)) {
@@ -316,13 +316,13 @@ describe('API Upload Endpoint', () => {
  * ============================================================================
  */
 describe('Data Persistence & Multi-Tenancy', () => {
-  before(() => {
+  beforeEach(() => {
     // Clean up any existing test data
     cleanupTestData(adminAccountId);
     cleanupTestData(clientAccountId);
   });
 
-  test('should persist imported data with correct account_id', async (_t: TestContext) => {
+  it('should persist imported data with correct account_id', async () => {
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
 
     if (!fs.existsSync(testFile)) {
@@ -340,20 +340,26 @@ describe('Data Persistence & Multi-Tenancy', () => {
     console.log('📊 After import:', afterCounts);
 
     // Should have created nodes
-    const totalBefore = beforeCounts.reduce((sum, row: any) => sum + (row.count as number), 0);
-    const totalAfter = afterCounts.reduce((sum, row: any) => sum + (row.count as number), 0);
+    const totalBefore = beforeCounts.reduce(
+      (sum: number, row: any) => sum + (row.count as number),
+      0
+    );
+    const totalAfter = afterCounts.reduce(
+      (sum: number, row: any) => sum + (row.count as number),
+      0
+    );
 
     assert.ok(totalAfter > totalBefore);
 
     // Should have Folder and Group nodes
-    const folderCount = afterCounts.find((r: any) => r.kind === 'Folder')?.count || 0;
-    const groupCount = afterCounts.find((r: any) => r.kind === 'Group')?.count || 0;
+    const folderCount = (afterCounts as any[]).find((r: any) => r.kind === 'Folder')?.count || 0;
+    const groupCount = (afterCounts as any[]).find((r: any) => r.kind === 'Group')?.count || 0;
 
     assert.ok(folderCount > 0);
     assert.ok(groupCount > 0);
   }, 120000); // 2min timeout
 
-  test('should isolate data between accounts', async (_t: TestContext) => {
+  it('should isolate data between accounts', async () => {
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
 
     if (!fs.existsSync(testFile)) {
@@ -400,7 +406,7 @@ describe('Data Persistence & Multi-Tenancy', () => {
  * ============================================================================
  */
 describe('Groups & Folders Navigation', () => {
-  before(async () => {
+  beforeAll(async () => {
     // Ensure admin has some imported data
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
     if (fs.existsSync(testFile)) {
@@ -408,7 +414,7 @@ describe('Groups & Folders Navigation', () => {
     }
   });
 
-  test('should return groups tree for authenticated user', async (_t: TestContext) => {
+  test('should return groups tree for authenticated user', async () => {
     const response = await getGroupsTree(adminToken);
 
     assert.strictEqual(response.success, true);
@@ -417,7 +423,7 @@ describe('Groups & Folders Navigation', () => {
     console.log(`📁 Admin has ${response.groups.length} root folders/groups`);
   });
 
-  test('should return empty tree for user with no data', async (_t: TestContext) => {
+  test('should return empty tree for user with no data', async () => {
     // Create a new client without any imports
     cleanupTestData(clientAccountId);
 
@@ -427,7 +433,7 @@ describe('Groups & Folders Navigation', () => {
     assert.strictEqual(response.groups.length, 0);
   });
 
-  test('should include folder structure with groups', async (_t: TestContext) => {
+  test('should include folder structure with groups', async () => {
     const response = await getGroupsTree(adminToken);
 
     if (response.groups.length === 0) {
@@ -449,7 +455,7 @@ describe('Groups & Folders Navigation', () => {
     }
   });
 
-  test('should only show data for the authenticated account', async (_t: TestContext) => {
+  test('should only show data for the authenticated account', async () => {
     // Get admin tree
     const adminTree = await getGroupsTree(adminToken);
 
@@ -484,7 +490,7 @@ describe('Groups & Folders Navigation', () => {
  * ============================================================================
  */
 describe('UI Data Transformation', () => {
-  test('should parse node properties from JSON strings', async (_t: TestContext) => {
+  test('should parse node properties from JSON strings', async () => {
     const response = await getGroupsTree(adminToken);
 
     if (response.groups.length === 0) {
@@ -499,7 +505,7 @@ describe('UI Data Transformation', () => {
     assert.ok(node.properties !== null);
   });
 
-  test('should include edge relationships in tree structure', async (_t: TestContext) => {
+  test('should include edge relationships in tree structure', async () => {
     const response = await getGroupsTree(adminToken);
 
     // Check if we have FOLDS_INTO_FOLDER edges
@@ -529,7 +535,7 @@ describe('UI Data Transformation', () => {
  * ============================================================================
  */
 describe('Error Handling', () => {
-  test('should handle invalid file formats gracefully', async (_t: TestContext) => {
+  test('should handle invalid file formats gracefully', async () => {
     const form = new FormData();
     form.append('files', Buffer.from('invalid json'), { filename: 'test.txt' });
 
@@ -546,7 +552,7 @@ describe('Error Handling', () => {
     assert.ok([200, 400].includes(response.status));
   });
 
-  test('should validate authentication tokens', async (_t: TestContext) => {
+  test('should validate authentication tokens', async () => {
     const response = await fetch(`${API_BASE_URL}/api/v1/groups`, {
       method: 'GET',
       headers: {
@@ -557,7 +563,7 @@ describe('Error Handling', () => {
     assert.strictEqual(response.status, 401);
   });
 
-  test('should handle missing config gracefully', async (_t: TestContext) => {
+  test('should handle missing config gracefully', async () => {
     const testFile = path.join(TEST_FILES_DIR, 'small.json');
 
     if (!fs.existsSync(testFile)) {
@@ -588,7 +594,7 @@ describe('Error Handling', () => {
  * ============================================================================
  */
 describe('Performance & Scale', () => {
-  test('should handle medium file (135MB) import', async (_t: TestContext) => {
+  test('should handle medium file (135MB) import', async () => {
     const testFile = path.join(TEST_FILES_DIR, 'medium.json');
 
     if (!fs.existsSync(testFile)) {
@@ -613,7 +619,7 @@ describe('Performance & Scale', () => {
     }
   }, 300000); // 5min timeout
 
-  test('should fetch groups tree quickly even with large dataset', async (_t: TestContext) => {
+  test('should fetch groups tree quickly even with large dataset', async () => {
     const startTime = Date.now();
     await getGroupsTree(adminToken);
     const duration = Date.now() - startTime;
@@ -631,7 +637,7 @@ describe('Performance & Scale', () => {
  * ============================================================================
  */
 describe('SSE Job Streaming', () => {
-  test('should connect to SSE stream with token authentication', async (_t: TestContext) => {
+  test('should connect to SSE stream with token authentication', async () => {
     const sseUrl = `${API_BASE_URL}/api/v1/stream/jobs?token=${adminToken}`;
     const eventSource = new EventSource(sseUrl);
 
@@ -654,7 +660,7 @@ describe('SSE Job Streaming', () => {
     assert.strictEqual(true, true); // If we got here, connection succeeded
   }, 10000);
 
-  test('should receive real-time job updates via SSE', async (_t: TestContext) => {
+  test('should receive real-time job updates via SSE', async () => {
     const testFile = path.join(TEST_FILES_DIR, 'tiny.json');
 
     if (!fs.existsSync(testFile)) {
@@ -727,7 +733,7 @@ describe('SSE Job Streaming', () => {
     assert.strictEqual(hasTerminalStatus, true);
   }, 60000);
 
-  test('should isolate SSE streams by account', async (_t: TestContext) => {
+  test('should isolate SSE streams by account', async () => {
     // Connect as admin
     const adminSseUrl = `${API_BASE_URL}/api/v1/stream/jobs?token=${adminToken}`;
     const adminEventSource = new EventSource(adminSseUrl);
@@ -779,7 +785,7 @@ describe('SSE Job Streaming', () => {
     console.log(`✅ SSE streams correctly isolated by account`);
   }, 30000);
 
-  test('should handle SSE reconnection', async (_t: TestContext) => {
+  test('should handle SSE reconnection', async () => {
     const sseUrl = `${API_BASE_URL}/api/v1/stream/jobs?token=${adminToken}`;
     let eventSource = new EventSource(sseUrl);
     let connectionCount = 0;

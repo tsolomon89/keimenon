@@ -135,7 +135,7 @@ Show me the last test failures
   "count": 2,
   "failures": [
     {
-      "test": "flow-auth-canvas-chromium-login-test",
+      "test": "flow-auth-keimenon-chromium-login-test",
       "tracePath": "/path/to/test-results/.../trace.zip",
       "relativeTracePath": "test-results/.../trace.zip"
     }
@@ -240,7 +240,7 @@ Get fresh health status
   },
   "database": {
     "accessible": true,
-    "path": "/Users/username/.canvas-memory/canvas.db"
+    "path": "/Users/username/.keimenon/keimenon.db"
   }
 }
 ```
@@ -296,7 +296,7 @@ Show me the latest trace files
   "artifacts": [
     {
       "kind": "trace",
-      "path": "test-results/flow-auth-canvas-chromium/trace.zip",
+      "path": "test-results/flow-auth-keimenon-chromium/trace.zip",
       "size": 524288,
       "modified": "2025-01-15T10:30:00.000Z"
     }
@@ -545,4 +545,4 @@ npx @modelcontextprotocol/inspector
 
 ## License
 
-Same as parent project (Canvas Memory OS).
+Same as parent project (Keimenon).

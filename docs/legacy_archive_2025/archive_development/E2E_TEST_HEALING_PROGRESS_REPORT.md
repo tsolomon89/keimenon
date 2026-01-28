@@ -93,7 +93,7 @@
 
 **Status**: Timing/async issue
 
-- `should update UI without reload after canvas data deletion` - SSE timing
+- `should update UI without reload after keimenon data deletion` - SSE timing
 
 **Root Cause**: UI refresh happens asynchronously via SSE
 

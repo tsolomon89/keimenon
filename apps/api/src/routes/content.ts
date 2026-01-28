@@ -461,7 +461,7 @@ router.get('/stats', async (req: Request, res: Response) => {
     return res.json({
       local_storage: {
         ...stats,
-        path: process.env.LOCAL_DOCS_PATH || '~/.canvas-memory',
+        path: process.env.LOCAL_DOCS_PATH || '~/.keimenon',
       },
       database: dbStats,
       storage_model: 'local-first',

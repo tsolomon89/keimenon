@@ -1,6 +1,6 @@
 # End-to-End Testing with Playwright
 
-This directory contains the Playwright E2E test suite for Canvas Memory OS. The tests cover critical user journeys from browser to backend database.
+This directory contains the Playwright E2E test suite for Keimenon. The tests cover critical user journeys from browser to backend database.
 
 ## Quick Start
 
@@ -52,7 +52,7 @@ tests/e2e/
 ├── fixtures/
 │   └── testId.ts          # Test correlation fixture (adds x-test-id header)
 ├── smoke.spec.ts          # @smoke - Quick sanity checks
-└── flow-auth-canvas.spec.ts  # @full - Complete user journeys
+└── flow-auth-keimenon.spec.ts  # @full - Complete user journeys
 ```
 
 ## Writing Tests
@@ -176,7 +176,7 @@ npm run e2e:debug
 npm run e2e:headed
 
 # Run specific test file
-npm run e2e -- flow-auth-canvas.spec.ts
+npm run e2e -- flow-auth-keimenon.spec.ts
 
 # Run specific test by name
 npm run e2e -- -g "should login successfully"
@@ -191,7 +191,7 @@ Traces are automatically captured on retry:
 npx playwright show-trace test-results/*/trace.zip
 
 # View specific trace
-npx playwright show-trace test-results/flow-auth-canvas-chromium/trace.zip
+npx playwright show-trace test-results/flow-auth-keimenon-chromium/trace.zip
 ```
 
 Trace viewer shows:
@@ -265,12 +265,12 @@ Add descriptive assertions:
 
 ```typescript
 // Good
-await expect(page.getByRole('heading', { name: /Canvas Memory/ })).toBeVisible({
+await expect(page.getByRole('heading', { name: /Keimenon/ })).toBeVisible({
   timeout: 10000,
 });
 
 // Better (with custom message)
-await expect(page.getByRole('heading', { name: /Canvas Memory/ })).toBeVisible();
+await expect(page.getByRole('heading', { name: /Keimenon/ })).toBeVisible();
 ```
 
 ### 4. Waiting for API Responses

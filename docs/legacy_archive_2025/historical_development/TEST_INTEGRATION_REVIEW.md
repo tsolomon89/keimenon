@@ -60,7 +60,7 @@
 │ ❌ SSE reconnection logic                               │
 │ ❌ Frontend hook (`useImportProgressStream`)            │
 │ ❌ Visualization components (Pipeline, Stats, Graph)    │
-│ ❌ Canvas rendering                                     │
+│ ❌ Keimenon rendering                                     │
 │ ❌ Animation loops                                      │
 │                                                          │
 └──────────────────────────────────────────────────────────┘
@@ -309,7 +309,7 @@ describe('useImportProgressStream', () => {
 
 - `ImportPipelineProgress` - 7-stage pipeline
 - `ImportStatsPanel` - Animated counters
-- `ImportMiniGraph` - Canvas with particles
+- `ImportMiniGraph` - Keimenon with particles
 
 **Current test coverage:** ❌ **NONE** (frontend tests don't exist)
 
@@ -370,12 +370,12 @@ describe('ImportStatsPanel', () => {
 });
 
 describe('ImportMiniGraph', () => {
-  it('should render canvas element', () => {
+  it('should render keimenon element', () => {
     render(<ImportMiniGraph recentNodes={[]} width={400} height={300} />);
 
-    const canvas = screen.getByRole('img'); // Canvas has implicit img role
-    expect(canvas).toBeInTheDocument();
-    expect(canvas).toHaveAttribute('width', '400');
+    const keimenon = screen.getByRole('img'); // Keimenon has implicit img role
+    expect(keimenon).toBeInTheDocument();
+    expect(keimenon).toHaveAttribute('width', '400');
   });
 
   it('should spawn nodes from recentNodes prop', () => {
@@ -389,7 +389,7 @@ describe('ImportMiniGraph', () => {
     // Update with nodes
     rerender(<ImportMiniGraph recentNodes={nodes} />);
 
-    // Verify canvas was updated (hard to test canvas rendering directly)
+    // Verify keimenon was updated (hard to test keimenon rendering directly)
     // May need snapshot testing or visual regression testing
   });
 });
@@ -399,12 +399,12 @@ describe('ImportMiniGraph', () => {
 
 - Visual components are user-facing (bugs are immediately visible)
 - Animation logic can have edge cases (React state updates, RAF timing)
-- Canvas rendering can fail silently (wrong coordinates, color mismatches)
+- Keimenon rendering can fail silently (wrong coordinates, color mismatches)
 
 **Risk if not tested:**
 
 - Medium - Visual bugs won't break functionality but hurt UX
-- Canvas issues can cause high CPU usage if animation loop breaks
+- Keimenon issues can cause high CPU usage if animation loop breaks
 
 ---
 
@@ -532,7 +532,7 @@ describe('Import Progress SSE', () => {
 
 ### Test Steps
 
-1. Navigate to http://localhost:3000/canvas
+1. Navigate to http://localhost:3000/keimenon
 2. Click Upload button → Opens ImportFlowPanel
 3. Select JSON file (use `ai_context/chat_data/test-samples/small.json`)
 4. Click "Start Import"

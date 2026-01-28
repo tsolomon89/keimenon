@@ -1,7 +1,7 @@
 /**
  * Import Mini Graph
  *
- * Canvas-based force-directed graph visualization showing import nodes being created in real-time.
+ * Keimenon-based force-directed graph visualization showing import nodes being created in real-time.
  * Features galaxy-style visual effects with particles, gradients, and glow.
  *
  * Features:
@@ -71,7 +71,7 @@ export function ImportMiniGraph({
   width = 400,
   height = 300,
 }: ImportMiniGraphProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const keimenonRef = useRef<HTMLKeimenonElement>(null);
   const nodesRef = useRef<Node[]>([]);
   const particlesRef = useRef<Particle[]>([]);
   const animationFrameRef = useRef<number>();
@@ -81,8 +81,8 @@ export function ImportMiniGraph({
   useEffect(() => {
     if (recentNodes.length === 0) return;
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const keimenon = keimenonRef.current;
+    if (!keimenon) return;
 
     const centerX = width / 2;
     const centerY = height / 2;
@@ -137,15 +137,15 @@ export function ImportMiniGraph({
 
   // Animation loop
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const keimenon = keimenonRef.current;
+    if (!keimenon) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = keimenon.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size
-    canvas.width = width;
-    canvas.height = height;
+    // Set keimenon size
+    keimenon.width = width;
+    keimenon.height = height;
 
     const centerX = width / 2;
     const centerY = height / 2;
@@ -154,7 +154,7 @@ export function ImportMiniGraph({
       const deltaTime = time - lastTimeRef.current;
       lastTimeRef.current = time;
 
-      // Clear canvas with fade effect (for trails)
+      // Clear keimenon with fade effect (for trails)
       ctx.fillStyle = 'rgba(15, 23, 42, 0.3)'; // slate-900 with alpha
       ctx.fillRect(0, 0, width, height);
 
@@ -318,8 +318,8 @@ export function ImportMiniGraph({
 
   return (
     <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-900">
-      <canvas
-        ref={canvasRef}
+      <keimenon
+        ref={keimenonRef}
         width={width}
         height={height}
         className="block"

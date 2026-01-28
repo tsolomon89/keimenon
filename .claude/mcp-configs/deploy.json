@@ -1,16 +1,16 @@
 {
   "mcpServers": {
-    "canvas-git-workflow": {
+    "keimenon-git-workflow": {
       "command": "node",
       "args": ["${workspaceFolder}/.mcp/servers/git-workflow/index.js"],
       "description": "Git operations and PR creation"
     },
-    "canvas-api-testing": {
+    "keimenon-api-testing": {
       "command": "node",
       "args": ["${workspaceFolder}/.mcp/servers/api-testing/index.js"],
       "description": "Smoke test execution"
     },
-    "canvas-database": {
+    "keimenon-database": {
       "command": "node",
       "args": ["${workspaceFolder}/.mcp/servers/database/index.js"],
       "description": "Migration validation"

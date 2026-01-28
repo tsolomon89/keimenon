@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 're
 import { GraphNode, GraphEdge, calculateLayout } from '@keimenon/graph';
 import { errorCapture } from '@/services/error-capture.service';
 
-interface Canvas2DProps {
+interface Keimenon2DProps {
   nodes: GraphNode[];
   edges: GraphEdge[];
   width: number;
@@ -14,16 +14,16 @@ interface Canvas2DProps {
   onSelectionChange?: (selectedIds: string[]) => void;
 }
 
-export interface Canvas2DHandle {
+export interface Keimenon2DHandle {
   zoomIn: () => void;
   zoomOut: () => void;
   centerView: () => void;
   resetView: () => void;
 }
 
-export const Canvas2D = forwardRef<Canvas2DHandle, Canvas2DProps>(
+export const Keimenon2D = forwardRef<Keimenon2DHandle, Keimenon2DProps>(
   ({ nodes, edges, width, height, onNodeClick, onNodeDoubleClick, onSelectionChange }, ref) => {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const keimenonRef = useRef<HTMLKeimenonElement>(null);
     const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
     const [isPanning, setIsPanning] = useState(false);
     const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -105,13 +105,13 @@ export const Canvas2D = forwardRef<Canvas2DHandle, Canvas2DProps>(
 
     // Drawing logic
     useEffect(() => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+      const keimenon = keimenonRef.current;
+      if (!keimenon) return;
 
-      const ctx = canvas.getContext('2d');
+      const ctx = keimenon.getContext('2d');
       if (!ctx) return;
 
-      // Clear canvas
+      // Clear keimenon
       ctx.clearRect(0, 0, width, height);
 
       // Apply transform
@@ -198,28 +198,28 @@ export const Canvas2D = forwardRef<Canvas2DHandle, Canvas2DProps>(
     }, [layoutNodes, edges, transform, selectedNodes, hoveredNode, width, height, selectionBox]);
 
     // Mouse handlers
-    const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current;
-      if (!canvas) {
-        errorCapture.warn('Canvas2D mouse event missing canvas ref', {
+    const handleMouseDown = (e: React.MouseEvent<HTMLKeimenonElement>) => {
+      const keimenon = keimenonRef.current;
+      if (!keimenon) {
+        errorCapture.warn('Keimenon2D mouse event missing keimenon ref', {
           domain: 'ui',
-          operation: 'canvas.canvasRefMissing',
+          operation: 'keimenon.keimenonRefMissing',
         });
         return;
       }
 
-      const rect = canvas.getBoundingClientRect();
+      const rect = keimenon.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      // Transform to canvas coordinates
-      const canvasX = (x - transform.x) / transform.scale;
-      const canvasY = (y - transform.y) / transform.scale;
+      // Transform to keimenon coordinates
+      const keimenonX = (x - transform.x) / transform.scale;
+      const keimenonY = (y - transform.y) / transform.scale;
 
       // Check if clicking on a node
       const clickedNode = layoutNodes.find((node) => {
-        const dx = (node.x ?? 0) - canvasX;
-        const dy = (node.y ?? 0) - canvasY;
+        const dx = (node.x ?? 0) - keimenonX;
+        const dy = (node.y ?? 0) - keimenonY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         return distance < getNodeRadius(node.kind);
       });
@@ -261,16 +261,16 @@ export const Canvas2D = forwardRef<Canvas2DHandle, Canvas2DProps>(
       }
     };
 
-    const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+    const handleMouseMove = (e: React.MouseEvent<HTMLKeimenonElement>) => {
+      const keimenon = keimenonRef.current;
+      if (!keimenon) return;
 
-      const rect = canvas.getBoundingClientRect();
+      const rect = keimenon.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
       if (isPanning) {
-        // Pan canvas
+        // Pan keimenon
         setTransform((prev) => ({
           ...prev,
           x: e.clientX - panStart.x,
@@ -281,12 +281,12 @@ export const Canvas2D = forwardRef<Canvas2DHandle, Canvas2DProps>(
         setSelectionBox((prev) => (prev ? { ...prev, endX: x, endY: y } : null));
       } else {
         // Update hover
-        const canvasX = (x - transform.x) / transform.scale;
-        const canvasY = (y - transform.y) / transform.scale;
+        const keimenonX = (x - transform.x) / transform.scale;
+        const keimenonY = (y - transform.y) / transform.scale;
 
         const hoveredNode = layoutNodes.find((node) => {
-          const dx = (node.x ?? 0) - canvasX;
-          const dy = (node.y ?? 0) - canvasY;
+          const dx = (node.x ?? 0) - keimenonX;
+          const dy = (node.y ?? 0) - keimenonY;
           const distance = Math.sqrt(dx * dx + dy * dy);
           return distance < getNodeRadius(node.kind);
         });
@@ -304,17 +304,17 @@ export const Canvas2D = forwardRef<Canvas2DHandle, Canvas2DProps>(
         const minY = Math.min(startY, endY);
         const maxY = Math.max(startY, endY);
 
-        // Convert screen coordinates to canvas coordinates
-        const canvasMinX = (minX - transform.x) / transform.scale;
-        const canvasMaxX = (maxX - transform.x) / transform.scale;
-        const canvasMinY = (minY - transform.y) / transform.scale;
-        const canvasMaxY = (maxY - transform.y) / transform.scale;
+        // Convert screen coordinates to keimenon coordinates
+        const keimenonMinX = (minX - transform.x) / transform.scale;
+        const keimenonMaxX = (maxX - transform.x) / transform.scale;
+        const keimenonMinY = (minY - transform.y) / transform.scale;
+        const keimenonMaxY = (maxY - transform.y) / transform.scale;
 
         // Find nodes within selection box
         const selectedInBox = layoutNodes.filter((node) => {
           const x = node.x ?? 0;
           const y = node.y ?? 0;
-          return x >= canvasMinX && x <= canvasMaxX && y >= canvasMinY && y <= canvasMaxY;
+          return x >= keimenonMinX && x <= keimenonMaxX && y >= keimenonMinY && y <= keimenonMaxY;
         });
 
         // Update selection
@@ -329,13 +329,13 @@ export const Canvas2D = forwardRef<Canvas2DHandle, Canvas2DProps>(
       setIsPanning(false);
     };
 
-    const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    const handleWheel = (e: React.WheelEvent<HTMLKeimenonElement>) => {
       e.preventDefault();
 
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+      const keimenon = keimenonRef.current;
+      if (!keimenon) return;
 
-      const rect = canvas.getBoundingClientRect();
+      const rect = keimenon.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
@@ -354,20 +354,20 @@ export const Canvas2D = forwardRef<Canvas2DHandle, Canvas2DProps>(
       });
     };
 
-    const handleDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+    const handleDoubleClick = (e: React.MouseEvent<HTMLKeimenonElement>) => {
+      const keimenon = keimenonRef.current;
+      if (!keimenon) return;
 
-      const rect = canvas.getBoundingClientRect();
+      const rect = keimenon.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      const canvasX = (x - transform.x) / transform.scale;
-      const canvasY = (y - transform.y) / transform.scale;
+      const keimenonX = (x - transform.x) / transform.scale;
+      const keimenonY = (y - transform.y) / transform.scale;
 
       const clickedNode = layoutNodes.find((node) => {
-        const dx = (node.x ?? 0) - canvasX;
-        const dy = (node.y ?? 0) - canvasY;
+        const dx = (node.x ?? 0) - keimenonX;
+        const dy = (node.y ?? 0) - keimenonY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         return distance < getNodeRadius(node.kind);
       });
@@ -386,8 +386,8 @@ export const Canvas2D = forwardRef<Canvas2DHandle, Canvas2DProps>(
     };
 
     return (
-      <canvas
-        ref={canvasRef}
+      <keimenon
+        ref={keimenonRef}
         width={width}
         height={height}
         onMouseDown={handleMouseDown}
@@ -402,7 +402,7 @@ export const Canvas2D = forwardRef<Canvas2DHandle, Canvas2DProps>(
   }
 );
 
-Canvas2D.displayName = 'Canvas2D';
+Keimenon2D.displayName = 'Keimenon2D';
 
 function getNodeRadius(kind: string): number {
   switch (kind) {

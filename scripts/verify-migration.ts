@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 
-const db = new Database('C:\\Users\\Audna\\.keimenon\\canvas.db', { readonly: true });
+const db = new Database('C:\\Users\\Audna\\.keimenon\\keimenon.db', { readonly: true });
 
 console.log('Job Tables:');
 const tables = db

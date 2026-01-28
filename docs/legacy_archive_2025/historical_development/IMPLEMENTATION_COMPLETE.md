@@ -40,12 +40,12 @@ Successfully implemented comprehensive error handling, background operations man
 ```typescript
 {
   domain: 'database',
-  operation: 'dataManagement.clearCanvas',
+  operation: 'dataManagement.clearKeimenon',
   userId: user?.userId,
   accountId: user?.accountId,
   metadata: {
     component: 'DataManagementCard',
-    endpoint: '/api/v1/data/canvas',
+    endpoint: '/api/v1/data/keimenon',
     statusCode: response.status,
     nodeCount, edgeCount,
     errorDetails: errorData
@@ -60,7 +60,7 @@ Successfully implemented comprehensive error handling, background operations man
 **Changes Made**:
 
 - ✅ Imported `asyncHandler` and `ErrorFactory`
-- ✅ Wrapped all routes with `asyncHandler` (DELETE /canvas, DELETE /all-clients, GET /stats)
+- ✅ Wrapped all routes with `asyncHandler` (DELETE /keimenon, DELETE /all-clients, GET /stats)
 - ✅ Added empty database detection → returns success with 0 items
 - ✅ Added transaction error handling with explicit rollback
 - ✅ Used `ErrorFactory.database()` for:
@@ -93,7 +93,7 @@ useOperation(id); // Get specific operation
 useActiveOperations(); // Get non-completed operations
 ```
 
-**Integration**: [apps/web/src/app/canvas/page.tsx](apps/web/src/app/canvas/page.tsx#L86)
+**Integration**: [apps/web/src/app/keimenon/page.tsx](apps/web/src/app/keimenon/page.tsx#L86)
 
 ### 2.2 Import Minimize Feature
 
@@ -138,7 +138,7 @@ useActiveOperations(); // Get non-completed operations
 
 ### 2.4 Operations Table (Unified)
 
-**File**: [apps/web/src/components/canvas/ImportsTableCard.tsx](apps/web/src/components/canvas/ImportsTableCard.tsx)
+**File**: [apps/web/src/components/keimenon/ImportsTableCard.tsx](apps/web/src/components/keimenon/ImportsTableCard.tsx)
 
 **Changes**:
 
@@ -204,7 +204,7 @@ The adapter pattern (`chatConfig` and `handleChatConfigChange`) is ready to inte
 ### Error Handling Flow
 
 ```
-1. User Action (e.g., DELETE canvas data)
+1. User Action (e.g., DELETE keimenon data)
    ↓
 2. Frontend catches error
    ↓
@@ -214,10 +214,10 @@ The adapter pattern (`chatConfig` and `handleChatConfigChange`) is ready to inte
    ↓
 5. Subscribers notified (ConsoleContext)
    ↓
-6. CanvasFooter Console tab displays error with:
+6. KeimenonFooter Console tab displays error with:
    - Timestamp
    - Domain badge (database, import, api, ui)
-   - Operation (e.g., dataManagement.clearCanvas)
+   - Operation (e.g., dataManagement.clearKeimenon)
    - Message (user-friendly)
    - Stack trace (collapsible)
 ```
@@ -291,11 +291,11 @@ The adapter pattern (`chatConfig` and `handleChatConfigChange`) is ready to inte
 
 1. ✅ [apps/web/src/components/settings/DataManagementCard.tsx](apps/web/src/components/settings/DataManagementCard.tsx) - Added errorCapture + minimize
 2. ✅ [apps/api/src/routes/data-management.ts](apps/api/src/routes/data-management.ts) - Added asyncHandler + ErrorFactory
-3. ✅ [apps/web/src/app/canvas/page.tsx](apps/web/src/app/canvas/page.tsx) - Integrated BackgroundOperationsProvider
+3. ✅ [apps/web/src/app/keimenon/page.tsx](apps/web/src/app/keimenon/page.tsx) - Integrated BackgroundOperationsProvider
 4. ✅ [apps/web/src/components/inspector/ImportFlowPanel.tsx](apps/web/src/components/inspector/ImportFlowPanel.tsx) - Added minimize + config UI
 5. ✅ [apps/web/src/components/common/ConfirmationModal.tsx](apps/web/src/components/common/ConfirmationModal.tsx) - Added minimize support
-6. ✅ [apps/web/src/components/canvas/ImportsTableCard.tsx](apps/web/src/components/canvas/ImportsTableCard.tsx) - Extended to show all operations
-7. ✅ [apps/web/src/components/canvas/CanvasFooter.tsx](apps/web/src/components/canvas/CanvasFooter.tsx) - Added Console UI - _Modified in previous phase_
+6. ✅ [apps/web/src/components/keimenon/ImportsTableCard.tsx](apps/web/src/components/keimenon/ImportsTableCard.tsx) - Extended to show all operations
+7. ✅ [apps/web/src/components/keimenon/KeimenonFooter.tsx](apps/web/src/components/keimenon/KeimenonFooter.tsx) - Added Console UI - _Modified in previous phase_
 8. ✅ [apps/web/src/lib/error-handler.ts](apps/web/src/lib/error-handler.ts) - Integrated errorCapture - _Modified in previous phase_
 
 ---
@@ -308,7 +308,7 @@ The adapter pattern (`chatConfig` and `handleChatConfigChange`) is ready to inte
 
 1. Open Settings page
 2. Press `` ` `` to open Console Footer
-3. Click "Clear Canvas Data" in DataManagementCard
+3. Click "Clear Keimenon Data" in DataManagementCard
 4. Click "Minimize" button during deletion
 5. Verify operation appears in Operations Table (CRM Dashboard)
 6. Check Console tab for any errors
@@ -323,7 +323,7 @@ The adapter pattern (`chatConfig` and `handleChatConfigChange`) is ready to inte
 
 **Edge Cases to Test**:
 
-- Empty database → Should return success with "No canvas data to clear"
+- Empty database → Should return success with "No keimenon data to clear"
 - Database locked → Should show "Database is currently busy" error
 - Network error → Should show "Network error. Please check your connection"
 
@@ -331,7 +331,7 @@ The adapter pattern (`chatConfig` and `handleChatConfigChange`) is ready to inte
 
 **Steps**:
 
-1. Open Canvas page
+1. Open Keimenon page
 2. Click "Import" button to open ImportFlowPanel
 3. Select file: `ai_context/chat_data/test-samples/small.json`
 4. Wait for file analysis (should detect ChatGPT format)
@@ -523,7 +523,7 @@ The adapter pattern (`chatConfig` and `handleChatConfigChange`) is ready to inte
 ## 🙏 Credits
 
 **Implementation**: Claude Code (Anthropic)
-**User**: Audna (Canvas Memory Project)
+**User**: Audna (Keimenon Project)
 **Date**: January 17, 2025
 **Duration**: ~2 hours
 **Lines of Code**: ~3,000 (across 16 files)

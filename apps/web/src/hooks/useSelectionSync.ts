@@ -1,32 +1,29 @@
 import { useEffect, useCallback } from 'react';
-import { useCanvasStore } from '@/store/canvasStore';
+import { useKeimenonStore } from '@/store/keimenonStore';
 
 /**
  * Hook to synchronize selection between different views
- * (e.g., between canvas graph and sidebar list)
+ * (e.g., between keimenon graph and sidebar list)
  */
 export function useSelectionSync() {
-  const selectedNodeIds = useCanvasStore((state) => state.selectedNodeIds);
-  const selectNode = useCanvasStore((state) => state.selectNode);
-  const deselectNode = useCanvasStore((state) => state.deselectNode);
-  const clearSelection = useCanvasStore((state) => state.clearSelection);
-  const setHoveredNode = useCanvasStore((state) => state.setHoveredNode);
+  const selectedNodeIds = useKeimenonStore((state) => state.selectedNodeIds);
+  const selectNode = useKeimenonStore((state) => state.selectNode);
+  const deselectNode = useKeimenonStore((state) => state.deselectNode);
+  const clearSelection = useKeimenonStore((state) => state.clearSelection);
+  const setHoveredNode = useKeimenonStore((state) => state.setHoveredNode);
 
   // Handle keyboard shortcuts for selection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't handle shortcuts if user is typing
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
 
       // Cmd/Ctrl + A to select all
       if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
         e.preventDefault();
-        useCanvasStore.getState().selectAll();
+        useKeimenonStore.getState().selectAll();
       }
 
       // Escape to clear selection
@@ -39,7 +36,7 @@ export function useSelectionSync() {
         e.preventDefault();
         const nodesToDelete = Array.from(selectedNodeIds);
         nodesToDelete.forEach((id) => {
-          useCanvasStore.getState().deleteNode(id);
+          useKeimenonStore.getState().deleteNode(id);
         });
       }
     };

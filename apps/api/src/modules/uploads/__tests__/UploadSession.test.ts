@@ -7,7 +7,7 @@
  * Related: Chunked Upload System - Phase 7 (Testing)
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { UploadSession, UploadSessionSpec } from '../domain/UploadSession';
 
 describe('UploadSession Domain Model', () => {

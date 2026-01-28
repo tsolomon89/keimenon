@@ -273,7 +273,7 @@ logger.info('Batch processed', { batchNumber: 5, nodesDeleted: 500 });
 
 - [ ] Start dev servers (`npm run dev:api`, `npm run dev:web`)
 - [ ] Import a small file (verify progress shows correctly)
-- [ ] Delete canvas data (verify progress shows correctly)
+- [ ] Delete keimenon data (verify progress shows correctly)
 - [ ] Check logs for no DLQ spam
 - [ ] Cancel import mid-operation (verify cancellation works)
 - [ ] Retry failed import (verify retry works)

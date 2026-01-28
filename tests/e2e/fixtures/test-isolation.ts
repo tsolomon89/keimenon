@@ -44,12 +44,12 @@ interface TestIsolationWorkerFixtures {
  */
 async function initializeWorkerDb(workerIndex: number, dbPath: string): Promise<void> {
   // Use the main database (which has test user from global setup) as template
-  const templateDb = path.join(process.cwd(), '.data/canvas.db');
+  const templateDb = path.join(process.cwd(), '.data/keimenon.db');
 
   // Fallback to user home directory if not found in .data
   const fallbackTemplateDb = path.join(
     process.env.USERPROFILE || process.env.HOME || '',
-    '.keimenon/canvas.db'
+    '.keimenon/keimenon.db'
   );
 
   // Copy template if DB doesn't exist

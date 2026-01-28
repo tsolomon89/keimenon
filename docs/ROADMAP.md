@@ -14,8 +14,8 @@ This document provides a comprehensive overview of the project's status, includi
 
 **Status**: 🚀 Deployed & Verified
 
-- **Fixed**: DeleteWorker no longer deletes system-critical nodes (UserNode, AccountNode, Board, Constellation) when scope is 'canvas'.
-- **Fixed**: "Clear Canvas Data" button no longer gets stuck in disabled state (added robust timeouts).
+- **Fixed**: DeleteWorker no longer deletes system-critical nodes (UserNode, AccountNode, Board, Constellation) when scope is 'keimenon'.
+- **Fixed**: "Clear Keimenon Data" button no longer gets stuck in disabled state (added robust timeouts).
 - **Fixed**: Delete API endpoint scope mismatch.
 - **Documentation**: See `legacy_archive_2025/active_development/BUG_FIX_DATA_DELETION_2025-11-16.md` (Archived with context)
 
@@ -47,7 +47,7 @@ This document provides a comprehensive overview of the project's status, includi
 **What's Missing:**
 
 - ⏳ **Frontend UI**: No user interface for running agents yet.
-- ⏳ **Canvas Integration**: Agents cannot be triggered from the graph.
+- ⏳ **Keimenon Integration**: Agents cannot be triggered from the graph.
 - ⏳ **Visual Feedback**: No progress visualization for agent runs.
 
 ---
@@ -90,7 +90,7 @@ This document tracks all tasks, features, and initiatives that have been **start
 
 **Verification Status:**
 
-- ✅ Error testing component available in canvas console
+- ✅ Error testing component available in keimenon console
 - ⏳ ErrorBoundary ready for manual verification
 - ⏳ Error logging integration pending external service (Sentry)
 
@@ -126,9 +126,9 @@ This document tracks all tasks, features, and initiatives that have been **start
 
 **Implementation:**
 
-- `apps/web/src/components/canvas/CanvasLayout.tsx` - Mobile detection + auto-close
-- `apps/web/src/components/canvas/CanvasSidebar.tsx` - Overlay pattern with backdrop
-- `apps/web/src/components/canvas/CanvasToolbar.tsx` - Responsive controls
+- `apps/web/src/components/keimenon/KeimenonLayout.tsx` - Mobile detection + auto-close
+- `apps/web/src/components/keimenon/KeimenonSidebar.tsx` - Overlay pattern with backdrop
+- `apps/web/src/components/keimenon/KeimenonToolbar.tsx` - Responsive controls
 - `apps/web/src/components/settings/SettingsPage.tsx` - Responsive padding
 
 **Breakpoints:**
@@ -162,7 +162,7 @@ This document tracks all tasks, features, and initiatives that have been **start
 **Implementation Details:**
 
 - Hook: `apps/web/src/hooks/useJobStream.ts`
-- Component: `apps/web/src/components/canvas/ImportsTableCard.tsx`
+- Component: `apps/web/src/components/keimenon/ImportsTableCard.tsx`
 - SSE Endpoint: `/api/v1/stream/jobs`
 - Features: Real-time progress bars, status badges, job selection
 - Reconnection: Automatic with exponential backoff (max 5 attempts)
@@ -205,7 +205,7 @@ This document tracks all tasks, features, and initiatives that have been **start
 
 **Session 2 Additions:**
 
-**1. Progress Visualization ([ProgressVisualization.tsx](apps/web/src/components/canvas/ProgressVisualization.tsx))**
+**1. Progress Visualization ([ProgressVisualization.tsx](apps/web/src/components/keimenon/ProgressVisualization.tsx))**
 
 - Particle system with physics (gravity, velocity, fade-out)
 - FPS-optimized render loop (requestAnimationFrame)
@@ -219,14 +219,14 @@ This document tracks all tasks, features, and initiatives that have been **start
 - Automatic severity mapping (500+ = error, 400+ = warn)
 - Event logging functions: `logApiEvent()`, `logJobEvent()`, `logDataEvent()`
 - Integrated into: ChatImportModal, DataManagementCard, AuthContext
-- All errors/events appear in canvas console (backtick key)
+- All errors/events appear in keimenon console (backtick key)
 
 **Implementation:**
 
 - File: `apps/web/src/lib/api-client.ts:136-222` - `importChatFilesAsJob()` function
-- File: `apps/web/src/components/canvas/ChatImportModal.tsx` - Job integration + event logging
-- File: `apps/web/src/components/canvas/ProgressVisualization.tsx` - Game dev visualization
-- File: `apps/web/src/components/canvas/CanvasViewport.tsx` - Overlay integration
+- File: `apps/web/src/components/keimenon/ChatImportModal.tsx` - Job integration + event logging
+- File: `apps/web/src/components/keimenon/ProgressVisualization.tsx` - Game dev visualization
+- File: `apps/web/src/components/keimenon/KeimenonViewport.tsx` - Overlay integration
 - File: `apps/web/src/lib/error-handler.ts` - Universal error handling + event logging
 - Flow: Upload file → Create job → Track via SSE → Visualize in graph → Log events → Display in table
 
@@ -236,7 +236,7 @@ This document tracks all tasks, features, and initiatives that have been **start
 - ✅ Persistent history with retry/delete
 - ✅ Real-time progress in main graph (particle effects)
 - ✅ Dynamic error handling (no code changes needed for new features)
-- ✅ Event logging in canvas console
+- ✅ Event logging in keimenon console
 - ✅ Scalable architecture
 
 **What's Not Done:**
@@ -257,7 +257,7 @@ This document tracks all tasks, features, and initiatives that have been **start
 
 **Related Docs:**
 
-- `apps/web/src/components/canvas/ProgressVisualization.tsx` - Particle system implementation
+- `apps/web/src/components/keimenon/ProgressVisualization.tsx` - Particle system implementation
 - `apps/web/src/lib/error-handler.ts:47-348` - Universal error handling
 - `docs/legacy_archive_2025/historical_development/DATABASE_WRITE_QUEUE_IMPLEMENTATION.md` - Write queue system
 - `docs/features/CHAT_IMPORT.md` - Import feature docs
@@ -357,18 +357,18 @@ This document tracks all tasks, features, and initiatives that have been **start
 - ✅ **Frontend AuthContext using REAL API** (not mock!)
 - ✅ **Token storage implemented** (localStorage)
 - ✅ **Session persistence** (token decoded on page load)
-- ✅ **Logout properly clears state** (token + canvas store)
+- ✅ **Logout properly clears state** (token + keimenon store)
 - ✅ **Account switching implemented** (switchAccount function)
 - ✅ **Multi-account login flow** (selectAccount for users with multiple accounts)
 
 **Implementation Details:**
 
 - File: `apps/web/src/contexts/AuthContext.tsx`
-- Token storage: localStorage with key `canvas_memory_token`
+- Token storage: localStorage with key `keimenon_token`
 - JWT parsing: Automatic on mount with expiration check
 - Account switching: Calls `/api/v1/auth/switch-account` with token refresh
 - Multi-account: Supports `/api/v1/auth/select-account` for account selection
-- Canvas store reset: Automatic on account switch
+- Keimenon store reset: Automatic on account switch
 
 **Related Docs:**
 

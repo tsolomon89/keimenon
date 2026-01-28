@@ -1,6 +1,6 @@
 # Installation Guide
 
-**Complete installation instructions for Canvas Memory OS**
+**Complete installation instructions for Keimenon**
 
 This guide covers all installation scenarios: local development, cloud deployment, and hybrid modes. For a quick 5-minute setup, see the [Quick Start Guide](QUICK_START.md).
 
@@ -97,8 +97,8 @@ Edit `apps/api/.env`:
 ```env
 # Storage Configuration
 STORAGE_MODE=local              # Use SQLite
-SQLITE_PATH=~/.canvas-memory/canvas.db
-LOCAL_DOCS_PATH=~/.canvas-memory
+SQLITE_PATH=~/.keimenon/keimenon.db
+LOCAL_DOCS_PATH=~/.keimenon
 
 # Server Configuration
 PORT=4001
@@ -127,9 +127,9 @@ npm run dev
 ```
 ✓ Storage mode: local (SQLite only)
 → Skipping Neo4j check
-⚡️ Canvas Memory API running on port 4001
+⚡️ Keimenon API running on port 4001
 💿 Storage: local mode
-📁 Database: ~/.canvas-memory/canvas.db
+📁 Database: ~/.keimenon/keimenon.db
 ```
 
 ### 4. Register Your First Account
@@ -207,7 +207,7 @@ Edit `apps/api/.env`:
 
 ```env
 # Storage Configuration
-STORAGE_MODE=canvas             # Use Neo4j
+STORAGE_MODE=keimenon             # Use Neo4j
 NEO4J_URI=bolt://localhost:7687 # Or neo4j+s://... for Aura
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=testpassword     # Your password
@@ -232,8 +232,8 @@ npm run dev
 
 ```
 ✓ Connected to Neo4j
-✓ Storage mode: canvas (Neo4j)
-⚡️ Canvas Memory API running on port 4001
+✓ Storage mode: keimenon (Neo4j)
+⚡️ Keimenon API running on port 4001
 💿 Storage: Neo4j mode
 🔌 Neo4j: bolt://localhost:7687
 ```
@@ -275,8 +275,8 @@ Edit `apps/api/.env`:
 STORAGE_MODE=hybrid                      # Use both!
 
 # SQLite Configuration
-SQLITE_PATH=~/.canvas-memory/canvas.db
-LOCAL_DOCS_PATH=~/.canvas-memory
+SQLITE_PATH=~/.keimenon/keimenon.db
+LOCAL_DOCS_PATH=~/.keimenon
 
 # Neo4j Configuration
 NEO4J_URI=bolt://localhost:7687
@@ -303,7 +303,7 @@ npm run dev
 ```
 ✓ Connected to Neo4j
 ✓ Storage mode: hybrid (SQLite + Neo4j)
-⚡️ Canvas Memory API running on port 4001
+⚡️ Keimenon API running on port 4001
 💿 Primary: SQLite (reads/writes)
 🔄 Secondary: Neo4j (sync for graph queries)
 ```
@@ -337,7 +337,7 @@ The API works independently, but you can also run the web UI:
 
 ```bash
 # Install frontend dependencies
-npm install --workspace=@canvas-memory/web
+npm install --workspace=@keimenon/web
 
 # Configure frontend
 cd apps/web
@@ -394,11 +394,11 @@ curl http://localhost:4001/health
 
 ```bash
 # Database file location
-ls ~/.canvas-memory/canvas.db  # Mac/Linux
-dir %USERPROFILE%\.canvas-memory\canvas.db  # Windows
+ls ~/.keimenon/keimenon.db  # Mac/Linux
+dir %USERPROFILE%\.keimenon\keimenon.db  # Windows
 
 # Query the database
-sqlite3 ~/.canvas-memory/canvas.db "SELECT COUNT(*) FROM nodes;"
+sqlite3 ~/.keimenon/keimenon.db "SELECT COUNT(*) FROM nodes;"
 ```
 
 **Neo4j:**
@@ -498,7 +498,7 @@ PORT=4002 npm run dev
 
 ```bash
 # SQLite: Delete and recreate
-rm ~/.canvas-memory/canvas.db
+rm ~/.keimenon/keimenon.db
 npm run dev  # Recreates on startup
 
 # Neo4j: Manually run constraints
@@ -507,7 +507,7 @@ npm run dev  # Recreates on startup
 
 ### TypeScript Compilation Errors
 
-**Problem:** "Cannot find module @canvas-memory/types"
+**Problem:** "Cannot find module @keimenon/types"
 
 **Solutions:**
 
@@ -529,14 +529,14 @@ cd ../ui && npm run build
 
 ```bash
 # Check directory permissions
-ls -la ~/.canvas-memory/
+ls -la ~/.keimenon/
 
 # Create directory with correct permissions
-mkdir -p ~/.canvas-memory
-chmod 755 ~/.canvas-memory
+mkdir -p ~/.keimenon
+chmod 755 ~/.keimenon
 
 # Or set custom path
-SQLITE_PATH=/tmp/canvas.db npm run dev
+SQLITE_PATH=/tmp/keimenon.db npm run dev
 ```
 
 For more troubleshooting, see the [Troubleshooting Guide](TROUBLESHOOTING.md).

@@ -134,16 +134,16 @@ Here's the exact code execution flow (with line numbers):
 ### Frontend Flow
 
 1. **User clicks "Import & Review" button**
-   [ChatImportModal.tsx:287](../../apps/web/src/components/canvas/ChatImportModal.tsx#L287)
+   [ChatImportModal.tsx:287](../../apps/web/src/components/keimenon/ChatImportModal.tsx#L287)
 
 2. **`handleImport()` function is called**
-   [ChatImportModal.tsx:112](../../apps/web/src/components/canvas/ChatImportModal.tsx#L112)
+   [ChatImportModal.tsx:112](../../apps/web/src/components/keimenon/ChatImportModal.tsx#L112)
 
 3. **Sets `isImporting = true` and stage = 'processing'**
-   [ChatImportModal.tsx:123-125](../../apps/web/src/components/canvas/ChatImportModal.tsx#L123-L125)
+   [ChatImportModal.tsx:123-125](../../apps/web/src/components/keimenon/ChatImportModal.tsx#L123-L125)
 
 4. **Calls `importChatFiles(files, config)`**
-   [ChatImportModal.tsx:130](../../apps/web/src/components/canvas/ChatImportModal.tsx#L130)
+   [ChatImportModal.tsx:130](../../apps/web/src/components/keimenon/ChatImportModal.tsx#L130)
    → Jumps to [api-client.ts:140](../../apps/web/src/lib/api-client.ts#L140)
 
 5. **Creates FormData with files and config**
@@ -390,7 +390,7 @@ When import works correctly, backend logs should show:
 
 ## 📚 Related Files
 
-- **Frontend Import Modal:** [apps/web/src/components/canvas/ChatImportModal.tsx](../../apps/web/src/components/canvas/ChatImportModal.tsx)
+- **Frontend Import Modal:** [apps/web/src/components/keimenon/ChatImportModal.tsx](../../apps/web/src/components/keimenon/ChatImportModal.tsx)
 - **Frontend API Client:** [apps/web/src/lib/api-client.ts](../../apps/web/src/lib/api-client.ts)
 - **Backend Import Route:** [apps/api/src/routes/import-enhanced.ts](../../apps/api/src/routes/import-enhanced.ts)
 - **Backend Server Config:** [apps/api/src/index.ts](../../apps/api/src/index.ts)

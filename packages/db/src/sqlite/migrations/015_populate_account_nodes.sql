@@ -1,6 +1,6 @@
 -- Migration 015: Populate AccountNode and membership edges
 -- Purpose: Create graph nodes for existing accounts and users, establish MEMBER_OF edges
--- This makes the M:N user-account relationships visible on the canvas
+-- This makes the M:N user-account relationships visible on the keimenon
 
 -- ============================================================================
 -- PART 1: Create AccountNode for each existing account

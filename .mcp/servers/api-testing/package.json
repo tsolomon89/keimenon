@@ -1,7 +1,7 @@
 {
-  "name": "@canvas-memory/mcp-api-testing",
+  "name": "@keimenon/mcp-api-testing",
   "version": "1.0.0",
-  "description": "MCP server for testing Canvas Memory OS API endpoints with authentication",
+  "description": "MCP server for testing Keimenon API endpoints with authentication",
   "type": "module",
   "main": "index.js",
   "scripts": {

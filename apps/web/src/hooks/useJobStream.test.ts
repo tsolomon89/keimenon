@@ -398,7 +398,7 @@ describe('useJobStream', () => {
             type: 'delete' as const,
             status: 'running' as const,
             progress: { current: 50, total: 100, percent: 50 },
-            config: { deleteScope: 'canvas' },
+            config: { deleteScope: 'keimenon' },
             timestamp: Date.now(),
           },
         ],
@@ -406,7 +406,7 @@ describe('useJobStream', () => {
 
       await waitFor(() => {
         const job = result.current.jobs.get('job_123');
-        expect(job?.config?.deleteScope).toBe('canvas');
+        expect(job?.config?.deleteScope).toBe('keimenon');
       });
     });
   });

@@ -2,7 +2,7 @@
 
 ## 1. The Core Requirement
 
-**Goal**: You (The Provider) want to host a web interface (like `app.canvasmemory.com`) but **store ZERO user data** and **pay ZERO compute costs** for their heavy graph processing.
+**Goal**: You (The Provider) want to host a web interface (like `app.keimenon.com`) but **store ZERO user data** and **pay ZERO compute costs** for their heavy graph processing.
 **Constraint**: The data must stay on the user's machine, but the interface should feel like a modern web app (Google Docs style).
 
 ## 2. The Solution: "Inverted Cloud" Architecture
@@ -14,9 +14,9 @@ Instead of the traditional "User connects to Cloud API", we invert it: **"Cloud 
 1.  **The Web App (Provider Hosted)**:
     - You host `apps/web` (Next.js) on Vercel.
     - It serves the UI (React/Three.js) globally via CDN.
-    - **Crucial Difference**: The API Client in the browser is configured to talk to `http://localhost:3001` (or a custom port), NOT `api.canvasmemory.com`.
+    - **Crucial Difference**: The API Client in the browser is configured to talk to `http://localhost:3001` (or a custom port), NOT `api.keimenon.com`.
 2.  **The "Engine" (User Installed)**:
-    - The user downloads a "Canvas Engine" installer (Docker or Electron).
+    - The user downloads a "Keimenon Engine" installer (Docker or Electron).
     - This runs your `apps/api` + `SQLite` + `Neo4j` on _their_ machine.
     - It exposes port `3001` locally.
 

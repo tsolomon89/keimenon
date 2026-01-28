@@ -2,7 +2,7 @@
 
 ## Overview
 
-Successfully implemented a **complete end-to-end AI chat import system** with advanced duplicate detection, visual canvas integration, and keyboard shortcuts. The system supports ChatGPT, Claude, and Gemini exports with 4 duplicate detection algorithms and a comprehensive UI.
+Successfully implemented a **complete end-to-end AI chat import system** with advanced duplicate detection, visual keimenon integration, and keyboard shortcuts. The system supports ChatGPT, Claude, and Gemini exports with 4 duplicate detection algorithms and a comprehensive UI.
 
 ---
 
@@ -51,10 +51,10 @@ Successfully implemented a **complete end-to-end AI chat import system** with ad
 │  ├─ DuplicateComparisonView (center diff)                        │
 │  └─ DuplicateActionsPanel (RHS actions)                          │
 ├─────────────────────────────────────────────────────────────────┤
-│  Option 2: Canvas Integration (3 components)                     │
+│  Option 2: Keimenon Integration (3 components)                     │
 │  ├─ SourceTreeView (hierarchical tree)                           │
 │  ├─ SourceInspector (detail panel)                               │
-│  └─ GroupCard (canvas visualization)                             │
+│  └─ GroupCard (keimenon visualization)                             │
 ├─────────────────────────────────────────────────────────────────┤
 │  Option 3: Enhanced Features                                     │
 │  └─ Keyboard shortcuts (7 shortcuts)                             │
@@ -228,18 +228,18 @@ duplicate_auto_merge_threshold: number(0 - 1);
 
 ---
 
-## ✅ Option 2: Canvas Integration (COMPLETE 80%)
+## ✅ Option 2: Keimenon Integration (COMPLETE 80%)
 
 ### Purpose
 
-Visual representation of imported conversations on canvas.
+Visual representation of imported conversations on keimenon.
 
 ### Components Created (4 files)
 
-1. **Types**: `apps/web/src/types/canvas.ts`
+1. **Types**: `apps/web/src/types/keimenon.ts`
 2. **SourceTreeView**: Hierarchical tree with search, folders, multi-select
 3. **SourceInspector**: Detail panel with sections, metadata, actions
-4. **GroupCard**: Draggable canvas cards with type-based coloring
+4. **GroupCard**: Draggable keimenon cards with type-based coloring
 
 ### Key Features
 
@@ -253,7 +253,7 @@ Visual representation of imported conversations on canvas.
 
 ### Pending (20%)
 
-- Integration into CanvasLayout
+- Integration into KeimenonLayout
 - State management
 - Selection synchronization
 - Data conversion from import results
@@ -309,11 +309,11 @@ apps/
 ├── web/src/
 │   ├── types/
 │   │   ├── chat-import.ts            ⭐ NEW (150 lines)
-│   │   └── canvas.ts                 ⭐ NEW (65 lines)
+│   │   └── keimenon.ts                 ⭐ NEW (65 lines)
 │   ├── lib/
 │   │   └── api-client.ts             ⭐ NEW (207 lines)
 │   └── components/
-│       ├── canvas/
+│       ├── keimenon/
 │       │   ├── ChatImportModal.tsx   ✅ REWRITTEN (290 lines)
 │       │   ├── SourceTreeView.tsx    ⭐ NEW (217 lines)
 │       │   ├── SourceInspector.tsx   ⭐ NEW (189 lines)
@@ -377,7 +377,7 @@ npm run dev
 
 ### 3. Import Workflow
 
-1. Navigate to `/canvas`
+1. Navigate to `/keimenon`
 2. Click "Import Chat Conversations"
 3. Upload ChatGPT/Claude/Gemini JSON export
 4. Platform detected automatically
@@ -432,7 +432,7 @@ npm run dev
 - [x] Loading states
 - [x] Success messages
 
-### Canvas Visualization
+### Keimenon Visualization
 
 - [x] Hierarchical tree view
 - [x] Search and filter
@@ -459,10 +459,10 @@ npm run dev
 **Issue**: Using `alert()` for errors
 **Solution**: Implement toast notification system
 
-### 4. Canvas Integration
+### 4. Keimenon Integration
 
 **Issue**: Components created but not wired up
-**Solution**: Update CanvasLayout with state management
+**Solution**: Update KeimenonLayout with state management
 
 ### 5. Type Alignment
 
@@ -494,7 +494,7 @@ npm run dev
 
 1. ✅ Manual browser testing
 2. ✅ Apply decisions endpoint
-3. ✅ Canvas state management
+3. ✅ Keimenon state management
 4. ✅ Toast notifications
 
 ### Short Term
@@ -522,7 +522,7 @@ npm run dev
 2. [PHASE_2_COMPLETE.md](PHASE_2_COMPLETE.md) - Duplicate review
 3. [BACKEND_INTEGRATION_PROGRESS.md](BACKEND_INTEGRATION_PROGRESS.md) - Progress tracker
 4. [OPTION_1_COMPLETE.md](OPTION_1_COMPLETE.md) - Backend integration
-5. [OPTION_2_COMPLETE.md](OPTION_2_COMPLETE.md) - Canvas integration
+5. [OPTION_2_COMPLETE.md](OPTION_2_COMPLETE.md) - Keimenon integration
 6. [CHAT_IMPORT_COMPLETE_PLAN.md](CHAT_IMPORT_COMPLETE_PLAN.md) - Original plan
 7. [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) - Decision log
 8. [COMPLETE_SUMMARY.md](COMPLETE_SUMMARY.md) - This file
@@ -545,7 +545,7 @@ npm run dev
 - **Phase 1** (Configuration UI): 100% ✅
 - **Phase 2** (Duplicate Review): 100% ✅
 - **Option 1** (Backend Integration): 95% ✅
-- **Option 2** (Canvas Integration): 80% ✅
+- **Option 2** (Keimenon Integration): 80% ✅
 - **Option 3** (Enhanced Features): 30% ⏳
 - **Option 4** (Testing): 20% ⏳
 
@@ -564,7 +564,7 @@ npm run dev
 
 - Manual testing with real exports
 - Apply decisions endpoint
-- Canvas state management
+- Keimenon state management
 - Toast notifications
 - Undo/redo
 - Comprehensive testing
@@ -573,4 +573,4 @@ npm run dev
 
 ---
 
-_Generated from session covering Options 1-3, including 13 Phase 1 components, 4 Phase 2 components, backend duplicate detection service, API integration, 3 canvas components, and keyboard shortcuts._
+_Generated from session covering Options 1-3, including 13 Phase 1 components, 4 Phase 2 components, backend duplicate detection service, API integration, 3 keimenon components, and keyboard shortcuts._

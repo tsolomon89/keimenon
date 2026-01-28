@@ -55,7 +55,7 @@ Successfully implemented the local-first storage foundation with SQLite database
 
 **Features**:
 
-- ✅ Storage modes: `local`, `canvas`, `hybrid`
+- ✅ Storage modes: `local`, `keimenon`, `hybrid`
 - ✅ Unified `DatabaseClient` interface
 - ✅ Singleton pattern for connection pooling
 - ✅ Easy mode switching at runtime
@@ -67,14 +67,14 @@ Successfully implemented the local-first storage foundation with SQLite database
 const db = await DatabaseFactory.getClient({
   mode: 'local',
   local: {
-    databasePath: '~/.canvas-memory/graph.db',
+    databasePath: '~/.keimenon/graph.db',
   },
 });
 
 // Or get Neo4j client
 const db = await DatabaseFactory.getClient({
-  mode: 'canvas',
-  canvas: {
+  mode: 'keimenon',
+  keimenon: {
     uri: 'bolt://localhost:7687',
     user: 'neo4j',
     password: 'password',
@@ -93,7 +93,7 @@ const db = await DatabaseFactory.getClient({
 **Configuration Types**:
 
 ```typescript
-✅ StorageMode: 'local' | 'canvas' | 'hybrid'
+✅ StorageMode: 'local' | 'keimenon' | 'hybrid'
 ✅ GroupingConfig: Auto + manual grouping settings
 ✅ SourceConfig: Message/conversation scope, role filters
 ✅ CodeConfig: Extraction and deduplication settings
@@ -338,7 +338,7 @@ npx tsx packages/db/src/sqlite/test-sqlite.ts
 
 ## 📝 Notes
 
-- SQLite database file: `~/.canvas-memory/graph.db`
+- SQLite database file: `~/.keimenon/graph.db`
 - Schema version: 1.0
 - Config format: JSON with zod validation
 - Backward compatible with existing Neo4j code

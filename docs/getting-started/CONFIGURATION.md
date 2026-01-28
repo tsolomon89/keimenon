@@ -1,6 +1,6 @@
 # Configuration Guide
 
-**Complete reference for configuring Canvas Memory OS**
+**Complete reference for configuring Keimenon**
 
 This guide covers all configuration options including environment variables, storage modes, authentication settings, and limits.
 
@@ -20,7 +20,7 @@ This guide covers all configuration options including environment variables, sto
 
 ## Configuration Files
 
-Canvas Memory OS uses environment variables for configuration. Configuration is split between API and frontend:
+Keimenon uses environment variables for configuration. Configuration is split between API and frontend:
 
 ```
 apps/api/.env          # Backend API configuration
@@ -47,13 +47,13 @@ cp .env.example .env.local
 
 ### Storage Modes
 
-Canvas Memory OS supports three storage modes:
+Keimenon supports three storage modes:
 
-| Mode     | Description         | Use Case                             |
-| -------- | ------------------- | ------------------------------------ |
-| `local`  | SQLite only         | Development, personal use, Free tier |
-| `canvas` | Neo4j only          | Production, large datasets           |
-| `hybrid` | Both SQLite + Neo4j | Pro/Business tier, best of both      |
+| Mode       | Description         | Use Case                             |
+| ---------- | ------------------- | ------------------------------------ |
+| `local`    | SQLite only         | Development, personal use, Free tier |
+| `keimenon` | Neo4j only          | Production, large datasets           |
+| `hybrid`   | Both SQLite + Neo4j | Pro/Business tier, best of both      |
 
 ### Local Mode (SQLite)
 
@@ -64,31 +64,31 @@ Canvas Memory OS supports three storage modes:
 STORAGE_MODE=local
 
 # SQLite database location
-SQLITE_PATH=~/.canvas-memory/canvas.db
+SQLITE_PATH=~/.keimenon/keimenon.db
 
 # Document storage location
-LOCAL_DOCS_PATH=~/.canvas-memory
+LOCAL_DOCS_PATH=~/.keimenon
 ```
 
 **Database location by platform:**
 
-- **Windows**: `C:\Users\<YourName>\.canvas-memory\canvas.db`
-- **Mac/Linux**: `~/.canvas-memory/canvas.db`
+- **Windows**: `C:\Users\<YourName>\.keimenon\keimenon.db`
+- **Mac/Linux**: `~/.keimenon/keimenon.db`
 
 **To use a custom location:**
 
 ```env
-SQLITE_PATH=/custom/path/canvas.db
+SQLITE_PATH=/custom/path/keimenon.db
 LOCAL_DOCS_PATH=/custom/path/docs
 ```
 
-### Canvas Mode (Neo4j)
+### Keimenon Mode (Neo4j)
 
 **Best for**: Production, advanced graph queries, team collaboration
 
 ```env
 # apps/api/.env
-STORAGE_MODE=canvas
+STORAGE_MODE=keimenon
 
 # Neo4j Connection
 NEO4J_URI=bolt://localhost:7687
@@ -108,8 +108,8 @@ NEO4J_PASSWORD=your_password
 STORAGE_MODE=hybrid
 
 # SQLite Configuration
-SQLITE_PATH=~/.canvas-memory/canvas.db
-LOCAL_DOCS_PATH=~/.canvas-memory
+SQLITE_PATH=~/.keimenon/keimenon.db
+LOCAL_DOCS_PATH=~/.keimenon
 
 # Neo4j Configuration
 NEO4J_URI=bolt://localhost:7687
@@ -340,7 +340,7 @@ NEXT_PUBLIC_ENABLE_BETA_FEATURES=false
 # Theme
 NEXT_PUBLIC_DEFAULT_THEME=dark  # light|dark|system
 
-# Canvas settings
+# Keimenon settings
 NEXT_PUBLIC_CANVAS_MAX_NODES=1000
 NEXT_PUBLIC_CANVAS_MAX_EDGES=2000
 
@@ -533,8 +533,8 @@ That's it! Everything else uses defaults.
 # apps/api/.env
 NODE_ENV=production
 STORAGE_MODE=local
-SQLITE_PATH=/var/lib/canvas-memory/canvas.db
-LOCAL_DOCS_PATH=/var/lib/canvas-memory/docs
+SQLITE_PATH=/var/lib/keimenon/keimenon.db
+LOCAL_DOCS_PATH=/var/lib/keimenon/docs
 
 PORT=4001
 HOST=0.0.0.0
@@ -545,7 +545,7 @@ JWT_EXPIRES_IN=7d
 CORS_ORIGINS=https://yourdomain.com
 
 LOG_LEVEL=warn
-LOG_FILE=/var/log/canvas-memory/api.log
+LOG_FILE=/var/log/keimenon/api.log
 
 ENABLE_RATE_LIMIT=true
 FORCE_HTTPS=true
@@ -556,7 +556,7 @@ FORCE_HTTPS=true
 ```env
 # apps/api/.env
 NODE_ENV=production
-STORAGE_MODE=canvas
+STORAGE_MODE=keimenon
 
 NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
 NEO4J_USER=neo4j
@@ -604,7 +604,7 @@ echo "JWT_SECRET=$(openssl rand -base64 32)" >> apps/api/.env
 **Solution:**
 
 - Check `STORAGE_MODE` is set correctly
-- Verify Neo4j credentials if using `canvas` or `hybrid`
+- Verify Neo4j credentials if using `keimenon` or `hybrid`
 - Check database service is running: `docker ps | grep neo4j`
 
 **Problem:** "Port already in use"
@@ -638,24 +638,24 @@ For more troubleshooting, see the [Troubleshooting Guide](TROUBLESHOOTING.md).
 
 Complete list of all available environment variables with defaults:
 
-| Variable           | Default                      | Description                            |
-| ------------------ | ---------------------------- | -------------------------------------- |
-| `STORAGE_MODE`     | `local`                      | Storage backend: local\|canvas\|hybrid |
-| `SQLITE_PATH`      | `~/.canvas-memory/canvas.db` | SQLite database file                   |
-| `LOCAL_DOCS_PATH`  | `~/.canvas-memory`           | Document storage path                  |
-| `NEO4J_URI`        | -                            | Neo4j connection URI                   |
-| `NEO4J_USER`       | `neo4j`                      | Neo4j username                         |
-| `NEO4J_PASSWORD`   | -                            | Neo4j password                         |
-| `PORT`             | `4001`                       | API server port                        |
-| `HOST`             | `0.0.0.0`                    | Server host binding                    |
-| `NODE_ENV`         | `development`                | Environment mode                       |
-| `JWT_SECRET`       | -                            | JWT signing secret (required)          |
-| `JWT_EXPIRES_IN`   | `7d`                         | JWT expiration time                    |
-| `CORS_ORIGINS`     | `*`                          | Allowed CORS origins                   |
-| `LOG_LEVEL`        | `info`                       | Logging level                          |
-| `MAX_FILE_SIZE_MB` | `10`                         | Max upload size                        |
-| `FREE_MAX_SOURCES` | `500`                        | Free tier source limit                 |
-| `FREE_MAX_NODES`   | `20000`                      | Free tier node limit                   |
+| Variable           | Default                   | Description                              |
+| ------------------ | ------------------------- | ---------------------------------------- |
+| `STORAGE_MODE`     | `local`                   | Storage backend: local\|keimenon\|hybrid |
+| `SQLITE_PATH`      | `~/.keimenon/keimenon.db` | SQLite database file                     |
+| `LOCAL_DOCS_PATH`  | `~/.keimenon`             | Document storage path                    |
+| `NEO4J_URI`        | -                         | Neo4j connection URI                     |
+| `NEO4J_USER`       | `neo4j`                   | Neo4j username                           |
+| `NEO4J_PASSWORD`   | -                         | Neo4j password                           |
+| `PORT`             | `4001`                    | API server port                          |
+| `HOST`             | `0.0.0.0`                 | Server host binding                      |
+| `NODE_ENV`         | `development`             | Environment mode                         |
+| `JWT_SECRET`       | -                         | JWT signing secret (required)            |
+| `JWT_EXPIRES_IN`   | `7d`                      | JWT expiration time                      |
+| `CORS_ORIGINS`     | `*`                       | Allowed CORS origins                     |
+| `LOG_LEVEL`        | `info`                    | Logging level                            |
+| `MAX_FILE_SIZE_MB` | `10`                      | Max upload size                          |
+| `FREE_MAX_SOURCES` | `500`                     | Free tier source limit                   |
+| `FREE_MAX_NODES`   | `20000`                   | Free tier node limit                     |
 
 See `.env.example` for the complete list.
 

@@ -26,7 +26,7 @@
 
 **File**: [tests/e2e/data-management-ui-updates.spec.ts](tests/e2e/data-management-ui-updates.spec.ts#L226)
 
-**Problem**: `getByRole('button', { name: /canvas/i })` matched 2 elements
+**Problem**: `getByRole('button', { name: /keimenon/i })` matched 2 elements
 
 **Solution**: Added `.first()` to select first matching button
 
@@ -34,11 +34,11 @@
 
 ```typescript
 // Line 225-227 - BEFORE:
-await page.getByRole('button', { name: /canvas/i }).waitFor({ state: 'visible', timeout: 10000 });
+await page.getByRole('button', { name: /keimenon/i }).waitFor({ state: 'visible', timeout: 10000 });
 
 // Line 225-227 - AFTER:
 await page
-  .getByRole('button', { name: /canvas/i })
+  .getByRole('button', { name: /keimenon/i })
   .first() // ← ADDED
   .waitFor({ state: 'visible', timeout: 10000 });
 ```
@@ -202,9 +202,9 @@ export async function login(page: Page, email: string, password: string): Promis
 
   await page.getByRole('button', { name: /sign in/i }).click();
 
-  // BEFORE: await page.waitForURL(/\/canvas/, { timeout: 30000 });
+  // BEFORE: await page.waitForURL(/\/keimenon/, { timeout: 30000 });
   // AFTER:
-  await page.waitForURL(/\/canvas/, { timeout: 60000 }); // ← INCREASED
+  await page.waitForURL(/\/keimenon/, { timeout: 60000 }); // ← INCREASED
 
   // BEFORE: await page.waitForLoadState('domcontentloaded');
   // AFTER:

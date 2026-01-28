@@ -86,7 +86,7 @@ for (const acc of fixtureAccounts) {
 **Action**: Cleared login_attempts table from main database
 
 ```bash
-sqlite3 ~/.canvas-memory/canvas.db "DELETE FROM login_attempts WHERE email LIKE '%fixture.test'"
+sqlite3 ~/.keimenon/keimenon.db "DELETE FROM login_attempts WHERE email LIKE '%fixture.test'"
 ```
 
 **Verification**: Main database now has zero login_attempts for fixture accounts
@@ -109,7 +109,7 @@ sqlite3 ~/.canvas-memory/canvas.db "DELETE FROM login_attempts WHERE email LIKE 
 **Evidence**:
 
 ```
-[API] ✅ Connected to SQLite at: C:\Users\Audna\.canvas-memory\canvas.db
+[API] ✅ Connected to SQLite at: C:\Users\Audna\.keimenon\keimenon.db
 [API] [Test Helpers] Routes disabled - NODE_ENV is not "test"
 ```
 
@@ -211,7 +211,7 @@ npm run e2e:dev -- tests/e2e/multi-tenant-accounts-isolation.spec.ts --project=c
 
 ```bash
 # Clear main database
-sqlite3 ~/.canvas-memory/canvas.db "DELETE FROM login_attempts"
+sqlite3 ~/.keimenon/keimenon.db "DELETE FROM login_attempts"
 
 # Delete all worker databases
 rm -f .test-dbs/worker-*.db

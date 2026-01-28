@@ -1,4 +1,4 @@
-# Session Summary - Canvas Memory OS Implementation
+# Session Summary - Keimenon Implementation
 
 **Date**: October 10, 2025
 **Session Duration**: Continued from previous context
@@ -8,7 +8,7 @@
 
 ## 🎯 Mission Accomplished
 
-This session successfully completed **Phase 2 (API Integration & Auto-Grouping)** and **Phase 3 (Duplicate Detection)** of the Canvas Memory OS local-first chat corpus parser. The system now provides:
+This session successfully completed **Phase 2 (API Integration & Auto-Grouping)** and **Phase 3 (Duplicate Detection)** of the Keimenon local-first chat corpus parser. The system now provides:
 
 1. ✅ **TF-IDF Auto-Grouping** without AI (keyword extraction + hierarchical clustering)
 2. ✅ **Configuration Management** API with file-based storage
@@ -165,9 +165,9 @@ const cosine = dotProduct / (magnitudeA * magnitudeB);
 ```typescript
 // Factory pattern for SQLite ↔ Neo4j switching
 const db = await DatabaseFactory.getClient({
-  mode: 'local' | 'canvas' | 'hybrid',
-  local: { databasePath: '~/.canvas-memory/graph.db' },
-  canvas: { uri, user, password },
+  mode: 'local' | 'keimenon' | 'hybrid',
+  local: { databasePath: '~/.keimenon/graph.db' },
+  keimenon: { uri, user, password },
 });
 
 // Unified interface for both
@@ -408,7 +408,7 @@ This session successfully implemented:
 - ✅ **Hybrid storage** (SQLite + Neo4j)
 - ✅ **Comprehensive documentation** (900+ lines)
 
-The Canvas Memory OS is now **85% complete** with a robust foundation for local-first chat corpus processing!
+The Keimenon is now **85% complete** with a robust foundation for local-first chat corpus processing!
 
 **Next milestone**: Integration testing with real data and UI development.
 

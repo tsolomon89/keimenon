@@ -1,4 +1,4 @@
-# Project Status: Canvas Memory OS
+# Project Status: Keimenon
 
 **Date**: October 6, 2025
 **Phase**: 1A - Foundation Complete ✅
@@ -62,7 +62,7 @@
 ## File Structure
 
 ```
-canvas-memory-os/
+keimenon/
 ├── apps/
 │   ├── web/                      # Next.js frontend
 │   │   ├── src/
@@ -122,13 +122,13 @@ canvas-memory-os/
 │   └── verifiers/                # (placeholder)
 │
 ├── ai_context/                   # Specifications
-│   ├── canvas_memory_os_living_spec_v_0.md
+│   ├── keimenon_living_spec_v_0.md
 │   ├── ui_screens_layout_view_map_v_0.md
 │   ├── mvp_vs_final_vision_roadmap_model_v_0.md
 │   ├── plans_tiers_accounts_roles_and_phased_rollout_v_0 (1).md
 │   ├── groups_ai_nodes_ui_spec_v_0.md
 │   ├── groups_archetype_nodes_ui_spec_v_0.md
-│   ├── canvas_memory_os_gap_audit_addenda_v_0.md
+│   ├── keimenon_gap_audit_addenda_v_0.md
 │   ├── mock_screenshots/
 │   └── project_examples/
 │
@@ -192,7 +192,7 @@ canvas-memory-os/
    - Clustering algorithm (rule-based for MVP)
    - Group creation
    - Deduplication logic
-6. 🔄 **Create canvas component**:
+6. 🔄 **Create keimenon component**:
    - 2D viewport with pan/zoom
    - Node rendering
    - Edge rendering
@@ -206,7 +206,7 @@ canvas-memory-os/
 
 - [ ] File/URL ingest with fingerprinting
 - [ ] Automatic grouping (rule-based clustering)
-- [ ] 2D canvas visualization
+- [ ] 2D keimenon visualization
 - [ ] Node/edge CRUD operations
 - [ ] Sequester policy enforcement
 - [ ] Manual claim extraction
@@ -224,7 +224,7 @@ canvas-memory-os/
 - [ ] Authentication/authorization (Clerk or Auth0)
 - [ ] File storage (S3 or local filesystem)
 - [ ] Embeddings pipeline (for semantic clustering in Pro)
-- [ ] WebGL canvas renderer
+- [ ] WebGL keimenon renderer
 - [ ] Mobile-responsive UI
 
 ### To Configure
@@ -268,7 +268,7 @@ npm run clean
 
 - **Phase 1A** (Foundation): ✅ **COMPLETE**
 - **Phase 1B** (Ingest + Autogroup): 2-3 weeks
-- **Phase 1C** (Canvas Visualization): 2-3 weeks
+- **Phase 1C** (Keimenon Visualization): 2-3 weeks
 - **Phase 1D** (Claims + Docs): 1-2 weeks
 - **Phase 2** (Pro Features): 4-6 weeks
 - **Phase 3** (Business Features): 6-8 weeks

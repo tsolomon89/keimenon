@@ -132,7 +132,7 @@
 ```markdown
 ### Import Works But No Data Appears
 
-**Problem**: Chat import succeeds but canvas remains empty
+**Problem**: Chat import succeeds but keimenon remains empty
 
 **Known Issue**: There is currently a bug where imported data is not persisting to the database.
 

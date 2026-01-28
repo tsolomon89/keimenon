@@ -19,8 +19,8 @@
 - [x] SettingsCard component - Comprehensive with all 8 control types
 - [x] SettingsPage component - Main page with live preview/Apply/Revert
 - [x] SettingsInspector component - Right sidebar docs/history panel
-- [x] Integration with CanvasSidebar - Left nav and right inspector
-- [x] Integration with CanvasLayout - State management and routing
+- [x] Integration with KeimenonSidebar - Left nav and right inspector
+- [x] Integration with KeimenonLayout - State management and routing
 - [x] Fixed auth token access - Using getToken() instead of user.token
 - [x] Fixed import paths - Using correct paths for NavigationBar
 

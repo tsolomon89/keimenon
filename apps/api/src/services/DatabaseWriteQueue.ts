@@ -15,7 +15,7 @@
  * - 10-50x faster than individual writes
  * - Supports concurrent operations (future AI agents)
  *
- * Related: Product Directive - "Desktop-class app with live canvas updates"
+ * Related: Product Directive - "Desktop-class app with live keimenon updates"
  */
 
 import { DatabaseClient } from '@keimenon/db';

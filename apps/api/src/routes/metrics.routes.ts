@@ -67,7 +67,7 @@ export function createMetricsRoutes(authService: AuthService): Router {
    * Requires admin authentication
    *
    * Returns plain text in Prometheus exposition format:
-   * delete_operations_jobs_completed{status="success",scope="canvas"} 42
+   * delete_operations_jobs_completed{status="success",scope="keimenon"} 42
    * delete_operations_job_duration_ms_bucket{le="100"} 5
    */
   router.get(

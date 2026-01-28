@@ -68,10 +68,10 @@ curl http://localhost:4001/ready
 ```
 🔌 Initializing database (mode: local)...
 ✅ SQLite schema initialized
-✅ Connected to SQLite at: C:\Users\Audna\.canvas-memory\canvas.db
+✅ Connected to SQLite at: C:\Users\Audna\.keimenon\keimenon.db
 ✅ Database initialized (local mode)
-📂 Storage location: C:\Users\Audna\.canvas-memory\canvas.db
-⚡️ Canvas Memory API running on port 4001
+📂 Storage location: C:\Users\Audna\.keimenon\keimenon.db
+⚡️ Keimenon API running on port 4001
 ```
 
 ---
@@ -83,7 +83,7 @@ curl http://localhost:4001/ready
 **File**: `apps/api/src/types/global.d.ts`
 
 ```typescript
-import { DatabaseClient } from '@canvas-memory/db';
+import { DatabaseClient } from '@keimenon/db';
 
 declare global {
   var dbClient: DatabaseClient | undefined;
@@ -114,7 +114,7 @@ const dbClient = await DatabaseFactory.getClient({
     databasePath: sqlitePath,
     verbose: process.env.NODE_ENV === 'development',
   },
-  canvas:
+  keimenon:
     storageMode !== 'local'
       ? {
           uri: process.env.NEO4J_URI,
@@ -138,12 +138,12 @@ global.dbClient = dbClient;
 **`.env.example`** and **`.env`**:
 
 ```env
-# Storage Mode (local = SQLite, canvas = Neo4j, hybrid = both)
+# Storage Mode (local = SQLite, keimenon = Neo4j, hybrid = both)
 STORAGE_MODE=local
 
 # Local Storage
-LOCAL_DOCS_PATH=C:\Users\Audna\.canvas-memory
-SQLITE_PATH=C:\Users\Audna\.canvas-memory\canvas.db
+LOCAL_DOCS_PATH=C:\Users\Audna\.keimenon
+SQLITE_PATH=C:\Users\Audna\.keimenon\keimenon.db
 
 # Optional: Neo4j (commented out!)
 # NEO4J_URI=...
@@ -153,7 +153,7 @@ SQLITE_PATH=C:\Users\Audna\.canvas-memory\canvas.db
 
 ## 📁 Database Created
 
-**Location**: `C:\Users\Audna\.canvas-memory\canvas.db`
+**Location**: `C:\Users\Audna\.keimenon\keimenon.db`
 
 **Schema**:
 
@@ -273,14 +273,14 @@ The most beautiful logs you'll see today:
 ```
 🔌 Initializing database (mode: local)...
 ✅ SQLite schema initialized
-✅ Connected to SQLite at: C:\Users\Audna\.canvas-memory\canvas.db
+✅ Connected to SQLite at: C:\Users\Audna\.keimenon\keimenon.db
 ✅ Database initialized (local mode)
-📂 Storage location: C:\Users\Audna\.canvas-memory\canvas.db
+📂 Storage location: C:\Users\Audna\.keimenon\keimenon.db
 💾 Initializing storage...
 ✅ Storage initialized
 📁 Initializing local document store...
-✅ Local document store initialized at: C:\Users\Audna\.canvas-memory
-⚡️ Canvas Memory API running on port 4001
+✅ Local document store initialized at: C:\Users\Audna\.keimenon
+⚡️ Keimenon API running on port 4001
 🔗 Health check: http://localhost:4001/health
 ✅ Readiness: http://localhost:4001/ready
 ```

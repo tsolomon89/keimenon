@@ -1,4 +1,4 @@
-# Canvas Memory OS - Quick Start Guide
+# Keimenon - Quick Start Guide
 
 **Get up and running in 5 minutes!**
 
@@ -23,7 +23,7 @@ npm run dev
 ```
 ✓ Storage mode: local (SQLite only)
 → Skipping Neo4j check
-⚡️ Canvas Memory API running on port 4001
+⚡️ Keimenon API running on port 4001
 💿 Storage: local mode
 ```
 
@@ -88,7 +88,7 @@ npm run kill-ports
 npm run dev:clean
 
 # 3. Wait for startup message
-# "⚡️ Canvas Memory API running on port 4001"
+# "⚡️ Keimenon API running on port 4001"
 
 # 4. Test in new terminal
 curl http://localhost:4001/health
@@ -194,7 +194,7 @@ Invoke-RestMethod -Uri "http://localhost:4001/api/v1/boards" `
 npm run dev
 ```
 
-Wait for: `⚡️ Canvas Memory API running on port 4001`
+Wait for: `⚡️ Keimenon API running on port 4001`
 
 ### "Port 4001 already in use"
 
@@ -267,7 +267,7 @@ pm2 start ecosystem.config.js --env production
 
 - ✅ Local-first (SQLite, no cloud needed)
 - ✅ Optional Neo4j for graph features
-- ✅ File storage at `~/.canvas-memory/`
+- ✅ File storage at `~/.keimenon/`
 
 ### API
 
@@ -289,7 +289,7 @@ pm2 start ecosystem.config.js --env production
 2. **Check database:**
 
    ```bash
-   # Located at: C:\Users\Audna\.canvas-memory\canvas.db
+   # Located at: C:\Users\Audna\.keimenon\keimenon.db
    ```
 
 3. **Run diagnostics:**

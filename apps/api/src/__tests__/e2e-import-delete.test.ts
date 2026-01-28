@@ -5,12 +5,12 @@
  * 1. Ensures the admin and client accounts exist with known credentials.
  * 2. Logs in, creates a job-based import with sample data, and waits for completion.
  * 3. Confirms graph nodes/edges are created for the account.
- * 4. Launches a canvas delete job and verifies graph data is removed.
+ * 4. Launches a keimenon delete job and verifies graph data is removed.
  *
  * Run with:  npm run test:e2e
  */
 
-import { test, type TestContext } from 'node:test';
+import { test, type TestContext } from 'vitest';
 import assert from 'node:assert/strict';
 import path from 'path';
 import fs from 'fs';
@@ -23,7 +23,7 @@ import { unlockAccount } from '../utils/account-lockout';
 
 const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:4001';
 const DB_PATH =
-  process.env.DB_PATH || path.join(require('os').homedir(), '.canvas-memory', 'canvas.db');
+  process.env.DB_PATH || path.join(require('os').homedir(), '.keimenon', 'keimenon.db');
 const SAMPLE_FILE = path.join(process.cwd(), '../../ai_context/chat_data/test-samples/small.json');
 
 const ADMIN = { email: 'admin@admin.com', password: 'admin123', name: 'Admin User' };
@@ -226,7 +226,7 @@ test('import job succeeds then delete job clears data', async (_t: TestContext) 
       Authorization: `Bearer ${adminToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ scope: 'canvas' }),
+    body: JSON.stringify({ scope: 'keimenon' }),
   });
 
   assert.ok(deleteRes.ok, `Delete job creation failed (${deleteRes.status})`);

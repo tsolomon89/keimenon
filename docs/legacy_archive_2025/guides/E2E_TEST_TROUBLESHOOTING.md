@@ -47,7 +47,7 @@ rm -rf apps/web/.next/cache
    const passwordHash = await bcrypt.hash('TestPass123!', 10);
    ```
 
-2. Test file password (e.g., `tests/e2e/flow-auth-canvas.spec.ts`):
+2. Test file password (e.g., `tests/e2e/flow-auth-keimenon.spec.ts`):
    ```typescript
    const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'TestPass123!';
    ```
@@ -309,13 +309,13 @@ Look for:
 
 ```bash
 # Run a single test file
-npx playwright test tests/e2e/flow-auth-canvas.spec.ts --project=chromium
+npx playwright test tests/e2e/flow-auth-keimenon.spec.ts --project=chromium
 
 # Run with UI mode for debugging
-npx playwright test tests/e2e/flow-auth-canvas.spec.ts --project=chromium --ui
+npx playwright test tests/e2e/flow-auth-keimenon.spec.ts --project=chromium --ui
 
 # Run in headed mode to see the browser
-npx playwright test tests/e2e/flow-auth-canvas.spec.ts --project=chromium --headed
+npx playwright test tests/e2e/flow-auth-keimenon.spec.ts --project=chromium --headed
 ```
 
 ### 3. Check Database State
@@ -464,7 +464,7 @@ npm run e2e:clean            # Clean test data from database
 
 2. **Smoke Tests**:
    - [playwright.smoke.config.ts](playwright.smoke.config.ts) - New smoke test configuration
-   - [tests/e2e/flow-auth-canvas.spec.ts](tests/e2e/flow-auth-canvas.spec.ts) - Added @smoke tag
+   - [tests/e2e/flow-auth-keimenon.spec.ts](tests/e2e/flow-auth-keimenon.spec.ts) - Added @smoke tag
    - [package.json](package.json) - Added `e2e:smoke` and `e2e:smoke:ui` scripts
 
 ---
@@ -485,4 +485,4 @@ If you're still stuck after trying this guide:
 ---
 
 **Last Updated**: November 5, 2025
-**Maintained By**: Canvas Memory OS Team
+**Maintained By**: Keimenon Team

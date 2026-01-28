@@ -12,7 +12,7 @@ import {
   Search,
   Plus,
 } from 'lucide-react';
-import { TreeNode, SourceNode, FolderNode } from '@/types/canvas';
+import { TreeNode, SourceNode, FolderNode } from '@/types/keimenon';
 
 interface SourceTreeViewProps {
   nodes: TreeNode[];

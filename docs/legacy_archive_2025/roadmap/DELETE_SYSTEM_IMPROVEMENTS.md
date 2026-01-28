@@ -34,7 +34,7 @@ This document tracks improvements to the data deletion system following the crit
 
 #### 1.2 Stuck Button State (UI/UX)
 
-- **Issue**: "Clear Canvas Data" button could become permanently disabled
+- **Issue**: "Clear Keimenon Data" button could become permanently disabled
 - **Fix**: Added 5-second timeout for missing operations, 5-minute timeout for stuck jobs
 - **Files**: `DataManagementCard.tsx:38-101, 117-128, 345`
 - **Test**: `data-management-ui-updates.spec.ts:293-360`
@@ -233,7 +233,7 @@ CREATE INDEX idx_nodes_deleted_at ON nodes(deleted_at);
 
 **API Changes**:
 
-- `DELETE /data/canvas` → soft delete
+- `DELETE /data/keimenon` → soft delete
 - `POST /data/restore` → restore soft-deleted data
 - `DELETE /data/purge` → hard delete after retention
 
@@ -263,7 +263,7 @@ CREATE INDEX idx_nodes_deleted_at ON nodes(deleted_at);
 **API**:
 
 ```typescript
-GET /api/v1/data/preview-delete?scope=canvas
+GET /api/v1/data/preview-delete?scope=keimenon
 
 Response:
 {
@@ -307,7 +307,7 @@ Response:
 
 **Notifications**:
 
-- Email: "Canvas data deletion completed"
+- Email: "Keimenon data deletion completed"
 - In-app toast: "Deleted 1,234 nodes successfully"
 - SSE event: Real-time progress updates
 
@@ -599,7 +599,7 @@ Response:
 
 ## Appendix A: Node Kind Reference
 
-### Canvas Data Nodes (Deleted by "Clear Canvas Data")
+### Keimenon Data Nodes (Deleted by "Clear Keimenon Data")
 
 - `ChatThread` - Conversation threads
 - `Message` - Individual messages in threads
@@ -612,7 +612,7 @@ Response:
 
 - `UserNode` - User account records
 - `AccountNode` - Account metadata
-- `Board` - Canvas boards/workspaces
+- `Board` - Keimenon boards/workspaces
 - `Constellation` - Aggregated views
 
 **Reference**: [packages/types/src/node-kinds.ts](../../packages/types/src/node-kinds.ts)

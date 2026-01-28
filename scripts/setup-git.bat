@@ -1,7 +1,7 @@
 @echo off
-REM Git setup script for Canvas Memory OS (Windows)
+REM Git setup script for Keimenon (Windows)
 
-echo Setting up Git for Canvas Memory OS...
+echo Setting up Git for Keimenon...
 echo.
 
 REM Check if Git is installed

@@ -2,13 +2,13 @@
 
 ## What Was Done
 
-I've successfully set up and configured **4 MCP servers** for Canvas Memory OS testing and debugging.
+I've successfully set up and configured **4 MCP servers** for Keimenon testing and debugging.
 
 ---
 
 ## 🎯 Installed MCP Servers
 
-### 1. ✅ canvas-database
+### 1. ✅ keimenon-database
 
 **Path**: `.mcp/servers/database/index.js`
 **Status**: Working (confirmed via logs)
@@ -17,7 +17,7 @@ I've successfully set up and configured **4 MCP servers** for Canvas Memory OS t
 **Evidence of Working**:
 
 ```
-[Database MCP] Connected to database at: C:\Users\Audna\.keimenon\canvas.db
+[Database MCP] Connected to database at: C:\Users\Audna\.keimenon\keimenon.db
 [Database MCP] Server running on stdio
 ```
 
@@ -29,7 +29,7 @@ I've successfully set up and configured **4 MCP servers** for Canvas Memory OS t
 - `get_stats` - Database statistics
 - `search_content` - Full-text search (FTS5)
 
-### 2. ✅ canvas-docs
+### 2. ✅ keimenon-docs
 
 **Path**: `.mcp/servers/docs/index.js`
 **Status**: Installed and configured
@@ -43,7 +43,7 @@ I've successfully set up and configured **4 MCP servers** for Canvas Memory OS t
 - `get_architecture_info` - Query architecture docs
 - `read_doc` - Read specific documentation file
 
-### 3. ✅ canvas-api-testing (NEW)
+### 3. ✅ keimenon-api-testing (NEW)
 
 **Path**: `.mcp/servers/api-testing/index.js`
 **Status**: Installed and configured
@@ -61,7 +61,7 @@ I've successfully set up and configured **4 MCP servers** for Canvas Memory OS t
 - `create_test_account` - Create test accounts
 - `cleanup_test_data` - Clean up test data
 
-### 4. ✅ canvas-chat-import (NEW)
+### 4. ✅ keimenon-chat-import (NEW)
 
 **Path**: `.mcp/servers/chat-import/index.js`
 **Status**: Installed and configured
@@ -90,10 +90,10 @@ Added MCP server configurations for both Claude Code and GitHub Copilot:
 {
   "claude.mcp.enabled": true,
   "claude.mcp.servers": {
-    "canvas-database": { ... },
-    "canvas-docs": { ... },
-    "canvas-api-testing": { ... },
-    "canvas-chat-import": { ... }
+    "keimenon-database": { ... },
+    "keimenon-docs": { ... },
+    "keimenon-api-testing": { ... },
+    "keimenon-chat-import": { ... }
   },
   "github.copilot.chat.mcp.enabled": true,
   "github.copilot.chat.mcp.servers": { ... }
@@ -104,9 +104,9 @@ Added MCP server configurations for both Claude Code and GitHub Copilot:
 
 Updated to enable new servers:
 
-- Set `canvas-api-testing` → `enabled: true`
-- Set `canvas-chat-import` → `enabled: true`
-- Set `canvas-codebase` → `enabled: false` (not implemented yet)
+- Set `keimenon-api-testing` → `enabled: true`
+- Set `keimenon-chat-import` → `enabled: true`
+- Set `keimenon-codebase` → `enabled: false` (not implemented yet)
 
 ---
 
@@ -126,10 +126,10 @@ This will restart VSCode and load the new MCP server configurations.
 2. Select: "MCP Servers" from dropdown
 3. Look for startup messages like:
    ```
-   [canvas-database] Connected to database...
-   [canvas-docs] Indexed 127 documentation files
-   [canvas-api-testing] Server running on stdio
-   [canvas-chat-import] Loaded 4 test datasets
+   [keimenon-database] Connected to database...
+   [keimenon-docs] Indexed 127 documentation files
+   [keimenon-api-testing] Server running on stdio
+   [keimenon-chat-import] Loaded 4 test datasets
    ```
 
 **Option B: Ask Claude Code (Me)**
@@ -327,8 +327,8 @@ Start using MCP tools during development:
 
 Two servers are planned but not yet implemented:
 
-- `canvas-codebase` - Advanced code analysis
-- `canvas-git-workflow` - Git operations with project conventions
+- `keimenon-codebase` - Advanced code analysis
+- `keimenon-git-workflow` - Git operations with project conventions
 
 ---
 

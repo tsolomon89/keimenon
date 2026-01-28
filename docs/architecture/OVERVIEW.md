@@ -1,14 +1,14 @@
 # System Architecture Overview
 
-**Canvas Memory OS - Local-First Knowledge Management System**
+**Keimenon - Local-First Knowledge Management System**
 
-This document provides a comprehensive overview of the Canvas Memory OS architecture, design principles, and system components.
+This document provides a comprehensive overview of the Keimenon architecture, design principles, and system components.
 
 ---
 
 ## Table of Contents
 
-- [What is Canvas Memory OS?](#what-is-canvas-memory-os)
+- [What is Keimenon?](#what-is-keimenon)
 - [Design Principles](#design-principles)
 - [High-Level Architecture](#high-level-architecture)
 - [System Components](#system-components)
@@ -19,9 +19,9 @@ This document provides a comprehensive overview of the Canvas Memory OS architec
 
 ---
 
-## What is Canvas Memory OS?
+## What is Keimenon?
 
-Canvas Memory OS is a **graph-native, local-first knowledge management system** designed to replace linear AI chat interfaces with a visual, versioned knowledge graph. Instead of scrolling through endless chat histories, users organize information spatially on a canvas where everything—files, chats, claims, documents—exists as nodes connected by typed, policy-aware edges.
+Keimenon is a **graph-native, local-first knowledge management system** designed to replace linear AI chat interfaces with a visual, versioned knowledge graph. Instead of scrolling through endless chat histories, users organize information spatially on a keimenon where everything—files, chats, claims, documents—exists as nodes connected by typed, policy-aware edges.
 
 ### Key Differentiators
 
@@ -38,7 +38,7 @@ Canvas Memory OS is a **graph-native, local-first knowledge management system** 
 - Automatic code extraction and deduplication
 - Message stitching into source documents
 - Duplicate detection with configurable algorithms
-- Visual 2D canvas with force-directed layout
+- Visual 2D keimenon with force-directed layout
 - Full-text search with FTS5
 - Multi-tenant authentication with RBAC
 - Complete data ownership (local SQLite storage)
@@ -125,7 +125,7 @@ Canvas Memory OS is a **graph-native, local-first knowledge management system** 
 ┌────────────────────────────────────────────────────────────────┐
 │                         Browser (Client)                        │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
-│  │  Next.js     │  │  React       │  │  Canvas2D    │         │
+│  │  Next.js     │  │  React       │  │  Keimenon2D    │         │
 │  │  App Router  │  │  Components  │  │  (D3/Three)  │         │
 │  └──────────────┘  └──────────────┘  └──────────────┘         │
 └────────────────────────────────────────────────────────────────┘
@@ -166,8 +166,8 @@ Canvas Memory OS is a **graph-native, local-first knowledge management system** 
 │                    Physical Storage                             │
 │  ┌──────────────────┐              ┌──────────────────┐        │
 │  │ SQLite Database  │              │ Neo4j Database   │        │
-│  │ ~/.canvas-memory/│              │ (Optional Cloud) │        │
-│  │ canvas.db        │              │                  │        │
+│  │ ~/.keimenon/│              │ (Optional Cloud) │        │
+│  │ keimenon.db        │              │                  │        │
 │  └──────────────────┘              └──────────────────┘        │
 └────────────────────────────────────────────────────────────────┘
 ```
@@ -209,12 +209,12 @@ Canvas Memory OS is a **graph-native, local-first knowledge management system** 
 **Key Components**:
 
 - **App Router**: File-based routing with layouts
-- **Canvas2D**: Interactive graph visualization with D3-force
+- **Keimenon2D**: Interactive graph visualization with D3-force
 - **File Upload**: Drag-and-drop interface with progress tracking
 - **Inspector**: Right-hand sidebar for node/edge details
 - **Auth**: Login/register forms with JWT token management
 
-**Status**: Partially implemented. Canvas works, User Management (Settings) implemented.
+**Status**: Partially implemented. Keimenon works, User Management (Settings) implemented.
 
 ### Backend Layer (apps/api)
 
@@ -344,7 +344,7 @@ global.dbClient = db; // Shared across all routes
     ↓
 11. Return JSON response with sources & groups
     ↓
-12. Frontend displays results in canvas
+12. Frontend displays results in keimenon
 ```
 
 ### Chat Import Flow (Enhanced Import)
@@ -389,7 +389,7 @@ global.dbClient = db; // Shared across all routes
 11. Frontend displays results + decision UI
 ```
 
-### Canvas Render Flow
+### Keimenon Render Flow
 
 ```
 1. User visits /board/:id
@@ -408,11 +408,11 @@ global.dbClient = db; // Shared across all routes
    ↓
 7. Return nodes[] + edges[] JSON
    ↓
-8. Canvas2D component receives data
+8. Keimenon2D component receives data
    ↓
 9. D3-force calculates layout positions
    ↓
-10. Canvas API draws nodes + edges
+10. Keimenon API draws nodes + edges
     ↓
 11. User can pan/zoom/select/inspect
 ```
@@ -474,8 +474,8 @@ global.dbClient = db; // Shared across all routes
 
 ```bash
 STORAGE_MODE=local
-SQLITE_PATH=~/.canvas-memory/canvas.db
-LOCAL_DOCS_PATH=~/.canvas-memory
+SQLITE_PATH=~/.keimenon/keimenon.db
+LOCAL_DOCS_PATH=~/.keimenon
 ```
 
 **Characteristics**:
@@ -487,14 +487,14 @@ LOCAL_DOCS_PATH=~/.canvas-memory
 - ✅ Simple backups
 - ⚠️ Single-machine access only
 
-### 2. Neo4j Cloud (Canvas Mode)
+### 2. Neo4j Cloud (Keimenon Mode)
 
 **Best for**: Production deployments, advanced graph queries
 
 **Configuration**:
 
 ```bash
-STORAGE_MODE=canvas
+STORAGE_MODE=keimenon
 NEO4J_URI=neo4j+s://YOUR_INSTANCE.databases.neo4j.io
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password
@@ -516,7 +516,7 @@ NEO4J_PASSWORD=your-password
 
 ```bash
 STORAGE_MODE=hybrid
-SQLITE_PATH=~/.canvas-memory/canvas.db
+SQLITE_PATH=~/.keimenon/keimenon.db
 NEO4J_URI=neo4j+s://YOUR_INSTANCE.databases.neo4j.io
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password

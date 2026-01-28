@@ -9,7 +9,7 @@
 
 E2E tests were failing in Chromium and WebKit with these symptoms:
 
-- **Authentication failures**: Tests staying on login page instead of navigating to canvas
+- **Authentication failures**: Tests staying on login page instead of navigating to keimenon
 - **"process is not defined" errors**: In debug tests accessing environment variables
 - **0% pass rate**: Chromium and WebKit showing 0/6 passing (Firefox was 100%)
 
@@ -24,7 +24,7 @@ E2E tests were failing in Chromium and WebKit with these symptoms:
 **Database Investigation**:
 
 ```bash
-sqlite3 "C:\Users\Audna\.canvas-memory\canvas.db" "SELECT email FROM users;"
+sqlite3 "C:\Users\Audna\.keimenon\keimenon.db" "SELECT email FROM users;"
 # Result: admin@admin.com exists with password '123456'
 ```
 
@@ -48,13 +48,13 @@ sqlite3 "C:\Users\Audna\.canvas-memory\canvas.db" "SELECT email FROM users;"
 **Files Updated** (11 files):
 
 - `tests/e2e/global-setup.ts`
-- `tests/e2e/canvas-operations.spec.ts`
+- `tests/e2e/keimenon-operations.spec.ts`
 - `tests/e2e/console-error-filtering.spec.ts`
 - `tests/e2e/data-management-ui-updates.spec.ts`
 - `tests/e2e/debug-auth.spec.ts`
 - `tests/e2e/debug-chromium-isolation.spec.ts`
 - `tests/e2e/debug-env-config.spec.ts`
-- `tests/e2e/flow-auth-canvas.spec.ts`
+- `tests/e2e/flow-auth-keimenon.spec.ts`
 - `tests/e2e/settings-navigation.spec.ts`
 
 **Change**: Replaced all `'admin123'` → `'123456'`
@@ -147,9 +147,9 @@ const apiUrl = API_BASE_URL;
 ```
 Running 3 tests using 2 workers
 
-  ✓ [webkit] › canvas-operations.spec.ts:32 › should display canvas sidebar (2.9s)
-  ✓ [webkit] › canvas-operations.spec.ts:23 › should load canvas page successfully (2.9s)
-  ✓ [webkit] › canvas-operations.spec.ts:40 › should have accessible canvas content (2.6s)
+  ✓ [webkit] › keimenon-operations.spec.ts:32 › should display keimenon sidebar (2.9s)
+  ✓ [webkit] › keimenon-operations.spec.ts:23 › should load keimenon page successfully (2.9s)
+  ✓ [webkit] › keimenon-operations.spec.ts:40 › should have accessible keimenon content (2.6s)
 
   3 passed (7.2s)
 ```
@@ -176,12 +176,12 @@ Running 3 tests using 2 workers
 
 ### Files Updated (Apply Login Helper):
 
-1. ✅ `tests/e2e/canvas-operations.spec.ts` - Uses login helper
+1. ✅ `tests/e2e/keimenon-operations.spec.ts` - Uses login helper
 2. ✅ `tests/e2e/console-error-filtering.spec.ts` - Uses login helper
 3. ✅ `tests/e2e/settings-navigation.spec.ts` - Uses login helper
 4. ⏳ `tests/e2e/data-management-ui-updates.spec.ts` - Import added, needs beforeEach update
 5. ⏳ `tests/e2e/debug-auth.spec.ts` - Import added, needs beforeEach update
-6. ⏳ `tests/e2e/flow-auth-canvas.spec.ts` - Import added, needs beforeEach update
+6. ⏳ `tests/e2e/flow-auth-keimenon.spec.ts` - Import added, needs beforeEach update
 
 ### Pattern to Apply (for remaining files):
 
@@ -192,7 +192,7 @@ test.beforeEach(async ({ page }) => {
   await page.getByLabel(/email/i).fill(TEST_EMAIL);
   await page.getByLabel(/password/i).fill(TEST_PASSWORD);
   await page.getByRole('button', { name: /sign in/i }).click();
-  await page.waitForURL(/\/canvas/);
+  await page.waitForURL(/\/keimenon/);
 });
 
 // With this:

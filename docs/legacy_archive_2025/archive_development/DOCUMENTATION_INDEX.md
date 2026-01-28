@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Canvas Memory OS - Complete Documentation Guide**
+**Keimenon - Complete Documentation Guide**
 
 This index provides a comprehensive map of all documentation in the project, organized by topic and purpose.
 
@@ -200,7 +200,7 @@ This index provides a comprehensive map of all documentation in the project, org
 | Privacy-Preserving Exports   | ✅ Complete                     | [EDGES_ONLY_EXPORT.md](./EDGES_ONLY_EXPORT.md)                   |
 | Groups Navigation            | ✅ Complete                     | [GROUPS_NAVIGATION_COMPLETE.md](./GROUPS_NAVIGATION_COMPLETE.md) |
 | Frontend UI                  | 🚧 In Progress                  | [README.md](../README.md)                                        |
-| Canvas Visualization         | 🚧 In Progress                  | [README.md](../README.md)                                        |
+| Keimenon Visualization       | 🚧 In Progress                  | [README.md](../README.md)                                        |
 
 ---
 
@@ -285,7 +285,7 @@ This index provides a comprehensive map of all documentation in the project, org
 ### Planned Features (Phase 4+)
 
 - [ ] Frontend UI integration → [README.md](../README.md) Roadmap
-- [ ] Canvas visualization → [README.md](../README.md) Roadmap
+- [ ] Keimenon visualization → [README.md](../README.md) Roadmap
 - [ ] Advanced search/filtering UI
 - [ ] UnifiedDoc generation (L0-L3 rings)
 - [ ] Claim extraction system

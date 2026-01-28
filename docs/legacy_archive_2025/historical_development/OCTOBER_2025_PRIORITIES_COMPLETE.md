@@ -52,11 +52,11 @@ Upon investigation, this feature was **already 100% complete**:
 
 ### Implementation Summary:
 
-Implemented comprehensive mobile-first responsive design with overlay patterns and breakpoints across all canvas components.
+Implemented comprehensive mobile-first responsive design with overlay patterns and breakpoints across all keimenon components.
 
 ### Files Modified:
 
-#### 1. [CanvasLayout.tsx](apps/web/src/components/canvas/CanvasLayout.tsx:43-87)
+#### 1. [KeimenonLayout.tsx](apps/web/src/components/keimenon/KeimenonLayout.tsx:43-87)
 
 **Changes:**
 
@@ -84,7 +84,7 @@ useEffect(() => {
 }, []);
 ```
 
-#### 2. [CanvasSidebar.tsx](apps/web/src/components/canvas/CanvasSidebar.tsx)
+#### 2. [KeimenonSidebar.tsx](apps/web/src/components/keimenon/KeimenonSidebar.tsx)
 
 **Changes:**
 
@@ -128,14 +128,14 @@ useEffect(() => {
 >
 ```
 
-#### 3. [CanvasToolbar.tsx](apps/web/src/components/canvas/CanvasToolbar.tsx)
+#### 3. [KeimenonToolbar.tsx](apps/web/src/components/keimenon/KeimenonToolbar.tsx)
 
 **Changes:**
 
 - Responsive padding: `px-2 sm:px-3 gap-2 sm:gap-4`
 - Button padding: `p-1.5 sm:p-2`
 - Hide console toggle on mobile: `hidden sm:flex`
-- Hide canvas controls on mobile: `hidden md:flex`
+- Hide keimenon controls on mobile: `hidden md:flex`
 
 ```typescript
 <div className="min-h-[48px] border-b border-slate-800 bg-slate-900/50
@@ -147,8 +147,8 @@ useEffect(() => {
     <TerminalSquare className="w-4 h-4" />
   </button>
 
-  {/* Canvas controls - hidden on mobile */}
-  {isCanvasMode && (
+  {/* Keimenon controls - hidden on mobile */}
+  {isKeimenonMode && (
     <div className="hidden md:flex items-center gap-2 lg:gap-3">
 ```
 
@@ -171,14 +171,14 @@ useEffect(() => {
 
 ### Key Features:
 
-- ✅ Mobile overlay sidebars (not off-canvas push)
+- ✅ Mobile overlay sidebars (not off-keimenon push)
 - ✅ Backdrop click-to-close on mobile
 - ✅ Auto-close sidebars when resizing to mobile
 - ✅ Responsive spacing and padding
 - ✅ Hide non-essential controls on small screens
 - ✅ No horizontal scrolling on any screen size
 
-**Result:** Fully responsive canvas interface from 320px to 4K displays.
+**Result:** Fully responsive keimenon interface from 320px to 4K displays.
 
 ---
 
@@ -222,7 +222,7 @@ Added user-facing UI toggle for Sentry error tracking consent, replacing manual 
         {
           id: 'error_tracking_consent',
           label: 'Error Tracking',
-          description: 'Help improve Canvas Memory OS by sending anonymous error reports via Sentry',
+          description: 'Help improve Keimenon by sending anonymous error reports via Sentry',
           type: 'boolean',
           defaultValue: false,
           scope: 'user',

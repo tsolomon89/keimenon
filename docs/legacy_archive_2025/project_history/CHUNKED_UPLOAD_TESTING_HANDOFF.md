@@ -129,7 +129,7 @@ session: sessionData, // Includes all computed fields
 3. Test 10: should handle session expiry
 4. Test 11: should delete upload session and temp files
 5. Test 14: should enforce multi-tenant isolation
-6. Test 16: should delete upload sessions when clearing canvas data
+6. Test 16: should delete upload sessions when clearing keimenon data
 
 **Error Pattern**:
 

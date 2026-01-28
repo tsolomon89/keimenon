@@ -68,7 +68,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 
 const homeDir = process.env.HOME || process.env.USERPROFILE;
-const sqlitePath = path.join(homeDir, '.canvas-memory', 'canvas.db');
+const sqlitePath = path.join(homeDir, '.keimenon', 'keimenon.db');
 const db = new Database(sqlitePath);
 
 console.log('=== SUPER ADMIN STATUS ===');

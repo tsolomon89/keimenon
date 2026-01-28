@@ -2,7 +2,7 @@
 
 /**
  * dev.js
- * Main development server orchestrator for Canvas Memory OS
+ * Main development server orchestrator for Keimenon
  * Handles pre-flight checks, port management, service startup, and graceful shutdown
  */
 
@@ -101,7 +101,7 @@ async function main() {
 function printHeader() {
   console.log(`${COLORS.bright}${COLORS.cyan}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('  🚀 Canvas Memory OS - Development Server');
+  console.log('  🚀 Keimenon - Development Server');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(COLORS.reset);
 }
@@ -126,7 +126,7 @@ async function runPreflightChecks() {
 
   // Show warnings
   if (result.warnings.length > 0) {
-    result.warnings.forEach(warn => {
+    result.warnings.forEach((warn) => {
       console.log(`${COLORS.yellow}⚠${COLORS.reset} ${warn}`);
     });
   }
@@ -134,7 +134,7 @@ async function runPreflightChecks() {
   // Show errors
   if (!result.valid) {
     console.log('');
-    result.errors.forEach(err => {
+    result.errors.forEach((err) => {
       console.log(`${COLORS.red}✗${COLORS.reset} ${err}`);
     });
     throw new Error('Pre-flight checks failed');
@@ -159,7 +159,9 @@ async function handlePorts(clean) {
 
   // Show conflicts
   for (const [port, info] of conflicts) {
-    console.log(`${COLORS.yellow}⚠${COLORS.reset} Port ${port} in use (PID: ${info.pid}, Command: ${info.command})`);
+    console.log(
+      `${COLORS.yellow}⚠${COLORS.reset} Port ${port} in use (PID: ${info.pid}, Command: ${info.command})`
+    );
   }
 
   if (clean) {
@@ -170,7 +172,9 @@ async function handlePorts(clean) {
 
     console.log(`${COLORS.green}✓${COLORS.reset} Ports freed\n`);
   } else {
-    console.log(`${COLORS.yellow}⚠${COLORS.reset} Run with --clean to automatically kill processes\n`);
+    console.log(
+      `${COLORS.yellow}⚠${COLORS.reset} Run with --clean to automatically kill processes\n`
+    );
     throw new Error('Port conflicts detected');
   }
 }
@@ -206,7 +210,9 @@ async function checkNeo4j() {
   } catch (error) {
     console.log(`${COLORS.red}✗${COLORS.reset} Neo4j not available\n`);
     console.log(`${COLORS.yellow}Hint:${COLORS.reset} Start Neo4j with:`);
-    console.log(`  docker run --name neo4j -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/testpassword neo4j:5.19\n`);
+    console.log(
+      `  docker run --name neo4j -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/testpassword neo4j:5.19\n`
+    );
     throw new Error('Neo4j not available');
   }
 }
@@ -246,21 +252,27 @@ async function startAPI() {
   processes.push({ name: 'API', process: apiProcess, port: PORTS.API });
 
   // Forward output with prefix
-  apiProcess.stdout.on('data', data => {
-    const lines = data.toString().split('\n').filter(l => l.trim());
-    lines.forEach(line => {
+  apiProcess.stdout.on('data', (data) => {
+    const lines = data
+      .toString()
+      .split('\n')
+      .filter((l) => l.trim());
+    lines.forEach((line) => {
       console.log(`${COLORS.magenta}[API]${COLORS.reset} ${line}`);
     });
   });
 
-  apiProcess.stderr.on('data', data => {
-    const lines = data.toString().split('\n').filter(l => l.trim());
-    lines.forEach(line => {
+  apiProcess.stderr.on('data', (data) => {
+    const lines = data
+      .toString()
+      .split('\n')
+      .filter((l) => l.trim());
+    lines.forEach((line) => {
       console.error(`${COLORS.red}[API]${COLORS.reset} ${line}`);
     });
   });
 
-  apiProcess.on('exit', code => {
+  apiProcess.on('exit', (code) => {
     if (!isShuttingDown) {
       console.error(`\n${COLORS.red}✗ API exited with code ${code}${COLORS.reset}`);
       cleanup().then(() => process.exit(1));
@@ -268,7 +280,7 @@ async function startAPI() {
   });
 
   // Give it a moment to start
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  await new Promise((resolve) => setTimeout(resolve, 2000));
 }
 
 /**
@@ -306,16 +318,22 @@ async function startFrontend() {
   processes.push({ name: 'Frontend', process: webProcess, port: PORTS.WEB });
 
   // Forward output with prefix
-  webProcess.stdout.on('data', data => {
-    const lines = data.toString().split('\n').filter(l => l.trim());
-    lines.forEach(line => {
+  webProcess.stdout.on('data', (data) => {
+    const lines = data
+      .toString()
+      .split('\n')
+      .filter((l) => l.trim());
+    lines.forEach((line) => {
       console.log(`${COLORS.cyan}[WEB]${COLORS.reset} ${line}`);
     });
   });
 
-  webProcess.stderr.on('data', data => {
-    const lines = data.toString().split('\n').filter(l => l.trim());
-    lines.forEach(line => {
+  webProcess.stderr.on('data', (data) => {
+    const lines = data
+      .toString()
+      .split('\n')
+      .filter((l) => l.trim());
+    lines.forEach((line) => {
       // Next.js logs some things to stderr that aren't errors
       if (!line.includes('ready') && !line.includes('started')) {
         console.error(`${COLORS.red}[WEB]${COLORS.reset} ${line}`);
@@ -325,7 +343,7 @@ async function startFrontend() {
     });
   });
 
-  webProcess.on('exit', code => {
+  webProcess.on('exit', (code) => {
     if (!isShuttingDown) {
       console.error(`\n${COLORS.red}✗ Frontend exited with code ${code}${COLORS.reset}`);
       cleanup().then(() => process.exit(1));
@@ -333,7 +351,7 @@ async function startFrontend() {
   });
 
   // Wait a moment for Next.js to compile
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  await new Promise((resolve) => setTimeout(resolve, 3000));
 }
 
 /**
@@ -348,7 +366,9 @@ function printReady() {
 
   // Only show Neo4j UI if not in local mode
   if (storageMode !== 'local') {
-    console.log(`${COLORS.bright}💾 Neo4j UI:${COLORS.reset}  http://localhost:${PORTS.NEO4J_HTTP}`);
+    console.log(
+      `${COLORS.bright}💾 Neo4j UI:${COLORS.reset}  http://localhost:${PORTS.NEO4J_HTTP}`
+    );
   }
 
   console.log(`${COLORS.bright}📊 Health:${COLORS.reset}    http://localhost:${PORTS.API}/health`);
@@ -401,8 +421,8 @@ async function cleanup() {
 
       // Wait up to 5 seconds for graceful shutdown
       await Promise.race([
-        new Promise(resolve => proc.on('exit', resolve)),
-        new Promise(resolve => setTimeout(resolve, 5000)),
+        new Promise((resolve) => proc.on('exit', resolve)),
+        new Promise((resolve) => setTimeout(resolve, 5000)),
       ]);
 
       // Force kill if still running
@@ -431,7 +451,7 @@ function keepAlive() {
 
 // Run
 if (require.main === module) {
-  main().catch(error => {
+  main().catch((error) => {
     console.error(`${COLORS.red}Fatal error:${COLORS.reset}`, error);
     process.exit(1);
   });

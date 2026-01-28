@@ -134,7 +134,7 @@ export const AccountNodeSchema = BaseNodeSchema.extend({
   // Metadata
   owner_user_id: z.string().optional(),
   member_count: z.number().default(0),
-  // Visual properties (for canvas)
+  // Visual properties (for keimenon)
   color: z.string().optional(),
   icon: z.string().optional(),
   // Policies (account-level settings)

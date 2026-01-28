@@ -38,7 +38,7 @@ User drops file
     ↓
 Browser reads file (FileReader API)
     ↓
-Browser parses JSON (@canvas-memory/parsers)
+Browser parses JSON (@keimenon/parsers)
     ↓
 Browser extracts code, builds sources
     ↓
@@ -67,7 +67,7 @@ NO SERVER UPLOAD NEEDED!
 **Key Features**:
 
 - Uses `FileReader` API to read files in browser
-- Imports `@canvas-memory/parsers` directly on client-side
+- Imports `@keimenon/parsers` directly on client-side
 - Processes conversations, extracts code, builds sources locally
 - Reports progress via callback
 - No server communication required
@@ -81,7 +81,7 @@ export class LocalImportService {
 }
 ```
 
-### 2. `apps/web/src/components/canvas/LocalFirstImportModal.tsx`
+### 2. `apps/web/src/components/keimenon/LocalFirstImportModal.tsx`
 
 **Purpose**: New consolidated import UI component
 
@@ -111,7 +111,7 @@ export class LocalImportService {
 The new local-first modal is wired up as the **default**, but old modals are still accessible:
 
 ```typescript
-// In apps/web/src/app/canvas/page.tsx
+// In apps/web/src/app/keimenon/page.tsx
 const handleOpenUpload = () => {
   // Default: Use new local-first modal
   // Hold Shift: Use old server upload modal
@@ -190,8 +190,8 @@ Updated `apps/web/package.json`:
 ```json
 {
   "dependencies": {
-    "@canvas-memory/parsers": "*",
-    "@canvas-memory/types": "*"
+    "@keimenon/parsers": "*",
+    "@keimenon/types": "*"
   }
 }
 ```
@@ -279,7 +279,7 @@ Modern browser API for reading files without server upload:
 
 ### Why Keep Parsers Client-Side?
 
-The `@canvas-memory/parsers` package is designed to work anywhere:
+The `@keimenon/parsers` package is designed to work anywhere:
 
 - Pure TypeScript, no Node.js dependencies
 - Already used on server
@@ -316,7 +316,7 @@ The `@canvas-memory/parsers` package is designed to work anywhere:
 
 1. ✅ Create LocalImportService
 2. ✅ Create LocalFirstImportModal
-3. ✅ Wire up to Canvas page
+3. ✅ Wire up to Keimenon page
 4. ⏳ Test with real files
 5. ⏳ Install dependencies
 6. ⏳ Fix any compilation errors
@@ -342,8 +342,8 @@ The `@canvas-memory/parsers` package is designed to work anywhere:
 ### Core Implementation
 
 - `apps/web/src/lib/local-import.ts` - Service
-- `apps/web/src/components/canvas/LocalFirstImportModal.tsx` - UI
-- `apps/web/src/app/canvas/page.tsx` - Integration
+- `apps/web/src/components/keimenon/LocalFirstImportModal.tsx` - UI
+- `apps/web/src/app/keimenon/page.tsx` - Integration
 
 ### Dependencies
 
@@ -358,8 +358,8 @@ The `@canvas-memory/parsers` package is designed to work anywhere:
 
 ### Old Code (For Comparison)
 
-- `apps/web/src/components/canvas/UploadModal.tsx`
-- `apps/web/src/components/canvas/StreamingUploadModal.tsx`
+- `apps/web/src/components/keimenon/UploadModal.tsx`
+- `apps/web/src/components/keimenon/StreamingUploadModal.tsx`
 - `apps/api/src/services/streaming-upload.ts`
 
 ---

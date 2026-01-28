@@ -100,7 +100,7 @@ Investigated why the E2E test for bulk job deletion consistently fails. DELETE r
 ### Test 8: Enhanced Logging
 
 - **Action**: Added detailed logging to DELETE request flow
-- **Code Added** (`apps/web/src/components/canvas/ImportsTableCard.tsx:610-617`):
+- **Code Added** (`apps/web/src/components/keimenon/ImportsTableCard.tsx:610-617`):
   ```typescript
   console.log(`[DELETE] Sending DELETE request for job ${jobId}`);
   const fetchPromise = fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}`, {
@@ -219,7 +219,7 @@ import { test, expect, type Page } from '@playwright/test';
 
 **Status**: **⚠️ REVERT THIS** - Should restore headers once fixed
 
-### 4. `apps/web/src/components/canvas/ImportsTableCard.tsx` (lines 610-617, 667-670)
+### 4. `apps/web/src/components/keimenon/ImportsTableCard.tsx` (lines 610-617, 667-670)
 
 **Change**: Added enhanced logging
 
@@ -441,7 +441,7 @@ npm run dev:clean  # Starts both API and Web servers with port cleanup
 
 ### Frontend Files
 
-- `apps/web/src/components/canvas/ImportsTableCard.tsx` - DELETE request implementation
+- `apps/web/src/components/keimenon/ImportsTableCard.tsx` - DELETE request implementation
 - `apps/web/src/lib/api-client.ts` - API client configuration
 - `apps/web/next.config.js` - Next.js configuration
 
@@ -584,7 +584,7 @@ test('should handle bulk job deletion', async ({ page, context }) => {
 3. **apps/api/src/middleware/security.middleware.ts**
    - Restored `maxAge: 86400` for CORS preflight caching
 
-4. **apps/web/src/components/canvas/ImportsTableCard.tsx**
+4. **apps/web/src/components/keimenon/ImportsTableCard.tsx**
    - Removed temporary debug logging added during investigation
 
 ### Why This Solution Works

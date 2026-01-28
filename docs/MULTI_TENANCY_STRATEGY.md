@@ -30,7 +30,7 @@ To make the transition from "Local Solo" to "Cloud Team" seamless, we rely on **
 
 ### Scenario B: Cloud Team (Business Account)
 
-1.  You host a shared instance at `team.canvasmemory.com`.
+1.  You host a shared instance at `team.keimenon.com`.
 2.  User logs in via Google (`tim@example.com`).
 3.  Cloud API identifies `tim@example.com` and grants access to the shared "Business Account".
 4.  User works on "Project Beta" (stored in Cloud Neo4j).
@@ -40,7 +40,7 @@ To make the transition from "Local Solo" to "Cloud Team" seamless, we rely on **
 The Frontend (`apps/web`) will handle this via a "Connection Switcher":
 
 - **Context 1**: Connected to `localhost:3001` (Your Personal Data).
-- **Context 2**: Connected to `team.canvasmemory.com` (Your Team Data).
+- **Context 2**: Connected to `team.keimenon.com` (Your Team Data).
 
 ## 4. Conclusion
 

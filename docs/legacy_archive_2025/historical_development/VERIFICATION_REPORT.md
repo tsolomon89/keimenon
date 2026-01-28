@@ -160,12 +160,12 @@ Total Test Files: 11
 
 #### 3. Progress Visualization (Particle System)
 
-- **Component**: [ProgressVisualization.tsx](apps/web/src/components/canvas/ProgressVisualization.tsx:1-237)
+- **Component**: [ProgressVisualization.tsx](apps/web/src/components/keimenon/ProgressVisualization.tsx:1-237)
   - Game dev techniques: particle physics, gravity, fade-out
   - FPS-optimized render loop (requestAnimationFrame)
   - Gradient progress bar with glow effects
   - Real-time SSE integration
-  - ✅ **VERIFIED**: Integrated at [CanvasViewport.tsx:7](apps/web/src/components/canvas/CanvasViewport.tsx:7)
+  - ✅ **VERIFIED**: Integrated at [KeimenonViewport.tsx:7](apps/web/src/components/keimenon/KeimenonViewport.tsx:7)
 
 #### 4. Jobs System with SSE Streaming
 
@@ -174,22 +174,22 @@ Total Test Files: 11
   - Auto-reconnect with exponential backoff (max 5 attempts)
   - Real-time job updates (jobs.update, graph.update, heartbeat events)
   - Connection status indicators
-  - ✅ **VERIFIED**: Production-quality implementation, used in [ImportsTableCard.tsx:36](apps/web/src/components/canvas/ImportsTableCard.tsx:36)
+  - ✅ **VERIFIED**: Production-quality implementation, used in [ImportsTableCard.tsx:36](apps/web/src/components/keimenon/ImportsTableCard.tsx:36)
 
 ### ⚠️ **PARTIAL IMPLEMENTATION** (Code Exists, TODOs Remain)
 
 #### 5. Frontend Responsiveness
 
-- **Files**: CanvasLayout.tsx, CanvasSidebar.tsx, CanvasToolbar.tsx, SettingsPage.tsx
+- **Files**: KeimenonLayout.tsx, KeimenonSidebar.tsx, KeimenonToolbar.tsx, SettingsPage.tsx
 - **Implemented**:
   - Mobile detection and auto-close
   - Overlay pattern with backdrop
   - Responsive spacing and padding
   - Breakpoints (sm: 640px, md: 768px, lg: 1024px)
-- **TODOs Found**: 15+ across canvas components
-  - [CanvasLayout.tsx:127](apps/web/src/components/canvas/CanvasLayout.tsx:127): "TODO: Notify UsersListCard to refresh its list"
-  - [CRMDashboard.tsx:172](apps/web/src/components/canvas/CRMDashboard.tsx:172): "TODO: Open Import Inspector in right sidebar"
-  - [CanvasSidebar.tsx:268](apps/web/src/components/canvas/CanvasSidebar.tsx:268): "TODO: Implement zoom to fit filtered nodes"
+- **TODOs Found**: 15+ across keimenon components
+  - [KeimenonLayout.tsx:127](apps/web/src/components/keimenon/KeimenonLayout.tsx:127): "TODO: Notify UsersListCard to refresh its list"
+  - [CRMDashboard.tsx:172](apps/web/src/components/keimenon/CRMDashboard.tsx:172): "TODO: Open Import Inspector in right sidebar"
+  - [KeimenonSidebar.tsx:268](apps/web/src/components/keimenon/KeimenonSidebar.tsx:268): "TODO: Implement zoom to fit filtered nodes"
   - Many more related to: presets, scope builder, sequester, account refetch
 - **Status**: ⚠️ Core functionality works, polish incomplete
 
@@ -245,7 +245,7 @@ This is **"implementation complete, validation incomplete"** - a common pattern 
 
 ### Short-Term (High Priority)
 
-1. Address 15+ TODOs in canvas components
+1. Address 15+ TODOs in keimenon components
 2. Implement missing test assertions in:
    - data-management.test.ts
    - e2e-delete-workflow.test.ts

@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { X, Copy, Check } from 'lucide-react';
 import { useContentLoader, ContentType } from '@/hooks/useContentLoader';
 import { MessageContent, SourceContent, CodeContent } from '@/lib/api-client';
-import { useCanvasStore } from '@/store/canvasStore';
+import { useKeimenonStore } from '@/store/keimenonStore';
 
 /**
  * NodeDetailPanel - Modal overlay for viewing node details
@@ -18,7 +18,7 @@ import { useCanvasStore } from '@/store/canvasStore';
  * - Escape key to close
  */
 export function NodeDetailPanel() {
-  const { detailPanelNode, closeDetailPanel } = useCanvasStore();
+  const { detailPanelNode, closeDetailPanel } = useKeimenonStore();
   const { loadContent, getContent, isLoading, getError } = useContentLoader();
   const [autoLoaded, setAutoLoaded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -146,11 +146,13 @@ export function NodeDetailPanel() {
               <div className="flex justify-between items-start">
                 <dt className="text-slate-400">Source:</dt>
                 <dd>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                    content.source === 'local'
-                      ? 'bg-green-600/20 text-green-300 border border-green-500/30'
-                      : 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                      content.source === 'local'
+                        ? 'bg-green-600/20 text-green-300 border border-green-500/30'
+                        : 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
+                    }`}
+                  >
                     {content.source === 'local' ? '📁 Local' : '☁️ Neo4j'}
                   </span>
                 </dd>
@@ -241,11 +243,13 @@ function MessageContentDisplay({ content }: { content: MessageContent }) {
   return (
     <div>
       <div className="mb-3 flex items-center gap-2">
-        <span className={`px-2 py-1 rounded text-xs font-medium ${
-          content.role === 'user'
-            ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
-            : 'bg-purple-600/20 text-purple-300 border border-purple-500/30'
-        }`}>
+        <span
+          className={`px-2 py-1 rounded text-xs font-medium ${
+            content.role === 'user'
+              ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
+              : 'bg-purple-600/20 text-purple-300 border border-purple-500/30'
+          }`}
+        >
           {content.role}
         </span>
         <span className="text-xs text-slate-500">

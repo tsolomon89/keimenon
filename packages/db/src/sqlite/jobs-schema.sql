@@ -6,7 +6,7 @@
 --     - Data DB (worker-0.db): nodes, edges, users, etc. (has SAVEPOINT transactions)
 --     - Jobs DB (worker-0-jobs.db): jobs, job_events, job_items (NO savepoints)
 --   Production:
---     - Single DB (canvas.db): all tables including jobs
+--     - Single DB (keimenon.db): all tables including jobs
 --
 -- This separation avoids SQLite database locking issues when creating jobs
 -- inside SAVEPOINT transactions during E2E tests.

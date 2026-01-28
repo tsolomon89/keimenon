@@ -1,15 +1,15 @@
 import { ImportResult } from '@/types/chat-import';
-import { CanvasNode, CanvasEdge } from '@/store/canvasStore';
+import { KeimenonNode, KeimenonEdge } from '@/store/keimenonStore';
 
 /**
- * Convert import result to canvas nodes and edges
+ * Convert import result to keimenon nodes and edges
  */
-export function importResultToCanvasData(result: ImportResult): {
-  nodes: CanvasNode[];
-  edges: CanvasEdge[];
+export function importResultToKeimenonData(result: ImportResult): {
+  nodes: KeimenonNode[];
+  edges: KeimenonEdge[];
 } {
-  const nodes: CanvasNode[] = [];
-  const edges: CanvasEdge[] = [];
+  const nodes: KeimenonNode[] = [];
+  const edges: KeimenonEdge[] = [];
 
   // Position calculation helpers
   const CONVERSATION_SPACING = 300;
@@ -87,9 +87,7 @@ export function importResultToCanvasData(result: ImportResult): {
 
     // Add edges from source to conversations it was compiled from
     source.provenance.forEach((prov: any) => {
-      const targetConv = result.conversations.find(
-        (c) => c.id === prov.conversation_id
-      );
+      const targetConv = result.conversations.find((c) => c.id === prov.conversation_id);
       if (targetConv) {
         edges.push({
           id: `${source.source_id}-${prov.conversation_id}`,
@@ -151,15 +149,11 @@ export function calculateImportStats(result: ImportResult) {
     duplicateCandidates: result.stats.duplicate_candidates || 0,
     avgMessagesPerConv:
       result.stats.total_conversations > 0
-        ? Math.round(
-            result.stats.total_messages / result.stats.total_conversations
-          )
+        ? Math.round(result.stats.total_messages / result.stats.total_conversations)
         : 0,
     codeBlocksPerConv:
       result.stats.total_conversations > 0
-        ? (result.stats.total_code_blocks / result.stats.total_conversations).toFixed(
-            1
-          )
+        ? (result.stats.total_code_blocks / result.stats.total_conversations).toFixed(1)
         : '0',
   };
 }
@@ -206,16 +200,12 @@ export function validateImportConfig(config: any): {
 
   if (
     config.duplicate_similarity_threshold &&
-    (config.duplicate_similarity_threshold < 0 ||
-      config.duplicate_similarity_threshold > 1)
+    (config.duplicate_similarity_threshold < 0 || config.duplicate_similarity_threshold > 1)
   ) {
     errors.push('Duplicate similarity threshold must be between 0 and 1');
   }
 
-  if (
-    config.duplicate_length_ratio_tolerance &&
-    config.duplicate_length_ratio_tolerance < 0
-  ) {
+  if (config.duplicate_length_ratio_tolerance && config.duplicate_length_ratio_tolerance < 0) {
     errors.push('Length ratio tolerance must be positive');
   }
 

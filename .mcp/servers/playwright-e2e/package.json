@@ -1,5 +1,5 @@
 {
-  "name": "@canvas-memory/mcp-playwright-e2e",
+  "name": "@keimenon/mcp-playwright-e2e",
   "version": "1.0.0",
   "description": "MCP server for controlling Playwright E2E tests, managing test artifacts, and monitoring test runs",
   "type": "module",

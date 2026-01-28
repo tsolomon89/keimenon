@@ -61,8 +61,8 @@ Successfully implemented high-priority fixes for E2E test suite, addressing the 
 
 2. **State Synchronization Issue**
    - `ConsoleContext` managed `isOpen` state with keyboard listener
-   - `CanvasLayout` had separate `footerOpen` state
-   - Pressing backtick toggled ConsoleContext but not CanvasLayout
+   - `KeimenonLayout` had separate `footerOpen` state
+   - Pressing backtick toggled ConsoleContext but not KeimenonLayout
 
 3. **Playwright Strict Mode**
    - Error messages appeared twice (message + stack trace)
@@ -95,9 +95,9 @@ await page.evaluate(() => {
 
 **Applied to all 6 tests** (lines 35, 75, 136, 174, 206, 241)
 
-#### Fix 3: Synchronize ConsoleContext and CanvasLayout
+#### Fix 3: Synchronize ConsoleContext and KeimenonLayout
 
-**File**: [apps/web/src/components/canvas/CanvasLayout.tsx:24,54](apps/web/src/components/canvas/CanvasLayout.tsx#L24)
+**File**: [apps/web/src/components/keimenon/KeimenonLayout.tsx:24,54](apps/web/src/components/keimenon/KeimenonLayout.tsx#L24)
 
 ```typescript
 // ✅ Single source of truth
@@ -144,7 +144,7 @@ await expect(page.getByText('Test error message').first()).toBeVisible();
 
 ### Problem
 
-- "should update UI without reload after canvas data deletion" was failing
+- "should update UI without reload after keimenon data deletion" was failing
 - **Blocked 7 DELETE tests** from running (skipped due to earlier failure)
 - DELETE functionality couldn't be verified in full suite
 
@@ -163,7 +163,7 @@ The test was failing because of the same ConsoleContext synchronization issue fi
 **Passing Tests**:
 
 1. ✅ cleanup: clear all background operations
-2. ✅ should update UI without reload after canvas data deletion
+2. ✅ should update UI without reload after keimenon data deletion
 3. ✅ should show delete job in background operations table
 4. ✅ **should remove job from table after deletion** (DELETE: 23→22)
 5. ✅ should sync background operations with job table
@@ -209,14 +209,14 @@ The console footer is a three-tier architecture:
 └─────────────────────────────────────────────┘
                       ↓
 ┌─────────────────────────────────────────────┐
-│   CanvasFooter (UI Component)               │
-│   - Receives isOpen prop from CanvasLayout  │
+│   KeimenonFooter (UI Component)               │
+│   - Receives isOpen prop from KeimenonLayout  │
 │   - Displays errors with filtering          │
 │   - Shows error counts by severity          │
 └─────────────────────────────────────────────┘
 ```
 
-**Key Integration**: `CanvasLayout` must use `ConsoleContext.isOpen` to ensure the keyboard listener correctly controls footer visibility.
+**Key Integration**: `KeimenonLayout` must use `ConsoleContext.isOpen` to ensure the keyboard listener correctly controls footer visibility.
 
 ### The DELETE Request Workaround
 
@@ -250,7 +250,7 @@ This workaround is now fully verified in the complete E2E suite.
 1. [apps/web/src/services/error-capture.service.ts](apps/web/src/services/error-capture.service.ts)
    - Added window exposure for E2E testing (lines 488-491)
 
-2. [apps/web/src/components/canvas/CanvasLayout.tsx](apps/web/src/components/canvas/CanvasLayout.tsx)
+2. [apps/web/src/components/keimenon/KeimenonLayout.tsx](apps/web/src/components/keimenon/KeimenonLayout.tsx)
    - Imported useConsole hook (line 24)
    - Replaced local footerOpen state with ConsoleContext state (line 54)
 
@@ -279,7 +279,7 @@ This workaround is now fully verified in the complete E2E suite.
 
 #### 2. WebKit Timeouts (9 failures)
 
-**Tests**: Canvas operations, auth flows, settings navigation
+**Tests**: Keimenon operations, auth flows, settings navigation
 **Issue**: 21-22 second timeouts in WebKit only
 **Impact**: 9 WebKit-specific failures
 **Severity**: Medium - affects Safari compatibility
@@ -295,10 +295,10 @@ This workaround is now fully verified in the complete E2E suite.
 | -------------------------- | ------ | ----- | ------------------ |
 | console-error-filtering    | 0/6    | 5/6   | +83%               |
 | data-management-ui-updates | 1/9    | 7/9   | +67%               |
-| canvas-operations          | 6/9    | 6/9   | 0% (WebKit)        |
+| keimenon-operations        | 6/9    | 6/9   | 0% (WebKit)        |
 | debug-auth                 | 2/3    | 2/3   | 0% (token/timeout) |
 | debug-client-env           | 3/3    | 3/3   | 100% ✅            |
-| flow-auth-canvas           | 10/12  | 10/12 | 0% (WebKit)        |
+| flow-auth-keimenon         | 10/12  | 10/12 | 0% (WebKit)        |
 | settings-navigation        | 7/9    | 7/9   | 0% (WebKit)        |
 | smoke                      | 12/12  | 12/12 | 100% ✅            |
 
@@ -348,7 +348,7 @@ This workaround is now fully verified in the complete E2E suite.
 1. **Monitor DELETE operations** in production for any edge cases
 2. **Review WebKit test results** in CI/CD to confirm expected pass rate
 3. **Document console footer testing patterns** for future test additions
-4. **Consider adding integration tests** for ConsoleContext + CanvasLayout synchronization
+4. **Consider adding integration tests** for ConsoleContext + KeimenonLayout synchronization
 
 ### Technical Debt Cleanup
 
@@ -409,7 +409,7 @@ All branches triggering E2E tests should see:
 
 ### Architecture Insights
 
-1. **Single Source of Truth is Critical**: The ConsoleContext/CanvasLayout sync issue shows why shared state must have one authoritative source
+1. **Single Source of Truth is Critical**: The ConsoleContext/KeimenonLayout sync issue shows why shared state must have one authoritative source
 2. **Browser Compatibility in Tests**: Node.js patterns don't work in browser context - always design for the execution environment
 3. **Test Isolation**: Proper test design prevents cascading failures that block entire suites
 

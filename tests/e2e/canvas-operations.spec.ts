@@ -2,18 +2,18 @@ import { test, expect } from './fixtures/testId';
 import { login } from './helpers/login';
 
 /**
- * Canvas Operations Test
+ * Keimenon Operations Test
  *
- * Tests basic canvas functionality and navigation.
+ * Tests basic keimenon functionality and navigation.
  * Tagged with @smoke for quick validation.
  */
 
-test.describe('Canvas Operations', () => {
+test.describe('Keimenon Operations', () => {
   test.describe.configure({ tag: '@smoke' });
 
   // Test credentials
   // FIXED: Updated password to match global setup (TestPass123!)
-  // Visual evidence: test-results/canvas-operations.../test-failed-1.png
+  // Visual evidence: test-results/keimenon-operations.../test-failed-1.png
   // Issue: Login failed with "Invalid email or password"
   // Root cause: Password mismatch between test (123456) and setup (TestPass123!)
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
@@ -24,16 +24,16 @@ test.describe('Canvas Operations', () => {
     await login(page, TEST_EMAIL, TEST_PASSWORD);
   });
 
-  test('should load canvas page successfully', async ({ page }) => {
-    // Verify we're on the canvas page
-    await expect(page).toHaveURL(/\/canvas/);
+  test('should load keimenon page successfully', async ({ page }) => {
+    // Verify we're on the keimenon page
+    await expect(page).toHaveURL(/\/keimenon/);
 
-    // Check for canvas header/navigation
+    // Check for keimenon header/navigation
     const header = page.locator('header, nav, [role="banner"]').first();
     await expect(header).toBeVisible({ timeout: 10000 });
   });
 
-  test('should display canvas sidebar or navigation', async ({ page }) => {
+  test('should display keimenon sidebar or navigation', async ({ page }) => {
     // Look for sidebar or navigation elements
     const sidebar = page.locator('aside, [role="navigation"], .sidebar').first();
 
@@ -41,8 +41,8 @@ test.describe('Canvas Operations', () => {
     await expect(sidebar).toBeAttached({ timeout: 10000 });
   });
 
-  test('should have accessible canvas content', async ({ page }) => {
-    // Canvas page should have some visible content
+  test('should have accessible keimenon content', async ({ page }) => {
+    // Keimenon page should have some visible content
     // Look for any heading or interactive element
     const hasContent = await page.locator('h1, h2, button, a, div').count();
 

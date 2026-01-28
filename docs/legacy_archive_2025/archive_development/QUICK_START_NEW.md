@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get Canvas Memory OS running in 5 minutes!
+Get Keimenon running in 5 minutes!
 
 ## Prerequisites
 
@@ -61,15 +61,15 @@ Edit `apps/api/.env`:
 
 ```env
 STORAGE_MODE=local
-DATABASE_PATH=./data/canvas.db
+DATABASE_PATH=./data/keimenon.db
 STORAGE_PATH=./storage
 PORT=3001
 ```
 
-**For Neo4j (canvas mode):**
+**For Neo4j (keimenon mode):**
 
 ```env
-STORAGE_MODE=canvas
+STORAGE_MODE=keimenon
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=testpassword
@@ -103,7 +103,7 @@ This starts:
 You should see:
 
 ```
-⚡️ Canvas Memory API running on port 3001
+⚡️ Keimenon API running on port 3001
 🔌 Connecting to database...
 ✅ Connected to SQLite (or Neo4j)
 🔧 Initializing schema...
@@ -140,9 +140,9 @@ You should see:
    - 📚 Sources created from meaningful segments
    - 🏷️ Auto-organized by topic
 
-#### View on Canvas
+#### View on Keimenon
 
-1. Click **"View on Canvas"**
+1. Click **"View on Keimenon"**
 2. See your content as nodes on a 2D graph:
    - 🔵 Blue nodes = Files/Sources
    - 🟣 Purple nodes = Groups
@@ -274,7 +274,7 @@ cat conversations.json | jq . > /dev/null && echo "Valid JSON" || echo "Invalid 
    - **Code extraction**: Auto-detect code blocks
    - **Duplicate detection**: Find and merge similar content
 4. Review import results
-5. View on canvas
+5. View on keimenon
 6. Generate documentation from sources
 
 ### File Upload Workflow
@@ -288,7 +288,7 @@ cat conversations.json | jq . > /dev/null && echo "Valid JSON" || echo "Invalid 
 ### View & Organize
 
 1. Go to `/board/default_board`
-2. Canvas renders graph with D3-force layout
+2. Keimenon renders graph with D3-force layout
 3. Pan, zoom, select nodes
 4. Group related content
 5. Export to Markdown
@@ -314,7 +314,7 @@ storage/
 └── temp/          # Temporary files
 
 data/              # SQLite database (local mode)
-└── canvas.db      # Auto-created
+└── keimenon.db      # Auto-created
 ```
 
 ---
@@ -325,8 +325,8 @@ data/              # SQLite database (local mode)
 
 - `apps/web/src/app/page.tsx` - Landing page
 - `apps/web/src/app/ingest/page.tsx` - File upload & import UI
-- `apps/web/src/app/board/[id]/page.tsx` - Canvas viewer
-- `apps/web/src/components/canvas/Canvas2D.tsx` - Graph renderer
+- `apps/web/src/app/board/[id]/page.tsx` - Keimenon viewer
+- `apps/web/src/components/keimenon/Keimenon2D.tsx` - Graph renderer
 
 ### Backend (Imports ⭐)
 
@@ -364,7 +364,7 @@ data/              # SQLite database (local mode)
 ### For Users:
 
 1. ✅ Import your ChatGPT conversations
-2. ✅ Explore the canvas
+2. ✅ Explore the keimenon
 3. ✅ Extract code blocks
 4. 📖 Read [IMPORT_GUIDE.md](IMPORT_GUIDE.md) for detailed import instructions
 5. 📖 Read [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) for feature overview
@@ -381,7 +381,7 @@ data/              # SQLite database (local mode)
 
 ## Feature Highlights
 
-### What Makes Canvas Memory OS Unique:
+### What Makes Keimenon Unique:
 
 ✅ **Import AI Conversations** - ChatGPT, Claude, Gemini support
 ✅ **Auto-Extract Code** - Never lose that perfect snippet again
@@ -401,7 +401,7 @@ data/              # SQLite database (local mode)
 - **Console Logs**: Browser DevTools & terminal output
 - **Database Browser**:
   - Neo4j: http://localhost:7474
-  - SQLite: Use DB Browser for SQLite or `sqlite3 data/canvas.db`
+  - SQLite: Use DB Browser for SQLite or `sqlite3 data/keimenon.db`
 
 ---
 
@@ -434,7 +434,7 @@ curl -X POST http://localhost:3001/api/v1/import/enhanced \
 
 ```bash
 # SQLite: Just copy the file
-cp data/canvas.db data/canvas-backup.db
+cp data/keimenon.db data/keimenon-backup.db
 
 # Neo4j: Use neo4j-admin dump
 docker exec neo4j neo4j-admin database dump neo4j

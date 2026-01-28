@@ -7,7 +7,7 @@
 
 ## Summary
 
-Successfully configured 6 specialized Claude Skills for Canvas Memory OS development, providing automated validation, code review, test generation, and full-stack verification capabilities.
+Successfully configured 6 specialized Claude Skills for Keimenon development, providing automated validation, code review, test generation, and full-stack verification capabilities.
 
 ---
 
@@ -17,14 +17,14 @@ Successfully configured 6 specialized Claude Skills for Canvas Memory OS develop
 
 - **Purpose**: Validate node/edge operations against schemas
 - **Key Features**: Schema compliance, multi-tenant isolation, fingerprinting validation
-- **Tools**: Read, Grep, Glob, canvas-database MCP (read-only)
+- **Tools**: Read, Grep, Glob, keimenon-database MCP (read-only)
 - **File**: `.claude/skills/graph-schema-validator/SKILL.md`
 
 ### 2. ✅ code-review-enforcer
 
 - **Purpose**: Automated code review against architectural principles
 - **Key Features**: CLAUDE.md compliance, TODO formatting, citation checking
-- **Tools**: Read, Grep, Glob, Edit, canvas-docs MCP
+- **Tools**: Read, Grep, Glob, Edit, keimenon-docs MCP
 - **File**: `.claude/skills/code-review-enforcer/SKILL.md`
 
 ### 3. ✅ e2e-test-generator
@@ -45,7 +45,7 @@ Successfully configured 6 specialized Claude Skills for Canvas Memory OS develop
 
 - **Purpose**: Similarity detection and deduplication expert
 - **Key Features**: Jaccard/Levenshtein/Cosine algorithms, fingerprinting, DUP_OF edges
-- **Tools**: Read, Write, Edit, Grep, canvas-database MCP (read-only)
+- **Tools**: Read, Write, Edit, Grep, keimenon-database MCP (read-only)
 - **File**: `.claude/skills/vector-similarity-ops/SKILL.md`
 
 ### 6. ✅ mcp-integration-expert
@@ -203,14 +203,14 @@ You: "Run smoke tests in all browsers"
 
 Skills integrate with your 6 existing MCP servers:
 
-| MCP Server          | Skills That Use It                                                    |
-| ------------------- | --------------------------------------------------------------------- |
-| canvas-database     | graph-schema-validator, vector-similarity-ops, mcp-integration-expert |
-| canvas-docs         | code-review-enforcer, mcp-integration-expert                          |
-| canvas-api-testing  | pipeline-verifier, mcp-integration-expert                             |
-| canvas-chat-import  | vector-similarity-ops, mcp-integration-expert                         |
-| canvas-settings-crm | mcp-integration-expert                                                |
-| playwright-e2e      | e2e-test-generator, pipeline-verifier, mcp-integration-expert         |
+| MCP Server            | Skills That Use It                                                    |
+| --------------------- | --------------------------------------------------------------------- |
+| keimenon-database     | graph-schema-validator, vector-similarity-ops, mcp-integration-expert |
+| keimenon-docs         | code-review-enforcer, mcp-integration-expert                          |
+| keimenon-api-testing  | pipeline-verifier, mcp-integration-expert                             |
+| keimenon-chat-import  | vector-similarity-ops, mcp-integration-expert                         |
+| keimenon-settings-crm | mcp-integration-expert                                                |
+| playwright-e2e        | e2e-test-generator, pipeline-verifier, mcp-integration-expert         |
 
 ### Project Documentation
 
@@ -238,7 +238,7 @@ Try these commands to test the skills:
 "Review the file apps/api/src/routes/auth.ts"
 
 # Test E2E generation
-"Generate E2E tests for the canvas operations feature"
+"Generate E2E tests for the keimenon operations feature"
 
 # Test pipeline verification
 "Verify the chat import feature is ready for deployment"
@@ -311,7 +311,7 @@ You maintain full control over all edits.
 **Solution**: Check MCP server status
 
 ```
-"Check canvas-database MCP server status"
+"Check keimenon-database MCP server status"
 ```
 
 Then consult [.mcp/README.md](../../.mcp/README.md) troubleshooting section.
@@ -361,7 +361,7 @@ Skills are working correctly when:
 **Related Documentation**:
 
 - [.mcp/README.md](../.mcp/README.md) - MCP servers overview
-- [CLAUDE.md](../../CLAUDE.md) - Canvas Memory OS operating guide
+- [CLAUDE.md](../../CLAUDE.md) - Keimenon operating guide
 
 ---
 
@@ -371,7 +371,7 @@ For issues or questions:
 
 1. **Skill Usage**: Check [.claude/skills/README.md](./skills/README.md)
 2. **MCP Servers**: Check [.mcp/README.md](../.mcp/README.md)
-3. **Canvas Memory OS**: Check [CLAUDE.md](../../CLAUDE.md)
+3. **Keimenon**: Check [CLAUDE.md](../../CLAUDE.md)
 
 ---
 

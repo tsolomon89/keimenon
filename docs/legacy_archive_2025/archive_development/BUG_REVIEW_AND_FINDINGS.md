@@ -1,7 +1,7 @@
 # Bug Review & Implementation Completeness Report
 
 **Generated**: 2025-10-13
-**Project**: Canvas Memory OS
+**Project**: Keimenon
 **Review Scope**: Frontend (apps/web) + Backend (apps/api)
 
 ---
@@ -96,7 +96,7 @@ ALTER TABLE nodes ADD COLUMN content_size INTEGER DEFAULT 0;
 
 ### 3. Groups Navigation Not Implemented
 
-**Location**: `apps/web/src/components/canvas/CanvasSidebar.tsx`
+**Location**: `apps/web/src/components/keimenon/KeimenonSidebar.tsx`
 
 ```typescript
 // Line 96
@@ -106,13 +106,13 @@ ALTER TABLE nodes ADD COLUMN content_size INTEGER DEFAULT 0;
 // TODO: Navigate to settings panel
 
 // Line 124
-// TODO: Filter canvas by group
+// TODO: Filter keimenon by group
 ```
 
 **Impact**:
 
 - Groups/Folders UI exists but not functional
-- Cannot organize canvas items
+- Cannot organize keimenon items
 - Navigation incomplete
 
 **Priority**: 🟡 **MEDIUM**
@@ -121,11 +121,11 @@ ALTER TABLE nodes ADD COLUMN content_size INTEGER DEFAULT 0;
 - Create backend `/api/v1/groups` endpoints
 - Implement group CRUD operations
 - Wire up sidebar handlers
-- Add canvas filtering logic
+- Add keimenon filtering logic
 
 ### 4. Settings Tree Uses Static Data
 
-**Location**: `apps/web/src/components/canvas/CanvasSidebar.tsx:51`
+**Location**: `apps/web/src/components/keimenon/KeimenonSidebar.tsx:51`
 
 ```typescript
 // TODO: Load settings tree structure
@@ -167,7 +167,7 @@ ALTER TABLE nodes ADD COLUMN content_size INTEGER DEFAULT 0;
 
 ### 6. Tier Simulations in Header
 
-**Location**: `apps/web/src/components/canvas/CanvasHeader.tsx`
+**Location**: `apps/web/src/components/keimenon/KeimenonHeader.tsx`
 
 ```typescript
 // Lines 110, 122, 134
@@ -181,7 +181,7 @@ ALTER TABLE nodes ADD COLUMN content_size INTEGER DEFAULT 0;
 
 ### 7. Chat Import Preset Saving
 
-**Location**: `apps/web/src/components/canvas/ChatImportModal.tsx:274`
+**Location**: `apps/web/src/components/keimenon/ChatImportModal.tsx:274`
 
 ```typescript
 /* TODO: Save preset */

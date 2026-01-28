@@ -18,7 +18,7 @@ Test timeout of 30000ms exceeded while running "beforeEach" hook.
 Error: page.waitForURL: Test timeout of 30000ms exceeded.
 waiting for navigation until "load"
 
-await page.waitForURL(/\/canvas/);
+await page.waitForURL(/\/keimenon/);
 ```
 
 **What happens**:
@@ -26,12 +26,12 @@ await page.waitForURL(/\/canvas/);
 1. ✅ Login form loads
 2. ✅ Credentials submitted
 3. ✅ API returns 200 + JWT token
-4. ❌ Browser stuck on `/login` page (never navigates to `/canvas`)
+4. ❌ Browser stuck on `/login` page (never navigates to `/keimenon`)
 5. ❌ Test times out after 30 seconds
 
 **Affected Tests** (14 total):
 
-- All canvas-operations tests (3)
+- All keimenon-operations tests (3)
 - Most console-error-filtering tests (5)
 - Some data-management tests (1)
 - Some authentication flow tests (2)
@@ -88,7 +88,7 @@ export const test = base.extend({
 **Run single test with logging**:
 
 ```bash
-npx playwright test tests/e2e/canvas-operations.spec.ts --project=webkit -g "should load canvas page successfully"
+npx playwright test tests/e2e/keimenon-operations.spec.ts --project=webkit -g "should load keimenon page successfully"
 ```
 
 ### Phase 2: Check SSE Connection Timing (10 min)
@@ -96,7 +96,7 @@ npx playwright test tests/e2e/canvas-operations.spec.ts --project=webkit -g "sho
 WebKit may have issues with Server-Sent Events initialization:
 
 ```typescript
-// tests/e2e/canvas-operations.spec.ts (modify beforeEach)
+// tests/e2e/keimenon-operations.spec.ts (modify beforeEach)
 
 test.beforeEach(async ({ page, browserName }) => {
   await page.goto('/login');
@@ -110,7 +110,7 @@ test.beforeEach(async ({ page, browserName }) => {
     await page.waitForTimeout(5000);
   }
 
-  await page.waitForURL(/\/canvas/);
+  await page.waitForURL(/\/keimenon/);
   await page.waitForLoadState('domcontentloaded');
 });
 ```
@@ -141,13 +141,13 @@ test.beforeEach(async ({ page, browserName }) => {
 
   // WebKit-specific: Explicitly wait for token in localStorage
   if (browserName === 'webkit') {
-    await page.waitForFunction(() => localStorage.getItem('canvas_memory_token') !== null, {
+    await page.waitForFunction(() => localStorage.getItem('keimenon_token') !== null, {
       timeout: 5000,
     });
     console.log('[WebKit] Token confirmed in localStorage');
   }
 
-  await page.waitForURL(/\/canvas/);
+  await page.waitForURL(/\/keimenon/);
 });
 ```
 
@@ -175,7 +175,7 @@ Maybe 30s is still not enough for WebKit:
 **Run test**:
 
 ```bash
-npx playwright test tests/e2e/canvas-operations.spec.ts --project=webkit
+npx playwright test tests/e2e/keimenon-operations.spec.ts --project=webkit
 ```
 
 **Test hypothesis**: Does 60s timeout allow navigation to complete?
@@ -204,7 +204,7 @@ export async function middleware(request: NextRequest) {
 **Alternative**: Temporarily disable middleware for WebKit tests:
 
 ```typescript
-// tests/e2e/canvas-operations.spec.ts
+// tests/e2e/keimenon-operations.spec.ts
 test.beforeEach(async ({ page, browserName, context }) => {
   if (browserName === 'webkit') {
     // Bypass middleware by setting cookie/header that middleware checks
@@ -224,7 +224,7 @@ test.beforeEach(async ({ page, browserName, context }) => {
 ### Run Single WebKit Test (with debugging)
 
 ```bash
-DEBUG=pw:api npx playwright test tests/e2e/canvas-operations.spec.ts --project=webkit -g "should load canvas page successfully" --headed
+DEBUG=pw:api npx playwright test tests/e2e/keimenon-operations.spec.ts --project=webkit -g "should load keimenon page successfully" --headed
 ```
 
 ### Run WebKit Suite Only
@@ -236,13 +236,13 @@ npx playwright test tests/e2e/ --project=webkit
 ### Run with Playwright Inspector
 
 ```bash
-PWDEBUG=1 npx playwright test tests/e2e/canvas-operations.spec.ts --project=webkit
+PWDEBUG=1 npx playwright test tests/e2e/keimenon-operations.spec.ts --project=webkit
 ```
 
 ### Generate Trace for Failed Test
 
 ```bash
-npx playwright test tests/e2e/canvas-operations.spec.ts --project=webkit --trace on
+npx playwright test tests/e2e/keimenon-operations.spec.ts --project=webkit --trace on
 npx playwright show-trace test-results/.../trace.zip
 ```
 
@@ -293,7 +293,7 @@ After investigation, you should identify ONE of these root causes:
 
 - [TIMEOUT_FIXES_COMPLETE.md](TIMEOUT_FIXES_COMPLETE.md) - Today's session summary
 - [playwright.config.ts](playwright.config.ts) - WebKit timeout config
-- [tests/e2e/canvas-operations.spec.ts](tests/e2e/canvas-operations.spec.ts) - Example failing test
+- [tests/e2e/keimenon-operations.spec.ts](tests/e2e/keimenon-operations.spec.ts) - Example failing test
 
 ### Related Issues
 

@@ -69,7 +69,7 @@ async function runTests() {
 function printHeader() {
   console.log(`${COLORS.bright}${COLORS.cyan}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('  🧪 Canvas Memory OS - Integration Tests');
+  console.log('  🧪 Keimenon - Integration Tests');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(COLORS.reset);
 }
@@ -81,7 +81,10 @@ async function checkPrerequisites() {
   console.log(`${COLORS.bright}━━━ Prerequisites ━━━${COLORS.reset}\n`);
 
   // Check test data exists
-  const testDataPath = path.resolve(__dirname, '../../../../ai_context/chat_data/test-samples/tiny.json');
+  const testDataPath = path.resolve(
+    __dirname,
+    '../../../../ai_context/chat_data/test-samples/tiny.json'
+  );
 
   if (!fs.existsSync(testDataPath)) {
     throw new Error(`Test data not found: ${testDataPath}`);
@@ -171,7 +174,7 @@ function printSummary() {
   // Show failed tests
   if (results.failed.length > 0) {
     console.log(`\n${COLORS.red}Failed Tests:${COLORS.reset}`);
-    results.failed.forEach(test => {
+    results.failed.forEach((test) => {
       console.log(`  • ${test.name}: ${test.error}`);
     });
   }
@@ -179,7 +182,7 @@ function printSummary() {
   // Show skipped tests
   if (results.skipped.length > 0) {
     console.log(`\n${COLORS.yellow}Skipped Tests:${COLORS.reset}`);
-    results.skipped.forEach(test => {
+    results.skipped.forEach((test) => {
       console.log(`  • ${test.name}: ${test.reason}`);
     });
   }
@@ -196,7 +199,7 @@ function printSummary() {
 
 // Run tests
 if (require.main === module) {
-  runTests().catch(error => {
+  runTests().catch((error) => {
     console.error('Fatal error:', error);
     process.exit(1);
   });

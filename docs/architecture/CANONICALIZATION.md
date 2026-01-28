@@ -9,7 +9,7 @@
 
 ## Purpose
 
-This document specifies the exact canonicalization algorithm used for content-addressable storage in Canvas Memory OS. Canonical form ensures that semantically identical content produces identical hashes, enabling automatic deduplication.
+This document specifies the exact canonicalization algorithm used for content-addressable storage in Keimenon. Canonical form ensures that semantically identical content produces identical hashes, enabling automatic deduplication.
 
 ---
 

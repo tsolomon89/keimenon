@@ -15,18 +15,18 @@
  * - BUG FIX (2025-11-16): DeleteWorker now correctly preserves system nodes
  */
 
-import { describe, it, before, after, beforeEach } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import assert from 'node:assert/strict';
 import fetch from 'node-fetch';
 import Database from 'better-sqlite3';
 import path from 'path';
-import { getCanvasDataInClause, getSystemNodeInClause } from '@keimenon/types';
+import { getKeimenonDataInClause, getSystemNodeInClause } from '@keimenon/types';
 
 // Test configuration
 const API_URL = process.env.TEST_API_URL || 'http://localhost:4001';
 const DB_PATH =
   process.env.DB_PATH ||
-  path.join(process.env.HOME || process.env.USERPROFILE || '', '.canvas-memory', 'canvas.db');
+  path.join(process.env.HOME || process.env.USERPROFILE || '', '.keimenon', 'keimenon.db');
 
 // Test credentials
 const ADMIN_CREDENTIALS = {
@@ -162,17 +162,17 @@ function countNodes(accountId: string): number {
 }
 
 /**
- * Count canvas data nodes (should be deleted)
+ * Count keimenon data nodes (should be deleted)
  *
  * Uses node kind constants from packages/types/src/node-kinds.ts
  * to ensure consistency with DeleteWorker and data-management routes.
  */
-function countCanvasNodes(accountId: string): number {
+function countKeimenonNodes(accountId: string): number {
   const result = db
     .prepare(
       `SELECT COUNT(*) as count FROM nodes
        WHERE account_id = ?
-       AND kind IN (${getCanvasDataInClause()})`
+       AND kind IN (${getKeimenonDataInClause()})`
     )
     .get(accountId) as any;
   return result.count;
@@ -258,7 +258,7 @@ async function measureServerResponsiveness(durationMs: number): Promise<{
 // Test Suite Setup
 // ============================================================================
 
-before(async () => {
+beforeAll(async () => {
   console.log('\n🧪 Batched Delete Worker Tests');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
@@ -272,7 +272,7 @@ before(async () => {
   console.log(`✓ Admin logged in (${adminAccountId})\n`);
 });
 
-after(async () => {
+afterAll(async () => {
   // Cleanup test data
   if (db && adminAccountId) {
     cleanupTestData(adminAccountId);
@@ -296,13 +296,13 @@ beforeEach(() => {
 // ============================================================================
 
 describe('Delete Scope Verification', () => {
-  it('should preserve system nodes when deleting canvas data', async () => {
+  it('should preserve system nodes when deleting keimenon data', async () => {
     // CRITICAL: This test verifies the fix for the DeleteWorker scope bug
     // Bug: DeleteWorker was deleting ALL nodes including system nodes
-    // Fix: DeleteWorker now only deletes canvas data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
+    // Fix: DeleteWorker now only deletes keimenon data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
     //      and preserves system nodes (UserNode, AccountNode, Board, Constellation)
 
-    console.log('   🧪 Testing system node preservation during canvas deletion...');
+    console.log('   🧪 Testing system node preservation during keimenon deletion...');
 
     // Get initial system node count (should exist for admin account)
     const systemNodesBefore = countSystemNodes(adminAccountId);
@@ -311,38 +311,38 @@ describe('Delete Scope Verification', () => {
     // System nodes should exist (UserNode, AccountNode, etc.)
     assert.ok(systemNodesBefore > 0, 'Admin account should have system nodes');
 
-    // Create test canvas data nodes
-    const canvasNodeCount = 100;
-    createTestNodes(adminAccountId, canvasNodeCount);
+    // Create test keimenon data nodes
+    const keimenonNodeCount = 100;
+    createTestNodes(adminAccountId, keimenonNodeCount);
 
-    const canvasNodesBefore = countCanvasNodes(adminAccountId);
-    console.log(`   📊 Canvas nodes before deletion: ${canvasNodesBefore}`);
+    const keimenonNodesBefore = countKeimenonNodes(adminAccountId);
+    console.log(`   📊 Keimenon nodes before deletion: ${keimenonNodesBefore}`);
 
-    // Start delete job with scope='canvas'
+    // Start delete job with scope='keimenon'
     const response = await fetch(`${API_URL}/api/v1/jobs/delete`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ scope: 'canvas' }),
+      body: JSON.stringify({ scope: 'keimenon' }),
     });
 
     const data = (await response.json()) as any;
     const jobId = data.jobId;
-    console.log(`   🗑️ Started delete job: ${jobId} (scope: canvas)`);
+    console.log(`   🗑️ Started delete job: ${jobId} (scope: keimenon)`);
 
     // Wait for completion
     const { job } = await waitForJobCompletion(jobId, adminToken, 60000);
     assert.strictEqual(job.state.status, 'succeeded');
 
     // CRITICAL ASSERTIONS:
-    // 1. Canvas nodes should be deleted (0 remaining)
-    const canvasNodesAfter = countCanvasNodes(adminAccountId);
+    // 1. Keimenon nodes should be deleted (0 remaining)
+    const keimenonNodesAfter = countKeimenonNodes(adminAccountId);
     assert.strictEqual(
-      canvasNodesAfter,
+      keimenonNodesAfter,
       0,
-      `Canvas nodes should be deleted, but ${canvasNodesAfter} remain`
+      `Keimenon nodes should be deleted, but ${keimenonNodesAfter} remain`
     );
 
     // 2. System nodes should be PRESERVED (same count as before)
@@ -354,7 +354,7 @@ describe('Delete Scope Verification', () => {
     );
 
     console.log(`   ✅ System nodes preserved: ${systemNodesBefore} → ${systemNodesAfter}`);
-    console.log(`   ✅ Canvas nodes deleted: ${canvasNodesBefore} → ${canvasNodesAfter}`);
+    console.log(`   ✅ Keimenon nodes deleted: ${keimenonNodesBefore} → ${keimenonNodesAfter}`);
     console.log('   ✅ DELETE SCOPE FIX VERIFIED!');
   }, 90000);
 });
@@ -377,7 +377,7 @@ describe('Batched Deletion - Small Dataset', () => {
         Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ scope: 'canvas' }),
+      body: JSON.stringify({ scope: 'keimenon' }),
     });
 
     const data = (await response.json()) as any;
@@ -437,7 +437,7 @@ describe('Batched Deletion - Medium Dataset', () => {
         Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ scope: 'canvas' }),
+      body: JSON.stringify({ scope: 'keimenon' }),
     });
 
     const data = (await response.json()) as any;
@@ -505,7 +505,7 @@ describe('Batched Deletion - Large Dataset', () => {
         Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ scope: 'canvas' }),
+      body: JSON.stringify({ scope: 'keimenon' }),
     });
 
     const data = (await response.json()) as any;
@@ -585,7 +585,7 @@ describe('Batched Deletion - Performance Benchmarks', () => {
         Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ scope: 'canvas' }),
+      body: JSON.stringify({ scope: 'keimenon' }),
     });
 
     const data = (await response.json()) as any;
@@ -652,9 +652,9 @@ describe('Multi-Tenant Deletion Isolation', () => {
    * operation could accidentally delete Account B's data.
    *
    * Test Setup:
-   * 1. Create Account A with 100 canvas nodes
-   * 2. Create Account B with 50 canvas nodes
-   * 3. Run delete job for Account A (scope: canvas)
+   * 1. Create Account A with 100 keimenon nodes
+   * 2. Create Account B with 50 keimenon nodes
+   * 3. Run delete job for Account A (scope: keimenon)
    * 4. Verify Account A's data is deleted
    * 5. Verify Account B's data is UNTOUCHED
    *
@@ -688,23 +688,23 @@ describe('Multi-Tenant Deletion Isolation', () => {
 
     // Create data for Account A (admin account)
     createTestNodes(adminAccountId, 100);
-    const accountANodesBefore = countCanvasNodes(adminAccountId);
+    const accountANodesBefore = countKeimenonNodes(adminAccountId);
     console.log(`      Account A (admin): ${accountANodesBefore} nodes created`);
 
     // Create data for Account B
     createTestNodes(accountBId, 50);
-    const accountBNodesBefore = countCanvasNodes(accountBId);
+    const accountBNodesBefore = countKeimenonNodes(accountBId);
     console.log(`      Account B: ${accountBNodesBefore} nodes created`);
 
     // Run delete job for Account A ONLY
-    console.log(`      Deleting Account A's canvas data...`);
+    console.log(`      Deleting Account A's keimenon data...`);
     const response = await fetch(`${API_URL}/api/v1/jobs/delete`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ scope: 'canvas' }),
+      body: JSON.stringify({ scope: 'keimenon' }),
     });
 
     assert.strictEqual(response.status, 201, 'Delete job should be created');
@@ -715,16 +715,16 @@ describe('Multi-Tenant Deletion Isolation', () => {
     assert.strictEqual(job.status, 'done', 'Delete job should complete successfully');
 
     // CRITICAL ASSERTIONS:
-    // 1. Account A's canvas data should be deleted
-    const accountANodesAfter = countCanvasNodes(adminAccountId);
+    // 1. Account A's keimenon data should be deleted
+    const accountANodesAfter = countKeimenonNodes(adminAccountId);
     assert.strictEqual(
       accountANodesAfter,
       0,
-      `Account A canvas nodes should be deleted. Expected 0, got ${accountANodesAfter}`
+      `Account A keimenon nodes should be deleted. Expected 0, got ${accountANodesAfter}`
     );
 
     // 2. Account B's data should be UNTOUCHED
-    const accountBNodesAfter = countCanvasNodes(accountBId);
+    const accountBNodesAfter = countKeimenonNodes(accountBId);
     assert.strictEqual(
       accountBNodesAfter,
       accountBNodesBefore,
@@ -762,7 +762,7 @@ describe('Multi-Tenant Deletion Isolation', () => {
         Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ scope: 'canvas' }),
+      body: JSON.stringify({ scope: 'keimenon' }),
     });
 
     assert.strictEqual(response1.status, 201, 'First delete job should be created');
@@ -775,7 +775,7 @@ describe('Multi-Tenant Deletion Isolation', () => {
         Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ scope: 'canvas' }),
+      body: JSON.stringify({ scope: 'keimenon' }),
     });
 
     // CRITICAL ASSERTION: Second job should be rejected with 409 Conflict
@@ -810,7 +810,7 @@ describe('Multi-Tenant Deletion Isolation', () => {
         Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ scope: 'canvas' }),
+      body: JSON.stringify({ scope: 'keimenon' }),
     });
 
     assert.strictEqual(

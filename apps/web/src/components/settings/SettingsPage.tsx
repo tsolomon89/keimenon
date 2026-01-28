@@ -289,7 +289,7 @@ export function SettingsPage({
             controls
               .filter(
                 (control) =>
-                  control.id !== 'clear_canvas_data' && control.id !== 'clear_all_client_data'
+                  control.id !== 'clear_keimenon_data' && control.id !== 'clear_all_client_data'
               )
               .map((control) => {
                 const effectiveSetting = getSetting(control.id);

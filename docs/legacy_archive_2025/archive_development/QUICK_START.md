@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get Canvas Memory OS running in 5 minutes!
+Get Keimenon running in 5 minutes!
 
 ## Prerequisites
 
@@ -77,7 +77,7 @@ This starts:
 You should see:
 
 ```
-⚡️ Canvas Memory API running on port 3001
+⚡️ Keimenon API running on port 3001
 🔌 Connecting to Neo4j...
 ✅ Connected to Neo4j
 🔧 Initializing Neo4j schema...
@@ -94,9 +94,9 @@ You should see:
 4. Click **"Upload"**
 5. See results: uploaded sources, auto-generated groups, duplicates
 
-#### View Canvas
+#### View Keimenon
 
-1. Click **"View on Canvas"**
+1. Click **"View on Keimenon"**
 2. See your files as nodes on a 2D graph
 3. Try:
    - **Pan**: Click & drag background
@@ -184,7 +184,7 @@ cd ../db && npm run build
 ### View Graph
 
 1. Go to `/board/default_board`
-2. Canvas loads all nodes
+2. Keimenon loads all nodes
 3. D3-force calculates layout
 4. Render at 60 FPS
 
@@ -231,8 +231,8 @@ storage/
 
 - `apps/web/src/app/page.tsx` - Landing page
 - `apps/web/src/app/ingest/page.tsx` - File upload
-- `apps/web/src/app/board/[id]/page.tsx` - Canvas
-- `apps/web/src/components/canvas/Canvas2D.tsx` - Graph renderer
+- `apps/web/src/app/board/[id]/page.tsx` - Keimenon
+- `apps/web/src/components/keimenon/Keimenon2D.tsx` - Graph renderer
 
 ### Backend
 
@@ -275,7 +275,7 @@ curl http://localhost:3001/api/v1/nodes/src_abc123
 ## Next Steps
 
 1. ✅ Upload some files
-2. ✅ View on canvas
+2. ✅ View on keimenon
 3. ✅ Test selection & zoom
 4. 📖 Read [PROGRESS.md](PROGRESS.md) for detailed status
 5. 📖 Read [ROADMAP.md](ROADMAP.md) for what's next

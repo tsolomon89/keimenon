@@ -1,24 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  ChevronDown,
-  ChevronUp,
-  X,
-  Link,
-  Eye,
-  EyeOff,
-  Trash2,
-  Pin,
-  PinOff
-} from 'lucide-react';
-import { CanvasNode } from '@/store/canvasStore';
+import { ChevronDown, ChevronUp, X, Link, Eye, EyeOff, Trash2, Pin, PinOff } from 'lucide-react';
+import { KeimenonNode } from '@/store/keimenonStore';
 
 interface SelectionStackProps {
-  selectedNodes: CanvasNode[];
+  selectedNodes: KeimenonNode[];
   onRemoveFromSelection: (nodeId: string) => void;
   onClearAll: () => void;
-  onViewDetails: (node: CanvasNode) => void;
+  onViewDetails: (node: KeimenonNode) => void;
   onAddToScope?: (nodeId: string) => void;
   onSequester?: (nodeId: string) => void;
 }
@@ -98,9 +88,7 @@ export function SelectionStack({
             Clear All
           </button>
         </div>
-        <p className="text-xs text-slate-500">
-          Selected items • Click to expand details
-        </p>
+        <p className="text-xs text-slate-500">Selected items • Click to expand details</p>
       </div>
 
       {/* Cards list */}
@@ -130,16 +118,12 @@ export function SelectionStack({
                       >
                         {node.type}
                       </span>
-                      {isPinned && (
-                        <Pin className="w-3 h-3 text-purple-400" />
-                      )}
+                      {isPinned && <Pin className="w-3 h-3 text-purple-400" />}
                     </div>
                     <h4 className="text-sm font-medium text-slate-200 truncate">
                       {node.data.label || node.id.slice(0, 8)}
                     </h4>
-                    <p className="text-xs text-slate-500 truncate">
-                      {node.id.slice(0, 16)}...
-                    </p>
+                    <p className="text-xs text-slate-500 truncate">{node.id.slice(0, 16)}...</p>
                   </div>
 
                   <div className="flex items-center gap-1">
@@ -148,11 +132,7 @@ export function SelectionStack({
                       className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-purple-400 transition-colors"
                       title={isPinned ? 'Unpin' : 'Pin'}
                     >
-                      {isPinned ? (
-                        <PinOff className="w-4 h-4" />
-                      ) : (
-                        <Pin className="w-4 h-4" />
-                      )}
+                      {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
                     </button>
                     <button
                       onClick={() => toggleExpanded(node.id)}

@@ -700,7 +700,7 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
   /**
    * GET /api/v1/groups/nodes/:nodeId/groups
    * Reverse lookup: Get all groups that contain this node
-   * Used for Canvas ↔ Navigation bidirectional sync
+   * Used for Keimenon ↔ Navigation bidirectional sync
    */
   router.get(
     '/nodes/:nodeId/groups',

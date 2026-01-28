@@ -45,7 +45,7 @@ Add to `.claude/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "canvas-code-execution": {
+    "keimenon-code-execution": {
       "command": "node",
       "args": ["${workspaceFolder}/.mcp/servers/code-execution/dist/index.js"]
     }
@@ -283,13 +283,13 @@ alias ccx="claude --append-system-prompt-file .claude/personas/deploy.md --mcp-c
 
 **Servers to Update**:
 
-- canvas-database
-- canvas-docs
-- canvas-api-testing
-- canvas-chat-import
-- canvas-settings-crm
-- canvas-playwright-e2e
-- canvas-code-execution (already has this pattern)
+- keimenon-database
+- keimenon-docs
+- keimenon-api-testing
+- keimenon-chat-import
+- keimenon-settings-crm
+- keimenon-playwright-e2e
+- keimenon-code-execution (already has this pattern)
 
 **Token Savings**: From 4,300 → 280 tokens (-93%)
 
@@ -311,7 +311,7 @@ alias ccx="claude --append-system-prompt-file .claude/personas/deploy.md --mcp-c
 
 ```typescript
 // Database server calls docs server for schema documentation
-const schemaDoc = await this.callMCPServer('canvas-docs', 'search_docs', {
+const schemaDoc = await this.callMCPServer('keimenon-docs', 'search_docs', {
   query: `schema ${tableName}`,
 });
 ```
@@ -527,7 +527,7 @@ Add to `.claude/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "canvas-code-execution": {
+    "keimenon-code-execution": {
       "command": "node",
       "args": ["${workspaceFolder}/.mcp/servers/code-execution/dist/index.js"],
       "description": "Code execution for 98.7% token savings"

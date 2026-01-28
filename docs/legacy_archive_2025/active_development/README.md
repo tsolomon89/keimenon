@@ -6,7 +6,7 @@
 
 ## Purpose
 
-This directory contains **active, living documentation** for Canvas Memory OS development. All documents here represent current work in progress or planned future work.
+This directory contains **active, living documentation** for Keimenon development. All documents here represent current work in progress or planned future work.
 
 ---
 

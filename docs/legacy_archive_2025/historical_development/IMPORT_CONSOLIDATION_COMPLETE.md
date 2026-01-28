@@ -6,7 +6,7 @@
 
 ## Summary
 
-Successfully completed the consolidation of the Canvas Memory import system to a single job-based rail with comprehensive security, observability, and defensive programming enhancements.
+Successfully completed the consolidation of the Keimenon import system to a single job-based rail with comprehensive security, observability, and defensive programming enhancements.
 
 ## What Was Completed
 
@@ -48,7 +48,7 @@ Renamed all legacy import files to `.old.*` extensions (non-destructive):
 
 ### 3. Entry Point Updates (Phase 3) ✅
 
-**File**: `apps/web/src/components/canvas/CanvasSidebar.tsx`
+**File**: `apps/web/src/components/keimenon/KeimenonSidebar.tsx`
 
 **Changes:**
 
@@ -61,7 +61,7 @@ Renamed all legacy import files to `.old.*` extensions (non-destructive):
 
 ### 4. Debug Selector Component (Phase 4) ✅
 
-**File**: `apps/web/src/components/canvas/ImportMethodSelector.tsx` (new)
+**File**: `apps/web/src/components/keimenon/ImportMethodSelector.tsx` (new)
 
 **Features:**
 
@@ -134,7 +134,7 @@ tenancy: {
 
 ### 8. Tenancy Debug Badge (Phase 8) ✅
 
-**File**: `apps/web/src/components/canvas/ChatImportModal.tsx` (lines 424-439)
+**File**: `apps/web/src/components/keimenon/ChatImportModal.tsx` (lines 424-439)
 
 **Features:**
 
@@ -381,7 +381,7 @@ None! All critical bugs fixed:
 
 ## Summary
 
-The Canvas Memory import system consolidation is now complete with:
+The Keimenon import system consolidation is now complete with:
 
 1. ✅ **Single Job-Based Rail** - All production imports use one path
 2. ✅ **Multi-Tenant Security** - Server-side validation with ULID tracking

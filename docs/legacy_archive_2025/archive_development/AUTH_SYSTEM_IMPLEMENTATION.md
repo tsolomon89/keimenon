@@ -5,7 +5,7 @@
 
 ## Summary
 
-Implementing a comprehensive multi-tenant authentication and authorization system for Canvas Memory OS. The system will support:
+Implementing a comprehensive multi-tenant authentication and authorization system for Keimenon. The system will support:
 
 - Admin accounts (system-level access)
 - Client accounts (isolated tenants)
@@ -18,11 +18,11 @@ Implementing a comprehensive multi-tenant authentication and authorization syste
 
 ### Session 1 (Earlier Today)
 
-1. ✅ **Phase 1.1: Connected Canvas to Backend**
+1. ✅ **Phase 1.1: Connected Keimenon to Backend**
    - Added `getNodes()`, `getEdges()`, `getNode()` API functions
-   - Enhanced canvas store with `loadGraphData()`
-   - Updated Canvas page to fetch data on mount
-   - Replaced CanvasViewport placeholder with actual Canvas2D
+   - Enhanced keimenon store with `loadGraphData()`
+   - Updated Keimenon page to fetch data on mount
+   - Replaced KeimenonViewport placeholder with actual Keimenon2D
    - Fixed edge filtering bug (nodes not found)
    - **Result**: Graph visualization now working with real database data!
 
@@ -302,8 +302,8 @@ apps/web/src/
 - packages/db/src/sqlite/client.ts (schema)
 - apps/api/src/routes/\*.ts (all routes - add auth)
 - apps/web/src/app/login/page.tsx
-- apps/web/src/app/canvas/page.tsx (add account context)
-- apps/web/src/components/canvas/CanvasHeader.tsx (add user menu)
+- apps/web/src/app/keimenon/page.tsx (add account context)
+- apps/web/src/components/keimenon/KeimenonHeader.tsx (add user menu)
 
 ## Estimated Timeline
 

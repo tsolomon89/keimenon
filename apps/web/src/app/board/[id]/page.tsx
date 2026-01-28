@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { FourRegionLayout } from '@keimenon/ui';
-import { Canvas2D } from '@/components/canvas/Canvas2D';
+import { Keimenon2D } from '@/components/keimenon/Keimenon2D';
 import { GraphNode, GraphEdge } from '@keimenon/graph';
 import { Grid3x3, Zap } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/env.config';
@@ -16,7 +16,7 @@ export default function BoardPage() {
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
-  const [canvasSize, setCanvasSize] = useState({ width: 1200, height: 800 });
+  const [keimenonSize, setKeimenonSize] = useState({ width: 1200, height: 800 });
 
   // Fetch board data
   useEffect(() => {
@@ -26,9 +26,9 @@ export default function BoardPage() {
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
-      const container = document.getElementById('canvas-container');
+      const container = document.getElementById('keimenon-container');
       if (container) {
-        setCanvasSize({
+        setKeimenonSize({
           width: container.clientWidth,
           height: container.clientHeight,
         });
@@ -154,7 +154,7 @@ export default function BoardPage() {
         </div>
       }
     >
-      <div id="canvas-container" className="w-full h-full">
+      <div id="keimenon-container" className="w-full h-full">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-4">
@@ -177,11 +177,11 @@ export default function BoardPage() {
             </div>
           </div>
         ) : (
-          <Canvas2D
+          <Keimenon2D
             nodes={nodes}
             edges={edges}
-            width={canvasSize.width}
-            height={canvasSize.height}
+            width={keimenonSize.width}
+            height={keimenonSize.height}
             onNodeClick={handleNodeClick}
             onNodeDoubleClick={handleNodeDoubleClick}
             onSelectionChange={handleSelectionChange}

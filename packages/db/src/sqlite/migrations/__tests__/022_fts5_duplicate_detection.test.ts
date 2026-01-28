@@ -10,8 +10,7 @@
  * 6. Backfill works for existing Message nodes
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import * as assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'vitest';
 import Database from 'better-sqlite3';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -65,12 +64,16 @@ describe('Migration 022: FTS5 Duplicate Detection', () => {
     db.exec(migrationSql);
 
     // Verify table exists
-    const tables = db.prepare(`
+    const tables = db
+      .prepare(
+        `
       SELECT name FROM sqlite_master
       WHERE type='table' AND name='messages_fts_duplicate'
-    `).all();
+    `
+      )
+      .all();
 
-    assert.strictEqual(tables.length, 1, 'messages_fts_duplicate table should exist');
+    expect(tables.length).toBe(1);
   });
 
   it('Migration creates all three triggers', async () => {
@@ -80,18 +83,22 @@ describe('Migration 022: FTS5 Duplicate Detection', () => {
     db.exec(migrationSql);
 
     // Verify triggers exist
-    const triggers = db.prepare(`
+    const triggers = db
+      .prepare(
+        `
       SELECT name FROM sqlite_master
       WHERE type='trigger' AND name LIKE 'messages_fts_duplicate%'
       ORDER BY name
-    `).all();
+    `
+      )
+      .all();
 
-    assert.strictEqual(triggers.length, 3, 'Should have 3 triggers');
+    expect(triggers.length).toBe(3);
 
     const triggerNames = triggers.map((t: any) => t.name);
-    assert.ok(triggerNames.includes('messages_fts_duplicate_insert'), 'Should have INSERT trigger');
-    assert.ok(triggerNames.includes('messages_fts_duplicate_update'), 'Should have UPDATE trigger');
-    assert.ok(triggerNames.includes('messages_fts_duplicate_delete'), 'Should have DELETE trigger');
+    expect(triggerNames).toContain('messages_fts_duplicate_insert');
+    expect(triggerNames).toContain('messages_fts_duplicate_update');
+    expect(triggerNames).toContain('messages_fts_duplicate_delete');
   });
 
   it('INSERT trigger populates FTS5 table for Message nodes', async () => {
@@ -105,18 +112,22 @@ describe('Migration 022: FTS5 Duplicate Detection', () => {
     const accountId = `acc_${nanoid()}`;
     const content = 'Hello world, this is a test message';
 
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(messageId, 'Message', accountId, content, 'hash_123', Date.now(), Date.now());
+    `
+    ).run(messageId, 'Message', accountId, content, 'hash_123', Date.now(), Date.now());
 
     // Verify FTS5 entry created
-    const ftsEntries = db.prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?').all(messageId);
+    const ftsEntries = db
+      .prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?')
+      .all(messageId);
 
-    assert.strictEqual(ftsEntries.length, 1, 'Should have 1 FTS5 entry');
-    assert.strictEqual((ftsEntries[0] as any).node_id, messageId);
-    assert.strictEqual((ftsEntries[0] as any).content, content);
-    assert.strictEqual((ftsEntries[0] as any).account_id, accountId);
+    expect(ftsEntries.length).toBe(1);
+    expect((ftsEntries[0] as any).node_id).toBe(messageId);
+    expect((ftsEntries[0] as any).content).toBe(content);
+    expect((ftsEntries[0] as any).account_id).toBe(accountId);
   });
 
   it('INSERT trigger ignores non-Message nodes', async () => {
@@ -129,15 +140,19 @@ describe('Migration 022: FTS5 Duplicate Detection', () => {
     const sourceId = `src_${nanoid()}`;
     const accountId = `acc_${nanoid()}`;
 
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(sourceId, 'Source', accountId, 'Some content', 'hash_456', Date.now(), Date.now());
+    `
+    ).run(sourceId, 'Source', accountId, 'Some content', 'hash_456', Date.now(), Date.now());
 
     // Verify NO FTS5 entry created for Source
-    const ftsEntries = db.prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?').all(sourceId);
+    const ftsEntries = db
+      .prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?')
+      .all(sourceId);
 
-    assert.strictEqual(ftsEntries.length, 0, 'Should have 0 FTS5 entries for Source node');
+    expect(ftsEntries.length).toBe(0);
   });
 
   it('INSERT trigger ignores Message nodes without canonical_content', async () => {
@@ -150,15 +165,19 @@ describe('Migration 022: FTS5 Duplicate Detection', () => {
     const messageId = `msg_${nanoid()}`;
     const accountId = `acc_${nanoid()}`;
 
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
       VALUES (?, ?, ?, NULL, ?, ?, ?)
-    `).run(messageId, 'Message', accountId, 'hash_789', Date.now(), Date.now());
+    `
+    ).run(messageId, 'Message', accountId, 'hash_789', Date.now(), Date.now());
 
     // Verify NO FTS5 entry created
-    const ftsEntries = db.prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?').all(messageId);
+    const ftsEntries = db
+      .prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?')
+      .all(messageId);
 
-    assert.strictEqual(ftsEntries.length, 0, 'Should have 0 FTS5 entries for Message without content');
+    expect(ftsEntries.length).toBe(0);
   });
 
   it('UPDATE trigger updates FTS5 entry when canonical_content changes', async () => {
@@ -173,23 +192,29 @@ describe('Migration 022: FTS5 Duplicate Detection', () => {
     const originalContent = 'Original message content';
     const updatedContent = 'Updated message content';
 
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(messageId, 'Message', accountId, originalContent, 'hash_123', Date.now(), Date.now());
+    `
+    ).run(messageId, 'Message', accountId, originalContent, 'hash_123', Date.now(), Date.now());
 
     // Verify original FTS5 entry
-    let ftsEntry: any = db.prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?').get(messageId);
-    assert.strictEqual(ftsEntry.content, originalContent);
+    let ftsEntry: any = db
+      .prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?')
+      .get(messageId);
+    expect(ftsEntry.content).toBe(originalContent);
 
     // Update canonical_content
-    db.prepare(`
+    db.prepare(
+      `
       UPDATE nodes SET canonical_content = ?, updated_at = ? WHERE id = ?
-    `).run(updatedContent, Date.now(), messageId);
+    `
+    ).run(updatedContent, Date.now(), messageId);
 
     // Verify FTS5 entry updated
     ftsEntry = db.prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?').get(messageId);
-    assert.strictEqual(ftsEntry.content, updatedContent, 'FTS5 content should be updated');
+    expect(ftsEntry.content).toBe(updatedContent);
   });
 
   it('DELETE trigger removes FTS5 entry when Message node is deleted', async () => {
@@ -202,21 +227,27 @@ describe('Migration 022: FTS5 Duplicate Detection', () => {
     const messageId = `msg_${nanoid()}`;
     const accountId = `acc_${nanoid()}`;
 
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(messageId, 'Message', accountId, 'Test content', 'hash_123', Date.now(), Date.now());
+    `
+    ).run(messageId, 'Message', accountId, 'Test content', 'hash_123', Date.now(), Date.now());
 
     // Verify FTS5 entry exists
-    let ftsEntries = db.prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?').all(messageId);
-    assert.strictEqual(ftsEntries.length, 1);
+    let ftsEntries = db
+      .prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?')
+      .all(messageId);
+    expect(ftsEntries.length).toBe(1);
 
     // Delete Message node
     db.prepare('DELETE FROM nodes WHERE id = ?').run(messageId);
 
     // Verify FTS5 entry removed
-    ftsEntries = db.prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?').all(messageId);
-    assert.strictEqual(ftsEntries.length, 0, 'FTS5 entry should be deleted');
+    ftsEntries = db
+      .prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?')
+      .all(messageId);
+    expect(ftsEntries.length).toBe(0);
   });
 
   it('FTS5 search works with trigram tokenization', async () => {
@@ -234,24 +265,30 @@ describe('Migration 022: FTS5 Duplicate Detection', () => {
     ];
 
     for (const msg of messages) {
-      db.prepare(`
+      db.prepare(
+        `
         INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(msg.id, 'Message', accountId, msg.content, 'hash', Date.now(), Date.now());
+      `
+      ).run(msg.id, 'Message', accountId, msg.content, 'hash', Date.now(), Date.now());
     }
 
     // Search for "hello"
-    const results: any[] = db.prepare(`
+    const results: any[] = db
+      .prepare(
+        `
       SELECT node_id, content, rank
       FROM messages_fts_duplicate
       WHERE content MATCH 'hello'
       ORDER BY rank
-    `).all();
+    `
+      )
+      .all();
 
-    assert.strictEqual(results.length, 2, 'Should find 2 messages with "hello"');
-    const nodeIds = results.map(r => r.node_id);
-    assert.ok(nodeIds.includes(messages[0].id), 'Should find "hello world"');
-    assert.ok(nodeIds.includes(messages[1].id), 'Should find "hello there"');
+    expect(results.length).toBe(2);
+    const nodeIds = results.map((r) => r.node_id);
+    expect(nodeIds).toContain(messages[0].id);
+    expect(nodeIds).toContain(messages[1].id);
   });
 
   it('FTS5 trigrams enable fuzzy matching', async () => {
@@ -265,20 +302,26 @@ describe('Migration 022: FTS5 Duplicate Detection', () => {
     const accountId = `acc_${nanoid()}`;
     const content = 'implementation details';
 
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(messageId, 'Message', accountId, content, 'hash', Date.now(), Date.now());
+    `
+    ).run(messageId, 'Message', accountId, content, 'hash', Date.now(), Date.now());
 
     // Search for partial match "implement" (should match "implementation")
-    const results: any[] = db.prepare(`
+    const results: any[] = db
+      .prepare(
+        `
       SELECT node_id, content
       FROM messages_fts_duplicate
       WHERE content MATCH 'implement'
-    `).all();
+    `
+      )
+      .all();
 
-    assert.ok(results.length > 0, 'Trigrams should enable partial matching');
-    assert.ok(results.some(r => r.node_id === messageId), 'Should find "implementation" via "implement"');
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.some((r) => r.node_id === messageId)).toBe(true);
   });
 
   it('Backfill populates FTS5 for existing Message nodes', async () => {
@@ -291,10 +334,12 @@ describe('Migration 022: FTS5 Duplicate Detection', () => {
     ];
 
     for (const msg of existingMessages) {
-      db.prepare(`
+      db.prepare(
+        `
         INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(msg.id, 'Message', accountId, msg.content, 'hash', Date.now(), Date.now());
+      `
+      ).run(msg.id, 'Message', accountId, msg.content, 'hash', Date.now(), Date.now());
     }
 
     // Apply migration (includes backfill)
@@ -304,12 +349,14 @@ describe('Migration 022: FTS5 Duplicate Detection', () => {
 
     // Verify all existing messages are in FTS5
     const ftsCount: any = db.prepare('SELECT COUNT(*) as count FROM messages_fts_duplicate').get();
-    assert.strictEqual(ftsCount.count, 3, 'Backfill should populate 3 existing messages');
+    expect(ftsCount.count).toBe(3);
 
     for (const msg of existingMessages) {
-      const ftsEntry: any = db.prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?').get(msg.id);
-      assert.ok(ftsEntry, `FTS5 entry should exist for ${msg.id}`);
-      assert.strictEqual(ftsEntry.content, msg.content, 'Content should match');
+      const ftsEntry: any = db
+        .prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?')
+        .get(msg.id);
+      expect(ftsEntry).toBeTruthy();
+      expect(ftsEntry.content).toBe(msg.content);
     }
   });
 
@@ -323,24 +370,48 @@ describe('Migration 022: FTS5 Duplicate Detection', () => {
     const accountA = `acc_A_${nanoid()}`;
     const accountB = `acc_B_${nanoid()}`;
 
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(`msg_A_${nanoid()}`, 'Message', accountA, 'Account A message', 'hash', Date.now(), Date.now());
+    `
+    ).run(
+      `msg_A_${nanoid()}`,
+      'Message',
+      accountA,
+      'Account A message',
+      'hash',
+      Date.now(),
+      Date.now()
+    );
 
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(`msg_B_${nanoid()}`, 'Message', accountB, 'Account B message', 'hash', Date.now(), Date.now());
+    `
+    ).run(
+      `msg_B_${nanoid()}`,
+      'Message',
+      accountB,
+      'Account B message',
+      'hash',
+      Date.now(),
+      Date.now()
+    );
 
     // Verify both accounts' messages are in FTS5 with correct account_id
-    const accountAMessages: any[] = db.prepare('SELECT * FROM messages_fts_duplicate WHERE account_id = ?').all(accountA);
-    const accountBMessages: any[] = db.prepare('SELECT * FROM messages_fts_duplicate WHERE account_id = ?').all(accountB);
+    const accountAMessages: any[] = db
+      .prepare('SELECT * FROM messages_fts_duplicate WHERE account_id = ?')
+      .all(accountA);
+    const accountBMessages: any[] = db
+      .prepare('SELECT * FROM messages_fts_duplicate WHERE account_id = ?')
+      .all(accountB);
 
-    assert.strictEqual(accountAMessages.length, 1, 'Account A should have 1 message');
-    assert.strictEqual(accountBMessages.length, 1, 'Account B should have 1 message');
-    assert.strictEqual(accountAMessages[0].account_id, accountA, 'Account A ID should match');
-    assert.strictEqual(accountBMessages[0].account_id, accountB, 'Account B ID should match');
+    expect(accountAMessages.length).toBe(1);
+    expect(accountBMessages.length).toBe(1);
+    expect(accountAMessages[0].account_id).toBe(accountA);
+    expect(accountBMessages[0].account_id).toBe(accountB);
   });
 
   it('Migration table/trigger creation is idempotent (IF NOT EXISTS)', async () => {
@@ -350,23 +421,36 @@ describe('Migration 022: FTS5 Duplicate Detection', () => {
     db.exec(migrationSql);
 
     // Verify table and triggers created
-    let tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='messages_fts_duplicate'").all();
-    let triggers = db.prepare("SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'messages_fts_duplicate%'").all();
-    assert.strictEqual(tables.length, 1);
-    assert.strictEqual(triggers.length, 3);
+    let tables = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='messages_fts_duplicate'"
+      )
+      .all();
+    let triggers = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'messages_fts_duplicate%'"
+      )
+      .all();
+    expect(tables.length).toBe(1);
+    expect(triggers.length).toBe(3);
 
     // Run migration AGAIN (should not error due to IF NOT EXISTS)
-    assert.doesNotThrow(() => {
+    expect(() => {
       db.exec(migrationSql);
-    }, 'Migration should not error when run twice (IF NOT EXISTS)');
+    }).not.toThrow();
 
     // Verify table and triggers still exist (same count)
-    tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='messages_fts_duplicate'").all();
-    triggers = db.prepare("SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'messages_fts_duplicate%'").all();
-    assert.strictEqual(tables.length, 1, 'Table should not be duplicated');
-    assert.strictEqual(triggers.length, 3, 'Triggers should not be duplicated');
-
-    // Note: Backfill will run twice and create duplicate FTS5 entries.
-    // This is acceptable because MigrationRunner tracks migrations and prevents double-runs in practice.
+    tables = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='messages_fts_duplicate'"
+      )
+      .all();
+    triggers = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'messages_fts_duplicate%'"
+      )
+      .all();
+    expect(tables.length).toBe(1);
+    expect(triggers.length).toBe(3);
   });
 });

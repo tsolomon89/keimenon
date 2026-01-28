@@ -79,7 +79,7 @@ Content-Type: application/json
 
 ### Scenario 1: Failed Import Leaves 8997 Orphaned Nodes
 
-**Problem**: Import job times out after creating 8997 nodes but before completing. These orphaned nodes clutter the canvas.
+**Problem**: Import job times out after creating 8997 nodes but before completing. These orphaned nodes clutter the keimenon.
 
 **Solution**:
 
@@ -322,13 +322,13 @@ All compensation operations are logged:
 
 ```bash
 # Compensate a specific job
-canvas-cli jobs compensate job_xyz789
+keimenon-cli jobs compensate job_xyz789
 
 # Compensate all failed imports for an account
-canvas-cli jobs compensate --account acct_abc --status failed --type import
+keimenon-cli jobs compensate --account acct_abc --status failed --type import
 
 # Dry run (preview only, don't delete)
-canvas-cli jobs compensate job_xyz789 --dry-run
+keimenon-cli jobs compensate job_xyz789 --dry-run
 ```
 
 ### Node.js Script

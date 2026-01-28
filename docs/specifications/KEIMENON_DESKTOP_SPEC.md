@@ -34,8 +34,8 @@
 1. User visits `keimenon.com` → **Download App**.
 2. Installs and launches Keimenon.
 3. App prompts **Create account / Log in**.
-4. Auth flow happens via a browser-based provider flow; on success user returns to app.
-5. App stores session + entitlements locally (offline-tolerant).
+4. Auth flow happens via a browser-based provider flow; heavily relies on internet connection (also for AI features).
+5. App stores session + entitlements locally (offline-tolerant for viewing, needs connection for verification).
 
 ### 3.2 Core value workflow
 

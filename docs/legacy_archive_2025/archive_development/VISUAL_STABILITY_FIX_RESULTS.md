@@ -46,7 +46,7 @@ Successfully fixed visual stability issues in E2E tests, achieving **100% stabil
 ### 4. ⚠️ Timing Issues (OVERSTATED)
 
 - **Problem**: `networkidle` timeout on pages with polling
-- **Evidence**: Canvas page timed out waiting for network idle
+- **Evidence**: Keimenon page timed out waiting for network idle
 - **Impact**: MEDIUM - Not primary cause, but contributed
 
 ---
@@ -144,7 +144,7 @@ The following fixes were **skipped** because Phases 1-2 achieved 100% stability:
 
 **Test Matrix**:
 
-- 2 test cases (canvas page, login page)
+- 2 test cases (keimenon page, login page)
 - 10 repetitions per test
 - 3 browsers (Chromium, Firefox, WebKit)
 - **Total**: 60 tests
@@ -163,7 +163,7 @@ Running 60 tests using 1 worker
 
 **Screenshot Comparison**:
 
-- 10 baseline screenshots created (6 canvas + 4 login)
+- 10 baseline screenshots created (6 keimenon + 4 login)
 - All 60 runs matched baselines perfectly
 - 0 diff images generated
 - 0 visual regressions detected

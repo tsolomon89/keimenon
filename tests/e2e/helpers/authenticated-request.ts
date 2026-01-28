@@ -85,7 +85,7 @@ export async function makeAuthenticatedRequest(
   options?: RequestOptions
 ) {
   // Extract token from localStorage
-  const token = await page.evaluate(() => localStorage.getItem('canvas_memory_token'));
+  const token = await page.evaluate(() => localStorage.getItem('keimenon_token'));
 
   if (!token) {
     throw new Error(
@@ -167,7 +167,7 @@ export async function switchAccount(page: Page, accountId: string) {
     // Store the new token in localStorage
     if (body.token) {
       await page.evaluate((token) => {
-        localStorage.setItem('canvas_memory_token', token);
+        localStorage.setItem('keimenon_token', token);
       }, body.token);
     }
   }

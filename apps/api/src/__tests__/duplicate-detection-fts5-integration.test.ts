@@ -5,7 +5,7 @@
  * Verifies FTS5 triggers, accuracy vs baseline, and multi-tenant isolation.
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import * as assert from 'node:assert';
 import Database from 'better-sqlite3';
 import { promises as fs } from 'fs';
@@ -13,8 +13,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { nanoid } from 'nanoid';
 import { IntegratedDuplicateDetectionService } from '../services/duplicate-detection-integrated';
-import { DuplicateDetectionFTS5Service, type MessageWithMetadata } from '../services/duplicate-detection-fts5';
-import { DuplicateDetectionService, type DuplicateDetectionConfig } from '../services/duplicate-detection';
+import {
+  DuplicateDetectionFTS5Service,
+  type MessageWithMetadata,
+} from '../services/duplicate-detection-fts5';
+import {
+  DuplicateDetectionService,
+  type DuplicateDetectionConfig,
+} from '../services/duplicate-detection';
 import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -42,10 +48,12 @@ function insertMessageNode(
   const now = Date.now();
   const contentHash = createContentHash(content);
 
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(nodeId, 'Message', accountId, content, contentHash, now, now);
+  `
+  ).run(nodeId, 'Message', accountId, content, contentHash, now, now);
 }
 
 describe('FTS5 Duplicate Detection - Integration Tests', () => {
@@ -58,7 +66,7 @@ describe('FTS5 Duplicate Detection - Integration Tests', () => {
   // Store original env
   const originalEnv: Record<string, string | undefined> = {};
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     // Create fresh test database
     testDbPath = path.join(__dirname, `test-fts5-integration-${Date.now()}.db`);
     db = new Database(testDbPath);
@@ -276,11 +284,13 @@ describe('FTS5 Duplicate Detection - Integration Tests', () => {
       // Update message content (should trigger UPDATE trigger)
       const now = Date.now();
       const newHash = createContentHash(updatedContent);
-      db.prepare(`
+      db.prepare(
+        `
         UPDATE nodes
         SET canonical_content = ?, content_hash = ?, updated_at = ?
         WHERE id = ?
-      `).run(updatedContent, newHash, now, msgId);
+      `
+      ).run(updatedContent, newHash, now, msgId);
 
       // Verify FTS5 has updated content
       fts5Row = db
@@ -307,9 +317,7 @@ describe('FTS5 Duplicate Detection - Integration Tests', () => {
       db.prepare('DELETE FROM nodes WHERE id = ?').run(msgId);
 
       // Verify FTS5 entry is deleted
-      fts5Row = db
-        .prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?')
-        .get(msgId);
+      fts5Row = db.prepare('SELECT * FROM messages_fts_duplicate WHERE node_id = ?').get(msgId);
       assert.strictEqual(fts5Row, undefined, 'FTS5 entry should be deleted');
     });
   });
@@ -418,10 +426,15 @@ describe('FTS5 Duplicate Detection - Integration Tests', () => {
 
       // Verify at least some duplicates were found
       assert.ok(fts5Result.groups.length > 0, 'Should find at least one duplicate group');
-      assert.ok(baselineResult.groups.length > 0, 'Baseline should find at least one duplicate group');
+      assert.ok(
+        baselineResult.groups.length > 0,
+        'Baseline should find at least one duplicate group'
+      );
 
       console.log('✅ 100% Recall Achieved: FTS5 matches baseline exactly');
-      console.log(`   Both found ${fts5Result.groups.length} duplicate group(s) with 2 exact hash matches`);
+      console.log(
+        `   Both found ${fts5Result.groups.length} duplicate group(s) with 2 exact hash matches`
+      );
     });
 
     it('should not produce false positives (precision check)', async () => {
@@ -613,11 +626,7 @@ describe('FTS5 Duplicate Detection - Integration Tests', () => {
       const resultB = await integratedService.findDuplicates(messagesB, config, accountB);
 
       // Verify no duplicates found (Account B should not see Account A's data)
-      assert.strictEqual(
-        resultB.groups.length,
-        0,
-        'Account B should not see Account A data'
-      );
+      assert.strictEqual(resultB.groups.length, 0, 'Account B should not see Account A data');
     });
   });
 

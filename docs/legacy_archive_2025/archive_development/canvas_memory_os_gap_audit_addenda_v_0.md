@@ -1,4 +1,4 @@
-# Canvas Memory OS — Gap Audit & Addenda (v0.2)
+# Keimenon — Gap Audit & Addenda (v0.2)
 
 **Purpose:** Fill omissions from chat + extend the v0.1 spec without changing its spine.
 

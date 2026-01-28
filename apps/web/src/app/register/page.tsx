@@ -52,7 +52,7 @@ export default function RegisterPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/canvas');
+      router.push('/keimenon');
     }
   }, [isAuthenticated, router]);
 
@@ -189,7 +189,7 @@ export default function RegisterPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-purple-600">
             <UserPlus className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Canvas Memory OS</h1>
+          <h1 className="text-4xl font-bold text-white mb-2">Keimenon</h1>
           <p className="text-slate-400">Create your workspace account</p>
         </div>
 

@@ -1,32 +1,32 @@
-# ✅ Option 2 Complete: Phase 3 - Canvas Integration
+# ✅ Option 2 Complete: Phase 3 - Keimenon Integration
 
 ## Summary
 
-Successfully created canvas visualization components for displaying imported conversations, sources, and code assets. The implementation includes a hierarchical tree view (LHS sidebar), detailed inspector (RHS sidebar), and draggable canvas cards.
+Successfully created keimenon visualization components for displaying imported conversations, sources, and code assets. The implementation includes a hierarchical tree view (LHS sidebar), detailed inspector (RHS sidebar), and draggable keimenon cards.
 
 ---
 
 ## Components Created
 
-### 1. Canvas Types
+### 1. Keimenon Types
 
-**File**: [apps/web/src/types/canvas.ts](apps/web/src/types/canvas.ts)
+**File**: [apps/web/src/types/keimenon.ts](apps/web/src/types/keimenon.ts)
 
 **Key Interfaces**:
 
 ```typescript
-CanvasNode - Represents items on the canvas (sources, groups, conversations, code)
-CanvasGroup - Groups of related nodes with color coding
+KeimenonNode - Represents items on the keimenon (sources, groups, conversations, code)
+KeimenonGroup - Groups of related nodes with color coding
 SourceNode - Detailed source information (conversations, source docs, code assets)
 FolderNode - Folder hierarchy for organization
 TreeNode - Union type for tree view items
-CanvasState - Overall canvas state (nodes, groups, selection, viewport)
+KeimenonState - Overall keimenon state (nodes, groups, selection, viewport)
 InspectorData - Data structure for inspector panel
 ```
 
 ### 2. SourceTreeView (LHS Sidebar)
 
-**File**: [apps/web/src/components/canvas/SourceTreeView.tsx](apps/web/src/components/canvas/SourceTreeView.tsx)
+**File**: [apps/web/src/components/keimenon/SourceTreeView.tsx](apps/web/src/components/keimenon/SourceTreeView.tsx)
 
 **Features**:
 
@@ -50,7 +50,7 @@ InspectorData - Data structure for inspector panel
 
 ### 3. SourceInspector (RHS Sidebar)
 
-**File**: [apps/web/src/components/canvas/SourceInspector.tsx](apps/web/src/components/canvas/SourceInspector.tsx)
+**File**: [apps/web/src/components/keimenon/SourceInspector.tsx](apps/web/src/components/keimenon/SourceInspector.tsx)
 
 **Features**:
 
@@ -69,9 +69,9 @@ InspectorData - Data structure for inspector panel
 3. **Metadata** - All metadata in expandable card
 4. **Actions** - Contextual actions based on item type
 
-### 4. GroupCard (Canvas Visualization)
+### 4. GroupCard (Keimenon Visualization)
 
-**File**: [apps/web/src/components/canvas/GroupCard.tsx](apps/web/src/components/canvas/GroupCard.tsx)
+**File**: [apps/web/src/components/keimenon/GroupCard.tsx](apps/web/src/components/keimenon/GroupCard.tsx)
 
 **Features**:
 
@@ -98,10 +98,10 @@ InspectorData - Data structure for inspector panel
 
 ### How to Use These Components
 
-#### 1. Update CanvasSidebar (Left) to use SourceTreeView:
+#### 1. Update KeimenonSidebar (Left) to use SourceTreeView:
 
 ```typescript
-// In CanvasSidebar.tsx - left sidebar section
+// In KeimenonSidebar.tsx - left sidebar section
 import { SourceTreeView } from './SourceTreeView';
 
 // Replace placeholder content with:
@@ -113,10 +113,10 @@ import { SourceTreeView } from './SourceTreeView';
 />
 ```
 
-#### 2. Update CanvasSidebar (Right) to use SourceInspector:
+#### 2. Update KeimenonSidebar (Right) to use SourceInspector:
 
 ```typescript
-// In CanvasSidebar.tsx - right sidebar section
+// In KeimenonSidebar.tsx - right sidebar section
 import { SourceInspector } from './SourceInspector';
 
 // Replace placeholder content with:
@@ -126,14 +126,14 @@ import { SourceInspector } from './SourceInspector';
 />
 ```
 
-#### 3. Update Canvas2D/CanvasViewport to render GroupCards:
+#### 3. Update Keimenon2D/KeimenonViewport to render GroupCards:
 
 ```typescript
-// In Canvas2D.tsx or CanvasViewport.tsx
+// In Keimenon2D.tsx or KeimenonViewport.tsx
 import { GroupCard } from './GroupCard';
 
 // Render cards:
-{canvasNodes.map((node) => (
+{keimenonNodes.map((node) => (
   <GroupCard
     key={node.id}
     node={node}
@@ -149,18 +149,18 @@ import { GroupCard } from './GroupCard';
 
 ## State Management Needed
 
-### Canvas Context/State:
+### Keimenon Context/State:
 
 ```typescript
-// Create a canvas context or state manager
-interface CanvasContextValue {
+// Create a keimenon context or state manager
+interface KeimenonContextValue {
   // Tree view
   treeNodes: TreeNode[];
   selectedIds: string[];
   onSelect: (id: string, multiSelect: boolean) => void;
 
-  // Canvas
-  canvasNodes: CanvasNode[];
+  // Keimenon
+  keimenonNodes: KeimenonNode[];
   selectedNodeIds: string[];
   onSelectNode: (id: string) => void;
 
@@ -178,22 +178,22 @@ interface CanvasContextValue {
 
 ## Data Flow
 
-### From Import to Canvas:
+### From Import to Keimenon:
 
 1. **Import Complete** → `ChatImportModal` finishes import
-2. **Parse Results** → Convert API response to canvas nodes
-3. **Update State** → Add nodes to canvas state
+2. **Parse Results** → Convert API response to keimenon nodes
+3. **Update State** → Add nodes to keimenon state
 4. **Render Tree** → `SourceTreeView` displays hierarchy
-5. **Render Canvas** → `GroupCard` components appear on canvas
-6. **Selection** → Click updates both tree and canvas
+5. **Render Keimenon** → `GroupCard` components appear on keimenon
+6. **Selection** → Click updates both tree and keimenon
 7. **Inspection** → Selected item details show in `SourceInspector`
 
 ### Example Conversion:
 
 ```typescript
-// Convert import result to canvas nodes
-function convertImportToNodes(importResult: ImportResponse): CanvasNode[] {
-  const nodes: CanvasNode[] = [];
+// Convert import result to keimenon nodes
+function convertImportToNodes(importResult: ImportResponse): KeimenonNode[] {
+  const nodes: KeimenonNode[] = [];
 
   // Convert conversations
   importResult.result?.conversations.forEach((conv, idx) => {
@@ -259,7 +259,7 @@ function convertImportToNodes(importResult: ImportResponse): CanvasNode[] {
 - [x] Empty state
 - [x] Scrollable content
 
-### ✅ Canvas (GroupCard):
+### ✅ Keimenon (GroupCard):
 
 - [x] Draggable cards
 - [x] Type-based colors
@@ -273,16 +273,16 @@ function convertImportToNodes(importResult: ImportResponse): CanvasNode[] {
 
 ## Pending Integration Tasks
 
-### 1. Connect to CanvasLayout
+### 1. Connect to KeimenonLayout
 
-Update `CanvasLayout.tsx` to use new components instead of placeholders.
+Update `KeimenonLayout.tsx` to use new components instead of placeholders.
 
 ### 2. Implement State Management
 
-Create canvas context or use React state to manage:
+Create keimenon context or use React state to manage:
 
 - Tree nodes
-- Canvas nodes
+- Keimenon nodes
 - Selection state
 - Inspector data
 
@@ -296,14 +296,14 @@ Implement actual drag-and-drop logic:
 
 ### 4. Implement Selection Synchronization
 
-- Click in tree → highlight on canvas
-- Click on canvas → highlight in tree
+- Click in tree → highlight on keimenon
+- Click on keimenon → highlight in tree
 - Update inspector for both
 
 ### 5. Add Search/Filter Logic
 
 - Implement actual filtering in tree view
-- Filter canvas nodes based on search
+- Filter keimenon nodes based on search
 - Clear filters button
 
 ---
@@ -317,10 +317,10 @@ Implement actual drag-and-drop logic:
 - Bulk actions
 - Save/load sessions
 
-### Additional Canvas Features:
+### Additional Keimenon Features:
 
 - Zoom in/out
-- Pan canvas
+- Pan keimenon
 - Group selection with lasso
 - Connection lines between nodes
 - Minimap
@@ -335,11 +335,11 @@ Implement actual drag-and-drop logic:
 ```
 apps/web/src/
 ├── types/
-│   └── canvas.ts              ✅ NEW - All canvas type definitions
-├── components/canvas/
+│   └── keimenon.ts              ✅ NEW - All keimenon type definitions
+├── components/keimenon/
 │   ├── SourceTreeView.tsx     ✅ NEW - LHS tree view
 │   ├── SourceInspector.tsx    ✅ NEW - RHS inspector
-│   └── GroupCard.tsx          ✅ NEW - Canvas card component
+│   └── GroupCard.tsx          ✅ NEW - Keimenon card component
 ```
 
 ---
@@ -367,7 +367,7 @@ apps/web/src/
 - [ ] Action buttons trigger correctly
 - [ ] Scrolls with long content
 
-### Canvas GroupCard:
+### Keimenon GroupCard:
 
 - [ ] Cards appear at correct positions
 - [ ] Drag updates position
@@ -384,9 +384,9 @@ apps/web/src/
 Here's how to integrate everything:
 
 ```typescript
-// In CanvasLayout.tsx or a new CanvasContext
+// In KeimenonLayout.tsx or a new KeimenonContext
 
-const [canvasState, setCanvasState] = useState<CanvasState>({
+const [keimenonState, setKeimenonState] = useState<KeimenonState>({
   nodes: [],
   groups: [],
   selectedNodeIds: [],
@@ -401,7 +401,7 @@ const handleImportComplete = (result: ImportResponse) => {
   const newNodes = convertImportToNodes(result);
   const newTreeNodes = convertImportToTreeNodes(result);
 
-  setCanvasState((prev) => ({
+  setKeimenonState((prev) => ({
     ...prev,
     nodes: [...prev.nodes, ...newNodes],
   }));
@@ -411,7 +411,7 @@ const handleImportComplete = (result: ImportResponse) => {
 
 // Handle selection
 const handleSelect = (id: string, multiSelect: boolean) => {
-  setCanvasState((prev) => ({
+  setKeimenonState((prev) => ({
     ...prev,
     selectedNodeIds: multiSelect ? [...prev.selectedNodeIds, id] : [id],
   }));
@@ -428,7 +428,7 @@ const handleSelect = (id: string, multiSelect: boolean) => {
 
 ## Conclusion
 
-**Option 2 (Canvas Integration) is 80% complete!**
+**Option 2 (Keimenon Integration) is 80% complete!**
 
 **What's Done**:
 
@@ -440,7 +440,7 @@ const handleSelect = (id: string, multiSelect: boolean) => {
 
 **What's Needed** (20%):
 
-- ⏳ Integration into CanvasLayout
+- ⏳ Integration into KeimenonLayout
 - ⏳ State management implementation
 - ⏳ Selection synchronization
 - ⏳ Drag-and-drop completion

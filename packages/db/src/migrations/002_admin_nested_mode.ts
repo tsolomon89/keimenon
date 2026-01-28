@@ -61,9 +61,15 @@ export async function migration002AdminNestedMode(client: SQLiteClient): Promise
 
       // Create indexes
       try {
-        db.prepare('CREATE INDEX IF NOT EXISTS idx_accounts_mode_service ON accounts(mode_service)').run();
-        db.prepare('CREATE INDEX IF NOT EXISTS idx_accounts_parent ON accounts(parent_account_id)').run();
-        db.prepare('CREATE INDEX IF NOT EXISTS idx_accounts_membership ON accounts(membership)').run();
+        db.prepare(
+          'CREATE INDEX IF NOT EXISTS idx_accounts_mode_service ON accounts(mode_service)'
+        ).run();
+        db.prepare(
+          'CREATE INDEX IF NOT EXISTS idx_accounts_parent ON accounts(parent_account_id)'
+        ).run();
+        db.prepare(
+          'CREATE INDEX IF NOT EXISTS idx_accounts_membership ON accounts(membership)'
+        ).run();
         console.log('  ✅ Created indexes on accounts');
       } catch (e) {
         console.log('  ⚠️  Indexes may already exist');
@@ -99,7 +105,8 @@ export async function migration002AdminNestedMode(client: SQLiteClient): Promise
       // ====================================================================
       console.log('📋 Step 3: Creating account_links table...');
 
-      db.prepare(`
+      db.prepare(
+        `
         CREATE TABLE IF NOT EXISTS account_links (
           id TEXT PRIMARY KEY,
           admin_account_id TEXT NOT NULL,
@@ -112,10 +119,15 @@ export async function migration002AdminNestedMode(client: SQLiteClient): Promise
           FOREIGN KEY (linked_by) REFERENCES users(id),
           UNIQUE(admin_account_id, client_account_id)
         )
-      `).run();
+      `
+      ).run();
 
-      db.prepare('CREATE INDEX IF NOT EXISTS idx_account_links_admin ON account_links(admin_account_id)').run();
-      db.prepare('CREATE INDEX IF NOT EXISTS idx_account_links_client ON account_links(client_account_id)').run();
+      db.prepare(
+        'CREATE INDEX IF NOT EXISTS idx_account_links_admin ON account_links(admin_account_id)'
+      ).run();
+      db.prepare(
+        'CREATE INDEX IF NOT EXISTS idx_account_links_client ON account_links(client_account_id)'
+      ).run();
 
       console.log('  ✅ Created account_links table');
 
@@ -124,7 +136,8 @@ export async function migration002AdminNestedMode(client: SQLiteClient): Promise
       // ====================================================================
       console.log('📋 Step 4: Creating audit_log table...');
 
-      db.prepare(`
+      db.prepare(
+        `
         CREATE TABLE IF NOT EXISTS audit_log (
           id TEXT PRIMARY KEY,
           actor_user_id TEXT NOT NULL,
@@ -144,13 +157,20 @@ export async function migration002AdminNestedMode(client: SQLiteClient): Promise
           FOREIGN KEY (actor_account_id) REFERENCES accounts(id),
           FOREIGN KEY (target_account_id) REFERENCES accounts(id)
         )
-      `).run();
+      `
+      ).run();
 
       db.prepare('CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_log(actor_user_id)').run();
-      db.prepare('CREATE INDEX IF NOT EXISTS idx_audit_account ON audit_log(actor_account_id)').run();
-      db.prepare('CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_log(target_account_id)').run();
+      db.prepare(
+        'CREATE INDEX IF NOT EXISTS idx_audit_account ON audit_log(actor_account_id)'
+      ).run();
+      db.prepare(
+        'CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_log(target_account_id)'
+      ).run();
       db.prepare('CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp)').run();
-      db.prepare('CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action, resource_type)').run();
+      db.prepare(
+        'CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action, resource_type)'
+      ).run();
 
       console.log('  ✅ Created audit_log table');
 
@@ -202,14 +222,18 @@ export async function migration002AdminNestedMode(client: SQLiteClient): Promise
 
         if (adminUser) {
           // Link all client accounts
-          const clientAccounts = db.prepare("SELECT id FROM accounts WHERE account_type = 'client'").all() as any[];
+          const clientAccounts = db
+            .prepare("SELECT id FROM accounts WHERE account_type = 'client'")
+            .all() as any[];
 
           for (const client of clientAccounts) {
             const linkId = randomUUID();
-            db.prepare(`
+            db.prepare(
+              `
               INSERT OR IGNORE INTO account_links (id, admin_account_id, client_account_id, linked_at, linked_by, notes)
               VALUES (?, ?, ?, ?, ?, ?)
-            `).run(
+            `
+            ).run(
               linkId,
               adminAccount.id,
               client.id,
@@ -241,14 +265,16 @@ export async function migration002AdminNestedMode(client: SQLiteClient): Promise
         if (!existingDebug && adminUser) {
           // Create debug account
           const debugAccountId = randomUUID();
-          db.prepare(`
+          db.prepare(
+            `
             INSERT INTO accounts (id, account_type, account_class, email, name, mode_service, parent_account_id, membership, created_by, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(
+          `
+          ).run(
             debugAccountId,
             'client',
             'business',
-            'debug@canvas-memory.com',
+            'debug@keimenon.com',
             'Debug Playground',
             1, // mode_service = true
             adminAccount.id,
@@ -260,10 +286,12 @@ export async function migration002AdminNestedMode(client: SQLiteClient): Promise
 
           // Create debug user
           const debugUserId = randomUUID();
-          db.prepare(`
+          db.prepare(
+            `
             INSERT INTO users (id, account_id, email, password_hash, google_id, name, permission_level, user_class, rank, is_active, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(
+          `
+          ).run(
             debugUserId,
             debugAccountId,
             'debug@debug.com',
@@ -280,10 +308,12 @@ export async function migration002AdminNestedMode(client: SQLiteClient): Promise
 
           // Link debug account to admin
           const linkId = randomUUID();
-          db.prepare(`
+          db.prepare(
+            `
             INSERT INTO account_links (id, admin_account_id, client_account_id, linked_at, linked_by, notes)
             VALUES (?, ?, ?, ?, ?, ?)
-          `).run(
+          `
+          ).run(
             linkId,
             adminAccount.id,
             debugAccountId,
@@ -301,10 +331,12 @@ export async function migration002AdminNestedMode(client: SQLiteClient): Promise
       // ====================================================================
       // STEP 9: Update schema metadata
       // ====================================================================
-      db.prepare(`
+      db.prepare(
+        `
         INSERT OR REPLACE INTO schema_metadata (key, value)
         VALUES ('migration_002', datetime('now'))
-      `).run();
+      `
+      ).run();
 
       console.log('📋 Migration 002 metadata recorded');
     });
@@ -338,7 +370,7 @@ export async function runMigration(databasePath: string): Promise<void> {
 
 // Allow running directly with: npx tsx src/migrations/002_admin_nested_mode.ts
 if (require.main === module) {
-  const dbPath = process.env.DB_PATH || './data/canvas.db';
+  const dbPath = process.env.DB_PATH || './data/keimenon.db';
   console.log(`Running migration on database: ${dbPath}`);
   runMigration(dbPath)
     .then(() => {

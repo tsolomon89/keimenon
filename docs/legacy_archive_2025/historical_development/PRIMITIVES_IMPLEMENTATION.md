@@ -12,7 +12,7 @@ This document summarizes the complete implementation of the new primitives-based
 
 - `apps/web/src/contexts/UIVersionContext.tsx` - Context for switching between legacy/primitives UI
 - Modified: `apps/web/src/app/layout.tsx` - Added UIVersionProvider
-- Modified: `apps/web/src/components/canvas/CanvasHeader.tsx` - Added toggle button with Sparkles icon
+- Modified: `apps/web/src/components/keimenon/KeimenonHeader.tsx` - Added toggle button with Sparkles icon
 
 **Result:** Users can now toggle between "Classic UI" (legacy) and "New UI" (primitives) using a button in the AppBar.
 
@@ -23,7 +23,7 @@ This document summarizes the complete implementation of the new primitives-based
 **Files Created:**
 
 - `apps/web/src/components/primitives/PrimitivesBody.tsx` - New body component using primitives
-- Modified: `apps/web/src/components/canvas/CanvasLayout.tsx` - Conditional rendering based on UI version
+- Modified: `apps/web/src/components/keimenon/KeimenonLayout.tsx` - Conditional rendering based on UI version
 
 **Result:** Clicking "New UI" renders PrimitivesBody instead of legacy components. Old UI remains fully functional.
 
@@ -72,13 +72,13 @@ All primitives built by extracting styles and logic from existing components to 
 
 - **Purpose:** Universal sidebar/toolbar
 - **Features:** 3 modes (navigation, inspector, toolbar), collapsible, configurable width
-- **Extracted from:** CanvasSidebar, AccountInspector, CanvasToolbar
+- **Extracted from:** KeimenonSidebar, AccountInspector, KeimenonToolbar
 - **Lines:** 176
 
 #### 3.7 Viewer Primitive (`Viewer.tsx`)
 
 - **Purpose:** Grammar-based object walker
-- **Features:** 5 modes (canvas, dashboard, settings, detail, list), grammar rules (arrays→List, objects→Card, scalars→Field)
+- **Features:** 5 modes (keimenon, dashboard, settings, detail, list), grammar rules (arrays→List, objects→Card, scalars→Field)
 - **Extracted from:** Architecture principle, delegates to other primitives
 - **Lines:** 335
 
@@ -174,7 +174,7 @@ Only these 9 primitives exist:
 5. List - Array renderer
 6. Bar - Sidebars/toolbars
 7. Viewer - Object walker
-8. Header - AppBar (existing CanvasHeader)
+8. Header - AppBar (existing KeimenonHeader)
 9. Body - Layout shell (PrimitivesBody)
 
 ### ✅ Grammar Rules
@@ -218,7 +218,7 @@ Only these 9 primitives exist:
 - **Dashboard Mode**: Shows mock metrics in grid layout
 - **Settings Mode**: Shows settings sections in navigation, renders selected section
 - **Inspector**: Shows selected item details
-- **Debug Info**: Shows current shell/canvas/section state
+- **Debug Info**: Shows current shell/keimenon/section state
 
 ### Testing the Primitives
 
@@ -309,7 +309,7 @@ apps/web/src/
 ### Immediate (Phase 6 - Cleanup)
 
 1. Wire up real API calls in adapters
-2. Complete all canvas modes (canvas, upload, processing)
+2. Complete all keimenon modes (keimenon, upload, processing)
 3. Add search functionality
 4. Implement all inspector views
 5. Delete old specialized components (~2,200 lines)
@@ -372,7 +372,7 @@ apps/web/src/
 ### 🔄 In Progress
 
 - [ ] Real API integration
-- [ ] All canvas modes
+- [ ] All keimenon modes
 - [ ] Comprehensive testing
 - [ ] Migration of remaining views
 

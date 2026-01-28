@@ -1,4 +1,4 @@
-# Canvas Memory OS - Comprehensive Audit Report
+# Keimenon - Comprehensive Audit Report
 
 **Date:** October 17, 2025
 **Auditor:** Claude (AI Assistant)
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-A comprehensive deep-dive audit of the Canvas Memory OS codebase revealed **24 distinct issues** across security, data integrity, and functionality categories. Of these, **5 are CRITICAL** and require immediate attention before any production deployment.
+A comprehensive deep-dive audit of the Keimenon codebase revealed **24 distinct issues** across security, data integrity, and functionality categories. Of these, **5 are CRITICAL** and require immediate attention before any production deployment.
 
 ### Issue Severity Breakdown
 
@@ -288,23 +288,23 @@ router.post(
 
 ---
 
-### 5. Canvas Store Account Switch Data Leakage ⚠️ CROSS-ACCOUNT UI BUG
+### 5. Keimenon Store Account Switch Data Leakage ⚠️ CROSS-ACCOUNT UI BUG
 
 **Severity:** HIGH (borderline CRITICAL) - User Privacy
 **Files:**
 
 - `apps/web/src/contexts/AuthContext.tsx` - Line 232
-- `apps/web/src/store/canvasStore.ts` - Line 386
+- `apps/web/src/store/keimenonStore.ts` - Line 386
 
 **Problem:**
-Canvas store is only reset on **logout**, not on **account switch**, causing cached data from previous account to leak into the new account view:
+Keimenon store is only reset on **logout**, not on **account switch**, causing cached data from previous account to leak into the new account view:
 
 ```typescript
 // AuthContext.tsx - logout function
 const logout = useCallback(() => {
   localStorage.removeItem(TOKEN_KEY);
   setUser(null);
-  useCanvasStore.getState().reset(); // ✅ Reset on logout
+  useKeimenonStore.getState().reset(); // ✅ Reset on logout
   router.push('/login');
 }, [router]);
 
@@ -314,8 +314,8 @@ const switchAccount = useCallback(
     // Generate new token for new account
     const newToken = await generateToken(newAccountId);
     setUser(newUser);
-    // ❌ Canvas store NOT reset - old account data still cached!
-    router.push('/canvas');
+    // ❌ Keimenon store NOT reset - old account data still cached!
+    router.push('/keimenon');
   },
   [router]
 );
@@ -323,8 +323,8 @@ const switchAccount = useCallback(
 
 **User Impact:**
 
-1. User logs in as Account A (Tim's account) → Canvas loads Tim's data
-2. User switches to Account B (Jack's account) → **Canvas still shows Tim's nodes in inspector**
+1. User logs in as Account A (Tim's account) → Keimenon loads Tim's data
+2. User switches to Account B (Jack's account) → **Keimenon still shows Tim's nodes in inspector**
 3. User sees cross-account data leakage
 4. Screenshot evidence provided by user confirms this bug
 
@@ -346,16 +346,16 @@ const switchAccount = useCallback(
     const newToken = await generateToken(newAccountId);
     setUser(newUser);
 
-    // ✅ Clear canvas store when account changes
-    useCanvasStore.getState().reset();
+    // ✅ Clear keimenon store when account changes
+    useKeimenonStore.getState().reset();
 
-    router.push('/canvas');
+    router.push('/keimenon');
   },
   [router]
 );
 
-// ALTERNATIVE: Auto-detect account change in canvas store
-// canvasStore.ts
+// ALTERNATIVE: Auto-detect account change in keimenon store
+// keimenonStore.ts
 useEffect(() => {
   const currentAccountId = useAuthStore((state) => state.user?.accountId);
   const previousAccountId = useRef(currentAccountId);
@@ -537,7 +537,7 @@ router.post('/login', authLimiter, async (req, res) => {
 
 ## Medium Severity Findings
 
-### 10. Canvas Store Stale State After Node Deletion
+### 10. Keimenon Store Stale State After Node Deletion
 
 ### 11. Missing Database Indexes on account_links
 
@@ -626,7 +626,7 @@ _(Medium/Low findings abbreviated for brevity - full details available on reques
 
 **Goal:** Fix data integrity and major functionality issues
 
-1. **Canvas Store Account Switch** (2h)
+1. **Keimenon Store Account Switch** (2h)
    - Add account change detection
    - Clear store on account switch
    - Test with multiple accounts
@@ -725,7 +725,7 @@ npm test
 # □ Import as User A succeeds
 # □ User B cannot see User A's data
 # □ Admin can only delete linked client data
-# □ Account switching clears canvas store
+# □ Account switching clears keimenon store
 # □ File upload requires authentication
 
 # 3. Create new multi-tenancy test suite
@@ -741,14 +741,14 @@ npm run test:load
 - ✅ No `UNIQUE constraint` errors during import
 - ✅ No cross-account data leakage
 - ✅ No unauthorized deletions possible
-- ✅ Canvas store clears on account switch
+- ✅ Keimenon store clears on account switch
 - ✅ Fresh database initializes correctly
 
 ---
 
 ## Conclusion
 
-The Canvas Memory OS codebase has **significant security and data integrity vulnerabilities** that must be addressed before production deployment. The good news is that these issues are well-understood and have clear remediation paths.
+The Keimenon codebase has **significant security and data integrity vulnerabilities** that must be addressed before production deployment. The good news is that these issues are well-understood and have clear remediation paths.
 
 **Estimated Total Remediation Time:** 27-33 hours
 **Recommended Timeline:** 2-3 weeks with dedicated focus

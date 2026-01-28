@@ -15,7 +15,7 @@ Token → Phrase → Sentence → Block → Section
 ### 1. Parse Conversation
 
 ```typescript
-import { ChatGPTParser } from '@canvas/parsers';
+import { ChatGPTParser } from '@keimenon/parsers';
 
 const parser = new ChatGPTParser();
 const result = await parser.parse(chatGptData, 'conversation.json');
@@ -25,7 +25,7 @@ const conversation = result.conversations[0];
 ### 2. Process with Breaking Pipeline
 
 ```typescript
-import { ContentProcessor } from '@canvas/parsers';
+import { ContentProcessor } from '@keimenon/parsers';
 
 const processor = new ContentProcessor({
   extractTokens: true,
@@ -43,10 +43,10 @@ const processedMessages = await processor.processConversation(conversation);
 ### 3. Persist to Database
 
 ```typescript
-import { GroupingStorage } from '@canvas/parsers';
-import { extractLshBands } from '@canvas/parsers';
+import { GroupingStorage } from '@keimenon/parsers';
+import { extractLshBands } from '@keimenon/parsers';
 
-const storage = new GroupingStorage('./canvas.db');
+const storage = new GroupingStorage('./keimenon.db');
 
 for (const processed of processedMessages) {
   // Insert blob
@@ -180,7 +180,7 @@ const processor = new ContentProcessor({
 ### Processing Arbitrary Text
 
 ```typescript
-import { processText } from '@canvas/parsers';
+import { processText } from '@keimenon/parsers';
 
 const processed = await processText('Your text here', {
   extractSections: true,
@@ -195,7 +195,7 @@ console.log(`Found ${processed.sentences.length} sentences`);
 ### Direct Breaking Pipeline Access
 
 ```typescript
-import { extractSections, extractBlocks, extractSentences, tokenize } from '@canvas/parsers';
+import { extractSections, extractBlocks, extractSentences, tokenize } from '@keimenon/parsers';
 
 const text = '# Hello\n\nThis is a paragraph.';
 
@@ -206,7 +206,7 @@ const sentences = extractSentences(text);
 const tokens = tokenize(text);
 
 // Generate signatures
-import { generateContentSignature } from '@canvas/parsers';
+import { generateContentSignature } from '@keimenon/parsers';
 
 const signature = generateContentSignature(
   text,
@@ -225,7 +225,7 @@ import {
   calculateJaccardSimilarity,
   calculateCosineSimilarity,
   calculateTokenSketchSimilarity,
-} from '@canvas/parsers';
+} from '@keimenon/parsers';
 
 // Jaccard similarity from MinHash
 const jaccardSim = calculateJaccardSimilarity(sig1.minHash, sig2.minHash);
@@ -334,7 +334,7 @@ This ensures all similarity computations operate on a consistent, normalized sur
 ### Creating ChatRecords
 
 ````typescript
-import { createJmdProcessor } from '@canvas/parsers';
+import { createJmdProcessor } from '@keimenon/parsers';
 
 const jmdProcessor = createJmdProcessor(db);
 
@@ -434,8 +434,8 @@ evidence:
 ### Running Clustering
 
 ```typescript
-import { createClusteringEngine } from '@canvas/parsers';
-import { loadPolicyFromFile } from '@canvas/types';
+import { createClusteringEngine } from '@keimenon/parsers';
+import { loadPolicyFromFile } from '@keimenon/types';
 
 const policy = loadPolicyFromFile('./policy.yaml');
 const engine = createClusteringEngine(db, policy);
@@ -492,7 +492,7 @@ db.prepare(
 Clustering creates scored edges with reason codes:
 
 ```typescript
-import { createNearDupEdgeGenerator } from '@canvas/parsers';
+import { createNearDupEdgeGenerator } from '@keimenon/parsers';
 
 const generator = createNearDupEdgeGenerator(db);
 
@@ -525,7 +525,7 @@ const nodeEdges = generator.getEdgesForNode('node_abc');
 Evidence combines Phase-2 metrics with coherence:
 
 ```typescript
-import { createClusterEvidenceComputer } from '@canvas/parsers';
+import { createClusterEvidenceComputer } from '@keimenon/parsers';
 
 const computer = createClusterEvidenceComputer(db, policy);
 
@@ -554,7 +554,7 @@ console.log(evidence);
 Export similarity graphs with hashed node IDs:
 
 ```typescript
-import { createPublishableExport } from '@canvas/api';
+import { createPublishableExport } from '@keimenon/api';
 
 const exporter = createPublishableExport(db, policy);
 
@@ -641,4 +641,4 @@ For more detailed information:
 - ✅ Phase 2: Multi-level breaking with signatures (Complete)
 - ✅ Phase 3: J+MD integration and clustering engine (Complete)
 - ⏳ Phase 4: API endpoints and UI integration
-- ⏳ Phase 5: Neo4j visualization and canvas graph navigation
+- ⏳ Phase 5: Neo4j visualization and keimenon graph navigation

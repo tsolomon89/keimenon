@@ -177,7 +177,7 @@ export function IngestResults({ results }: IngestResultsProps) {
           href="/board/default_board"
           className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors"
         >
-          View on Canvas
+          View on Keimenon
         </Link>
         <button
           onClick={() => window.location.reload()}

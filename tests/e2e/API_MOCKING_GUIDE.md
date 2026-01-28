@@ -39,7 +39,7 @@
    // Testing error display with specific node count
    test('should show error when node count > 1000', async ({ page, mockApiRoute }) => {
      await mockApiRoute('**/api/v1/nodes**', { nodes: [], total: 1001 });
-     await page.goto('/canvas');
+     await page.goto('/keimenon');
      await expect(page.getByText('Node limit exceeded')).toBeVisible();
    });
    ```
@@ -81,7 +81,7 @@
    // DON'T mock in full workflow tests
    test('complete import workflow', async ({ page }) => {
      // Should test real import → processing → display flow
-     await page.goto('/canvas');
+     await page.goto('/keimenon');
      await page.click('Upload');
      // ...
    });
@@ -172,7 +172,7 @@ Mocks all common auth-protected endpoints (Settings, Stats, Nodes, Edges, Import
 **Usage**:
 
 ```typescript
-test('canvas page loads without auth delays', async ({ page, mockAllAuthApis }) => {
+test('keimenon page loads without auth delays', async ({ page, mockAllAuthApis }) => {
   await mockAllAuthApis();
   await page.goto('/login');
 
@@ -182,8 +182,8 @@ test('canvas page loads without auth delays', async ({ page, mockAllAuthApis }) 
   await page.click('button[type=submit]');
 
   // All subsequent API calls are mocked
-  await page.waitForURL('/canvas');
-  await expect(page.getByText('Canvas')).toBeVisible();
+  await page.waitForURL('/keimenon');
+  await expect(page.getByText('Keimenon')).toBeVisible();
 });
 ```
 
@@ -202,7 +202,7 @@ test('custom node data', async ({ page, mockApiRoute }) => {
     total: 1,
   });
 
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
   await expect(page.getByText('Test Node')).toBeVisible();
 });
 
@@ -210,7 +210,7 @@ test('custom node data', async ({ page, mockApiRoute }) => {
 test('handle API error', async ({ page, mockApiRoute }) => {
   await mockApiRoute('**/api/v1/nodes**', { error: 'Database error' }, 500);
 
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
   await expect(page.getByText('Failed to load nodes')).toBeVisible();
 });
 ```
@@ -289,7 +289,7 @@ test('displays error message on API failure', async ({ page }) => {
 test('retries failed requests', async ({ page }) => {
   await failApiRequest(page, '**/api/v1/nodes', 429); // Rate limited
 
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
   await expect(page.getByText('Rate limit exceeded')).toBeVisible();
 });
 ```
@@ -310,7 +310,7 @@ test('should navigate to settings page', async ({ page }) => {
   await page.fill('[name=email]', 'admin@admin.com');
   await page.fill('[name=password]', 'admin123');
   await page.click('button[type=submit]');
-  await page.waitForURL('/canvas');
+  await page.waitForURL('/keimenon');
 
   // Click Settings
   await page.click('button[title="Settings"]');
@@ -332,7 +332,7 @@ test('should navigate to settings page', async ({ page, mockSettingsApi }) => {
   await page.fill('[name=email]', 'admin@admin.com');
   await page.fill('[name=password]', 'admin123');
   await page.click('button[type=submit]');
-  await page.waitForURL('/canvas');
+  await page.waitForURL('/keimenon');
 
   // Mock Settings API to avoid 401 errors
   await mockSettingsApi();
@@ -516,7 +516,7 @@ test('settings page UI (mocked API)', async ({ page, mockSettingsApi }) => {
 **❌ Mock in integration test**:
 
 ```typescript
-test('login → canvas → upload flow', async ({ page, mockAllAuthApis }) => {
+test('login → keimenon → upload flow', async ({ page, mockAllAuthApis }) => {
   await mockAllAuthApis(); // ❌ Not a real integration test anymore
 });
 ```
@@ -524,7 +524,7 @@ test('login → canvas → upload flow', async ({ page, mockAllAuthApis }) => {
 **✅ Use real APIs**:
 
 ```typescript
-test('login → canvas → upload flow', async ({ page }) => {
+test('login → keimenon → upload flow', async ({ page }) => {
   // ✅ Real integration test, no mocks
   // If flaky, fix the root cause instead of mocking
 });
@@ -613,7 +613,7 @@ await mockApiRoute('**/api/v1/settings/registry/all', {
 test('settings navigation', async ({ page }) => {
   await page.goto('/login');
   // ... login ...
-  await page.waitForURL('/canvas');
+  await page.waitForURL('/keimenon');
 
   await page.click('button[title="Settings"]');
   await page.waitForTimeout(3000); // Arbitrary wait
@@ -631,7 +631,7 @@ import { test, expect } from './fixtures/api-mocks';
 test('settings navigation (mocked API)', async ({ page, mockSettingsApi }) => {
   await page.goto('/login');
   // ... login ...
-  await page.waitForURL('/canvas');
+  await page.waitForURL('/keimenon');
 
   // Mock Settings API to avoid parallel execution issues
   await mockSettingsApi();

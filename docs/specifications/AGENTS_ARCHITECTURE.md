@@ -1,6 +1,6 @@
 # agents.md — Agent Architecture & Operating Rules
 
-**Intent:** Define agent types, schedules, policies, and IO contracts for Canvas Memory. Keep it **schema‑driven**, **declarative**, and **DRY**. All referenced files live in **`ai_context/`**.
+**Intent:** Define agent types, schedules, policies, and IO contracts for Keimenon. Keep it **schema‑driven**, **declarative**, and **DRY**. All referenced files live in **`ai_context/`**.
 
 ---
 

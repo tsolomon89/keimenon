@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { GraphNode, GraphEdge } from '@keimenon/graph';
-import { Canvas2D } from './Canvas2D';
+import { Keimenon2D } from './Keimenon2D';
 import { Loader2, Grid3x3 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/env.config';
 
@@ -23,7 +23,7 @@ export function LegacyBoardPreview({ boardId = 'default_board', height }: Legacy
   const [error, setError] = useState<string | null>(null);
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 
-  const canvasHeight = height ?? 520;
+  const keimenonHeight = height ?? 520;
 
   const loadBoard = useCallback(async () => {
     try {
@@ -100,11 +100,11 @@ export function LegacyBoardPreview({ boardId = 'default_board', height }: Legacy
         )}
 
         {!loading && !error && nodes.length > 0 && (
-          <Canvas2D
+          <Keimenon2D
             nodes={nodes}
             edges={edges}
             width={typeof window !== 'undefined' ? window.innerWidth - 420 : 900}
-            height={canvasHeight}
+            height={keimenonHeight}
             onSelectionChange={setSelectedNodeIds}
           />
         )}
@@ -116,7 +116,7 @@ export function LegacyBoardPreview({ boardId = 'default_board', height }: Legacy
             Selected nodes: <span className="text-slate-300">{selectedNodeIds.join(', ')}</span>
           </span>
         ) : (
-          <span>Select nodes in the canvas to inspect legacy graph relationships.</span>
+          <span>Select nodes in the keimenon to inspect legacy graph relationships.</span>
         )}
       </footer>
     </div>

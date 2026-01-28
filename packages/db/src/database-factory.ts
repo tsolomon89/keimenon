@@ -5,7 +5,7 @@ import { AnyNode, AnyEdge } from '@keimenon/types';
 /**
  * Storage modes
  */
-export type StorageMode = 'local' | 'canvas' | 'hybrid';
+export type StorageMode = 'local' | 'keimenon' | 'hybrid';
 
 /**
  * Unified database interface
@@ -47,8 +47,8 @@ export interface DatabaseConfig {
     verbose?: boolean;
   };
 
-  // Canvas (Neo4j) config
-  canvas?: {
+  // Keimenon (Neo4j) config
+  keimenon?: {
     uri: string;
     user: string;
     password: string;
@@ -71,8 +71,8 @@ export class DatabaseFactory {
       case 'local':
         return this.getSQLiteClient(config.local!);
 
-      case 'canvas':
-        return this.getNeo4jClient(config.canvas!) as any as DatabaseClient;
+      case 'keimenon':
+        return this.getNeo4jClient(config.keimenon!) as any as DatabaseClient;
 
       case 'hybrid':
         // For hybrid mode, return SQLite as primary

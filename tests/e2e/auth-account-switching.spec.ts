@@ -46,7 +46,7 @@ test.describe('Authentication - Account Switching', () => {
     await page.locator('#password').fill(MULTI_ACCOUNT_USER.password);
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    // Should show account selector (not directly go to canvas)
+    // Should show account selector (not directly go to keimenon)
     // Adjust based on your implementation
     const hasAccountSelector =
       (await page.getByText(/select account|choose account/i).isVisible({ timeout: 5000 })) ||
@@ -54,14 +54,14 @@ test.describe('Authentication - Account Switching', () => {
       page.url().includes('/select-account');
 
     // If user has multiple accounts, selector should appear
-    // If only one account, may skip directly to canvas
+    // If only one account, may skip directly to keimenon
     if (hasAccountSelector) {
       // Verify accounts are listed
       await expect(page.getByRole('option').or(page.getByRole('button'))).toHaveCount({ min: 2 });
     }
   });
 
-  test('should navigate to canvas after selecting account', async ({ page }) => {
+  test('should navigate to keimenon after selecting account', async ({ page }) => {
     // Use login helper which properly handles multi-account flow
     await login(page, MULTI_ACCOUNT_USER.email, MULTI_ACCOUNT_USER.password);
 
@@ -207,7 +207,7 @@ test.describe('Authentication - Account Switching', () => {
     expect(newAccountId).toBe(ACCOUNT_B_ID);
 
     // Token should be different (stored in localStorage)
-    const newToken = await page.evaluate(() => localStorage.getItem('canvas_memory_token'));
+    const newToken = await page.evaluate(() => localStorage.getItem('keimenon_token'));
     expect(newToken).toBeDefined();
   });
 

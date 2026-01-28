@@ -50,7 +50,7 @@ Phase 2 implementation successfully introduced **per-worker database isolation**
 
 #### Without Test Isolation (6 files remaining):
 
-**canvas-operations.spec.ts:**
+**keimenon-operations.spec.ts:**
 
 - Chromium: 3/3 passed ✅
 - Firefox: 3/3 passed ✅
@@ -74,7 +74,7 @@ Phase 2 implementation successfully introduced **per-worker database isolation**
 - Firefox: 1/1 passed ✅
 - Webkit: 1/1 passed ✅
 
-**flow-auth-canvas.spec.ts:**
+**flow-auth-keimenon.spec.ts:**
 
 - Chromium: 4/4 passed ✅
 - Firefox: 4/4 passed ✅
@@ -161,10 +161,10 @@ All smoke tests pass consistently across all browsers with test isolation:
 
 ### Core Authentication Flow (Chromium/Firefox)
 
-Login and canvas navigation work reliably without test isolation:
+Login and keimenon navigation work reliably without test isolation:
 
-- `flow-auth-canvas.spec.ts`: 4/4 passed in Chromium, Firefox
-- `canvas-operations.spec.ts`: 3/3 passed in Chromium, Firefox
+- `flow-auth-keimenon.spec.ts`: 4/4 passed in Chromium, Firefox
+- `keimenon-operations.spec.ts`: 3/3 passed in Chromium, Firefox
 
 ## Critical Issues ❌
 
@@ -177,7 +177,7 @@ All Chromium console-error-filtering tests fail with "stuck on login page"
 
 ```
 Error: expect(page).toHaveURL(expected) failed
-Expected pattern: /\/canvas/
+Expected pattern: /\/keimenon/
 Received string:  "http://localhost:3000/login"
 ```
 
@@ -282,11 +282,11 @@ During Phase 2 implementation, we resolved:
 ### Phase 2 Completion Tasks (After Chromium Fix)
 
 3. **Migrate Remaining Test Files** (6 files)
-   - `canvas-operations.spec.ts`
+   - `keimenon-operations.spec.ts`
    - `data-management-ui-updates.spec.ts`
    - `debug-auth.spec.ts`
    - `debug-client-env.spec.ts`
-   - `flow-auth-canvas.spec.ts`
+   - `flow-auth-keimenon.spec.ts`
    - `settings-navigation.spec.ts`
 
 4. **Full Suite Validation**
@@ -340,7 +340,7 @@ Proceed with Chromium authentication debugging. Once resolved, expect rapid migr
 
 ```
 [Worker 14] Using isolated DB: ...worker-14.db
-[Worker 14] Copying main DB from .canvas-memory...
+[Worker 14] Copying main DB from .keimenon...
 [Worker 14] Worker DB initialized with standard test user
 [Test Isolation] Page configured with DB: worker-14.db
 ✅ ok 53 [firefox] › console-error-filtering.spec.ts:32:7 › should capture errors (5.8s)
@@ -354,7 +354,7 @@ Proceed with Chromium authentication debugging. Once resolved, expect rapid migr
 [Worker 4] Worker DB initialized with standard test user
 [Test Isolation] Page configured with DB: worker-4.db
 ❌ Error: expect(page).toHaveURL(expected) failed
-   Expected pattern: /\/canvas/
+   Expected pattern: /\/keimenon/
    Received string:  "http://localhost:3000/login"
    Timeout: 10000ms
 ```

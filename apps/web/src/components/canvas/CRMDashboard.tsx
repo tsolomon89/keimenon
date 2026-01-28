@@ -180,7 +180,7 @@ export function CRMDashboard({ onJobSelect }: CRMDashboardProps) {
   const handleImportJobSelect = (jobId: string, job: ImportJob) => {
     console.log('Import job selected:', jobId, job);
     // TODO: Open Import Inspector in right sidebar
-    // Related: apps/web/src/components/canvas/CanvasSidebar.tsx (add import-detail panel)
+    // Related: apps/web/src/components/keimenon/KeimenonSidebar.tsx (add import-detail panel)
     // Related: apps/web/src/components/inspector/ImportInspector.tsx (needs creation)
   };
 

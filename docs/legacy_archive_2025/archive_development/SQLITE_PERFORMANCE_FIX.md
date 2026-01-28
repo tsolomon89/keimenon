@@ -189,7 +189,7 @@ this.db.pragma('foreign_keys = ON');
 3. **Concurrent operations**
    - Start import job (keep running)
    - While importing, open UI and:
-     - ✅ Click through canvas (should work)
+     - ✅ Click through keimenon (should work)
      - ✅ View analytics (should work)
      - ✅ Browse settings (should work)
    - All should succeed without errors
@@ -197,8 +197,8 @@ this.db.pragma('foreign_keys = ON');
 4. **Check database file**
    ```bash
    # Should see WAL files
-   ls ~/.canvas-memory/
-   # Expected: canvas.db, canvas.db-wal, canvas.db-shm
+   ls ~/.keimenon/
+   # Expected: keimenon.db, keimenon.db-wal, keimenon.db-shm
    ```
 
 ### Automated Tests
@@ -305,6 +305,6 @@ This fix addresses the exact root cause identified:
 ---
 
 **Authored by**: Claude (AI Agent)
-**Project**: Canvas Memory OS
+**Project**: Keimenon
 **Phase**: Performance Optimization
 **Status**: ✅ COMPLETE

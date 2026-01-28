@@ -53,7 +53,7 @@ export interface ToolbarButton {
 export interface ToolbarContext {
   user: User;
 
-  // Action handlers (injected by CanvasToolbar component)
+  // Action handlers (injected by KeimenonToolbar component)
   onSearch?: () => void;
   onFilter?: () => void;
   onUpload?: () => void;

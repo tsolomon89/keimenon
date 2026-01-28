@@ -7,7 +7,7 @@
  * Related: Chunked Upload System - Phase 7 (Testing)
  */
 
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach, expect, vi } from 'vitest';
 import { ChunkAssemblyService, AssemblyResult } from '../application/ChunkAssemblyService';
 import { UploadSession, UploadSessionSpec } from '../domain/UploadSession';
 import { UploadSessionRepository } from '../infrastructure/UploadSessionRepository';
@@ -69,7 +69,7 @@ describe('ChunkAssemblyService', () => {
   let testDir: string;
   let chunksDir: string;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     repository = new MockUploadSessionRepository();
     service = new ChunkAssemblyService(repository);
 
@@ -353,9 +353,9 @@ describe('ChunkAssemblyService', () => {
     });
 
     it('should throw error if session not found', async () => {
-      await expect(
-        service.triggerAssembly('upl_nonexistent', 'acc_test123')
-      ).rejects.toThrow('Session not found');
+      await expect(service.triggerAssembly('upl_nonexistent', 'acc_test123')).rejects.toThrow(
+        'Session not found'
+      );
     });
 
     it('should throw error if session is not complete', async () => {
@@ -367,9 +367,9 @@ describe('ChunkAssemblyService', () => {
       session.recordChunk(2);
       await repository.save(session);
 
-      await expect(
-        service.triggerAssembly(session.id, session.accountId)
-      ).rejects.toThrow('Session not complete');
+      await expect(service.triggerAssembly(session.id, session.accountId)).rejects.toThrow(
+        'Session not complete'
+      );
     });
 
     it('should not mark session as completed if assembly fails', async () => {
@@ -391,9 +391,9 @@ describe('ChunkAssemblyService', () => {
       const { session } = await createTestSession();
 
       // Try to trigger assembly with different account ID
-      await expect(
-        service.triggerAssembly(session.id, 'acc_different')
-      ).rejects.toThrow('Session not found');
+      await expect(service.triggerAssembly(session.id, 'acc_different')).rejects.toThrow(
+        'Session not found'
+      );
     });
   });
 
@@ -416,17 +416,17 @@ describe('ChunkAssemblyService', () => {
     });
 
     it('should throw error if session not found', async () => {
-      await expect(
-        service.cancelAssembly('upl_nonexistent', 'acc_test123')
-      ).rejects.toThrow('Session not found');
+      await expect(service.cancelAssembly('upl_nonexistent', 'acc_test123')).rejects.toThrow(
+        'Session not found'
+      );
     });
 
     it('should enforce multi-tenant isolation', async () => {
       const { session } = await createTestSession();
 
-      await expect(
-        service.cancelAssembly(session.id, 'acc_different')
-      ).rejects.toThrow('Session not found');
+      await expect(service.cancelAssembly(session.id, 'acc_different')).rejects.toThrow(
+        'Session not found'
+      );
 
       // Verify session still exists
       const loaded = await repository.findById(session.id, session.accountId);
@@ -439,9 +439,7 @@ describe('ChunkAssemblyService', () => {
       // Delete chunks directory
       await fs.rm(chunksPath, { recursive: true, force: true });
 
-      await expect(
-        service.cancelAssembly(session.id, session.accountId)
-      ).resolves.not.toThrow();
+      await expect(service.cancelAssembly(session.id, session.accountId)).resolves.not.toThrow();
 
       // Session should still be deleted
       const loaded = await repository.findById(session.id, session.accountId);

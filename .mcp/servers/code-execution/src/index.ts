@@ -49,42 +49,27 @@ const ExecutePythonSchema = z.object({
   mcp_modules: z
     .array(z.string())
     .optional()
-    .describe('MCP servers to import as modules (e.g., ["canvas-database", "canvas-docs"])'),
+    .describe('MCP servers to import as modules (e.g., ["keimenon-database", "keimenon-docs"])'),
   return_summary: z
     .boolean()
     .optional()
     .default(true)
     .describe('Return structured summary instead of raw output'),
-  timeout_ms: z
-    .number()
-    .optional()
-    .default(30000)
-    .describe('Execution timeout in milliseconds'),
-  variables: z
-    .record(z.any())
-    .optional()
-    .describe('Variables to inject into execution context'),
+  timeout_ms: z.number().optional().default(30000).describe('Execution timeout in milliseconds'),
+  variables: z.record(z.any()).optional().describe('Variables to inject into execution context'),
 });
 
 const ExecuteJavaScriptSchema = z.object({
   code: z.string().describe('JavaScript code to execute'),
-  mcp_modules: z
-    .array(z.string())
-    .optional()
-    .describe('MCP servers to import as modules'),
+  mcp_modules: z.array(z.string()).optional().describe('MCP servers to import as modules'),
   return_summary: z.boolean().optional().default(true),
   timeout_ms: z.number().optional().default(30000),
   variables: z.record(z.any()).optional(),
 });
 
 const LoadToolDefinitionsSchema = z.object({
-  server_name: z
-    .string()
-    .describe('MCP server name to load tool definitions from'),
-  tool_names: z
-    .array(z.string())
-    .optional()
-    .describe('Specific tools to load (or all if omitted)'),
+  server_name: z.string().describe('MCP server name to load tool definitions from'),
+  tool_names: z.array(z.string()).optional().describe('Specific tools to load (or all if omitted)'),
 });
 
 interface ExecutionResult {
@@ -102,43 +87,29 @@ interface ExecutionResult {
 
 /**
  * Creates a proxy object that makes MCP server tools available as module functions
- * This enables: `from mcp_canvas_database import query_nodes`
- * Or: `const { query_nodes } = require('mcp-canvas-database')`
+ * This enables: `from mcp_keimenon_database import query_nodes`
+ * Or: `const { query_nodes } = require('mcp-keimenon-database')`
  */
 class MCPModuleLoader {
-  private availableServers: Map<
-    string,
-    { name: string; available: boolean; tools: string[] }
-  > = new Map();
+  private availableServers: Map<string, { name: string; available: boolean; tools: string[] }> =
+    new Map();
 
   constructor() {
     // Initialize available MCP servers
-    this.availableServers.set('canvas-database', {
-      name: 'canvas-database',
+    this.availableServers.set('keimenon-database', {
+      name: 'keimenon-database',
       available: true,
-      tools: [
-        'query_nodes',
-        'query_edges',
-        'inspect_schema',
-        'get_stats',
-        'search_content',
-      ],
+      tools: ['query_nodes', 'query_edges', 'inspect_schema', 'get_stats', 'search_content'],
     });
 
-    this.availableServers.set('canvas-docs', {
-      name: 'canvas-docs',
+    this.availableServers.set('keimenon-docs', {
+      name: 'keimenon-docs',
       available: true,
-      tools: [
-        'search_docs',
-        'find_related',
-        'list_todos',
-        'get_architecture_info',
-        'read_doc',
-      ],
+      tools: ['search_docs', 'find_related', 'list_todos', 'get_architecture_info', 'read_doc'],
     });
 
-    this.availableServers.set('canvas-api-testing', {
-      name: 'canvas-api-testing',
+    this.availableServers.set('keimenon-api-testing', {
+      name: 'keimenon-api-testing',
       available: true,
       tools: [
         'login',
@@ -153,8 +124,8 @@ class MCPModuleLoader {
       ],
     });
 
-    this.availableServers.set('canvas-chat-import', {
-      name: 'canvas-chat-import',
+    this.availableServers.set('keimenon-chat-import', {
+      name: 'keimenon-chat-import',
       available: true,
       tools: [
         'list_test_datasets',
@@ -168,8 +139,8 @@ class MCPModuleLoader {
       ],
     });
 
-    this.availableServers.set('canvas-settings-crm', {
-      name: 'canvas-settings-crm',
+    this.availableServers.set('keimenon-settings-crm', {
+      name: 'keimenon-settings-crm',
       available: true,
       tools: [
         'list_users',
@@ -312,11 +283,9 @@ class JavaScriptExecutor {
         }
 
         // Execute code
-        const result = await pTimeout(
-          Promise.resolve(vm.run(code)),
-          options.timeout_ms,
-          { message: 'Execution timed out' }
-        );
+        const result = await pTimeout(Promise.resolve(vm.run(code)), options.timeout_ms, {
+          message: 'Execution timed out',
+        });
 
         return {
           success: true,
@@ -341,9 +310,7 @@ class JavaScriptExecutor {
     }
 
     if (Array.isArray(output)) {
-      return `Array with ${output.length} items. Sample: ${JSON.stringify(
-        output.slice(0, 3)
-      )}`;
+      return `Array with ${output.length} items. Sample: ${JSON.stringify(output.slice(0, 3))}`;
     }
 
     if (typeof output === 'object') {
@@ -457,7 +424,7 @@ class PythonExecutor {
 
 const server = new Server(
   {
-    name: 'canvas-code-execution',
+    name: 'keimenon-code-execution',
     version: '1.0.0',
   },
   {
@@ -734,11 +701,9 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error('Canvas Code Execution MCP Server running on stdio');
+  console.error('Keimenon Code Execution MCP Server running on stdio');
   console.error('Implements 2025 Code Execution pattern for 98.7% token savings');
-  console.error(
-    `Available MCP modules: ${moduleLoader.getAvailableServers().join(', ')}`
-  );
+  console.error(`Available MCP modules: ${moduleLoader.getAvailableServers().join(', ')}`);
 }
 
 main().catch((error) => {

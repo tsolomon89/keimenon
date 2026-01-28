@@ -57,19 +57,19 @@ This skill activates when you need to:
 Read apps/api/src/routes/[feature].ts
 
 // 2. Test endpoint with MCP API Testing
-mcp__canvas-api-testing__test_endpoint({
+mcp__keimenon-api-testing__test_endpoint({
   path: '/api/v1/[feature]',
   method: 'GET',
   expect_status: 200
 })
 
 // 3. Verify database structure
-mcp__canvas-database__inspect_schema({
+mcp__keimenon-database__inspect_schema({
   table_name: 'nodes' // or 'edges'
 })
 
 // 4. Check data isolation
-mcp__canvas-api-testing__test_multi_tenant({
+mcp__keimenon-api-testing__test_multi_tenant({
   account_a_email: 'user1@test.com',
   account_a_password: 'password',
   account_b_email: 'user2@test.com',
@@ -78,7 +78,7 @@ mcp__canvas-api-testing__test_multi_tenant({
 })
 
 // 5. Query actual data
-mcp__canvas-database__query_nodes({
+mcp__keimenon-database__query_nodes({
   kind: 'Source', // or relevant type
   limit: 10
 })
@@ -236,25 +236,25 @@ mcp__playwright-e2e__pw_lastFailures()
 Read apps/api/src/routes/[feature].ts
 
 # 2. Test with authentication
-mcp__canvas-api-testing__login({
+mcp__keimenon-api-testing__login({
   email: 'admin@admin.com',
   password: 'admin123'
 })
 
 # 3. Test CRUD operations
-mcp__canvas-api-testing__test_crud({
+mcp__keimenon-api-testing__test_crud({
   resource_type: 'nodes', # or relevant type
   test_data: { kind: 'Source', properties: { title: 'Test' } }
 })
 
 # 4. Verify database state
-mcp__canvas-database__query_nodes({
+mcp__keimenon-database__query_nodes({
   kind: 'Source',
   limit: 5
 })
 
 # 5. Check stats
-mcp__canvas-database__get_stats()
+mcp__keimenon-database__get_stats()
 ```
 
 **Result**: Document what works and what doesn't
@@ -531,7 +531,7 @@ A feature passes pipeline verification when:
 
 **Solution**:
 
-- Use mcp**canvas-api-testing**test_endpoint to verify response
+- Use mcp**keimenon-api-testing**test_endpoint to verify response
 - Add console.log to frontend to see actual response
 - Check API_DESIGN.md for expected response format
 

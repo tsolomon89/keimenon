@@ -4,15 +4,15 @@
  * Tests for the data clearing endpoints with error handling and edge cases.
  *
  * Features tested:
- * - DELETE /api/v1/data/canvas (clear current user's canvas data)
+ * - DELETE /api/v1/data/keimenon (clear current user's keimenon data)
  * - DELETE /api/v1/data/all-clients (admin only - clear all client data)
- * - GET /api/v1/data/stats (get canvas data statistics)
+ * - GET /api/v1/data/stats (get keimenon data statistics)
  */
 
 // Start test server before running tests
 import './setup-global';
 
-import { describe, test, before, after, type TestContext } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import assert from 'node:assert';
 import { SQLiteClient } from '@keimenon/db';
 import { randomUUID } from 'crypto';
@@ -23,7 +23,7 @@ import bcrypt from 'bcrypt';
 
 const API_URL = process.env.TEST_API_URL || 'http://localhost:4001';
 const HOME_DIR = process.env.HOME || process.env.USERPROFILE || os.homedir();
-const DB_PATH = process.env.DB_PATH || path.join(HOME_DIR, '.canvas-memory', 'canvas.db');
+const DB_PATH = process.env.DB_PATH || path.join(HOME_DIR, '.keimenon', 'keimenon.db');
 
 // Test credentials
 const ADMIN_EMAIL = 'admin@admin.com';
@@ -35,7 +35,7 @@ describe('Data Management API', () => {
   let adminAccountId: string;
   let adminUserId: string;
 
-  before(async () => {
+  beforeAll(async () => {
     // Initialize database connection
     db = new SQLiteClient({ databasePath: DB_PATH });
     await db.connect(); // Important: Must connect before use
@@ -134,7 +134,7 @@ describe('Data Management API', () => {
     }
   });
 
-  after(() => {
+  afterAll(() => {
     if (db) {
       db.close();
     }
@@ -206,7 +206,7 @@ describe('Data Management API', () => {
     console.log('✅ Test data creation verified');
   });
 
-  test('should clear canvas data via API', async (_t: TestContext) => {
+  test('should clear keimenon data via API', async () => {
     // Create test data
     const database = db.getDatabase();
     database.prepare('DELETE FROM nodes WHERE account_id = ?').run(adminAccountId);
@@ -219,7 +219,7 @@ describe('Data Management API', () => {
     console.log(`\n🗑️  Clearing ${beforeCount} nodes for admin`);
 
     // Clear data via API
-    const response = await fetch(`${API_URL}/api/v1/data/canvas`, {
+    const response = await fetch(`${API_URL}/api/v1/data/keimenon`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${adminToken}`,
@@ -239,13 +239,13 @@ describe('Data Management API', () => {
     console.log('✅ Data cleared successfully via API');
   });
 
-  test('should handle empty database gracefully', async (_t: TestContext) => {
+  test('should handle empty database gracefully', async () => {
     // Ensure database is empty
     const database = db.getDatabase();
     database.prepare('DELETE FROM nodes WHERE account_id = ?').run(adminAccountId);
 
     // Try clearing again (should succeed with 0 items)
-    const response = await fetch(`${API_URL}/api/v1/data/canvas`, {
+    const response = await fetch(`${API_URL}/api/v1/data/keimenon`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${adminToken}`,
@@ -261,8 +261,8 @@ describe('Data Management API', () => {
     console.log('✅ Empty database handled gracefully');
   });
 
-  test('should require authentication', async (_t: TestContext) => {
-    const response = await fetch(`${API_URL}/api/v1/data/canvas`, {
+  test('should require authentication', async () => {
+    const response = await fetch(`${API_URL}/api/v1/data/keimenon`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

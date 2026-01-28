@@ -103,14 +103,14 @@ test.describe('Multi-Tenant Isolation - Boards', () => {
     // Cleanup both accounts' data
     const responseA = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_A });
     const authA = await responseA.json();
-    await apiRequest.delete('/api/v1/data/canvas', {
+    await apiRequest.delete('/api/v1/data/keimenon', {
       headers: { Authorization: `Bearer ${authA.token}` },
       params: { data_tag: 'test' },
     });
 
     const responseB = await apiRequest.post('/api/v1/auth/login', { data: ACCOUNT_B });
     const authB = await responseB.json();
-    await apiRequest.delete('/api/v1/data/canvas', {
+    await apiRequest.delete('/api/v1/data/keimenon', {
       headers: { Authorization: `Bearer ${authB.token}` },
       params: { data_tag: 'test' },
     });

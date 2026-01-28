@@ -29,7 +29,7 @@ npm run dev
    - Email: `admin@admin.com`
    - Password: (set during seed migration)
 3. Verify you're in CRM mode (see "Accounts" in left sidebar)
-4. Switch to Canvas mode (click "Canvas" button)
+4. Switch to Keimenon mode (click "Keimenon" button)
 5. Verify left sidebar shows "Groups & Folders"
 6. Click "Import" button or navigate to import page
 7. Upload `ai_context/chat_data/test-samples/medium.json`
@@ -41,7 +41,7 @@ npm run dev
 10. **VERIFY**: "Imported Conversations" folder appears in left sidebar
 11. **VERIFY**: Expand folder → see groups for each conversation
 12. Click on a group
-13. **VERIFY**: Canvas area displays conversation threads
+13. **VERIFY**: Keimenon area displays conversation threads
 14. **VERIFY**: Right inspector shows group details
 
 ### 3. Test Client Account Import
@@ -64,14 +64,14 @@ npm run dev
 2. Navigate to CRM mode → Accounts view
 3. Find client account in list
 4. Click client account to inspect
-5. **VERIFY**: Cannot see client's imported conversations in admin's canvas
-6. Switch back to Canvas mode
+5. **VERIFY**: Cannot see client's imported conversations in admin's keimenon
+6. Switch back to Keimenon mode
 7. **VERIFY**: Admin sees only admin's imported data
 
 ### 5. Test Navigation API Integration
 
 1. Open browser DevTools → Network tab
-2. Login as admin and navigate to Canvas mode
+2. Login as admin and navigate to Keimenon mode
 3. Observe network requests:
    - `GET /api/v1/groups/nav` → should return admin's folders/groups
    - Should include `Authorization: Bearer <token>` header
@@ -125,7 +125,7 @@ GROUP BY kind;
   - Each group has conversation title
   - Badge shows member count
 
-- **Canvas Area**:
+- **Keimenon Area**:
   - Initially shows all nodes
   - Clicking group filters to show only group members
   - Nodes represent ChatThreads, Messages, Sources, CodeBlocks
@@ -172,6 +172,6 @@ GROUP BY kind;
 - ✅ Client can import and see their data
 - ✅ Admin and client data are isolated (no cross-visibility)
 - ✅ Navigation sidebar displays folders and groups correctly
-- ✅ Clicking groups filters canvas to show members
+- ✅ Clicking groups filters keimenon to show members
 - ✅ All API calls use authentication
 - ✅ Database queries filter by `account_id`

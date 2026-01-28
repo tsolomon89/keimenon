@@ -130,7 +130,7 @@ export async function login(
 ): Promise<{ token: string; accountId: string; userId: string }> {
   if (process.env.NODE_ENV !== 'production' || process.env.DISABLE_RATE_LIMIT === '1') {
     try {
-      const dbPath = process.env.DB_PATH || path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+      const dbPath = process.env.DB_PATH || path.join(os.homedir(), '.keimenon', 'keimenon.db');
       const db = new Database(dbPath);
 
       // Clear login attempts (if login_attempts table exists)
@@ -314,7 +314,7 @@ export async function createImportJob(
  * Create delete job via API
  */
 export async function createDeleteJob(
-  scope: 'canvas' | 'all-clients',
+  scope: 'keimenon' | 'all-clients',
   token: string
 ): Promise<{ jobId: string }> {
   const response = await fetch(`${getApiUrl()}/api/v1/jobs/delete`, {

@@ -2,7 +2,7 @@
 
 /**
  * validate-env.js
- * Validate environment configuration for Canvas Memory OS
+ * Validate environment configuration for Keimenon
  * Checks required variables, formats, and accessibility
  */
 
@@ -47,7 +47,9 @@ async function validateApiEnv() {
 
     // Validate Neo4j URI format
     const validProtocols = ['bolt://', 'neo4j://', 'neo4j+s://', 'neo4j+ssc://'];
-    const hasValidProtocol = validProtocols.some(proto => env.NEO4J_URI && env.NEO4J_URI.startsWith(proto));
+    const hasValidProtocol = validProtocols.some(
+      (proto) => env.NEO4J_URI && env.NEO4J_URI.startsWith(proto)
+    );
 
     if (env.NEO4J_URI && !hasValidProtocol) {
       errors.push('NEO4J_URI must start with bolt://, neo4j://, neo4j+s://, or neo4j+ssc://');
@@ -256,18 +258,18 @@ async function validateAll(options = {}) {
     if (result.errors.length > 0) {
       if (verbose) {
         console.log(`✗ ${name.toUpperCase()}`);
-        result.errors.forEach(err => console.log(`  ✗ ${err}`));
+        result.errors.forEach((err) => console.log(`  ✗ ${err}`));
       }
-      allErrors.push(...result.errors.map(e => `[${name}] ${e}`));
+      allErrors.push(...result.errors.map((e) => `[${name}] ${e}`));
     } else if (verbose) {
       console.log(`✓ ${name.toUpperCase()}`);
     }
 
     if (result.warnings.length > 0) {
       if (verbose) {
-        result.warnings.forEach(warn => console.log(`  ⚠ ${warn}`));
+        result.warnings.forEach((warn) => console.log(`  ⚠ ${warn}`));
       }
-      allWarnings.push(...result.warnings.map(w => `[${name}] ${w}`));
+      allWarnings.push(...result.warnings.map((w) => `[${name}] ${w}`));
     }
   }
 
@@ -295,16 +297,16 @@ if (require.main === module) {
   const verbose = process.argv.includes('--verbose') || process.argv.includes('-v');
 
   validateAll({ verbose })
-    .then(result => {
+    .then((result) => {
       if (!verbose && result.errors.length > 0) {
         console.error('Environment validation failed:\n');
-        result.errors.forEach(err => console.error(`  ✗ ${err}`));
+        result.errors.forEach((err) => console.error(`  ✗ ${err}`));
         console.error('\nRun with --verbose for details');
       }
 
       process.exit(result.valid ? 0 : 1);
     })
-    .catch(error => {
+    .catch((error) => {
       console.error('Validation error:', error.message);
       process.exit(2);
     });

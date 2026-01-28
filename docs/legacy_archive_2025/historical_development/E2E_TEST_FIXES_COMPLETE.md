@@ -39,7 +39,7 @@ Status:         ALL PASSING
 #### Authentication Flow Tests (4/4 passing)
 
 1. ✅ **Complete Login Flow** - 4.8s
-   - Tests: redirect → authenticate → canvas
+   - Tests: redirect → authenticate → keimenon
    - Fixed: Increased timeout to 20s, used waitForURL()
 
 2. ✅ **Invalid Credentials Error** - 3.1s
@@ -47,7 +47,7 @@ Status:         ALL PASSING
    - Status: Was already passing
 
 3. ✅ **Authenticated User Access** - 6.4s
-   - Tests: direct canvas access when authenticated
+   - Tests: direct keimenon access when authenticated
    - Fixed: Added domcontentloaded wait, increased timeout
 
 4. ✅ **Logout and Redirect** - 6.2s
@@ -99,9 +99,9 @@ await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
 
 ---
 
-### Fix #2: Login Flow Canvas Redirect
+### Fix #2: Login Flow Keimenon Redirect
 
-**File**: `tests/e2e/flow-auth-canvas.spec.ts:61`
+**File**: `tests/e2e/flow-auth-keimenon.spec.ts:61`
 
 **Problem**: 15s timeout insufficient for React state + Next.js navigation
 
@@ -109,10 +109,10 @@ await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
 
 ```typescript
 // Before
-await expect(page).toHaveURL(/\/canvas/, { timeout: 15000 });
+await expect(page).toHaveURL(/\/keimenon/, { timeout: 15000 });
 
 // After
-await page.waitForURL(/\/canvas/, { timeout: 20000 });
+await page.waitForURL(/\/keimenon/, { timeout: 20000 });
 ```
 
 **Result**: ✅ Test now passes in ~5s (well under timeout)
@@ -121,7 +121,7 @@ await page.waitForURL(/\/canvas/, { timeout: 20000 });
 
 ### Fix #3: Authenticated User Direct Access
 
-**File**: `tests/e2e/flow-auth-canvas.spec.ts:100-110`
+**File**: `tests/e2e/flow-auth-keimenon.spec.ts:100-110`
 
 **Problem**: Test checking redirect before page loaded
 
@@ -130,12 +130,12 @@ await page.waitForURL(/\/canvas/, { timeout: 20000 });
 ```typescript
 // Before
 await page.goto('/');
-await expect(page).toHaveURL(/\/canvas/, { timeout: 10000 });
+await expect(page).toHaveURL(/\/keimenon/, { timeout: 10000 });
 
 // After
 await page.goto('/');
 await page.waitForLoadState('domcontentloaded');
-await page.waitForURL(/\/canvas/, { timeout: 15000 });
+await page.waitForURL(/\/keimenon/, { timeout: 15000 });
 ```
 
 **Result**: ✅ Test now passes consistently
@@ -144,7 +144,7 @@ await page.waitForURL(/\/canvas/, { timeout: 15000 });
 
 ### Fix #4: Logout Session Clear
 
-**File**: `tests/e2e/flow-auth-canvas.spec.ts:131-138`
+**File**: `tests/e2e/flow-auth-keimenon.spec.ts:131-138`
 
 **Problem**: Redirect assertion before page loaded after storage clear
 
@@ -245,9 +245,9 @@ The test failures were **NOT application bugs** - they were **test timing issues
 ### Phase 1: Test Wait Patterns
 
 - [x] Fix smoke test home redirect (smoke.spec.ts:18)
-- [x] Fix login flow timeout (flow-auth-canvas.spec.ts:61)
-- [x] Fix authenticated user test (flow-auth-canvas.spec.ts:100-110)
-- [x] Fix logout test (flow-auth-canvas.spec.ts:131-138)
+- [x] Fix login flow timeout (flow-auth-keimenon.spec.ts:61)
+- [x] Fix authenticated user test (flow-auth-keimenon.spec.ts:100-110)
+- [x] Fix logout test (flow-auth-keimenon.spec.ts:131-138)
 - [x] All 8 tests passing
 - [x] Verified stability with multiple runs
 
@@ -267,10 +267,10 @@ The test failures were **NOT application bugs** - they were **test timing issues
 
    ```typescript
    // ❌ Bad - aggressive polling
-   await expect(page).toHaveURL(/\/canvas/);
+   await expect(page).toHaveURL(/\/keimenon/);
 
    // ✅ Good - explicit wait
-   await page.waitForURL(/\/canvas/, { timeout: 20000 });
+   await page.waitForURL(/\/keimenon/, { timeout: 20000 });
    ```
 
 2. **Load States Are Your Friend**
@@ -322,7 +322,7 @@ All acceptance criteria met:
 ### Test Files (4 edits)
 
 1. `tests/e2e/smoke.spec.ts` - Added domcontentloaded wait
-2. `tests/e2e/flow-auth-canvas.spec.ts` - Updated all 4 auth flow tests
+2. `tests/e2e/flow-auth-keimenon.spec.ts` - Updated all 4 auth flow tests
 
 ### Changes Summary
 

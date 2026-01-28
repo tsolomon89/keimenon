@@ -9,9 +9,9 @@
  * - Concurrent jobs across multiple accounts
  */
 
-import { describe, test, before, after, beforeEach, afterEach } from 'node:test';
+import { describe, test, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import assert from 'node:assert';
-import EventSource = require('eventsource');
+import { EventSource } from 'eventsource';
 import Database from 'better-sqlite3';
 import path from 'path';
 import os from 'os';
@@ -25,7 +25,7 @@ import {
 
 // Test configuration
 const API_BASE_URL = process.env.API_URL || 'http://localhost:4001';
-const DB_PATH = process.env.DB_PATH || path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+const DB_PATH = process.env.DB_PATH || path.join(os.homedir(), '.keimenon', 'keimenon.db');
 const SSE_BASE_URL = `${API_BASE_URL}/api/v1/stream/jobs`;
 
 describe('SSE Multi-Account', () => {
@@ -41,7 +41,7 @@ describe('SSE Multi-Account', () => {
   let userBAccountId: string;
   let userBUserId: string;
 
-  before(async () => {
+  beforeAll(async () => {
     // Connect to database
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
@@ -132,7 +132,7 @@ describe('SSE Multi-Account', () => {
     console.log('[SSE Multi-Account] Test setup complete');
   });
 
-  after(() => {
+  afterAll(() => {
     if (db) {
       // Clean up test data
       cleanupTestData(db, adminAccountId);
@@ -161,294 +161,274 @@ describe('SSE Multi-Account', () => {
   });
 
   describe('Account-Based Event Filtering', () => {
-    test(
-      'should only broadcast events to job owner account',
-      async () => {
-        // Create test data for Account A
-        createTestNodes(db, adminAccountId, 100);
+    test('should only broadcast events to job owner account', async () => {
+      // Create test data for Account A
+      createTestNodes(db, adminAccountId, 100);
 
-        // Connect SSE for Account A
-        const sseUrlA = `${SSE_BASE_URL}?token=${adminToken}`;
-        const eventSourceA = new EventSource(sseUrlA);
-        const eventsA: any[] = [];
+      // Connect SSE for Account A
+      const sseUrlA = `${SSE_BASE_URL}?token=${adminToken}`;
+      const eventSourceA = new EventSource(sseUrlA);
+      const eventsA: any[] = [];
 
-        eventSourceA.addEventListener('jobs.update', (event: any) => {
-          eventsA.push(JSON.parse(event.data));
-        });
+      eventSourceA.addEventListener('jobs.update', (event: any) => {
+        eventsA.push(JSON.parse(event.data));
+      });
 
-        // Connect SSE for Account B
-        const sseUrlB = `${SSE_BASE_URL}?token=${userBToken}`;
-        const eventSourceB = new EventSource(sseUrlB);
-        const eventsB: any[] = [];
+      // Connect SSE for Account B
+      const sseUrlB = `${SSE_BASE_URL}?token=${userBToken}`;
+      const eventSourceB = new EventSource(sseUrlB);
+      const eventsB: any[] = [];
 
-        eventSourceB.addEventListener('jobs.update', (event: any) => {
-          eventsB.push(JSON.parse(event.data));
-        });
+      eventSourceB.addEventListener('jobs.update', (event: any) => {
+        eventsB.push(JSON.parse(event.data));
+      });
 
-        // Wait for both connections
-        await Promise.all([
-          new Promise<void>((resolve) => {
-            eventSourceA.onopen = () => resolve();
-          }),
-          new Promise<void>((resolve) => {
-            eventSourceB.onopen = () => resolve();
-          }),
-        ]);
+      // Wait for both connections
+      await Promise.all([
+        new Promise<void>((resolve) => {
+          eventSourceA.onopen = () => resolve();
+        }),
+        new Promise<void>((resolve) => {
+          eventSourceB.onopen = () => resolve();
+        }),
+      ]);
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        // Create delete job for Account A
-        const { jobId: jobIdA } = await createDeleteJob('canvas', adminToken);
+      // Create delete job for Account A
+      const { jobId: jobIdA } = await createDeleteJob('keimenon', adminToken);
 
-        // Wait for Account A to receive event
-        await waitFor(() => eventsA.some((e) => e.jobs?.some((j: any) => j.jobId === jobIdA)), {
-          timeout: 10000,
-          interval: 500,
-        });
+      // Wait for Account A to receive event
+      await waitFor(() => eventsA.some((e) => e.jobs?.some((j: any) => j.jobId === jobIdA)), {
+        timeout: 10000,
+        interval: 500,
+      });
 
-        // Account A should have received the event
-        const accountAEvents = eventsA.flatMap((e) => e.jobs || []);
-        const accountAHasJob = accountAEvents.some((j: any) => j.jobId === jobIdA);
-        assert.strictEqual(accountAHasJob, true);
+      // Account A should have received the event
+      const accountAEvents = eventsA.flatMap((e) => e.jobs || []);
+      const accountAHasJob = accountAEvents.some((j: any) => j.jobId === jobIdA);
+      assert.strictEqual(accountAHasJob, true);
 
-        // Account B should NOT have received the event
-        const accountBEvents = eventsB.flatMap((e) => e.jobs || []);
-        const accountBHasJob = accountBEvents.some((j: any) => j.jobId === jobIdA);
-        assert.strictEqual(accountBHasJob, false);
+      // Account B should NOT have received the event
+      const accountBEvents = eventsB.flatMap((e) => e.jobs || []);
+      const accountBHasJob = accountBEvents.some((j: any) => j.jobId === jobIdA);
+      assert.strictEqual(accountBHasJob, false);
 
-        eventSourceA.close();
-        eventSourceB.close();
-      },
-      { timeout: 30000 }
-    );
+      eventSourceA.close();
+      eventSourceB.close();
+    }, 30000);
 
-    test(
-      'should isolate events across different accounts',
-      async () => {
-        // Create test data for both accounts
-        createTestNodes(db, adminAccountId, 50);
-        createTestNodes(db, userBAccountId, 50);
+    test('should isolate events across different accounts', async () => {
+      // Create test data for both accounts
+      createTestNodes(db, adminAccountId, 50);
+      createTestNodes(db, userBAccountId, 50);
 
-        // Connect SSE for both accounts
-        const sseUrlA = `${SSE_BASE_URL}?token=${adminToken}`;
-        const eventSourceA = new EventSource(sseUrlA);
-        const eventsA: any[] = [];
+      // Connect SSE for both accounts
+      const sseUrlA = `${SSE_BASE_URL}?token=${adminToken}`;
+      const eventSourceA = new EventSource(sseUrlA);
+      const eventsA: any[] = [];
 
-        eventSourceA.addEventListener('jobs.update', (event: any) => {
-          eventsA.push(JSON.parse(event.data));
-        });
+      eventSourceA.addEventListener('jobs.update', (event: any) => {
+        eventsA.push(JSON.parse(event.data));
+      });
 
-        const sseUrlB = `${SSE_BASE_URL}?token=${userBToken}`;
-        const eventSourceB = new EventSource(sseUrlB);
-        const eventsB: any[] = [];
+      const sseUrlB = `${SSE_BASE_URL}?token=${userBToken}`;
+      const eventSourceB = new EventSource(sseUrlB);
+      const eventsB: any[] = [];
 
-        eventSourceB.addEventListener('jobs.update', (event: any) => {
-          eventsB.push(JSON.parse(event.data));
-        });
+      eventSourceB.addEventListener('jobs.update', (event: any) => {
+        eventsB.push(JSON.parse(event.data));
+      });
 
-        // Wait for connections
-        await Promise.all([
-          new Promise<void>((resolve) => {
-            eventSourceA.onopen = () => resolve();
-          }),
-          new Promise<void>((resolve) => {
-            eventSourceB.onopen = () => resolve();
-          }),
-        ]);
+      // Wait for connections
+      await Promise.all([
+        new Promise<void>((resolve) => {
+          eventSourceA.onopen = () => resolve();
+        }),
+        new Promise<void>((resolve) => {
+          eventSourceB.onopen = () => resolve();
+        }),
+      ]);
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        // Create jobs for both accounts
-        const { jobId: jobIdA } = await createDeleteJob('canvas', adminToken);
-        const { jobId: jobIdB } = await createDeleteJob('canvas', userBToken);
+      // Create jobs for both accounts
+      const { jobId: jobIdA } = await createDeleteJob('keimenon', adminToken);
+      const { jobId: jobIdB } = await createDeleteJob('keimenon', userBToken);
 
-        // Wait for events
-        await waitFor(
-          () =>
-            eventsA.some((e) => e.jobs?.some((j: any) => j.jobId === jobIdA)) &&
-            eventsB.some((e) => e.jobs?.some((j: any) => j.jobId === jobIdB)),
-          { timeout: 15000, interval: 500 }
-        );
+      // Wait for events
+      await waitFor(
+        () =>
+          eventsA.some((e) => e.jobs?.some((j: any) => j.jobId === jobIdA)) &&
+          eventsB.some((e) => e.jobs?.some((j: any) => j.jobId === jobIdB)),
+        { timeout: 15000, interval: 500 }
+      );
 
-        // Account A should only see jobIdA
-        const accountAEvents = eventsA.flatMap((e) => e.jobs || []);
-        assert.ok(accountAEvents.some((j: any) => j.jobId === jobIdA));
-        assert.ok(!accountAEvents.some((j: any) => j.jobId === jobIdB));
+      // Account A should only see jobIdA
+      const accountAEvents = eventsA.flatMap((e) => e.jobs || []);
+      assert.ok(accountAEvents.some((j: any) => j.jobId === jobIdA));
+      assert.ok(!accountAEvents.some((j: any) => j.jobId === jobIdB));
 
-        // Account B should only see jobIdB
-        const accountBEvents = eventsB.flatMap((e) => e.jobs || []);
-        assert.ok(accountBEvents.some((j: any) => j.jobId === jobIdB));
-        assert.ok(!accountBEvents.some((j: any) => j.jobId === jobIdA));
+      // Account B should only see jobIdB
+      const accountBEvents = eventsB.flatMap((e) => e.jobs || []);
+      assert.ok(accountBEvents.some((j: any) => j.jobId === jobIdB));
+      assert.ok(!accountBEvents.some((j: any) => j.jobId === jobIdA));
 
-        eventSourceA.close();
-        eventSourceB.close();
-      },
-      { timeout: 45000 }
-    );
+      eventSourceA.close();
+      eventSourceB.close();
+    }, 45000);
   });
 
   describe('Concurrent Jobs Across Accounts', () => {
-    test(
-      'should handle concurrent jobs from different accounts',
-      async () => {
-        // Create test data for both accounts
-        createTestNodes(db, adminAccountId, 100);
-        createTestNodes(db, userBAccountId, 100);
+    test('should handle concurrent jobs from different accounts', async () => {
+      // Create test data for both accounts
+      createTestNodes(db, adminAccountId, 100);
+      createTestNodes(db, userBAccountId, 100);
 
-        // Connect SSE for both
-        const sseUrlA = `${SSE_BASE_URL}?token=${adminToken}`;
-        const eventSourceA = new EventSource(sseUrlA);
-        const eventsA: any[] = [];
+      // Connect SSE for both
+      const sseUrlA = `${SSE_BASE_URL}?token=${adminToken}`;
+      const eventSourceA = new EventSource(sseUrlA);
+      const eventsA: any[] = [];
 
-        eventSourceA.addEventListener('jobs.update', (event: any) => {
-          eventsA.push(JSON.parse(event.data));
-        });
+      eventSourceA.addEventListener('jobs.update', (event: any) => {
+        eventsA.push(JSON.parse(event.data));
+      });
 
-        const sseUrlB = `${SSE_BASE_URL}?token=${userBToken}`;
-        const eventSourceB = new EventSource(sseUrlB);
-        const eventsB: any[] = [];
+      const sseUrlB = `${SSE_BASE_URL}?token=${userBToken}`;
+      const eventSourceB = new EventSource(sseUrlB);
+      const eventsB: any[] = [];
 
-        eventSourceB.addEventListener('jobs.update', (event: any) => {
-          eventsB.push(JSON.parse(event.data));
-        });
+      eventSourceB.addEventListener('jobs.update', (event: any) => {
+        eventsB.push(JSON.parse(event.data));
+      });
 
-        // Wait for connections
-        await Promise.all([
-          new Promise<void>((resolve) => {
-            eventSourceA.onopen = () => resolve();
-          }),
-          new Promise<void>((resolve) => {
-            eventSourceB.onopen = () => resolve();
-          }),
-        ]);
+      // Wait for connections
+      await Promise.all([
+        new Promise<void>((resolve) => {
+          eventSourceA.onopen = () => resolve();
+        }),
+        new Promise<void>((resolve) => {
+          eventSourceB.onopen = () => resolve();
+        }),
+      ]);
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        // Create concurrent delete jobs
-        const jobPromises = await Promise.all([
-          createDeleteJob('canvas', adminToken),
-          createDeleteJob('canvas', userBToken),
-        ]);
+      // Create concurrent delete jobs
+      const jobPromises = await Promise.all([
+        createDeleteJob('keimenon', adminToken),
+        createDeleteJob('keimenon', userBToken),
+      ]);
 
-        const jobIdA = jobPromises[0].jobId;
-        const jobIdB = jobPromises[1].jobId;
+      const jobIdA = jobPromises[0].jobId;
+      const jobIdB = jobPromises[1].jobId;
 
-        // Both jobs should complete
-        await waitFor(
-          () =>
-            eventsA.some((e) =>
-              e.jobs?.some((j: any) => j.jobId === jobIdA && j.status === 'succeeded')
-            ) &&
-            eventsB.some((e) =>
-              e.jobs?.some((j: any) => j.jobId === jobIdB && j.status === 'succeeded')
-            ),
-          { timeout: 60000, interval: 1000 }
-        );
+      // Both jobs should complete
+      await waitFor(
+        () =>
+          eventsA.some((e) =>
+            e.jobs?.some((j: any) => j.jobId === jobIdA && j.status === 'succeeded')
+          ) &&
+          eventsB.some((e) =>
+            e.jobs?.some((j: any) => j.jobId === jobIdB && j.status === 'succeeded')
+          ),
+        { timeout: 60000, interval: 1000 }
+      );
 
-        // Verify isolation
-        const accountAJobs = eventsA.flatMap((e) => e.jobs || []);
-        const accountBJobs = eventsB.flatMap((e) => e.jobs || []);
+      // Verify isolation
+      const accountAJobs = eventsA.flatMap((e) => e.jobs || []);
+      const accountBJobs = eventsB.flatMap((e) => e.jobs || []);
 
-        // Account A should only have jobIdA
-        assert.ok(accountAJobs.some((j: any) => j.jobId === jobIdA));
-        assert.ok(accountAJobs.every((j: any) => j.jobId !== jobIdB));
+      // Account A should only have jobIdA
+      assert.ok(accountAJobs.some((j: any) => j.jobId === jobIdA));
+      assert.ok(accountAJobs.every((j: any) => j.jobId !== jobIdB));
 
-        // Account B should only have jobIdB
-        assert.ok(accountBJobs.some((j: any) => j.jobId === jobIdB));
-        assert.ok(accountBJobs.every((j: any) => j.jobId !== jobIdA));
+      // Account B should only have jobIdB
+      assert.ok(accountBJobs.some((j: any) => j.jobId === jobIdB));
+      assert.ok(accountBJobs.every((j: any) => j.jobId !== jobIdA));
 
-        eventSourceA.close();
-        eventSourceB.close();
-      },
-      { timeout: 90000 }
-    );
+      eventSourceA.close();
+      eventSourceB.close();
+    }, 90000);
   });
 
   describe('Event Data Validation', () => {
-    test(
-      'should include accountId in all events',
-      async () => {
-        // Create test data
-        createTestNodes(db, adminAccountId, 50);
+    test('should include accountId in all events', async () => {
+      // Create test data
+      createTestNodes(db, adminAccountId, 50);
 
-        // Connect SSE
-        const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
-        const eventSource = new EventSource(sseUrl);
-        const events: any[] = [];
+      // Connect SSE
+      const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
+      const eventSource = new EventSource(sseUrl);
+      const events: any[] = [];
 
-        eventSource.addEventListener('jobs.update', (event: any) => {
-          events.push(JSON.parse(event.data));
-        });
+      eventSource.addEventListener('jobs.update', (event: any) => {
+        events.push(JSON.parse(event.data));
+      });
 
-        // Wait for connection
-        await new Promise<void>((resolve) => {
-          eventSource.onopen = () => resolve();
-        });
+      // Wait for connection
+      await new Promise<void>((resolve) => {
+        eventSource.onopen = () => resolve();
+      });
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        // Create job
-        const { jobId } = await createDeleteJob('canvas', adminToken);
+      // Create job
+      const { jobId } = await createDeleteJob('keimenon', adminToken);
 
-        // Wait for event
-        await waitFor(() => events.some((e) => e.jobs?.some((j: any) => j.jobId === jobId)), {
-          timeout: 10000,
-          interval: 500,
-        });
+      // Wait for event
+      await waitFor(() => events.some((e) => e.jobs?.some((j: any) => j.jobId === jobId)), {
+        timeout: 10000,
+        interval: 500,
+      });
 
-        // All job events should have accountId matching admin account
-        const jobEvents = events.flatMap((e) => e.jobs || []);
-        jobEvents.forEach((job: any) => {
-          assert.strictEqual(job.accountId, adminAccountId);
-        });
+      // All job events should have accountId matching admin account
+      const jobEvents = events.flatMap((e) => e.jobs || []);
+      jobEvents.forEach((job: any) => {
+        assert.strictEqual(job.accountId, adminAccountId);
+      });
 
-        eventSource.close();
-      },
-      { timeout: 30000 }
-    );
+      eventSource.close();
+    }, 30000);
 
-    test(
-      'should not leak data across accounts',
-      async () => {
-        // Create test data for Account A only
-        createTestNodes(db, adminAccountId, 50);
+    test('should not leak data across accounts', async () => {
+      // Create test data for Account A only
+      createTestNodes(db, adminAccountId, 50);
 
-        // Connect SSE for Account B (should not see Account A's events)
-        const sseUrlB = `${SSE_BASE_URL}?token=${userBToken}`;
-        const eventSourceB = new EventSource(sseUrlB);
-        const eventsB: any[] = [];
+      // Connect SSE for Account B (should not see Account A's events)
+      const sseUrlB = `${SSE_BASE_URL}?token=${userBToken}`;
+      const eventSourceB = new EventSource(sseUrlB);
+      const eventsB: any[] = [];
 
-        eventSourceB.addEventListener('jobs.update', (event: any) => {
-          eventsB.push(JSON.parse(event.data));
-        });
+      eventSourceB.addEventListener('jobs.update', (event: any) => {
+        eventsB.push(JSON.parse(event.data));
+      });
 
-        // Wait for connection
-        await new Promise<void>((resolve) => {
-          eventSourceB.onopen = () => resolve();
-        });
+      // Wait for connection
+      await new Promise<void>((resolve) => {
+        eventSourceB.onopen = () => resolve();
+      });
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        // Create job for Account A
-        const { jobId: jobIdA } = await createDeleteJob('canvas', adminToken);
+      // Create job for Account A
+      const { jobId: jobIdA } = await createDeleteJob('keimenon', adminToken);
 
-        // Wait a bit for potential events
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+      // Wait a bit for potential events
+      await new Promise((resolve) => setTimeout(resolve, 5000));
 
-        // Account B should not have received any events for Account A's job
-        const accountBJobs = eventsB.flatMap((e) => e.jobs || []);
-        const hasAccountAJob = accountBJobs.some((j: any) => j.jobId === jobIdA);
+      // Account B should not have received any events for Account A's job
+      const accountBJobs = eventsB.flatMap((e) => e.jobs || []);
+      const hasAccountAJob = accountBJobs.some((j: any) => j.jobId === jobIdA);
 
-        assert.strictEqual(hasAccountAJob, false);
+      assert.strictEqual(hasAccountAJob, false);
 
-        // Account B should not have received any events with Account A's accountId
-        accountBJobs.forEach((job: any) => {
-          assert.notStrictEqual(job.accountId, adminAccountId);
-        });
+      // Account B should not have received any events with Account A's accountId
+      accountBJobs.forEach((job: any) => {
+        assert.notStrictEqual(job.accountId, adminAccountId);
+      });
 
-        eventSourceB.close();
-      },
-      { timeout: 30000 }
-    );
+      eventSourceB.close();
+    }, 30000);
   });
 });

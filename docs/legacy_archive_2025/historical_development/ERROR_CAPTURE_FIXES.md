@@ -105,7 +105,7 @@ const errorObj =
 
 ### 4. Fixed Severity Filter State Synchronization
 
-**File:** `apps/web/src/components/canvas/CanvasFooter.tsx`
+**File:** `apps/web/src/components/keimenon/KeimenonFooter.tsx`
 
 **Problem:**
 
@@ -205,7 +205,7 @@ To see all log levels including debug:
 
 - [apps/web/src/services/error-capture.service.ts](apps/web/src/services/error-capture.service.ts) - Core error capture service
 - [apps/web/src/contexts/ConsoleContext.tsx](apps/web/src/contexts/ConsoleContext.tsx) - Console state management
-- [apps/web/src/components/canvas/CanvasFooter.tsx](apps/web/src/components/canvas/CanvasFooter.tsx) - Console UI component
+- [apps/web/src/components/keimenon/KeimenonFooter.tsx](apps/web/src/components/keimenon/KeimenonFooter.tsx) - Console UI component
 - [apps/web/src/hooks/useJobStream.ts](apps/web/src/hooks/useJobStream.ts) - Job stream SSE connection
 - [tests/e2e/console-error-filtering.spec.ts](tests/e2e/console-error-filtering.spec.ts) - E2E tests
 

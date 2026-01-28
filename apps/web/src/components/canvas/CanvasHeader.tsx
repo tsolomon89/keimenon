@@ -25,9 +25,9 @@ import { useOperating } from '@/contexts/OperatingContext';
 import { useImportProgress } from '@/contexts/ImportProgressContext';
 import { useUIVersion } from '@/contexts/UIVersionContext';
 import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
-import { useCanvasStore } from '@/store/canvasStore';
+import { useKeimenonStore } from '@/store/keimenonStore';
 
-export function CanvasHeader() {
+export function KeimenonHeader() {
   const router = useRouter();
   const { user, logout, switchAccount } = useAuth();
   const { isOperatingMode } = useOperating();
@@ -181,7 +181,7 @@ export function CanvasHeader() {
 
         {/* Manual Refresh Button */}
         <button
-          onClick={() => useCanvasStore.getState().loadGraphData()}
+          onClick={() => useKeimenonStore.getState().loadGraphData()}
           className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
           title="Refresh graph data"
         >

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Canvas Memory OS - Database MCP Server
+ * Keimenon - Database MCP Server
  *
  * Provides tools for querying and inspecting the local SQLite database.
  * This server enables AI assistants to interact with the database safely.
@@ -33,13 +33,13 @@ import { homedir } from 'os';
 import { existsSync, readFileSync } from 'fs';
 
 // Database path (default to user's home directory)
-const DB_PATH = process.env.SQLITE_PATH || resolve(homedir(), '.keimenon', 'canvas.db');
+const DB_PATH = process.env.SQLITE_PATH || resolve(homedir(), '.keimenon', 'keimenon.db');
 
 class DatabaseMCPServer {
   constructor() {
     this.server = new Server(
       {
-        name: 'canvas-database',
+        name: 'keimenon-database',
         version: '1.0.0',
       },
       {
@@ -242,19 +242,19 @@ class DatabaseMCPServer {
     this.server.setRequestHandler(ListResourcesRequestSchema, async () => ({
       resources: [
         {
-          uri: 'canvas-db://schema',
+          uri: 'keimenon-db://schema',
           name: 'Database Schema',
           description: 'Current SQLite database schema with all tables and indexes',
           mimeType: 'text/plain',
         },
         {
-          uri: 'canvas-db://health',
+          uri: 'keimenon-db://health',
           name: 'Database Health',
           description: 'Database health metrics and connection status',
           mimeType: 'application/json',
         },
         {
-          uri: 'canvas-db://stats',
+          uri: 'keimenon-db://stats',
           name: 'Database Statistics',
           description: 'Node and edge counts, storage size',
           mimeType: 'application/json',
@@ -300,11 +300,11 @@ class DatabaseMCPServer {
 
       try {
         switch (uri) {
-          case 'canvas-db://schema':
+          case 'keimenon-db://schema':
             return await this.readSchema();
-          case 'canvas-db://health':
+          case 'keimenon-db://health':
             return await this.readHealth();
-          case 'canvas-db://stats':
+          case 'keimenon-db://stats':
             return await this.readStats();
           default:
             throw new Error(`Unknown resource: ${uri}`);
@@ -637,7 +637,7 @@ class DatabaseMCPServer {
     return {
       contents: [
         {
-          uri: 'canvas-db://schema',
+          uri: 'keimenon-db://schema',
           mimeType: 'text/plain',
           text: schema.map((row) => row.sql).join('\n\n'),
         },
@@ -661,7 +661,7 @@ class DatabaseMCPServer {
     return {
       contents: [
         {
-          uri: 'canvas-db://health',
+          uri: 'keimenon-db://health',
           mimeType: 'application/json',
           text: JSON.stringify(health, null, 2),
         },
@@ -674,7 +674,7 @@ class DatabaseMCPServer {
     return {
       contents: [
         {
-          uri: 'canvas-db://stats',
+          uri: 'keimenon-db://stats',
           mimeType: 'application/json',
           text: stats.content[0].text,
         },

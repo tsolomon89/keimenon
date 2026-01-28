@@ -1,10 +1,10 @@
 'use client';
 
 import { MessageSquare, FileText, Code, MoreVertical, Maximize2 } from 'lucide-react';
-import { CanvasNode } from '@/types/canvas';
+import { KeimenonNode } from '@/types/keimenon';
 
 interface GroupCardProps {
-  node: CanvasNode;
+  node: KeimenonNode;
   selected?: boolean;
   onSelect?: () => void;
   onDoubleClick?: () => void;
@@ -92,18 +92,14 @@ export function GroupCard({
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
-        <div className={`p-2 ${colors.bg} rounded-lg ${colors.icon}`}>
-          {getIcon(node.type)}
-        </div>
+        <div className={`p-2 ${colors.bg} rounded-lg ${colors.icon}`}>{getIcon(node.type)}</div>
         <button className="p-1 hover:bg-slate-700/50 rounded transition-colors">
           <MoreVertical className="w-4 h-4 text-slate-400" />
         </button>
       </div>
 
       {/* Title */}
-      <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2">
-        {node.data.title}
-      </h3>
+      <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2">{node.data.title}</h3>
 
       {/* Subtitle */}
       {node.data.subtitle && (
@@ -113,14 +109,13 @@ export function GroupCard({
       {/* Metadata badges */}
       {node.data.metadata && Object.keys(node.data.metadata).length > 0 && (
         <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-700/50">
-          {Object.entries(node.data.metadata).slice(0, 3).map(([key, value]) => (
-            <span
-              key={key}
-              className="px-2 py-1 bg-slate-800/50 rounded text-xs text-slate-400"
-            >
-              {key}: {String(value)}
-            </span>
-          ))}
+          {Object.entries(node.data.metadata)
+            .slice(0, 3)
+            .map(([key, value]) => (
+              <span key={key} className="px-2 py-1 bg-slate-800/50 rounded text-xs text-slate-400">
+                {key}: {String(value)}
+              </span>
+            ))}
         </div>
       )}
 

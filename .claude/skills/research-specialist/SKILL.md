@@ -1,11 +1,14 @@
 ---
 name: research-specialist
 description: Research persona with web tools and doc search. Use for architecture research.
+allowed-tools: Read, Grep, Glob, WebFetch, WebSearch, mcp__keimenon-docs__search_docs, mcp__keimenon-docs__find_related, mcp__keimenon-docs__get_architecture_info
+context: fork
+agent: Explore
 ---
 
 ## Purpose
 
-Dedicated research persona for information gathering without code execution. Security-isolated for safe web access while preventing arbitrary code execution.
+Dedicated research skill for information gathering without code execution. Security-isolated for safe web access while preventing arbitrary code modifications.
 
 ## When to Use
 
@@ -16,21 +19,21 @@ Dedicated research persona for information gathering without code execution. Sec
 - Investigating best practices (e.g., OAuth 2.1, React Server Components)
 - Writing technical documentation
 
-## Persona
+## Invocation
 
-**Recommended**: Use research persona via `ccr` alias
+Invoke this skill with `/research-specialist` or let it activate automatically when describing research tasks:
 
-```bash
-ccr "research OAuth 2.1 best practices for Node.js"
 ```
-
-This loads research persona configuration automatically.
+"Research OAuth 2.1 best practices for Node.js"
+"What are the latest patterns for React Server Components?"
+"Compare graph visualization libraries"
+```
 
 ## Tools Available
 
 - **WebFetch**: Fetch and analyze web pages
 - **WebSearch**: Search the web for latest information
-- **mcp__docs__search_docs**: Search project documentation
+- **mcp**docs**search_docs**: Search project documentation
 - **Read, Grep**: Local file access (read-only)
 - **NO code execution**: Security isolation
 - **NO database modification**: Read-only access
@@ -92,6 +95,7 @@ Agent synthesizes findings into structured report with:
 Research reports must include:
 
 ### 1. Executive Summary
+
 2-3 sentences capturing key findings and recommendations
 
 ### 2. Findings (Structured Sections)
@@ -100,11 +104,13 @@ Research reports must include:
 ## OAuth 2.1 Specification Changes
 
 ### Authorization Code Flow with PKCE (REQUIRED)
+
 - **Source**: [OAuth 2.1 Draft](https://oauth.net/2.1/) - Accessed 2025-11-16
 - **Key Change**: PKCE is now mandatory for all clients
 - **Impact**: Protects against authorization code interception
 
 ### Implicit Flow (DEPRECATED)
+
 - **Source**: [OAuth 2.1 Draft](https://oauth.net/2.1/) - Accessed 2025-11-16
 - **Key Change**: Implicit flow removed from specification
 - **Recommendation**: Migrate to Authorization Code Flow + PKCE
@@ -112,11 +118,11 @@ Research reports must include:
 
 ### 3. Comparative Analysis
 
-| Library | Downloads/Week | OAuth 2.1 Support | Pros | Cons |
-|---------|----------------|-------------------|------|------|
-| oauth2-server | 15M | Yes (v4+) | Battle-tested, flexible | Complex config |
-| passport-oauth2 | 8M | Partial | Easy Passport integration | Needs PKCE plugin |
-| node-oauth2-server | 3M | No | Simple API | Not maintained |
+| Library            | Downloads/Week | OAuth 2.1 Support | Pros                      | Cons              |
+| ------------------ | -------------- | ----------------- | ------------------------- | ----------------- |
+| oauth2-server      | 15M            | Yes (v4+)         | Battle-tested, flexible   | Complex config    |
+| passport-oauth2    | 8M             | Partial           | Easy Passport integration | Needs PKCE plugin |
+| node-oauth2-server | 3M             | No                | Simple API                | Not maintained    |
 
 **Source**: [npm package stats](https://npmjs.com) - Accessed 2025-11-16
 
@@ -128,11 +134,13 @@ Research reports must include:
 **File**: apps/api/src/middleware/auth.middleware.ts:23-45
 
 Current implementation:
+
 - JWT tokens with 15-minute expiry
 - No refresh token rotation
 - Manual token validation
 
 **Gaps for OAuth 2.1**:
+
 - ❌ No PKCE support
 - ❌ No refresh token rotation
 - ✅ Short-lived access tokens (good)
@@ -144,6 +152,7 @@ Current implementation:
 ## Implementation Plan
 
 ### Phase 1: Add PKCE Support (1 week)
+
 1. Install `oauth2-server` v4.x
 2. Configure PKCE challenge/verifier
 3. Update auth endpoints
@@ -151,6 +160,7 @@ Current implementation:
 5. **Mitigation**: Version API endpoints (/v2/auth)
 
 ### Phase 2: Refresh Token Rotation (1 week)
+
 1. Add refresh_token table
 2. Implement rotation logic
 3. Add revocation endpoint
@@ -158,6 +168,7 @@ Current implementation:
 5. **Mitigation**: Redis cache for token validation
 
 ### Phase 3: Migration (2 weeks)
+
 1. Deploy v2 endpoints alongside v1
 2. Migrate mobile app to v2
 3. Migrate web app to v2
@@ -181,6 +192,7 @@ Current implementation:
 ### 7. References
 
 All sources with access dates:
+
 - [OAuth 2.1 Specification](https://oauth.net/2.1/) - Accessed 2025-11-16
 - [oauth2-server on npm](https://www.npmjs.com/package/oauth2-server) - Accessed 2025-11-16
 - [OWASP OAuth Cheat Sheet](https://cheatsheetseries.owasp.org/...) - Accessed 2025-11-16
@@ -229,6 +241,7 @@ Research Agent:
 ## Best Practices
 
 1. **Always cite sources with access dates**
+
    ```markdown
    **Source**: [Article Title](URL) - Accessed 2025-11-16
    ```
@@ -251,12 +264,12 @@ Research Agent:
    - This is intentional (safety)
    - Switch to `cc` for implementation
 
-## When to Switch Personas
+## When to Use Other Skills
 
-- **Implementation needed**: `cc` (main coding persona)
-- **Testing needed**: `cct` (test persona)
-- **Debugging needed**: `ccd` (debug persona)
-- **Deployment needed**: `ccx` (deploy persona)
+- **Implementation needed**: Exit research and implement directly
+- **Testing needed**: Use `e2e-test-generator` or `autonomous-test-*` skills
+- **Code review needed**: Use `code-review-enforcer` skill
+- **Security audit needed**: Use `security-auditor` skill
 
 ## Common Research Topics
 
@@ -277,6 +290,6 @@ Research Agent:
 
 ## See Also
 
-- [Research Persona Configuration](.claude/personas/research.md)
-- [MCP Research Config](.claude/mcp-configs/research.json)
-- [CLAUDE.md Section 16 (Persona Pattern)](CLAUDE.md#16-persona-pattern)
+- [Skills Overview](../.claude/skills/README.md) - All available skills
+- [MCP Servers](../../.mcp/README.md) - MCP server documentation
+- [Architecture Overview](../../docs/architecture/OVERVIEW.md) - System architecture

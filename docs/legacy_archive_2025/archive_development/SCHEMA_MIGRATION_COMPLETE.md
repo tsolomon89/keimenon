@@ -245,7 +245,7 @@ npx tsx src/migrations/run-migrations.ts
 **Output**:
 
 ```
-📂 Database: /Users/you/.canvas-memory/canvas.db
+📂 Database: /Users/you/.keimenon/keimenon.db
 📦 Running migration 003...
 ✅ Migration 003 completed successfully
 ✅ Ran 1 migration(s)
@@ -272,7 +272,7 @@ Database Schema Version:
 ### Option 3: Custom database path
 
 ```bash
-DB_PATH=/path/to/canvas.db npx tsx src/migrations/run-migrations.ts
+DB_PATH=/path/to/keimenon.db npx tsx src/migrations/run-migrations.ts
 ```
 
 ---
@@ -335,16 +335,16 @@ npx tsx src/migrations/run-migrations.ts --rollback 003
 
    ```bash
    # Run migration on test database
-   cp ~/.canvas-memory/canvas.db ~/.canvas-memory/canvas.db.backup
+   cp ~/.keimenon/keimenon.db ~/.keimenon/keimenon.db.backup
    npx tsx src/migrations/run-migrations.ts
-   sqlite3 ~/.canvas-memory/canvas.db "SELECT name FROM sqlite_master WHERE type='table'"
+   sqlite3 ~/.keimenon/keimenon.db "SELECT name FROM sqlite_master WHERE type='table'"
    ```
 
 2. **Verify Schema**
 
    ```bash
-   sqlite3 ~/.canvas-memory/canvas.db ".schema node_spans"
-   sqlite3 ~/.canvas-memory/canvas.db ".schema node_signatures"
+   sqlite3 ~/.keimenon/keimenon.db ".schema node_spans"
+   sqlite3 ~/.keimenon/keimenon.db ".schema node_signatures"
    ```
 
 3. **Create Backfill Script**

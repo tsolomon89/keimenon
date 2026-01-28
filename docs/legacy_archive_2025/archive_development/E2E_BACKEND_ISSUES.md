@@ -71,7 +71,7 @@ db.prepare(
 
 **Error**: `no such column: T.content`
 
-**Impact**: Data management clearCanvas operations fail
+**Impact**: Data management clearKeimenon operations fail
 **Location**: [apps/api/src/routes/data-management.ts:196](apps/api/src/routes/data-management.ts#L196)
 
 **Root Cause**: FTS query references non-existent `T.content` column

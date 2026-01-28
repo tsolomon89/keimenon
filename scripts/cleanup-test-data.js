@@ -56,8 +56,8 @@ async function main() {
   // 1. Clear login_attempts from main database
   const mainDbPath = path.join(
     process.env.USERPROFILE || process.env.HOME,
-    '.canvas-memory',
-    'canvas.db'
+    '.keimenon',
+    'keimenon.db'
   );
 
   if (fs.existsSync(mainDbPath)) {

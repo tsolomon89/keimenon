@@ -1,4 +1,4 @@
-# Canvas Memory Test Suite
+# Keimenon Test Suite
 
 ## Overview
 
@@ -75,9 +75,9 @@ npm test ui-integration-test
 
 **What It Tests:**
 
-- ✅ DELETE /api/v1/data/canvas (clear current user's data)
+- ✅ DELETE /api/v1/data/keimenon (clear current user's data)
 - ✅ DELETE /api/v1/data/all-clients (admin only - clear all client data)
-- ✅ GET /api/v1/data/stats (canvas data statistics)
+- ✅ GET /api/v1/data/stats (keimenon data statistics)
 - ✅ Error handling with asyncHandler and ErrorFactory
 - ✅ Edge cases (empty database, concurrent deletions)
 - ✅ Multi-tenant data isolation
@@ -279,7 +279,7 @@ ai_context/chat_data/test-samples/
 # API server URL (defaults to http://localhost:4001)
 TEST_API_URL=http://localhost:4001
 
-# Database path (defaults to ~/.canvas-memory/canvas.db)
+# Database path (defaults to ~/.keimenon/keimenon.db)
 DB_PATH=/path/to/test.db
 
 # Test credentials (from migration 001_seed_admin.ts)
@@ -320,7 +320,7 @@ npm test -- -t "should persist imported data"
 
 ```bash
 # After tests run
-sqlite3 ~/.canvas-memory/canvas.db
+sqlite3 ~/.keimenon/keimenon.db
 
 # Query nodes by account
 SELECT account_id, kind, COUNT(*)
@@ -465,5 +465,5 @@ npm test -- --testNamePattern="integration"
 ---
 
 **Last Updated:** 2025-10-16
-**Maintainer:** Canvas Memory Team
+**Maintainer:** Keimenon Team
 **Status:** ✅ Active (SQLite local-first architecture)

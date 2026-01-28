@@ -222,7 +222,7 @@ curl -X POST http://localhost:4001/api/v1/auth/login \
 
 - ✅ API Server: Running on http://localhost:4001
 - ✅ Web Server: Running on http://localhost:3000
-- ✅ Database: SQLite initialized at `~/.canvas-memory/canvas.db`
+- ✅ Database: SQLite initialized at `~/.keimenon/keimenon.db`
 
 ### Test Accounts
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Canvas Memory import system has been consolidated to a **single job-based rail** for all production imports. Legacy import paths have been quarantined (not deleted) and gated behind environment flags for testing purposes only.
+The Keimenon import system has been consolidated to a **single job-based rail** for all production imports. Legacy import paths have been quarantined (not deleted) and gated behind environment flags for testing purposes only.
 
 **Last Updated**: October 24, 2025
 **Status**: Active (v1.0)
@@ -76,9 +76,9 @@ The Canvas Memory import system has been consolidated to a **single job-based ra
 
 **Frontend:**
 
-- `apps/web/src/components/canvas/ChatImportModal.tsx` - Primary import UI
-- `apps/web/src/components/canvas/CanvasSidebar.tsx` - Entry point (line 517)
-- `apps/web/src/components/canvas/ImportMethodSelector.tsx` - Debug selector (flag-gated)
+- `apps/web/src/components/keimenon/ChatImportModal.tsx` - Primary import UI
+- `apps/web/src/components/keimenon/KeimenonSidebar.tsx` - Entry point (line 517)
+- `apps/web/src/components/keimenon/ImportMethodSelector.tsx` - Debug selector (flag-gated)
 
 **Backend:**
 
@@ -96,8 +96,8 @@ The Canvas Memory import system has been consolidated to a **single job-based ra
 
 **Frontend:**
 
-- `apps/web/src/components/canvas/ImportModule.old.tsx` - Browser-only import (broken)
-- `apps/web/src/components/canvas/LocalFirstImportModal.old.tsx` - Hybrid approach
+- `apps/web/src/components/keimenon/ImportModule.old.tsx` - Browser-only import (broken)
+- `apps/web/src/components/keimenon/LocalFirstImportModal.old.tsx` - Hybrid approach
 - `apps/web/src/components/import/StreamingUploadModal.old.tsx` - Old streaming uploader
 
 **Backend:**

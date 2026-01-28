@@ -1,8 +1,8 @@
 {
-  "name": "@canvas-memory/mcp-settings-crm",
+  "name": "@keimenon/mcp-settings-crm",
   "version": "1.0.0",
   "type": "module",
-  "description": "MCP server for Canvas Memory OS Settings & CRM management",
+  "description": "MCP server for Keimenon Settings & CRM management",
   "main": "index.js",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.0",

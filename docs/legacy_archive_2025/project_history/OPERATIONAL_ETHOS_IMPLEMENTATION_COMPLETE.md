@@ -8,7 +8,7 @@
 
 ## Overview
 
-Successfully encoded the operational ethos into the Canvas Memory OS agent system, transforming it from task-reactive to architecturally-proactive behavior. The ethos is now a structural invariant, not a behavioral guideline.
+Successfully encoded the operational ethos into the Keimenon agent system, transforming it from task-reactive to architecturally-proactive behavior. The ethos is now a structural invariant, not a behavioral guideline.
 
 ---
 

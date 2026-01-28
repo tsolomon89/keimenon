@@ -1,6 +1,6 @@
 # Git Workflow Guide
 
-This document describes the Git workflow and best practices for the Canvas Memory OS project.
+This document describes the Git workflow and best practices for the Keimenon project.
 
 ## Table of Contents
 

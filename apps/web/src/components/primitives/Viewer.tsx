@@ -10,7 +10,7 @@ import { Text } from './Text';
  * ViewerMode - How the data should be displayed
  */
 export type ViewerMode =
-  | 'canvas' // Graph visualization (special case)
+  | 'keimenon' // Graph visualization (special case)
   | 'dashboard' // Metrics and analytics
   | 'settings' // Configuration forms
   | 'detail' // Single object detail view
@@ -75,7 +75,7 @@ export interface ViewerProps {
  * grammar rules remain consistent.
  *
  * Special Modes:
- * - canvas: Delegates to specialized canvas renderer
+ * - keimenon: Delegates to specialized keimenon renderer
  * - dashboard: Expects array of metric objects
  * - settings: Expects object with nested structure
  * - detail: Expects single object
@@ -176,8 +176,8 @@ export function Viewer({ mode, data, loading = false, error, className = '' }: V
  */
 function renderByMode(mode: ViewerMode, data: any): React.ReactNode {
   switch (mode) {
-    case 'canvas':
-      return renderCanvasMode(data);
+    case 'keimenon':
+      return renderKeimenonMode(data);
     case 'dashboard':
       return renderDashboardMode(data);
     case 'settings':
@@ -192,20 +192,20 @@ function renderByMode(mode: ViewerMode, data: any): React.ReactNode {
 }
 
 /**
- * Canvas mode - Special case for graph visualization
- * TODO: Integrate with CanvasViewport component
- * Related: apps/web/src/components/canvas/CanvasViewport.tsx
+ * Keimenon mode - Special case for graph visualization
+ * TODO: Integrate with KeimenonViewport component
+ * Related: apps/web/src/components/keimenon/KeimenonViewport.tsx
  * See: docs/features/CANVAS_INTEGRATION.md (needs creation)
  */
-function renderCanvasMode(data: any): React.ReactNode {
+function renderKeimenonMode(data: any): React.ReactNode {
   return (
     <Card variant="info" className="max-w-4xl mx-auto">
-      <Text role="title">Canvas View</Text>
+      <Text role="title">Keimenon View</Text>
       <Text role="hint" mode="muted" className="mt-2">
-        Graph canvas visualization will be integrated here.
+        Graph keimenon visualization will be integrated here.
       </Text>
       <Text role="hint" mode="muted" className="mt-4">
-        For now, this delegates to the existing CanvasViewport component.
+        For now, this delegates to the existing KeimenonViewport component.
       </Text>
     </Card>
   );

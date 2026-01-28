@@ -22,7 +22,7 @@ function LoginForm() {
   // Redirect if already authenticated (in useEffect to avoid render-time navigation)
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/canvas');
+      router.push('/keimenon');
     }
   }, [isAuthenticated, router]);
 
@@ -49,7 +49,7 @@ function LoginForm() {
           <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-purple-600">
             <Lock className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Canvas Memory OS</h1>
+          <h1 className="text-4xl font-bold text-white mb-2">Keimenon</h1>
           <p className="text-slate-400">Sign in to your workspace</p>
         </div>
 

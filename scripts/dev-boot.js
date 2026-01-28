@@ -2,7 +2,7 @@
 
 /**
  * dev-boot.js
- * Automated boot script for Canvas Memory OS
+ * Automated boot script for Keimenon
  * - Checks Docker availability
  * - Starts Neo4j if not running (Docker or checks Aura connection)
  * - Delegates to dev.js for app startup
@@ -63,9 +63,8 @@ async function main() {
     console.log(`${COLORS.green}✓${COLORS.reset} All prerequisites met\n`);
 
     // Filter out our custom args before passing to dev.js
-    const devArgs = args.filter(arg => !['--skip-install'].includes(arg));
+    const devArgs = args.filter((arg) => !['--skip-install'].includes(arg));
     await startDevServer(devArgs);
-
   } catch (error) {
     console.error(`\n${COLORS.red}✗ Boot failed:${COLORS.reset}`, error.message);
     process.exit(1);
@@ -78,7 +77,7 @@ async function main() {
 function printHeader() {
   console.log(`${COLORS.bright}${COLORS.cyan}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('  🔋 Canvas Memory OS - Auto Boot');
+  console.log('  🔋 Keimenon - Auto Boot');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(COLORS.reset);
 }
@@ -94,7 +93,9 @@ async function checkDependencies() {
 
   if (!fs.existsSync(rootNodeModules)) {
     console.log(`${COLORS.yellow}⚠${COLORS.reset} Dependencies not installed`);
-    console.log(`${COLORS.blue}→${COLORS.reset} Installing dependencies (this may take a few minutes)...\n`);
+    console.log(
+      `${COLORS.blue}→${COLORS.reset} Installing dependencies (this may take a few minutes)...\n`
+    );
 
     try {
       await execAsync('npm install', {
@@ -131,7 +132,9 @@ async function checkEnvironment() {
     if (fs.existsSync(examplePath)) {
       fs.copyFileSync(examplePath, apiEnv);
       console.log(`${COLORS.green}✓${COLORS.reset} Created apps/api/.env`);
-      console.log(`${COLORS.yellow}⚠${COLORS.reset} Please configure Neo4j settings in apps/api/.env\n`);
+      console.log(
+        `${COLORS.yellow}⚠${COLORS.reset} Please configure Neo4j settings in apps/api/.env\n`
+      );
       throw new Error('Environment file created - please configure it first');
     } else {
       throw new Error('apps/api/.env.example not found');
@@ -194,8 +197,10 @@ async function ensureNeo4jRunning(neo4jUri) {
 
     let containerExists = false;
     try {
-      const { stdout } = await execAsync('docker ps -a --filter "name=canvas-neo4j" --format "{{.Names}}"');
-      containerExists = stdout.trim() === 'canvas-neo4j';
+      const { stdout } = await execAsync(
+        'docker ps -a --filter "name=keimenon-neo4j" --format "{{.Names}}"'
+      );
+      containerExists = stdout.trim() === 'keimenon-neo4j';
     } catch (error) {
       // Container doesn't exist
     }
@@ -203,16 +208,18 @@ async function ensureNeo4jRunning(neo4jUri) {
     if (containerExists) {
       // Container exists, check if it's running
       try {
-        const { stdout } = await execAsync('docker ps --filter "name=canvas-neo4j" --format "{{.Names}}"');
-        const isRunning = stdout.trim() === 'canvas-neo4j';
+        const { stdout } = await execAsync(
+          'docker ps --filter "name=keimenon-neo4j" --format "{{.Names}}"'
+        );
+        const isRunning = stdout.trim() === 'keimenon-neo4j';
 
         if (!isRunning) {
           console.log(`${COLORS.blue}→${COLORS.reset} Starting existing Neo4j container...`);
-          await execAsync('docker start canvas-neo4j');
+          await execAsync('docker start keimenon-neo4j');
         }
       } catch (error) {
         console.log(`${COLORS.blue}→${COLORS.reset} Starting Neo4j container...`);
-        await execAsync('docker start canvas-neo4j');
+        await execAsync('docker start keimenon-neo4j');
       }
     } else {
       // Container doesn't exist, start with docker-compose
@@ -222,7 +229,9 @@ async function ensureNeo4jRunning(neo4jUri) {
     }
 
     // Wait for Neo4j to be ready
-    console.log(`${COLORS.blue}⏳${COLORS.reset} Waiting for Neo4j to be ready (this may take 20-30s)...`);
+    console.log(
+      `${COLORS.blue}⏳${COLORS.reset} Waiting for Neo4j to be ready (this may take 20-30s)...`
+    );
 
     await waitFor(neo4jUri, {
       timeout: 45000,
@@ -231,7 +240,6 @@ async function ensureNeo4jRunning(neo4jUri) {
     });
 
     console.log(`${COLORS.green}✓${COLORS.reset} Neo4j is ready\n`);
-
   } catch (error) {
     console.log(`${COLORS.red}✗${COLORS.reset} Failed to start Neo4j\n`);
     console.log(`${COLORS.yellow}Error:${COLORS.reset}`, error.message);
@@ -296,7 +304,7 @@ async function startDevServer(args) {
 
 // Run
 if (require.main === module) {
-  main().catch(error => {
+  main().catch((error) => {
     console.error(`${COLORS.red}Fatal error:${COLORS.reset}`, error);
     process.exit(1);
   });

@@ -1,4 +1,4 @@
-# Clustering Guide — Canvas Memory Phase 3
+# Clustering Guide — Keimenon Phase 3
 
 **Purpose:** Explain how the policy-driven clustering engine works, with code examples and operational runbooks.
 
@@ -23,7 +23,7 @@
 
 ## Overview
 
-The Canvas Memory clustering engine implements **non-destructive deduplication** where duplicate instances are treated as evidence rather than trash. All clustering operates on the **J+MD surface** (normalized Markdown + verbatim raw text) and is driven by admin-configurable policies with zero hard-coded constants.
+The Keimenon clustering engine implements **non-destructive deduplication** where duplicate instances are treated as evidence rather than trash. All clustering operates on the **J+MD surface** (normalized Markdown + verbatim raw text) and is driven by admin-configurable policies with zero hard-coded constants.
 
 **Key Features:**
 
@@ -115,7 +115,7 @@ interface ContentIsland {
 ### Creating ChatRecords
 
 ````typescript
-import { createJmdProcessor } from '@canvas/parsers';
+import { createJmdProcessor } from '@keimenon/parsers';
 
 const processor = createJmdProcessor(db);
 
@@ -236,7 +236,7 @@ publishing:
 ### Loading and Validating Policy
 
 ```typescript
-import { loadPolicyFromFile, validatePolicy } from '@canvas/types';
+import { loadPolicyFromFile, validatePolicy } from '@keimenon/types';
 
 // Load from file
 const policy = loadPolicyFromFile('./policy.yaml');
@@ -265,7 +265,7 @@ if (errors.length > 0) {
 Every policy is signed with SHA-256 for reproducibility:
 
 ```typescript
-import { signPolicy } from '@canvas/types';
+import { signPolicy } from '@keimenon/types';
 
 const signedPolicy = signPolicy(policy);
 
@@ -286,7 +286,7 @@ const signedPolicy = signPolicy(policy);
 ### End-to-End Example
 
 ```typescript
-import { createClusteringEngine } from '@canvas/parsers';
+import { createClusteringEngine } from '@keimenon/parsers';
 
 const engine = createClusteringEngine(db, policy);
 
@@ -563,7 +563,7 @@ evidenceScore =
 ### Computing Evidence
 
 ```typescript
-import { createClusterEvidenceComputer } from '@canvas/parsers';
+import { createClusterEvidenceComputer } from '@keimenon/parsers';
 
 const computer = createClusterEvidenceComputer(db, policy);
 
@@ -778,7 +778,7 @@ ORDER BY count DESC;
 ### Exporting Edges
 
 ```typescript
-import { createPublishableExport } from '@canvas/api';
+import { createPublishableExport } from '@keimenon/api';
 
 const exporter = createPublishableExport(db, policy);
 
@@ -828,7 +828,7 @@ npm run validate-policy
 npm run cluster -- --level block --modality code --force
 
 # 3. Compare decision counts
-sqlite3 canvas.db "
+sqlite3 keimenon.db "
   SELECT policy_signature, decision, COUNT(*)
   FROM cluster_decisions
   WHERE level='block' AND modality='code'

@@ -116,8 +116,8 @@ export function getDbPath(req?: Request): string {
   // Otherwise use default DB path
   const defaultPath =
     process.env.STORAGE_MODE === 'local'
-      ? path.join(process.cwd(), 'packages/db/data/canvas-memory.db')
-      : path.join(process.cwd(), '.data/canvas-memory.db');
+      ? path.join(process.cwd(), 'packages/db/data/keimenon.db')
+      : path.join(process.cwd(), '.data/keimenon.db');
 
   return defaultPath;
 }

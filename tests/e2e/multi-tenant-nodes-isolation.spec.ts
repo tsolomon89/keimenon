@@ -141,14 +141,14 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
   test.afterEach(async ({ apiRequest }) => {
     // Cleanup test data from both accounts
     if (tokenA) {
-      await apiRequest.delete('/api/v1/data/canvas', {
+      await apiRequest.delete('/api/v1/data/keimenon', {
         headers: { Authorization: `Bearer ${tokenA}` },
         params: { data_tag: 'test' },
       });
     }
 
     if (tokenB) {
-      await apiRequest.delete('/api/v1/data/canvas', {
+      await apiRequest.delete('/api/v1/data/keimenon', {
         headers: { Authorization: `Bearer ${tokenB}` },
         params: { data_tag: 'test' },
       });
@@ -261,7 +261,7 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
   test('should not display Account A nodes in Account B UI', async ({ page }) => {
     // Login as Account B
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     // Wait for page to load (domcontentloaded is more reliable than networkidle)
     await page.waitForLoadState('domcontentloaded');
     // Wait a bit for any client-side rendering to complete
@@ -283,7 +283,7 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
 
     // Attempt to access Account A's node directly via URL
     // Adjust URL pattern based on your routing
-    await page.goto(`/canvas/node/${nodeAId}`);
+    await page.goto(`/keimenon/node/${nodeAId}`);
 
     // Should show error or redirect (not display the content)
     const pageContent = await page.content();
@@ -294,7 +294,7 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
     const url = page.url();
     const hasError =
       url.includes('/error') ||
-      url.includes('/canvas') ||
+      url.includes('/keimenon') ||
       (await page.getByText(/not found|forbidden|access denied/i).isVisible());
 
     expect(hasError).toBeTruthy();
@@ -347,7 +347,7 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
   test('should maintain isolation after account switching', async ({ page, request }) => {
     // Login as Account A
     await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(1000);
 
@@ -357,7 +357,7 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
     // Logout and login as Account B
     await page.goto('/logout');
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(1000);
 

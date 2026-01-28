@@ -248,13 +248,13 @@ During implementation planning, **discovered that Phase 2 was already complete**
    const visualData =
      (await mcp__playwright) -
      e2e__pw_crawl({
-       pages: ['/canvas', '/settings', '/groups'],
+       pages: ['/keimenon', '/settings', '/groups'],
        account_type: 'client',
        credentials: testUser,
      });
 
    // Use discovered locators in test generation
-   const verifiedLocator = visualData.pages['/canvas'].ui_elements.find(
+   const verifiedLocator = visualData.pages['/keimenon'].ui_elements.find(
      (el) => el.type === 'button' && el.text.includes('Create')
    );
    ```

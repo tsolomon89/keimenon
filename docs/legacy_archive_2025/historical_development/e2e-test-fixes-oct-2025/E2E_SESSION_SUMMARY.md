@@ -17,7 +17,7 @@
 - **Files Modified**:
   - [apps/web/.env.local](apps/web/.env.local) - Set flag to `true`
   - [apps/web/.env.example](apps/web/.env.example) - Documented new variable
-  - [apps/web/src/app/canvas/page.tsx](apps/web/src/app/canvas/page.tsx:37-42) - Check flag before showing modal
+  - [apps/web/src/app/keimenon/page.tsx](apps/web/src/app/keimenon/page.tsx:37-42) - Check flag before showing modal
 
 **Result**: Modal no longer appears during E2E tests ✅
 
@@ -93,13 +93,13 @@ This confirms the navigation fix works!
 
 ### Issue 1: Confirmation Modal Not Appearing
 
-**Affected Tests**: #1 (canvas data deletion), #8 (loading states)
+**Affected Tests**: #1 (keimenon data deletion), #8 (loading states)
 
 **Symptom**:
 
 ```
 Error: expect(locator).toBeVisible() failed
-Locator: locator('[role="dialog"]').filter({ hasText: /Clear All Canvas Data/i })
+Locator: locator('[role="dialog"]').filter({ hasText: /Clear All Keimenon Data/i })
 ```
 
 **Next Steps**:
@@ -124,14 +124,14 @@ Call log: waiting for getByText('Background Operations') to be visible
 
 **Analysis**: These tests use `waitForOperationsTable()` helper which:
 
-1. Navigates to `/canvas` (NOT settings!)
+1. Navigates to `/keimenon` (NOT settings!)
 2. Looks for "Background Operations" table
-3. This is a different component (ImportsTableCard) on the canvas main view
+3. This is a different component (ImportsTableCard) on the keimenon main view
 
 **Next Steps**:
 
 1. These tests should NOT use `navigateToSettings()`
-2. They need to stay on canvas page and find ImportsTableCard
+2. They need to stay on keimenon page and find ImportsTableCard
 3. May need to trigger an import/delete operation first to populate the table
 
 ---
@@ -167,7 +167,7 @@ Call log: waiting for getByText('Background Operations') to be visible
 - ✅ `playwright.config.ts` - Added global setup
 - ✅ `apps/web/.env.local` - E2E testing flag
 - ✅ `apps/web/.env.example` - Documented E2E flag
-- ✅ `apps/web/src/app/canvas/page.tsx` - Skip modal in E2E mode
+- ✅ `apps/web/src/app/keimenon/page.tsx` - Skip modal in E2E mode
 - ✅ `tests/e2e/data-management-ui-updates.spec.ts` - Fixed navigation helper (multiple changes)
 
 ---
@@ -220,7 +220,7 @@ Call log: waiting for getByText('Background Operations') to be visible
 ### Priority 2: Fix Background Operations Tests
 
 - Remove `navigateToSettings()` calls from these tests
-- Implement proper canvas view with operations table
+- Implement proper keimenon view with operations table
 - May need to trigger import/delete first to populate table
 
 ### Priority 3: Address Parallel Execution

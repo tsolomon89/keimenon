@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Canvas Memory API implements account lockout protection to prevent brute-force attacks. After 5 failed login attempts within 15 minutes, an account is locked for 30 minutes.
+The Keimenon API implements account lockout protection to prevent brute-force attacks. After 5 failed login attempts within 15 minutes, an account is locked for 30 minutes.
 
 **IMPORTANT**: Lockout is **automatically disabled** during E2E testing (`NODE_ENV=test`) to prevent false positives from parallel test execution.
 
@@ -45,7 +45,7 @@ npm run unlock:all
 
 ```
 🔓 Clearing Account Lockouts...
-📂 Database: C:\Users\YourName\.canvas-memory\canvas.db
+📂 Database: C:\Users\YourName\.keimenon\keimenon.db
 📊 Found 10 failed login attempts
 ✅ Cleared 10 failed login attempts
 ✅ All accounts unlocked!
@@ -61,7 +61,7 @@ npm run unlock user@example.com
 
 ```
 🔓 Unlocking account: user@example.com
-📂 Database: C:\Users\YourName\.canvas-memory\canvas.db
+📂 Database: C:\Users\YourName\.keimenon\keimenon.db
 📊 Found 3 failed attempts for user@example.com
 ✅ Unlocked user@example.com (cleared 3 attempts)
 ```
@@ -70,7 +70,7 @@ npm run unlock user@example.com
 
 ```bash
 # SQLite CLI
-sqlite3 ~/.canvas-memory/canvas.db
+sqlite3 ~/.keimenon/keimenon.db
 
 # Clear all lockouts
 DELETE FROM login_attempts WHERE success = 0;
@@ -207,7 +207,7 @@ npm run unlock user@example.com
 npm run unlock:all
 
 # Use separate databases
-export DB_PATH=~/.canvas-memory/dev.db      # Development
+export DB_PATH=~/.keimenon/dev.db      # Development
 export TEST_DB_PATH=.test-dbs/snapshot-template.db  # Testing
 ```
 

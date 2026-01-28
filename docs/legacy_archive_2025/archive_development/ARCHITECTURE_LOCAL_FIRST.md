@@ -2,7 +2,7 @@
 
 ## Overview
 
-Canvas Memory OS now uses a **local-first storage architecture** that separates document content from graph metadata, providing better privacy, cost efficiency, and scalability.
+Keimenon now uses a **local-first storage architecture** that separates document content from graph metadata, providing better privacy, cost efficiency, and scalability.
 
 ### Key Principles
 
@@ -21,7 +21,7 @@ Canvas Memory OS now uses a **local-first storage architecture** that separates 
 │                      User's Machine                         │
 │                                                               │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │  ~/.canvas-memory/                                      │ │
+│  │  ~/.keimenon/                                      │ │
 │  │  ├── documents/                                         │ │
 │  │  │   ├── conversations/{id}/conversation.json          │ │
 │  │  │   ├── messages/{conv_id}/{msg_id}.md                │ │
@@ -34,7 +34,7 @@ Canvas Memory OS now uses a **local-first storage architecture** that separates 
 │                          │ content read/write                 │
 │                          ▼                                    │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │  Canvas Memory API                                      │ │
+│  │  Keimenon API                                      │ │
 │  │  ├── LocalDocumentStore (filesystem ops)               │ │
 │  │  ├── Content API (GET /api/v1/content/*)               │ │
 │  │  └── Import Pipeline (save local + Neo4j metadata)     │ │
@@ -64,7 +64,7 @@ Canvas Memory OS now uses a **local-first storage architecture** that separates 
    ↓
 2. Parser extracts conversations/messages/code
    ↓
-3. LocalDocumentStore saves content to ~/.canvas-memory/
+3. LocalDocumentStore saves content to ~/.keimenon/
    ↓
 4. Neo4j gets metadata nodes with content_location pointers
    ↓
@@ -74,7 +74,7 @@ Canvas Memory OS now uses a **local-first storage architecture** that separates 
 ### **Retrieval Flow**
 
 ```
-1. User opens canvas → Load graph from Neo4j (fast, ~10KB)
+1. User opens keimenon → Load graph from Neo4j (fast, ~10KB)
    ↓
 2. User clicks message node → API reads from local filesystem
    ↓
@@ -85,7 +85,7 @@ Canvas Memory OS now uses a **local-first storage architecture** that separates 
 
 ## Storage Locations
 
-### **Local Filesystem** (`~/.canvas-memory/`)
+### **Local Filesystem** (`~/.keimenon/`)
 
 | Type               | Location                                         | Example                              |
 | ------------------ | ------------------------------------------------ | ------------------------------------ |
@@ -205,7 +205,7 @@ npm run migrate:to-local -- --batch-size=50
 
 1. Reads all Messages, Sources, and CodeBlocks from Neo4j
 2. Extracts content fields
-3. Saves content to `~/.canvas-memory/documents/`
+3. Saves content to `~/.keimenon/documents/`
 4. Updates Neo4j nodes with `content_location` pointers
 5. Removes `content` fields from Neo4j
 6. Verifies migration integrity
@@ -236,7 +236,7 @@ npm run migrate:to-local -- --batch-size=50
 
 - 📈 Handle **millions of messages** without Neo4j bloat
 - 📈 Filesystem scales better than graph DB for large text
-- 📈 Easy backup: just copy `~/.canvas-memory/`
+- 📈 Easy backup: just copy `~/.keimenon/`
 
 ---
 
@@ -296,7 +296,7 @@ NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password
 
 # Local document storage path (optional)
-LOCAL_DOCS_PATH=~/.canvas-memory  # Default
+LOCAL_DOCS_PATH=~/.keimenon  # Default
 # Or custom: LOCAL_DOCS_PATH=/path/to/your/documents
 
 # Old storage path (for uploads/temp files)
@@ -309,7 +309,7 @@ STORAGE_PATH=./storage
 import { getLocalDocumentStore } from './services/local-document-store';
 
 const store = getLocalDocumentStore({
-  basePath: '~/.canvas-memory', // Custom path
+  basePath: '~/.keimenon', // Custom path
   enableDeduplication: true, // Content-addressable storage
 });
 
@@ -327,8 +327,8 @@ await store.initialize();
 const graph = await fetch('/api/v1/boards/board_123/graph');
 // Response: { nodes: [...], edges: [...] }  (~10KB)
 
-// 2. Render canvas with nodes
-<Canvas nodes={graph.nodes} edges={graph.edges} />
+// 2. Render keimenon with nodes
+<Keimenon nodes={graph.nodes} edges={graph.edges} />
 
 // 3. Lazy-load content when user clicks
 const handleNodeClick = async (nodeId) => {
@@ -352,7 +352,7 @@ const handleNodeClick = async (nodeId) => {
 
 ```bash
 # Backup documents
-tar -czf canvas-memory-backup-$(date +%Y%m%d).tar.gz ~/.canvas-memory/
+tar -czf keimenon-backup-$(date +%Y%m%d).tar.gz ~/.keimenon/
 
 # Backup Neo4j (if local)
 neo4j-admin dump --database=neo4j --to=/path/to/backup/
@@ -362,11 +362,11 @@ neo4j-admin dump --database=neo4j --to=/path/to/backup/
 
 ```bash
 # 1. Extract documents
-tar -xzf canvas-memory-backup.tar.gz -C ~/
+tar -xzf keimenon-backup.tar.gz -C ~/
 
-# 2. Install Canvas Memory OS
-git clone https://github.com/yourorg/canvas-memory-os
-cd canvas-memory-os
+# 2. Install Keimenon
+git clone https://github.com/yourorg/keimenon
+cd keimenon
 npm install
 
 # 3. Restore Neo4j (or let it rebuild from documents)
@@ -377,8 +377,8 @@ neo4j-admin load --from=/path/to/backup/
 
 ```bash
 # Sync only specific conversations
-rsync -av ~/.canvas-memory/documents/conversations/conv_abc/ \
-  other-machine:~/.canvas-memory/documents/conversations/conv_abc/
+rsync -av ~/.keimenon/documents/conversations/conv_abc/ \
+  other-machine:~/.keimenon/documents/conversations/conv_abc/
 ```
 
 ---
@@ -392,7 +392,7 @@ rsync -av ~/.canvas-memory/documents/conversations/conv_abc/ \
 npm run dev:boot
 
 # Check local storage
-ls -lah ~/.canvas-memory/documents/
+ls -lah ~/.keimenon/documents/
 
 # View storage stats
 curl http://localhost:4001/api/v1/content/stats
@@ -419,7 +419,7 @@ curl http://localhost:4001/api/v1/content/conversation/{id}
 
 ```bash
 # Check if file exists
-ls ~/.canvas-memory/documents/messages/{conv_id}/{msg_id}.md
+ls ~/.keimenon/documents/messages/{conv_id}/{msg_id}.md
 
 # Check Neo4j node
 curl http://localhost:4001/api/v1/nodes/{id}
@@ -440,8 +440,8 @@ npm run migrate:to-local
 ### **Permission errors**
 
 ```bash
-# Ensure ~/.canvas-memory is writable
-chmod -R u+w ~/.canvas-memory/
+# Ensure ~/.keimenon is writable
+chmod -R u+w ~/.keimenon/
 ```
 
 ---
@@ -464,14 +464,14 @@ chmod -R u+w ~/.canvas-memory/
 **Q: Can I use cloud Neo4j with local documents?**
 A: Yes! The graph can be in Neo4j Aura while documents stay local. This enables multi-device graph access while keeping content private.
 
-**Q: What happens if I delete `~/.canvas-memory/`?**
+**Q: What happens if I delete `~/.keimenon/`?**
 A: You lose all document content. Neo4j will still have metadata, but content APIs will return 404. Always backup before deleting.
 
 **Q: Can I change the storage location?**
 A: Yes, set `LOCAL_DOCS_PATH` environment variable. Existing documents must be moved manually.
 
 **Q: Does this work on Windows?**
-A: Yes, `~/.canvas-memory` resolves to `C:\Users\{username}\.canvas-memory` on Windows.
+A: Yes, `~/.keimenon` resolves to `C:\Users\{username}\.keimenon` on Windows.
 
 **Q: What about mobile/tablet?**
 A: Future feature. Would use app-local storage (e.g., iOS Documents folder) with same architecture.

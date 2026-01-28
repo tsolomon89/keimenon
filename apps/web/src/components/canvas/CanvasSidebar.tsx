@@ -10,8 +10,8 @@ import { AccountInspector } from '../inspector/AccountInspector';
 import { ChatImportModal } from './ChatImportModal';
 import { ImportMethodSelector } from './ImportMethodSelector';
 import { UserDetailInspector } from '../inspector/UserDetailInspector';
-import { InspectorData } from '@/types/canvas';
-import { CanvasNode } from '@/store/canvasStore';
+import { InspectorData } from '@/types/keimenon';
+import { KeimenonNode } from '@/store/keimenonStore';
 import { CreateAccountModal } from '../modals/CreateAccountModal';
 import { CreateUserInAccountModal } from '../modals/CreateUserInAccountModal';
 import { useShell } from '@/contexts/ShellContext';
@@ -21,7 +21,7 @@ import { useAccountTree } from '@/hooks/useAccountTree';
 import { useGroupsTree, fetchGroupMembers, fetchFolderChildren } from '@/hooks/useGroupsTree';
 import { useSettingsTree } from '@/hooks/useSettingsTree';
 import { useNodeGroupLookup } from '@/hooks/useNodeGroupLookup';
-import { useCanvasStore } from '@/store/canvasStore';
+import { useKeimenonStore } from '@/store/keimenonStore';
 import { NavigationModelFactory } from '@keimenon/types/src/navigation.model';
 import { logDataEvent } from '@/lib/error-handler';
 import { errorCapture } from '@/services/error-capture.service';
@@ -38,7 +38,7 @@ export type InspectorPanel =
   | 'import-detail' // Import job detail (Manager mode)
   | 'user-detail'; // User detail inspector (Settings > Users)
 
-interface CanvasSidebarProps {
+interface KeimenonSidebarProps {
   side: 'left' | 'right';
   isOpen: boolean;
   onToggle: () => void;
@@ -52,7 +52,7 @@ interface CanvasSidebarProps {
   onViewProcessing?: () => void;
 }
 
-export function CanvasSidebar({
+export function KeimenonSidebar({
   side,
   isOpen,
   onToggle,
@@ -64,7 +64,7 @@ export function CanvasSidebar({
   onUserUpdate,
   activeOperation,
   onViewProcessing,
-}: CanvasSidebarProps) {
+}: KeimenonSidebarProps) {
   if (!isOpen) {
     return (
       <button
@@ -83,7 +83,7 @@ export function CanvasSidebar({
   // Left sidebar - mode-aware navigation
   if (side === 'left') {
     const { user } = useAuth();
-    const { shellMode, canvasMode } = useShell();
+    const { shellMode, keimenonMode } = useShell();
     const { operating, switchAccount } = useOperating();
     const { treeData: accountTreeData, loading: accountsLoading } = useAccountTree();
     const { treeData: groupsTreeData, loading: groupsLoading } = useGroupsTree();
@@ -97,17 +97,17 @@ export function CanvasSidebar({
     const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
     const [selectedAccountIds, setSelectedAccountIds] = useState<Set<string>>(new Set());
     const [lastSelectedAccountId, setLastSelectedAccountId] = useState<string | null>(null);
-    const canvasStore = useCanvasStore();
+    const keimenonStore = useKeimenonStore();
 
-    // Subscribe to canvas selection for bidirectional sync (Canvas → Navigation)
-    const canvasSelectedNodeIds = useCanvasStore((state) => state.selectedNodeIds);
-    const canvasSelectedArray = Array.from(canvasSelectedNodeIds);
-    const { groupIds: highlightedGroupIds } = useNodeGroupLookup(canvasSelectedArray);
+    // Subscribe to keimenon selection for bidirectional sync (Keimenon → Navigation)
+    const keimenonSelectedNodeIds = useKeimenonStore((state) => state.selectedNodeIds);
+    const keimenonSelectedArray = Array.from(keimenonSelectedNodeIds);
+    const { groupIds: highlightedGroupIds } = useNodeGroupLookup(keimenonSelectedArray);
 
     // Use NavigationModelFactory to determine navigation data (DRY + testable)
     const navModel = NavigationModelFactory.get({
       shellMode,
-      canvasMode,
+      keimenonMode,
       operatingMode: operating.mode,
       user: user ? { accountType: user.accountType, accountId: user.accountId } : null,
       accountTreeData,
@@ -129,7 +129,7 @@ export function CanvasSidebar({
     } = navModel;
 
     const handleSelect = async (node: TreeNode, event?: React.MouseEvent) => {
-      logDataEvent('Navigation item selected', 'canvas.navigation.select', {
+      logDataEvent('Navigation item selected', 'keimenon.navigation.select', {
         nodeId: node.id,
         navMode,
         shellMode,
@@ -200,11 +200,11 @@ export function CanvasSidebar({
 
       // Handle settings selection
       if (navMode === 'settings') {
-        // Navigate to settings section (center canvas will render SettingsCard components)
+        // Navigate to settings section (center keimenon will render SettingsCard components)
         if (onSettingsSectionSelect) {
           onSettingsSectionSelect(node.id);
         }
-        logDataEvent('Settings navigation item selected', 'canvas.navigation.settingsSection', {
+        logDataEvent('Settings navigation item selected', 'keimenon.navigation.settingsSection', {
           nodeId: node.id,
           sectionId: node.metadata?.sectionId,
         });
@@ -240,7 +240,7 @@ export function CanvasSidebar({
               const err = error instanceof Error ? error : new Error(String(error));
               errorCapture.capture(err, {
                 domain: 'api',
-                operation: 'canvas.groups.fetchFolderChildren',
+                operation: 'keimenon.groups.fetchFolderChildren',
                 metadata: { folderId: node.id },
               });
             } finally {
@@ -252,29 +252,29 @@ export function CanvasSidebar({
             }
           }
         } else {
-          // Group: fetch members, filter canvas, and SELECT them
+          // Group: fetch members, filter keimenon, and SELECT them
           try {
             const memberIds = await fetchGroupMembers(node.id);
-            logDataEvent('Fetched group members', 'canvas.navigation.groupMembers', {
+            logDataEvent('Fetched group members', 'keimenon.navigation.groupMembers', {
               groupId: node.id,
               memberCount: memberIds.length,
             });
 
-            // Filter canvas nodes to show only group members
-            canvasStore.setFilteredNodeIds(memberIds);
+            // Filter keimenon nodes to show only group members
+            keimenonStore.setFilteredNodeIds(memberIds);
 
-            // Bidirectional sync: Also select the member nodes on canvas
-            canvasStore.clearSelection();
-            memberIds.forEach((id) => canvasStore.selectNode(id, true));
+            // Bidirectional sync: Also select the member nodes on keimenon
+            keimenonStore.clearSelection();
+            memberIds.forEach((id) => keimenonStore.selectNode(id, true));
 
             // TODO: Implement zoom to fit filtered nodes
-            // Related: apps/web/src/components/canvas/CanvasViewport.tsx (add zoomToFit method)
-            // See: apps/web/src/components/canvas/Canvas2D.tsx (camera controls)
+            // Related: apps/web/src/components/keimenon/KeimenonViewport.tsx (add zoomToFit method)
+            // See: apps/web/src/components/keimenon/Keimenon2D.tsx (camera controls)
           } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
             errorCapture.capture(err, {
               domain: 'api',
-              operation: 'canvas.groups.fetchMembers',
+              operation: 'keimenon.groups.fetchMembers',
               metadata: { groupId: node.id },
             });
           }
@@ -348,15 +348,15 @@ export function CanvasSidebar({
   }
 
   // Right sidebar
-  const { canvasMode: rightCanvasMode, shellMode: rightShellMode } = useShell();
+  const { keimenonMode: rightKeimenonMode, shellMode: rightShellMode } = useShell();
   const { operating } = useOperating();
   const { treeData: accountTreeData } = useAccountTree();
-  const selectedNode = useCanvasStore((state) => state.selectedNode);
-  const selectedNodeIds = useCanvasStore((state) => state.selectedNodeIds);
-  const nodes = useCanvasStore((state) => state.nodes);
-  const deselectNode = useCanvasStore((state) => state.deselectNode);
-  const clearSelection = useCanvasStore((state) => state.clearSelection);
-  const openDetailPanel = useCanvasStore((state) => state.openDetailPanel);
+  const selectedNode = useKeimenonStore((state) => state.selectedNode);
+  const selectedNodeIds = useKeimenonStore((state) => state.selectedNodeIds);
+  const nodes = useKeimenonStore((state) => state.nodes);
+  const deselectNode = useKeimenonStore((state) => state.deselectNode);
+  const clearSelection = useKeimenonStore((state) => state.clearSelection);
+  const openDetailPanel = useKeimenonStore((state) => state.openDetailPanel);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
 
   // Inspector panel state management
@@ -429,8 +429,8 @@ export function CanvasSidebar({
   // For now, selectedAccounts is just the single selected account if any
   const selectedAccounts = selectedAccount ? [selectedAccount] : [];
 
-  // Helper function to transform CanvasNode to InspectorData
-  const transformNodeToInspectorData = (node: CanvasNode): InspectorData => {
+  // Helper function to transform KeimenonNode to InspectorData
+  const transformNodeToInspectorData = (node: KeimenonNode): InspectorData => {
     const typeMapping: Record<string, string> = {
       conversation: 'conversation',
       message: 'source_doc',
@@ -459,7 +459,7 @@ export function CanvasSidebar({
           icon: 'copy',
           onClick: () => {
             navigator.clipboard.writeText(node.id);
-            logDataEvent('Copied node ID to clipboard', 'canvas.node.copyId', {
+            logDataEvent('Copied node ID to clipboard', 'keimenon.node.copyId', {
               nodeId: node.id,
             });
           },
@@ -470,7 +470,7 @@ export function CanvasSidebar({
           onClick: () => {
             errorCapture.warn('Scope builder integration pending', {
               domain: 'ui',
-              operation: 'canvas.scope.add',
+              operation: 'keimenon.scope.add',
               metadata: { nodeId: node.id },
             });
             // TODO: Implement scope builder integration
@@ -537,7 +537,7 @@ export function CanvasSidebar({
                 />
               )}
             </>
-          ) : rightCanvasMode === 'settings' ? (
+          ) : rightKeimenonMode === 'settings' ? (
             // Settings Inspector
             <SettingsInspector selectedControlId={selectedSettingsControlId || null} />
           ) : rightShellMode === 'admin' && selectedAccounts.length > 1 ? (
@@ -613,7 +613,7 @@ export function CanvasSidebar({
               onAddToScope={(nodeId) => {
                 errorCapture.warn('Scope builder integration pending', {
                   domain: 'ui',
-                  operation: 'canvas.scope.add',
+                  operation: 'keimenon.scope.add',
                   metadata: { nodeId },
                 });
                 // TODO: Implement scope builder integration
@@ -623,7 +623,7 @@ export function CanvasSidebar({
               onSequester={(nodeId) => {
                 errorCapture.warn('Sequester action pending implementation', {
                   domain: 'ui',
-                  operation: 'canvas.scope.sequester',
+                  operation: 'keimenon.scope.sequester',
                   metadata: { nodeId },
                 });
                 // TODO: Implement sequester functionality

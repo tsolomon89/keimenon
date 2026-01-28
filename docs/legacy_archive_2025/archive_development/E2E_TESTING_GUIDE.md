@@ -1,6 +1,6 @@
 # E2E Testing with Playwright + MCP Control Layer
 
-Complete guide to end-to-end testing in Canvas Memory OS with Claude-powered test control via Model Context Protocol (MCP).
+Complete guide to end-to-end testing in Keimenon with Claude-powered test control via Model Context Protocol (MCP).
 
 ## Overview
 
@@ -98,7 +98,7 @@ tests/e2e/
 ├── fixtures/
 │   └── testId.ts              # Automatic x-test-id header injection
 ├── smoke.spec.ts              # @smoke - Quick sanity checks (4 tests)
-└── flow-auth-canvas.spec.ts   # @full  - Complete user journeys (4 tests)
+└── flow-auth-keimenon.spec.ts   # @full  - Complete user journeys (4 tests)
 ```
 
 ### Test Tags
@@ -272,7 +272,7 @@ import { test, expect } from './fixtures/testId';
 test.describe('User Authentication', () => {
   test.describe.configure({ tag: '@full' });
 
-  test('should login and access canvas', async ({ page }) => {
+  test('should login and access keimenon', async ({ page }) => {
     // Navigate
     await page.goto('/');
     await expect(page).toHaveURL(/\/login/);
@@ -289,7 +289,7 @@ test.describe('User Authentication', () => {
     expect(response.ok()).toBeTruthy();
 
     // Verify redirect
-    await expect(page).toHaveURL(/\/canvas/);
+    await expect(page).toHaveURL(/\/keimenon/);
   });
 });
 ```
@@ -309,7 +309,7 @@ npm run e2e:headed
 npm run e2e -- -g "should login successfully"
 
 # Run specific file
-npm run e2e -- flow-auth-canvas.spec.ts
+npm run e2e -- flow-auth-keimenon.spec.ts
 ```
 
 ### Trace Viewer
@@ -321,7 +321,7 @@ Traces are captured automatically on test retry:
 npx playwright show-trace test-results/*/trace.zip
 
 # View specific trace
-npx playwright show-trace test-results/flow-auth-canvas-chromium-login/trace.zip
+npx playwright show-trace test-results/flow-auth-keimenon-chromium-login/trace.zip
 ```
 
 Trace viewer shows:
@@ -365,7 +365,7 @@ lsof -i :4001
 ├── tests/e2e/                         # Test files
 │   ├── fixtures/testId.ts            # Test correlation fixture
 │   ├── smoke.spec.ts                 # Smoke tests
-│   └── flow-auth-canvas.spec.ts      # Full flow tests
+│   └── flow-auth-keimenon.spec.ts      # Full flow tests
 ├── .github/workflows/e2e.yml         # CI/CD workflow
 ├── .mcp/servers/playwright-e2e/      # MCP server for Claude
 │   ├── index.js                      # Server implementation

@@ -10,7 +10,7 @@ Phase 2 delivers the **desktop-class app experience** you requested - like Adobe
 - ✅ **Real-time graph updates** via SSE
 - ✅ **Live write queue metrics** streaming to UI
 - ✅ **Pause/Resume jobs** with state preservation
-- ✅ **Canvas visualization** support (backend ready)
+- ✅ **Keimenon visualization** support (backend ready)
 
 ---
 
@@ -128,7 +128,7 @@ DatabaseWriteQueue
            SSE Stream → Frontend
                  │
                  ▼
-           Canvas Renderer (live updates!)
+           Keimenon Renderer (live updates!)
 ```
 
 ### Data Flow: Pause/Resume
@@ -184,7 +184,7 @@ Import resumes from where it left off*
 
    ```bash
    # Upload a file with 100+ messages
-   # Navigate to http://localhost:3000/canvas
+   # Navigate to http://localhost:3000/keimenon
    ```
 
 2. **Open browser DevTools** → Network tab → Filter by "EventStream"
@@ -273,9 +273,9 @@ eventSource.addEventListener('graph.update', (event) => {
   const total = data.queueStats.nodesFlushed + data.queueStats.edgesFlushed;
   setImportProgress(total);
 
-  // Trigger canvas re-render (if showing live graph)
+  // Trigger keimenon re-render (if showing live graph)
   if (isLivePreviewEnabled) {
-    refreshCanvas();
+    refreshKeimenon();
   }
 });
 ```
@@ -338,10 +338,10 @@ async function resumeJob(jobId: string) {
 
 **Benefit**: Resume from exact point in large imports
 
-### 2. Live Canvas Rendering
+### 2. Live Keimenon Rendering
 
 **Current**: Backend emits graph updates
-**Needed**: Frontend canvas component that:
+**Needed**: Frontend keimenon component that:
 
 - Subscribes to `graph.update` events
 - Incrementally adds nodes/edges to visualization
@@ -398,7 +398,7 @@ Phase 2 is complete when:
 
 ---
 
-## Next Phase: Phase 3 - Frontend Canvas Integration
+## Next Phase: Phase 3 - Frontend Keimenon Integration
 
 **Goal**: Desktop-class visual feedback like Adobe XD/Figma
 
@@ -408,6 +408,6 @@ Phase 2 is complete when:
 2. Real-time node/edge animation
 3. Pause/resume UI controls
 4. Progress indicators with time estimates
-5. Canvas performance optimization (viewport culling, LOD)
+5. Keimenon performance optimization (viewport culling, LOD)
 
 **Timeline**: TBD (user-driven)

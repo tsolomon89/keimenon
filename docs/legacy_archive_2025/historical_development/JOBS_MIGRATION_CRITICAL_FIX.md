@@ -10,7 +10,7 @@
 
 **User Symptoms**:
 
-- Clicked "Clear Canvas Data" in Settings
+- Clicked "Clear Keimenon Data" in Settings
 - Two jobs appeared in Background Operations table
 - Jobs showed "Processing" but 0% progress
 - Jobs showed "NaNh NaNm" for time
@@ -57,14 +57,14 @@ NaNh NaNm
 **Direct Query**:
 
 ```bash
-$ sqlite3 canvas.db "SELECT COUNT(*) FROM jobs"
+$ sqlite3 keimenon.db "SELECT COUNT(*) FROM jobs"
 Error: in prepare, no such table: jobs
 ```
 
 **Table List**:
 
 ```bash
-$ sqlite3 canvas.db ".tables"
+$ sqlite3 keimenon.db ".tables"
 accounts              edges                 nodes
 audit_log             migrations            sessions
 blobs                 nodes_fts             users
@@ -207,7 +207,7 @@ This is a **critical issue** - failures should be loud, not silent.
 ### Step 1: Manual Migration Execution ✅
 
 ```bash
-DB_PATH="C:/Users/Audna/.canvas-memory/canvas.db"
+DB_PATH="C:/Users/Audna/.keimenon/keimenon.db"
 sqlite3 "$DB_PATH" < packages/db/src/sqlite/migrations/008_unified_jobs.sql
 ```
 
@@ -274,14 +274,14 @@ idx_jobs_updated_at
 
 1. **Clear old placeholder jobs**: Refresh browser to clear stale state
 2. **Navigate to Settings** → Data Management
-3. **Click "Clear Canvas Data"**
+3. **Click "Clear Keimenon Data"**
 4. **Confirm deletion**
 
 **Expected API Logs**:
 
 ```
 POST /api/v1/jobs/delete
-🗑️ Delete job created: job_xxx (scope: canvas)
+🗑️ Delete job created: job_xxx (scope: keimenon)
 🔄 Polling for jobs... (0/3 active, 3 slots available)
 SELECT * FROM jobs WHERE 1=1 AND status = 'queued' ...
 [JobRepository] Query returned 1 records  ← SUCCESS!
@@ -293,7 +293,7 @@ SELECT * FROM jobs WHERE 1=1 AND status = 'queued' ...
 
 **Expected UI**:
 
-- Job appears with proper filename ("Delete Canvas Data")
+- Job appears with proper filename ("Delete Keimenon Data")
 - Progress updates in real-time (0% → 100%)
 - Time shows actual elapsed time (not "NaN")
 - Status changes: queued → processing → done
@@ -468,7 +468,7 @@ CREATE TABLE IF NOT EXISTS migrations (
 
 - [ ] Browser refreshed to clear stale state
 - [ ] Navigate to Settings → Data Management
-- [ ] Click "Clear Canvas Data"
+- [ ] Click "Clear Keimenon Data"
 - [ ] Confirm modal
 - [ ] Check API logs for:
   - [ ] "🗑️ Delete job created: job_xxx"
@@ -476,12 +476,12 @@ CREATE TABLE IF NOT EXISTS migrations (
   - [ ] "⚡ Dispatching job job_xxx"
   - [ ] DeleteWorker progress logs
 - [ ] Check UI for:
-  - [ ] Job shows proper name ("Delete Canvas Data")
+  - [ ] Job shows proper name ("Delete Keimenon Data")
   - [ ] Progress bar animates 0% → 100%
   - [ ] Time shows actual elapsed (not "NaN")
   - [ ] Status badge changes to "Complete"
 - [ ] Verify deletion worked:
-  - [ ] Canvas view is empty
+  - [ ] Keimenon view is empty
   - [ ] Node count is 0
 
 **If all checks pass**: System is working correctly! ✅

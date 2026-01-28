@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-**Objective**: Heal failing E2E tests in the Canvas Memory OS test suite
+**Objective**: Heal failing E2E tests in the Keimenon test suite
 
 **Results**:
 
@@ -48,7 +48,7 @@ database.prepare('BEGIN TRANSACTION').run();
 database.prepare('COMMIT').run();
 
 // AFTER (fixed)
-const savepointId = `clear_canvas_${Date.now()}`;
+const savepointId = `clear_keimenon_${Date.now()}`;
 database.prepare(`SAVEPOINT ${savepointId}`).run();
 // ... operations ...
 database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
@@ -56,7 +56,7 @@ database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
 
 **Endpoints Fixed**:
 
-- `DELETE /api/v1/data/canvas` - Delete all canvas data
+- `DELETE /api/v1/data/keimenon` - Delete all keimenon data
 - `DELETE /api/v1/data/all-clients` - Delete all client data
 
 #### 2. `apps/api/src/routes/import-decisions.ts`
@@ -395,5 +395,5 @@ Successfully healed **73+ E2E tests** through systematic analysis and fixes acro
 - ✅ Clear documentation for future work
 
 **Generated**: 2025-11-14
-**Test Suite**: Canvas Memory OS E2E (Playwright)
+**Test Suite**: Keimenon E2E (Playwright)
 **Tool**: Autonomous Test Healer (playwright-test-healer agent)

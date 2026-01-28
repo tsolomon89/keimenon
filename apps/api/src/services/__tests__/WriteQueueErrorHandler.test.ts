@@ -11,7 +11,7 @@
  * - Check metrics accuracy
  */
 
-import { describe, test as it, before, after, beforeEach } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { WriteQueueErrorHandler } from '../WriteQueueErrorHandler';
@@ -49,7 +49,7 @@ type DBEdge = {
 // Test database setup
 let db: Database.Database;
 
-beforeEach(() => {
+beforeAll(async () => {
   // Create fresh in-memory database for each test
   db = new Database(':memory:');
   db.pragma('journal_mode = WAL');
@@ -119,7 +119,7 @@ beforeEach(() => {
   `);
 });
 
-after(() => {
+afterAll(async () => {
   if (db) {
     db.close();
   }

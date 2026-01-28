@@ -7,7 +7,7 @@
 ## 🚀 Prerequisites
 
 - ✅ Dev servers running: `npm run dev`
-- ✅ Browser open: http://localhost:3000/canvas
+- ✅ Browser open: http://localhost:3000/keimenon
 - ✅ Console Footer working: Press `` ` `` to test
 - [ ] Test data available: `ai_context/chat_data/test-samples/small.json`
 
@@ -19,7 +19,7 @@
 
 - ✅ Navigate to Settings page
 - ✅ Press `` ` `` to open Console Footer
-- ✅ Click "Clear Canvas Data" button
+- ✅ Click "Clear Keimenon Data" button
 - ✅ Confirmation modal appears with stats
 - ✅ Click "Clear Data" button
 - ✅**"Minimize" button appears during deletion**
@@ -28,7 +28,7 @@
 - ❌ Navigate to CRM Dashboard
 - [ ] **Operation appears in Operations Table** with:
   - [ ] Red Trash2 icon
-  - [ ] "Clearing canvas data" title
+  - [ ] "Clearing keimenon data" title
   - [ ] Progress indicator
 - [ ] Operation completes (green checkmark)
 - [ ] Press `` ` `` and check Console tab
@@ -36,15 +36,15 @@
 
 **Result**: ✅ Pass / ❌ Fail
 
-**Notes**: Going to "Settings" or " Dashboard " views still just get stuck on loading after minimizing the delete modal. ******\*\*\*\*******\_\_\_\_******\*\*\*\*******
+**Notes**: Going to "Settings" or " Dashboard " views still just get stuck on loading after minimizing the delete modal. **\*\***\*\*\*\***\*\***\_\_\_\_**\*\***\*\*\*\***\*\***
 
 ---
 
 ## ✅ Test 2: Import with Minimize
 
-**Location**: Canvas Page
+**Location**: Keimenon Page
 
-- ✅ Click "Import" button in canvas toolbar
+- ✅ Click "Import" button in keimenon toolbar
 - ✅ ImportFlowPanel opens in right sidebar
 - ✅ **Stage 1: File Selection**
   - ✅ Drag & drop zone visible
@@ -161,7 +161,7 @@
 
 **Result**: ✅ Pass / ❌ Fail
 
-**Notes**: ********\*\*********\_********\*\*********
+**Notes**: **\*\*\*\***\*\***\*\*\*\***\_**\*\*\*\***\*\***\*\*\*\***
 No download csv option down clicking the download icon/button.
 
 ---
@@ -170,9 +170,9 @@ No download csv option down clicking the download icon/button.
 
 ### Empty Database Deletion
 
-- [ ] Clear all canvas data
+- [ ] Clear all keimenon data
 - [ ] Try to clear again
-- [ ] Modal shows: "No canvas data to clear"
+- [ ] Modal shows: "No keimenon data to clear"
 - [ ] Operation succeeds gracefully
 - [ ] No errors in Console Footer
 
@@ -190,13 +190,13 @@ No download csv option down clicking the download icon/button.
 ### Large Dataset Deletion
 
 - [ ] Import large file (medium.json if available)
-- [ ] Clear canvas data
+- [ ] Clear keimenon data
 - [ ] Operation completes in <5 seconds
 - [ ] No errors
 
 **Result**: ✅ Pass / ❌ Fail
 
-**Notes**: ********\*\*********\_********\*\*********
+**Notes**: **\*\*\*\***\*\***\*\*\*\***\_**\*\*\*\***\*\***\*\*\*\***
 
 ---
 
@@ -215,17 +215,17 @@ npm test data-management
 PASS  src/__tests__/data-management.test.ts
   Data Management API
     GET /api/v1/data/stats
-      ✓ should return canvas data statistics
+      ✓ should return keimenon data statistics
       ✓ should require authentication
       ✓ should return zero stats for empty account
-    DELETE /api/v1/data/canvas
-      ✓ should clear canvas data for current user
+    DELETE /api/v1/data/keimenon
+      ✓ should clear keimenon data for current user
       ✓ should not affect other accounts
       ✓ should handle empty database gracefully
       ✓ should require authentication
       ✓ should create audit log entry
     DELETE /api/v1/data/all-clients (Admin Only)
-      ✓ should clear all client canvas data (admin only)
+      ✓ should clear all client keimenon data (admin only)
       ✓ should require admin privileges
       ✓ should require authentication
       ✓ should handle no client data gracefully
@@ -247,7 +247,7 @@ Tests:       12 passed, 12 total
 
 **Result**: ✅ Pass / ❌ Fail
 
-**Notes**: ********\*\*********\_********\*\*********
+**Notes**: **\*\*\*\***\*\***\*\*\*\***\_**\*\*\*\***\*\***\*\*\*\***
 
 ---
 
@@ -287,7 +287,7 @@ Tests:       12 passed, 12 total
 
 **Result**: ✅ Pass / ❌ Fail
 
-**Notes**: ********\*\*********\_********\*\*********
+**Notes**: **\*\*\*\***\*\***\*\*\*\***\_**\*\*\*\***\*\***\*\*\*\***
 
 ---
 
@@ -313,7 +313,7 @@ Tests:       12 passed, 12 total
 
 **Result**: ✅ Pass / ❌ Fail
 
-**Notes**: ********\*\*********\_********\*\*********
+**Notes**: **\*\*\*\***\*\***\*\*\*\***\_**\*\*\*\***\*\***\*\*\*\***
 
 ---
 
@@ -348,9 +348,9 @@ Tests:       12 passed, 12 total
 
 ## ✅ Sign-Off
 
-**Tested By**: ****\*\*****\_****\*\*****
+**Tested By**: \***\*\*\*\*\***\_\***\*\*\*\*\***
 
-**Date**: ****\*\*****\_****\*\*****
+**Date**: \***\*\*\*\*\***\_\***\*\*\*\*\***
 
 **Status**: ⬜ Approved for Production / ⬜ Needs Fixes
 
@@ -378,10 +378,10 @@ Tests:       12 passed, 12 total
 grep -r "errorCapture.capture" apps/web/src/
 
 # Check database
-sqlite3 ~/.canvas-memory/canvas.db "SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5;"
+sqlite3 ~/.keimenon/keimenon.db "SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5;"
 
 # Run specific test
-npm test -- -t "should clear canvas data"
+npm test -- -t "should clear keimenon data"
 ```
 
 ---

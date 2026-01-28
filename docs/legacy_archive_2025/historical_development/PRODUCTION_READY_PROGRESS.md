@@ -150,7 +150,7 @@
 - **File**: `apps/api/.env.example` (NEW)
 - **Comprehensive Documentation**:
   - Server configuration (PORT, NODE_ENV)
-  - Storage mode (local, canvas, hybrid)
+  - Storage mode (local, keimenon, hybrid)
   - Local storage paths (LOCAL_DOCS_PATH, SQLITE_PATH)
   - Security (JWT_SECRET, ALLOWED_ORIGINS)
   - Neo4j connection (optional)

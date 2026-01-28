@@ -14,14 +14,10 @@ const __dirname = dirname(__filename);
 
 const servers = [
   {
-    name: 'canvas-database',
+    name: 'keimenon-database',
     path: resolve(__dirname, 'servers/database/index.js'),
     env: {
-      SQLITE_PATH: resolve(
-        process.env.HOME || process.env.USERPROFILE,
-        '.canvas-memory',
-        'canvas.db'
-      ),
+      SQLITE_PATH: resolve(process.env.HOME || process.env.USERPROFILE, '.keimenon', 'keimenon.db'),
     },
     testRequest: {
       jsonrpc: '2.0',
@@ -31,7 +27,7 @@ const servers = [
     },
   },
   {
-    name: 'canvas-docs',
+    name: 'keimenon-docs',
     path: resolve(__dirname, 'servers/docs/index.js'),
     env: {},
     testRequest: {
@@ -42,7 +38,7 @@ const servers = [
     },
   },
   {
-    name: 'canvas-api-testing',
+    name: 'keimenon-api-testing',
     path: resolve(__dirname, 'servers/api-testing/index.js'),
     env: {
       API_BASE_URL: 'http://localhost:4001',
@@ -55,7 +51,7 @@ const servers = [
     },
   },
   {
-    name: 'canvas-chat-import',
+    name: 'keimenon-chat-import',
     path: resolve(__dirname, 'servers/chat-import/index.js'),
     env: {
       API_BASE_URL: 'http://localhost:4001',
@@ -144,7 +140,7 @@ async function testServer(server) {
 }
 
 async function runTests() {
-  console.log('\n🧪 Testing Canvas Memory OS MCP Servers\n');
+  console.log('\n🧪 Testing Keimenon MCP Servers\n');
 
   const results = [];
 

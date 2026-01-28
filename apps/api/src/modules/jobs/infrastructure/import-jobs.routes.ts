@@ -131,7 +131,7 @@ export function createImportJobsRoutes(
   const router = Router();
 
   // CRITICAL: Add JSON body parser middleware for POST /delete endpoint
-  // The /delete endpoint expects { scope: 'canvas' | 'all-clients' } in request body
+  // The /delete endpoint expects { scope: 'keimenon' | 'all-clients' } in request body
   router.use(express.json());
 
   // Initialize repository and use case
@@ -347,7 +347,7 @@ export function createImportJobsRoutes(
    *
    * Body:
    * {
-   *   scope: 'canvas' | 'all-clients'
+   *   scope: 'keimenon' | 'all-clients'
    * }
    *
    * Returns:
@@ -381,10 +381,10 @@ export function createImportJobsRoutes(
 
       const { scope } = req.body;
 
-      if (!scope || !['canvas', 'all-clients'].includes(scope)) {
+      if (!scope || !['keimenon', 'all-clients'].includes(scope)) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid scope. Must be "canvas" or "all-clients"',
+          error: 'Invalid scope. Must be "keimenon" or "all-clients"',
         });
       }
 

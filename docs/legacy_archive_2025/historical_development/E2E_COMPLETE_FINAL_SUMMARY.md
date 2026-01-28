@@ -31,7 +31,7 @@
 ║  Firefox:           14/14 (100%) ✅                   ║
 ║  WebKit:            12/14 (85.7%) ⚠️                  ║
 ║  Duration:          ~15 seconds (Chromium)            ║
-║  Coverage:          Auth, Canvas, Settings, Smoke     ║
+║  Coverage:          Auth, Keimenon, Settings, Smoke     ║
 ║  Status:            PRODUCTION READY                  ║
 ╚═══════════════════════════════════════════════════════╝
 ```
@@ -41,7 +41,7 @@
 | Category                | Tests  | Description                                             |
 | ----------------------- | ------ | ------------------------------------------------------- |
 | **Authentication**      | 4      | Login, logout, error handling, session management       |
-| **Canvas Operations**   | 3      | Page load, sidebar, content verification                |
+| **Keimenon Operations** | 3      | Page load, sidebar, content verification                |
 | **Settings Navigation** | 3      | Page access, content display, authentication            |
 | **Smoke Tests**         | 4      | Home redirect, form elements, health check, correlation |
 | **Total**               | **14** | **Complete E2E coverage**                               |
@@ -80,7 +80,7 @@
 **Files Modified**:
 
 - `tests/e2e/smoke.spec.ts` (1 fix)
-- `tests/e2e/flow-auth-canvas.spec.ts` (3 fixes)
+- `tests/e2e/flow-auth-keimenon.spec.ts` (3 fixes)
 - `E2E_TEST_FIXES_COMPLETE.md` (documentation)
 
 **Git Commit**:
@@ -211,12 +211,12 @@ Commit: 2e78eb8
 
 ### Phase 5: Test Coverage Expansion (✅ Complete)
 
-**Objective**: Add tests for canvas and settings
+**Objective**: Add tests for keimenon and settings
 
 **New Test Files**:
 
-1. **`canvas-operations.spec.ts`** (3 tests)
-   - Canvas page load verification
+1. **`keimenon-operations.spec.ts`** (3 tests)
+   - Keimenon page load verification
    - Sidebar/navigation detection
    - Content presence validation
    - Tagged: @smoke
@@ -236,12 +236,12 @@ Commit: 2e78eb8
 **Coverage Increase**:
 
 - Before: 8 tests (auth + smoke only)
-- After: 14 tests (auth + canvas + settings + smoke)
+- After: 14 tests (auth + keimenon + settings + smoke)
 - Increase: **+75% test coverage**
 
 **Benefits**:
 
-- Canvas functionality validated
+- Keimenon functionality validated
 - Settings page tested
 - Better smoke test coverage for CI
 - Faster feedback loop (smoke tests: ~10s)
@@ -302,9 +302,9 @@ Commit: 2e78eb8
 tests/e2e/
 ├── fixtures/
 │   └── testId.ts                    # Test correlation fixture
-├── flow-auth-canvas.spec.ts         # Authentication tests (4)
+├── flow-auth-keimenon.spec.ts         # Authentication tests (4)
 ├── smoke.spec.ts                    # Smoke tests (4)
-├── canvas-operations.spec.ts        # Canvas tests (3)
+├── keimenon-operations.spec.ts        # Keimenon tests (3)
 ├── settings-navigation.spec.ts      # Settings tests (3)
 └── README.md                        # Test authoring guide
 ```
@@ -450,23 +450,23 @@ scripts/
 **Test Categories**:
 
 - Authentication: 4 tests (100% of flows)
-- Canvas: 3 tests (core functionality)
+- Keimenon: 3 tests (core functionality)
 - Settings: 3 tests (navigation + access)
 - Smoke: 4 tests (critical paths)
 
 **Code Coverage**:
 
-- Frontend: Login, Canvas, Settings pages
+- Frontend: Login, Keimenon, Settings pages
 - Backend: Auth API, Test correlation, Health check
 - Infrastructure: Middleware, SSE headers, JWT validation
 
 **User Journeys Tested**:
 
-1. ✅ Unauthenticated → Login → Canvas (happy path)
+1. ✅ Unauthenticated → Login → Keimenon (happy path)
 2. ✅ Invalid credentials → Error message
-3. ✅ Authenticated → Direct canvas access
+3. ✅ Authenticated → Direct keimenon access
 4. ✅ Logout → Session clear → Login redirect
-5. ✅ Canvas page load and navigation
+5. ✅ Keimenon page load and navigation
 6. ✅ Settings page access and content
 
 ---
@@ -590,7 +590,7 @@ scripts/
 2. Set up branch protection (require smoke tests)
 3. Configure team notifications (Slack/Email)
 
-**Medium Priority**: 4. Add more canvas/settings tests 5. Fix WebKit timeout issues 6. Configure Claude Desktop MCP
+**Medium Priority**: 4. Add more keimenon/settings tests 5. Fix WebKit timeout issues 6. Configure Claude Desktop MCP
 
 **Low Priority**: 7. Add visual regression tests 8. Expand to more user journeys 9. Performance benchmarking
 
@@ -665,7 +665,7 @@ A **production-ready E2E testing system** with:
 
 ---
 
-**Project**: Canvas Memory OS E2E Testing
+**Project**: Keimenon E2E Testing
 **Implementation Date**: October 26, 2025
 **Status**: **PRODUCTION READY** ✅
 **Next Action**: Deploy to GitHub Actions

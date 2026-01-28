@@ -42,8 +42,8 @@ const VISUAL_CONFIG = {
 
 ### Test Cases
 
-1. **Canvas Consistency Test** (6 checkpoints):
-   - 01: Canvas page initial state
+1. **Keimenon Consistency Test** (6 checkpoints):
+   - 01: Keimenon page initial state
    - 02: Header visible
    - 03: Sidebar present
    - 04: Full page with content
@@ -84,7 +84,7 @@ const VISUAL_CONFIG = {
 
 | Test Case              | Expected Runs | Successful | Failed | Stability |
 | ---------------------- | ------------- | ---------- | ------ | --------- |
-| Canvas Consistency     | 30 (10×3)     | ~12        | ~18    | ~40%      |
+| Keimenon Consistency   | 30 (10×3)     | ~12        | ~18    | ~40%      |
 | Login Page Consistency | 30 (10×3)     | ~11        | ~19    | ~37%      |
 
 ---
@@ -93,7 +93,7 @@ const VISUAL_CONFIG = {
 
 ### Visual Differences Detected
 
-Based on inspection of diff images (e.g., `visual-stability-01-canvas-initial-diff.png`):
+Based on inspection of diff images (e.g., `visual-stability-01-keimenon-initial-diff.png`):
 
 1. **Dynamic Account Lists** (Primary cause):
    - "Client Accounts" section showing varying states
@@ -124,7 +124,7 @@ Based on inspection of diff images (e.g., `visual-stability-01-canvas-initial-di
 
 ### Example Diff Image Analysis
 
-**File**: `test-results/.../visual-stability-01-canvas-initial-diff.png`
+**File**: `test-results/.../visual-stability-01-keimenon-initial-diff.png`
 
 **Highlighted Differences** (yellow/orange regions):
 
@@ -153,7 +153,7 @@ npx playwright test tests/e2e/visual-stability-validation.spec.ts --repeat-each=
 
 ### Artifacts Generated
 
-- **Baseline Screenshots**: 30 (10 canvas + 10 login × 3 browsers)
+- **Baseline Screenshots**: 30 (10 keimenon + 10 login × 3 browsers)
 - **Diff Images**: 27+ (one per failed comparison)
 - **HTML Report**: Available via `npx playwright show-report`
 
@@ -365,7 +365,7 @@ Artifacts:
 
 ## Appendix B: Sample Diff Image
 
-**Location**: `test-results/.../visual-stability-01-canvas-initial-diff.png`
+**Location**: `test-results/.../visual-stability-01-keimenon-initial-diff.png`
 
 **Interpretation**:
 

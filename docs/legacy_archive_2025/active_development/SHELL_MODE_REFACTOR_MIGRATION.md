@@ -13,7 +13,7 @@ The ShellMode refactor simplifies the application architecture by:
 1. **Renaming shell modes** to match account types (`'crm'/'portal'` → `'admin'/'client'`)
 2. **Locking shell mode** to user's accountType (no manual switching)
 3. **Consolidating dashboard** to use one component for all users (API handles data scoping)
-4. **Adding 'auth' CanvasMode** type (for future flexibility, not yet implemented)
+4. **Adding 'auth' KeimenonMode** type (for future flexibility, not yet implemented)
 
 ---
 
@@ -43,9 +43,9 @@ type ShellMode = 'admin' | 'client';
 
 - `packages/types/src/navigation.model.ts`
 - `apps/web/src/contexts/ShellContext.tsx`
-- `apps/web/src/components/canvas/CanvasLayout.tsx`
-- `apps/web/src/components/canvas/CanvasSidebar.tsx`
-- `apps/web/src/components/canvas/CanvasToolbar.tsx`
+- `apps/web/src/components/keimenon/KeimenonLayout.tsx`
+- `apps/web/src/components/keimenon/KeimenonSidebar.tsx`
+- `apps/web/src/components/keimenon/KeimenonToolbar.tsx`
 - `apps/web/src/test/test-utils.tsx`
 - `packages/types/src/navigation.model.test.ts`
 
@@ -81,18 +81,18 @@ setShellMode('admin'); // Logs warning, does nothing (no-op)
 - `setShellMode()` function is now a no-op (kept for API compatibility)
 - ShellMode automatically syncs with `user.accountType` on login
 
-### 3. CanvasMode Values Updated
+### 3. KeimenonMode Values Updated
 
 **OLD:**
 
 ```typescript
-type CanvasMode = 'dashboard' | 'settings' | 'canvas' | 'upload' | 'processing';
+type KeimenonMode = 'dashboard' | 'settings' | 'keimenon' | 'upload' | 'processing';
 ```
 
 **NEW:**
 
 ```typescript
-type CanvasMode = 'auth' | 'dashboard' | 'settings' | 'canvas';
+type KeimenonMode = 'auth' | 'dashboard' | 'settings' | 'keimenon';
 ```
 
 **Changes:**
@@ -120,7 +120,7 @@ type CanvasMode = 'auth' | 'dashboard' | 'settings' | 'canvas';
 **NEW:**
 
 ```typescript
-{canvasMode === 'dashboard' && (
+{keimenonMode === 'dashboard' && (
   <CRMDashboard />  // Works for both admin and client
 )}
 ```
@@ -155,10 +155,10 @@ type CanvasMode = 'auth' | 'dashboard' | 'settings' | 'canvas';
   - [ ] Client sees own account data
 - [ ] Verify navigation:
   - [ ] Admin + dashboard → Accounts Tree
-  - [ ] Client + canvas → Groups Tree
+  - [ ] Client + keimenon → Groups Tree
 - [ ] Check inspector buttons:
-  - [ ] "View Canvas" button in AccountInspector
-  - [ ] "View Canvas" button in UserDetailInspector
+  - [ ] "View Keimenon" button in AccountInspector
+  - [ ] "View Keimenon" button in UserDetailInspector
 
 ### For QA/Testing
 
@@ -169,7 +169,7 @@ type CanvasMode = 'auth' | 'dashboard' | 'settings' | 'canvas';
    ```
    Login as admin@admin.com
    → Expect: shellMode = 'admin'
-   → Expect: canvasMode = 'dashboard' (default)
+   → Expect: keimenonMode = 'dashboard' (default)
    → Verify: Dashboard shows all accounts
    → Verify: Left sidebar shows Accounts Tree
    ```
@@ -179,7 +179,7 @@ type CanvasMode = 'auth' | 'dashboard' | 'settings' | 'canvas';
    ```
    Login as client@example.com
    → Expect: shellMode = 'client'
-   → Expect: canvasMode = 'canvas' (default)
+   → Expect: keimenonMode = 'keimenon' (default)
    → Verify: Dashboard shows own data only
    → Verify: Left sidebar shows Groups Tree
    ```
@@ -196,12 +196,12 @@ type CanvasMode = 'auth' | 'dashboard' | 'settings' | 'canvas';
 
    ```
    Admin: Select account in dashboard
-   → Verify: AccountInspector shows "View Canvas" button
-   → Click button → Expect: Switch to canvas mode
+   → Verify: AccountInspector shows "View Keimenon" button
+   → Click button → Expect: Switch to keimenon mode
 
    Admin: Select user in dashboard
-   → Verify: UserDetailInspector shows "View Canvas" button
-   → Click button → Expect: Switch to canvas mode
+   → Verify: UserDetailInspector shows "View Keimenon" button
+   → Click button → Expect: Switch to keimenon mode
    ```
 
 ---
@@ -262,7 +262,7 @@ If critical issues are found:
 
 2. **Manual Rollback:**
    - Restore `ShellMode = 'crm' | 'portal'`
-   - Restore `CanvasMode` old values
+   - Restore `KeimenonMode` old values
    - Re-add shell switcher UI
    - Restore `shellMode === 'crm'` conditionals
    - Revert test file changes
@@ -284,12 +284,12 @@ The `SHELL_MODE_LABELS` now shows:
 
 **Future:** If we want to keep "Manager" branding, update labels while keeping type values as 'admin'/'client'
 
-### 2. Auth CanvasMode Not Implemented
+### 2. Auth KeimenonMode Not Implemented
 
-The `'auth'` CanvasMode type exists but is not used:
+The `'auth'` KeimenonMode type exists but is not used:
 
 - Login/register remain as separate routes
-- Future: Could integrate auth into CanvasLayout for seamless UX
+- Future: Could integrate auth into KeimenonLayout for seamless UX
 
 ### 3. CRMDashboard Component Name
 
@@ -303,17 +303,17 @@ The component is still named `CRMDashboard` even though it now serves all users.
 
 ### Q: Can users still switch between views?
 
-**A:** Yes! Users can switch between **CanvasMode** values:
+**A:** Yes! Users can switch between **KeimenonMode** values:
 
-- Dashboard (`canvasMode = 'dashboard'`)
-- Canvas (`canvasMode = 'canvas'`)
-- Settings (`canvasMode = 'settings'`)
+- Dashboard (`keimenonMode = 'dashboard'`)
+- Keimenon (`keimenonMode = 'keimenon'`)
+- Settings (`keimenonMode = 'settings'`)
 
 What changed is **ShellMode** is now locked to accountType.
 
 ### Q: Will client users see less functionality?
 
-**A:** No. Client users can still access dashboard, canvas, and settings. The API returns data scoped to their account automatically.
+**A:** No. Client users can still access dashboard, keimenon, and settings. The API returns data scoped to their account automatically.
 
 ### Q: Do we need to update the API?
 

@@ -222,5 +222,5 @@ These tests already work (using Node test runner):
 ---
 
 **Authored by**: Claude (AI Agent)
-**Project**: Canvas Memory OS
+**Project**: Keimenon
 **Phase**: Testing Infrastructure

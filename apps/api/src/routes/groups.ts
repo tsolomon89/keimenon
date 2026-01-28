@@ -18,7 +18,7 @@ function getDatabasePath(): string {
   if (envPath) {
     return envPath.startsWith('~') ? path.join(os.homedir(), envPath.slice(1)) : envPath;
   }
-  return path.join(os.homedir(), '.canvas-memory', 'graph.db');
+  return path.join(os.homedir(), '.keimenon', 'graph.db');
 }
 
 /**

@@ -13,8 +13,8 @@
 
 1. User clicks "Import Chat Conversations" in FirstTimeUploadModal (line 61)
 2. Calls `onOpenChatImport()` (line 61)
-3. Sets `showChatImportModal = true` (canvas/page.tsx:79)
-4. Renders `<ChatImportModal onDismiss={...} />` (CanvasLayout.tsx:102-104)
+3. Sets `showChatImportModal = true` (keimenon/page.tsx:79)
+4. Renders `<ChatImportModal onDismiss={...} />` (KeimenonLayout.tsx:102-104)
 
 **ChatImportModal Features** (Fully Implemented):
 
@@ -26,9 +26,9 @@
 
 **Files**:
 
-- [ChatImportModal.tsx](apps/web/src/components/canvas/ChatImportModal.tsx) - Lines 1-310
-- [canvas/page.tsx](apps/web/src/app/canvas/page.tsx) - Lines 78-80, 88-90, 102-104
-- [CanvasLayout.tsx](apps/web/src/components/canvas/CanvasLayout.tsx) - Lines 102-104
+- [ChatImportModal.tsx](apps/web/src/components/keimenon/ChatImportModal.tsx) - Lines 1-310
+- [keimenon/page.tsx](apps/web/src/app/keimenon/page.tsx) - Lines 78-80, 88-90, 102-104
+- [KeimenonLayout.tsx](apps/web/src/components/keimenon/KeimenonLayout.tsx) - Lines 102-104
 
 **User Action Required**:
 
@@ -41,7 +41,7 @@
 
 ## Issue 2: Analytics Stuck on "Loading analytics..."
 
-**User Report**: "Processing analytics is stuck on loading 'Loading analytics...' and not seeing anything actively happen on the canvas"
+**User Report**: "Processing analytics is stuck on loading 'Loading analytics...' and not seeing anything actively happen on the keimenon"
 
 **Possible Causes**:
 
@@ -104,7 +104,7 @@
 ### Step 1: Check Browser Console
 
 ```
-1. Open canvas page
+1. Open keimenon page
 2. Press F12 to open DevTools
 3. Click Console tab
 4. Look for any red errors
@@ -176,7 +176,7 @@
 
 ```javascript
 // Run in browser console
-localStorage.getItem('canvas_memory_token');
+localStorage.getItem('keimenon_token');
 // Should return a JWT token, not null
 ```
 
@@ -287,7 +287,7 @@ If issues persist, check these files for potential problems:
 
 ### Frontend
 
-3. **apps/web/src/components/canvas/CRMDashboard.tsx** (lines 96-123)
+3. **apps/web/src/components/keimenon/CRMDashboard.tsx** (lines 96-123)
    - Check useEffect fetchAnalytics function
    - Verify error handling (lines 114-119)
    - Check state updates (lines 110-113)

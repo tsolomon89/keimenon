@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-**Get Canvas Memory OS running in 5 minutes!**
+**Get Keimenon running in 5 minutes!**
 
 This guide gets you up and running with the fastest path to a working system. For detailed setup instructions, see the [Installation Guide](INSTALLATION.md).
 
@@ -45,9 +45,9 @@ npm run dev
 ```
 ✓ Storage mode: local (SQLite only)
 → Skipping Neo4j check
-⚡️ Canvas Memory API running on port 4001
+⚡️ Keimenon API running on port 4001
 💿 Storage: local mode
-📁 Database: ~/.canvas-memory/canvas.db
+📁 Database: ~/.keimenon/keimenon.db
 ```
 
 ### Step 3: Register an Account
@@ -118,7 +118,7 @@ npm run dev
 **Access the UI:**
 
 - 🌐 Web UI: http://localhost:3000
-- 🎨 Canvas View: http://localhost:3000/canvas
+- 🎨 Keimenon View: http://localhost:3000/keimenon
 - 📥 Import UI: http://localhost:3000/ingest
 
 ---
@@ -146,8 +146,8 @@ curl http://localhost:4001/health
 
 ```bash
 # Database is automatically created at:
-# Windows: C:\Users\<YourName>\.canvas-memory\canvas.db
-# Mac/Linux: ~/.canvas-memory/canvas.db
+# Windows: C:\Users\<YourName>\.keimenon\keimenon.db
+# Mac/Linux: ~/.keimenon/keimenon.db
 ```
 
 ### 3. Run Test Suite
@@ -211,7 +211,7 @@ docker run -d --name neo4j \
   neo4j:5.19
 
 # 2. Configure .env
-echo "STORAGE_MODE=canvas" >> apps/api/.env
+echo "STORAGE_MODE=keimenon" >> apps/api/.env
 echo "NEO4J_URI=bolt://localhost:7687" >> apps/api/.env
 echo "NEO4J_USER=neo4j" >> apps/api/.env
 echo "NEO4J_PASSWORD=testpassword" >> apps/api/.env
@@ -238,7 +238,7 @@ cd ai_convo_parser
 npm run dev
 ```
 
-Wait for the startup message: `⚡️ Canvas Memory API running on port 4001`
+Wait for the startup message: `⚡️ Keimenon API running on port 4001`
 
 ### "Port 4001 already in use"
 
@@ -285,9 +285,9 @@ npm run dev
 npm run backup
 
 # Reset database (WARNING: deletes all data)
-rm ~/.canvas-memory/canvas.db  # Mac/Linux
+rm ~/.keimenon/keimenon.db  # Mac/Linux
 # OR
-del %USERPROFILE%\.canvas-memory\canvas.db  # Windows
+del %USERPROFILE%\.keimenon\keimenon.db  # Windows
 
 # Restart server (creates fresh database)
 npm run dev
@@ -329,7 +329,7 @@ Now that you're up and running:
 
 ## 🎉 Success!
 
-You now have Canvas Memory OS running locally with:
+You now have Keimenon running locally with:
 
 - ✅ Local SQLite database (zero configuration)
 - ✅ Multi-tenant authentication

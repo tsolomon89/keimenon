@@ -11,7 +11,7 @@
  *
  * Related:
  * - apps/api/src/modules/workers/infrastructure/ImportWorker.ts
- * - apps/web/src/components/canvas/ChatImportModal.tsx
+ * - apps/web/src/components/keimenon/ChatImportModal.tsx
  */
 
 export enum ImportJobStage {

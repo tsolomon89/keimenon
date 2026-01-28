@@ -11,7 +11,7 @@ Plans: Free shows Groups + Subjective→Objective basics (no models). Pro unlock
 
 ---
 
-## 1) Groups UI (canvas tiles)
+## 1) Groups UI (keimenon tiles)
 
 A **Group** is a stack‑tile on the board. It contains **Sources**, **Folders**, **Constellations**, and optionally **ObjectiveClaims**.
 
@@ -50,7 +50,7 @@ A light **lane** appears when a Group is selected:
 
 An **Archetype** is a reusable, parameterized AI persona/tool runner that operates on scopes.
 
-**Card anatomy (canvas)**
+**Card anatomy (keimenon)**
 
 - **Header**: title + icon (e.g., "Summarizer", "Contrarian", "Planner", "Synthesizer")
 - **Model chip** (Pro+): model name, token ceiling, cost meter.
@@ -180,7 +180,7 @@ Selecting multiple nodes stacks tiles in RHS. Order is user‑controlled.
   "template": {
     "subject": "{{unified_doc.title}}",
     "to": "{{contact.email}}",
-    "body_md": "{{arch_output.transcript}}\n\n— Sent by Canvas Memory"
+    "body_md": "{{arch_output.transcript}}\n\n— Sent by Keimenon"
   },
   "policy": { "dry_run_default": true, "rate_limit_per_min": 20 }
 }

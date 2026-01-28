@@ -47,7 +47,7 @@ The SQLite client needs to check for `req.testDbPath` and use it instead of the 
 
 ```typescript
 // Current: Uses single global DB
-const dbPath = process.env.DB_PATH || 'packages/db/data/canvas-memory.db';
+const dbPath = process.env.DB_PATH || 'packages/db/data/keimenon.db';
 export const dbClient = new Database(dbPath);
 ```
 
@@ -157,7 +157,7 @@ export default async function globalSetup() {
 
   // Copy template DB for each worker (based on worker count)
   const workerCount = process.env.CI ? 1 : 2;
-  const templateDb = path.join(process.cwd(), 'packages/db/data/canvas-memory.db');
+  const templateDb = path.join(process.cwd(), 'packages/db/data/keimenon.db');
 
   for (let i = 0; i < workerCount; i++) {
     const workerDb = path.join(testDbsDir, `worker-${i}.db`);
@@ -264,8 +264,8 @@ curl -H "X-Test-DB-Path: /path/to/project/.test-dbs/worker-0.db" \
 
 ```bash
 # Run single test with isolation
-npx playwright test tests/e2e/canvas-operations.spec.ts \
-  -g "should load canvas page successfully" \
+npx playwright test tests/e2e/keimenon-operations.spec.ts \
+  -g "should load keimenon page successfully" \
   --project=chromium
 ```
 

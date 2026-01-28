@@ -124,15 +124,15 @@ describe('Jobs System Integration Tests', () => {
 
   describe('Delete Jobs', () => {
     it('should create delete job with exclusive lock', async () => {
-      // POST /api/v1/jobs/delete { scope: 'canvas' }
+      // POST /api/v1/jobs/delete { scope: 'keimenon' }
       // Verify concurrency_group: 'delete:{accountId}'
       // Attempt second delete job
       // Verify second job blocked until first completes
     });
 
-    it('should delete all canvas data', async () => {
+    it('should delete all keimenon data', async () => {
       // Create test data (nodes, edges)
-      // Create delete job (scope: canvas)
+      // Create delete job (scope: keimenon)
       // Wait for completion
       // Verify all nodes deleted
       // Verify all edges deleted
@@ -287,7 +287,7 @@ describe('SSE Job Streaming', () => {
 
 **Changes Needed:**
 
-The existing data management tests (`DELETE /api/v1/data/canvas`, `DELETE /api/v1/data/all-clients`) should **co-exist** with the new job-based delete endpoints.
+The existing data management tests (`DELETE /api/v1/data/keimenon`, `DELETE /api/v1/data/all-clients`) should **co-exist** with the new job-based delete endpoints.
 
 **Add comparison tests:**
 
@@ -300,7 +300,7 @@ describe('Delete Endpoints Comparison', () => {
 
     // Account A: Synchronous delete
     const syncStart = Date.now();
-    await fetch(`http://localhost:4001/api/v1/data/canvas`, {
+    await fetch(`http://localhost:4001/api/v1/data/keimenon`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${tokenA}` },
     });
@@ -314,7 +314,7 @@ describe('Delete Endpoints Comparison', () => {
         Authorization: `Bearer ${tokenB}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ scope: 'canvas' }),
+      body: JSON.stringify({ scope: 'keimenon' }),
     });
     const { jobId } = await jobResponse.json();
 
@@ -500,7 +500,7 @@ curl http://localhost:4001/health
 }
 
 # Check database for jobs tables
-sqlite3 ~/.canvas-memory/canvas.db
+sqlite3 ~/.keimenon/keimenon.db
 > SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%job%';
 
 # Expected output:
@@ -569,7 +569,7 @@ curl -X POST http://localhost:4001/api/v1/jobs/delete \
 ### Check Job Events
 
 ```bash
-sqlite3 ~/.canvas-memory/canvas.db
+sqlite3 ~/.keimenon/keimenon.db
 
 # View all events for a job
 SELECT type, sequence_number, timestamp, json_extract(data, '$.message') as message
@@ -635,4 +635,4 @@ ORDER BY sequence_number;
 
 **Last Updated:** 2025-10-18
 **Status:** ✅ Ready for Implementation
-**Author:** Canvas Memory Team
+**Author:** Keimenon Team

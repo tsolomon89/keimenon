@@ -5,7 +5,7 @@ import { login } from '../helpers/login';
  * CRUD Template for Resource Testing with Visual Regression
  *
  * This template demonstrates the standard pattern for testing CRUD operations
- * on any resource in the Canvas Memory OS application, including visual regression checks.
+ * on any resource in the Keimenon application, including visual regression checks.
  *
  * Usage:
  * 1. Copy this template
@@ -60,7 +60,7 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
   test.beforeEach(async ({ page }) => {
     // Login as client account user
     await login(page, 'client@test.com', 'TestPass123!');
-    await page.goto('/canvas'); // or appropriate page
+    await page.goto('/keimenon'); // or appropriate page
 
     // Wait for app to be ready
     await page.waitForLoadState('networkidle');
@@ -77,8 +77,8 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
   // ==================== CREATE ====================
 
   test('should create RESOURCE_NAME with valid data', async ({ page, request }) => {
-    // 📸 Visual check: Initial canvas state (before creation)
-    await captureBaseline(page, 'create-resource', '00-initial-canvas');
+    // 📸 Visual check: Initial keimenon state (before creation)
+    await captureBaseline(page, 'create-resource', '00-initial-keimenon');
 
     // Step 1: Open create dialog/form
     await page.getByRole('button', { name: /create RESOURCE_NAME/i }).click();
@@ -108,11 +108,11 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
     // 📸 Visual check: Success toast/notification
     await captureBaseline(page, 'create-resource', '03-success-toast');
 
-    // Step 5: Verify resource appears in list/canvas
+    // Step 5: Verify resource appears in list/keimenon
     await expect(page.getByText('Test RESOURCE_NAME')).toBeVisible();
 
-    // 📸 Visual check: Resource in canvas (CRITICAL - validates UI rendering)
-    await captureBaseline(page, 'create-resource', '04-canvas-with-resource');
+    // 📸 Visual check: Resource in keimenon (CRITICAL - validates UI rendering)
+    await captureBaseline(page, 'create-resource', '04-keimenon-with-resource');
 
     // Step 6: Verify via API (backend validation)
     const response = await request.get('/api/v1/RESOURCE_NAME', {
@@ -191,7 +191,7 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
     const resourceId = resource.id;
 
     // Step 2: Navigate to resource (click or direct URL)
-    await page.goto(`/canvas/RESOURCE_NAME/${resourceId}`);
+    await page.goto(`/keimenon/RESOURCE_NAME/${resourceId}`);
     // OR: await page.getByText('Details Test').click();
 
     // Step 3: Verify details are displayed
@@ -255,7 +255,7 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
     const resourceId = resource.id;
 
     // Step 2: Navigate to resource
-    await page.goto(`/canvas/RESOURCE_NAME/${resourceId}`);
+    await page.goto(`/keimenon/RESOURCE_NAME/${resourceId}`);
 
     // 📸 Visual check: Original state before edit
     await captureBaseline(page, 'update-resource', '01-original-state');
@@ -289,7 +289,7 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
     await expect(page.getByText('Updated description')).toBeVisible();
 
     // 📸 Visual check: Updated content displayed (CRITICAL - validates persistence)
-    await captureBaseline(page, 'update-resource', '05-canvas-updated');
+    await captureBaseline(page, 'update-resource', '05-keimenon-updated');
 
     // Step 8: Verify via API (backend validation)
     const updatedResponse = await request.get(`/api/v1/RESOURCE_NAME/${resourceId}`);
@@ -315,7 +315,7 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
     const resourceId = resource.id;
 
     // Step 2: Navigate to resource
-    await page.goto(`/canvas/RESOURCE_NAME/${resourceId}`);
+    await page.goto(`/keimenon/RESOURCE_NAME/${resourceId}`);
 
     // 📸 Visual check: Resource exists before deletion
     await captureBaseline(page, 'delete-resource', '01-before-delete');
@@ -341,8 +341,8 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
     // Step 6: Verify resource no longer visible
     await expect(page.getByText('To Be Deleted')).not.toBeVisible();
 
-    // 📸 Visual check: Canvas without deleted resource (CRITICAL - validates removal)
-    await captureBaseline(page, 'delete-resource', '04-canvas-after-delete');
+    // 📸 Visual check: Keimenon without deleted resource (CRITICAL - validates removal)
+    await captureBaseline(page, 'delete-resource', '04-keimenon-after-delete');
 
     // Step 7: Verify via API (backend validation)
     const deletedResponse = await request.get(`/api/v1/RESOURCE_NAME/${resourceId}`);
@@ -368,7 +368,7 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
     // Step 2: Login as junior user (no delete permission)
     await page.goto('/logout');
     await login(page, 'junior@test.com', 'TestPass123!');
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
 
     // Step 3: Try to delete
     await page.getByText('Protected Resource').click();
@@ -391,7 +391,7 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
     // Test as viewer (read-only)
     await page.goto('/logout');
     await login(page, 'viewer@test.com', 'TestPass123!');
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
 
     // Verify create button is not visible
     await expect(page.getByRole('button', { name: /create RESOURCE_NAME/i })).not.toBeVisible();
@@ -402,7 +402,7 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
     // Test as senior (can create/update)
     await page.goto('/logout');
     await login(page, 'senior@test.com', 'TestPass123!');
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
 
     // Verify create button is visible
     await expect(page.getByRole('button', { name: /create RESOURCE_NAME/i })).toBeVisible();
@@ -424,7 +424,7 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
     const { VIEWPORT_TEST_SUITES } = await import('../config/viewports');
 
     // Navigate to the main view
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     await page.waitForLoadState('networkidle');
 
     // Capture screenshots at all standard viewports (mobile, tablet, desktop)
@@ -499,7 +499,7 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
       ['mobile', 'tablet', 'desktop'],
       async (viewportName) => {
         // Navigate to resource details
-        await page.goto(`/canvas/RESOURCE_NAME/${resourceId}`);
+        await page.goto(`/keimenon/RESOURCE_NAME/${resourceId}`);
         await page.waitForLoadState('networkidle');
 
         // Verify heading is visible on all viewports
@@ -527,7 +527,7 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
 
     const { verifyElementVisibility } = await import('../helpers/multi-viewport');
 
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     await page.waitForLoadState('networkidle');
 
     // Test mobile menu button visibility
@@ -579,7 +579,7 @@ test.describe('RESOURCE_NAME CRUD - Client Account', () => {
       page,
       ['mobile', 'tablet', 'desktop'],
       async (viewportName) => {
-        await page.goto('/canvas');
+        await page.goto('/keimenon');
         await page.waitForLoadState('networkidle');
 
         // Verify at least one resource is visible

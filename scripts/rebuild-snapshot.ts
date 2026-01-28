@@ -2,7 +2,7 @@
  * Standalone script to rebuild database snapshot
  * Run with: npx tsx rebuild-snapshot.ts
  */
-import { DatabaseSnapshotManager } from './tests/e2e/fixtures/database-snapshots';
+import { DatabaseSnapshotManager } from '../tests/e2e/fixtures/database-snapshots';
 
 async function main() {
   console.log('\n📸 Rebuilding database snapshot...\n');

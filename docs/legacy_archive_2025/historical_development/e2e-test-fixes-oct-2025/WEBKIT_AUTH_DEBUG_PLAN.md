@@ -9,9 +9,9 @@
 ## Current Signal
 
 - WebKit pass rate: **4/31 (13%)**
-- Failure signature: `page.waitForURL(/\/canvas/)` timing out after successful login POST
-- Impacted specs: `canvas-operations`, `console-error-filtering`, `settings-navigation`, `flow-auth-canvas`, `data-management-ui-updates`
-- Artifacts reviewed: `test-results/**/error-context.md` (all snapshots remain on `/login`), `flow-auth-canvas.spec.ts` confirms JWT payload received prior to timeout
+- Failure signature: `page.waitForURL(/\/keimenon/)` timing out after successful login POST
+- Impacted specs: `keimenon-operations`, `console-error-filtering`, `settings-navigation`, `flow-auth-keimenon`, `data-management-ui-updates`
+- Artifacts reviewed: `test-results/**/error-context.md` (all snapshots remain on `/login`), `flow-auth-keimenon.spec.ts` confirms JWT payload received prior to timeout
 
 ---
 
@@ -19,7 +19,7 @@
 
 1. **SSE timing** – WebKit needs additional time for Server-Sent Event bootstrap before router transition.
 2. **Token persistence** – JWT is not committed to `localStorage`/cookies in time for middleware to detect authenticated state.
-3. **Middleware delays** – Next.js middleware (or route guards) evaluate slower on WebKit, preventing `/canvas` redirect.
+3. **Middleware delays** – Next.js middleware (or route guards) evaluate slower on WebKit, preventing `/keimenon` redirect.
 4. Navigation listener or CSP edge cases unique to WebKit.
 5. Residual storage contamination between tests.
 
@@ -32,13 +32,13 @@
 - **Change**: Extended `tests/e2e/fixtures/testId.ts` WebKit pages with navigation, storage, API request/response, and console logging. Generates structured `[WebKit][ISO] ...` lines.
 - **Command**:
   ```bash
-  npx playwright test tests/e2e/canvas-operations.spec.ts --project=webkit --grep "canvas page successfully" --headed
+  npx playwright test tests/e2e/keimenon-operations.spec.ts --project=webkit --grep "keimenon page successfully" --headed
   ```
 - **Exit criteria**: Confirm logs show `/login` POST 200, storage snapshot still missing `token` before redirect, or any unexpected page errors.
 
 ### Phase 2 – SSE Timing Probe (15 min)
 
-- **Action**: In `canvas-operations.spec.ts` temporary branch, inject WebKit-only `await page.waitForTimeout(5000)` post-sign-in.
+- **Action**: In `keimenon-operations.spec.ts` temporary branch, inject WebKit-only `await page.waitForTimeout(5000)` post-sign-in.
 - **Observation**: Determine whether additional wait allows navigation.
 - **Decision**: If positive, investigate SSE initialisation path in app (`apps/web/src/lib/sse.ts?`). If negative, move to Phase 3.
 

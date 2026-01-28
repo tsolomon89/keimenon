@@ -28,7 +28,7 @@ Focus on **frontend fixes and features** and **data processing improvements** as
 **Files Created/Modified:**
 
 - `apps/web/src/lib/error-handler.ts` - Enhanced `handleApiError()`, added logging functions
-- `apps/web/src/components/canvas/ChatImportModal.tsx` - Event logging integration
+- `apps/web/src/components/keimenon/ChatImportModal.tsx` - Event logging integration
 - `apps/web/src/components/settings/DataManagementCard.tsx` - Delete job logging
 - `apps/web/src/contexts/AuthContext.tsx` - Account switch logging
 
@@ -59,7 +59,7 @@ logJobEvent('Import job created: file.json', 'import.jobCreated', {
 
 - ✅ Add new API endpoints → errors automatically captured with correct domain
 - ✅ Change error messages in backend → instantly reflected in frontend
-- ✅ All errors/events visible in canvas console (backtick key)
+- ✅ All errors/events visible in keimenon console (backtick key)
 - ✅ Zero maintenance required for new features
 
 ---
@@ -76,8 +76,8 @@ logJobEvent('Import job created: file.json', 'import.jobCreated', {
 
 **Files Created/Modified:**
 
-- `apps/web/src/components/canvas/ProgressVisualization.tsx` - NEW (242 lines)
-- `apps/web/src/components/canvas/CanvasViewport.tsx` - Integrated overlay
+- `apps/web/src/components/keimenon/ProgressVisualization.tsx` - NEW (242 lines)
+- `apps/web/src/components/keimenon/KeimenonViewport.tsx` - Integrated overlay
 
 **Game Dev Techniques Used:**
 
@@ -93,7 +93,7 @@ logJobEvent('Import job created: file.json', 'import.jobCreated', {
 
 3. **Visual Effects**
    - Linear gradients (purple → pink)
-   - Shadow/glow effects using Canvas API
+   - Shadow/glow effects using Keimenon API
    - Smooth fade transitions (CSS opacity)
 
 **Code Example:**
@@ -207,7 +207,7 @@ Delete button → Confirmation → deleteUser() API → Event logged
 └────────────────────┬─────────────────────────────────────┘
                      ↓
 ┌──────────────────────────────────────────────────────────┐
-│             Canvas Footer Console                        │
+│             Keimenon Footer Console                        │
 │  Press ` (backtick) to view                             │
 │  • All errors with domain context                       │
 │  • Event logs (job created, user added, etc.)           │
@@ -230,7 +230,7 @@ Delete button → Confirmation → deleteUser() API → Event logged
 └────────────────────┬─────────────────────────────────────┘
                      ↓
 ┌──────────────────────────────────────────────────────────┐
-│             CanvasViewport                               │
+│             KeimenonViewport                               │
 │  Finds active import job → passes to overlay             │
 └────────────────────┬─────────────────────────────────────┘
                      ↓
@@ -252,7 +252,7 @@ Delete button → Confirmation → deleteUser() API → Event logged
 ### Code Changes
 
 - **Files Created**: 2 (ProgressVisualization.tsx, SESSION_2_SUMMARY.md)
-- **Files Modified**: 6 (error-handler.ts, ChatImportModal.tsx, DataManagementCard.tsx, AuthContext.tsx, CreateUserInAccountModal.tsx, UsersListCard.tsx, CanvasViewport.tsx)
+- **Files Modified**: 6 (error-handler.ts, ChatImportModal.tsx, DataManagementCard.tsx, AuthContext.tsx, CreateUserInAccountModal.tsx, UsersListCard.tsx, KeimenonViewport.tsx)
 - **Lines Added**: ~500 lines
 - **Testing Debt Added**: 4 features need E2E testing
 
@@ -391,7 +391,7 @@ Delete button → Confirmation → deleteUser() API → Event logged
 
 ### Architecture Decisions
 
-1. **Particle overlay pattern** - Separate canvas layer allows independent rendering
+1. **Particle overlay pattern** - Separate keimenon layer allows independent rendering
 2. **API client consolidation** - Unified error handling across all endpoints
 3. **Event logging as first-class feature** - Not just errors, but all important operations
 
@@ -401,7 +401,7 @@ Delete button → Confirmation → deleteUser() API → Event logged
 
 ### New Files Created
 
-1. `apps/web/src/components/canvas/ProgressVisualization.tsx` (242 lines)
+1. `apps/web/src/components/keimenon/ProgressVisualization.tsx` (242 lines)
    - Particle system implementation
    - FPS-optimized render loop
    - SSE integration for job progress
@@ -415,7 +415,7 @@ Delete button → Confirmation → deleteUser() API → Event logged
    - Enhanced `handleApiError()` for backend error extraction
    - Added `logApiEvent()`, `logJobEvent()`, `logDataEvent()`
 
-2. `apps/web/src/components/canvas/ChatImportModal.tsx`
+2. `apps/web/src/components/keimenon/ChatImportModal.tsx`
    - Job creation event logging
    - Job completion/failure logging
 
@@ -434,7 +434,7 @@ Delete button → Confirmation → deleteUser() API → Event logged
    - User deletion event logging
    - Auto-reload after creation
 
-7. `apps/web/src/components/canvas/CanvasViewport.tsx`
+7. `apps/web/src/components/keimenon/KeimenonViewport.tsx`
    - Progress visualization overlay integration
    - Active job tracking
 

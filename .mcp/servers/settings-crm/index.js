@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Canvas Memory OS - Settings & CRM MCP Server
+ * Keimenon - Settings & CRM MCP Server
  *
  * Provides tools for managing settings, users, accounts, and CRM features.
  * Supports the new settings consolidation and user management features.
@@ -34,13 +34,13 @@ import { resolve } from 'path';
 import { homedir } from 'os';
 import { existsSync } from 'fs';
 
-const DB_PATH = process.env.SQLITE_PATH || resolve(homedir(), '.canvas-memory', 'canvas.db');
+const DB_PATH = process.env.SQLITE_PATH || resolve(homedir(), '.keimenon', 'keimenon.db');
 
 class SettingsCRMMCPServer {
   constructor() {
     this.server = new Server(
       {
-        name: 'canvas-settings-crm',
+        name: 'keimenon-settings-crm',
         version: '1.0.0',
       },
       {
@@ -207,19 +207,19 @@ class SettingsCRMMCPServer {
     this.server.setRequestHandler(ListResourcesRequestSchema, async () => ({
       resources: [
         {
-          uri: 'canvas-crm://users',
+          uri: 'keimenon-crm://users',
           name: 'Users Directory',
           description: 'List of all users with account memberships',
           mimeType: 'application/json',
         },
         {
-          uri: 'canvas-crm://accounts',
+          uri: 'keimenon-crm://accounts',
           name: 'Accounts Directory',
           description: 'List of all accounts with statistics',
           mimeType: 'application/json',
         },
         {
-          uri: 'canvas-crm://user-account-graph',
+          uri: 'keimenon-crm://user-account-graph',
           name: 'User-Account Graph',
           description: 'Graph representation of user-account memberships',
           mimeType: 'application/json',
@@ -267,11 +267,11 @@ class SettingsCRMMCPServer {
 
       try {
         switch (uri) {
-          case 'canvas-crm://users':
+          case 'keimenon-crm://users':
             return await this.readUsersResource();
-          case 'canvas-crm://accounts':
+          case 'keimenon-crm://accounts':
             return await this.readAccountsResource();
-          case 'canvas-crm://user-account-graph':
+          case 'keimenon-crm://user-account-graph':
             return await this.readUserAccountGraph();
           default:
             throw new Error(`Unknown resource: ${uri}`);
@@ -643,7 +643,7 @@ class SettingsCRMMCPServer {
     return {
       contents: [
         {
-          uri: 'canvas-crm://users',
+          uri: 'keimenon-crm://users',
           mimeType: 'application/json',
           text: JSON.stringify({ users }, null, 2),
         },
@@ -657,7 +657,7 @@ class SettingsCRMMCPServer {
     return {
       contents: [
         {
-          uri: 'canvas-crm://accounts',
+          uri: 'keimenon-crm://accounts',
           mimeType: 'application/json',
           text: JSON.stringify({ accounts }, null, 2),
         },
@@ -682,7 +682,7 @@ class SettingsCRMMCPServer {
     return {
       contents: [
         {
-          uri: 'canvas-crm://user-account-graph',
+          uri: 'keimenon-crm://user-account-graph',
           mimeType: 'application/json',
           text: JSON.stringify(
             {

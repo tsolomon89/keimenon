@@ -58,10 +58,12 @@ export async function addAuditLogTable(db: Database.Database): Promise<void> {
     console.log('✅ Created indexes for audit_log table');
 
     // Update schema metadata
-    db.prepare(`
+    db.prepare(
+      `
       INSERT OR REPLACE INTO schema_metadata (key, value)
       VALUES ('migration_002', datetime('now'))
-    `).run();
+    `
+    ).run();
 
     console.log('✅ Migration 002 completed successfully');
   } catch (error) {
@@ -89,7 +91,7 @@ export async function runMigration(databasePath: string): Promise<void> {
 
 // Allow running directly with: npx tsx src/migrations/002_add_audit_log.ts
 if (require.main === module) {
-  const dbPath = process.env.DB_PATH || `${process.env.USERPROFILE}/.canvas-memory/canvas.db`;
+  const dbPath = process.env.DB_PATH || `${process.env.USERPROFILE}/.keimenon/keimenon.db`;
   console.log(`Running migration on database: ${dbPath}`);
   runMigration(dbPath)
     .then(() => {

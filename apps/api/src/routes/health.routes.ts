@@ -30,7 +30,7 @@ router.get('/', async (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    service: 'canvas-memory-api',
+    service: 'keimenon-api',
     version: '0.1.0',
     storageMode,
     dependencies: {

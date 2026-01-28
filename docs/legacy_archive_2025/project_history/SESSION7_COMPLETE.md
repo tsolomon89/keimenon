@@ -67,7 +67,7 @@ const database = dbClient.getDatabase();
 1. Changed `waitForLoadState('networkidle')` → `'domcontentloaded'`
 2. Added modal detection and close logic (2s timeout)
 3. Added X button fallback (1s timeout)
-4. Added canvas element wait (5s timeout)
+4. Added keimenon element wait (5s timeout)
 
 **Result**: Test execution time 30s timeout → 6.8s success ✅
 
@@ -82,7 +82,7 @@ const database = dbClient.getDatabase();
 **Solution**: Changed to use `apiRequest.get()` with manual token extraction:
 
 ```typescript
-const tokenA = await page.evaluate(() => localStorage.getItem('canvas_memory_token'));
+const tokenA = await page.evaluate(() => localStorage.getItem('keimenon_token'));
 const listA = await apiRequest.get('/api/v1/groups', {
   headers: { Authorization: `Bearer ${tokenA}` },
   params: { limit: 1000 },
@@ -101,7 +101,7 @@ const listA = await apiRequest.get('/api/v1/groups', {
 - **Failures**: 3 tests
   1. Group members query (nodesA.length = 0)
   2. Account switching (groupsA missing groupAId)
-  3. UI timeout (30s on /canvas page)
+  3. UI timeout (30s on /keimenon page)
 
 ### After Session 7
 
@@ -258,7 +258,7 @@ if (await modal.isVisible({ timeout: 2000 }).catch(() => false)) {
   await modal.click();
 }
 // Wait for actual content
-await page.waitForSelector('[data-testid="canvas"]', { timeout: 5000 });
+await page.waitForSelector('[data-testid="keimenon"]', { timeout: 5000 });
 ```
 
 ---

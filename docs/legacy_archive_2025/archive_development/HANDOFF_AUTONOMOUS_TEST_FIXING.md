@@ -22,8 +22,8 @@
 **Passing (100%)**:
 
 - `smoke.spec.ts` (4/4)
-- `canvas-operations.spec.ts` (3/3)
-- `flow-auth-canvas.spec.ts` (4/4)
+- `keimenon-operations.spec.ts` (3/3)
+- `flow-auth-keimenon.spec.ts` (4/4)
 - `settings-navigation.spec.ts` (3/3)
 
 **Failing (Feature Incomplete)**:
@@ -45,56 +45,56 @@ Analyze failing tests → Identify missing features → Implement features → V
 
 #### 🔧 MCP Servers (6 Total)
 
-1. **canvas-database** - Query nodes/edges, inspect schema, search content
+1. **keimenon-database** - Query nodes/edges, inspect schema, search content
 
    ```
-   mcp__canvas-database__query_nodes
-   mcp__canvas-database__query_edges
-   mcp__canvas-database__inspect_schema
-   mcp__canvas-database__get_stats
-   mcp__canvas-database__search_content
+   mcp__keimenon-database__query_nodes
+   mcp__keimenon-database__query_edges
+   mcp__keimenon-database__inspect_schema
+   mcp__keimenon-database__get_stats
+   mcp__keimenon-database__search_content
    ```
 
-2. **canvas-docs** - Search documentation, find related docs, extract TODOs
+2. **keimenon-docs** - Search documentation, find related docs, extract TODOs
 
    ```
-   mcp__canvas-docs__search_docs
-   mcp__canvas-docs__find_related
-   mcp__canvas-docs__list_todos
-   mcp__canvas-docs__get_architecture_info
-   mcp__canvas-docs__read_doc
+   mcp__keimenon-docs__search_docs
+   mcp__keimenon-docs__find_related
+   mcp__keimenon-docs__list_todos
+   mcp__keimenon-docs__get_architecture_info
+   mcp__keimenon-docs__read_doc
    ```
 
-3. **canvas-api-testing** - Test endpoints, CRUD lifecycle, multi-tenant isolation
+3. **keimenon-api-testing** - Test endpoints, CRUD lifecycle, multi-tenant isolation
 
    ```
-   mcp__canvas-api-testing__login
-   mcp__canvas-api-testing__test_endpoint
-   mcp__canvas-api-testing__test_crud
-   mcp__canvas-api-testing__test_multi_tenant
-   mcp__canvas-api-testing__test_import
-   mcp__canvas-api-testing__test_permissions
-   mcp__canvas-api-testing__create_test_account
-   mcp__canvas-api-testing__cleanup_test_data
+   mcp__keimenon-api-testing__login
+   mcp__keimenon-api-testing__test_endpoint
+   mcp__keimenon-api-testing__test_crud
+   mcp__keimenon-api-testing__test_multi_tenant
+   mcp__keimenon-api-testing__test_import
+   mcp__keimenon-api-testing__test_permissions
+   mcp__keimenon-api-testing__create_test_account
+   mcp__keimenon-api-testing__cleanup_test_data
    ```
 
-4. **canvas-chat-import** - Import test datasets, verify results
+4. **keimenon-chat-import** - Import test datasets, verify results
 
    ```
-   mcp__canvas-chat-import__list_test_datasets
-   mcp__canvas-chat-import__get_test_dataset
-   mcp__canvas-chat-import__import_test_dataset
-   mcp__canvas-chat-import__verify_import_results
+   mcp__keimenon-chat-import__list_test_datasets
+   mcp__keimenon-chat-import__get_test_dataset
+   mcp__keimenon-chat-import__import_test_dataset
+   mcp__keimenon-chat-import__verify_import_results
    ```
 
-5. **canvas-settings-crm** - User/account management, memberships
+5. **keimenon-settings-crm** - User/account management, memberships
 
    ```
-   mcp__canvas-settings-crm__list_users
-   mcp__canvas-settings-crm__get_user_details
-   mcp__canvas-settings-crm__list_accounts
-   mcp__canvas-settings-crm__get_account_details
-   mcp__canvas-settings-crm__query_user_account_memberships
+   mcp__keimenon-settings-crm__list_users
+   mcp__keimenon-settings-crm__get_user_details
+   mcp__keimenon-settings-crm__list_accounts
+   mcp__keimenon-settings-crm__get_account_details
+   mcp__keimenon-settings-crm__query_user_account_memberships
    ```
 
 6. **playwright-e2e** - Run tests, debug failures, list tests
@@ -141,9 +141,9 @@ Analyze failing tests → Identify missing features → Implement features → V
 3. **Search Documentation**
 
    ```javascript
-   mcp__canvas - docs__search_docs({ query: 'account switching' });
-   mcp__canvas - docs__find_related({ topic: 'authentication' });
-   mcp__canvas - docs__get_architecture_info({ category: 'api' });
+   mcp__keimenon - docs__search_docs({ query: 'account switching' });
+   mcp__keimenon - docs__find_related({ topic: 'authentication' });
+   mcp__keimenon - docs__get_architecture_info({ category: 'api' });
    ```
 
 4. **Check Current Implementation**
@@ -153,10 +153,10 @@ Analyze failing tests → Identify missing features → Implement features → V
    Grep('switch-account', 'apps/api/src/routes');
 
    // Check database schema
-   mcp__canvas - database__inspect_schema({ table_name: 'accounts' });
+   mcp__keimenon - database__inspect_schema({ table_name: 'accounts' });
 
    // List existing users/accounts
-   mcp__canvas - settings - crm__list_accounts();
+   mcp__keimenon - settings - crm__list_accounts();
    ```
 
 ### Phase 2: Implementation Planning
@@ -259,7 +259,7 @@ Analyze failing tests → Identify missing features → Implement features → V
 
    ```javascript
    // Login first
-   mcp__canvas -
+   mcp__keimenon -
      api -
      testing__login({
        email: 'admin@admin.com',
@@ -267,7 +267,7 @@ Analyze failing tests → Identify missing features → Implement features → V
      });
 
    // Test switch endpoint
-   mcp__canvas -
+   mcp__keimenon -
      api -
      testing__test_endpoint({
        path: '/auth/switch-account',
@@ -289,7 +289,7 @@ Analyze failing tests → Identify missing features → Implement features → V
 
 3. **Validate Multi-Tenant Isolation**
    ```javascript
-   mcp__canvas -
+   mcp__keimenon -
      api -
      testing__test_multi_tenant({
        account_a_email: 'user1@test.com',
@@ -506,14 +506,14 @@ async getUserAccountMembership(
 
 ```javascript
 // Test via MCP
-mcp__canvas -
+mcp__keimenon -
   api -
   testing__login({
     email: 'admin@admin.com',
     password: 'TestPass123!',
   });
 
-mcp__canvas -
+mcp__keimenon -
   api -
   testing__test_endpoint({
     path: '/auth/switch-account',
@@ -556,7 +556,7 @@ Before marking implementation complete:
 
 1. ✅ **Code Review**: Use `code-review-enforcer` skill
 2. ✅ **Schema Validation**: Use `graph-schema-validator` skill
-3. ✅ **API Testing**: Use `canvas-api-testing` MCP
+3. ✅ **API Testing**: Use `keimenon-api-testing` MCP
 4. ✅ **E2E Validation**: Tests pass via `playwright-e2e` MCP
 5. ✅ **Pipeline Check**: Use `pipeline-verifier` skill
 
@@ -602,13 +602,13 @@ Implement missing features autonomously until all E2E tests pass
 Grep('router\.(get|post|put|delete)', 'apps/api/src/routes', { output_mode: 'content' });
 
 // Check database tables
-mcp__canvas - database__inspect_schema();
+mcp__keimenon - database__inspect_schema();
 
 // Search documentation
-mcp__canvas - docs__search_docs({ query: 'your search term' });
+mcp__keimenon - docs__search_docs({ query: 'your search term' });
 
 // List TODOs
-mcp__canvas - docs__list_todos();
+mcp__keimenon - docs__list_todos();
 ```
 
 ### Implementation
@@ -641,7 +641,7 @@ mcp__playwright - e2e__pw_run({ grep: 'test name', project: 'chromium' });
 mcp__playwright - e2e__pw_lastFailures();
 
 // Test endpoint
-mcp__canvas -
+mcp__keimenon -
   api -
   testing__test_endpoint({
     path: '/endpoint',

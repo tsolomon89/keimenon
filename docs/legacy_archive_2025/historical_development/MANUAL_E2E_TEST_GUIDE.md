@@ -49,13 +49,13 @@ npm run dev
 ## Test 1: Import Flow with Particle Visualization (20 min)
 
 **Feature Claimed**: "Progress Visualization - COMPLETE with particle effects"
-**Files**: [ProgressVisualization.tsx](apps/web/src/components/canvas/ProgressVisualization.tsx), [useJobStream.ts](apps/web/src/hooks/useJobStream.ts)
+**Files**: [ProgressVisualization.tsx](apps/web/src/components/keimenon/ProgressVisualization.tsx), [useJobStream.ts](apps/web/src/hooks/useJobStream.ts)
 
 ### Steps
 
-1. **Navigate to Canvas**
-   - URL should be: `http://localhost:3000/canvas`
-   - Verify canvas viewport renders
+1. **Navigate to Keimenon**
+   - URL should be: `http://localhost:3000/keimenon`
+   - Verify keimenon viewport renders
 
 2. **Open Import Modal**
    - Click toolbar button or press hotkey
@@ -73,7 +73,7 @@ npm run dev
    - **VERIFY**: Job created (check network tab for POST request)
 
 5. **Watch Progress Visualization**
-   - **VERIFY**: Particle effects appear on canvas
+   - **VERIFY**: Particle effects appear on keimenon
      - Purple/pink particles spawning
      - Particles have physics (gravity, velocity, fade)
      - Particles emit from random positions
@@ -102,7 +102,7 @@ npm run dev
    - Wait for import to finish
    - **VERIFY**: Particles fade out after 2 seconds
    - **VERIFY**: Job status shows "succeeded"
-   - **VERIFY**: Node count updated in canvas
+   - **VERIFY**: Node count updated in keimenon
 
 ### Expected Results ✅
 
@@ -111,7 +111,7 @@ npm run dev
 - [ ] SSE connection works (check console logs)
 - [ ] Job appears in Background Operations
 - [ ] Import completes successfully
-- [ ] Nodes appear in canvas after import
+- [ ] Nodes appear in keimenon after import
 
 ### Failure Scenarios ❌
 
@@ -222,7 +222,7 @@ npm run dev
 ## Test 3: Responsive Design (10 min)
 
 **Feature Claimed**: "Frontend Responsiveness - COMPLETE (Oct 22, 2025)"
-**Files**: [CanvasLayout.tsx](apps/web/src/components/canvas/CanvasLayout.tsx), [CanvasSidebar.tsx](apps/web/src/components/canvas/CanvasSidebar.tsx)
+**Files**: [KeimenonLayout.tsx](apps/web/src/components/keimenon/KeimenonLayout.tsx), [KeimenonSidebar.tsx](apps/web/src/components/keimenon/KeimenonSidebar.tsx)
 
 ### Steps
 
@@ -230,7 +230,7 @@ npm run dev
    - Open DevTools → Device toolbar (Ctrl+Shift+M)
    - Set width to 1920px
    - **VERIFY**: Both sidebars visible
-   - **VERIFY**: Canvas has full space
+   - **VERIFY**: Keimenon has full space
    - **VERIFY**: Toolbar horizontal layout
    - **VERIFY**: Footer full width
 
@@ -252,10 +252,10 @@ npm run dev
 4. **Test Auto-Close**
    - Stay in mobile view (375px)
    - Open left sidebar
-   - Click canvas area
+   - Click keimenon area
    - **VERIFY**: Sidebar closes automatically
    - Open right sidebar (Inspector)
-   - Tap canvas
+   - Tap keimenon
    - **VERIFY**: Sidebar closes automatically
 
 5. **Test Breakpoint Transitions**
@@ -336,7 +336,7 @@ npm run dev
    - **VERIFY**: Green pulse dot animates
 
 4. **Test Console Error Capture**
-   - Press `` ` `` to open canvas console
+   - Press `` ` `` to open keimenon console
    - Trigger an error (e.g., failed API call)
    - **VERIFY**: Error appears in console feed
    - **VERIFY**: Shows: timestamp, severity, domain, operation, message
@@ -377,7 +377,7 @@ npm run dev
 1. **Verify Connection**
    - Open DevTools → Network tab
    - Filter by "EventSource" or "stream"
-   - Navigate to Canvas
+   - Navigate to Keimenon
    - **VERIFY**: Connection to `/api/v1/stream/jobs?token=...`
    - **VERIFY**: Connection stays open (pending state)
    - **VERIFY**: Heartbeat events every 30 seconds
@@ -501,7 +501,7 @@ npm run dev
 
 ### Keyboard Shortcuts
 
-- `` ` `` - Canvas console
+- `` ` `` - Keimenon console
 - `Ctrl+Shift+M` - Device toolbar
 - `Ctrl+Shift+I` - DevTools
 - `F12` - DevTools (alternative)

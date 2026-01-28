@@ -1,10 +1,10 @@
-# Canvas Memory OS — Living Spec (v0.1)
+# Keimenon — Living Spec (v0.1)
 
 **Status:** living draft • **Owner:** UserNode (you) • **Last updated:** 2025‑10‑06
 
 ## TL;DR
 
-A graph‑native, canvas‑first **memory OS** for research and building. Everything is a **node**; relationships are **typed edges** with policy. Chats, sources, code, summaries, even _you_ live on the same board. Context for any answer is a **scope set** (algebra over nodes) with a **receipt** for reproducibility. Truth is pursued with **ObjectiveClaims** and **tool‑based verifiers**. Visualization uses **lenses** (2D/3D/nD/Galaxy) to reveal different geometries of “nearness.”
+A graph‑native, keimenon‑first **memory OS** for research and building. Everything is a **node**; relationships are **typed edges** with policy. Chats, sources, code, summaries, even _you_ live on the same board. Context for any answer is a **scope set** (algebra over nodes) with a **receipt** for reproducibility. Truth is pursued with **ObjectiveClaims** and **tool‑based verifiers**. Visualization uses **lenses** (2D/3D/nD/Galaxy) to reveal different geometries of “nearness.”
 
 ---
 
@@ -20,7 +20,7 @@ A graph‑native, canvas‑first **memory OS** for research and building. Everyt
 2. **Scopes, not vibes**: every model run references a concrete scope set; store a **scope receipt**.
 3. **Verification is tool‑only**: LLMs orchestrate; tools produce evidence.
 4. **Sequester is an edge policy**: hide from models/tools/UI independently without losing placement.
-5. **Lenses morph space**: different metrics (semantic, provenance, verification) curve the canvas.
+5. **Lenses morph space**: different metrics (semantic, provenance, verification) curve the keimenon.
 
 # 3) Object model (nodes)
 
@@ -171,4 +171,4 @@ A graph‑native, canvas‑first **memory OS** for research and building. Everyt
 
 # 19) Changelog
 
-- **v0.1 (2025‑10‑06):** initial living spec from canvas conversation; integrated AI‑chat‑JSON parser assumptions (message→node, code extraction, dedupe, autogroup).
+- **v0.1 (2025‑10‑06):** initial living spec from keimenon conversation; integrated AI‑chat‑JSON parser assumptions (message→node, code extraction, dedupe, autogroup).

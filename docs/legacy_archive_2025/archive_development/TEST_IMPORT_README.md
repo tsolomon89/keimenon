@@ -230,7 +230,7 @@ const { EventSource } = require('eventsource');
 
 ```bash
 # Via SQLite CLI
-sqlite3 ~/.canvas-memory/canvas.db "DELETE FROM users WHERE email='import-test@test.com';"
+sqlite3 ~/.keimenon/keimenon.db "DELETE FROM users WHERE email='import-test@test.com';"
 ```
 
 ### Test Timeout

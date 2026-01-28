@@ -7,7 +7,7 @@
 
 ### Original Issue
 
-The Canvas Memory system was experiencing **database contention** causing UI freezing and SSE connection timeouts during imports:
+The Keimenon system was experiencing **database contention** causing UI freezing and SSE connection timeouts during imports:
 
 - **Single SQLite database** used for both auth/session data AND graph data
 - **Sequential, blocking writes** - 200+ individual `await db.createNode()` calls per import
@@ -42,7 +42,7 @@ SQLiteClient.createNodes(batch)
 SQLiteClient.createEdges(batch)
       │
       ▼
-canvas.db (SQLite WAL mode)
+keimenon.db (SQLite WAL mode)
 ```
 
 ### Key Components
@@ -162,7 +162,7 @@ Look for these log messages:
 
 ### 3. Test Import Workflow
 
-1. Navigate to `http://localhost:3000/canvas`
+1. Navigate to `http://localhost:3000/keimenon`
 2. Click import button
 3. Select a test file (100+ messages recommended)
 4. **Expected behavior**:
@@ -208,11 +208,11 @@ Watch backend logs for:
 - Flush queue immediately on pause
 - Store checkpoint in job metadata
 
-### Live Canvas Updates
+### Live Keimenon Updates
 
 - Emit `graph.update` events from write queue
 - Frontend subscribes to graph updates
-- Canvas re-renders affected portions in real-time
+- Keimenon re-renders affected portions in real-time
 
 ### Concurrent AI Agents
 

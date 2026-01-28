@@ -219,7 +219,7 @@ if (nodeAccountId !== req.user.accountId) {
 
 - Test cleanup fails silently
 - Doesn't directly cause test failures (savepoints handle rollback)
-- But indicates query bug in clearCanvas operation
+- But indicates query bug in clearKeimenon operation
 
 **Root Cause**: SQL query references non-existent column `T.content`
 
@@ -239,12 +239,12 @@ if (nodeAccountId !== req.user.accountId) {
 **Hypothesis**:
 
 - Network requests hanging
-- Canvas page not loading properly
+- Keimenon page not loading properly
 - Or savepoint/test data not visible in UI
 
 **Next Steps**:
 
-1. Check if canvas page has infinite loading
+1. Check if keimenon page has infinite loading
 2. Verify nodes are actually created in database before UI navigation
 3. Consider increasing timeout or using different wait strategy
 
@@ -347,7 +347,7 @@ if (nodeAccountId !== req.user.accountId) {
 ### Medium Priority (Unblock 6 More Tests)
 
 3. **Fix UI timeout issues**
-   - Investigate canvas page loading
+   - Investigate keimenon page loading
    - Verify test data visibility
 
 4. **Fix admin login**

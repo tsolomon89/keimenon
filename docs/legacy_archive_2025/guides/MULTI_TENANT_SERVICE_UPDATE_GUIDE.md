@@ -341,7 +341,7 @@ After updating services, create a script to backfill `account_id` for existing r
 
 ```typescript
 // scripts/backfill-account-ids.ts
-import { SQLiteClient } from '@canvas-memory/db';
+import { SQLiteClient } from '@keimenon/db';
 
 async function backfillAccountIds(dbPath: string) {
   const client = new SQLiteClient({ databasePath: dbPath });
@@ -422,7 +422,7 @@ async function backfillAccountIds(dbPath: string) {
 
 // Run if executed directly
 if (require.main === module) {
-  const dbPath = process.env.DB_PATH || './data/canvas.db';
+  const dbPath = process.env.DB_PATH || './data/keimenon.db';
   backfillAccountIds(dbPath)
     .then(() => process.exit(0))
     .catch((err) => {

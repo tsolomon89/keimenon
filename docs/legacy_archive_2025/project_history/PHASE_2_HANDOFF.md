@@ -1,6 +1,6 @@
 # Phase 2: AI/ML Enhancements - Handoff Document
 
-**Project**: Canvas Memory OS - Autonomous Testing & Development System
+**Project**: Keimenon - Autonomous Testing & Development System
 **Phase**: 2 - Data Processing & AI Features
 **Status**: Planning & Design
 **Date**: 2025-10-31
@@ -33,8 +33,8 @@ Phase 2 adds advanced AI/ML capabilities to enhance data processing, search, and
 ### ✅ Completed Infrastructure
 
 1. **6 MCP Servers** - All operational
-   - canvas-database, canvas-docs, canvas-api-testing
-   - canvas-chat-import, canvas-settings-crm, playwright-e2e
+   - keimenon-database, keimenon-docs, keimenon-api-testing
+   - keimenon-chat-import, keimenon-settings-crm, playwright-e2e
 
 2. **Playwright Agent Integration** - Hybrid approach working
    - Planner, Generator, Healer agents

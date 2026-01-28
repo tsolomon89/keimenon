@@ -8,9 +8,9 @@
 
 ## Executive Summary
 
-**Finding:** CRM/Dashboard infrastructure is **100% complete and functional**. The backend, state management, and UI components are all wired and working. Settings are mostly integrated. User Management is the only piece living outside Canvas.
+**Finding:** CRM/Dashboard infrastructure is **100% complete and functional**. The backend, state management, and UI components are all wired and working. Settings are mostly integrated. User Management is the only piece living outside Keimenon.
 
-**Action Required:** Move User Management inside Canvas, create NavigationModelFactory for DRY code, and add client-scoped dashboard.
+**Action Required:** Move User Management inside Keimenon, create NavigationModelFactory for DRY code, and add client-scoped dashboard.
 
 ---
 
@@ -18,13 +18,13 @@
 
 ### Frontend Components
 
-| Component        | Path                                                                                                                      | Status      | Notes                                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------- |
-| CRMDashboard     | [apps/web/src/components/canvas/CRMDashboard.tsx](../apps/web/src/components/canvas/CRMDashboard.tsx)                     | ✅ Complete | Full admin analytics dashboard with metrics cards, charts, top accounts, recent activity, system alerts |
-| AccountInspector | [apps/web/src/components/inspector/AccountInspector.tsx](../apps/web/src/components/inspector/AccountInspector.tsx)       | ✅ Complete | Shows account stats (users, nodes, edges), tier badge, actions (Add User)                               |
-| CanvasToolbar    | [apps/web/src/components/canvas/CanvasToolbar.tsx:216-229](../apps/web/src/components/canvas/CanvasToolbar.tsx#L216-L229) | ✅ Complete | Dashboard button conditionally shown for non-client accounts                                            |
-| CanvasLayout     | [apps/web/src/components/canvas/CanvasLayout.tsx:120-147](../apps/web/src/components/canvas/CanvasLayout.tsx#L120-L147)   | ✅ Complete | Conditional rendering: CRMDashboard for admin, placeholder for client                                   |
-| CanvasSidebar    | [apps/web/src/components/canvas/CanvasSidebar.tsx:95-113](../apps/web/src/components/canvas/CanvasSidebar.tsx#L95-L113)   | ✅ Complete | Account tree navigation in CRM mode with multi-select support                                           |
+| Component        | Path                                                                                                                              | Status      | Notes                                                                                                   |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------- |
+| CRMDashboard     | [apps/web/src/components/keimenon/CRMDashboard.tsx](../apps/web/src/components/keimenon/CRMDashboard.tsx)                         | ✅ Complete | Full admin analytics dashboard with metrics cards, charts, top accounts, recent activity, system alerts |
+| AccountInspector | [apps/web/src/components/inspector/AccountInspector.tsx](../apps/web/src/components/inspector/AccountInspector.tsx)               | ✅ Complete | Shows account stats (users, nodes, edges), tier badge, actions (Add User)                               |
+| KeimenonToolbar  | [apps/web/src/components/keimenon/KeimenonToolbar.tsx:216-229](../apps/web/src/components/keimenon/KeimenonToolbar.tsx#L216-L229) | ✅ Complete | Dashboard button conditionally shown for non-client accounts                                            |
+| KeimenonLayout   | [apps/web/src/components/keimenon/KeimenonLayout.tsx:120-147](../apps/web/src/components/keimenon/KeimenonLayout.tsx#L120-L147)   | ✅ Complete | Conditional rendering: CRMDashboard for admin, placeholder for client                                   |
+| KeimenonSidebar  | [apps/web/src/components/keimenon/KeimenonSidebar.tsx:95-113](../apps/web/src/components/keimenon/KeimenonSidebar.tsx#L95-L113)   | ✅ Complete | Account tree navigation in CRM mode with multi-select support                                           |
 
 ### Backend API
 
@@ -55,15 +55,15 @@ interface AnalyticsOverview {
 
 ### State Management
 
-| Context          | Path                                                                                        | Status      | Purpose                                                                                         |
-| ---------------- | ------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------- |
-| ShellContext     | [apps/web/src/contexts/ShellContext.tsx](../apps/web/src/contexts/ShellContext.tsx)         | ✅ Complete | Manages `shellMode` (crm/portal) and `canvasMode` (dashboard/settings/canvas/upload/processing) |
-| OperatingContext | [apps/web/src/contexts/OperatingContext.tsx](../apps/web/src/contexts/OperatingContext.tsx) | ✅ Complete | Manages `operatingMode` (native/nested/crm) and account switching with headers                  |
+| Context          | Path                                                                                        | Status      | Purpose                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------- |
+| ShellContext     | [apps/web/src/contexts/ShellContext.tsx](../apps/web/src/contexts/ShellContext.tsx)         | ✅ Complete | Manages `shellMode` (crm/portal) and `keimenonMode` (dashboard/settings/keimenon/upload/processing) |
+| OperatingContext | [apps/web/src/contexts/OperatingContext.tsx](../apps/web/src/contexts/OperatingContext.tsx) | ✅ Complete | Manages `operatingMode` (native/nested/crm) and account switching with headers                      |
 
 **ShellContext States:**
 
 - `shellMode`: 'crm' (admin view) | 'portal' (client view wrapped by admin)
-- `canvasMode`: 'dashboard' | 'settings' | 'canvas' | 'upload' | 'processing'
+- `keimenonMode`: 'dashboard' | 'settings' | 'keimenon' | 'upload' | 'processing'
 
 **OperatingContext States:**
 
@@ -102,7 +102,7 @@ interface AnalyticsOverview {
 | SettingsPage       | [apps/web/src/components/settings/SettingsPage.tsx](../apps/web/src/components/settings/SettingsPage.tsx)             | ✅ Complete | Live preview with Apply/Revert, permission-based editing, unsaved changes tracking |
 | SettingsCard       | [apps/web/src/components/settings/SettingsCard.tsx](../apps/web/src/components/settings/SettingsCard.tsx)             | ✅ Complete | Individual setting control rendering                                               |
 | SettingsInspector  | [apps/web/src/components/settings/SettingsInspector.tsx](../apps/web/src/components/settings/SettingsInspector.tsx)   | ✅ Complete | Right sidebar for selected setting details                                         |
-| DataManagementCard | [apps/web/src/components/settings/DataManagementCard.tsx](../apps/web/src/components/settings/DataManagementCard.tsx) | ✅ Complete | Clear canvas data, admin bulk operations                                           |
+| DataManagementCard | [apps/web/src/components/settings/DataManagementCard.tsx](../apps/web/src/components/settings/DataManagementCard.tsx) | ✅ Complete | Clear keimenon data, admin bulk operations                                         |
 
 ### Backend API
 
@@ -121,7 +121,7 @@ interface AnalyticsOverview {
 
 ✅ **Working:**
 
-- Settings accessible via Canvas mode (toolbar button)
+- Settings accessible via Keimenon mode (toolbar button)
 - Settings navigation tree in left sidebar
 - Settings cards render in center
 - Settings inspector in right sidebar
@@ -140,10 +140,10 @@ interface AnalyticsOverview {
 
 | Component    | Path                                                                                        | Status             | Issue                  |
 | ------------ | ------------------------------------------------------------------------------------------- | ------------------ | ---------------------- |
-| UsersPage    | [apps/web/src/app/users/page.tsx](../apps/web/src/app/users/page.tsx)                       | ❌ Standalone page | Should be in Canvas    |
+| UsersPage    | [apps/web/src/app/users/page.tsx](../apps/web/src/app/users/page.tsx)                       | ❌ Standalone page | Should be in Keimenon  |
 | EditUserPage | [apps/web/src/app/users/[id]/page.tsx](../apps/web/src/app/users/[id]/page.tsx)             | ❌ Standalone page | Should be Inspector    |
 | NewUserPage  | [apps/web/src/app/users/new/page.tsx](../apps/web/src/app/users/new/page.tsx)               | ❌ Standalone page | Should be modal        |
-| UserList     | [apps/web/src/components/users/UserList.tsx](../apps/web/src/components/users/UserList.tsx) | ✅ Reusable        | Can reuse in Canvas    |
+| UserList     | [apps/web/src/components/users/UserList.tsx](../apps/web/src/components/users/UserList.tsx) | ✅ Reusable        | Can reuse in Keimenon  |
 | UserForm     | [apps/web/src/components/users/UserForm.tsx](../apps/web/src/components/users/UserForm.tsx) | ✅ Reusable        | Can reuse in Inspector |
 
 ### Backend API
@@ -171,16 +171,16 @@ interface AnalyticsOverview {
 ❌ **Current Flow (BAD):**
 
 1. User clicks Profile → "Manage Users" (or direct URL `/users`)
-2. Full-page navigation to `/users` (loses Canvas context)
-3. "Back to Canvas" link at top (jarring UX)
+2. Full-page navigation to `/users` (loses Keimenon context)
+3. "Back to Keimenon" link at top (jarring UX)
 4. Click user → Navigate to `/users/:id` (another full-page nav)
 5. Edit form with "Back to Users" link
-6. "Back to Canvas" to return
+6. "Back to Keimenon" to return
 
 ✅ **Desired Flow (GOOD):**
 
 1. User clicks Settings → "Users" section (in nav tree)
-2. Center: User list table renders in Canvas
+2. Center: User list table renders in Keimenon
 3. Click user → Right Inspector shows UserDetailInspector
 4. Edit inline or click "Edit" → Modal or Inspector form
 5. No page navigation, seamless UX
@@ -191,7 +191,7 @@ interface AnalyticsOverview {
 
 ### Current Implementation
 
-The [CanvasSidebar.tsx](../apps/web/src/components/canvas/CanvasSidebar.tsx#L73-L113) has 40+ lines determining navigation mode:
+The [KeimenonSidebar.tsx](../apps/web/src/components/keimenon/KeimenonSidebar.tsx#L73-L113) has 40+ lines determining navigation mode:
 
 ```typescript
 // Lines 73-113 (BEFORE - needs refactoring)
@@ -201,12 +201,12 @@ let navTitle = 'Navigation';
 let searchPlaceholder = 'Search...';
 let emptyMessage = 'No items';
 
-if (canvasMode === 'settings') {
+if (keimenonMode === 'settings') {
   navMode = 'settings';
   navTitle = 'Settings';
   searchPlaceholder = 'Search settings...';
   // ... 10 more lines
-} else if (shellMode === 'crm' && canvasMode === 'dashboard') {
+} else if (shellMode === 'crm' && keimenonMode === 'dashboard') {
   navMode = 'accounts';
   navTitle = 'Accounts';
   searchPlaceholder = 'Search accounts...';
@@ -236,7 +236,7 @@ if (canvasMode === 'settings') {
 // AFTER - clean, testable, DRY
 const navModel = NavigationModelFactory.get({
   shellMode,
-  canvasMode,
+  keimenonMode,
   operatingMode: operating.mode,
   user,
   accountTreeData,
@@ -256,13 +256,13 @@ const navModel = NavigationModelFactory.get({
 
 ### Mode Matrix (12 Permutations)
 
-| Shell  | Canvas     | Expected NavMode | Expected Data    | Notes                           |
+| Shell  | Keimenon   | Expected NavMode | Expected Data    | Notes                           |
 | ------ | ---------- | ---------------- | ---------------- | ------------------------------- |
 | CRM    | dashboard  | accounts         | accountTreeData  | Admin viewing accounts          |
-| CRM    | canvas     | groups           | groupsTreeData   | Admin in canvas view            |
+| CRM    | keimenon   | groups           | groupsTreeData   | Admin in keimenon view          |
 | CRM    | settings   | settings         | settingsTreeData | Admin in settings               |
 | portal | dashboard  | groups           | groupsTreeData   | Admin-as-client (nested portal) |
-| portal | canvas     | groups           | groupsTreeData   | Admin-as-client canvas          |
+| portal | keimenon   | groups           | groupsTreeData   | Admin-as-client keimenon        |
 | portal | settings   | settings         | settingsTreeData | Admin-as-client settings        |
 | portal | upload     | groups           | groupsTreeData   | Any upload flow                 |
 | portal | processing | groups           | groupsTreeData   | Processing view                 |
@@ -273,8 +273,8 @@ const navModel = NavigationModelFactory.get({
 
 **Rule Priority:**
 
-1. `canvasMode === 'settings'` → Always show settings tree
-2. `shellMode === 'crm' && canvasMode === 'dashboard'` → Show accounts tree
+1. `keimenonMode === 'settings'` → Always show settings tree
+2. `shellMode === 'crm' && keimenonMode === 'dashboard'` → Show accounts tree
 3. **Default:** Show groups tree
 
 ---
@@ -365,8 +365,8 @@ NEXT_PUBLIC_ENABLE_BUSINESS_FEATURES=false
 **Existing Routes:**
 
 ```
-/canvas              → CanvasLayout (main app shell)
-/users               → UsersPage (❌ should be /canvas?mode=settings&section=users)
+/keimenon              → KeimenonLayout (main app shell)
+/users               → UsersPage (❌ should be /keimenon?mode=settings&section=users)
 /users/:id           → EditUserPage (❌ should be Inspector)
 /users/new           → NewUserPage (❌ should be modal)
 /login               → Login
@@ -400,7 +400,7 @@ NEXT_PUBLIC_ENABLE_BUSINESS_FEATURES=false
 - [ ] Create `packages/types/src/navigation.model.ts`
 - [ ] Implement factory with strategy pattern
 - [ ] Write unit tests for all 12 mode permutations
-- [ ] Update [CanvasSidebar.tsx](../apps/web/src/components/canvas/CanvasSidebar.tsx#L73-L113)
+- [ ] Update [KeimenonSidebar.tsx](../apps/web/src/components/keimenon/KeimenonSidebar.tsx#L73-L113)
 
 ### Phase 2: User Management
 
@@ -408,14 +408,14 @@ NEXT_PUBLIC_ENABLE_BUSINESS_FEATURES=false
 - [ ] Create `UsersListCard.tsx` (table view)
 - [ ] Create `UserDetailInspector.tsx` (right sidebar)
 - [ ] Update `SettingsPage.tsx` to render UsersListCard
-- [ ] Add route redirect `/users` → `/canvas?mode=settings&section=users`
+- [ ] Add route redirect `/users` → `/keimenon?mode=settings&section=users`
 - [ ] Delete old page routes
 
 ### Phase 3: Client Dashboard
 
 - [ ] Create `ClientDashboard.tsx` (client-scoped metrics)
 - [ ] Add backend endpoint `/api/v1/analytics/client/:accountId`
-- [ ] Update [CanvasLayout.tsx](../apps/web/src/components/canvas/CanvasLayout.tsx) conditionals
+- [ ] Update [KeimenonLayout.tsx](../apps/web/src/components/keimenon/KeimenonLayout.tsx) conditionals
 
 ### Phase 4: Documentation & Testing
 
@@ -459,12 +459,12 @@ NEXT_PUBLIC_ENABLE_BUSINESS_FEATURES=false
 
 ### Key Files
 
-- [ShellContext.tsx](../apps/web/src/contexts/ShellContext.tsx) - Shell/Canvas mode state
+- [ShellContext.tsx](../apps/web/src/contexts/ShellContext.tsx) - Shell/Keimenon mode state
 - [OperatingContext.tsx](../apps/web/src/contexts/OperatingContext.tsx) - Operating mode state
-- [CanvasLayout.tsx](../apps/web/src/components/canvas/CanvasLayout.tsx) - Main app shell
-- [CanvasSidebar.tsx](../apps/web/src/components/canvas/CanvasSidebar.tsx) - Navigation sidebar
-- [CanvasToolbar.tsx](../apps/web/src/components/canvas/CanvasToolbar.tsx) - Top toolbar
-- [CRMDashboard.tsx](../apps/web/src/components/canvas/CRMDashboard.tsx) - Admin dashboard
+- [KeimenonLayout.tsx](../apps/web/src/components/keimenon/KeimenonLayout.tsx) - Main app shell
+- [KeimenonSidebar.tsx](../apps/web/src/components/keimenon/KeimenonSidebar.tsx) - Navigation sidebar
+- [KeimenonToolbar.tsx](../apps/web/src/components/keimenon/KeimenonToolbar.tsx) - Top toolbar
+- [CRMDashboard.tsx](../apps/web/src/components/keimenon/CRMDashboard.tsx) - Admin dashboard
 - [SettingsPage.tsx](../apps/web/src/components/settings/SettingsPage.tsx) - Settings UI
 
 ---

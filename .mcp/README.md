@@ -1,4 +1,4 @@
-# Canvas Memory OS - MCP Servers
+# Keimenon - MCP Servers
 
 **Model Context Protocol (MCP) integration for enhanced AI-assisted development workflows**
 
@@ -186,7 +186,7 @@ npm install
 3. Verify in VSCode Command Palette:
    - Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac)
    - Run "MCP: List Servers"
-   - You should see all Canvas Memory OS servers listed
+   - You should see all Keimenon servers listed
 
 ### Manual Configuration
 
@@ -195,12 +195,12 @@ If automatic discovery doesn't work, add to `.vscode/settings.json`:
 ```json
 {
   "chat.mcp.servers": {
-    "canvas-db": {
+    "keimenon-db": {
       "command": "node",
       "args": [".mcp/servers/database/index.js"],
       "cwd": "${workspaceFolder}"
     },
-    "canvas-docs": {
+    "keimenon-docs": {
       "command": "node",
       "args": [".mcp/servers/docs/index.js"],
       "cwd": "${workspaceFolder}"
@@ -303,10 +303,10 @@ npx @modelcontextprotocol/inspector
 
 ```bash
 # Ensure database file is accessible
-ls -la ~/.keimenon/canvas.db
+ls -la ~/.keimenon/keimenon.db
 
 # Check SQLite file permissions
-chmod 644 ~/.keimenon/canvas.db
+chmod 644 ~/.keimenon/keimenon.db
 ```
 
 ### MCP Server Crashes
@@ -323,10 +323,88 @@ Common issues:
 - Database locked: Close other connections to SQLite
 - Port conflicts: Check if another server is using the port
 
+## Community MCP Servers
+
+In addition to project-specific servers, the following community MCP servers are configured:
+
+### 🎨 Material UI (`mui`)
+
+**Purpose**: Official MUI MCP server for Material Design components
+
+**Source**: [@mui/mcp](https://www.npmjs.com/package/@mui/mcp)
+
+**Tools**:
+
+- Access Material UI component documentation
+- Get theming and styling guidance
+- Search component APIs and examples
+
+**Use Cases**:
+
+- Building UI components with MUI
+- Understanding Material Design patterns
+- Theming and customization
+
+### 🚀 Vercel (`vercel`)
+
+**Purpose**: Official Vercel MCP server for deployments and AI SDK
+
+**Source**: [@vercel/mcp](https://vercel.com/docs/mcp/vercel-mcp)
+
+**Tools**:
+
+- Search Vercel AI SDK documentation
+- Manage deployments and projects
+- Access team and project settings
+
+**Use Cases**:
+
+- Deploying applications to Vercel
+- Using AI SDK features
+- Managing infrastructure
+
+### 📐 Lean 4 (`lean-lsp`)
+
+**Purpose**: Lean theorem prover via Language Server Protocol
+
+**Source**: [lean-lsp-mcp](https://github.com/oOo0oOo/lean-lsp-mcp)
+
+**Tools**:
+
+- Access diagnostics and goal states
+- Get term information and hover documentation
+- Search theorems via LeanSearch, Loogle, Lean Finder
+
+**Use Cases**:
+
+- Formal verification and theorem proving
+- Writing mathematical proofs in Lean 4
+- Learning dependent type theory
+
+### 🔬 Coq/Rocq (`coq-rocq`)
+
+**Purpose**: Coq proof assistant for formal verification
+
+**Source**: [mcp-rocq](https://mcp.so/server/mcp-rocq)
+
+**Tools**:
+
+- Automated dependent type checking
+- Inductive type definitions
+- Property proving with tactics
+
+**Use Cases**:
+
+- Formal software verification
+- Writing certified programs
+- Mathematical proof development
+
+---
+
 ## Related Documentation
 
 - [MCP Official Docs](https://modelcontextprotocol.io/)
-- [Canvas Memory OS Architecture](../docs/architecture/OVERVIEW.md)
+- [Keimenon Architecture](../docs/architecture/OVERVIEW.md)
 - [API Documentation](../docs/architecture/API_DESIGN.md)
 - [Database Schema](../packages/db/src/sqlite/schema.sql)
 
@@ -351,6 +429,7 @@ For issues with MCP servers:
 
 ---
 
-**Last Updated**: 2026-01-26
+**Last Updated**: 2026-01-27
 **MCP SDK Version**: 1.25.0+
 **Compatible with**: VSCode 1.102+, Claude Desktop, Claude Code
+**Community Servers**: mui, vercel, lean-lsp, coq-rocq

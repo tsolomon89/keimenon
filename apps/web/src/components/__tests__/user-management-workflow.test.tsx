@@ -15,7 +15,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { CanvasLayout } from '../canvas/CanvasLayout';
+import { KeimenonLayout } from '../keimenon/KeimenonLayout';
 import { AuthContext } from '../../contexts/AuthContext';
 import { OperatingContext } from '../../contexts/OperatingContext';
 import { ShellContext } from '../../contexts/ShellContext';
@@ -25,20 +25,20 @@ import * as apiClient from '../../lib/api-client';
 vi.mock('../../lib/api-client');
 
 // Mock child components that aren't relevant to this test
-vi.mock('../canvas/CanvasViewport', () => ({
-  CanvasViewport: () => <div data-testid="canvas-viewport">Canvas Viewport</div>,
+vi.mock('../keimenon/KeimenonViewport', () => ({
+  KeimenonViewport: () => <div data-testid="keimenon-viewport">Keimenon Viewport</div>,
 }));
 
-vi.mock('../canvas/CanvasToolbar', () => ({
-  CanvasToolbar: () => <div data-testid="canvas-toolbar">Canvas Toolbar</div>,
+vi.mock('../keimenon/KeimenonToolbar', () => ({
+  KeimenonToolbar: () => <div data-testid="keimenon-toolbar">Keimenon Toolbar</div>,
 }));
 
-vi.mock('../canvas/CanvasHeader', () => ({
-  CanvasHeader: () => <div data-testid="canvas-header">Canvas Header</div>,
+vi.mock('../keimenon/KeimenonHeader', () => ({
+  KeimenonHeader: () => <div data-testid="keimenon-header">Keimenon Header</div>,
 }));
 
-vi.mock('../canvas/CanvasFooter', () => ({
-  CanvasFooter: () => <div data-testid="canvas-footer">Canvas Footer</div>,
+vi.mock('../keimenon/KeimenonFooter', () => ({
+  KeimenonFooter: () => <div data-testid="keimenon-footer">Keimenon Footer</div>,
 }));
 
 describe('User Management Workflow E2E', () => {
@@ -132,9 +132,9 @@ describe('User Management Workflow E2E', () => {
 
   const defaultShellContext = {
     shellMode: 'admin' as const,
-    canvasMode: 'canvas' as const,
+    keimenonMode: 'keimenon' as const,
     setShellMode: vi.fn(),
-    setCanvasMode: vi.fn(),
+    setKeimenonMode: vi.fn(),
     leftSidebarOpen: true,
     setLeftSidebarOpen: vi.fn(),
     rightSidebarOpen: false,
@@ -157,7 +157,7 @@ describe('User Management Workflow E2E', () => {
       <AuthContext.Provider value={authContext}>
         <OperatingContext.Provider value={operatingContext}>
           <ShellContext.Provider value={shellContext}>
-            <CanvasLayout
+            <KeimenonLayout
               showUploadModal={false}
               onShowUploadModal={vi.fn()}
               onOpenUpload={vi.fn()}

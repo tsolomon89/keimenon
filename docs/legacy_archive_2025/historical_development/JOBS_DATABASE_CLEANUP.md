@@ -83,7 +83,7 @@ job_1760816235354_6esmg0 | delete | failed  | 1760816235354
 
 ### Timeline
 
-1. User clicked "Clear Canvas Data" → Created delete job
+1. User clicked "Clear Keimenon Data" → Created delete job
 2. Job transitioned: queued → running
 3. DeleteWorker started processing (synchronous deletion)
 4. Event loop blocked for 30+ seconds (deleting 25K nodes)
@@ -139,9 +139,9 @@ All long-running operations must:
 
 After cleanup, test the following:
 
-- [ ] Click "Clear Canvas Data" in Settings
+- [ ] Click "Clear Keimenon Data" in Settings
 - [ ] Job appears in Background Operations table
-- [ ] Job shows correct type ("Delete Canvas Data")
+- [ ] Job shows correct type ("Delete Keimenon Data")
 - [ ] Progress updates in real-time (0% → 100%)
 - [ ] Job completes successfully (status = succeeded)
 - [ ] Nodes are deleted from database

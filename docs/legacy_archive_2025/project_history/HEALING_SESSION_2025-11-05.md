@@ -37,9 +37,9 @@ This healing session successfully demonstrated the **Level 4 autonomous testing*
 
 ## Fixed Tests
 
-### Test #1: Canvas Operations - should load canvas page successfully
+### Test #1: Keimenon Operations - should load keimenon page successfully
 
-**Test File:** `tests/e2e/canvas-operations.spec.ts:27`
+**Test File:** `tests/e2e/keimenon-operations.spec.ts:27`
 **Browser:** Chromium
 **Status:** ✅ **FULLY FIXED**
 
@@ -47,7 +47,7 @@ This healing session successfully demonstrated the **Level 4 autonomous testing*
 
 **📸 Before Fix (Failure Screenshot):**
 
-- **Path:** `test-results/canvas-operations-Canvas-O-9d28c-ad-canvas-page-successfully-chromium/test-failed-1.png`
+- **Path:** `test-results/keimenon-operations-Keimenon-O-9d28c-ad-keimenon-page-successfully-chromium/test-failed-1.png`
 - **Visual State:** Login screen with "Login Failed - Invalid email or password" error
 - **Issue Visible:** Red error banner clearly showing authentication failure
 
@@ -64,7 +64,7 @@ waiting for navigation until "load"
 **📸 Visual Analysis:**
 Looking at the failure screenshot revealed:
 
-- Page stuck on **login screen** (not canvas page)
+- Page stuck on **login screen** (not keimenon page)
 - **Error message visible:** "Login Failed - Invalid email or password"
 - **Email field:** admin@admin.com ✅ (correct)
 - **Password field:** 6 dots (masked) ❌ (incorrect password)
@@ -74,13 +74,13 @@ Looking at the failure screenshot revealed:
 - **Password mismatch** between test code and database setup
 - Test code used: `'123456'` (fallback value)
 - Global setup created user with: `'TestPass123!'`
-- Login fails → No redirect to /canvas → Test timeout
+- Login fails → No redirect to /keimenon → Test timeout
 
 **Confidence:** **0.98** (High - clear visual evidence of authentication failure)
 
 #### Fix Applied
 
-**Location:** `tests/e2e/canvas-operations.spec.ts:14-20`
+**Location:** `tests/e2e/keimenon-operations.spec.ts:14-20`
 
 **Changes:**
 
@@ -91,7 +91,7 @@ Looking at the failure screenshot revealed:
 
 + // Test credentials
 + // FIXED: Updated password to match global setup (TestPass123!)
-+ // Visual evidence: test-results/canvas-operations.../test-failed-1.png
++ // Visual evidence: test-results/keimenon-operations.../test-failed-1.png
 + // Issue: Login failed with "Invalid email or password"
 + // Root cause: Password mismatch between test (123456) and setup (TestPass123!)
 + const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
@@ -100,7 +100,7 @@ Looking at the failure screenshot revealed:
 
 **Also Fixed:**
 
-- Reverted intentional URL pattern change from `/wrong-url-pattern-that-doesnt-exist/` back to `/\/canvas/`
+- Reverted intentional URL pattern change from `/wrong-url-pattern-that-doesnt-exist/` back to `/\/keimenon/`
 
 #### Fix Strategy
 
@@ -291,7 +291,7 @@ This healing session also validated **Phase 1 token optimization improvements**:
 
 ### Files Modified
 
-1. **tests/e2e/canvas-operations.spec.ts**
+1. **tests/e2e/keimenon-operations.spec.ts**
    - Lines 14-20: Updated test credentials
    - Lines 27-29: Reverted intentional URL pattern change
    - Added inline documentation with visual evidence reference
@@ -300,9 +300,9 @@ This healing session also validated **Phase 1 token optimization improvements**:
 
 **Collected:**
 
-- `test-results/canvas-operations-Canvas-O-9d28c-ad-canvas-page-successfully-chromium/test-failed-1.png` (failure screenshot)
-- `test-results/canvas-operations-Canvas-O-9d28c-ad-canvas-page-successfully-chromium/video.webm` (failure video)
-- `test-results/canvas-operations-Canvas-O-9d28c-ad-canvas-page-successfully-chromium/error-context.md` (error context)
+- `test-results/keimenon-operations-Keimenon-O-9d28c-ad-keimenon-page-successfully-chromium/test-failed-1.png` (failure screenshot)
+- `test-results/keimenon-operations-Keimenon-O-9d28c-ad-keimenon-page-successfully-chromium/video.webm` (failure video)
+- `test-results/keimenon-operations-Keimenon-O-9d28c-ad-keimenon-page-successfully-chromium/error-context.md` (error context)
 
 **Analysis:**
 

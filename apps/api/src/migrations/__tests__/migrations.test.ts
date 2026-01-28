@@ -10,7 +10,7 @@
  * Run with: npx tsx --test apps/api/src/migrations/__tests__/migrations.test.ts
  */
 
-import { describe, it } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import assert from 'node:assert';
 import Database from 'better-sqlite3';
 import * as fs from 'fs/promises';

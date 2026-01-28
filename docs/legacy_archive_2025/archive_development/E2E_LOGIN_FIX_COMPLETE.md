@@ -33,7 +33,7 @@ Created a **Playwright Global Setup** that runs once before all tests:
 Before:
 
 ```
-❌ Test timeout waiting for /canvas URL redirect
+❌ Test timeout waiting for /keimenon URL redirect
 ❌ Login form stayed on login page
 ```
 
@@ -41,7 +41,7 @@ After:
 
 ```
 ✅ Test user already exists
-✅ Tests reach canvas page
+✅ Tests reach keimenon page
 ✅ Tests execute test logic (now failing on different issue - Settings API)
 ```
 
@@ -73,7 +73,7 @@ This needs investigation - likely related to:
 - ✅ `tests/e2e/global-setup.ts` (NEW)
 - ✅ `playwright.config.ts` (added globalSetup)
 - ✅ `apps/web/.env.local` (E2E_TESTING flag)
-- ✅ `apps/web/src/app/canvas/page.tsx` (E2E modal skip)
+- ✅ `apps/web/src/app/keimenon/page.tsx` (E2E modal skip)
 
 **Last Updated**: 2025-10-27
 **Tests Status**: 0/8 passing → Login fixed, new issue discovered (Settings API)

@@ -2,7 +2,7 @@
 
 **Quick Guide** | Last Updated: 2025-10-17
 
-This guide shows you how to add error handling to new and existing code using the Canvas Memory OS error handling system.
+This guide shows you how to add error handling to new and existing code using the Keimenon error handling system.
 
 ---
 

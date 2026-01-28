@@ -202,14 +202,14 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
   test.afterEach(async ({ apiRequest }) => {
     // Cleanup test data
     if (tokenA) {
-      await apiRequest.delete('/api/v1/data/canvas', {
+      await apiRequest.delete('/api/v1/data/keimenon', {
         headers: { Authorization: `Bearer ${tokenA}` },
         params: { data_tag: 'test' },
       });
     }
 
     if (tokenB) {
-      await apiRequest.delete('/api/v1/data/canvas', {
+      await apiRequest.delete('/api/v1/data/keimenon', {
         headers: { Authorization: `Bearer ${tokenB}` },
         params: { data_tag: 'test' },
       });
@@ -431,7 +431,7 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
   test('should not display Account A groups in Account B UI', async ({ page }) => {
     // Login as Account B
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
 
     // Wait for page to load (use domcontentloaded instead of networkidle to avoid SSE/polling issues)
     await page.waitForLoadState('domcontentloaded');
@@ -450,9 +450,9 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
       await closeButton.click();
     }
 
-    // Wait for canvas to be ready
+    // Wait for keimenon to be ready
     await page
-      .waitForSelector('[data-testid="canvas"], canvas, #canvas', { timeout: 5000 })
+      .waitForSelector('[data-testid="keimenon"], keimenon, #keimenon', { timeout: 5000 })
       .catch(() => {});
 
     // Account A's group should NOT be visible
@@ -469,7 +469,7 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
 
     // Attempt to access Account A's group directly
-    await page.goto(`/canvas/group/${groupAId}`);
+    await page.goto(`/keimenon/group/${groupAId}`);
 
     // Should show error or redirect
     const pageContent = await page.content();
@@ -479,7 +479,7 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
     const url = page.url();
     const hasError =
       url.includes('/error') ||
-      url.includes('/canvas') ||
+      url.includes('/keimenon') ||
       (await page.getByText(/not found|forbidden|access denied/i).isVisible());
 
     expect(hasError).toBeTruthy();
@@ -496,7 +496,7 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
 
     // CRITICAL FIX #16-D: Use apiRequest instead of authGet to include X-Test-DB-Path header
     // Get token from page after login
-    const tokenA = await page.evaluate(() => localStorage.getItem('canvas_memory_token'));
+    const tokenA = await page.evaluate(() => localStorage.getItem('keimenon_token'));
 
     // Verify Account A can list their groups
     const listA = await apiRequest.get('/api/v1/groups', {
@@ -513,13 +513,13 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
     // WebKit requires explicit wait for localStorage to be cleared
     await page.goto('/logout');
     await page.waitForURL(/\/login/, { timeout: 10000 }); // Wait for redirect to login
-    await page.waitForFunction(() => !localStorage.getItem('canvas_memory_token'), {
+    await page.waitForFunction(() => !localStorage.getItem('keimenon_token'), {
       timeout: 5000,
     }); // Ensure token cleared
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
 
     // Get token from page after login
-    const tokenB = await page.evaluate(() => localStorage.getItem('canvas_memory_token'));
+    const tokenB = await page.evaluate(() => localStorage.getItem('keimenon_token'));
 
     // Verify Account B cannot see Account A's groups
     const listB = await apiRequest.get('/api/v1/groups', {

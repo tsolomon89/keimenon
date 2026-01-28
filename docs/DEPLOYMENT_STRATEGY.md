@@ -2,7 +2,7 @@
 
 ## 1. Project Analysis (Code-Based)
 
-**Application Type**: Multi-tenant Knowledge Management & Analysis System ("Canvas Memory OS").
+**Application Type**: Multi-tenant Knowledge Management & Analysis System ("Keimenon").
 
 ### Key Capabilities
 
@@ -13,7 +13,7 @@
 
 ### Technical Constraints
 
-- **Stateful API**: The backend (`apps/api`) writes directly to the local filesystem for database storage (`/data/canvas.db`) and file uploads (`/data/uploads`). It does not use cloud object storage (S3) by default.
+- **Stateful API**: The backend (`apps/api`) writes directly to the local filesystem for database storage (`/data/keimenon.db`) and file uploads (`/data/uploads`). It does not use cloud object storage (S3) by default.
 - **Infrastructure**: The system is designed to run as a cohesive unit (API + Web + Neo4j + Nginx), evidenced by `docker-compose.prod.yml`.
 
 ---

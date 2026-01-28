@@ -7,15 +7,17 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@keimenon/types": "*",
     "@types/better-sqlite3": "^7.6.13",
-    "better-sqlite3": "^12.4.1",
+    "better-sqlite3": "^12.6.2",
     "neo4j-driver": "^5.19.0"
   },
   "devDependencies": {
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.1"
   }
 }

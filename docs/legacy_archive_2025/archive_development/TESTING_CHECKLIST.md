@@ -194,11 +194,11 @@
 - [ ] Merge combines messages
 - [ ] Decision statistics are accurate
 
-## Phase 4: Canvas Integration Testing
+## Phase 4: Keimenon Integration Testing
 
 ### State Management
 
-- [ ] Canvas store initializes correctly
+- [ ] Keimenon store initializes correctly
 - [ ] Nodes can be added to store
 - [ ] Edges can be added to store
 - [ ] Selected nodes update in store
@@ -206,7 +206,7 @@
 
 ### Data Conversion
 
-- [ ] Import results convert to canvas nodes
+- [ ] Import results convert to keimenon nodes
 - [ ] Conversation nodes are created
 - [ ] Message nodes are created
 - [ ] Source nodes are created
@@ -215,7 +215,7 @@
 
 ### Selection Sync
 
-- [ ] Selecting node in canvas updates store
+- [ ] Selecting node in keimenon updates store
 - [ ] Selecting multiple nodes works (Cmd/Ctrl+click)
 - [ ] Select all (Cmd/Ctrl+A) works
 - [ ] Clear selection (Esc) works
@@ -278,15 +278,15 @@
 
 ### End-to-End Flow
 
-- [ ] User can upload file from empty canvas
+- [ ] User can upload file from empty keimenon
 - [ ] File analysis shows preview
 - [ ] Configuration panel allows customization
 - [ ] Import starts with loading indicator
 - [ ] Duplicate review panel opens (if duplicates found)
 - [ ] User can review and make decisions
 - [ ] Decisions can be applied
-- [ ] Canvas updates with imported data
-- [ ] Nodes appear in canvas viewport
+- [ ] Keimenon updates with imported data
+- [ ] Nodes appear in keimenon viewport
 - [ ] Success toast shows confirmation
 
 ### Chat Import Modal
@@ -333,7 +333,7 @@
 
 ### Store Performance
 
-- [ ] Canvas store handles 100+ nodes
+- [ ] Keimenon store handles 100+ nodes
 - [ ] Selection updates are fast
 - [ ] Viewport changes are smooth
 - [ ] No memory leaks on repeated actions

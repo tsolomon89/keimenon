@@ -10,7 +10,7 @@
 ### Key Findings
 
 - **Total Routes**: 11 identified
-- **Main Application Modes**: 3 (canvas, dashboard/CRM, settings)
+- **Main Application Modes**: 3 (keimenon, dashboard/CRM, settings)
 - **Modals Documented**: 8+ with triggering logic mapped
 - **Orphaned Components**: 3 identified (1 confirmed obsolete, 2 need verification)
 - **Error Handling**: Infrastructure excellent, minor gaps in UI components
@@ -39,25 +39,25 @@ Root Layout (apps/web/src/app/layout.tsx)
 │              └─ UIVersionProvider
 │                 └─ {page content}
 
-Canvas Page (/canvas) - Main Application Entry
+Keimenon Page (/keimenon) - Main Application Entry
 └─ ConsoleProvider (error display, debugging)
    └─ BackgroundOperationsProvider (background job tracking)
       └─ ImportProgressProvider (SSE job updates)
-         └─ CanvasLayout (mode-aware hub)
+         └─ KeimenonLayout (mode-aware hub)
 ```
 
-### 1.2 CanvasLayout Mode System
+### 1.2 KeimenonLayout Mode System
 
-The CanvasLayout component manages three distinct application modes:
+The KeimenonLayout component manages three distinct application modes:
 
 ```typescript
-type CanvasMode = 'auth' | 'dashboard' | 'settings' | 'canvas';
+type KeimenonMode = 'auth' | 'dashboard' | 'settings' | 'keimenon';
 type ShellMode = 'admin' | 'client'; // LOCKED to user.accountType
 ```
 
 **Mode Combinations:**
 
-- `canvas` mode + any shell → Graph visualization (CanvasViewport)
+- `keimenon` mode + any shell → Graph visualization (KeimenonViewport)
 - `dashboard` mode + any shell → Dashboard (CRMDashboard component, API-scoped data)
 - `settings` mode + any shell → Settings Page
 - `auth` mode → Not yet implemented (auth stays as separate routes)
@@ -76,12 +76,12 @@ type ShellMode = 'admin' | 'client'; // LOCKED to user.accountType
 
 ### 2.2 Authenticated Routes
 
-| Route         | File                      | Purpose              | Primary Mode | Status    |
-| ------------- | ------------------------- | -------------------- | ------------ | --------- |
-| `/canvas`     | `app/canvas/page.tsx`     | **Main application** | All 3 modes  | ✅ Active |
-| `/account`    | `app/account/page.tsx`    | Account settings     | Settings     | ✅ Active |
-| `/board/[id]` | `app/board/[id]/page.tsx` | Canvas2D board view  | Canvas       | ✅ Active |
-| `/ingest`     | `app/ingest/page.tsx`     | File ingestion       | Import       | ✅ Active |
+| Route         | File                      | Purpose               | Primary Mode | Status    |
+| ------------- | ------------------------- | --------------------- | ------------ | --------- |
+| `/keimenon`   | `app/keimenon/page.tsx`   | **Main application**  | All 3 modes  | ✅ Active |
+| `/account`    | `app/account/page.tsx`    | Account settings      | Settings     | ✅ Active |
+| `/board/[id]` | `app/board/[id]/page.tsx` | Keimenon2D board view | Keimenon     | ✅ Active |
+| `/ingest`     | `app/ingest/page.tsx`     | File ingestion        | Import       | ✅ Active |
 
 ### 2.3 User Management Routes
 
@@ -101,30 +101,30 @@ type ShellMode = 'admin' | 'client'; // LOCKED to user.accountType
 
 ## 3. Component Tree (Primary Application)
 
-### 3.1 Canvas Page (/canvas) - Full Hierarchy
+### 3.1 Keimenon Page (/keimenon) - Full Hierarchy
 
 ```
-CanvasPage (apps/web/src/app/canvas/page.tsx)
+KeimenonPage (apps/web/src/app/keimenon/page.tsx)
 │
 ├─ ConsoleProvider
 │  ├─ BackgroundOperationsProvider
 │  │  └─ ImportProgressProvider
 │  │     │
-│  │     ├─ CanvasLayout (apps/web/src/components/canvas/CanvasLayout.tsx)
+│  │     ├─ KeimenonLayout (apps/web/src/components/keimenon/KeimenonLayout.tsx)
 │  │     │  │
-│  │     │  ├─ CanvasHeader (mode-aware header)
+│  │     │  ├─ KeimenonHeader (mode-aware header)
 │  │     │  │  ├─ Logo + Title
-│  │     │  │  ├─ CanvasToolbar (conditional: canvas mode only)
+│  │     │  │  ├─ KeimenonToolbar (conditional: keimenon mode only)
 │  │     │  │  └─ Navigation controls
 │  │     │  │
-│  │     │  ├─ CanvasSidebar (LEFT) - Context-aware navigation
-│  │     │  │  ├─ [Canvas Mode] Groups Tree (useGroupsTree)
+│  │     │  ├─ KeimenonSidebar (LEFT) - Context-aware navigation
+│  │     │  │  ├─ [Keimenon Mode] Groups Tree (useGroupsTree)
 │  │     │  │  ├─ [Dashboard Mode] Accounts Tree (useAccountTree)
 │  │     │  │  └─ [Settings Mode] Settings Navigation (useSettingsTree)
 │  │     │  │
 │  │     │  ├─ MAIN CONTENT (mode-switched)
-│  │     │  │  ├─ [canvas mode] CanvasViewport
-│  │     │  │  │  ├─ React Flow Canvas
+│  │     │  │  ├─ [keimenon mode] KeimenonViewport
+│  │     │  │  │  ├─ React Flow Keimenon
 │  │     │  │  │  ├─ Node Rendering (custom nodes)
 │  │     │  │  │  └─ Edge Rendering
 │  │     │  │  │
@@ -139,13 +139,13 @@ CanvasPage (apps/web/src/app/canvas/page.tsx)
 │  │     │  │     ├─ ErrorTrackingCard ✅ (NEW: Sentry config)
 │  │     │  │     └─ Other settings cards
 │  │     │  │
-│  │     │  ├─ CanvasSidebar (RIGHT) - Inspector Panels
-│  │     │  │  ├─ [Canvas Mode] Node inspector
+│  │     │  ├─ KeimenonSidebar (RIGHT) - Inspector Panels
+│  │     │  │  ├─ [Keimenon Mode] Node inspector
 │  │     │  │  ├─ [Dashboard Mode] AccountInspector
 │  │     │  │  │  └─ UserDetailInspector ✅ (NEW)
 │  │     │  │  └─ [Settings Mode] Settings detail view
 │  │     │  │
-│  │     │  ├─ CanvasFooter
+│  │     │  ├─ KeimenonFooter
 │  │     │  │  ├─ Console component (error display)
 │  │     │  │  ├─ Job progress indicators
 │  │     │  │  └─ Background operation status
@@ -168,30 +168,30 @@ CanvasPage (apps/web/src/app/canvas/page.tsx)
 
 ### 3.2 Component Wiring Status
 
-| Component                    | File                                  | Wired To                           | Visibility Context                  | Status       |
-| ---------------------------- | ------------------------------------- | ---------------------------------- | ----------------------------------- | ------------ |
-| **CanvasLayout**             | `canvas/CanvasLayout.tsx`             | `/canvas` route                    | All modes                           | ✅ Hub       |
-| **CanvasHeader**             | `canvas/CanvasHeader.tsx`             | CanvasLayout                       | All modes                           | ✅ Wired     |
-| **CanvasToolbar**            | `canvas/CanvasToolbar.tsx`            | CanvasHeader                       | Canvas mode only                    | ✅ Wired     |
-| **CanvasSidebar**            | `canvas/CanvasSidebar.tsx`            | CanvasLayout (left & right)        | All modes                           | ✅ Wired     |
-| **CanvasFooter**             | `canvas/CanvasFooter.tsx`             | CanvasLayout                       | All modes                           | ✅ Wired     |
-| **CanvasViewport**           | `canvas/CanvasViewport.tsx`           | CanvasLayout                       | Canvas mode                         | ✅ Wired     |
-| **CRMDashboard**             | `canvas/CRMDashboard.tsx`             | CanvasLayout                       | Dashboard + CRM shell               | ✅ Wired     |
-| **SettingsPage**             | `settings/SettingsPage.tsx`           | CanvasLayout                       | Settings mode                       | ✅ Wired     |
-| **ImportsTableCard**         | `canvas/ImportsTableCard.tsx`         | CRMDashboard                       | Dashboard mode                      | ✅ Wired     |
-| **DataManagementCard**       | `settings/DataManagementCard.tsx`     | SettingsPage                       | Settings mode                       | ✅ Wired     |
-| **UsersListCard**            | `settings/UsersListCard.tsx`          | SettingsPage                       | Settings mode                       | ✅ Wired     |
-| **ErrorTrackingCard**        | `settings/ErrorTrackingCard.tsx`      | SettingsPage                       | Settings mode                       | ✅ Wired     |
-| **AccountInspector**         | `inspector/AccountInspector.tsx`      | CanvasSidebar (right)              | Dashboard mode                      | ✅ Wired     |
-| **UserDetailInspector**      | `inspector/UserDetailInspector.tsx`   | AccountInspector                   | Dashboard mode (when user selected) | ✅ Wired     |
-| **LocalFirstImportModal**    | `canvas/LocalFirstImportModal.tsx`    | Canvas page (state-based)          | All modes (triggered)               | ✅ Wired     |
-| **ChatImportModal**          | `canvas/ChatImportModal.tsx`          | CanvasLayout (state-based)         | All modes (triggered)               | ✅ Wired     |
-| **FirstTimeUploadModal**     | `canvas/FirstTimeUploadModal.tsx`     | Canvas page (conditional)          | First-time users                    | ✅ Wired     |
-| **CreateUserInAccountModal** | `modals/CreateUserInAccountModal.tsx` | UsersListCard, UserDetailInspector | Settings mode                       | ✅ Wired     |
-| **ConfirmationModal**        | `common/ConfirmationModal.tsx`        | Various (utility)                  | Multiple contexts                   | ✅ Wired     |
-| **UploadModal**              | `canvas/UploadModal.tsx`              | CanvasLayout (Shift-key fallback)  | All modes (legacy trigger)          | ⚠️ LEGACY    |
-| **StreamingUploadModal**     | `import/StreamingUploadModal.tsx`     | ❓ Not found                       | ❓ Unknown                          | ❓ ORPHANED? |
-| **ChatImportModal.old.tsx**  | `canvas/ChatImportModal.old.tsx`      | None                               | N/A                                 | ❌ OBSOLETE  |
+| Component                    | File                                  | Wired To                            | Visibility Context                  | Status       |
+| ---------------------------- | ------------------------------------- | ----------------------------------- | ----------------------------------- | ------------ |
+| **KeimenonLayout**           | `keimenon/KeimenonLayout.tsx`         | `/keimenon` route                   | All modes                           | ✅ Hub       |
+| **KeimenonHeader**           | `keimenon/KeimenonHeader.tsx`         | KeimenonLayout                      | All modes                           | ✅ Wired     |
+| **KeimenonToolbar**          | `keimenon/KeimenonToolbar.tsx`        | KeimenonHeader                      | Keimenon mode only                  | ✅ Wired     |
+| **KeimenonSidebar**          | `keimenon/KeimenonSidebar.tsx`        | KeimenonLayout (left & right)       | All modes                           | ✅ Wired     |
+| **KeimenonFooter**           | `keimenon/KeimenonFooter.tsx`         | KeimenonLayout                      | All modes                           | ✅ Wired     |
+| **KeimenonViewport**         | `keimenon/KeimenonViewport.tsx`       | KeimenonLayout                      | Keimenon mode                       | ✅ Wired     |
+| **CRMDashboard**             | `keimenon/CRMDashboard.tsx`           | KeimenonLayout                      | Dashboard + CRM shell               | ✅ Wired     |
+| **SettingsPage**             | `settings/SettingsPage.tsx`           | KeimenonLayout                      | Settings mode                       | ✅ Wired     |
+| **ImportsTableCard**         | `keimenon/ImportsTableCard.tsx`       | CRMDashboard                        | Dashboard mode                      | ✅ Wired     |
+| **DataManagementCard**       | `settings/DataManagementCard.tsx`     | SettingsPage                        | Settings mode                       | ✅ Wired     |
+| **UsersListCard**            | `settings/UsersListCard.tsx`          | SettingsPage                        | Settings mode                       | ✅ Wired     |
+| **ErrorTrackingCard**        | `settings/ErrorTrackingCard.tsx`      | SettingsPage                        | Settings mode                       | ✅ Wired     |
+| **AccountInspector**         | `inspector/AccountInspector.tsx`      | KeimenonSidebar (right)             | Dashboard mode                      | ✅ Wired     |
+| **UserDetailInspector**      | `inspector/UserDetailInspector.tsx`   | AccountInspector                    | Dashboard mode (when user selected) | ✅ Wired     |
+| **LocalFirstImportModal**    | `keimenon/LocalFirstImportModal.tsx`  | Keimenon page (state-based)         | All modes (triggered)               | ✅ Wired     |
+| **ChatImportModal**          | `keimenon/ChatImportModal.tsx`        | KeimenonLayout (state-based)        | All modes (triggered)               | ✅ Wired     |
+| **FirstTimeUploadModal**     | `keimenon/FirstTimeUploadModal.tsx`   | Keimenon page (conditional)         | First-time users                    | ✅ Wired     |
+| **CreateUserInAccountModal** | `modals/CreateUserInAccountModal.tsx` | UsersListCard, UserDetailInspector  | Settings mode                       | ✅ Wired     |
+| **ConfirmationModal**        | `common/ConfirmationModal.tsx`        | Various (utility)                   | Multiple contexts                   | ✅ Wired     |
+| **UploadModal**              | `keimenon/UploadModal.tsx`            | KeimenonLayout (Shift-key fallback) | All modes (legacy trigger)          | ⚠️ LEGACY    |
+| **StreamingUploadModal**     | `import/StreamingUploadModal.tsx`     | ❓ Not found                        | ❓ Unknown                          | ❓ ORPHANED? |
+| **ChatImportModal.old.tsx**  | `keimenon/ChatImportModal.old.tsx`    | None                                | N/A                                 | ❌ OBSOLETE  |
 
 ---
 
@@ -201,10 +201,10 @@ CanvasPage (apps/web/src/app/canvas/page.tsx)
 
 | Modal                        | Trigger Component(s)               | Trigger Event                                    | Visibility Context    | Notes                    |
 | ---------------------------- | ---------------------------------- | ------------------------------------------------ | --------------------- | ------------------------ |
-| **LocalFirstImportModal**    | Canvas page                        | Import button + showLocalFirstImportModal state  | All modes             | ✅ NEW DEFAULT           |
-| **ChatImportModal**          | CanvasLayout                       | Server import button + showChatImportModal state | All modes             | ✅ Active (server-based) |
-| **UploadModal**              | CanvasLayout                       | Shift + click import button                      | All modes             | ⚠️ LEGACY fallback       |
-| **FirstTimeUploadModal**     | Canvas page                        | isFirstTime flag (localStorage)                  | First-time users only | ✅ Onboarding            |
+| **LocalFirstImportModal**    | Keimenon page                      | Import button + showLocalFirstImportModal state  | All modes             | ✅ NEW DEFAULT           |
+| **ChatImportModal**          | KeimenonLayout                     | Server import button + showChatImportModal state | All modes             | ✅ Active (server-based) |
+| **UploadModal**              | KeimenonLayout                     | Shift + click import button                      | All modes             | ⚠️ LEGACY fallback       |
+| **FirstTimeUploadModal**     | Keimenon page                      | isFirstTime flag (localStorage)                  | First-time users only | ✅ Onboarding            |
 | **CreateUserInAccountModal** | UsersListCard, UserDetailInspector | "Create User" button                             | Settings mode         | ✅ Active                |
 | **CreateAccountModal**       | Various                            | "Create Account" action                          | CRM contexts          | ✅ Active                |
 | **ConfirmationModal**        | DataManagementCard, others         | Destructive actions                              | Multiple contexts     | ✅ Utility               |
@@ -215,13 +215,13 @@ CanvasPage (apps/web/src/app/canvas/page.tsx)
 **Pattern Used**: Boolean state flags in parent components
 
 ```typescript
-// Example from apps/web/src/app/canvas/page.tsx
+// Example from apps/web/src/app/keimenon/page.tsx
 const [showUploadModal, setShowUploadModal] = useState(false);
 const [showChatImportModal, setShowChatImportModal] = useState(false);
 const [showLocalFirstImportModal, setShowLocalFirstImportModal] = useState(false);
 
 // Passed down to children
-<CanvasLayout
+<KeimenonLayout
   showChatImportModal={showChatImportModal}
   onShowChatImportModal={setShowChatImportModal}
   // ... other props
@@ -231,7 +231,7 @@ const [showLocalFirstImportModal, setShowLocalFirstImportModal] = useState(false
 **State Location Strategy**:
 
 - Page-level modals: State in route page component
-- Layout-level modals: State in CanvasLayout
+- Layout-level modals: State in KeimenonLayout
 - Component-level modals: Local state in triggering component
 
 ---
@@ -240,47 +240,47 @@ const [showLocalFirstImportModal, setShowLocalFirstImportModal] = useState(false
 
 ### 5.1 NavigationModelFactory Pattern
 
-**File**: `apps/web/src/components/canvas/CanvasSidebar.tsx:66-84`
+**File**: `apps/web/src/components/keimenon/KeimenonSidebar.tsx:66-84`
 
 ```typescript
 const navigation = useMemo(() => {
-  const factory = new NavigationModelFactory(shellMode, canvasMode);
+  const factory = new NavigationModelFactory(shellMode, keimenonMode);
 
   // LEFT SIDEBAR
   if (shellMode === 'crm' && side === 'left') {
     return factory.createAccountsNavigation(accountsTree); // CRM mode
   }
-  if (canvasMode === 'canvas' && side === 'left') {
+  if (keimenonMode === 'keimenon' && side === 'left') {
     return factory.createGroupsNavigation(groupsTree); // Graph mode
   }
-  if (canvasMode === 'settings' && side === 'left') {
+  if (keimenonMode === 'settings' && side === 'left') {
     return factory.createSettingsNavigation(settingsTree); // Settings mode
   }
 
   // RIGHT SIDEBAR (inspector panels)
   // ... similar logic for right-side panels
-}, [shellMode, canvasMode, side, accountsTree, groupsTree, settingsTree]);
+}, [shellMode, keimenonMode, side, accountsTree, groupsTree, settingsTree]);
 ```
 
 ### 5.2 Navigation Behavior by Mode
 
-| Mode          | Shell Mode | Left Sidebar        | Right Sidebar                          | Header Toolbar               | Footer               |
-| ------------- | ---------- | ------------------- | -------------------------------------- | ---------------------------- | -------------------- |
-| **Canvas**    | portal/crm | Groups Tree         | Node Inspector                         | CanvasToolbar (zoom, layout) | Console + Job status |
-| **Dashboard** | crm        | Accounts Tree       | AccountInspector + UserDetailInspector | Standard nav                 | Console + Job status |
-| **Settings**  | portal/crm | Settings Navigation | Settings detail view                   | Standard nav                 | Console + Job status |
+| Mode          | Shell Mode | Left Sidebar        | Right Sidebar                          | Header Toolbar                 | Footer               |
+| ------------- | ---------- | ------------------- | -------------------------------------- | ------------------------------ | -------------------- |
+| **Keimenon**  | portal/crm | Groups Tree         | Node Inspector                         | KeimenonToolbar (zoom, layout) | Console + Job status |
+| **Dashboard** | crm        | Accounts Tree       | AccountInspector + UserDetailInspector | Standard nav                   | Console + Job status |
+| **Settings**  | portal/crm | Settings Navigation | Settings detail view                   | Standard nav                   | Console + Job status |
 
 ### 5.3 Context Hooks Used
 
-| Hook                | File                            | Purpose                   | Used By                        |
-| ------------------- | ------------------------------- | ------------------------- | ------------------------------ |
-| `useAccountTree()`  | `hooks/useAccountTree.ts`       | Fetch account hierarchy   | CanvasSidebar (CRM mode)       |
-| `useGroupsTree()`   | `hooks/useGroupsTree.ts`        | Fetch groups hierarchy    | CanvasSidebar (canvas mode)    |
-| `useSettingsTree()` | `hooks/useSettingsTree.ts`      | Build settings nav        | CanvasSidebar (settings mode)  |
-| `useConsole()`      | `contexts/ConsoleContext.tsx`   | Error display & filtering | CanvasFooter                   |
-| `useAuth()`         | `contexts/AuthContext.tsx`      | User session              | All authenticated routes       |
-| `useOperating()`    | `contexts/OperatingContext.tsx` | Multi-account context     | CanvasLayout, AccountInspector |
-| `useShell()`        | `contexts/ShellContext.tsx`     | Portal/CRM mode           | CanvasSidebar, CRMDashboard    |
+| Hook                | File                            | Purpose                   | Used By                          |
+| ------------------- | ------------------------------- | ------------------------- | -------------------------------- |
+| `useAccountTree()`  | `hooks/useAccountTree.ts`       | Fetch account hierarchy   | KeimenonSidebar (CRM mode)       |
+| `useGroupsTree()`   | `hooks/useGroupsTree.ts`        | Fetch groups hierarchy    | KeimenonSidebar (keimenon mode)  |
+| `useSettingsTree()` | `hooks/useSettingsTree.ts`      | Build settings nav        | KeimenonSidebar (settings mode)  |
+| `useConsole()`      | `contexts/ConsoleContext.tsx`   | Error display & filtering | KeimenonFooter                   |
+| `useAuth()`         | `contexts/AuthContext.tsx`      | User session              | All authenticated routes         |
+| `useOperating()`    | `contexts/OperatingContext.tsx` | Multi-account context     | KeimenonLayout, AccountInspector |
+| `useShell()`        | `contexts/ShellContext.tsx`     | Portal/CRM mode           | KeimenonSidebar, CRMDashboard    |
 
 ---
 
@@ -316,26 +316,26 @@ const navigation = useMemo(() => {
 | Component               | File                                | Coverage      | Patterns Used                                                                                                                    |
 | ----------------------- | ----------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | **DataManagementCard**  | `settings/DataManagementCard.tsx`   | Comprehensive | errorCapture.capture() on all operations (lines 62-75, 175-193, 230-247), specific error pattern matching, UI error state        |
-| **ImportsTableCard**    | `canvas/ImportsTableCard.tsx`       | Comprehensive | errorCapture.capture() throughout, abort controllers, timeout handling, Promise.allSettled for bulk ops (lines 304-401, 447-489) |
+| **ImportsTableCard**    | `keimenon/ImportsTableCard.tsx`     | Comprehensive | errorCapture.capture() throughout, abort controllers, timeout handling, Promise.allSettled for bulk ops (lines 304-401, 447-489) |
 | **UserDetailInspector** | `inspector/UserDetailInspector.tsx` | Good          | Try-catch blocks, error state management, user-friendly messages                                                                 |
-| **CRMDashboard**        | `canvas/CRMDashboard.tsx`           | Good          | Error state hooks, loading states, fallback UI                                                                                   |
+| **CRMDashboard**        | `keimenon/CRMDashboard.tsx`         | Good          | Error state hooks, loading states, fallback UI                                                                                   |
 
 #### ⚠️ Good but Has Issues
 
-| Component           | File                         | Issues                        | Lines         | Fix Needed                         |
-| ------------------- | ---------------------------- | ----------------------------- | ------------- | ---------------------------------- |
-| **ChatImportModal** | `canvas/ChatImportModal.tsx` | Uses alert() instead of UI    | 183, 202, 239 | Replace with error state display   |
-| **ChatImportModal** | `canvas/ChatImportModal.tsx` | console.error without capture | 156           | Add errorCapture.capture()         |
-| **ChatImportModal** | `canvas/ChatImportModal.tsx` | Missing input validation      | 143-166       | Add file type/structure validation |
-| **UsersListCard**   | `settings/UsersListCard.tsx` | Uses alert() for errors       | 91            | Replace with error state display   |
-| **UsersListCard**   | `settings/UsersListCard.tsx` | console.log without capture   | 46, 112       | Use errorCapture.info() instead    |
+| Component           | File                           | Issues                        | Lines         | Fix Needed                         |
+| ------------------- | ------------------------------ | ----------------------------- | ------------- | ---------------------------------- |
+| **ChatImportModal** | `keimenon/ChatImportModal.tsx` | Uses alert() instead of UI    | 183, 202, 239 | Replace with error state display   |
+| **ChatImportModal** | `keimenon/ChatImportModal.tsx` | console.error without capture | 156           | Add errorCapture.capture()         |
+| **ChatImportModal** | `keimenon/ChatImportModal.tsx` | Missing input validation      | 143-166       | Add file type/structure validation |
+| **UsersListCard**   | `settings/UsersListCard.tsx`   | Uses alert() for errors       | 91            | Replace with error state display   |
+| **UsersListCard**   | `settings/UsersListCard.tsx`   | console.log without capture   | 46, 112       | Use errorCapture.info() instead    |
 
 #### ❌ Needs Implementation
 
-| Component                   | File                       | Issue                                   | Recommendation                                       |
-| --------------------------- | -------------------------- | --------------------------------------- | ---------------------------------------------------- |
-| **CanvasToolbar**           | `canvas/CanvasToolbar.tsx` | No error handling for layout operations | Add try-catch around algorithm execution             |
-| **Various Form Components** | Multiple                   | Basic validation only                   | Add errorCapture integration for submission failures |
+| Component                   | File                           | Issue                                   | Recommendation                                       |
+| --------------------------- | ------------------------------ | --------------------------------------- | ---------------------------------------------------- |
+| **KeimenonToolbar**         | `keimenon/KeimenonToolbar.tsx` | No error handling for layout operations | Add try-catch around algorithm execution             |
+| **Various Form Components** | Multiple                       | Basic validation only                   | Add errorCapture integration for submission failures |
 
 ### 6.3 Error Capture Integration Points
 
@@ -343,7 +343,7 @@ const navigation = useMemo(() => {
 
 1. API client (handleApiError) - `apps/web/src/lib/error-handler.ts:52-134`
 2. Data management operations - `apps/web/src/components/settings/DataManagementCard.tsx`
-3. Import operations - `apps/web/src/components/canvas/ImportsTableCard.tsx`
+3. Import operations - `apps/web/src/components/keimenon/ImportsTableCard.tsx`
 4. Job streaming - `apps/web/src/hooks/useJobStream.ts`
 5. Background operations - `apps/web/src/contexts/BackgroundOperationsContext.tsx`
 
@@ -377,12 +377,12 @@ logJobEvent('Server import job created', 'import.server.jobCreated', {
 **Provider Hierarchy**:
 
 ```
-CanvasPage
-└─ ConsoleProvider ← Wraps entire canvas application
+KeimenonPage
+└─ ConsoleProvider ← Wraps entire keimenon application
    ├─ Subscribes to errorCapture service
    ├─ Provides error filtering capabilities
    ├─ Manages console UI state (open/closed, active tab)
-   └─ Consumed by CanvasFooter
+   └─ Consumed by KeimenonFooter
 ```
 
 **Data Flow**:
@@ -393,7 +393,7 @@ CanvasPage
 3. errorCapture notifies all subscribers
 4. ConsoleContext receives notification
 5. ConsoleContext updates errors state (applies filters)
-6. CanvasFooter re-renders with new error
+6. KeimenonFooter re-renders with new error
 7. User sees error in console component
 ```
 
@@ -499,24 +499,24 @@ const commonIssues = recentFailures.reduce((acc, err) => {
 
 ### 8.1 Confirmed Obsolete
 
-| Component                   | File                                        | Status      | Action Required                            |
-| --------------------------- | ------------------------------------------- | ----------- | ------------------------------------------ |
-| **ChatImportModal.old.tsx** | `components/canvas/ChatImportModal.old.tsx` | ❌ Obsolete | **DELETE** - Clearly marked as old version |
+| Component                   | File                                          | Status      | Action Required                            |
+| --------------------------- | --------------------------------------------- | ----------- | ------------------------------------------ |
+| **ChatImportModal.old.tsx** | `components/keimenon/ChatImportModal.old.tsx` | ❌ Obsolete | **DELETE** - Clearly marked as old version |
 
 **Reason**: File has `.old.tsx` suffix, no imports found in codebase.
 
 ### 8.2 Legacy/Deprecated (Still Accessible)
 
-| Component       | File                                | Status    | Replacement           | Migration Path                                                 |
-| --------------- | ----------------------------------- | --------- | --------------------- | -------------------------------------------------------------- |
-| **UploadModal** | `components/canvas/UploadModal.tsx` | ⚠️ LEGACY | LocalFirstImportModal | Keep for now (Shift-key fallback), deprecate in future release |
+| Component       | File                                  | Status    | Replacement           | Migration Path                                                 |
+| --------------- | ------------------------------------- | --------- | --------------------- | -------------------------------------------------------------- |
+| **UploadModal** | `components/keimenon/UploadModal.tsx` | ⚠️ LEGACY | LocalFirstImportModal | Keep for now (Shift-key fallback), deprecate in future release |
 
-**Reason**: Still accessible via Shift+click in CanvasLayout (line ~450), but LocalFirstImportModal is the new default.
+**Reason**: Still accessible via Shift+click in KeimenonLayout (line ~450), but LocalFirstImportModal is the new default.
 
 **Usage Found**:
 
-- `apps/web/src/app/canvas/page.tsx:31` - State management
-- `apps/web/src/components/canvas/CanvasLayout.tsx:~450` - Conditional rendering
+- `apps/web/src/app/keimenon/page.tsx:31` - State management
+- `apps/web/src/components/keimenon/KeimenonLayout.tsx:~450` - Conditional rendering
 
 **Recommendation**:
 
@@ -553,7 +553,7 @@ const commonIssues = recentFailures.reduce((acc, err) => {
 1. **Delete Obsolete File**
 
    ```bash
-   # DELETE: apps/web/src/components/canvas/ChatImportModal.old.tsx
+   # DELETE: apps/web/src/components/keimenon/ChatImportModal.old.tsx
    ```
 
 2. **Replace alert() Calls with UI Error State**
@@ -625,11 +625,11 @@ const commonIssues = recentFailures.reduce((acc, err) => {
 ### 10.1 Manual Testing Routes
 
 - [ ] Navigate to each route and verify component rendering
-- [ ] Test all 3 canvas modes (canvas, dashboard, settings)
+- [ ] Test all 3 keimenon modes (keimenon, dashboard, settings)
 - [ ] Trigger each modal and verify functionality
 - [ ] Test keyboard shortcuts (backtick for console)
 - [ ] Test error capture in console component
-- [ ] Verify navigation context changes (canvas → dashboard → settings)
+- [ ] Verify navigation context changes (keimenon → dashboard → settings)
 - [ ] Test inspector panel switching
 - [ ] Verify modal state management (open/close)
 
@@ -684,14 +684,14 @@ const commonIssues = recentFailures.reduce((acc, err) => {
 **Routes**:
 
 - Root layout: `apps/web/src/app/layout.tsx`
-- Canvas page (main): `apps/web/src/app/canvas/page.tsx`
+- Keimenon page (main): `apps/web/src/app/keimenon/page.tsx`
 - Board view: `apps/web/src/app/board/[id]/page.tsx`
 
 **Core Components**:
 
-- CanvasLayout: `apps/web/src/components/canvas/CanvasLayout.tsx`
-- CanvasSidebar: `apps/web/src/components/canvas/CanvasSidebar.tsx`
-- CRMDashboard: `apps/web/src/components/canvas/CRMDashboard.tsx`
+- KeimenonLayout: `apps/web/src/components/keimenon/KeimenonLayout.tsx`
+- KeimenonSidebar: `apps/web/src/components/keimenon/KeimenonSidebar.tsx`
+- CRMDashboard: `apps/web/src/components/keimenon/CRMDashboard.tsx`
 - SettingsPage: `apps/web/src/components/settings/SettingsPage.tsx`
 
 **Error Handling**:
@@ -703,8 +703,8 @@ const commonIssues = recentFailures.reduce((acc, err) => {
 
 **Deprecated/Orphaned**:
 
-- Obsolete: `apps/web/src/components/canvas/ChatImportModal.old.tsx`
-- Legacy: `apps/web/src/components/canvas/UploadModal.tsx`
+- Obsolete: `apps/web/src/components/keimenon/ChatImportModal.old.tsx`
+- Legacy: `apps/web/src/components/keimenon/UploadModal.tsx`
 - Orphaned?: `apps/web/src/components/import/StreamingUploadModal.tsx`
 
 ### B. Error Domain Mappings

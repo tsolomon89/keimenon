@@ -55,12 +55,12 @@ These failures exposed real routing issues in the app (valuable feedback!):
    - Root cause: Routing logic issue in app
 
 2. **Auth Flow: Complete Login**
-   - Issue: Login not redirecting to `/canvas`
+   - Issue: Login not redirecting to `/keimenon`
    - Evidence: Screenshot + video captured
    - Root cause: App routing or test credentials
 
 3. **Auth Flow: Authenticated User**
-   - Issue: Direct canvas access failing
+   - Issue: Direct keimenon access failing
    - Evidence: Screenshot + video captured
 
 4. **Auth Flow: Logout**
@@ -77,7 +77,7 @@ These failures exposed real routing issues in the app (valuable feedback!):
 test-results/
 ├── junit.xml                          12,368 bytes ✅
 ├── .last-run.json                        243 bytes ✅
-├── flow-auth-canvas-*/
+├── flow-auth-keimenon-*/
 │   ├── test-failed-1.png             377,822 bytes ✅
 │   ├── video.webm                    378,279 bytes ✅
 │   └── error-context.md                1,103 bytes ✅
@@ -129,10 +129,10 @@ Status:       Working
 ```
 Found: 4 test failures
 Artifacts:
-  - flow-auth-canvas-Authentic-514b0-*
+  - flow-auth-keimenon-Authentic-514b0-*
     ├─ Screenshot: ✅
     └─ Video: ✅
-  - flow-auth-canvas-Authentic-a3ac3-*
+  - flow-auth-keimenon-Authentic-a3ac3-*
     ├─ Screenshot: ✅
     └─ Video: ✅
   [... 2 more failures detected ...]
@@ -200,7 +200,7 @@ grep "testId=abc-123-def" apps/api/api-server.log
 ✅ .env.test.example
 ✅ tests/e2e/fixtures/testId.ts
 ✅ tests/e2e/smoke.spec.ts
-✅ tests/e2e/flow-auth-canvas.spec.ts
+✅ tests/e2e/flow-auth-keimenon.spec.ts
 ✅ apps/api/src/middleware/test-correlation.middleware.ts
 ✅ .mcp/servers/playwright-e2e/index.js
 ✅ .mcp/servers/playwright-e2e/package.json

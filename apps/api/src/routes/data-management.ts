@@ -1,6 +1,6 @@
 /**
  * Data Management API Routes
- * Handles clearing canvas data while preserving user accounts and settings
+ * Handles clearing keimenon data while preserving user accounts and settings
  */
 
 import { Router, Request, Response } from 'express';
@@ -8,7 +8,7 @@ import { SQLiteClient } from '@keimenon/db';
 import { AuthService } from '../services/auth.service';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import { asyncHandler, ErrorFactory } from '../middleware/error-handler.middleware';
-import { getCanvasDataInClause } from '@keimenon/types';
+import { getKeimenonDataInClause } from '@keimenon/types';
 import path from 'path';
 import os from 'os';
 import { randomUUID } from 'crypto';
@@ -19,8 +19,8 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
   // See: apps/api/src/middleware/db-context.middleware.ts, tests/e2e/fixtures/test-isolation.ts
 
   /**
-   * DELETE /api/v1/data/canvas
-   * Clear current user's canvas data (keeps user/account/settings)
+   * DELETE /api/v1/data/keimenon
+   * Clear current user's keimenon data (keeps user/account/settings)
    *
    * Deletes:
    * - ChatThread, Message, Source, CodeBlock, Group, Folder nodes
@@ -33,7 +33,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
    * - Audit logs
    */
   router.delete(
-    '/canvas',
+    '/keimenon',
     requireAuth(authService),
     asyncHandler(async (req: Request, res: Response) => {
       // CRITICAL FIX: Get per-request database client for test isolation
@@ -59,7 +59,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
       FROM nodes
       WHERE account_id = ?
         ${dataTagFilter}
-        AND kind IN (${getCanvasDataInClause()})
+        AND kind IN (${getKeimenonDataInClause()})
       GROUP BY kind
     `
         )
@@ -82,7 +82,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
       if (totalNodes === 0 && edgesCount.count === 0) {
         return res.json({
           success: true,
-          message: 'No canvas data to clear',
+          message: 'No keimenon data to clear',
           deleted: {
             nodes: [],
             edges: 0,
@@ -92,7 +92,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
 
       // Use savepoint instead of transaction for compatibility with test isolation
       // Savepoints work within existing transactions (e.g., from E2E test fixtures)
-      const savepointId = `clear_canvas_${Date.now()}`;
+      const savepointId = `clear_keimenon_${Date.now()}`;
 
       try {
         database.prepare(`SAVEPOINT ${savepointId}`).run();
@@ -101,17 +101,21 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
           error.message?.includes('SQLITE_BUSY') ||
           error.message?.includes('database is locked')
         ) {
-          throw ErrorFactory.database('Database is currently busy', 'dataManagement.clearCanvas', {
-            accountId,
-            userId,
-            error: error.message,
-          });
+          throw ErrorFactory.database(
+            'Database is currently busy',
+            'dataManagement.clearKeimenon',
+            {
+              accountId,
+              userId,
+              error: error.message,
+            }
+          );
         }
         throw error;
       }
 
       try {
-        // 1. Delete canvas data edges first (before nodes to avoid FK issues)
+        // 1. Delete keimenon data edges first (before nodes to avoid FK issues)
         database
           .prepare(
             `
@@ -123,7 +127,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
           )
           .run(...params);
 
-        // 2. Delete canvas data nodes (FTS trigger will clean up automatically)
+        // 2. Delete keimenon data nodes (FTS trigger will clean up automatically)
         // Uses node kind constants from packages/types/src/node-kinds.ts
         const nodesDeleted = database
           .prepare(
@@ -131,7 +135,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
         DELETE FROM nodes
         WHERE account_id = ?
           ${dataTagFilter}
-          AND kind IN (${getCanvasDataInClause()})
+          AND kind IN (${getKeimenonDataInClause()})
       `
           )
           .run(...params);
@@ -153,7 +157,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
             accountId,
             accountId,
             'delete',
-            'CanvasData',
+            'KeimenonData',
             accountId,
             'native',
             1,
@@ -170,7 +174,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
 
         return res.json({
           success: true,
-          message: 'Canvas data cleared successfully',
+          message: 'Keimenon data cleared successfully',
           deleted: {
             nodes: nodesCounts,
             edges: edgesCount.count,
@@ -192,7 +196,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
         ) {
           throw ErrorFactory.database(
             'Database is currently busy',
-            'dataManagement.clearCanvas.transaction',
+            'dataManagement.clearKeimenon.transaction',
             { accountId, userId, nodesCounts, edgesCount: edgesCount.count }
           );
         }
@@ -200,15 +204,15 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
         if (error.message?.includes('FOREIGN KEY constraint failed')) {
           throw ErrorFactory.database(
             'Failed to delete data due to integrity constraints',
-            'dataManagement.clearCanvas.foreignKey',
+            'dataManagement.clearKeimenon.foreignKey',
             { accountId, userId, error: error.message }
           );
         }
 
         // Generic database error
         throw ErrorFactory.database(
-          error.message || 'Failed to clear canvas data',
-          'dataManagement.clearCanvas',
+          error.message || 'Failed to clear keimenon data',
+          'dataManagement.clearKeimenon',
           { accountId, userId, errorName: error.name }
         );
       }
@@ -217,7 +221,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
 
   /**
    * DELETE /api/v1/data/all-clients
-   * Admin only: Clear ALL client canvas data (preserves admin data, users, accounts, settings)
+   * Admin only: Clear ALL client keimenon data (preserves admin data, users, accounts, settings)
    *
    * Deletes (for all client accounts):
    * - ChatThread, Message, Source, CodeBlock, Group, Folder nodes
@@ -288,7 +292,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
 
         // Clear data for each client account
         for (const { account_id } of clientAccounts) {
-          // Delete canvas data edges first
+          // Delete keimenon data edges first
           const edgesResult = database
             .prepare(
               `
@@ -300,14 +304,14 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
             .run(account_id);
           totalEdgesDeleted += edgesResult.changes;
 
-          // Delete canvas data nodes (FTS trigger will clean up automatically)
+          // Delete keimenon data nodes (FTS trigger will clean up automatically)
           // Uses node kind constants from packages/types/src/node-kinds.ts
           const nodesResult = database
             .prepare(
               `
           DELETE FROM nodes
           WHERE account_id = ?
-            AND kind IN (${getCanvasDataInClause()})
+            AND kind IN (${getKeimenonDataInClause()})
         `
             )
             .run(account_id);
@@ -397,7 +401,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
 
   /**
    * GET /api/v1/data/stats
-   * Get current canvas data statistics
+   * Get current keimenon data statistics
    * Useful for showing user what will be cleared
    */
   router.get(
@@ -420,7 +424,7 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
         SELECT kind, COUNT(*) as count
         FROM nodes
         WHERE account_id = ?
-          AND kind IN (${getCanvasDataInClause()})
+          AND kind IN (${getKeimenonDataInClause()})
         GROUP BY kind
       `
           )

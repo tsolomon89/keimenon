@@ -1,4 +1,4 @@
-# MCP Implementation Complete - Canvas Memory OS
+# MCP Implementation Complete - Keimenon
 
 **Date**: 2025-10-19
 **Status**: ✅ Phase 1 Complete & Verified
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Successfully implemented **Model Context Protocol (MCP)** integration for Canvas Memory OS, providing AI assistants (Claude Code, VSCode Copilot) with structured access to the project's database and documentation. This enables dramatically faster development workflows through natural language queries to the codebase.
+Successfully implemented **Model Context Protocol (MCP)** integration for Keimenon, providing AI assistants (Claude Code, VSCode Copilot) with structured access to the project's database and documentation. This enables dramatically faster development workflows through natural language queries to the codebase.
 
 ### What MCP Provides
 
@@ -60,9 +60,9 @@ Time: ~5 seconds
 
 **Resources Implemented**:
 
-- ✅ `canvas-db://schema` - Current database schema
-- ✅ `canvas-db://health` - Database health metrics
-- ✅ `canvas-db://stats` - Statistics overview
+- ✅ `keimenon-db://schema` - Current database schema
+- ✅ `keimenon-db://health` - Database health metrics
+- ✅ `keimenon-db://stats` - Statistics overview
 
 **Node Types Supported** (14 total):
 
@@ -121,15 +121,15 @@ Time: ~5 seconds
 {
   "chat.mcp.discovery.enabled": true,
   "chat.mcp.servers": {
-    "canvas-database": {
+    "keimenon-database": {
       "command": "node",
       "args": ["${workspaceFolder}/.mcp/servers/database/index.js"],
-      "description": "Query and inspect Canvas Memory OS SQLite database",
+      "description": "Query and inspect Keimenon SQLite database",
       "env": {
-        "SQLITE_PATH": "${env:USERPROFILE}/.canvas-memory/canvas.db"
+        "SQLITE_PATH": "${env:USERPROFILE}/.keimenon/keimenon.db"
       }
     },
-    "canvas-docs": {
+    "keimenon-docs": {
       "command": "node",
       "args": ["${workspaceFolder}/.mcp/servers/docs/index.js"],
       "description": "Search and navigate project documentation"
@@ -176,7 +176,7 @@ Time: ~5 seconds
 
 ```bash
 ✅ API server running on port 4001
-✅ Database connected: C:\Users\Audna\.canvas-memory\canvas.db
+✅ Database connected: C:\Users\Audna\.keimenon\keimenon.db
 ✅ Storage mode: local
 ✅ Database schema v2.1
 ✅ FTS5 full-text search enabled
@@ -366,7 +366,7 @@ Check if MCP servers are discovered:
 
 1. Open Command Palette (`Ctrl+Shift+P`)
 2. Run "MCP: List Servers"
-3. Should see: `canvas-database` and `canvas-docs`
+3. Should see: `keimenon-database` and `keimenon-docs`
 
 ---
 
@@ -677,7 +677,7 @@ Check if MCP servers are discovered:
 
 ## Conclusion
 
-MCP integration for Canvas Memory OS is **complete and production-ready for Phase 1**. The database and documentation servers provide significant productivity gains for development workflows, with 90%+ time savings on routine queries.
+MCP integration for Keimenon is **complete and production-ready for Phase 1**. The database and documentation servers provide significant productivity gains for development workflows, with 90%+ time savings on routine queries.
 
 The implementation follows security best practices (read-only access, local-only execution, no data exfiltration) and provides comprehensive documentation for easy onboarding.
 
@@ -710,7 +710,7 @@ The implementation follows security best practices (read-only access, local-only
 
 - [MCP Official Docs](https://modelcontextprotocol.io/)
 - [VSCode MCP Integration](https://code.visualstudio.com/docs/copilot/chat/mcp-servers)
-- [Canvas Memory OS Architecture](docs/architecture/OVERVIEW.md)
+- [Keimenon Architecture](docs/architecture/OVERVIEW.md)
 - [Database Schema](packages/db/src/sqlite/schema.sql)
 
 ---

@@ -1,4 +1,4 @@
-# Canvas Memory OS - Current State Assessment
+# Keimenon - Current State Assessment
 
 **Date:** October 13, 2025
 **Status:** Production-Ready Core, Polish & Enhancement Phase
@@ -137,7 +137,7 @@ Total Tests:    22
 
 - 50+ React components
 - Next.js 14 framework
-- Canvas visualization (2D D3-force layout)
+- Keimenon visualization (2D D3-force layout)
 - Import UI with streaming progress
 - Tailwind CSS styling
 - Radix UI components
@@ -157,11 +157,11 @@ Total Tests:    22
 apps/web/src/
 ├── components/     # 50+ components exist
 │   ├── auth/       # ?❓ Does this exist?
-│   ├── canvas/     # ✅ Exists
+│   ├── keimenon/     # ✅ Exists
 │   └── import/     # ✅ Exists
 ├── pages/          # Next.js pages
 │   ├── login.tsx   # ?❓ Needs verification
-│   └── canvas.tsx  # ✅ Exists
+│   └── keimenon.tsx  # ✅ Exists
 └── lib/
     └── api.ts      # ?❓ Does it include auth headers?
 ```
@@ -208,7 +208,7 @@ After (CLEAN):
 ```
 ✓ Storage mode: local (SQLite only)
 → Skipping Neo4j check
-⚡️ Canvas Memory API running on port 4001
+⚡️ Keimenon API running on port 4001
 💿 Storage: local mode
 🔗 Health check: http://localhost:4001/health
 ```
@@ -426,13 +426,13 @@ npm run test:auth
 npm run dev:clean
 
 # Step 2: Wait for server to start (check logs)
-# Look for: "⚡️ Canvas Memory API running on port 4001"
+# Look for: "⚡️ Keimenon API running on port 4001"
 
 # Step 3: Test health endpoint (no auth needed)
 curl http://localhost:4001/health
 
 # Expected response:
-# {"status":"ok","timestamp":"...","service":"canvas-memory-api",...}
+# {"status":"ok","timestamp":"...","service":"keimenon-api",...}
 
 # Step 4: Register new account
 curl -X POST http://localhost:4001/api/v1/auth/register \

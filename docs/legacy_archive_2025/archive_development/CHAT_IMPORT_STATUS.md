@@ -2,7 +2,7 @@
 
 ## Quick Status
 
-**Feature:** Chat Import with Duplicate Detection & Canvas Integration
+**Feature:** Chat Import with Duplicate Detection & Keimenon Integration
 **Status:** ✅ **100% COMPLETE**
 **Sessions:** 2 (Initial + Continuation)
 **Files Created:** 31
@@ -37,9 +37,9 @@
 - [x] Error handling with retries
 - [x] File validation
 
-### ✅ Phase 4: Canvas Integration (100%)
+### ✅ Phase 4: Keimenon Integration (100%)
 
-- [x] Canvas store with Zustand
+- [x] Keimenon store with Zustand
 - [x] Node/edge management
 - [x] Selection synchronization
 - [x] Data conversion utilities
@@ -89,11 +89,11 @@
 
 ### Store & Utils (5)
 
-18. `canvasStore.ts`
+18. `keimenonStore.ts`
 19. `import-utils.ts`
 20. `error-handler.ts`
 21. (modified) `api-client.ts`
-22. (modified) `CanvasViewport.tsx`
+22. (modified) `KeimenonViewport.tsx`
 
 ### Backend (1)
 
@@ -142,7 +142,7 @@
 - ✅ User-friendly messages
 - ✅ Network error detection
 
-### Canvas Integration
+### Keimenon Integration
 
 - ✅ Import to graph conversion
 - ✅ 4 node types (Conversation, Message, Source, Code)
@@ -179,7 +179,7 @@ GET    /api/v1/import/chat/decisions/status/:id ✅ Complete (NEW)
 1. Configuration UI (50+ cases)
 2. Duplicate Review (70+ cases)
 3. Backend Integration (40+ cases)
-4. Canvas Integration (30+ cases)
+4. Keimenon Integration (30+ cases)
 5. UI/UX (40+ cases)
 6. Integration (20+ cases)
 7. Performance (20+ cases)
@@ -221,12 +221,12 @@ See: [TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md)
 
 1. Start API: `cd apps/api && npm run dev`
 2. Start web: `cd apps/web && npm run dev`
-3. Navigate to `/canvas`
+3. Navigate to `/keimenon`
 4. Click "Import Chat Conversations"
 5. Upload JSON/JSONL files
 6. Configure settings
 7. Review duplicates (if any)
-8. Verify canvas updates
+8. Verify keimenon updates
 
 ---
 
@@ -251,7 +251,7 @@ See: [TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md)
 - Created all 13 configuration components
 - Created all 4 duplicate review components
 - Implemented basic keyboard shortcuts
-- Set up canvas foundation
+- Set up keimenon foundation
 - Achieved 85% completion
 
 **Session 2 (Current):**
@@ -261,8 +261,8 @@ See: [TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md)
 - Created apply-decisions API
 - Added Toast notifications
 - Added Advanced loading states
-- Created Canvas state management
-- Integrated canvas components
+- Created Keimenon state management
+- Integrated keimenon components
 - Added Selection synchronization
 - Created Data conversion utilities
 - Added Comprehensive error handling

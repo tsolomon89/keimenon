@@ -244,7 +244,7 @@ import {
   ContentProcessor,
   GroupingStorage,
   DeduplicationEngine,
-} from '@canvas/parsers';
+} from '@keimenon/parsers';
 import Database from 'better-sqlite3';
 
 // 1. Parse
@@ -256,8 +256,8 @@ const processor = new ContentProcessor();
 const processed = await processor.processConversation(result.conversations[0]);
 
 // 3. Store
-const db = new Database('./canvas.db');
-const storage = new GroupingStorage('./canvas.db');
+const db = new Database('./keimenon.db');
+const storage = new GroupingStorage('./keimenon.db');
 
 for (const p of processed) {
   storage.insertBlob(p.blob);
@@ -363,7 +363,7 @@ const ranked = deduper.getTopCanonicals(100, (minInstances = 3));
 ### Future (Week 4-5)
 
 3. **UI Integration**
-   - Canvas toolbar toggles (collapse exact/near)
+   - Keimenon toolbar toggles (collapse exact/near)
    - Evidence badges (instances_count, distinct_blobs)
    - Inspector evidence panel
    - Nav filters (evidence_score≥N, instances_count≥M)

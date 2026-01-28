@@ -137,7 +137,7 @@ The Anthropic Claude Agent SDK emphasizes a visual feedback loop for UI testing:
 **Examples**:
 
 - `create-node-01-dialog-open.png` - Standard test
-- `ui-isolation-account-a-canvas-view.png` - Multi-tenant test with account context
+- `ui-isolation-account-a-keimenon-view.png` - Multi-tenant test with account context
 - `import-workflow-processing-progress-started.png` - Workflow test with stage
 
 **Best Practices**:
@@ -228,8 +228,8 @@ test('multi-step workflow with visual checks', async ({ page }) => {
   const testName = 'create-node';
 
   // Initial state
-  await page.goto('/canvas');
-  await captureBaseline(page, testName, '00-initial-canvas');
+  await page.goto('/keimenon');
+  await captureBaseline(page, testName, '00-initial-keimenon');
 
   // Dialog opened
   await page.getByRole('button', { name: /create node/i }).click();
@@ -244,9 +244,9 @@ test('multi-step workflow with visual checks', async ({ page }) => {
   await page.waitForSelector('text=Node created successfully');
   await captureBaseline(page, testName, '03-success-toast');
 
-  // Final canvas state
+  // Final keimenon state
   await page.waitForTimeout(500); // Wait for toast to disappear
-  await captureBaseline(page, testName, '04-canvas-with-node');
+  await captureBaseline(page, testName, '04-keimenon-with-node');
 });
 ```
 
@@ -272,18 +272,18 @@ async function captureAccountBaseline(
 test('should isolate account data visually', async ({ page }) => {
   // Login as Account A
   await login(page, 'accounta@test.com', '123456');
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
 
   // 📸 Capture Account A's view
-  await captureAccountBaseline(page, 'ui-isolation', 'account-a', 'canvas-view');
+  await captureAccountBaseline(page, 'ui-isolation', 'account-a', 'keimenon-view');
 
   // Switch to Account B
   await page.goto('/logout');
   await login(page, 'accountb@test.com', '123456');
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
 
   // 📸 Capture Account B's view (MUST be different)
-  await captureAccountBaseline(page, 'ui-isolation', 'account-b', 'canvas-view');
+  await captureAccountBaseline(page, 'ui-isolation', 'account-b', 'keimenon-view');
 
   // Visual comparison will FAIL if Account B sees Account A's data
 });
@@ -677,7 +677,7 @@ async function captureAccountBaseline(
 **Example**:
 
 ```typescript
-await captureAccountBaseline(page, 'ui-isolation', 'account-a', 'canvas-view');
+await captureAccountBaseline(page, 'ui-isolation', 'account-a', 'keimenon-view');
 ```
 
 #### `captureWorkflowStage()`
@@ -999,7 +999,7 @@ await captureBaseline(page, 'create-node', '02-form-filled');
 await captureBaseline(page, 'create-node', '03-success-toast');
 
 // Include context when needed
-await captureAccountBaseline(page, 'ui-isolation', 'account-a', 'canvas-view');
+await captureAccountBaseline(page, 'ui-isolation', 'account-a', 'keimenon-view');
 await captureWorkflowStage(page, 'import', 'processing', 'mid-progress');
 ```
 
@@ -1410,11 +1410,11 @@ Pixels different: 42 (threshold: 0.1, max: 100)
 
    ```typescript
    test('should create node', async ({ page }) => {
-     await page.goto('/canvas');
+     await page.goto('/keimenon');
      await page.waitForLoadState('networkidle');
 
      // 📸 NEW: Visual checkpoint
-     await captureBaseline(page, 'create-node', '00-initial-canvas');
+     await captureBaseline(page, 'create-node', '00-initial-keimenon');
 
      await page.getByRole('button', { name: /create node/i }).click();
 
@@ -1834,5 +1834,5 @@ Pixels different: 42 (threshold: 0.1, max: 100)
 
 **Version**: 1.0.0
 **Last Updated**: 2025-11-01
-**Maintained By**: Canvas Memory Team
+**Maintained By**: Keimenon Team
 **Feedback**: Please report issues or suggestions to the team

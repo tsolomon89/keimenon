@@ -332,7 +332,7 @@ Collections edited via forms; each has JSON schema + audit trail.
 
 ### A) Tier definitions (concise)
 
-- **Free — Local‑first.** Canvas graph nodes, ingest → autogroup → sequester. No research/automations. _Optional_ **BYO AI key** for on‑the‑spot summarize/Q&A **client‑side only** (no proxy). Hard limits on file size, count, and graph size.
+- **Free — Local‑first.** Keimenon graph nodes, ingest → autogroup → sequester. No research/automations. _Optional_ **BYO AI key** for on‑the‑spot summarize/Q&A **client‑side only** (no proxy). Hard limits on file size, count, and graph size.
 - **Pro — Models included, research on.** Hosted models available **without keys** (ephemeral, no logging); **BYO key** still supported. Auto‑research and auto‑graph builds, receipts preserved. Higher limits; background verification (non‑personal data only).
 - **Business — Organization OS.** Adds **BusinessNode** + multiple **UserNodes**, automation workflows (webhooks, email, CRM/CMS), schema/database, and **sensitive data handling** (contacts, PII). Oblio‑style chats live here.
 

@@ -210,7 +210,7 @@ Since the API endpoint is not working, you can test the chunked upload via the U
 npm run dev:clean
 ```
 
-### 2. Navigate to Canvas App
+### 2. Navigate to Keimenon App
 
 ```
 http://localhost:3000
@@ -250,7 +250,7 @@ http://localhost:3000
 - **Assembly**: After all chunks uploaded, server assembles into complete file
 - **Import Job**: Automatically triggered after assembly completes
 - **Processing**: Import worker processes the 191MB file
-- **Result**: Chat threads, messages, and code blocks created in canvas
+- **Result**: Chat threads, messages, and code blocks created in keimenon
 
 ---
 
@@ -294,7 +294,7 @@ http://localhost:3000
 ### Frontend
 
 - `apps/web/src/hooks/useChunkedUpload.ts` - Already created (chunked upload hook)
-- `apps/web/src/components/canvas/ChatImportModal.tsx` - Already updated (uses chunked upload)
+- `apps/web/src/components/keimenon/ChatImportModal.tsx` - Already updated (uses chunked upload)
 
 ---
 

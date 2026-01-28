@@ -64,7 +64,7 @@ export function DeduplicationCard() {
     setError(null);
 
     try {
-      const token = localStorage.getItem('canvas_memory_token');
+      const token = localStorage.getItem('keimenon_token');
       if (!token) {
         throw new Error('Not authenticated');
       }
@@ -180,7 +180,7 @@ export function DeduplicationCard() {
     });
 
     try {
-      const token = localStorage.getItem('canvas_memory_token');
+      const token = localStorage.getItem('keimenon_token');
       if (!token) {
         throw new Error('Not authenticated');
       }

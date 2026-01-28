@@ -81,7 +81,7 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:4001/api/v1/metric
 The errors you're seeing are mostly:
 
 - **Pre-existing test file errors** (not from our changes)
-- **Build cache issue** with `getCanvasDataInClause` import
+- **Build cache issue** with `getKeimenonDataInClause` import
 
 **Resolution**:
 
@@ -95,7 +95,7 @@ rm -rf packages/*/dist
 npm run build
 ```
 
-The `getCanvasDataInClause` error will resolve after packages are rebuilt.
+The `getKeimenonDataInClause` error will resolve after packages are rebuilt.
 
 ---
 
@@ -129,7 +129,7 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" \
   http://localhost:4001/api/v1/metrics/delete/prometheus
 
 # Expected: Plain text Prometheus format
-# delete_operations_jobs_completed{status="success",scope="canvas"} 0
+# delete_operations_jobs_completed{status="success",scope="keimenon"} 0
 ```
 
 ### Test 4: Generate Some Metrics
@@ -143,11 +143,11 @@ curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
   http://localhost:4001/api/v1/nodes \
   -d '{"kind": "Message", "content": "test", "role": "user", "thread_id": "thread_1", "timestamp": 1234567890}'
 
-# 2. Delete canvas data (creates metrics)
+# 2. Delete keimenon data (creates metrics)
 curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   http://localhost:4001/api/v1/jobs/delete \
-  -d '{"scope": "canvas"}'
+  -d '{"scope": "keimenon"}'
 
 # 3. Wait for job to complete, then check metrics
 curl -H "Authorization: Bearer $ADMIN_TOKEN" \
@@ -201,7 +201,7 @@ console.log(
 
 ```yaml
 scrape_configs:
-  - job_name: 'canvas-api'
+  - job_name: 'keimenon-api'
     scrape_interval: 30s
     static_configs:
       - targets: ['localhost:4001']
@@ -242,7 +242,7 @@ rate(delete_operations_concurrent_attempts[1h]) * 3600
 **Cause**: No delete jobs have run yet
 **Solution**: Run a delete operation to generate metrics (see Test 4 above)
 
-### Problem: TypeScript import errors for getCanvasDataInClause
+### Problem: TypeScript import errors for getKeimenonDataInClause
 
 **Cause**: Build cache issue
 **Solution**: Run `npm run build` to rebuild packages

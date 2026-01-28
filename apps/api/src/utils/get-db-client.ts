@@ -134,7 +134,7 @@ export async function getDbClient(req?: Request): Promise<any> {
  *     - Data database: worker-0.db (has SAVEPOINT transactions for test isolation)
  *     - Jobs database: worker-0-jobs.db (NO savepoints, jobs globally visible)
  *   Production Mode:
- *     - Single database: canvas.db (contains all data including jobs)
+ *     - Single database: keimenon.db (contains all data including jobs)
  *
  * Why separate database:
  * - SQLite does not allow creating a second connection to a database with active SAVEPOINT

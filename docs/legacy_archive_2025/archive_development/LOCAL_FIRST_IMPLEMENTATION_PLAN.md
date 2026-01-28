@@ -1,7 +1,7 @@
 # Local-First Implementation Plan
 
 **Date**: 2025-10-11
-**Goal**: Transform Canvas Memory OS into 100% local, user-hosted application
+**Goal**: Transform Keimenon into 100% local, user-hosted application
 **Timeline**: Phase 1 (1-2 days), Phase 2 (1 week), Phase 3 (2-3 weeks)
 
 ---
@@ -63,10 +63,10 @@ const storageMode = (process.env.STORAGE_MODE || 'local') as StorageMode;
 const dbClient = await DatabaseFactory.getClient({
   mode: storageMode,
   local: {
-    databasePath: process.env.SQLITE_PATH || path.join(process.env.LOCAL_DOCS_PATH || '~/.canvas-memory', 'canvas.db'),
+    databasePath: process.env.SQLITE_PATH || path.join(process.env.LOCAL_DOCS_PATH || '~/.keimenon', 'keimenon.db'),
     verbose: process.env.NODE_ENV === 'development',
   },
-  canvas: storageMode !== 'local' ? {
+  keimenon: storageMode !== 'local' ? {
     uri: process.env.NEO4J_URI || 'bolt://localhost:7687',
     user: process.env.NEO4J_USER || 'neo4j',
     password: process.env.NEO4J_PASSWORD || 'password',
@@ -87,14 +87,14 @@ console.log(`✅ Database initialized (mode: ${storageMode})`);
 PORT=3001
 NODE_ENV=development
 
-# Storage Mode (local = SQLite, canvas = Neo4j, hybrid = both)
+# Storage Mode (local = SQLite, keimenon = Neo4j, hybrid = both)
 STORAGE_MODE=local
 
 # Local Storage (SQLite + Files)
-LOCAL_DOCS_PATH=~/.canvas-memory
-SQLITE_PATH=~/.canvas-memory/canvas.db
+LOCAL_DOCS_PATH=~/.keimenon
+SQLITE_PATH=~/.keimenon/keimenon.db
 
-# Optional: Neo4j (only if STORAGE_MODE=canvas or hybrid)
+# Optional: Neo4j (only if STORAGE_MODE=keimenon or hybrid)
 # NEO4J_URI=bolt://localhost:7687
 # NEO4J_USER=neo4j
 # NEO4J_PASSWORD=password
@@ -191,7 +191,7 @@ async function saveConversations(db: DatabaseClient, conversations: any[]) {
 **Create `apps/api/src/types/global.d.ts`:**
 
 ```typescript
-import { DatabaseClient } from '@canvas-memory/db';
+import { DatabaseClient } from '@keimenon/db';
 
 declare global {
   var dbClient: DatabaseClient | undefined;
@@ -218,14 +218,14 @@ export {};
      -F "config={\"export_code\":true}"
 
    # Verify data saved
-   sqlite3 ~/.canvas-memory/canvas.db "SELECT COUNT(*) FROM nodes;"
+   sqlite3 ~/.keimenon/keimenon.db "SELECT COUNT(*) FROM nodes;"
    # Should show > 0 nodes
    ```
 
 2. **Test Neo4j mode (optional):**
 
    ```bash
-   # Set STORAGE_MODE=canvas in .env
+   # Set STORAGE_MODE=keimenon in .env
    # Make sure Neo4j is running
    npm run dev
 

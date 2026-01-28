@@ -273,7 +273,7 @@ npm test MigrationRunner.test.ts
 ┌─────────────────────────────────────────────────────────────┐
 │                      Frontend (React)                        │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │ DataManagement│  │ImportsTable  │  │CanvasSidebar │      │
+│  │ DataManagement│  │ImportsTable  │  │KeimenonSidebar │      │
 │  │    Card       │  │    Card      │  │              │      │
 │  └───────┬──────┘  └──────┬───────┘  └──────┬───────┘      │
 │          │                  │                  │              │
@@ -344,9 +344,9 @@ npm test MigrationRunner.test.ts
 ### Data Flow - Delete Operation
 
 ```
-1. User clicks "Clear Canvas Data"
+1. User clicks "Clear Keimenon Data"
    ↓
-2. Frontend: POST /api/v1/jobs/delete { scope: 'canvas' }
+2. Frontend: POST /api/v1/jobs/delete { scope: 'keimenon' }
    ↓
 3. API: EnqueueJob.execute()
    ↓
@@ -405,7 +405,7 @@ Create a delete job.
 
 ```json
 {
-  "scope": "canvas" | "all-clients"
+  "scope": "keimenon" | "all-clients"
 }
 ```
 
@@ -423,7 +423,7 @@ Create a delete job.
       "queuedAt": "2025-10-18T19:37:17.123Z"
     },
     "config": {
-      "deleteScope": "canvas"
+      "deleteScope": "keimenon"
     }
   }
 }
@@ -468,7 +468,7 @@ data: {
     "type": "delete",
     "status": "running",
     "progress": { "current": 12500, "total": 25604, "percent": 49 },
-    "config": { "deleteScope": "canvas" },
+    "config": { "deleteScope": "keimenon" },
     "timestamp": 1760796045000
   }],
   "timestamp": 1760796045000
@@ -538,7 +538,7 @@ SSE_BROADCAST_INTERVAL_MS=500       # Update rate (2Hz)
 SSE_HEARTBEAT_INTERVAL_MS=30000     # Heartbeat interval (30s)
 
 # Database
-DB_PATH=~/.canvas-memory/canvas.db  # SQLite database path
+DB_PATH=~/.keimenon/keimenon.db  # SQLite database path
 ```
 
 ### DeleteWorker Configuration
@@ -607,7 +607,7 @@ Tuning considerations:
 
 ```
 POST /api/v1/jobs/delete
-🗑️ Delete job created: job_xxx (scope: canvas)
+🗑️ Delete job created: job_xxx (scope: keimenon)
 [JobRepository] ✅ Saved job job_xxx (status: queued, type: delete)
 ```
 
@@ -618,7 +618,7 @@ POST /api/v1/jobs/delete
 📋 Found 1 queued jobs to process
 ⚡ Dispatching job job_xxx (type: delete)
 [Job job_xxx] State transition: queued → running (via 'start')
-🗑️ Delete worker processing canvas for job job_xxx
+🗑️ Delete worker processing keimenon for job job_xxx
    Total nodes to delete: 25604
    Batch size: 500
    Estimated batches: 52
@@ -652,7 +652,7 @@ POST /api/v1/jobs/delete
 ```json
 {
   "status": "ok",
-  "service": "canvas-memory-api",
+  "service": "keimenon-api",
   "version": "0.1.0",
   "dependencies": {
     "database": "connected"
@@ -692,7 +692,7 @@ POST /api/v1/jobs/delete
 1. **Backup Database**:
 
    ```bash
-   cp ~/.canvas-memory/canvas.db ~/.canvas-memory/canvas.db.backup
+   cp ~/.keimenon/keimenon.db ~/.keimenon/keimenon.db.backup
    ```
 
 2. **Deploy Code**:
@@ -753,15 +753,15 @@ POST /api/v1/jobs/delete
 
 **Check**:
 
-1. Database file exists? `ls ~/.canvas-memory/canvas.db`
-2. File permissions correct? `ls -la ~/.canvas-memory/`
+1. Database file exists? `ls ~/.keimenon/keimenon.db`
+2. File permissions correct? `ls -la ~/.keimenon/`
 3. Migration file exists? `ls packages/db/src/sqlite/migrations/`
 
 **Fix**:
 
 ```bash
 # Manual migration if needed
-sqlite3 ~/.canvas-memory/canvas.db < packages/db/src/sqlite/migrations/008_unified_jobs.sql
+sqlite3 ~/.keimenon/keimenon.db < packages/db/src/sqlite/migrations/008_unified_jobs.sql
 ```
 
 ### Issue: Delete job stuck at 0%

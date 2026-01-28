@@ -14,7 +14,7 @@ export default function HomePage() {
 
     // Redirect based on auth status
     if (isAuthenticated) {
-      router.push('/canvas');
+      router.push('/keimenon');
     } else {
       router.push('/login');
     }

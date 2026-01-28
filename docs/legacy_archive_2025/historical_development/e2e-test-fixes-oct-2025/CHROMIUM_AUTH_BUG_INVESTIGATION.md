@@ -85,7 +85,7 @@ curl http://localhost:4001/api/v1/auth/login \
    [Debug Phase 8] Error state:
      - Error message visible: ⚠️ Yes
 
-   Final URL: http://localhost:3000/login  (Expected: /canvas)
+   Final URL: http://localhost:3000/login  (Expected: /keimenon)
    ```
 
 3. **Headers Sent Correctly:**

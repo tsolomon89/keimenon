@@ -14,7 +14,7 @@ import {
   Trash2,
   Eye,
 } from 'lucide-react';
-import { InspectorData } from '@/types/canvas';
+import { InspectorData } from '@/types/keimenon';
 
 interface SourceInspectorProps {
   data: InspectorData | null;
@@ -37,10 +37,7 @@ export function SourceInspector({ data, onAction, onViewFullDetails }: SourceIns
     setExpandedSections(newExpanded);
   };
 
-  const formatValue = (
-    value: string | number,
-    type?: 'text' | 'number' | 'date' | 'badge'
-  ) => {
+  const formatValue = (value: string | number, type?: 'text' | 'number' | 'date' | 'badge') => {
     if (type === 'date') {
       return new Date(value as number).toLocaleString();
     }
@@ -72,9 +69,7 @@ export function SourceInspector({ data, onAction, onViewFullDetails }: SourceIns
       <div className="flex flex-col items-center justify-center h-full text-center text-sm text-slate-500 px-6">
         <Tag className="w-16 h-16 mb-4 text-slate-600" />
         <p className="font-medium">No selection</p>
-        <p className="mt-2 text-xs">
-          Select a source from the tree or canvas to view details
-        </p>
+        <p className="mt-2 text-xs">Select a source from the tree or keimenon to view details</p>
       </div>
     );
   }
@@ -129,9 +124,7 @@ export function SourceInspector({ data, onAction, onViewFullDetails }: SourceIns
                     {detail.label === 'Characters' && <Hash className="w-3 h-3" />}
                     <span>{detail.label}</span>
                   </div>
-                  <div className="text-sm text-white">
-                    {formatValue(detail.value, detail.type)}
-                  </div>
+                  <div className="text-sm text-white">{formatValue(detail.value, detail.type)}</div>
                 </div>
               ))}
             </div>

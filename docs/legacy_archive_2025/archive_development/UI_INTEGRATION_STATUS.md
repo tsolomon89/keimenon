@@ -1,6 +1,6 @@
 # UI/UX Integration Status Report
 
-## Canvas Memory OS - Frontend ↔ Backend Integration
+## Keimenon - Frontend ↔ Backend Integration
 
 **Date**: October 10, 2025
 **Status**: ✅ **FULLY INTEGRATED**
@@ -192,7 +192,7 @@ export async function getStorageStats();
 - SourceInspector - View source documents
 - NodeDetailPanel - View node details
 - StorageStatsDashboard - Display stats
-- CanvasLayout - Content management
+- KeimenonLayout - Content management
 
 **Status**: ✅ **Fully Integrated**
 
@@ -200,7 +200,7 @@ export async function getStorageStats();
 
 ### 7. Storage Stats Dashboard ✅
 
-**Component**: [apps/web/src/components/canvas/StorageStatsDashboard.tsx](apps/web/src/components/canvas/StorageStatsDashboard.tsx:1)
+**Component**: [apps/web/src/components/keimenon/StorageStatsDashboard.tsx](apps/web/src/components/keimenon/StorageStatsDashboard.tsx:1)
 
 **API**: `GET /api/v1/content/stats`
 
@@ -324,7 +324,7 @@ While everything is integrated, here are optional enhancements:
 **Add**: "Recompute Groups" button
 
 ```typescript
-// apps/web/src/components/canvas/GroupManagementPanel.tsx (new)
+// apps/web/src/components/keimenon/GroupManagementPanel.tsx (new)
 async function recomputeGroups() {
   const response = await fetch('/api/v1/groups/auto', {
     method: 'POST',

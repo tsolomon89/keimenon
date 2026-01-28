@@ -50,14 +50,14 @@ test.describe('Authentication - Registration Flow', () => {
     // Submit form
     await page.getByRole('button', { name: /sign up|register|create account/i }).click();
 
-    // Should redirect to canvas or dashboard
-    await page.waitForURL(/\/canvas|\/dashboard/, { timeout: 10000 });
+    // Should redirect to keimenon or dashboard
+    await page.waitForURL(/\/keimenon|\/dashboard/, { timeout: 10000 });
 
     // Verify user is logged in
-    await expect(page).toHaveURL(/\/canvas|\/dashboard/);
+    await expect(page).toHaveURL(/\/keimenon|\/dashboard/);
 
     // Verify auth token exists in localStorage (app uses localStorage, not cookies)
-    const token = await page.evaluate(() => localStorage.getItem('canvas_memory_token'));
+    const token = await page.evaluate(() => localStorage.getItem('keimenon_token'));
     expect(token).toBeTruthy();
     expect(typeof token).toBe('string');
     expect(token.split('.')).toHaveLength(3); // JWT has 3 parts: header.payload.signature
@@ -79,7 +79,7 @@ test.describe('Authentication - Registration Flow', () => {
     await page.getByRole('button', { name: /sign up|register|create account/i }).click();
 
     // Wait for registration to complete
-    await page.waitForURL(/\/canvas|\/dashboard/, { timeout: 10000 });
+    await page.waitForURL(/\/keimenon|\/dashboard/, { timeout: 10000 });
 
     // Verify account was created via API
     // Note: This requires the new user to be logged in
@@ -201,7 +201,7 @@ test.describe('Authentication - Registration Flow', () => {
     await page.getByLabel(/confirm password/i).fill(testPassword);
     await page.getByRole('button', { name: /sign up|register|create account/i }).click();
 
-    await page.waitForURL(/\/canvas|\/dashboard/, { timeout: 10000 });
+    await page.waitForURL(/\/keimenon|\/dashboard/, { timeout: 10000 });
 
     // Logout
     await page.goto('/logout');

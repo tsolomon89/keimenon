@@ -622,10 +622,10 @@ GET /api/v1/users?limit=20&offset=40
 
 ## Account Types
 
-| Type     | Description                                  |
-| -------- | -------------------------------------------- |
-| `admin`  | Internal admin accounts (Canvas Memory team) |
-| `client` | Customer accounts                            |
+| Type     | Description                             |
+| -------- | --------------------------------------- |
+| `admin`  | Internal admin accounts (Keimenon team) |
+| `client` | Customer accounts                       |
 
 ## Account Classes
 
@@ -702,7 +702,7 @@ curl -X POST http://localhost:4001/api/v1/import/upload \
 
 For API issues or questions:
 
-- GitHub Issues: https://github.com/your-repo/canvas-memory-os/issues
+- GitHub Issues: https://github.com/your-repo/keimenon/issues
 - Email: support@yourdomain.com
 - Docs: https://docs.yourdomain.com
 
@@ -731,9 +731,9 @@ To generate a full OpenAPI (Swagger) specification:
      definition: {
        openapi: '3.0.0',
        info: {
-         title: 'Canvas Memory OS API',
+         title: 'Keimenon API',
          version: '1.0.0',
-         description: 'API documentation for Canvas Memory OS',
+         description: 'API documentation for Keimenon',
        },
        servers: [
          {

@@ -100,7 +100,7 @@ async function main() {
   checks.push(dirExists('tests/e2e/fixtures', 'Fixtures directory exists'));
   checks.push(fileExists('tests/e2e/fixtures/testId.ts', 'Test ID fixture exists'));
   checks.push(fileExists('tests/e2e/smoke.spec.ts', 'Smoke tests exist'));
-  checks.push(fileExists('tests/e2e/flow-auth-canvas.spec.ts', 'Auth flow tests exist'));
+  checks.push(fileExists('tests/e2e/flow-auth-keimenon.spec.ts', 'Auth flow tests exist'));
   checks.push(fileExists('tests/e2e/README.md', 'Test documentation exists'));
   log('');
 

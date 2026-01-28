@@ -133,7 +133,7 @@ export function createApp(): { app: Express; context: AppContext } {
     return res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
-      service: 'canvas-memory-api',
+      service: 'keimenon-api',
       version: '0.1.0',
       storageMode,
       dependencies: {
@@ -181,7 +181,7 @@ export function createApp(): { app: Express; context: AppContext } {
   // API routes
   app.get('/api/v1', (_req: Request, res: Response) => {
     return res.json({
-      message: 'Canvas Memory OS API v1',
+      message: 'Keimenon API v1',
       version: '0.1.0',
       endpoints: {
         auth: {

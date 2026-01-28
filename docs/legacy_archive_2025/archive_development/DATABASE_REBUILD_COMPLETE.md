@@ -117,20 +117,20 @@ All endpoints now working:
 
 ## Database Location
 
-`%USERPROFILE%\.canvas-memory\canvas.db` (Windows)
-`~/.canvas-memory/canvas.db` (Unix/Mac)
+`%USERPROFILE%\.keimenon\keimenon.db` (Windows)
+`~/.keimenon/keimenon.db` (Unix/Mac)
 
 ## Schema Verification
 
 ```bash
 # Check users table (should NOT have deprecated_account_id or account_id)
-npx tsx -e "import Database from 'better-sqlite3'; const db = new Database(process.env.HOME + '/.canvas-memory/canvas.db'); const cols = db.prepare('PRAGMA table_info(users)').all(); console.table(cols); db.close();"
+npx tsx -e "import Database from 'better-sqlite3'; const db = new Database(process.env.HOME + '/.keimenon/keimenon.db'); const cols = db.prepare('PRAGMA table_info(users)').all(); console.table(cols); db.close();"
 
 # Check accounts table (should have 15 columns including require_account_password)
-npx tsx -e "import Database from 'better-sqlite3'; const db = new Database(process.env.HOME + '/.canvas-memory/canvas.db'); const cols = db.prepare('PRAGMA table_info(accounts)').all(); console.log('Total columns:', cols.length); db.close();"
+npx tsx -e "import Database from 'better-sqlite3'; const db = new Database(process.env.HOME + '/.keimenon/keimenon.db'); const cols = db.prepare('PRAGMA table_info(accounts)').all(); console.log('Total columns:', cols.length); db.close();"
 
 # Check user_accounts junction table exists
-npx tsx -e "import Database from 'better-sqlite3'; const db = new Database(process.env.HOME + '/.canvas-memory/canvas.db'); const tables = db.prepare('SELECT name FROM sqlite_master WHERE type=\"table\" AND name=\"user_accounts\"').all(); console.log(tables.length > 0 ? '✅ user_accounts exists' : '❌ Missing user_accounts'); db.close();"
+npx tsx -e "import Database from 'better-sqlite3'; const db = new Database(process.env.HOME + '/.keimenon/keimenon.db'); const tables = db.prepare('SELECT name FROM sqlite_master WHERE type=\"table\" AND name=\"user_accounts\"').all(); console.log(tables.length > 0 ? '✅ user_accounts exists' : '❌ Missing user_accounts'); db.close();"
 ```
 
 ## Future Database Resets
@@ -140,7 +140,7 @@ To recreate the database from scratch:
 ```bash
 # 1. Stop API server
 # 2. Delete database
-rm ~/.canvas-memory/canvas.db*
+rm ~/.keimenon/keimenon.db*
 
 # 3. Recreate with clean schema
 node bootstrap-clean-db.mjs

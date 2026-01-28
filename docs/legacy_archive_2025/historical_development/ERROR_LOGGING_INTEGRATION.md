@@ -160,7 +160,7 @@ interface CapturedError {
 ### How to Test
 
 1. **Open Frontend Console Component**:
-   - Navigate to Settings or Canvas page
+   - Navigate to Settings or Keimenon page
    - Open browser DevTools
    - Check Console Footer at bottom of UI
 

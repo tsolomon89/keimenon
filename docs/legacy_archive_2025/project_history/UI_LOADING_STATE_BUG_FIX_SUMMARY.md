@@ -57,7 +57,7 @@ useEffect(() => {
 
 #### 1.2 ImportsTableCard Refactored
 
-**File**: `apps/web/src/components/canvas/ImportsTableCard.tsx`
+**File**: `apps/web/src/components/keimenon/ImportsTableCard.tsx`
 **Lines Changed**: 145-186 (42 lines)
 
 **Changes**:
@@ -255,7 +255,7 @@ export const USE_DIRECT_SSE_SUBSCRIPTION = getEnv('NEXT_PUBLIC_USE_DIRECT_SSE') 
 | File                                                      | Type         | Lines Changed   | Status          |
 | --------------------------------------------------------- | ------------ | --------------- | --------------- |
 | `apps/web/src/components/settings/DataManagementCard.tsx` | Refactor     | 58              | ✅ Complete     |
-| `apps/web/src/components/canvas/ImportsTableCard.tsx`     | Refactor     | 42              | ✅ Complete     |
+| `apps/web/src/components/keimenon/ImportsTableCard.tsx`   | Refactor     | 42              | ✅ Complete     |
 | `apps/web/src/contexts/BackgroundOperationsContext.tsx`   | Enhancement  | +17             | ✅ Complete     |
 | `tests/e2e/data-management-ui-updates.spec.ts`            | Tests        | +241            | ✅ Complete     |
 | `apps/web/src/hooks/__tests__/useJobStream.test.tsx`      | Tests (New)  | +415            | ✅ Complete     |
@@ -391,7 +391,7 @@ Loading state clears (t=500-700ms)
 
 3. **Stage 3: Monitor Staging**
    - Watch Sentry for "bulkActionLoading stuck" errors (should drop to 0)
-   - Test manually: delete canvas data, verify loading clears in 1-2 seconds
+   - Test manually: delete keimenon data, verify loading clears in 1-2 seconds
    - Run E2E smoke tests
 
 4. **Stage 4: Deploy to Production**

@@ -196,7 +196,7 @@ app.get('/ready', async (_req: Request, res: Response) => {
 // API routes
 app.get('/api/v1', (_req: Request, res: Response) => {
   res.json({
-    message: 'Canvas Memory OS API v1',
+    message: 'Keimenon API v1',
     version: '0.1.0',
     endpoints: {
       auth: {
@@ -563,9 +563,9 @@ async function start() {
     // Resolve home directory path
     const homeDir = process.env.HOME || process.env.USERPROFILE || '~';
     const localDocsPath =
-      process.env.LOCAL_DOCS_PATH?.replace('~', homeDir) || path.join(homeDir, '.canvas-memory');
+      process.env.LOCAL_DOCS_PATH?.replace('~', homeDir) || path.join(homeDir, '.keimenon');
     const sqlitePath =
-      process.env.SQLITE_PATH?.replace('~', homeDir) || path.join(localDocsPath, 'canvas.db');
+      process.env.SQLITE_PATH?.replace('~', homeDir) || path.join(localDocsPath, 'keimenon.db');
 
     const dbClient = await DatabaseFactory.getClient({
       mode: storageMode,
@@ -573,7 +573,7 @@ async function start() {
         databasePath: sqlitePath,
         verbose: process.env.NODE_ENV === 'development',
       },
-      canvas:
+      keimenon:
         storageMode !== 'local'
           ? {
               uri: process.env.NEO4J_URI || 'bolt://localhost:7687',
@@ -666,7 +666,7 @@ async function start() {
     // Initialize Local Document Store
     console.log('📁 Initializing local document store...');
     const localStore = getLocalDocumentStore({
-      basePath: process.env.LOCAL_DOCS_PATH || undefined, // Defaults to ~/.canvas-memory
+      basePath: process.env.LOCAL_DOCS_PATH || undefined, // Defaults to ~/.keimenon
       enableDeduplication: true,
     });
     await localStore.initialize();
@@ -795,7 +795,7 @@ async function start() {
     // Start server
     server = app.listen(port, () => {
       isReady = true;
-      console.log(`⚡️ Canvas Memory API running on port ${port}`);
+      console.log(`⚡️ Keimenon API running on port ${port}`);
       console.log(`🔗 Health check: http://localhost:${port}/health`);
       console.log(`✅ Readiness: http://localhost:${port}/ready`);
       console.log(`📚 API docs: http://localhost:${port}/api/v1`);

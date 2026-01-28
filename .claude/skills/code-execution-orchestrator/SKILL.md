@@ -16,17 +16,17 @@ Orchestrates the Code Execution MCP server to implement the 2025 "Code Execution
 
 ## Token Savings
 
-| Traditional Approach | Code Execution | Savings |
-|---------------------|----------------|---------|
-| Load 10K nodes (150,000 tokens) | Execute code + summary (2,000 tokens) | 98.7% |
-| Filter 5K edges (80,000 tokens) | Execute code + summary (1,500 tokens) | 98.1% |
-| Multi-server query (200,000 tokens) | Execute code + summary (3,000 tokens) | 98.5% |
+| Traditional Approach                | Code Execution                        | Savings |
+| ----------------------------------- | ------------------------------------- | ------- |
+| Load 10K nodes (150,000 tokens)     | Execute code + summary (2,000 tokens) | 98.7%   |
+| Filter 5K edges (80,000 tokens)     | Execute code + summary (1,500 tokens) | 98.1%   |
+| Multi-server query (200,000 tokens) | Execute code + summary (3,000 tokens) | 98.5%   |
 
 ## How It Works
 
 1. Agent identifies need for large data operation
 2. Agent writes Python or JavaScript code
-3. Code imports MCP servers as modules (canvas_database, canvas_docs, etc.)
+3. Code imports MCP servers as modules (keimenon_database, keimenon_docs, etc.)
 4. Code executes in sandboxed environment (zero LLM tokens consumed)
 5. Data is filtered, aggregated, and analyzed in execution environment
 6. Only tiny summary is returned to LLM context
@@ -42,11 +42,11 @@ Orchestrates the Code Execution MCP server to implement the 2025 "Code Execution
 
 ## Available MCP Modules
 
-- `canvas_database` (Python) / `mcp-canvas-database` (JS) - Query nodes/edges
-- `canvas_docs` (Python) / `mcp-canvas-docs` (JS) - Search documentation
-- `canvas_api_testing` (Python) / `mcp-canvas-api-testing` (JS) - Test endpoints
-- `canvas_chat_import` (Python) / `mcp-canvas-chat-import` (JS) - Import testing
-- `canvas_settings_crm` (Python) / `mcp-canvas-settings-crm` (JS) - User/account management
+- `keimenon_database` (Python) / `mcp-keimenon-database` (JS) - Query nodes/edges
+- `keimenon_docs` (Python) / `mcp-keimenon-docs` (JS) - Search documentation
+- `keimenon_api_testing` (Python) / `mcp-keimenon-api-testing` (JS) - Test endpoints
+- `keimenon_chat_import` (Python) / `mcp-keimenon-chat-import` (JS) - Import testing
+- `keimenon_settings_crm` (Python) / `mcp-keimenon-settings-crm` (JS) - User/account management
 - `playwright_e2e` (Python) / `mcp-playwright-e2e` (JS) - Test execution
 
 ## Example 1: Find Duplicate Nodes
@@ -54,15 +54,17 @@ Orchestrates the Code Execution MCP server to implement the 2025 "Code Execution
 **User Query**: "Find all Source nodes with duplicate fingerprints created in last 7 days"
 
 **Traditional Approach (Token-Heavy)**:
+
 ```typescript
 // Query all nodes - loads 10,000 nodes into LLM context
-const nodes = await mcp__database__query_nodes({ kind: "Source", limit: 10000 });
+const nodes = await mcp__database__query_nodes({ kind: 'Source', limit: 10000 });
 // Cost: 150,000 tokens
 ```
 
 **Code Execution Approach (Token-Efficient)**:
+
 ```python
-from canvas_database import query_nodes
+from keimenon_database import query_nodes
 import time
 
 # Calculate 7 days ago timestamp
@@ -105,8 +107,8 @@ return {
 **User Query**: "Which Source nodes have related documentation?"
 
 ```python
-from canvas_database import query_nodes
-from canvas_docs import search_docs
+from keimenon_database import query_nodes
+from keimenon_docs import search_docs
 
 # Get all Source nodes
 sources = query_nodes(kind="Source", limit=1000)
@@ -141,22 +143,22 @@ return {
 **User Query**: "Analyze account activity distribution"
 
 ```javascript
-const { query_nodes } = require('mcp-canvas-database');
+const { query_nodes } = require('mcp-keimenon-database');
 
 // Query all nodes
 const nodes = await query_nodes({ limit: 10000 });
 
 // Group by account
 const byAccount = {};
-nodes.forEach(node => {
-    const accId = node.account_id;
-    if (!byAccount[accId]) {
-        byAccount[accId] = { count: 0, kinds: {} };
-    }
-    byAccount[accId].count++;
+nodes.forEach((node) => {
+  const accId = node.account_id;
+  if (!byAccount[accId]) {
+    byAccount[accId] = { count: 0, kinds: {} };
+  }
+  byAccount[accId].count++;
 
-    const kind = node.kind;
-    byAccount[accId].kinds[kind] = (byAccount[accId].kinds[kind] || 0) + 1;
+  const kind = node.kind;
+  byAccount[accId].kinds[kind] = (byAccount[accId].kinds[kind] || 0) + 1;
 });
 
 // Find outliers (accounts with >3x average activity)
@@ -166,25 +168,26 @@ const avgPerAccount = totalNodes / accounts.length;
 
 const outliers = [];
 for (const [accId, data] of Object.entries(byAccount)) {
-    if (data.count > avgPerAccount * 3) {
-        outliers.push({
-            account_id: accId,
-            node_count: data.count,
-            times_average: (data.count / avgPerAccount).toFixed(2),
-            kinds: data.kinds
-        });
-    }
+  if (data.count > avgPerAccount * 3) {
+    outliers.push({
+      account_id: accId,
+      node_count: data.count,
+      times_average: (data.count / avgPerAccount).toFixed(2),
+      kinds: data.kinds,
+    });
+  }
 }
 
 // Return summary
 return {
-    total_nodes: totalNodes,
-    total_accounts: accounts.length,
-    average_per_account: Math.round(avgPerAccount),
-    outliers: outliers.sort((a, b) => b.node_count - a.node_count),
-    recommendation: outliers.length > 0
-        ? "Investigate high-activity accounts for potential abuse"
-        : "Activity distribution is normal"
+  total_nodes: totalNodes,
+  total_accounts: accounts.length,
+  average_per_account: Math.round(avgPerAccount),
+  outliers: outliers.sort((a, b) => b.node_count - a.node_count),
+  recommendation:
+    outliers.length > 0
+      ? 'Investigate high-activity accounts for potential abuse'
+      : 'Activity distribution is normal',
 };
 ```
 
@@ -214,15 +217,18 @@ return {
 ## Troubleshooting
 
 **Error: "Module not found"**
+
 - Check `list_available_modules` for correct module names
-- Python uses `canvas_database`, JS uses `mcp-canvas-database`
+- Python uses `keimenon_database`, JS uses `mcp-keimenon-database`
 
 **Error: "Execution timed out"**
+
 - Increase `timeout_ms` parameter
 - Optimize code (use generators, lazy evaluation)
 - Process data in batches
 
 **Error: "Sandbox violation"**
+
 - Remove filesystem operations (not allowed)
 - Remove network requests (not allowed)
 - Use only MCP module functions

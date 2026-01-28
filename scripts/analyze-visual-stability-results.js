@@ -4,15 +4,15 @@ const fs = require('fs');
 // Test results from output
 const results = {
   chromium: {
-    canvas: { passed: 0, failed: 0 },
+    keimenon: { passed: 0, failed: 0 },
     login: { passed: 0, failed: 0 },
   },
   firefox: {
-    canvas: { passed: 0, failed: 0 },
+    keimenon: { passed: 0, failed: 0 },
     login: { passed: 0, failed: 0 },
   },
   webkit: {
-    canvas: { passed: 0, failed: 0 },
+    keimenon: { passed: 0, failed: 0 },
     login: { passed: 0, failed: 0 },
   },
 };

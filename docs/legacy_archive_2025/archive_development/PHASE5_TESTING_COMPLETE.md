@@ -155,7 +155,7 @@ npm run test:integration
 **Output**:
 
 ```
-🧪 Canvas Memory OS - Integration Tests
+🧪 Keimenon - Integration Tests
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ━━━ Prerequisites ━━━
@@ -533,7 +533,7 @@ npm run test:integration
 
 ## Summary
 
-Phase 5 successfully implements **automated integration testing** for the Canvas Memory OS chat import pipeline:
+Phase 5 successfully implements **automated integration testing** for the Keimenon chat import pipeline:
 
 ✅ **Test Framework**: Beautiful CLI test runner with 6 test suites
 ✅ **Real Data**: Uses actual 10MB+ chat export files

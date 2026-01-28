@@ -1,4 +1,4 @@
-# Canvas Visual Feedback MCP Server
+# Keimenon Visual Feedback MCP Server
 
 **Purpose**: Provides visual testing and analysis tools for E2E test automation, implementing Anthropic's visual feedback pattern for agent-based testing.
 
@@ -290,7 +290,7 @@ Orchestrates multi-viewport screenshot capture. **Provides implementation guidan
 
 ```json
 {
-  "url": "/canvas",
+  "url": "/keimenon",
   "viewports": [
     { "name": "mobile", "width": 375, "height": 667 },
     { "name": "tablet", "width": 768, "height": 1024 },
@@ -430,7 +430,7 @@ if (regression.has_regression && regression.severity === 'major') {
 // 1. Navigate to target page
 const visualInspection = await Task({
   subagent_type: 'playwright-test-planner',
-  prompt: 'Navigate to /canvas and capture screenshot',
+  prompt: 'Navigate to /keimenon and capture screenshot',
 });
 
 // 2. Generate test using visual context
@@ -709,7 +709,7 @@ node test.js
 - [Anthropic Agent SDK](https://www.anthropic.com/engineering/building-agents-with-the-claude-agent-sdk)
 - [pixelmatch Documentation](https://github.com/mapbox/pixelmatch)
 - [Playwright Visual Comparisons](https://playwright.dev/docs/test-snapshots)
-- [Canvas Memory OS Architecture](../../docs/architecture/OVERVIEW.md)
+- [Keimenon Architecture](../../docs/architecture/OVERVIEW.md)
 - [VISUAL_FEEDBACK_INTEGRATION.md](../../VISUAL_FEEDBACK_INTEGRATION.md)
 
 ---

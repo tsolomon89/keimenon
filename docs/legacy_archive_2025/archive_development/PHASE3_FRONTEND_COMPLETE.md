@@ -12,7 +12,7 @@ Phase 3 implements the frontend UI layer for the Enhanced Chat Import system, pr
 - ✅ Create StreamingUploadModal component with drag-and-drop support
 - ✅ Implement real-time progress visualization for multi-step processing
 - ✅ Build advanced configuration panel for enhanced import options
-- ✅ Integrate with existing Canvas UI architecture
+- ✅ Integrate with existing Keimenon UI architecture
 - ✅ Support files up to 2GB with streaming upload
 
 ## Architecture
@@ -20,9 +20,9 @@ Phase 3 implements the frontend UI layer for the Enhanced Chat Import system, pr
 ### Component Hierarchy
 
 ```
-CanvasPage (apps/web/src/app/canvas/page.tsx)
-  └─ CanvasLayout (components/canvas/CanvasLayout.tsx)
-      ├─ CanvasViewport (components/canvas/CanvasViewport.tsx)
+KeimenonPage (apps/web/src/app/keimenon/page.tsx)
+  └─ KeimenonLayout (components/keimenon/KeimenonLayout.tsx)
+      ├─ KeimenonViewport (components/keimenon/KeimenonViewport.tsx)
       │   └─ Enhanced Chat Import button (triggers modal)
       └─ StreamingUploadModal (components/import/StreamingUploadModal.tsx)
           ├─ File drop zone with drag-and-drop
@@ -34,7 +34,7 @@ CanvasPage (apps/web/src/app/canvas/page.tsx)
 ### State Management
 
 ```typescript
-// apps/web/src/app/canvas/page.tsx
+// apps/web/src/app/keimenon/page.tsx
 const [showStreamingUploadModal, setShowStreamingUploadModal] = useState(false);
 
 // Handler passed down through component tree
@@ -216,9 +216,9 @@ export const DEFAULT_ENHANCED_CONFIG: EnhancedImportConfig = {
 
 ### 3. Integration Points
 
-#### CanvasViewport Enhancement
+#### KeimenonViewport Enhancement
 
-**File**: `apps/web/src/components/canvas/CanvasViewport.tsx`
+**File**: `apps/web/src/components/keimenon/KeimenonViewport.tsx`
 
 Added new action card:
 
@@ -245,12 +245,12 @@ Visual distinction:
 - "Large Files" badge
 - Conditional rendering (only if handler provided)
 
-#### CanvasLayout Props Extension
+#### KeimenonLayout Props Extension
 
-**File**: `apps/web/src/components/canvas/CanvasLayout.tsx`
+**File**: `apps/web/src/components/keimenon/KeimenonLayout.tsx`
 
 ```typescript
-interface CanvasLayoutProps {
+interface KeimenonLayoutProps {
   // ... existing props
   showStreamingUploadModal: boolean;
   onShowStreamingUploadModal: (show: boolean) => void;
@@ -265,9 +265,9 @@ interface CanvasLayoutProps {
 )}
 ```
 
-#### Canvas Page State
+#### Keimenon Page State
 
-**File**: `apps/web/src/app/canvas/page.tsx`
+**File**: `apps/web/src/app/keimenon/page.tsx`
 
 ```typescript
 const [showStreamingUploadModal, setShowStreamingUploadModal] =
@@ -277,7 +277,7 @@ const handleOpenStreamingUpload = () => {
   setShowStreamingUploadModal(true);
 };
 
-<CanvasLayout
+<KeimenonLayout
   showStreamingUploadModal={showStreamingUploadModal}
   onShowStreamingUploadModal={setShowStreamingUploadModal}
   onOpenStreamingUpload={handleOpenStreamingUpload}

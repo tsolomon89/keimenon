@@ -48,7 +48,7 @@ export interface BarProps {
 
 /**
  * Position-based styling
- * Extracted from CanvasSidebar.tsx and AccountInspector.tsx
+ * Extracted from KeimenonSidebar.tsx and AccountInspector.tsx
  */
 const positionStyles: Record<BarPosition, { container: string; border: string }> = {
   left: {
@@ -73,9 +73,9 @@ const positionStyles: Record<BarPosition, { container: string; border: string }>
  * Bar Primitive - Universal sidebar/toolbar
  *
  * Extracted from:
- * - CanvasSidebar.tsx (navigation bar)
+ * - KeimenonSidebar.tsx (navigation bar)
  * - AccountInspector.tsx (inspector bar)
- * - CanvasToolbar.tsx (toolbar)
+ * - KeimenonToolbar.tsx (toolbar)
  *
  * Modes:
  * - navigation: Tree views, lists, filters (left side)

@@ -5,7 +5,7 @@
  * FTS5 and baseline duplicate detection strategies.
  */
 
-import { describe, it, beforeEach, afterEach, mock } from 'node:test';
+import { describe, it, beforeEach, afterEach, vi } from 'vitest';
 import * as assert from 'node:assert';
 import Database from 'better-sqlite3';
 import { promises as fs } from 'fs';
@@ -316,11 +316,23 @@ describe('IntegratedDuplicateDetectionService', () => {
       assert.ok(result.metadata, 'Should have metadata');
       assert.ok(typeof result.metadata.strategy === 'string', 'Should have strategy');
       assert.ok(typeof result.metadata.duration === 'number', 'Should have duration');
-      assert.ok(typeof result.metadata.messagesProcessed === 'number', 'Should have messages processed');
-      assert.ok(typeof result.metadata.comparisonsPerformed === 'number', 'Should have comparisons');
+      assert.ok(
+        typeof result.metadata.messagesProcessed === 'number',
+        'Should have messages processed'
+      );
+      assert.ok(
+        typeof result.metadata.comparisonsPerformed === 'number',
+        'Should have comparisons'
+      );
       assert.ok(typeof result.metadata.speedupVsBaseline === 'number', 'Should have speedup');
-      assert.ok(typeof result.metadata.fts5Available === 'boolean', 'Should have FTS5 availability');
-      assert.ok(typeof result.metadata.fts5Enabled === 'boolean', 'Should have FTS5 enabled status');
+      assert.ok(
+        typeof result.metadata.fts5Available === 'boolean',
+        'Should have FTS5 availability'
+      );
+      assert.ok(
+        typeof result.metadata.fts5Enabled === 'boolean',
+        'Should have FTS5 enabled status'
+      );
 
       // Verify values
       assert.strictEqual(result.metadata.messagesProcessed, 2, 'Should process 2 messages');

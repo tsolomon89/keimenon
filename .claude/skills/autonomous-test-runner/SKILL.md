@@ -1,3 +1,11 @@
+---
+name: autonomous-test-runner
+description: Master orchestrator for autonomous testing lifecycle. Coordinates discovery, generation, execution, and healing to achieve target coverage with minimal human intervention.
+allowed-tools: Read, Write, Edit, Glob, Grep, Task, mcp__playwright-e2e__pw_run, mcp__playwright-e2e__pw_listTests, mcp__keimenon-database__get_stats
+context: fork
+agent: general-purpose
+---
+
 # Autonomous Test Runner
 
 ---**Operational Ethos Compliance:** This skill operates under the principles defined in [CLAUDE.md Section 13](../../CLAUDE.md#13-operational-ethos--recursive-intelligence):- **Context Consolidation**: Automatic, not optional (Section 13.0)- **Professional Standards**: Security, testing, documentation mandatory (Section 13.1)- **Anticipatory Design**: Think 3 steps ahead (Section 13.2)- **Full-Scope Traversal**: Address all layers (Section 13.3)- **Recursive Intelligence**: Enrich system with every run (Section 13.4)---

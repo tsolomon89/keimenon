@@ -5,7 +5,7 @@
  * for the FTS5 duplicate detection configuration system.
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import * as assert from 'node:assert';
 import {
   getFTS5Config,
@@ -18,7 +18,7 @@ describe('Duplicate Detection Configuration', () => {
   // Store original env values
   const originalEnv: Record<string, string | undefined> = {};
 
-  beforeEach(() => {
+  beforeAll(async () => {
     // Save original environment variables
     const envKeys = [
       'ENABLE_FTS5_DUPLICATE_DETECTION',
@@ -35,12 +35,32 @@ describe('Duplicate Detection Configuration', () => {
     ];
 
     for (const key of envKeys) {
-      originalEnv[key] = process.env[key];
       delete process.env[key];
     }
   });
 
-  afterEach(() => {
+  beforeEach(() => {
+    // Clear relevant environment variables before each test
+    const envKeys = [
+      'ENABLE_FTS5_DUPLICATE_DETECTION',
+      'DUPLICATE_DETECTION_STRATEGY',
+      'FTS5_CANDIDATE_LIMIT',
+      'FTS5_MIN_RANK_THRESHOLD',
+      'FTS5_USE_CONTENT_HASH',
+      'DUPLICATE_DETECTION_LOGGING_ENABLED',
+      'DUPLICATE_DETECTION_LOG_PERFORMANCE_METRICS',
+      'DUPLICATE_DETECTION_LOG_FALLBACK_EVENTS',
+      'DUPLICATE_DETECTION_MAX_DURATION_MS',
+      'DUPLICATE_DETECTION_MAX_COMPARISONS',
+      'DUPLICATE_DETECTION_TARGET_SPEEDUP',
+    ];
+
+    for (const key of envKeys) {
+      delete process.env[key];
+    }
+  });
+
+  afterAll(async () => {
     // Restore original environment variables
     for (const [key, value] of Object.entries(originalEnv)) {
       if (value === undefined) {
@@ -161,8 +181,16 @@ describe('Duplicate Detection Configuration', () => {
       const config = getDuplicateDetectionLoggingConfig();
 
       assert.strictEqual(config.enabled, true, 'Logging should be enabled by default');
-      assert.strictEqual(config.logPerformanceMetrics, true, 'Performance metrics logging should be enabled');
-      assert.strictEqual(config.logFallbackEvents, true, 'Fallback events logging should be enabled');
+      assert.strictEqual(
+        config.logPerformanceMetrics,
+        true,
+        'Performance metrics logging should be enabled'
+      );
+      assert.strictEqual(
+        config.logFallbackEvents,
+        true,
+        'Fallback events logging should be enabled'
+      );
     });
 
     it('should parse DUPLICATE_DETECTION_LOGGING_ENABLED=false', () => {
@@ -176,14 +204,22 @@ describe('Duplicate Detection Configuration', () => {
       process.env.DUPLICATE_DETECTION_LOG_PERFORMANCE_METRICS = 'false';
       const config = getDuplicateDetectionLoggingConfig();
 
-      assert.strictEqual(config.logPerformanceMetrics, false, 'Performance metrics logging should be disabled');
+      assert.strictEqual(
+        config.logPerformanceMetrics,
+        false,
+        'Performance metrics logging should be disabled'
+      );
     });
 
     it('should parse DUPLICATE_DETECTION_LOG_FALLBACK_EVENTS=false', () => {
       process.env.DUPLICATE_DETECTION_LOG_FALLBACK_EVENTS = 'false';
       const config = getDuplicateDetectionLoggingConfig();
 
-      assert.strictEqual(config.logFallbackEvents, false, 'Fallback events logging should be disabled');
+      assert.strictEqual(
+        config.logFallbackEvents,
+        false,
+        'Fallback events logging should be disabled'
+      );
     });
 
     it('should parse all logging configuration together', () => {
@@ -204,7 +240,11 @@ describe('Duplicate Detection Configuration', () => {
       const thresholds = getDuplicateDetectionPerformanceThresholds();
 
       assert.strictEqual(thresholds.maxDurationMs, 10000, 'Default max duration should be 10000ms');
-      assert.strictEqual(thresholds.maxComparisons, 50000, 'Default max comparisons should be 50000');
+      assert.strictEqual(
+        thresholds.maxComparisons,
+        50000,
+        'Default max comparisons should be 50000'
+      );
       assert.strictEqual(thresholds.targetSpeedup, 10.0, 'Default target speedup should be 10.0x');
     });
 

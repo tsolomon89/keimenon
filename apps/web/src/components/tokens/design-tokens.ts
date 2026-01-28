@@ -10,7 +10,7 @@
  * - CRMDashboard.tsx
  * - GroupCard.tsx
  * - AccountInspector.tsx
- * - CanvasSidebar.tsx
+ * - KeimenonSidebar.tsx
  */
 
 /**

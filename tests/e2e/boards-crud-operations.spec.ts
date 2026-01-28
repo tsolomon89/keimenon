@@ -6,7 +6,7 @@ import { createTestSourceNode } from './helpers/create-test-node';
  * Boards CRUD Operations E2E Tests
  *
  * Validates complete CRUD (Create, Read, Update, Delete) lifecycle for Boards.
- * Boards organize nodes into workspaces for canvas visualization.
+ * Boards organize nodes into workspaces for keimenon visualization.
  *
  * Tests cover:
  * - Create boards (with workspace_id, name, description, settings)
@@ -44,7 +44,7 @@ test.describe('Boards - CRUD Operations', () => {
 
   test.afterEach(async ({ apiRequest }) => {
     // Cleanup test data
-    await apiRequest.delete('/api/v1/data/canvas', {
+    await apiRequest.delete('/api/v1/data/keimenon', {
       headers: { Authorization: `Bearer ${authToken}` },
       params: { data_tag: 'test' },
     });

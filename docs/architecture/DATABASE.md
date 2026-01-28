@@ -1,8 +1,8 @@
 # Database Architecture
 
-**Canvas Memory OS - Dual-Database Design with Local-First Priority**
+**Keimenon - Dual-Database Design with Local-First Priority**
 
-This document details the database architecture, schema design, storage strategies, and migration approach for Canvas Memory OS.
+This document details the database architecture, schema design, storage strategies, and migration approach for Keimenon.
 
 ---
 
@@ -21,10 +21,10 @@ This document details the database architecture, schema design, storage strategi
 
 ## Overview
 
-Canvas Memory OS supports **three storage modes** through a unified `DatabaseClient` interface:
+Keimenon supports **three storage modes** through a unified `DatabaseClient` interface:
 
 1. **Local Mode (SQLite)**: Single-file embedded database (default)
-2. **Canvas Mode (Neo4j)**: Cloud graph database
+2. **Keimenon Mode (Neo4j)**: Cloud graph database
 3. **Hybrid Mode**: Both SQLite + Neo4j with sync
 
 This flexible architecture allows developers to:
@@ -55,8 +55,8 @@ This flexible architecture allows developers to:
 
 ```bash
 STORAGE_MODE=local
-SQLITE_PATH=~/.canvas-memory/canvas.db
-LOCAL_DOCS_PATH=~/.canvas-memory/documents
+SQLITE_PATH=~/.keimenon/keimenon.db
+LOCAL_DOCS_PATH=~/.keimenon/documents
 ```
 
 **Advantages**:
@@ -77,14 +77,14 @@ LOCAL_DOCS_PATH=~/.canvas-memory/documents
 
 **When to use**: Always start here. Only upgrade if you need multi-machine access or advanced graph queries.
 
-### Canvas Mode (Neo4j)
+### Keimenon Mode (Neo4j)
 
 **Best for**: Production deployments, advanced graph operations
 
 **Configuration**:
 
 ```bash
-STORAGE_MODE=canvas
+STORAGE_MODE=keimenon
 NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-secure-password
@@ -114,7 +114,7 @@ NEO4J_PASSWORD=your-secure-password
 
 ```bash
 STORAGE_MODE=hybrid
-SQLITE_PATH=~/.canvas-memory/canvas.db
+SQLITE_PATH=~/.keimenon/keimenon.db
 NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-secure-password
@@ -539,7 +539,7 @@ ORDER BY n.created_at DESC
 LIMIT 100
 ```
 
-**Get graph (nodes + edges) for canvas**:
+**Get graph (nodes + edges) for keimenon**:
 
 ```cypher
 MATCH (n:Node {board_id: $boardId, account_id: $accountId})
@@ -762,12 +762,12 @@ Centralized creation based on environment:
 ```typescript
 // packages/db/src/factory.ts
 export class DatabaseFactory {
-  static create(mode: 'local' | 'canvas' | 'hybrid'): DatabaseClient {
+  static create(mode: 'local' | 'keimenon' | 'hybrid'): DatabaseClient {
     switch (mode) {
       case 'local':
-        return new SQLiteClient(process.env.SQLITE_PATH || '~/.canvas-memory/canvas.db');
+        return new SQLiteClient(process.env.SQLITE_PATH || '~/.keimenon/keimenon.db');
 
-      case 'canvas':
+      case 'keimenon':
         return new Neo4jClient(
           process.env.NEO4J_URI!,
           process.env.NEO4J_USER!,
@@ -776,7 +776,7 @@ export class DatabaseFactory {
 
       case 'hybrid':
         return new HybridClient(
-          process.env.SQLITE_PATH || '~/.canvas-memory/canvas.db',
+          process.env.SQLITE_PATH || '~/.keimenon/keimenon.db',
           process.env.NEO4J_URI!,
           process.env.NEO4J_USER!,
           process.env.NEO4J_PASSWORD!
@@ -878,8 +878,8 @@ if (existingCode.records.length > 0) {
 ### Storage Directory Structure
 
 ```
-~/.canvas-memory/
-├── canvas.db                   # SQLite database
+~/.keimenon/
+├── keimenon.db                   # SQLite database
 ├── documents/                  # Uploaded files
 │   ├── ab/                     # First 2 chars of fingerprint
 │   │   └── cd/                 # Next 2 chars
@@ -888,8 +888,8 @@ if (existingCode.records.length > 0) {
 │       └── gh/
 │           └── efgh456...
 └── backups/                    # Database backups
-    ├── canvas.db.2025-10-14
-    └── canvas.db.2025-10-15
+    ├── keimenon.db.2025-10-14
+    └── keimenon.db.2025-10-15
 ```
 
 **Why content-addressable?**
@@ -925,7 +925,7 @@ ORDER BY r.created_at
 // migration/neo4j-to-sqlite.ts
 async function migrateNeo4jToSQLite() {
   const neo4j = new Neo4jClient(...);
-  const sqlite = new SQLiteClient('~/.canvas-memory/canvas.db');
+  const sqlite = new SQLiteClient('~/.keimenon/keimenon.db');
 
   // 1. Migrate nodes
   const nodesResult = await neo4j.execute('MATCH (n:Node) RETURN n', []);
@@ -968,8 +968,8 @@ async function migrateNeo4jToSQLite() {
 
 ```bash
 # Check row counts
-sqlite3 ~/.canvas-memory/canvas.db "SELECT COUNT(*) FROM nodes"
-sqlite3 ~/.canvas-memory/canvas.db "SELECT kind, COUNT(*) FROM nodes GROUP BY kind"
+sqlite3 ~/.keimenon/keimenon.db "SELECT COUNT(*) FROM nodes"
+sqlite3 ~/.keimenon/keimenon.db "SELECT kind, COUNT(*) FROM nodes GROUP BY kind"
 ```
 
 ### SQLite → Neo4j (Scale-Up Migration)
@@ -987,8 +987,8 @@ NEO4J_URI=neo4j+s://...
 # 3. Verify Neo4j has all data
 # (Check counts match SQLite)
 
-# 4. Switch to canvas mode (Neo4j only)
-STORAGE_MODE=canvas
+# 4. Switch to keimenon mode (Neo4j only)
+STORAGE_MODE=keimenon
 ```
 
 ### Ongoing Sync (Hybrid Mode)

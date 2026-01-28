@@ -11,12 +11,12 @@
  * - Overall performance metrics
  *
  * Usage:
- *   node test-import.js [file-size]
+ *   node scripts/stress-test-import.js [file-size]
  *
  * Examples:
- *   node test-import.js small    # 9.9MB file
- *   node test-import.js medium   # 136MB file
- *   node test-import.js large    # 191MB file
+ *   node scripts/stress-test-import.js small    # 9.9MB file
+ *   node scripts/stress-test-import.js medium   # 136MB file
+ *   node scripts/stress-test-import.js large    # 191MB file
  */
 
 const fs = require('fs');

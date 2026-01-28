@@ -1,10 +1,10 @@
 # Database Migrations
 
-This directory contains TypeScript-based database migrations for the Canvas Memory application.
+This directory contains TypeScript-based database migrations for the Keimenon application.
 
 ## Overview
 
-Canvas Memory uses a custom TypeScript migration system built on top of `better-sqlite3`. Migrations are executed in sequence and tracked in a `migrations` table.
+Keimenon uses a custom TypeScript migration system built on top of `better-sqlite3`. Migrations are executed in sequence and tracked in a `migrations` table.
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ npx tsx apps/api/src/migrations/run-migrations.ts --rollback 007
 
 ### Two Migration Systems
 
-Canvas Memory currently has **two parallel migration systems**:
+Keimenon currently has **two parallel migration systems**:
 
 1. **SQL Migrations** (`packages/db/src/migrations/*.sql`)
    - Legacy system for core schema
@@ -277,16 +277,16 @@ describe('Migration NNN', () => {
 
 ```bash
 # Create a test database
-cp ~/.canvas-memory/canvas.db ~/.canvas-memory/canvas-backup.db
+cp ~/.keimenon/keimenon.db ~/.keimenon/keimenon-backup.db
 
 # Run migration
-DB_PATH=~/.canvas-memory/canvas-test.db npx tsx apps/api/src/migrations/run-migrations.ts
+DB_PATH=~/.keimenon/keimenon-test.db npx tsx apps/api/src/migrations/run-migrations.ts
 
 # Verify schema
-sqlite3 ~/.canvas-memory/canvas-test.db "PRAGMA table_info(my_table);"
+sqlite3 ~/.keimenon/keimenon-test.db "PRAGMA table_info(my_table);"
 
 # Rollback if needed
-DB_PATH=~/.canvas-memory/canvas-test.db npx tsx apps/api/src/migrations/run-migrations.ts --rollback NNN
+DB_PATH=~/.keimenon/keimenon-test.db npx tsx apps/api/src/migrations/run-migrations.ts --rollback NNN
 ```
 
 ## Rollback Strategy

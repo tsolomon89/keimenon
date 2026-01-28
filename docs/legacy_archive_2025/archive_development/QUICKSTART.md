@@ -1,4 +1,4 @@
-# Canvas Memory OS - Quick Start Guide
+# Keimenon - Quick Start Guide
 
 ## Prerequisites
 
@@ -53,7 +53,7 @@ npm run dev
 1. Open your browser to: http://localhost:3000
 2. You'll be redirected to the login page
 3. Enter any email/password (mock auth for development)
-4. You'll be taken to the canvas
+4. You'll be taken to the keimenon
 
 ## First Upload
 
@@ -72,7 +72,7 @@ npm run dev
 
 ### Via Empty State Cards:
 
-1. Click any of the action cards on the canvas empty state
+1. Click any of the action cards on the keimenon empty state
 2. The "Upload Sources" card opens the upload modal
 
 ## Troubleshooting
@@ -98,7 +98,7 @@ npm run dev
 ## Architecture
 
 ```
-canvas-memory-os/
+keimenon/
 ├── apps/
 │   ├── api/          # Express API server (port 3001)
 │   └── web/          # Next.js web app (port 3000)
@@ -114,7 +114,7 @@ canvas-memory-os/
 ## Features Implemented
 
 ✅ Mock authentication flow
-✅ Canvas UI with header, toolbar, sidebars, footer
+✅ Keimenon UI with header, toolbar, sidebars, footer
 ✅ File upload with drag & drop
 ✅ First-time user welcome modal
 ✅ Upload configuration options

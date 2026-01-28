@@ -11,7 +11,7 @@
 
 **File**: [tests/e2e/data-management-ui-updates.spec.ts:225-227](tests/e2e/data-management-ui-updates.spec.ts#L225-L227)
 
-**Problem**: `getByRole('button', { name: /canvas/i })` matched 2 elements (strict mode violation)
+**Problem**: `getByRole('button', { name: /keimenon/i })` matched 2 elements (strict mode violation)
 
 **Solution**: Added `.first()` to select the first matching button
 
@@ -19,11 +19,11 @@
 
 ```typescript
 // Before:
-await page.getByRole('button', { name: /canvas/i }).waitFor({ state: 'visible', timeout: 10000 });
+await page.getByRole('button', { name: /keimenon/i }).waitFor({ state: 'visible', timeout: 10000 });
 
 // After:
 await page
-  .getByRole('button', { name: /canvas/i })
+  .getByRole('button', { name: /keimenon/i })
   .first()
   .waitFor({ state: 'visible', timeout: 10000 });
 ```
@@ -62,7 +62,7 @@ test.describe('Console Footer Error Filtering', () => {
 
 ```typescript
 // Line 34 in helpers/login.ts:
-await page.waitForURL(/\/canvas/, { timeout: 30000 }); // Should be 60000
+await page.waitForURL(/\/keimenon/, { timeout: 30000 }); // Should be 60000
 ```
 
 ---
@@ -162,7 +162,7 @@ await page.waitForLoadState('networkidle');
 ```
 TimeoutError: page.waitForURL: Timeout 30000ms exceeded.
 at helpers\login.ts:34
-await page.waitForURL(/\/canvas/, { timeout: 30000 });
+await page.waitForURL(/\/keimenon/, { timeout: 30000 });
 ```
 
 **Root Cause**:
@@ -175,7 +175,7 @@ await page.waitForURL(/\/canvas/, { timeout: 30000 });
 
 1. Increase timeouts in [helpers/login.ts](tests/e2e/helpers/login.ts) from 30s to 60s:
    - Line 16: `waitForLoadState('networkidle')`
-   - Line 34: `waitForURL(/\/canvas/, { timeout: 30000 })` → 60000
+   - Line 34: `waitForURL(/\/keimenon/, { timeout: 30000 })` → 60000
 2. Kill background test processes before running targeted tests
 3. Test fixes individually with servers not under load
 
@@ -238,7 +238,7 @@ await page.waitForURL(/\/canvas/, { timeout: 30000 });
    await page.waitForLoadState('networkidle', { timeout: 60000 });
 
    // Line 34:
-   await page.waitForURL(/\/canvas/, { timeout: 60000 });
+   await page.waitForURL(/\/keimenon/, { timeout: 60000 });
    ```
 
 3. **Run tests individually**:

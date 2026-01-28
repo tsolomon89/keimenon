@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOperating } from '@/contexts/OperatingContext';
 
 export type Permission =
-  | 'view_canvas'
+  | 'view_keimenon'
   | 'edit_nodes'
   | 'delete_nodes'
   | 'manage_groups'
@@ -37,7 +37,7 @@ export function usePermissions() {
   const permissions = useMemo(() => {
     if (!user) {
       return {
-        canViewCanvas: false,
+        canViewKeimenon: false,
         canEditNodes: false,
         canDeleteNodes: false,
         canManageGroups: false,
@@ -61,7 +61,7 @@ export function usePermissions() {
 
     return {
       // Basic permissions
-      canViewCanvas: true,
+      canViewKeimenon: true,
       canEditNodes: inReadOnlyMode ? false : rank >= 1, // Junior+ can edit in native mode
       canDeleteNodes: inReadOnlyMode ? false : rank >= 2, // Senior+ can delete
       canManageGroups: inReadOnlyMode ? false : rank >= 2, // Senior+ can manage groups
@@ -99,12 +99,15 @@ export function usePermissions() {
     const inReadOnlyMode = isOperatingMode && !operating.serviceMode;
 
     switch (permission) {
-      case 'view_canvas':
+      case 'view_keimenon':
         return { allowed: true };
 
       case 'edit_nodes':
         if (inReadOnlyMode) {
-          return { allowed: false, reason: 'Portal is in read-only mode. Enable Service Mode to edit.' };
+          return {
+            allowed: false,
+            reason: 'Portal is in read-only mode. Enable Service Mode to edit.',
+          };
         }
         if (rank < 1) {
           return { allowed: false, reason: 'Insufficient rank' };
@@ -113,7 +116,10 @@ export function usePermissions() {
 
       case 'delete_nodes':
         if (inReadOnlyMode) {
-          return { allowed: false, reason: 'Portal is in read-only mode. Enable Service Mode to delete.' };
+          return {
+            allowed: false,
+            reason: 'Portal is in read-only mode. Enable Service Mode to delete.',
+          };
         }
         if (rank < 2) {
           return { allowed: false, reason: 'Rank ceiling: Senior (rank 2) or higher required' };

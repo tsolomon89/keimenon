@@ -38,9 +38,9 @@ Successfully completed a comprehensive E2E test improvement session covering inf
 
 **Files Modified** (5 test files):
 
-- [tests/e2e/canvas-operations.spec.ts](tests/e2e/canvas-operations.spec.ts#L25)
+- [tests/e2e/keimenon-operations.spec.ts](tests/e2e/keimenon-operations.spec.ts#L25)
 - [tests/e2e/settings-navigation.spec.ts](tests/e2e/settings-navigation.spec.ts#L25)
-- [tests/e2e/flow-auth-canvas.spec.ts](tests/e2e/flow-auth-canvas.spec.ts) (4 locations)
+- [tests/e2e/flow-auth-keimenon.spec.ts](tests/e2e/flow-auth-keimenon.spec.ts) (4 locations)
 - [tests/e2e/debug-auth.spec.ts](tests/e2e/debug-auth.spec.ts#L34)
 - [tests/e2e/data-management-ui-updates.spec.ts](tests/e2e/data-management-ui-updates.spec.ts) (2 locations)
 
@@ -89,7 +89,7 @@ Successfully completed a comprehensive E2E test improvement session covering inf
 **Chromium**: 22/31 passing (71%)
 
 - Console error filtering: 6/6 ✅
-- Canvas operations: 3/3 ✅
+- Keimenon operations: 3/3 ✅
 - Smoke tests: 4/4 ✅
 - Known flaky: Settings navigation, debug-auth API
 
@@ -151,11 +151,11 @@ Created [tests/e2e/fixtures/webkit.ts](tests/e2e/fixtures/webkit.ts) with compre
 
 #### Phase 2: Parallel vs Serial Testing
 
-**Test: canvas-operations "should load canvas page successfully"**
+**Test: keimenon-operations "should load keimenon page successfully"**
 
 | Execution Mode       | Result        | Time  | Details                        |
 | -------------------- | ------------- | ----- | ------------------------------ |
-| Individual           | ✅ PASS       | 1.8s  | Login → Canvas in 464ms        |
+| Individual           | ✅ PASS       | 1.8s  | Login → Keimenon in 464ms      |
 | Parallel (2 workers) | ❌ FAIL       | 30.3s | Stuck at /login, no navigation |
 | Serial (1 worker)    | ✅ 14/31 PASS | 4.8m  | 45% pass rate                  |
 
@@ -164,7 +164,7 @@ Created [tests/e2e/fixtures/webkit.ts](tests/e2e/fixtures/webkit.ts) with compre
 ```
 19:18:20.561Z: POST /api/v1/auth/login
 19:18:20.642Z: Login response 200 ✅
-19:18:21.106Z: Navigate to /canvas ✅ (464ms after login)
+19:18:21.106Z: Navigate to /keimenon ✅ (464ms after login)
 19:18:21.119Z: Token in localStorage ✅
 19:18:21.131Z onwards: All API calls 200 ✅
 ```
@@ -215,7 +215,7 @@ npx playwright test tests/e2e/ --project=webkit --workers=1
 
 **Still Failing** (10):
 
-- Canvas operations: 2/3
+- Keimenon operations: 2/3
 - Console error filtering: 5/6
 - Data management: 1/1
 - Debug-auth: 1/1
@@ -319,9 +319,9 @@ Resource contention causes:
 
 ### Test Files (8 modified)
 
-1. `tests/e2e/canvas-operations.spec.ts`
+1. `tests/e2e/keimenon-operations.spec.ts`
 2. `tests/e2e/settings-navigation.spec.ts`
-3. `tests/e2e/flow-auth-canvas.spec.ts`
+3. `tests/e2e/flow-auth-keimenon.spec.ts`
 4. `tests/e2e/data-management-ui-updates.spec.ts`
 5. `tests/e2e/debug-auth.spec.ts`
 6. `tests/e2e/console-error-filtering.spec.ts`

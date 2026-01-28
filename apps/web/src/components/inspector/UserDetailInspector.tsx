@@ -41,7 +41,7 @@ interface UserDetailInspectorProps {
  */
 export function UserDetailInspector({ user, onClose, onUpdate }: UserDetailInspectorProps) {
   const { user: currentUser } = useAuth();
-  const { setCanvasMode } = useShell();
+  const { setKeimenonMode } = useShell();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -153,14 +153,14 @@ export function UserDetailInspector({ user, onClose, onUpdate }: UserDetailInspe
 
         {/* Edit/Save buttons */}
         <div className="flex items-center gap-2">
-          {/* View Canvas Button - Always visible */}
+          {/* View Keimenon Button - Always visible */}
           <button
-            onClick={() => setCanvasMode('canvas')}
+            onClick={() => setKeimenonMode('keimenon')}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm"
-            title="View this user's canvas"
+            title="View this user's keimenon"
           >
             <GitBranch className="w-4 h-4" />
-            View Canvas
+            View Keimenon
           </button>
 
           {/* Edit User Button - Only for admins */}

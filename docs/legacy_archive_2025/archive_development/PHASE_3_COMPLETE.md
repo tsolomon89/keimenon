@@ -413,8 +413,8 @@ import {
   NearDupEdgeGenerator,
   ClusterEvidenceComputer,
   PublishableExport,
-} from '@canvas/parsers';
-import { loadDefaultPolicy } from '@canvas/types';
+} from '@keimenon/parsers';
+import { loadDefaultPolicy } from '@keimenon/types';
 import Database from 'better-sqlite3';
 
 // 1. Load policy
@@ -435,8 +435,8 @@ const processor = new ContentProcessor();
 const processed = await processor.processConversation(result.conversations[0]);
 
 // 5. Persist to database
-const db = new Database('./canvas.db');
-const storage = new GroupingStorage('./canvas.db');
+const db = new Database('./keimenon.db');
+const storage = new GroupingStorage('./keimenon.db');
 
 for (const p of processed) {
   storage.insertBlob(p.blob);

@@ -105,7 +105,7 @@ cd packages/db && npx tsc --noEmit
 4. **apps/web/src/components/settings/SettingsPage.tsx** (~10 lines)
    - Integrated DeduplicationCard
 
-5. **apps/web/src/components/canvas/StorageStatsDashboard.tsx** (+40 lines)
+5. **apps/web/src/components/keimenon/StorageStatsDashboard.tsx** (+40 lines)
    - Added deduplication stats display
 
 ---

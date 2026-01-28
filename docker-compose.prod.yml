@@ -1,5 +1,5 @@
 # Docker Compose - Production Configuration
-# Canvas Memory OS - Multi-tenant Knowledge Management System
+# Keimenon - Multi-tenant Knowledge Management System
 
 version: '3.8'
 
@@ -9,7 +9,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    container_name: canvas-api
+    container_name: keimenon-api
     restart: unless-stopped
     ports:
       - '4001:4001'
@@ -18,11 +18,11 @@ services:
       NODE_ENV: production
       PORT: 4001
 
-      # Storage Mode: local (SQLite only), canvas (Neo4j only), or hybrid (both)
+      # Storage Mode: local (SQLite only), keimenon (Neo4j only), or hybrid (both)
       STORAGE_MODE: ${STORAGE_MODE:-local}
 
       # Local Storage (SQLite + Files)
-      SQLITE_PATH: /data/canvas.db
+      SQLITE_PATH: /data/keimenon.db
       LOCAL_DOCS_PATH: /data/documents
       STORAGE_PATH: /data/uploads
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-50}
@@ -31,7 +31,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET environment variable must be set}
       BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
 
-      # Optional: Neo4j (only needed if STORAGE_MODE=canvas or hybrid)
+      # Optional: Neo4j (only needed if STORAGE_MODE=keimenon or hybrid)
       NEO4J_URI: ${NEO4J_URI:-}
       NEO4J_USER: ${NEO4J_USER:-}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
@@ -48,7 +48,7 @@ services:
 
     volumes:
       # Persistent data storage
-      - canvas-data:/data
+      - keimenon-data:/data
 
       # Optional: Mount external backup location
       # - /path/to/backups:/backups
@@ -61,7 +61,7 @@ services:
       start_period: 40s
 
     networks:
-      - canvas-network
+      - keimenon-network
 
     logging:
       driver: 'json-file'
@@ -74,7 +74,7 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    container_name: canvas-web
+    container_name: keimenon-web
     restart: unless-stopped
     ports:
       - '3000:3000'
@@ -100,7 +100,7 @@ services:
       start_period: 40s
 
     networks:
-      - canvas-network
+      - keimenon-network
 
     logging:
       driver: 'json-file'
@@ -111,7 +111,7 @@ services:
   # Neo4j Database (Optional - only needed for graph mode)
   neo4j:
     image: neo4j:5.19
-    container_name: canvas-neo4j
+    container_name: keimenon-neo4j
     restart: unless-stopped
     ports:
       - '7474:7474' # HTTP
@@ -136,7 +136,7 @@ services:
       start_period: 60s
 
     networks:
-      - canvas-network
+      - keimenon-network
 
     # Only start if STORAGE_MODE requires Neo4j
     profiles:
@@ -151,7 +151,7 @@ services:
   # Nginx Reverse Proxy (Optional - for SSL termination)
   nginx:
     image: nginx:alpine
-    container_name: canvas-nginx
+    container_name: keimenon-nginx
     restart: unless-stopped
     ports:
       - '80:80'
@@ -166,7 +166,7 @@ services:
       - web
 
     networks:
-      - canvas-network
+      - keimenon-network
 
     # Only start if ENABLE_NGINX is set
     profiles:
@@ -180,7 +180,7 @@ services:
 
 # Named volumes for persistent data
 volumes:
-  canvas-data:
+  keimenon-data:
     driver: local
     driver_opts:
       type: none
@@ -198,7 +198,7 @@ volumes:
 
 # Network for service communication
 networks:
-  canvas-network:
+  keimenon-network:
     driver: bridge
 # Usage Examples:
 #
@@ -218,7 +218,7 @@ networks:
 #    docker-compose -f docker-compose.prod.yml down
 #
 # 6. Backup data:
-#    docker cp canvas-api:/data ./backup-$(date +%Y%m%d)
+#    docker cp keimenon-api:/data ./backup-$(date +%Y%m%d)
 #
 # 7. Restore data:
-#    docker cp ./backup-20241012 canvas-api:/data
+#    docker cp ./backup-20241012 keimenon-api:/data

@@ -2,7 +2,7 @@
 
 ## Summary
 
-Successfully implemented a complete multi-tenant authentication and authorization system for Canvas Memory OS.
+Successfully implemented a complete multi-tenant authentication and authorization system for Keimenon.
 
 ## What Was Built
 
@@ -169,7 +169,7 @@ Response:
     "id": "627d5b3a-e455-48bb-b7e8-d02f88295853",
     "account_type": "admin",
     "account_class": "business",
-    "email": "admin@canvas-memory.com",
+    "email": "admin@keimenon.com",
     "name": "System Admin"
   },
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -205,7 +205,7 @@ Response: (user and account data returned) ✓
 **Solution**: Delete ALL database files including .db-shm and .db-wal:
 
 ```bash
-rm -f ~/.canvas-memory/canvas.db*
+rm -f ~/.keimenon/keimenon.db*
 ```
 
 ### 3. Schema Migration
@@ -291,7 +291,7 @@ rm -f ~/.canvas-memory/canvas.db*
 
 **Database**:
 
-- Location: `~/.canvas-memory/canvas.db`
+- Location: `~/.keimenon/keimenon.db`
 - Schema Version: 2.0
 - Auth tables: ✓
 - Multi-tenant columns: ✓

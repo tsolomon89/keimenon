@@ -8,7 +8,7 @@
 
 ## 🎉 Achievement Summary
 
-Successfully implemented **complete end-to-end M:N user-account architecture** for Canvas Memory, transforming it from a single-account-per-user system to a fully collaborative multi-account platform. This enables users to belong to multiple organizations, switch between accounts seamlessly, and collaborate in real-time.
+Successfully implemented **complete end-to-end M:N user-account architecture** for Keimenon, transforming it from a single-account-per-user system to a fully collaborative multi-account platform. This enables users to belong to multiple organizations, switch between accounts seamlessly, and collaborate in real-time.
 
 ---
 
@@ -102,7 +102,7 @@ Successfully implemented **complete end-to-end M:N user-account architecture** f
 - New `switchAccount()` - Changes accounts without re-login
 - Enhanced User interface with sessionId and allAccounts
 - JWT parsing for M:N payload structure
-- Canvas store reset on account change
+- Keimenon store reset on account change
 
 **Status:** ✅ Complete and tested
 
@@ -153,7 +153,7 @@ locks
 
 ```
 1. POST /auth/login → {user, account, token}
-2. Store token, redirect to /canvas
+2. Store token, redirect to /keimenon
 ```
 
 #### Multi-Account User
@@ -163,7 +163,7 @@ locks
 2. Show AccountSelector component
 3. User selects account
 4. POST /auth/select-account → {user, account, token}
-5. Store token, redirect to /canvas
+5. Store token, redirect to /keimenon
 ```
 
 #### Account Switching
@@ -387,7 +387,7 @@ function Header() {
 - [ ] Register new user → Creates account + membership
 - [ ] Login with single-account user → Direct login
 - [ ] Login with multi-account user → Shows AccountSelector
-- [ ] Select account from AccountSelector → Redirects to canvas
+- [ ] Select account from AccountSelector → Redirects to keimenon
 - [ ] Switch account via AccountSwitcher → Updates context
 - [ ] Logout → Clears token and redirects
 - [ ] Token expiry → Auto-logout
@@ -530,7 +530,7 @@ The M:N user-account architecture is **fully implemented, tested, and ready for 
 ✅ **Documentation:** Comprehensive guides and examples
 ✅ **Quality:** Type-safe, error-handled, performant
 
-Canvas Memory is now a **true multi-account collaborative platform** where users can seamlessly work across multiple organizations with different roles and permissions.
+Keimenon is now a **true multi-account collaborative platform** where users can seamlessly work across multiple organizations with different roles and permissions.
 
 ---
 

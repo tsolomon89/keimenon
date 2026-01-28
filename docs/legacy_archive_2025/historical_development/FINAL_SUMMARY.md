@@ -21,7 +21,7 @@ Successfully implemented a **production-ready error handling and background oper
 
 - ✅ [ErrorCaptureService](apps/web/src/services/error-capture.service.ts) - Singleton service with circular buffer (max 1000 errors)
 - ✅ [ConsoleContext](apps/web/src/contexts/ConsoleContext.tsx) - React context for reactive error state
-- ✅ [CanvasFooter Console Tab](apps/web/src/components/canvas/CanvasFooter.tsx) - UI with filters, search, export
+- ✅ [KeimenonFooter Console Tab](apps/web/src/components/keimenon/KeimenonFooter.tsx) - UI with filters, search, export
 - ✅ Keyboard shortcut: Press `` ` `` (backtick) to open/close
 
 #### Backend Error Middleware
@@ -38,12 +38,12 @@ Every error captured includes:
 ```typescript
 {
   domain: 'api' | 'import' | 'analytics' | 'database' | 'ui' | 'system',
-  operation: 'dataManagement.clearCanvas',
+  operation: 'dataManagement.clearKeimenon',
   userId: string,
   accountId: string,
   metadata: {
     component: 'DataManagementCard',
-    endpoint: '/api/v1/data/canvas',
+    endpoint: '/api/v1/data/keimenon',
     statusCode: 500,
     nodeCount: 100,
     edgeCount: 50
@@ -77,7 +77,7 @@ Every error captured includes:
 
 #### Operations Table
 
-- ✅ Extended [ImportsTableCard](apps/web/src/components/canvas/ImportsTableCard.tsx) to show all operations
+- ✅ Extended [ImportsTableCard](apps/web/src/components/keimenon/ImportsTableCard.tsx) to show all operations
 - ✅ Merges backend import jobs with background operations
 - ✅ Visual distinction:
   - **Imports**: Gray FileText icon
@@ -100,7 +100,7 @@ Every error captured includes:
 - ✅ Created [data-management.test.ts](apps/api/src/__tests__/data-management.test.ts) - 350 lines
 - ✅ Tests cover:
   - GET /api/v1/data/stats
-  - DELETE /api/v1/data/canvas
+  - DELETE /api/v1/data/keimenon
   - DELETE /api/v1/data/all-clients (admin only)
   - Error handling edge cases
   - Multi-tenant data isolation
@@ -135,12 +135,12 @@ Every error captured includes:
 | --------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | [DataManagementCard.tsx](apps/web/src/components/settings/DataManagementCard.tsx) | Added errorCapture + minimize (118 lines added)         |
 | [data-management.ts](apps/api/src/routes/data-management.ts)                      | Added asyncHandler + ErrorFactory (80 lines added)      |
-| [canvas/page.tsx](apps/web/src/app/canvas/page.tsx)                               | Integrated BackgroundOperationsProvider (3 lines added) |
+| [keimenon/page.tsx](apps/web/src/app/keimenon/page.tsx)                           | Integrated BackgroundOperationsProvider (3 lines added) |
 | [ImportFlowPanel.tsx](apps/web/src/components/inspector/ImportFlowPanel.tsx)      | Added minimize + config UI (220 lines added)            |
 | [ConfirmationModal.tsx](apps/web/src/components/common/ConfirmationModal.tsx)     | Added minimize support (18 lines added)                 |
-| [ImportsTableCard.tsx](apps/web/src/components/canvas/ImportsTableCard.tsx)       | Extended to show all operations (95 lines added)        |
+| [ImportsTableCard.tsx](apps/web/src/components/keimenon/ImportsTableCard.tsx)     | Extended to show all operations (95 lines added)        |
 | [**tests**/README.md](apps/api/src/__tests__/README.md)                           | Added data-management tests section (50 lines added)    |
-| [CanvasFooter.tsx](apps/web/src/components/canvas/CanvasFooter.tsx)               | _Modified in previous phase_                            |
+| [KeimenonFooter.tsx](apps/web/src/components/keimenon/KeimenonFooter.tsx)         | _Modified in previous phase_                            |
 
 ---
 
@@ -153,7 +153,7 @@ Every error captured includes:
 npm run dev
 
 # Open browser
-http://localhost:3000/canvas
+http://localhost:3000/keimenon
 ```
 
 ### Test 1: Data Deletion with Minimize ⭐
@@ -161,7 +161,7 @@ http://localhost:3000/canvas
 ```
 1. Go to Settings page
 2. Press ` (backtick) to open Console Footer
-3. Click "Clear Canvas Data"
+3. Click "Clear Keimenon Data"
 4. In the confirmation modal, click "Minimize" (appears during deletion)
 5. Modal closes, deletion continues
 6. Verify operation appears in Operations Table (CRM Dashboard)
@@ -174,7 +174,7 @@ Expected: ✅ No errors, operation completes in background
 ### Test 2: Import with Minimize ⭐
 
 ```
-1. Click "Import" button in canvas
+1. Click "Import" button in keimenon
 2. Select file: ai_context/chat_data/test-samples/small.json
 3. Wait for file analysis (detects ChatGPT format)
 4. Configure settings:
@@ -237,13 +237,13 @@ cd apps/api
 npm test data-management
 
 # Expected output:
-# ✓ should return canvas data statistics
-# ✓ should clear canvas data for current user
+# ✓ should return keimenon data statistics
+# ✓ should clear keimenon data for current user
 # ✓ should not affect other accounts
 # ✓ should handle empty database gracefully
 # ✓ should require authentication
 # ✓ should create audit log entry
-# ✓ should clear all client canvas data (admin only)
+# ✓ should clear all client keimenon data (admin only)
 # ✓ should require admin privileges
 # ✓ should handle concurrent deletions safely
 # ✓ should delete large datasets efficiently
@@ -510,7 +510,7 @@ The system is ready for production deployment after manual testing. All infrastr
 ---
 
 **Implementation By**: Claude Code (Anthropic)
-**User**: Audna (Canvas Memory Project)
+**User**: Audna (Keimenon Project)
 **Date**: January 17, 2025
 **Duration**: ~3 hours
 **Lines of Code**: ~4,000
@@ -520,4 +520,4 @@ The system is ready for production deployment after manual testing. All infrastr
 
 ---
 
-**Thank you for using Canvas Memory! 🎨**
+**Thank you for using Keimenon! 🎨**

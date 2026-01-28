@@ -101,11 +101,11 @@ test('should create RESOURCE_NAME with valid data', async ({ page, request }) =>
   // 📸 Visual check: Success state
   await captureBaseline(page, 'create-resource', 'success-toast');
 
-  // Step 5: Verify resource appears in list/canvas
+  // Step 5: Verify resource appears in list/keimenon
   await expect(page.getByText('Test RESOURCE_NAME')).toBeVisible();
 
-  // 📸 Visual check: Resource in canvas (CRITICAL)
-  await captureBaseline(page, 'create-resource', 'canvas-with-resource');
+  // 📸 Visual check: Resource in keimenon (CRITICAL)
+  await captureBaseline(page, 'create-resource', 'keimenon-with-resource');
 
   // Step 6: Verify via API (backend validation)
   const response = await request.get('/api/v1/RESOURCE_NAME', {
@@ -178,7 +178,7 @@ test('CRUD operation name', async ({ page, request }) => {
 
 **Locations to add visual checks**:
 
-- ✅ CREATE: dialog-open, form-filled, success-toast, canvas-with-resource
+- ✅ CREATE: dialog-open, form-filled, success-toast, keimenon-with-resource
 - ✅ READ: detail-view, list-view, empty-state
 - ✅ UPDATE: edit-form-open, form-edited, save-success, updated-display
 - ✅ DELETE: delete-confirmation, delete-in-progress, deleted-state, list-updated
@@ -217,14 +217,14 @@ test('Account B cannot read Account A data', async ({ page, request }) => {
   const accountAData = await createResourceInAccountA(request);
 
   // 📸 Account A view: Data visible
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
   await captureAccountBaseline(page, 'account-a', 'data-isolation', 'data-visible');
   await expect(page.getByText(accountAData.name)).toBeVisible();
 
   // Switch to Account B
   await page.goto('/logout');
   await login(page, 'client-b@test.com', '123456');
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
 
   // 📸 Account B view: Data NOT visible (CRITICAL SECURITY CHECK)
   await captureAccountBaseline(page, 'account-b', 'data-isolation', 'data-hidden');
@@ -246,16 +246,16 @@ test('Account views should be visually isolated', async ({ page, request }) => {
 
   // Capture Account A view
   await login(page, 'client-a@test.com', '123456');
-  await page.goto('/canvas');
-  await captureAccountBaseline(page, 'account-a', 'visual-isolation', 'canvas-view');
-  const accountAScreenshot = `account-a-visual-isolation-canvas-view.png`;
+  await page.goto('/keimenon');
+  await captureAccountBaseline(page, 'account-a', 'visual-isolation', 'keimenon-view');
+  const accountAScreenshot = `account-a-visual-isolation-keimenon-view.png`;
 
   // Capture Account B view
   await page.goto('/logout');
   await login(page, 'client-b@test.com', '123456');
-  await page.goto('/canvas');
-  await captureAccountBaseline(page, 'account-b', 'visual-isolation', 'canvas-view');
-  const accountBScreenshot = `account-b-visual-isolation-canvas-view.png`;
+  await page.goto('/keimenon');
+  await captureAccountBaseline(page, 'account-b', 'visual-isolation', 'keimenon-view');
+  const accountBScreenshot = `account-b-visual-isolation-keimenon-view.png`;
 
   // 📸 CRITICAL: Screenshots should be completely different
   // (This test verifies visual isolation is working)
@@ -793,7 +793,7 @@ test.describe('RESOURCE_NAME CRUD - Responsive Tests', () => {
   });
 
   testMultiViewport('should display resource list correctly', async (page, viewport) => {
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     await page.waitForLoadState('networkidle');
 
     // 📸 Visual: List view at this viewport
@@ -814,7 +814,7 @@ test.describe('RESOURCE_NAME CRUD - Responsive Tests', () => {
   });
 
   testMultiViewport('should create resource at any viewport', async (page, viewport) => {
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
 
     // Open create dialog
     await page.getByRole('button', { name: /create/i }).click();
@@ -877,7 +877,7 @@ Enhance autonomous-test-discoverer to perform visual crawling and generate UI el
 2. **Navigate all primary pages**:
 
    ```typescript
-   const pages = ['/canvas', '/groups', '/settings', '/import', '/analytics'];
+   const pages = ['/keimenon', '/groups', '/settings', '/import', '/analytics'];
 
    const visualInventory = [];
 
@@ -1039,8 +1039,8 @@ Add visual coverage section to discoverer output:
   "visual_inventory": {
     "pages": [
       {
-        "url": "/canvas",
-        "screenshot": ".claude/visual-crawl/canvas-page.png",
+        "url": "/keimenon",
+        "screenshot": ".claude/visual-crawl/keimenon-page.png",
         "elements": 32,
         "tested_elements": 24,
         "untested_elements": 8
@@ -1239,7 +1239,7 @@ Following Anthropic's Agent SDK pattern, all autonomous testing skills now use v
 ````markdown
 # Visual Feedback Developer Guide
 
-## Using Visual Testing in Canvas Memory OS
+## Using Visual Testing in Keimenon
 
 **Audience**: Developers writing and maintaining E2E tests
 **Prerequisites**: Playwright knowledge, basic understanding of visual regression testing
@@ -1260,7 +1260,7 @@ Following Anthropic's Agent SDK pattern, all autonomous testing skills now use v
 
 ## Introduction
 
-Visual feedback testing ensures your UI looks correct, not just that it functions correctly. This guide shows you how to use visual regression testing in Canvas Memory OS E2E tests.
+Visual feedback testing ensures your UI looks correct, not just that it functions correctly. This guide shows you how to use visual regression testing in Keimenon E2E tests.
 
 ### Why Visual Testing?
 
@@ -1344,8 +1344,8 @@ Add `toHaveScreenshot()` calls at **critical UI states**:
 ```typescript
 test('create node workflow', async ({ page }) => {
   // 1. Initial state
-  await page.goto('/canvas');
-  await expect(page).toHaveScreenshot('canvas-initial.png');
+  await page.goto('/keimenon');
+  await expect(page).toHaveScreenshot('keimenon-initial.png');
 
   // 2. Dialog opened
   await page.getByRole('button', { name: /create/i }).click();
@@ -1413,10 +1413,10 @@ await expect(button).toHaveScreenshot('create-button.png');
 import { testMultiViewport } from '../helpers/multi-viewport';
 
 testMultiViewport('should display correctly', async (page, viewport) => {
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
 
   // Test runs once per viewport (mobile, tablet, desktop)
-  await expect(page).toHaveScreenshot(`canvas-${viewport.name}.png`);
+  await expect(page).toHaveScreenshot(`keimenon-${viewport.name}.png`);
 
   // Viewport-specific logic
   if (viewport.isMobile) {
@@ -1507,18 +1507,18 @@ npm run baseline:update screenshot-name.png
 
 ```
 tests/e2e/__screenshots__/
-  ├── canvas-initial-desktop.png
-  ├── canvas-initial-mobile.png
+  ├── keimenon-initial-desktop.png
+  ├── keimenon-initial-mobile.png
   ├── create-dialog-open-desktop.png
   ├── node-created-success-desktop.png
   └── ...
 
 test-results/visual-regression/
   ├── current/          # Latest test run screenshots
-  │   ├── canvas-initial-desktop.png
+  │   ├── keimenon-initial-desktop.png
   │   └── ...
   └── diff/             # Diff images (when mismatched)
-      ├── diff-canvas-initial-desktop.png
+      ├── diff-keimenon-initial-desktop.png
       └── ...
 ```
 
@@ -1531,7 +1531,7 @@ test-results/visual-regression/
 ❌ **Don't**: Screenshot every single step
 
 ```typescript
-await page.goto('/canvas');
+await page.goto('/keimenon');
 await expect(page).toHaveScreenshot('step1.png'); // ❌ Too many
 await page.click('button');
 await expect(page).toHaveScreenshot('step2.png'); // ❌ Too many
@@ -1542,7 +1542,7 @@ await expect(page).toHaveScreenshot('step3.png'); // ❌ Too many
 ✅ **Do**: Screenshot critical UI states
 
 ```typescript
-await page.goto('/canvas');
+await page.goto('/keimenon');
 // ... multiple steps ...
 await expect(page).toHaveScreenshot('workflow-complete.png'); // ✅ Final state
 ```
@@ -1552,7 +1552,7 @@ await expect(page).toHaveScreenshot('workflow-complete.png'); // ✅ Final state
 ✅ **Good names**: Descriptive and unique
 
 ```typescript
-await expect(page).toHaveScreenshot('canvas-create-node-dialog-open.png');
+await expect(page).toHaveScreenshot('keimenon-create-node-dialog-open.png');
 await expect(page).toHaveScreenshot('groups-list-filtered-by-type.png');
 await expect(page).toHaveScreenshot('settings-account-updated-success.png');
 ```
@@ -1703,7 +1703,7 @@ await expect(page).toHaveScreenshot('page.png', {
 For programmatic visual comparison:
 
 ```typescript
-import { mcp__visual-feedback__compare_screenshots } from '@canvas-memory/mcp';
+import { mcp__visual-feedback__compare_screenshots } from '@keimenon/mcp';
 
 const result = await mcp__visual-feedback__compare_screenshots({
   baseline: 'tests/e2e/__screenshots__/page.png',

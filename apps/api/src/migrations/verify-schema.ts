@@ -9,7 +9,7 @@ import os from 'os';
  */
 
 function getDatabasePath(): string {
-  const defaultPath = path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+  const defaultPath = path.join(os.homedir(), '.keimenon', 'keimenon.db');
   return process.env.DB_PATH || process.env.DATABASE_PATH || defaultPath;
 }
 
@@ -68,9 +68,7 @@ async function verifySchema() {
 
     // 3. Check nodes table has new columns
     console.log('3️⃣  Checking nodes table columns...');
-    const nodesColumns = db
-      .prepare("PRAGMA table_info(nodes)")
-      .all() as Array<{ name: string }>;
+    const nodesColumns = db.prepare('PRAGMA table_info(nodes)').all() as Array<{ name: string }>;
 
     const nodesColumnNames = nodesColumns.map((c) => c.name);
     const expectedColumns = ['node_key', 'content_id'];
@@ -142,7 +140,9 @@ async function verifySchema() {
       .get() as any;
 
     if (migrationRecord) {
-      console.log(`   ✅ Migration 003 recorded: ${new Date(migrationRecord.applied_at).toISOString()}\n`);
+      console.log(
+        `   ✅ Migration 003 recorded: ${new Date(migrationRecord.applied_at).toISOString()}\n`
+      );
     } else {
       console.log('   ❌ Migration record not found\n');
       return false;

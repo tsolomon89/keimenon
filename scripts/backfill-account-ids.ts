@@ -7,7 +7,7 @@
  *
  * Usage:
  *   npx tsx scripts/backfill-account-ids.ts
- *   DB_PATH=./path/to/canvas.db npx tsx scripts/backfill-account-ids.ts
+ *   DB_PATH=./path/to/keimenon.db npx tsx scripts/backfill-account-ids.ts
  *
  * IMPORTANT: Run this AFTER migration 007 and BEFORE making account_id NOT NULL.
  */
@@ -206,7 +206,7 @@ async function backfillAccountIds(dbPath: string): Promise<BackfillStats> {
 if (require.main === module) {
   const dbPath =
     process.env.DB_PATH ||
-    path.join(process.env.USERPROFILE || process.env.HOME || '.', '.canvas-memory', 'canvas.db');
+    path.join(process.env.USERPROFILE || process.env.HOME || '.', '.keimenon', 'keimenon.db');
 
   console.log('🚀 Account ID Backfill Script');
   console.log('================================\n');

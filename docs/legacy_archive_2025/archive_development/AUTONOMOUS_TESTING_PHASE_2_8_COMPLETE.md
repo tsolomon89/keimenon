@@ -33,7 +33,7 @@ Test the autonomous-test-healer skill with real test failures to validate:
 
 **Deliberate Failure Introduced:**
 
-- Modified `canvas-operations.spec.ts` test with wrong URL pattern
+- Modified `keimenon-operations.spec.ts` test with wrong URL pattern
 - Result: Test naturally failed due to pre-existing password mismatch (serendipitous!)
 
 **Healing Process:**
@@ -79,7 +79,7 @@ Test the autonomous-test-healer skill with real test failures to validate:
    - Fix strategy and verification results
    - Lessons learned and recommendations
 
-2. **Fixed Test File:** `tests/e2e/canvas-operations.spec.ts`
+2. **Fixed Test File:** `tests/e2e/keimenon-operations.spec.ts`
    - Credentials updated to match setup
    - Inline documentation with visual evidence reference
    - Ready for production use
@@ -217,9 +217,9 @@ Test the autonomous-test-healer skill with real test failures to validate:
 │  MCP Servers (All Working)                                  │
 │  ✅ playwright-e2e (test execution + health cache)          │
 │  ✅ visual-feedback (screenshot analysis)                   │
-│  ✅ canvas-database (data queries)                          │
-│  ✅ canvas-api-testing (endpoint verification)              │
-│  ✅ canvas-docs (documentation search)                      │
+│  ✅ keimenon-database (data queries)                          │
+│  ✅ keimenon-api-testing (endpoint verification)              │
+│  ✅ keimenon-docs (documentation search)                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -286,7 +286,7 @@ Test the autonomous-test-healer skill with real test failures to validate:
 - All 6 servers operational
 - playwright-e2e: Health cache + process registry working
 - visual-feedback: Tools available and documented
-- canvas-\*: Database, docs, API testing all functional
+- keimenon-\*: Database, docs, API testing all functional
 
 **Skills:**
 
@@ -368,7 +368,7 @@ Test the autonomous-test-healer skill with real test failures to validate:
 
 ### Phase 2.8 (Testing & Validation)
 
-- ✅ `tests/e2e/canvas-operations.spec.ts` (modified - test credentials fixed)
+- ✅ `tests/e2e/keimenon-operations.spec.ts` (modified - test credentials fixed)
 - ✅ `HEALING_SESSION_2025-11-05.md` (created - comprehensive healing report)
 - ✅ `AUTONOMOUS_TESTING_PHASE_2_8_COMPLETE.md` (created - this document)
 

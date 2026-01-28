@@ -1,4 +1,4 @@
-# Canvas Memory OS — Project Summary
+# Keimenon — Project Summary
 
 **Date**: 2025-10-11
 **Current Status**: Phase 1D Complete (75%), Chat Import System Complete (90%)
@@ -6,9 +6,9 @@
 
 ---
 
-## What Is Canvas Memory OS?
+## What Is Keimenon?
 
-Canvas Memory OS is a **graph-native knowledge management system** that replaces linear AI chat interfaces with a visual, versioned knowledge graph. Instead of scrolling through chat history, users organize information spatially on a canvas where everything—files, chats, claims, documents—exists as nodes connected by typed, policy-aware edges.
+Keimenon is a **graph-native knowledge management system** that replaces linear AI chat interfaces with a visual, versioned knowledge graph. Instead of scrolling through chat history, users organize information spatially on a keimenon where everything—files, chats, claims, documents—exists as nodes connected by typed, policy-aware edges.
 
 ### Key Differentiators
 
@@ -46,7 +46,7 @@ Canvas Memory OS is a **graph-native knowledge management system** that replaces
    - Duplicate detection by fingerprint AND content similarity
    - Advanced similarity engine with configurable thresholds
 
-4. **2D Canvas Visualization**
+4. **2D Keimenon Visualization**
    - Interactive 2D graph with D3-force layout
    - Pan & zoom controls (drag + scroll)
    - Node selection (click, Shift+click for multi-select)
@@ -54,7 +54,7 @@ Canvas Memory OS is a **graph-native knowledge management system** that replaces
    - Edge rendering between nodes
 
 5. **Data Persistence**
-   - Dual storage: Neo4j (canvas mode) OR SQLite (local mode)
+   - Dual storage: Neo4j (keimenon mode) OR SQLite (local mode)
    - Hybrid mode support for sync between both
    - Constraints and indexes for performance
    - Full graph query API
@@ -105,7 +105,7 @@ Canvas Memory OS is a **graph-native knowledge management system** that replaces
 2. **Sequester Controls**
    - Toggle UI in selection inspector
    - Policy chips (reason, expiry)
-   - Visual indicators on canvas
+   - Visual indicators on keimenon
    - Full enforcement in scope queries
 
 3. **UI Polish**
@@ -136,7 +136,7 @@ Canvas Memory OS is a **graph-native knowledge management system** that replaces
 ### Monorepo Structure
 
 ```
-canvas-memory-os/
+keimenon/
 ├── apps/
 │   ├── web/          # Next.js frontend (port 3000)
 │   └── api/          # Express backend (port 3001)
@@ -157,8 +157,8 @@ canvas-memory-os/
 
 - `apps/web/src/app/page.tsx` - Landing page
 - `apps/web/src/app/ingest/page.tsx` - File upload UI
-- `apps/web/src/app/board/[id]/page.tsx` - Canvas viewer
-- `apps/web/src/components/canvas/Canvas2D.tsx` - Graph renderer
+- `apps/web/src/app/board/[id]/page.tsx` - Keimenon viewer
+- `apps/web/src/components/keimenon/Keimenon2D.tsx` - Graph renderer
 
 **Backend**:
 
@@ -198,7 +198,7 @@ canvas-memory-os/
 
 ---
 
-## Node Types (What Can Exist on Canvas)
+## Node Types (What Can Exist on Keimenon)
 
 | Type               | Purpose                         | Status              |
 | ------------------ | ------------------------------- | ------------------- |
@@ -243,7 +243,7 @@ canvas-memory-os/
 - Extract code blocks automatically
 - Duplicate detection with similarity matching
 - Auto-organize into groups
-- View on 2D canvas
+- View on 2D keimenon
 - Pan, zoom, select nodes
 - Sources mode: Extract meaningful segments
 - Local SQLite storage (no server needed)
@@ -322,7 +322,7 @@ canvas-memory-os/
    - Open http://localhost:3000
    - Click "Ingest Files"
    - Upload some files
-   - Click "View on Canvas"
+   - Click "View on Keimenon"
 
 ---
 
@@ -338,7 +338,7 @@ canvas-memory-os/
    - Auto-grouped by type
    - Saved to Neo4j
 
-### 2. View on Canvas
+### 2. View on Keimenon
 
 1. Go to http://localhost:3000/board/default_board
 2. See nodes rendered spatially
@@ -378,7 +378,7 @@ canvas-memory-os/
 | **Code Extraction**     | ✅ 85%  | Auto-detect, dedupe, export code blocks         |
 | **Duplicate Detection** | ✅ 80%  | 4 algorithms, configurable thresholds           |
 | **Sources Mode**        | ✅ 85%  | Segment extraction, stitching strategies        |
-| **Canvas 2D**           | ✅ 100% | Rendering, layout, selection, zoom              |
+| **Keimenon 2D**         | ✅ 100% | Rendering, layout, selection, zoom              |
 | **API Endpoints**       | ✅ 100% | 30+ endpoints across 12 route files             |
 | **UnifiedDocs**         | 🔄 20%  | Schema done, no compiler or viewer              |
 | **Sequester**           | 🔄 30%  | Schema done, partial enforcement                |
@@ -474,7 +474,7 @@ canvas-memory-os/
 
 ### Design Specs
 
-- `ai_context/canvas_memory_os_living_spec_v_0.md` - Core concepts
+- `ai_context/keimenon_living_spec_v_0.md` - Core concepts
 - `ai_context/mvp_vs_final_vision_roadmap_model_v_0.md` - Tier system
 - `ai_context/ui_screens_layout_view_map_v_0.md` - UI layouts
 - `ai_context/groups_ai_nodes_ui_spec_v_0.md` - AI features
@@ -563,7 +563,7 @@ npm install                   # Reinstall
 npm run build                 # Rebuild packages
 ```
 
-### "Canvas shows no nodes"
+### "Keimenon shows no nodes"
 
 1. Upload files at `/ingest` first
 2. Check Neo4j has nodes: `MATCH (n) RETURN count(n)`
@@ -589,7 +589,7 @@ npm run build                 # Rebuild packages
 
 ## TL;DR
 
-**What works**: Upload files → auto-organize → view on 2D canvas
+**What works**: Upload files → auto-organize → view on 2D keimenon
 **What's missing**: Claims extraction, docs generation, sequester UI
 **Next milestone**: Complete Phase 1D (2-3 weeks)
 **End goal**: Local-first knowledge graph with AI-powered features

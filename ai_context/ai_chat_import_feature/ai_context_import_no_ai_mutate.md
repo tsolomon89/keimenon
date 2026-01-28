@@ -135,4 +135,4 @@ Admin can pin workspace defaults; Pro/Business can raise caps.
 
 ---
 
-**Status:** Ready to merge into the main spec. Aligns with the current canvas (Free/Pro/Business), preserves the no‑AI‑mutate invariant, and cleanly lifts every v8 capability into nodes/edges and UI flows.
+**Status:** Ready to merge into the main spec. Aligns with the current keimenon (Free/Pro/Business), preserves the no‑AI‑mutate invariant, and cleanly lifts every v8 capability into nodes/edges and UI flows.

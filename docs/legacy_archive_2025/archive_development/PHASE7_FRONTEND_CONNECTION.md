@@ -33,7 +33,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 **Command Used**:
 
 ```bash
-npm install --workspace=@canvas-memory/web
+npm install --workspace=@keimenon/web
 ```
 
 **Result**:
@@ -64,10 +64,10 @@ cd apps/api && PORT=4001 npm run dev
 
 ```
 ✅ SQLite schema initialized
-✅ Connected to SQLite at: C:\Users\Audna\.canvas-memory\canvas.db
+✅ Connected to SQLite at: C:\Users\Audna\.keimenon\keimenon.db
 ✅ Database initialized (local mode)
 ✅ Local document store initialized
-⚡️ Canvas Memory API running on port 4001
+⚡️ Keimenon API running on port 4001
 ```
 
 **Frontend Server** (Port 3000):
@@ -98,7 +98,7 @@ curl http://localhost:4001/health
 {
   "status": "ok",
   "timestamp": "2025-10-12T06:06:39.706Z",
-  "service": "canvas-memory-api",
+  "service": "keimenon-api",
   "version": "0.1.0",
   "storageMode": "local",
   "dependencies": {
@@ -142,7 +142,7 @@ curl http://localhost:4001/api/v1/content/stats
 
 - Frontend installation instructions
 - Server startup commands
-- Access URLs for web UI, canvas, and import pages
+- Access URLs for web UI, keimenon, and import pages
 - Feature list (2D visualization, chat import, CRUD operations)
 
 ## Current System Status
@@ -174,7 +174,7 @@ curl http://localhost:4001/api/v1/content/stats
 #### Frontend Pages
 
 - Home: http://localhost:3000
-- Canvas: http://localhost:3000/canvas
+- Keimenon: http://localhost:3000/keimenon
 - Import: http://localhost:3000/ingest
 - Board: http://localhost:3000/board/[id]
 - Login: http://localhost:3000/login
@@ -188,7 +188,7 @@ curl http://localhost:4001/api/v1/content/stats
 │          Browser (localhost:3000)               │
 │  ┌──────────────────────────────────────────┐  │
 │  │  Next.js Frontend                         │  │
-│  │  - Canvas2D.tsx (D3-force visualization) │  │
+│  │  - Keimenon2D.tsx (D3-force visualization) │  │
 │  │  - StreamingUploadModal.tsx              │  │
 │  │  - API Client (api-client.ts)            │  │
 │  │  - Zustand State Management              │  │
@@ -220,8 +220,8 @@ curl http://localhost:4001/api/v1/content/stats
                    │
                    ↓
 ┌─────────────────────────────────────────────────┐
-│      Local Storage (~/.canvas-memory/)          │
-│  - canvas.db (SQLite database)                  │
+│      Local Storage (~/.keimenon/)          │
+│  - keimenon.db (SQLite database)                  │
 │  - conversations/ (JSON exports)                │
 │  - messages/ (message content)                  │
 │  - code/ (code blocks)                          │
@@ -233,11 +233,11 @@ curl http://localhost:4001/api/v1/content/stats
 
 ### Components Built (60+)
 
-1. **Canvas Components**
-   - Canvas2D.tsx - D3-force graph visualization
+1. **Keimenon Components**
+   - Keimenon2D.tsx - D3-force graph visualization
    - NodeComponent.tsx - Render individual nodes
    - EdgeComponent.tsx - Render edges
-   - CanvasControls.tsx - Pan, zoom, selection
+   - KeimenonControls.tsx - Pan, zoom, selection
 
 2. **Import Components**
    - StreamingUploadModal.tsx - Real-time import progress
@@ -432,7 +432,7 @@ The system now has a complete local-first full-stack application with:
 - Zero cloud dependencies
 - $0/month cost
 
-**Canvas Memory OS is now production-ready for local-first use.**
+**Keimenon is now production-ready for local-first use.**
 
 ---
 

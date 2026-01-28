@@ -44,7 +44,7 @@ const TEST_USER = {
 
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
 const SMALL_FILE_SIZE = 25 * 1024 * 1024; // 25MB test file (3 chunks)
-const DB_PATH = 'c:/Users/Audna/.canvas-memory/canvas.db';
+const DB_PATH = 'c:/Users/Audna/.keimenon/keimenon.db';
 
 /**
  * Helper: Create a test file buffer of specified size
@@ -77,8 +77,16 @@ function splitIntoChunks(buffer: Buffer, chunkSize: number): Buffer[] {
 /**
  * Helper: Check if temp directory exists and get file count
  */
-function checkTempDirectory(sessionId: string): { exists: boolean; fileCount: number; files: string[] } {
-  const tempDir = path.join(process.env.TEMP || 'C:/Users/Audna/AppData/Local/Temp', 'canvas-uploads', sessionId);
+function checkTempDirectory(sessionId: string): {
+  exists: boolean;
+  fileCount: number;
+  files: string[];
+} {
+  const tempDir = path.join(
+    process.env.TEMP || 'C:/Users/Audna/AppData/Local/Temp',
+    'keimenon-uploads',
+    sessionId
+  );
 
   if (!fs.existsSync(tempDir)) {
     return { exists: false, fileCount: 0, files: [] };
@@ -149,7 +157,7 @@ function cleanupUploadSession(sessionId: string): void {
   // Clean up filesystem
   const tempDir = path.join(
     process.env.TEMP || 'C:/Users/Audna/AppData/Local/Temp',
-    'canvas-uploads',
+    'keimenon-uploads',
     sessionId
   );
 
@@ -269,7 +277,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
     createdSessionIds.push(sessionId);
 
     // Verify chunksPath uses OS-appropriate temp directory
-    expect(result.session.chunksPath).toContain('canvas-uploads');
+    expect(result.session.chunksPath).toContain('keimenon-uploads');
     expect(result.session.chunksPath).toContain(sessionId);
 
     // On Windows, should use %TEMP%
@@ -315,16 +323,13 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
     for (let i = 0; i < chunks.length; i++) {
       console.log(`[Test 3] Uploading chunk ${i + 1}/${chunks.length}...`);
 
-      const chunkResponse = await apiRequest.post(
-        `/api/v1/uploads/${sessionId}/chunks/${i}`,
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            'Content-Type': 'application/octet-stream',
-          },
-          data: chunks[i],
-        }
-      );
+      const chunkResponse = await apiRequest.post(`/api/v1/uploads/${sessionId}/chunks/${i}`, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/octet-stream',
+        },
+        data: chunks[i],
+      });
 
       expect(chunkResponse.ok()).toBeTruthy();
       const chunkResult = await chunkResponse.json();
@@ -394,7 +399,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
     // Verify chunk file size
     const chunkPath = path.join(
       process.env.TEMP || 'C:/Users/Audna/AppData/Local/Temp',
-      'canvas-uploads',
+      'keimenon-uploads',
       sessionId,
       'chunk_0'
     );
@@ -622,9 +627,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       // Check for error state
       if (statusResult.session.status === 'failed') {
         console.error('[Test 7] ❌ Assembly failed:', statusResult.session.errorMessage);
-        throw new Error(
-          `Assembly failed: ${statusResult.session.errorMessage || 'Unknown error'}`
-        );
+        throw new Error(`Assembly failed: ${statusResult.session.errorMessage || 'Unknown error'}`);
       }
 
       attempts++;
@@ -634,9 +637,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
     if (jobCreated) {
       console.log('[Test 7] ✅ Job creation after assembly completed successfully');
     } else {
-      console.warn(
-        '[Test 7] ⚠️ Assembly stuck in "assembling" state for >30s - worker pool issue'
-      );
+      console.warn('[Test 7] ⚠️ Assembly stuck in "assembling" state for >30s - worker pool issue');
       console.warn('[Test 7] ⚠️ This is a test environment limitation, not a code bug');
       // Mark test as skipped rather than failed - this is a known test infrastructure issue
       test.skip();
@@ -829,7 +830,9 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
   // PART 5: DELETION AND CLEANUP
   // ==========================================================================
 
-  test('should delete upload session and temp files via DELETE endpoint', async ({ apiRequest }) => {
+  test('should delete upload session and temp files via DELETE endpoint', async ({
+    apiRequest,
+  }) => {
     console.log('[Test 11] Testing upload session deletion via DELETE API...');
 
     // Create session and upload chunks
@@ -889,7 +892,9 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
     apiSession = await getUploadSessionViaAPI(apiRequest, sessionId, authToken);
     expect(apiSession).toBeNull(); // 404 response
 
-    console.log('[Test 11] ✅ Upload session and temp files deleted successfully via DELETE endpoint');
+    console.log(
+      '[Test 11] ✅ Upload session and temp files deleted successfully via DELETE endpoint'
+    );
   });
 
   test('should clean up temp files after successful import', async ({ apiRequest }) => {
@@ -1192,8 +1197,8 @@ test.describe('Upload Session Deletion via Data Management', () => {
     createdSessionIds.length = 0;
   });
 
-  test('should delete upload sessions when clearing canvas data', async ({ apiRequest }) => {
-    console.log('[Integration Test] Testing upload session deletion with canvas data...');
+  test('should delete upload sessions when clearing keimenon data', async ({ apiRequest }) => {
+    console.log('[Integration Test] Testing upload session deletion with keimenon data...');
 
     // Create upload session with chunks
     const initResponse = await apiRequest.post('/api/v1/uploads/initiate', {
@@ -1229,22 +1234,22 @@ test.describe('Upload Session Deletion via Data Management', () => {
 
     console.log('[Integration Test] Upload session created with temp files');
 
-    // Clear canvas data (which should also delete upload sessions)
-    const deleteResponse = await apiRequest.delete('/api/v1/data/canvas', {
+    // Clear keimenon data (which should also delete upload sessions)
+    const deleteResponse = await apiRequest.delete('/api/v1/data/keimenon', {
       headers: { Authorization: `Bearer ${authToken}` },
       params: { data_tag: 'test' },
     });
 
     expect(deleteResponse.ok()).toBeTruthy();
 
-    console.log('[Integration Test] Canvas data cleared');
+    console.log('[Integration Test] Keimenon data cleared');
 
     // Wait for deletion to process
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Verify upload session deleted via API (should return 404)
     apiSession = await getUploadSessionViaAPI(apiRequest, sessionId, authToken);
-    // Note: Upload sessions may or may not be deleted with canvas data
+    // Note: Upload sessions may or may not be deleted with keimenon data
     // This depends on implementation - test documents expected behavior
 
     console.log(

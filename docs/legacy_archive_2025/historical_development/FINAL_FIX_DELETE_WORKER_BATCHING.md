@@ -448,7 +448,7 @@ test('Delete job: full flow with large dataset', async () => {
   // 2. Create delete job
   const response = await request(app)
     .post('/api/v1/jobs/delete')
-    .send({ scope: 'canvas' })
+    .send({ scope: 'keimenon' })
     .expect(201);
 
   const { jobId } = response.body;
@@ -497,7 +497,7 @@ npm run dev:clean
 
 # In browser:
 # 1. Go to Settings → Data Management
-# 2. Click "Clear Canvas Data"
+# 2. Click "Clear Keimenon Data"
 # 3. Watch Background Operations table
 # 4. Should see progress: 0% → 2% → 4% → ... → 100%
 # 5. Should complete in ~30 seconds
@@ -508,7 +508,7 @@ npm run dev:clean
 
 ```
 [API] ⚡ Dispatching job job_xxx (type: delete)
-[API] 🗑️  Delete job job_xxx starting (scope: canvas)
+[API] 🗑️  Delete job job_xxx starting (scope: keimenon)
 [API]    Found 25604 nodes and 51200 edges to delete
 [API]    Progress: 500/25604 (2%) - Batch: 500 nodes, 1000 edges
 [API]    Progress: 1000/25604 (4%) - Batch: 500 nodes, 1000 edges

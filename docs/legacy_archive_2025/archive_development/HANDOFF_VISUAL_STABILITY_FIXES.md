@@ -22,7 +22,7 @@ All fixes have been applied and validated. See [VISUAL_STABILITY_FIX_RESULTS.md]
 
 ## 🎯 Mission
 
-Fix the visual stability issues in the Canvas Memory OS application that are causing E2E tests to be unreliable. The visual stability test revealed that the app renders inconsistently (38.33% stability vs >95% target), making visual regression testing ineffective.
+Fix the visual stability issues in the Keimenon application that are causing E2E tests to be unreliable. The visual stability test revealed that the app renders inconsistently (38.33% stability vs >95% target), making visual regression testing ineffective.
 
 **Critical Context**: The tests are working correctly - they successfully detected real stability problems in the app that need to be fixed.
 
@@ -48,7 +48,7 @@ Fix the visual stability issues in the Canvas Memory OS application that are cau
 
 ## 🔍 Problem Statement
 
-**Issue**: The Canvas Memory OS application does not render consistent UI when navigating to the same page multiple times under identical conditions.
+**Issue**: The Keimenon application does not render consistent UI when navigating to the same page multiple times under identical conditions.
 
 **Impact**:
 
@@ -119,7 +119,7 @@ Fix the visual stability issues in the Canvas Memory OS application that are cau
 
 **Files to Review**:
 
-- [apps/web/src/components/canvas/CanvasPage.tsx](apps/web/src/components/) - Main canvas component
+- [apps/web/src/components/keimenon/KeimenonPage.tsx](apps/web/src/components/) - Main keimenon component
 - [apps/web/src/hooks/useNodes.ts](apps/web/src/hooks/) - Data fetching hooks
 - [apps/web/src/lib/api-client.ts](apps/web/src/lib/) - API client
 
@@ -320,15 +320,15 @@ npx playwright test visual-stability-validation.spec.ts --repeat-each=5 --timeou
 
 **Goal**: Add explicit "ready" indicators in the app
 
-**Location**: [apps/web/src/components/canvas/CanvasPage.tsx](apps/web/src/components/)
+**Location**: [apps/web/src/components/keimenon/KeimenonPage.tsx](apps/web/src/components/)
 
 **Implementation**:
 
 ```typescript
-// In CanvasPage.tsx or similar components
+// In KeimenonPage.tsx or similar components
 import { useEffect, useState } from 'react';
 
-export function CanvasPage() {
+export function KeimenonPage() {
   const [isStable, setIsStable] = useState(false);
   const { nodes, loading: nodesLoading } = useNodes();
   const { accounts, loading: accountsLoading } = useAccounts();
@@ -351,7 +351,7 @@ export function CanvasPage() {
 
 **Files to Edit**:
 
-- `apps/web/src/components/canvas/CanvasPage.tsx` - Add stability marker
+- `apps/web/src/components/keimenon/KeimenonPage.tsx` - Add stability marker
 - `apps/web/src/components/auth/LoginPage.tsx` - Add stability marker
 - Any other pages used in visual stability tests
 
@@ -433,13 +433,13 @@ find test-results -name "*-diff.png"
 3. **HIGH**: `tests/e2e/fixtures/test-isolation.ts` - Use fixture data
 4. **MEDIUM**: `tests/e2e/helpers/wait-for-stable.ts` (create new) - Wait helper
 5. **MEDIUM**: `tests/e2e/visual-stability-validation.spec.ts` - Use wait helper
-6. **OPTIONAL**: `apps/web/src/components/canvas/CanvasPage.tsx` - Stability markers
+6. **OPTIONAL**: `apps/web/src/components/keimenon/KeimenonPage.tsx` - Stability markers
 
 ### Test Files to Run
 
 - `tests/e2e/visual-stability-validation.spec.ts` - Primary validation test
 - `tests/e2e/settings-navigation.spec.ts` - Ensure no regression
-- `tests/e2e/flow-auth-canvas.spec.ts` - Ensure no regression
+- `tests/e2e/flow-auth-keimenon.spec.ts` - Ensure no regression
 
 ---
 

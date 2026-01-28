@@ -9,6 +9,7 @@ This MCP server enables dramatic token savings (up to **98.7%**) by executing co
 ## The Problem This Solves
 
 **Traditional Approach:**
+
 ```
 User: "Find all Source nodes with duplicates created in last 7 days"
 AI: Calls mcp__database__query_nodes → Returns 10,000 nodes
@@ -17,10 +18,11 @@ Token Cost: ~150,000 tokens
 ```
 
 **Code Execution Approach:**
+
 ```
 User: "Find all Source nodes with duplicates created in last 7 days"
 AI: Writes Python code that:
-  1. Imports canvas_database module
+  1. Imports keimenon_database module
   2. Queries all nodes (in execution environment, zero LLM tokens)
   3. Filters for last 7 days (in execution environment)
   4. Detects duplicates (in execution environment)
@@ -56,9 +58,9 @@ Savings: 98.7%
 │                     ↑                                       │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ MCP Module Loader                                    │  │
-│  │  • canvas-database  → import canvas_database         │  │
-│  │  • canvas-docs      → import canvas_docs             │  │
-│  │  • canvas-api-testing                                │  │
+│  │  • keimenon-database  → import keimenon_database         │  │
+│  │  • keimenon-docs      → import keimenon_docs             │  │
+│  │  • keimenon-api-testing                                │  │
 │  │  • playwright-e2e                                    │  │
 │  │  • ... all other MCP servers                         │  │
 │  └──────────────────────────────────────────────────────┘  │
@@ -68,11 +70,13 @@ Savings: 98.7%
 ## Tools Provided
 
 ### 1. `execute_python`
+
 Execute Python code with MCP modules imported.
 
 **Example:**
+
 ```python
-from canvas_database import query_nodes
+from keimenon_database import query_nodes
 
 # Query all nodes (happens in execution env, zero LLM tokens)
 nodes = query_nodes(kind="Source", limit=10000)
@@ -93,35 +97,39 @@ return {
 **Token Savings: 98.7%**
 
 ### 2. `execute_javascript`
+
 Execute JavaScript code with MCP modules.
 
 **Example:**
+
 ```javascript
-const { query_nodes } = require('mcp-canvas-database');
+const { query_nodes } = require('mcp-keimenon-database');
 
 // Query in execution environment
 const nodes = await query_nodes({ kind: 'Source', limit: 10000 });
 
 // Filter
-const recent = nodes.filter(n => n.created_at > timestamp);
+const recent = nodes.filter((n) => n.created_at > timestamp);
 const duplicates = recent.filter(has_duplicate);
 
 // Return tiny summary
 return {
-    total: nodes.length,
-    recent: recent.length,
-    duplicates: duplicates.length,
-    sample: duplicates.slice(0, 3)
+  total: nodes.length,
+  recent: recent.length,
+  duplicates: duplicates.length,
+  sample: duplicates.slice(0, 3),
 };
 ```
 
 ### 3. `load_tool_definitions`
+
 Progressive tool loading - load tool definitions on-demand, not upfront.
 
 **Example:**
+
 ```json
 {
-  "server_name": "canvas-database",
+  "server_name": "keimenon-database",
   "tool_names": ["query_nodes"]
 }
 ```
@@ -129,6 +137,7 @@ Progressive tool loading - load tool definitions on-demand, not upfront.
 Returns only the specific tool definitions needed, not all tools from all servers.
 
 ### 4. `list_available_modules`
+
 Lists all MCP servers available as importable modules.
 
 ## Security
@@ -155,11 +164,9 @@ Add to `.claude/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "canvas-code-execution": {
+    "keimenon-code-execution": {
       "command": "node",
-      "args": [
-        "${workspaceFolder}/.mcp/servers/code-execution/dist/index.js"
-      ],
+      "args": ["${workspaceFolder}/.mcp/servers/code-execution/dist/index.js"],
       "description": "Code execution with MCP modules for 98.7% token savings"
     }
   }
@@ -171,6 +178,7 @@ Add to `.claude/mcp.json`:
 ### Example 1: Database Aggregation
 
 **Without Code Execution (Token-Heavy):**
+
 - Load all 10,000 nodes: 150,000 tokens
 - LLM processes in context
 - Total: 150,000+ tokens
@@ -179,7 +187,7 @@ Add to `.claude/mcp.json`:
 
 ```python
 # Agent writes this code
-from canvas_database import query_nodes
+from keimenon_database import query_nodes
 
 nodes = query_nodes(kind="Source")  # 10,000 results
 
@@ -202,8 +210,8 @@ return {
 ### Example 2: Multi-Server Orchestration
 
 ```python
-from canvas_database import query_nodes
-from canvas_docs import search_docs
+from keimenon_database import query_nodes
+from keimenon_docs import search_docs
 
 # Get all Source nodes
 sources = query_nodes(kind="Source")
@@ -228,7 +236,7 @@ return {
 ### Example 3: Import Analysis
 
 ```python
-from canvas_chat_import import list_test_datasets, get_test_dataset
+from keimenon_chat_import import list_test_datasets, get_test_dataset
 
 # List all datasets
 datasets = list_test_datasets()
@@ -252,12 +260,12 @@ return {
 
 ## Performance Metrics
 
-| Operation | Traditional | Code Execution | Savings |
-|-----------|-------------|----------------|---------|
-| Query 10,000 nodes | 150,000 tokens | 2,000 tokens | 98.7% |
-| Filter 5,000 edges | 80,000 tokens | 1,500 tokens | 98.1% |
-| Multi-server orchestration | 200,000 tokens | 3,000 tokens | 98.5% |
-| Complex aggregation | 120,000 tokens | 2,500 tokens | 97.9% |
+| Operation                  | Traditional    | Code Execution | Savings |
+| -------------------------- | -------------- | -------------- | ------- |
+| Query 10,000 nodes         | 150,000 tokens | 2,000 tokens   | 98.7%   |
+| Filter 5,000 edges         | 80,000 tokens  | 1,500 tokens   | 98.1%   |
+| Multi-server orchestration | 200,000 tokens | 3,000 tokens   | 98.5%   |
+| Complex aggregation        | 120,000 tokens | 2,500 tokens   | 97.9%   |
 
 ## Best Practices
 
@@ -284,16 +292,19 @@ return {
 ## Troubleshooting
 
 ### "Module not found"
+
 - Ensure MCP server name is correct
 - Check `list_available_modules` for available servers
 - Verify server is configured in `.claude/mcp.json`
 
 ### "Execution timed out"
+
 - Increase `timeout_ms` parameter
 - Optimize code (use generators, lazy evaluation)
 - Process data in batches
 
 ### "Sandbox violation"
+
 - Remove filesystem operations
 - Remove network requests
 - Use only MCP module functions

@@ -5,7 +5,7 @@
 
 ## Summary
 
-We've successfully completed **Phase 1A** (Foundation), **Phase 1B** (File Ingest & Autogroup), and **Phase 1C** (2D Canvas Visualization) of the Canvas Memory OS MVP! The application now has a working file upload system with automatic grouping and a 2D interactive canvas for visualizing the graph.
+We've successfully completed **Phase 1A** (Foundation), **Phase 1B** (File Ingest & Autogroup), and **Phase 1C** (2D Keimenon Visualization) of the Keimenon MVP! The application now has a working file upload system with automatic grouping and a 2D interactive keimenon for visualizing the graph.
 
 ---
 
@@ -40,7 +40,7 @@ We've successfully completed **Phase 1A** (Foundation), **Phase 1B** (File Inges
   - [x] File upload progress tracking
   - [x] Results display (uploaded files, suggested groups, duplicates)
 
-### Phase 1C: 2D Canvas Visualization ✅
+### Phase 1C: 2D Keimenon Visualization ✅
 
 - [x] **Graph Package** (`packages/graph`)
   - [x] D3-force layout algorithm
@@ -48,8 +48,8 @@ We've successfully completed **Phase 1A** (Foundation), **Phase 1B** (File Inges
   - [x] Graph operations (distance, nearest node, bounding box)
   - [x] Clustering utilities (by type, by property, K-means)
   - [x] Selection state management
-- [x] **Canvas Component**
-  - [x] 2D rendering with HTML Canvas API
+- [x] **Keimenon Component**
+  - [x] 2D rendering with HTML Keimenon API
   - [x] Pan & zoom (mouse drag + wheel)
   - [x] Node selection (click + Shift+click for multi-select)
   - [x] Node hover effects
@@ -59,7 +59,7 @@ We've successfully completed **Phase 1A** (Foundation), **Phase 1B** (File Inges
   - [x] FourRegionLayout integration
   - [x] Left sidebar (groups, filters)
   - [x] Right sidebar (selection inspector)
-  - [x] Dynamic canvas resizing
+  - [x] Dynamic keimenon resizing
   - [x] Empty state with CTA
 
 ---
@@ -81,7 +81,7 @@ We've successfully completed **Phase 1A** (Foundation), **Phase 1B** (File Inges
 - Suggests group names based on content analysis
 - Returns group suggestions to frontend for review
 
-### 2D Canvas
+### 2D Keimenon
 
 - D3-force directed layout with collision detection
 - Smooth pan & zoom with transform matrix
@@ -122,10 +122,10 @@ apps/
         │   ├── ingest/
         │   │   └── page.tsx      ✨ Upload UI
         │   └── board/[id]/
-        │       └── page.tsx      ✨ Canvas page
+        │       └── page.tsx      ✨ Keimenon page
         └── components/
-            ├── canvas/
-            │   └── Canvas2D.tsx  ✨ Interactive canvas
+            ├── keimenon/
+            │   └── Keimenon2D.tsx  ✨ Interactive keimenon
             └── ingest/
                 ├── FileUploadZone.tsx      ✨ Drag-drop
                 ├── UploadProgress.tsx      ✨ Progress UI
@@ -173,7 +173,7 @@ packages/
 ✅ Content fingerprinting (SHA-256)
 ✅ Automatic deduplication
 ✅ Rule-based autogrouping
-✅ 2D canvas visualization
+✅ 2D keimenon visualization
 ✅ Pan & zoom
 ✅ Node selection (single & multi-select)
 ✅ Storage quota tracking
@@ -238,9 +238,9 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
    - Auto-generated groups
    - Duplicate detection
 
-### 4. View on Canvas
+### 4. View on Keimenon
 
-1. Click "View on Canvas" from results
+1. Click "View on Keimenon" from results
 2. Go to http://localhost:3000/board/default_board
 3. See nodes rendered in 2D
 4. Try:
@@ -254,7 +254,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 ## Performance Notes
 
 - **Layout calculation**: ~300ms for 100 nodes on first render
-- **Canvas rendering**: 60 FPS for up to 1000 nodes
+- **Keimenon rendering**: 60 FPS for up to 1000 nodes
 - **File upload**: 10 files max, 10MB each
 - **Deduplication**: Instant (fingerprint lookup in Neo4j)
 - **Autogroup**: <100ms for typical uploads
@@ -265,7 +265,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 
 ### Bugs
 
-- [ ] Canvas doesn't redraw on window resize (fixed with effect)
+- [ ] Keimenon doesn't redraw on window resize (fixed with effect)
 - [ ] Node positions not persisted (need to save layout to DB)
 - [ ] No loading state during layout calculation
 
@@ -280,7 +280,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 
 ### Technical Debt
 
-- [ ] Canvas should use OffscreenCanvas for better performance
+- [ ] Keimenon should use OffscreenKeimenon for better performance
 - [ ] Layout should be calculated in a Web Worker
 - [ ] Need caching for expensive graph operations
 - [ ] Missing error boundaries in React components

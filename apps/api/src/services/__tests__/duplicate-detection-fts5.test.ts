@@ -14,7 +14,7 @@
  * - Edge cases and error handling
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import * as assert from 'node:assert';
 import Database from 'better-sqlite3';
 import { promises as fs } from 'fs';
@@ -139,10 +139,12 @@ describe('DuplicateDetectionFTS5Service', () => {
       // Insert 3 Message nodes
       for (let i = 0; i < 3; i++) {
         const messageId = `msg_${nanoid()}`;
-        db.prepare(`
+        db.prepare(
+          `
           INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(
+        `
+        ).run(
           messageId,
           'Message',
           accountId,
@@ -194,10 +196,12 @@ describe('DuplicateDetectionFTS5Service', () => {
 
       // Insert into database to populate FTS5
       for (const msg of [msg1, msg2]) {
-        db.prepare(`
+        db.prepare(
+          `
           INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(msg.id, 'Message', accountId, msg.content, msg.content_hash, Date.now(), Date.now());
+        `
+        ).run(msg.id, 'Message', accountId, msg.content, msg.content_hash, Date.now(), Date.now());
       }
 
       const config: DuplicateDetectionConfig = {
@@ -262,10 +266,12 @@ describe('DuplicateDetectionFTS5Service', () => {
       };
 
       for (const msg of [msg1, msg2]) {
-        db.prepare(`
+        db.prepare(
+          `
           INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(msg.id, 'Message', accountId, msg.content, msg.content_hash, Date.now(), Date.now());
+        `
+        ).run(msg.id, 'Message', accountId, msg.content, msg.content_hash, Date.now(), Date.now());
       }
 
       const config: DuplicateDetectionConfig = {
@@ -326,10 +332,12 @@ describe('DuplicateDetectionFTS5Service', () => {
 
       // Insert into database
       for (const msg of [msg1, msg2]) {
-        db.prepare(`
+        db.prepare(
+          `
           INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(msg.id, 'Message', accountId, msg.content, 'hash', Date.now(), Date.now());
+        `
+        ).run(msg.id, 'Message', accountId, msg.content, 'hash', Date.now(), Date.now());
       }
 
       const config: DuplicateDetectionConfig = {
@@ -359,10 +367,7 @@ describe('DuplicateDetectionFTS5Service', () => {
       const groups = await service.findDuplicates([msg1, msg2], config, fts5Config, accountId);
 
       assert.ok(groups.length > 0, 'Should find duplicate groups via FTS5');
-      assert.ok(
-        groups[0].candidates[0].similarity >= 0.7,
-        'Similarity should be above threshold'
-      );
+      assert.ok(groups[0].candidates[0].similarity >= 0.7, 'Similarity should be above threshold');
     });
 
     it('should respect candidate limit', async () => {
@@ -382,10 +387,12 @@ describe('DuplicateDetectionFTS5Service', () => {
 
         messages.push(msg);
 
-        db.prepare(`
+        db.prepare(
+          `
           INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(msg.id, 'Message', accountId, msg.content, `hash_${i}`, Date.now(), Date.now());
+        `
+        ).run(msg.id, 'Message', accountId, msg.content, `hash_${i}`, Date.now(), Date.now());
       }
 
       const config: DuplicateDetectionConfig = {
@@ -419,10 +426,7 @@ describe('DuplicateDetectionFTS5Service', () => {
       // With candidate limit of 10, max comparisons = 50 * 10 = 500
       // Since all messages share keywords, they will all be similar, so we expect many duplicates
       // The key metric is that FTS5 limits the search space
-      assert.ok(
-        groups.length > 0,
-        'Should find duplicate groups when messages share keywords'
-      );
+      assert.ok(groups.length > 0, 'Should find duplicate groups when messages share keywords');
       // Verify that actual comparisons performed were less than O(n²) baseline
       // This confirms candidate limit is working
       const baselineComparisons = (messages.length * (messages.length - 1)) / 2; // 1,225
@@ -470,17 +474,21 @@ describe('DuplicateDetectionFTS5Service', () => {
 
       // Insert Account A messages
       for (const msg of [msgA1, msgA2]) {
-        db.prepare(`
+        db.prepare(
+          `
           INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(msg.id, 'Message', accountA, msg.content, 'hash', Date.now(), Date.now());
+        `
+        ).run(msg.id, 'Message', accountA, msg.content, 'hash', Date.now(), Date.now());
       }
 
       // Insert Account B message
-      db.prepare(`
+      db.prepare(
+        `
         INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(msgB1.id, 'Message', accountB, msgB1.content, 'hash', Date.now(), Date.now());
+      `
+      ).run(msgB1.id, 'Message', accountB, msgB1.content, 'hash', Date.now(), Date.now());
 
       const config: DuplicateDetectionConfig = {
         enabled: true,
@@ -507,12 +515,7 @@ describe('DuplicateDetectionFTS5Service', () => {
       };
 
       // Check Account A (should find 1 duplicate pair)
-      const groupsA = await service.findDuplicates(
-        [msgA1, msgA2],
-        config,
-        fts5Config,
-        accountA
-      );
+      const groupsA = await service.findDuplicates([msgA1, msgA2], config, fts5Config, accountA);
 
       assert.strictEqual(
         groupsA.length,
@@ -624,10 +627,12 @@ describe('DuplicateDetectionFTS5Service', () => {
         metadata: {},
       };
 
-      db.prepare(`
+      db.prepare(
+        `
         INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(msg.id, 'Message', accountId, msg.content, 'hash', Date.now(), Date.now());
+      `
+      ).run(msg.id, 'Message', accountId, msg.content, 'hash', Date.now(), Date.now());
 
       const config: DuplicateDetectionConfig = {
         enabled: true,
@@ -724,10 +729,12 @@ describe('DuplicateDetectionFTS5Service', () => {
         metadata: {},
       };
 
-      db.prepare(`
+      db.prepare(
+        `
         INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(msg.id, 'Message', accountId, msg.content, 'hash', Date.now(), Date.now());
+      `
+      ).run(msg.id, 'Message', accountId, msg.content, 'hash', Date.now(), Date.now());
 
       const config: DuplicateDetectionConfig = {
         enabled: true,
@@ -781,10 +788,12 @@ describe('DuplicateDetectionFTS5Service', () => {
 
         messages.push(msg);
 
-        db.prepare(`
+        db.prepare(
+          `
           INSERT INTO nodes (id, kind, account_id, canonical_content, content_hash, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(msg.id, 'Message', accountId, msg.content, `hash_${i}`, Date.now(), Date.now());
+        `
+        ).run(msg.id, 'Message', accountId, msg.content, `hash_${i}`, Date.now(), Date.now());
       }
 
       const config: DuplicateDetectionConfig = {

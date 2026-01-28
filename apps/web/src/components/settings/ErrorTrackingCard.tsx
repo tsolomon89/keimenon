@@ -86,10 +86,10 @@ export function ErrorTrackingCard() {
           <p className="text-sm text-slate-400 mb-4">
             {isEnabled ? (
               <span className="text-green-400">
-                ✓ Helping improve Canvas Memory OS by sending error reports
+                ✓ Helping improve Keimenon by sending error reports
               </span>
             ) : (
-              'Help improve Canvas Memory OS by sending anonymous error reports'
+              'Help improve Keimenon by sending anonymous error reports'
             )}
           </p>
 

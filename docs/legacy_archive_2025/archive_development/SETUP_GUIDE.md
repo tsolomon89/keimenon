@@ -1,6 +1,6 @@
-# Canvas Memory OS - Setup Guide
+# Keimenon - Setup Guide
 
-Complete guide to get Canvas Memory OS running in 5 minutes.
+Complete guide to get Keimenon running in 5 minutes.
 
 ---
 
@@ -172,7 +172,7 @@ Expected response:
 ```json
 {
   "status": "ok",
-  "service": "canvas-memory-api",
+  "service": "keimenon-api",
   "version": "0.1.0",
   "dependencies": {
     "neo4j": "connected"
@@ -186,8 +186,8 @@ Open http://localhost:3000 in your browser.
 
 You should see:
 
-- **Canvas Memory OS** landing page
-- Two buttons: "Open Canvas" and "Ingest Files"
+- **Keimenon** landing page
+- Two buttons: "Open Keimenon" and "Ingest Files"
 
 ### 3. Test File Upload
 
@@ -198,13 +198,13 @@ You should see:
    - Upload success message
    - File details
    - Auto-generated groups
-   - "View on Canvas" button
+   - "View on Keimenon" button
 
-### 4. Test Canvas Visualization
+### 4. Test Keimenon Visualization
 
-1. Click "View on Canvas"
+1. Click "View on Keimenon"
 2. You should see:
-   - 2D canvas with your uploaded files as nodes
+   - 2D keimenon with your uploaded files as nodes
    - Pan: Click & drag
    - Zoom: Scroll wheel
    - Select: Click nodes
@@ -291,7 +291,7 @@ npm run clean
 ### Monorepo Structure
 
 ```
-canvas-memory-os/
+keimenon/
 ├── apps/
 │   ├── web/              # Next.js frontend (port 3000)
 │   └── api/              # Express backend (port 3001)
@@ -315,7 +315,7 @@ Changes automatically reload:
 ### Testing Changes
 
 1. Upload files via `/ingest`
-2. View on canvas via `/board/default_board`
+2. View on keimenon via `/board/default_board`
 3. Check API endpoints via curl or Postman
 
 ---
@@ -391,7 +391,7 @@ The default `.env` files are configured for **local development only**.
 ## Next Steps 🎯
 
 1. ✅ Upload test files via `/ingest`
-2. ✅ View files on canvas via `/board/default_board`
+2. ✅ View files on keimenon via `/board/default_board`
 3. ✅ Test pan, zoom, and selection
 4. 📖 Read [PROGRESS.md](PROGRESS.md) for current status
 5. 📖 Read [ROADMAP.md](ROADMAP.md) for upcoming features

@@ -38,7 +38,7 @@ The application uses a **unified access control system**:
 | ShellMode  | Display Name | Primary Purpose                                      | Default View | Navigation       | Locked To       |
 | ---------- | ------------ | ---------------------------------------------------- | ------------ | ---------------- | --------------- |
 | `'admin'`  | **"Admin"**  | Dashboard/management layer for all accounts and data | Dashboard    | Accounts Tree    | Admin accounts  |
-| `'client'` | **"Client"** | Canvas UI for own data only                          | Canvas       | Groups & Folders | Client accounts |
+| `'client'` | **"Client"** | Keimenon UI for own data only                        | Keimenon     | Groups & Folders | Client accounts |
 
 **Display Labels**:
 
@@ -69,10 +69,10 @@ CREATE TABLE IF NOT EXISTS accounts (
 
 **Purpose**: Determines the **permission level** of an account:
 
-| AccountType | Capabilities                                                                                                                      | ShellMode (LOCKED) | Default CanvasMode |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------------------ |
-| `'admin'`   | - Manage multiple client accounts<br>- View all client data (scoped)<br>- Admin features<br>- Create accounts<br>- Full analytics | `'admin'`          | `'dashboard'`      |
-| `'client'`  | - Manage own data<br>- Graph/canvas features<br>- Own data analytics                                                              | `'client'`         | `'canvas'`         |
+| AccountType | Capabilities                                                                                                                      | ShellMode (LOCKED) | Default KeimenonMode |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------ | -------------------- |
+| `'admin'`   | - Manage multiple client accounts<br>- View all client data (scoped)<br>- Admin features<br>- Create accounts<br>- Full analytics | `'admin'`          | `'dashboard'`        |
+| `'client'`  | - Manage own data<br>- Graph/keimenon features<br>- Own data analytics                                                            | `'client'`         | `'keimenon'`         |
 
 ### 1.3 AccountClass (Plan Tier)
 
@@ -153,7 +153,7 @@ When Jane switches to Account A:
 - `user.accountClass = 'professional'` (from accounts table)
 - `user.permissionLevel = 'admin'` (from user_accounts junction)
 - Default ShellMode: `'admin'`
-- Default CanvasMode: `'dashboard'`
+- Default KeimenonMode: `'dashboard'`
 
 When Jane switches to Account B:
 
@@ -161,7 +161,7 @@ When Jane switches to Account B:
 - `user.accountClass = 'free'` (from accounts table)
 - `user.permissionLevel = 'leader'` (from user_accounts junction)
 - Default ShellMode: `'client'`
-- Default CanvasMode: `'canvas'`
+- Default KeimenonMode: `'keimenon'`
 
 ---
 
@@ -190,7 +190,7 @@ export function getDefaultShellMode(user: User | null): ShellMode {
 }
 ```
 
-### 3.2 Initial Canvas Mode (On Login)
+### 3.2 Initial Keimenon Mode (On Login)
 
 **File**: [apps/web/src/contexts/ShellContext.tsx:72-77](apps/web/src/contexts/ShellContext.tsx#L72-L77)
 
@@ -198,10 +198,10 @@ export function getDefaultShellMode(user: User | null): ShellMode {
 useEffect(() => {
   if (user && !initializedRef.current) {
     const defaultMode = user.accountType === 'admin' ? 'admin' : 'client';
-    const defaultCanvasMode = user.accountType === 'admin' ? 'dashboard' : 'canvas';
+    const defaultKeimenonMode = user.accountType === 'admin' ? 'dashboard' : 'keimenon';
 
     setShellModeState(defaultMode);
-    setCanvasModeState(defaultCanvasMode);
+    setKeimenonModeState(defaultKeimenonMode);
     // ...
   }
 }, [user]);
@@ -211,19 +211,19 @@ useEffect(() => {
 
 - **Admin accounts**:
   - ShellMode: `'admin'`
-  - CanvasMode: `'dashboard'`
+  - KeimenonMode: `'dashboard'`
 - **Client accounts**:
   - ShellMode: `'client'`
-  - CanvasMode: `'canvas'`
+  - KeimenonMode: `'keimenon'`
 
 **Also in**: [packages/types/src/navigation.model.ts:216-221](packages/types/src/navigation.model.ts#L216-L221)
 
 ```typescript
-export function getDefaultCanvasMode(shellMode: ShellMode, user: User | null): CanvasMode {
+export function getDefaultKeimenonMode(shellMode: ShellMode, user: User | null): KeimenonMode {
   if (user?.accountType === 'admin' && shellMode === 'admin') {
     return 'dashboard';
   }
-  return 'canvas';
+  return 'keimenon';
 }
 ```
 
@@ -324,18 +324,18 @@ if (req.user.accountType !== 'admin') {
  *
  * Rules (in priority order):
  * 1. Settings mode → Always show settings tree
- * 2. CRM shell + Dashboard canvas → Show accounts tree
+ * 2. CRM shell + Dashboard keimenon → Show accounts tree
  * 3. Default → Show groups tree
  */
 export class NavigationModelFactory {
   static get(context: NavigationContext): NavigationModel {
     // Rule 1: Settings mode always shows settings tree
-    if (context.canvasMode === 'settings') {
+    if (context.keimenonMode === 'settings') {
       return this.getSettingsModel(context);
     }
 
     // Rule 2: Admin + Dashboard shows accounts tree
-    if (context.shellMode === 'admin' && context.canvasMode === 'dashboard') {
+    if (context.shellMode === 'admin' && context.keimenonMode === 'dashboard') {
       return this.getAccountsModel(context);
     }
 
@@ -347,14 +347,14 @@ export class NavigationModelFactory {
 
 ### 5.2 Navigation Matrix
 
-| ShellMode | CanvasMode  | Left Sidebar        | Right Sidebar                          | Typical User                |
-| --------- | ----------- | ------------------- | -------------------------------------- | --------------------------- |
-| `admin`   | `dashboard` | **Accounts Tree**   | AccountInspector + UserDetailInspector | Admin                       |
-| `admin`   | `canvas`    | Groups & Folders    | Node Inspector                         | Admin (viewing client data) |
-| `admin`   | `settings`  | Settings Navigation | Settings detail                        | Admin                       |
-| `client`  | `canvas`    | Groups & Folders    | Node Inspector                         | Client (default)            |
-| `client`  | `dashboard` | Groups & Folders    | Analytics Dashboard                    | Client (viewing own data)   |
-| `client`  | `settings`  | Settings Navigation | Settings detail                        | Client                      |
+| ShellMode | KeimenonMode | Left Sidebar        | Right Sidebar                          | Typical User                |
+| --------- | ------------ | ------------------- | -------------------------------------- | --------------------------- |
+| `admin`   | `dashboard`  | **Accounts Tree**   | AccountInspector + UserDetailInspector | Admin                       |
+| `admin`   | `keimenon`   | Groups & Folders    | Node Inspector                         | Admin (viewing client data) |
+| `admin`   | `settings`   | Settings Navigation | Settings detail                        | Admin                       |
+| `client`  | `keimenon`   | Groups & Folders    | Node Inspector                         | Client (default)            |
+| `client`  | `dashboard`  | Groups & Folders    | Analytics Dashboard                    | Client (viewing own data)   |
+| `client`  | `settings`   | Settings Navigation | Settings detail                        | Client                      |
 
 ### 5.3 "Create Button" Logic
 
@@ -538,16 +538,16 @@ const filteredRegistry = settingsRegistry
 
 ### 8.1 Components Using accountType
 
-| Component            | File                                                                                                               | Usage                                  |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------- |
-| **ShellContext**     | [apps/web/src/contexts/ShellContext.tsx:62](apps/web/src/contexts/ShellContext.tsx#L62)                            | Default shell mode                     |
-| **OperatingContext** | [apps/web/src/contexts/OperatingContext.tsx:64](apps/web/src/contexts/OperatingContext.tsx#L64)                    | Permission check for account switching |
-| **CanvasToolbar**    | [apps/web/src/components/canvas/CanvasToolbar.tsx:58-59](apps/web/src/components/canvas/CanvasToolbar.tsx#L58-L59) | Show/hide admin features               |
-| **CanvasHeader**     | [apps/web/src/components/canvas/CanvasHeader.tsx:265](apps/web/src/components/canvas/CanvasHeader.tsx#L265)        | Display account type in UI             |
-| **SettingsPage**     | [apps/web/src/components/settings/SettingsPage.tsx:260](apps/web/src/components/settings/SettingsPage.tsx#L260)    | Conditionally render admin cards       |
-| **AccountInspector** | [apps/web/src/components/inspector/AccountInspector.tsx](apps/web/src/components/inspector/AccountInspector.tsx)   | Show account details                   |
-| **useAccountTree**   | [apps/web/src/hooks/useAccountTree.ts:16](apps/web/src/hooks/useAccountTree.ts#L16)                                | Only fetch for admin accounts          |
-| **usePermissions**   | [apps/web/src/hooks/usePermissions.ts:57](apps/web/src/hooks/usePermissions.ts#L57)                                | Permission calculations                |
+| Component            | File                                                                                                                       | Usage                                  |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| **ShellContext**     | [apps/web/src/contexts/ShellContext.tsx:62](apps/web/src/contexts/ShellContext.tsx#L62)                                    | Default shell mode                     |
+| **OperatingContext** | [apps/web/src/contexts/OperatingContext.tsx:64](apps/web/src/contexts/OperatingContext.tsx#L64)                            | Permission check for account switching |
+| **KeimenonToolbar**  | [apps/web/src/components/keimenon/KeimenonToolbar.tsx:58-59](apps/web/src/components/keimenon/KeimenonToolbar.tsx#L58-L59) | Show/hide admin features               |
+| **KeimenonHeader**   | [apps/web/src/components/keimenon/KeimenonHeader.tsx:265](apps/web/src/components/keimenon/KeimenonHeader.tsx#L265)        | Display account type in UI             |
+| **SettingsPage**     | [apps/web/src/components/settings/SettingsPage.tsx:260](apps/web/src/components/settings/SettingsPage.tsx#L260)            | Conditionally render admin cards       |
+| **AccountInspector** | [apps/web/src/components/inspector/AccountInspector.tsx](apps/web/src/components/inspector/AccountInspector.tsx)           | Show account details                   |
+| **useAccountTree**   | [apps/web/src/hooks/useAccountTree.ts:16](apps/web/src/hooks/useAccountTree.ts#L16)                                        | Only fetch for admin accounts          |
+| **usePermissions**   | [apps/web/src/hooks/usePermissions.ts:57](apps/web/src/hooks/usePermissions.ts#L57)                                        | Permission calculations                |
 
 ### 8.2 Example: Conditional Rendering
 
@@ -557,7 +557,7 @@ const filteredRegistry = settingsRegistry
 {user?.accountType === 'admin' && <AdminDataManagementCard />}
 ```
 
-**CanvasHeader** ([apps/web/src/components/canvas/CanvasHeader.tsx:23](apps/web/src/components/canvas/CanvasHeader.tsx#L23)):
+**KeimenonHeader** ([apps/web/src/components/keimenon/KeimenonHeader.tsx:23](apps/web/src/components/keimenon/KeimenonHeader.tsx#L23)):
 
 ```typescript
 const isAdmin = user?.accountType === 'admin';
@@ -590,7 +590,7 @@ if (user?.accountType !== 'admin') {
 1. User logs in
 2. ShellContext initializes with:
    - ShellMode: `'admin'` (**LOCKED** to admin accountType)
-   - CanvasMode: `'dashboard'` (default for admin shell)
+   - KeimenonMode: `'dashboard'` (default for admin shell)
 3. Left sidebar shows **Accounts Tree** (all client accounts linked to admin)
 4. Right sidebar shows **AccountInspector**
 
@@ -607,7 +607,7 @@ if (user?.accountType !== 'admin') {
 - Shell mode is **LOCKED** to `'admin'` for this user
 - User **cannot** manually switch to `'client'` shell
 - ShellMode automatically follows accountType
-- To view data differently, use CanvasMode or OperatingMode instead
+- To view data differently, use KeimenonMode or OperatingMode instead
 
 ### Scenario 2: Client User Workflow
 
@@ -618,13 +618,13 @@ if (user?.accountType !== 'admin') {
 1. User logs in
 2. ShellContext initializes with:
    - ShellMode: `'client'` (**LOCKED** to client accountType)
-   - CanvasMode: `'canvas'` (default for client shell)
+   - KeimenonMode: `'keimenon'` (default for client shell)
 3. Left sidebar shows **Groups & Folders Tree** (user's own groups)
 4. Right sidebar shows **Node Inspector**
 
 **Navigation**:
 
-- User works with graph canvas
+- User works with graph keimenon
 - Uploads new chat sources
 - Groups are automatically created
 - All data scoped to user's own account_id
@@ -633,7 +633,7 @@ if (user?.accountType !== 'admin') {
 
 - Shell mode is **LOCKED** to `'client'` for this user
 - User **cannot** manually switch to `'admin'` shell
-- User CAN switch to `'dashboard'` CanvasMode to view analytics
+- User CAN switch to `'dashboard'` KeimenonMode to view analytics
 - Dashboard shows user's own analytics (not other accounts)
 - API enforces data scoping - user only sees their own data
 
@@ -651,19 +651,19 @@ if (user?.accountType !== 'admin') {
 
 1. User logs into Account X (admin)
    - ShellMode: `'admin'` (**LOCKED** to admin accountType)
-   - CanvasMode: `'dashboard'`
+   - KeimenonMode: `'dashboard'`
    - Can see client accounts linked to Account X
    - Full admin features
 
 2. User switches to Account Y (client, leader role)
    - ShellMode **automatically changes** to `'client'` (locked to new accountType)
-   - CanvasMode changes to `'canvas'`
+   - KeimenonMode changes to `'keimenon'`
    - Can see Account Y's data
    - Has leader-level permissions (based on permissionLevel)
 
 3. User switches to Account Z (client, junior role)
    - ShellMode: `'client'` (**LOCKED** to client accountType)
-   - CanvasMode: `'canvas'`
+   - KeimenonMode: `'keimenon'`
    - Can see Account Z's data
    - Has junior-level permissions (limited features)
 
@@ -675,8 +675,8 @@ if (user?.accountType !== 'admin') {
 
 ### 10.1 Account Type Tests (v2.0 - Locked Shells)
 
-- [ ] Admin user logs in → defaults to 'admin' shell + 'dashboard' canvas (**LOCKED**)
-- [ ] Client user logs in → defaults to 'client' shell + 'canvas' canvas (**LOCKED**)
+- [ ] Admin user logs in → defaults to 'admin' shell + 'dashboard' keimenon (**LOCKED**)
+- [ ] Client user logs in → defaults to 'client' shell + 'keimenon' keimenon (**LOCKED**)
 - [ ] Admin **cannot** manually switch to 'client' shell (setShellMode logs warning)
 - [ ] Client **cannot** manually switch to 'admin' shell (setShellMode logs warning)
 - [ ] Admin sees Accounts Tree in Admin + Dashboard mode
@@ -765,7 +765,7 @@ const canAccessPortal = useCallback(() => {
 | **AccountType**          | Permission category: 'admin' or 'client'                                       |
 | **AccountClass**         | Plan tier: 'free', 'professional', or 'business'                               |
 | **PermissionLevel**      | User's role within an account: 'junior', 'senior', 'leader', 'admin'           |
-| **CanvasMode**           | Page within a shell: 'dashboard', 'settings', 'canvas', 'auth'                 |
+| **KeimenonMode**         | Page within a shell: 'dashboard', 'settings', 'keimenon', 'auth'               |
 | **OperatingMode**        | Data context: 'native', 'nested', or 'crm' (different from ShellMode)          |
 | **NavigationMode**       | Which tree to show in sidebar: 'groups', 'accounts', or 'settings'             |
 | **Shell Locking (v2.0)** | ShellMode automatically matches accountType and cannot be manually changed     |
@@ -780,14 +780,14 @@ const canAccessPortal = useCallback(() => {
 // Admin account defaults
 accountType: 'admin'
   → shellMode: 'admin' (LOCKED)
-  → canvasMode: 'dashboard'
+  → keimenonMode: 'dashboard'
   → leftSidebar: Accounts Tree
   → rightSidebar: AccountInspector
 
 // Client account defaults
 accountType: 'client'
   → shellMode: 'client' (LOCKED)
-  → canvasMode: 'canvas'
+  → keimenonMode: 'keimenon'
   → leftSidebar: Groups Tree
   → rightSidebar: Node Inspector
 ```
@@ -799,7 +799,7 @@ accountType: 'client'
 setShellMode('admin')
   → Logs warning
   → No state change (shell mode is locked)
-  → Use setCanvasMode() or account switching instead
+  → Use setKeimenonMode() or account switching instead
 
 // ShellMode auto-syncs with accountType
 switchAccount(newAccountId)

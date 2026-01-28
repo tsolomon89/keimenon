@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide explains how to deploy the Canvas Memory OS to a production environment using Docker Compose.
+This guide explains how to deploy the Keimenon to a production environment using Docker Compose.
 
 ## Prerequisites
 
@@ -71,14 +71,14 @@ docker-compose -f docker-compose.prod.yml down
 
 ### Backups
 
-Data is stored in the `canvas-data` volume. To backup:
+Data is stored in the `keimenon-data` volume. To backup:
 
 ```bash
 # Stop services first to ensure consistency
 docker-compose -f docker-compose.prod.yml stop
 
 # Create a backup of the volume data
-docker run --rm -v canvas-data:/data -v $(pwd):/backup alpine tar cvf /backup/canvas-data-backup.tar /data
+docker run --rm -v keimenon-data:/data -v $(pwd):/backup alpine tar cvf /backup/keimenon-data-backup.tar /data
 
 # Restart services
 docker-compose -f docker-compose.prod.yml start

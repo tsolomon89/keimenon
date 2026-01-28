@@ -51,7 +51,7 @@ This is the standard for "Local First" collaboration (Google Docs style).
 
 - **Library**: **Y.js** (Recommended) or **Automerge**.
 - **How it works**:
-  1.  **State**: The "Document" (e.g., the Canvas/Graph) is stored as a Y.js Doc.
+  1.  **State**: The "Document" (e.g., the Keimenon/Graph) is stored as a Y.js Doc.
   2.  **Sync**: When User A moves a node, Y.js computes a small "update delta".
   3.  **Transport**: This delta is sent via WebSocket to other peers.
   4.  **Merge**: Other peers merge the delta mathematically. No conflicts.

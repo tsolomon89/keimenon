@@ -60,10 +60,10 @@ function MyComponent() {
 
 #### **NodeDetailPanel**
 
-Location: [`apps/web/src/components/canvas/NodeDetailPanel.tsx`](apps/web/src/components/canvas/NodeDetailPanel.tsx)
+Location: [`apps/web/src/components/keimenon/NodeDetailPanel.tsx`](apps/web/src/components/keimenon/NodeDetailPanel.tsx)
 
 ```typescript
-import { NodeDetailPanel } from '@/components/canvas/NodeDetailPanel';
+import { NodeDetailPanel } from '@/components/keimenon/NodeDetailPanel';
 
 <NodeDetailPanel
   node={selectedNode}
@@ -80,10 +80,10 @@ import { NodeDetailPanel } from '@/components/canvas/NodeDetailPanel';
 
 #### **StorageStatsDashboard**
 
-Location: [`apps/web/src/components/canvas/StorageStatsDashboard.tsx`](apps/web/src/components/canvas/StorageStatsDashboard.tsx)
+Location: [`apps/web/src/components/keimenon/StorageStatsDashboard.tsx`](apps/web/src/components/keimenon/StorageStatsDashboard.tsx)
 
 ```typescript
-import { StorageStatsDashboard } from '@/components/canvas/StorageStatsDashboard';
+import { StorageStatsDashboard } from '@/components/keimenon/StorageStatsDashboard';
 
 // Just drop it in - it's a floating button
 <StorageStatsDashboard />
@@ -99,20 +99,20 @@ import { StorageStatsDashboard } from '@/components/canvas/StorageStatsDashboard
 
 ## Integration Patterns
 
-### **Pattern 1: Canvas with Detail Panel**
+### **Pattern 1: Keimenon with Detail Panel**
 
 ```typescript
 import { useState } from 'react';
-import { NodeDetailPanel } from '@/components/canvas/NodeDetailPanel';
-import { StorageStatsDashboard } from '@/components/canvas/StorageStatsDashboard';
+import { NodeDetailPanel } from '@/components/keimenon/NodeDetailPanel';
+import { StorageStatsDashboard } from '@/components/keimenon/StorageStatsDashboard';
 
-function CanvasPage() {
+function KeimenonPage() {
   const [selectedNode, setSelectedNode] = useState(null);
 
   return (
     <div className="relative h-screen">
-      {/* Your existing canvas */}
-      <Canvas2D onNodeClick={setSelectedNode} />
+      {/* Your existing keimenon */}
+      <Keimenon2D onNodeClick={setSelectedNode} />
 
       {/* Detail panel (slides in from right) */}
       <NodeDetailPanel
@@ -237,18 +237,18 @@ function CodeBlockViewer({ codeId }: { codeId: string }) {
 
 ---
 
-## Example: Updating Canvas2D
+## Example: Updating Keimenon2D
 
-Here's how to add content loading to your existing canvas:
+Here's how to add content loading to your existing keimenon:
 
 ```typescript
-// apps/web/src/components/canvas/Canvas2D.tsx
+// apps/web/src/components/keimenon/Keimenon2D.tsx
 
 import { useState } from 'react';
 import { NodeDetailPanel } from './NodeDetailPanel';
 import { StorageStatsDashboard } from './StorageStatsDashboard';
 
-export function Canvas2D() {
+export function Keimenon2D() {
   const [nodes, setNodes] = useState([]);
   const [selectedNode, setSelectedNode] = useState(null);
 
@@ -266,7 +266,7 @@ export function Canvas2D() {
 
   return (
     <div className="relative h-screen">
-      {/* Your existing canvas rendering */}
+      {/* Your existing keimenon rendering */}
       <svg className="w-full h-full">
         {nodes.map(node => (
           <g key={node.id} onClick={() => setSelectedNode(node)}>
@@ -356,7 +356,7 @@ curl http://localhost:4001/api/v1/content/stats
       "source": { "count": 20, "size": 10000000 },
       "code": { "count": 3, "size": 2428800 }
     },
-    "path": "~/.canvas-memory"
+    "path": "~/.keimenon"
   },
   "neo4j": {
     "total_nodes": 150,
@@ -373,7 +373,7 @@ curl http://localhost:4001/api/v1/content/stats
 ```typescript
 // Test NodeDetailPanel
 import { render, screen } from '@testing-library/react';
-import { NodeDetailPanel } from '@/components/canvas/NodeDetailPanel';
+import { NodeDetailPanel } from '@/components/keimenon/NodeDetailPanel';
 
 test('loads and displays message content', async () => {
   const node = {
@@ -401,7 +401,7 @@ test('loads and displays message content', async () => {
 
 If you have existing components that need updating:
 
-### **For Graph/Canvas Components:**
+### **For Graph/Keimenon Components:**
 
 - [ ] ✅ No changes needed! Graph loading already works (metadata only)
 - [ ] Add `NodeDetailPanel` for content viewing
@@ -560,7 +560,7 @@ import type { MessageContent } from '@/lib/api-client';
 
 ## Next Steps
 
-1. **Integrate into existing canvas:**
+1. **Integrate into existing keimenon:**
    - Add `NodeDetailPanel` component
    - Add `StorageStatsDashboard` component
    - Test clicking nodes loads content
@@ -610,15 +610,15 @@ import type { MessageContent } from '@/lib/api-client';
 Here's a complete example showing everything together:
 
 ```typescript
-// apps/web/src/app/canvas/page.tsx
+// apps/web/src/app/keimenon/page.tsx
 
 'use client';
 
 import { useState, useEffect } from 'react';
-import { NodeDetailPanel } from '@/components/canvas/NodeDetailPanel';
-import { StorageStatsDashboard } from '@/components/canvas/StorageStatsDashboard';
+import { NodeDetailPanel } from '@/components/keimenon/NodeDetailPanel';
+import { StorageStatsDashboard } from '@/components/keimenon/StorageStatsDashboard';
 
-export default function CanvasPage() {
+export default function KeimenonPage() {
   const [nodes, setNodes] = useState([]);
   const [selectedNode, setSelectedNode] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -652,9 +652,9 @@ export default function CanvasPage() {
 
   return (
     <div className="relative h-screen bg-gray-50">
-      {/* Simple node list (replace with your canvas) */}
+      {/* Simple node list (replace with your keimenon) */}
       <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Canvas Memory Graph</h1>
+        <h1 className="text-2xl font-bold mb-4">Keimenon Graph</h1>
         <div className="grid grid-cols-4 gap-4">
           {nodes.map((node: any) => (
             <button
@@ -682,7 +682,7 @@ export default function CanvasPage() {
 }
 ```
 
-Save this file and visit `/canvas` in your app - everything should work!
+Save this file and visit `/keimenon` in your app - everything should work!
 
 ---
 

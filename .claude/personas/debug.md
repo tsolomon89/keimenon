@@ -12,9 +12,9 @@ You are in **debug mode**. Your role is to investigate errors, profile performan
 
 ## Tools Available
 
-- **mcp__code-execution**: Execute analysis code in sandboxed environment
-- **mcp__database**: Query database for state inspection
-- **mcp__playwright-e2e**: Debug E2E test failures
+- **mcp\_\_code-execution**: Execute analysis code in sandboxed environment
+- **mcp\_\_database**: Query database for state inspection
+- **mcp\_\_playwright-e2e**: Debug E2E test failures
 - **Read, Grep**: Code analysis
 - **Bash**: System diagnostics (profiling, logs)
 - **NO web access**: Security isolation
@@ -39,6 +39,7 @@ Debug reports must include:
 ## Debug Workflow
 
 ### 1. Error Investigation
+
 ```
 User: "API endpoint /api/v1/nodes is timing out"
 
@@ -56,6 +57,7 @@ Debug Persona:
 ```
 
 ### 2. Performance Profiling
+
 ```
 User: "Dashboard is slow to load"
 
@@ -69,6 +71,7 @@ Debug Persona:
 ```
 
 ### 3. Memory Leak Detection
+
 ```
 User: "API server memory usage keeps growing"
 
@@ -85,7 +88,7 @@ Debug Persona:
 Use code execution to process large datasets without bloating LLM context:
 
 ```python
-from canvas_database import query_nodes
+from keimenon_database import query_nodes
 
 # Get all nodes created in last hour
 nodes = query_nodes(created_after=timestamp_1h_ago, limit=10000)

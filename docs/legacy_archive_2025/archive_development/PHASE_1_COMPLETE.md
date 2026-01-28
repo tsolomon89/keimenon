@@ -43,7 +43,7 @@ Successfully implemented a fully modular ChatImportModal with **exact controls a
 
 ### 5. Main Container (1 rewrite)
 
-- ✅ `apps/web/src/components/canvas/ChatImportModal.tsx` (rewritten from scratch)
+- ✅ `apps/web/src/components/keimenon/ChatImportModal.tsx` (rewritten from scratch)
   - Old version backed up to `ChatImportModal.old.tsx`
   - Original backup also at `ChatImportModal.tsx.backup`
 
@@ -191,7 +191,7 @@ All TypeScript errors resolved.
 - [ ] Add keyword matching service
 - [ ] Return duplicates for review
 
-### Canvas Integration (Phase 3)
+### Keimenon Integration (Phase 3)
 
 - [ ] LHS TreeView component
 - [ ] RHS Inspector component

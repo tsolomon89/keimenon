@@ -1,6 +1,6 @@
 # Base Use Case — Chat Sources Import (Colab v8 Plan)
 
-**Scope:** Summarize the minimal, local‑first pipeline that ingests exported AI chat JSON (ChatGPT, Claude, Gemini, etc.), normalizes it, and emits: per‑chat transcripts, assistant code blocks, keyword groups, and a new **Sources Mode** (≤150 stitched user‑text documents with provenance). This reflects the old Colab project, refined for the Canvas Memory MVP.
+**Scope:** Summarize the minimal, local‑first pipeline that ingests exported AI chat JSON (ChatGPT, Claude, Gemini, etc.), normalizes it, and emits: per‑chat transcripts, assistant code blocks, keyword groups, and a new **Sources Mode** (≤150 stitched user‑text documents with provenance). This reflects the old Colab project, refined for the Keimenon MVP.
 
 **Compatibility:** Designed to slot into **Free tier** constraints (local, no server costs). Pro/Business integrations are optional extensions (defer). No material conflicts with current plans; see **Conflicts & Notes** at the end.
 
@@ -87,7 +87,7 @@ CONFIG.update({
 
 ## 5) Plumbing changes (surgical)
 
-1. ``must **return**`(all_conversations, platform_counts)` _after_ it finishes current exporting and printing.
+1. ``must **return**`(all*conversations, platform_counts)` \_after* it finishes current exporting and printing.
    ```python
    return all_conversations, platform_counts
    ```
@@ -201,7 +201,7 @@ These are **additive** and **off by default**.
 
 ## 12) Conflicts & notes relative to platform plans
 
-- **Local‑first alignment:** This plan is exactly the Free‑tier spirit (no server costs, optional BYO keys). Outputs map directly onto the **Group** + **Source** nodes in Canvas, and sources can feed the **Subjective→Objective lane** later.
+- **Local‑first alignment:** This plan is exactly the Free‑tier spirit (no server costs, optional BYO keys). Outputs map directly onto the **Group** + **Source** nodes in Keimenon, and sources can feed the **Subjective→Objective lane** later.
 - ``** dependency:** not stdlib. Treat as **optional**; wrap import in `try/except`and fall back to`json.load`. This preserves the “no heavy deps” rule by default.
 - **Embeddings (optional):** allowed only when user opts in and deps exist. Defaults keep costs and complexity near zero.
 - **Future fit:** Pro tier can replace title‑bucket seeding with archetype‑assisted clustering and receipts; Business tier is unaffected.

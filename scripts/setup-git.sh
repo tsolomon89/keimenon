@@ -1,9 +1,9 @@
 #!/bin/bash
-# Git setup script for Canvas Memory OS
+# Git setup script for Keimenon
 
 set -e
 
-echo "🔧 Setting up Git for Canvas Memory OS..."
+echo "🔧 Setting up Git for Keimenon..."
 echo ""
 
 # Check if Git is installed

@@ -25,7 +25,7 @@ The Unified Background Jobs System has been fully implemented with all critical 
 
 **Fix**: [apps/web/src/components/settings/DataManagementCard.tsx:139-148](../../apps/web/src/components/settings/DataManagementCard.tsx#L139-L148)
 
-- Changed from `DELETE /api/v1/data/canvas` to `POST /api/v1/jobs/delete`
+- Changed from `DELETE /api/v1/data/keimenon` to `POST /api/v1/jobs/delete`
 - Updated response handling for async job creation
 - Added automatic minimization to Background Operations table
 
@@ -37,7 +37,7 @@ The Unified Background Jobs System has been fully implemented with all critical 
 
 **Issue**: SSE job updates had incorrect status values causing wrong badge displays.
 
-**Fix**: [apps/web/src/components/canvas/ImportsTableCard.tsx:162-169](../../apps/web/src/components/canvas/ImportsTableCard.tsx#L162-L169)
+**Fix**: [apps/web/src/components/keimenon/ImportsTableCard.tsx:162-169](../../apps/web/src/components/keimenon/ImportsTableCard.tsx#L162-L169)
 
 - Added status mapping in `convertSSEJobToImportJob`
 - Maps: `running` → `processing`, `succeeded` → `done`, `failed` → `error`
@@ -50,7 +50,7 @@ The Unified Background Jobs System has been fully implemented with all critical 
 
 **Issue**: SSE sends progress as 0-1 decimal, but UI expects 0-100 integer.
 
-**Fix**: [apps/web/src/components/canvas/ImportsTableCard.tsx:188](../../apps/web/src/components/canvas/ImportsTableCard.tsx#L188)
+**Fix**: [apps/web/src/components/keimenon/ImportsTableCard.tsx:188](../../apps/web/src/components/keimenon/ImportsTableCard.tsx#L188)
 
 - Added `Math.round(sseJob.progress.percent * 100)`
 
@@ -81,7 +81,7 @@ The Unified Background Jobs System has been fully implemented with all critical 
 
 - [apps/api/src/modules/jobs/infrastructure/SSEBroadcaster.ts](../../apps/api/src/modules/jobs/infrastructure/SSEBroadcaster.ts)
 - [apps/web/src/hooks/useJobStream.ts](../../apps/web/src/hooks/useJobStream.ts)
-- [apps/web/src/components/canvas/ImportsTableCard.tsx](../../apps/web/src/components/canvas/ImportsTableCard.tsx)
+- [apps/web/src/components/keimenon/ImportsTableCard.tsx](../../apps/web/src/components/keimenon/ImportsTableCard.tsx)
 
 **Changes**:
 
@@ -89,7 +89,7 @@ The Unified Background Jobs System has been fully implemented with all critical 
 2. Frontend hook interface includes optional `config` field
 3. ImportsTableCard uses smart filename extraction:
    - Import jobs: Show actual filename from config
-   - Delete jobs: Show descriptive label ("Delete Canvas Data")
+   - Delete jobs: Show descriptive label ("Delete Keimenon Data")
    - Other jobs: Show capitalized job type ("Export Job")
 
 **Impact**: Jobs display meaningful names in Background Operations table.
@@ -143,7 +143,7 @@ The Unified Background Jobs System has been fully implemented with all critical 
 ### Data Flow
 
 ```
-User Action (Settings → Delete Canvas Data)
+User Action (Settings → Delete Keimenon Data)
    ↓
 POST /api/v1/jobs/delete (create job)
    ↓
@@ -199,12 +199,12 @@ blocked → failed    canceled
 
 1. **Start Services**: `npm run dev:clean` (starts both frontend and backend)
 2. **Navigate to Settings**: Settings → Data Management
-3. **Trigger Delete**: Click "Clear Canvas Data" → Confirm
+3. **Trigger Delete**: Click "Clear Keimenon Data" → Confirm
 4. **Verify Job Creation**: Success message shows "Delete job created!"
 5. **Switch to Dashboard**: Navigate to Dashboard view
 6. **Check Background Operations**:
    - Job appears with red trash icon
-   - Filename shows "Delete Canvas Data"
+   - Filename shows "Delete Keimenon Data"
    - Status badge shows "Processing" (blue)
    - Progress bar animates 0% → 100%
    - Updates occur every 500ms
@@ -253,7 +253,7 @@ Comprehensive test suite: [apps/api/src/**tests**/jobs-system.test.ts](../../app
 ### Critical Fixes:
 
 1. `apps/web/src/components/settings/DataManagementCard.tsx` - Async job endpoint
-2. `apps/web/src/components/canvas/ImportsTableCard.tsx` - SSE status/progress fixes
+2. `apps/web/src/components/keimenon/ImportsTableCard.tsx` - SSE status/progress fixes
 3. `apps/api/src/modules/jobs/domain/JobStateMachine.ts` - Allow queued→blocked
 
 ### Optimizations:

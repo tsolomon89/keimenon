@@ -20,7 +20,7 @@
 
 ## Overview
 
-Canvas Memory manages database schema evolution through a custom migration system that supports:
+Keimenon manages database schema evolution through a custom migration system that supports:
 
 - **Idempotent migrations**: Safe to run multiple times
 - **Defensive programming**: Checks preconditions before executing
@@ -40,7 +40,7 @@ Canvas Memory manages database schema evolution through a custom migration syste
 
 ## Dual Migration Systems
 
-Canvas Memory currently operates **two parallel migration systems**. This is intentional but should be understood clearly.
+Keimenon currently operates **two parallel migration systems**. This is intentional but should be understood clearly.
 
 ### System 1: SQL Migrations
 
@@ -303,7 +303,7 @@ DB_PATH=./test.db npx tsx apps/api/src/migrations/run-migrations.ts --rollback N
 
 ```bash
 # 1. Backup production database
-cp ~/.canvas-memory/canvas.db ~/.canvas-memory/canvas-backup-$(date +%Y%m%d).db
+cp ~/.keimenon/keimenon.db ~/.keimenon/keimenon-backup-$(date +%Y%m%d).db
 
 # 2. Run migrations
 npx tsx apps/api/src/migrations/run-migrations.ts

@@ -8,7 +8,7 @@
  * Run: npm run dev (in apps/api)
  */
 
-import { describe, it, before, after } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import assert from 'node:assert';
 import { SQLiteClient } from '@keimenon/db';
 import { AuthService } from '../services/auth.service';
@@ -31,7 +31,7 @@ describe('Import-Enhanced Integration Tests', () => {
   let adminToken: string;
   let clientToken: string;
 
-  before(async () => {
+  beforeAll(async () => {
     console.log('⏳ Setting up test database and accounts...');
 
     // Setup test database
@@ -142,7 +142,7 @@ describe('Import-Enhanced Integration Tests', () => {
     console.log('✅ Test setup complete');
   });
 
-  after(async () => {
+  afterAll(async () => {
     console.log('🧹 Cleaning up test database...');
     if (db) {
       await db.disconnect();

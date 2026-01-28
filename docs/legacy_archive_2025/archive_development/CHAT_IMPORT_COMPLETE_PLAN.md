@@ -750,7 +750,7 @@
 
 ---
 
-## Phase 3: Canvas Integration After Review ✅
+## Phase 3: Keimenon Integration After Review ✅
 
 ### 3.1 Post-Review Transition
 
@@ -763,16 +763,16 @@ const handleApplyChanges = async () => {
   // 2. Close review panel
   setShowReviewPanel(false);
 
-  // 3. Transition to canvas with new sources
-  router.push('/canvas?import_session=' + sessionId);
+  // 3. Transition to keimenon with new sources
+  router.push('/keimenon?import_session=' + sessionId);
 };
 ```
 
-### 3.2 Canvas Display
+### 3.2 Keimenon Display
 
 ```tsx
-// Canvas auto-loads imported sources
-<CanvasViewport>
+// Keimenon auto-loads imported sources
+<KeimenonViewport>
   {importedGroups.map((group) => (
     <GroupCard
       key={group.id}
@@ -785,7 +785,7 @@ const handleApplyChanges = async () => {
       onSelect={() => selectGroup(group.id)}
     />
   ))}
-</CanvasViewport>
+</KeimenonViewport>
 ```
 
 ---
@@ -1354,4 +1354,4 @@ export class ReviewDecisionService {
 5. **Wire up review decision** application
 6. **Test end-to-end** flow
 
-This complete plan covers every detail from the exact form controls through the duplicate review UI to the final canvas integration with LHS/RHS sidebars.
+This complete plan covers every detail from the exact form controls through the duplicate review UI to the final keimenon integration with LHS/RHS sidebars.

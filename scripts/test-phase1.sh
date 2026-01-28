@@ -5,7 +5,7 @@
 set -e
 
 API_URL="http://localhost:4001/api/v1"
-DB_PATH="packages/db/data/canvas.db"
+DB_PATH="packages/db/data/keimenon.db"
 
 echo "========================================="
 echo "Phase 1 Testing Script"

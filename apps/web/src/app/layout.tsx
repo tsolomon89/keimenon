@@ -12,7 +12,7 @@ import { TokenExpirationListener } from '@/components/auth/TokenExpirationListen
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Canvas Memory OS',
+  title: 'Keimenon',
   description: 'Graph-native knowledge management and research platform',
 };
 

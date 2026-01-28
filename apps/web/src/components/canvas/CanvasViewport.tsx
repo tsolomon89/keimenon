@@ -2,38 +2,38 @@
 
 import { useEffect, useRef, useState, useMemo, useImperativeHandle, forwardRef } from 'react';
 import { FileText, FolderPlus, Upload } from 'lucide-react';
-import { useCanvasStore } from '@/store/canvasStore';
-import { Canvas2D, Canvas2DHandle } from './Canvas2D';
+import { useKeimenonStore } from '@/store/keimenonStore';
+import { Keimenon2D, Keimenon2DHandle } from './Keimenon2D';
 import { ProgressVisualization } from './ProgressVisualization';
 import { GraphNode, GraphEdge } from '@keimenon/graph';
 import { useJobStream } from '@/hooks/useJobStream';
 import { logDataEvent } from '@/lib/error-handler';
 
-interface CanvasViewportProps {
+interface KeimenonViewportProps {
   onOpenUpload: () => void;
   onOpenChatImport: () => void;
 }
 
-export interface CanvasViewportHandle {
+export interface KeimenonViewportHandle {
   zoomIn: () => void;
   zoomOut: () => void;
   centerView: () => void;
 }
 
-export const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportProps>(
+export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewportProps>(
   ({ onOpenUpload, onOpenChatImport }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const canvas2DRef = useRef<Canvas2DHandle>(null);
+    const keimenon2DRef = useRef<Keimenon2DHandle>(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-    const nodes = useCanvasStore((state) => state.nodes);
-    const edges = useCanvasStore((state) => state.edges);
-    const isLoading = useCanvasStore((state) => state.isLoading);
-    const error = useCanvasStore((state) => state.error);
-    const filters = useCanvasStore((state) => state.filters);
-    const setSelectedNode = useCanvasStore((state) => state.setSelectedNode);
-    const selectNode = useCanvasStore((state) => state.selectNode);
-    const clearSelection = useCanvasStore((state) => state.clearSelection);
+    const nodes = useKeimenonStore((state) => state.nodes);
+    const edges = useKeimenonStore((state) => state.edges);
+    const isLoading = useKeimenonStore((state) => state.isLoading);
+    const error = useKeimenonStore((state) => state.error);
+    const filters = useKeimenonStore((state) => state.filters);
+    const setSelectedNode = useKeimenonStore((state) => state.setSelectedNode);
+    const selectNode = useKeimenonStore((state) => state.selectNode);
+    const clearSelection = useKeimenonStore((state) => state.clearSelection);
 
     // Track active import job for progress visualization
     const { jobs } = useJobStream();
@@ -56,9 +56,9 @@ export const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportPro
     useImperativeHandle(
       ref,
       () => ({
-        zoomIn: () => canvas2DRef.current?.zoomIn(),
-        zoomOut: () => canvas2DRef.current?.zoomOut(),
-        centerView: () => canvas2DRef.current?.centerView(),
+        zoomIn: () => keimenon2DRef.current?.zoomIn(),
+        zoomOut: () => keimenon2DRef.current?.zoomOut(),
+        centerView: () => keimenon2DRef.current?.centerView(),
       }),
       []
     );
@@ -119,39 +119,39 @@ export const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportPro
       }));
 
     const handleNodeClick = (node: GraphNode) => {
-      logDataEvent('Canvas node clicked', 'canvas.node.click', {
+      logDataEvent('Keimenon node clicked', 'keimenon.node.click', {
         nodeId: node.id,
         nodeKind: node.kind,
       });
 
-      // Find the corresponding CanvasNode and set it as selected
-      const canvasNode = displayNodes.find((n) => n.id === node.id);
-      if (canvasNode) {
-        setSelectedNode(canvasNode);
+      // Find the corresponding KeimenonNode and set it as selected
+      const keimenonNode = displayNodes.find((n) => n.id === node.id);
+      if (keimenonNode) {
+        setSelectedNode(keimenonNode);
       }
     };
 
     const handleNodeDoubleClick = (node: GraphNode) => {
-      logDataEvent('Canvas node double-clicked', 'canvas.node.doubleClick', {
+      logDataEvent('Keimenon node double-clicked', 'keimenon.node.doubleClick', {
         nodeId: node.id,
         nodeKind: node.kind,
       });
       // TODO: Implement zoom/focus on double-clicked node
-      // Related: apps/web/src/components/canvas/Canvas2D.tsx (add focusOnNode method)
+      // Related: apps/web/src/components/keimenon/Keimenon2D.tsx (add focusOnNode method)
       // See: docs/features/CANVAS_NAVIGATION.md (needs creation)
     };
 
     const handleSelectionChange = (selectedIds: string[]) => {
-      logDataEvent('Canvas selection changed', 'canvas.selection.change', {
+      logDataEvent('Keimenon selection changed', 'keimenon.selection.change', {
         selectionCount: selectedIds.length,
       });
 
       if (selectedIds.length === 0) {
         clearSelection();
       } else if (selectedIds.length === 1) {
-        const canvasNode = displayNodes.find((n) => n.id === selectedIds[0]);
-        if (canvasNode) {
-          setSelectedNode(canvasNode);
+        const keimenonNode = displayNodes.find((n) => n.id === selectedIds[0]);
+        if (keimenonNode) {
+          setSelectedNode(keimenonNode);
         }
       } else {
         // Multi-select: update store with all selected IDs
@@ -201,11 +201,11 @@ export const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportPro
           </div>
         )}
 
-        {/* Canvas content or empty state */}
+        {/* Keimenon content or empty state */}
         {!isLoading && !error && hasContent && dimensions.width > 0 && (
           <>
-            <Canvas2D
-              ref={canvas2DRef}
+            <Keimenon2D
+              ref={keimenon2DRef}
               nodes={graphNodes}
               edges={graphEdges}
               width={dimensions.width}
@@ -228,7 +228,7 @@ export const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportPro
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center space-y-8 max-w-md">
               <div>
-                <h2 className="text-2xl font-semibold mb-2">Welcome to Canvas Memory OS</h2>
+                <h2 className="text-2xl font-semibold mb-2">Welcome to Keimenon</h2>
                 <p className="text-slate-400">
                   Get started by uploading your first sources or creating a group
                 </p>
@@ -247,7 +247,7 @@ export const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportPro
                     <div className="flex-1">
                       <h3 className="font-semibold mb-1">Upload Sources</h3>
                       <p className="text-sm text-slate-400">
-                        Add PDFs, text files, markdown, or images to your canvas
+                        Add PDFs, text files, markdown, or images to your keimenon
                       </p>
                     </div>
                   </div>
@@ -292,4 +292,4 @@ export const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportPro
   }
 );
 
-CanvasViewport.displayName = 'CanvasViewport';
+KeimenonViewport.displayName = 'KeimenonViewport';

@@ -24,10 +24,10 @@ SYSTEM ARCHITECTURE:
 MCP SERVERS:
 1. playwright-e2e: Test execution, app management, artifact access
 2. visual-feedback: Screenshot comparison, layout analysis, regression detection
-3. canvas-database: Query nodes/edges, inspect schema
-4. canvas-api-testing: Test endpoints, validate isolation
-5. canvas-docs: Search documentation, extract TODOs
-6. canvas-settings-crm: Manage users/accounts
+3. keimenon-database: Query nodes/edges, inspect schema
+4. keimenon-api-testing: Test endpoints, validate isolation
+5. keimenon-docs: Search documentation, extract TODOs
+6. keimenon-settings-crm: Manage users/accounts
 
 SKILLS AVAILABLE:
 1. autonomous-test-discoverer: Analyze coverage gaps, identify untested endpoints
@@ -120,7 +120,7 @@ This is a **Level 4 autonomous testing system** that can:
   - `analyze_layout` - Layout analysis
   - `capture_multi_viewport` - Multi-device screenshots
 
-#### 3. **canvas-database** (Data Queries)
+#### 3. **keimenon-database** (Data Queries)
 
 - **Purpose:** Query graph database for test data validation
 - **Key Tools:**
@@ -129,7 +129,7 @@ This is a **Level 4 autonomous testing system** that can:
   - `inspect_schema` - View database schema
   - `search_content` - Full-text search
 
-#### 4. **canvas-api-testing** (API Validation)
+#### 4. **keimenon-api-testing** (API Validation)
 
 - **Purpose:** Test API endpoints, validate isolation
 - **Key Tools:**
@@ -138,7 +138,7 @@ This is a **Level 4 autonomous testing system** that can:
   - `test_crud` - Full CRUD lifecycle testing
   - `test_multi_tenant` - Verify data isolation
 
-#### 5. **canvas-docs** (Documentation)
+#### 5. **keimenon-docs** (Documentation)
 
 - **Purpose:** Search docs, find TODOs, get architecture info
 - **Key Tools:**
@@ -147,7 +147,7 @@ This is a **Level 4 autonomous testing system** that can:
   - `list_todos` - Extract TODO comments
   - `get_architecture_info` - Get architecture details
 
-#### 6. **canvas-settings-crm** (User Management)
+#### 6. **keimenon-settings-crm** (User Management)
 
 - **Purpose:** Manage users and accounts for testing
 - **Key Tools:**

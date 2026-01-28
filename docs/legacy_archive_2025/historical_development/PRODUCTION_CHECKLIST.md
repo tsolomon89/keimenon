@@ -76,7 +76,7 @@
 - [ ] Start services (PM2/Docker)
 - [ ] Verify health endpoints (`/health`)
 - [ ] Check process logs for errors
-- [ ] Test critical flows (login, import, canvas)
+- [ ] Test critical flows (login, import, keimenon)
 
 ### Post-Launch Verification
 
@@ -85,7 +85,7 @@
 - [ ] User registration works
 - [ ] User login works
 - [ ] File import works
-- [ ] Canvas navigation works
+- [ ] Keimenon navigation works
 - [ ] Error handling works (test 404, 500)
 - [ ] SSE connections work (job progress)
 - [ ] Account switching works (if multi-account)
@@ -222,7 +222,7 @@ npm ci
 npm run build
 
 # 3. Restore database (if schema changed)
-gunzip -c /var/backups/canvas-memory/canvas_YYYYMMDD_HHMMSS.db.gz > /var/lib/canvas-memory/canvas.db
+gunzip -c /var/backups/keimenon/keimenon_YYYYMMDD_HHMMSS.db.gz > /var/lib/keimenon/keimenon.db
 
 # 4. Restart services
 pm2 start all

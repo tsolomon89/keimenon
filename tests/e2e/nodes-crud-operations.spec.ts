@@ -37,7 +37,7 @@ test.describe('Nodes - CRUD Operations', () => {
 
   test.afterEach(async ({ page }) => {
     // Cleanup test data
-    await authDelete(page, '/api/v1/data/canvas', {
+    await authDelete(page, '/api/v1/data/keimenon', {
       params: { data_tag: 'test' },
     });
   });

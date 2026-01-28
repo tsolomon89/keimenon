@@ -1,6 +1,6 @@
 # Authentication & Authorization
 
-**Canvas Memory OS - Multi-Tenant Security Architecture**
+**Keimenon - Multi-Tenant Security Architecture**
 
 This document describes the authentication and authorization system, including JWT-based auth, multi-tenant isolation, role-based access control (RBAC), and security best practices.
 
@@ -22,7 +22,7 @@ This document describes the authentication and authorization system, including J
 
 ## Overview
 
-Canvas Memory OS implements a **production-ready, multi-tenant authentication system** with:
+Keimenon implements a **production-ready, multi-tenant authentication system** with:
 
 - ✅ **JWT-based authentication** with bcrypt password hashing
 - ✅ **Multi-tenant data isolation** (complete separation between accounts)
@@ -64,7 +64,7 @@ Canvas Memory OS implements a **production-ready, multi-tenant authentication sy
 
 ### Three-Level Hierarchy
 
-Canvas Memory OS uses a three-level account structure:
+Keimenon uses a three-level account structure:
 
 ```
 Account (Tenant)
@@ -88,7 +88,7 @@ Account (Tenant)
 
 **Example**:
 
-- Admin account: `support@canvas-memory.com` (can debug all accounts)
+- Admin account: `support@keimenon.com` (can debug all accounts)
 - Client account: `alice@acme.com` (can only see Acme Corp data)
 
 ### Account Classes (Tiers)
@@ -107,7 +107,7 @@ Account (Tenant)
 | File uploads         | ✅   | ✅           | ✅             |
 | Chat import          | ✅   | ✅           | ✅             |
 | Code extraction      | ✅   | ✅           | ✅             |
-| 2D canvas            | ✅   | ✅           | ✅             |
+| 2D keimenon          | ✅   | ✅           | ✅             |
 | AI chat (BYO key)    | ❌   | ✅           | ✅             |
 | Claim extraction     | ❌   | ✅           | ✅             |
 | Verifiers            | ❌   | ✅           | ✅             |

@@ -1,6 +1,6 @@
 /**
  * PM2 Ecosystem Configuration
- * Canvas Memory OS - Production Process Management
+ * Keimenon - Production Process Management
  *
  * Usage:
  *   pm2 start ecosystem.config.js                    # Start all apps
@@ -17,13 +17,13 @@ module.exports = {
   apps: [
     // API Server (Backend)
     {
-      name: 'canvas-api',
+      name: 'keimenon-api',
       script: 'apps/api/dist/index.js',
       cwd: '.',
-      instances: process.env.API_INSTANCES || 2,  // Use 2 instances for load balancing
-      exec_mode: 'cluster',                         // Cluster mode for multi-core utilization
-      watch: false,                                 // Don't watch in production
-      max_memory_restart: '500M',                   // Restart if memory exceeds 500MB
+      instances: process.env.API_INSTANCES || 2, // Use 2 instances for load balancing
+      exec_mode: 'cluster', // Cluster mode for multi-core utilization
+      watch: false, // Don't watch in production
+      max_memory_restart: '500M', // Restart if memory exceeds 500MB
 
       // Environment variables
       env: {
@@ -36,47 +36,47 @@ module.exports = {
         PORT: 4001,
         STORAGE_MODE: process.env.STORAGE_MODE || 'local',
         JWT_SECRET: process.env.JWT_SECRET,
-        SQLITE_PATH: process.env.SQLITE_PATH || '~/.canvas-memory/canvas.db',
-        LOCAL_DOCS_PATH: process.env.LOCAL_DOCS_PATH || '~/.canvas-memory',
+        SQLITE_PATH: process.env.SQLITE_PATH || '~/.keimenon/keimenon.db',
+        LOCAL_DOCS_PATH: process.env.LOCAL_DOCS_PATH || '~/.keimenon',
       },
 
       // Auto-restart configuration
       autorestart: true,
-      max_restarts: 10,                             // Max 10 restarts in min_uptime window
-      min_uptime: '10s',                            // Minimum uptime before considering stable
-      restart_delay: 4000,                          // Wait 4s before restarting
+      max_restarts: 10, // Max 10 restarts in min_uptime window
+      min_uptime: '10s', // Minimum uptime before considering stable
+      restart_delay: 4000, // Wait 4s before restarting
 
       // Error handling
       error_file: './logs/api-error.log',
       out_file: './logs/api-out.log',
       log_file: './logs/api-combined.log',
-      time: true,                                   // Prefix logs with timestamp
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',    // Log timestamp format
+      time: true, // Prefix logs with timestamp
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z', // Log timestamp format
 
       // Log rotation (requires pm2-logrotate module)
       // Install: pm2 install pm2-logrotate
-      merge_logs: true,                             // Merge cluster logs
+      merge_logs: true, // Merge cluster logs
 
       // Health monitoring
-      listen_timeout: 8000,                         // Wait 8s for app to be ready
-      kill_timeout: 5000,                           // Wait 5s before force killing
+      listen_timeout: 8000, // Wait 8s for app to be ready
+      kill_timeout: 5000, // Wait 5s before force killing
 
       // Advanced settings
-      instance_var: 'INSTANCE_ID',                  // Expose instance ID as env var
-      post_update: ['npm install', 'npm run build:api'],  // Run after code update
+      instance_var: 'INSTANCE_ID', // Expose instance ID as env var
+      post_update: ['npm install', 'npm run build:api'], // Run after code update
 
       // Graceful shutdown
-      wait_ready: true,                             // Wait for process.send('ready')
+      wait_ready: true, // Wait for process.send('ready')
       shutdown_with_message: false,
     },
 
     // Frontend (Web UI)
     {
-      name: 'canvas-web',
-      script: 'apps/web/.next/standalone/server.js',  // Next.js standalone output
+      name: 'keimenon-web',
+      script: 'apps/web/.next/standalone/server.js', // Next.js standalone output
       cwd: '.',
-      instances: 1,                                 // Single instance for Next.js
-      exec_mode: 'fork',                            // Fork mode (not cluster)
+      instances: 1, // Single instance for Next.js
+      exec_mode: 'fork', // Fork mode (not cluster)
       watch: false,
       max_memory_restart: '300M',
 
@@ -112,18 +112,18 @@ module.exports = {
 
     // Background Jobs (Optional - for scheduled tasks)
     {
-      name: 'canvas-jobs',
-      script: 'apps/api/dist/jobs.js',              // Create this file for background jobs
+      name: 'keimenon-jobs',
+      script: 'apps/api/dist/jobs.js', // Create this file for background jobs
       cwd: '.',
       instances: 1,
       exec_mode: 'fork',
       watch: false,
       max_memory_restart: '200M',
-      cron_restart: '0 3 * * *',                    // Restart daily at 3 AM
+      cron_restart: '0 3 * * *', // Restart daily at 3 AM
 
       env_production: {
         NODE_ENV: 'production',
-        SQLITE_PATH: process.env.SQLITE_PATH || '~/.canvas-memory/canvas.db',
+        SQLITE_PATH: process.env.SQLITE_PATH || '~/.keimenon/keimenon.db',
       },
 
       autorestart: true,
@@ -144,35 +144,37 @@ module.exports = {
     // Production deployment configuration
     production: {
       user: 'deploy',
-      host: ['api.canvas-memory.com'],
+      host: ['api.keimenon.com'],
       ref: 'origin/main',
-      repo: 'git@github.com:your-org/canvas-memory-os.git',
-      path: '/var/www/canvas-memory',
+      repo: 'git@github.com:your-org/keimenon.git',
+      path: '/var/www/keimenon',
 
       // Pre-deploy commands
       'pre-deploy-local': '',
       'pre-deploy': 'git fetch --all',
 
       // Post-deploy commands
-      'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production && pm2 save',
+      'post-deploy':
+        'npm install && npm run build && pm2 reload ecosystem.config.js --env production && pm2 save',
 
       // Environment
-      'env': {
-        NODE_ENV: 'production'
-      }
+      env: {
+        NODE_ENV: 'production',
+      },
     },
 
     // Staging deployment configuration
     staging: {
       user: 'deploy',
-      host: ['staging.canvas-memory.com'],
+      host: ['staging.keimenon.com'],
       ref: 'origin/develop',
-      repo: 'git@github.com:your-org/canvas-memory-os.git',
-      path: '/var/www/canvas-memory-staging',
-      'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env staging && pm2 save',
-      'env': {
-        NODE_ENV: 'staging'
-      }
+      repo: 'git@github.com:your-org/keimenon.git',
+      path: '/var/www/keimenon-staging',
+      'post-deploy':
+        'npm install && npm run build && pm2 reload ecosystem.config.js --env staging && pm2 save',
+      env: {
+        NODE_ENV: 'staging',
+      },
     },
   },
 };
@@ -209,7 +211,7 @@ module.exports = {
  *    pm2 delete all     # Delete all apps
  *
  * 8. Scale applications:
- *    pm2 scale canvas-api 4    # Scale API to 4 instances
+ *    pm2 scale keimenon-api 4    # Scale API to 4 instances
  *
  * 9. Install log rotation (recommended):
  *    pm2 install pm2-logrotate

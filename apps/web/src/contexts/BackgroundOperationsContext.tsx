@@ -133,7 +133,7 @@ function deriveTitle(job: JobUpdate, existing?: Operation): string {
   if (job.type === 'delete') {
     return job.config?.deleteScope === 'all-clients'
       ? 'Clearing all client data'
-      : 'Clearing canvas data';
+      : 'Clearing keimenon data';
   }
   if (job.type === 'export') {
     return 'Export job';
@@ -148,8 +148,8 @@ function deriveDescription(job: JobUpdate, existing?: Operation): string | undef
   }
   if (job.type === 'delete') {
     return job.config?.deleteScope === 'all-clients'
-      ? 'Deleting canvas data for all client accounts'
-      : 'Deleting canvas data for this account';
+      ? 'Deleting keimenon data for all client accounts'
+      : 'Deleting keimenon data for this account';
   }
   return existing?.description;
 }

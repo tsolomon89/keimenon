@@ -38,7 +38,7 @@
 
 ### ChatImportModal Rewrite
 
-**File:** `apps/web/src/components/canvas/ChatImportModal.tsx`
+**File:** `apps/web/src/components/keimenon/ChatImportModal.tsx`
 
 The new modal needs to be written with these sections (too large for single file write):
 
@@ -109,13 +109,13 @@ Write the complete 1000-line modal in one go (I created the content but hit file
 - `apps/web/src/components/import/DuplicateTreeView.tsx`
 - `apps/web/src/components/import/DuplicateActionsPanel.tsx`
 
-### Phase 3: Canvas Integration
+### Phase 3: Keimenon Integration
 
 **Files to create:**
 
-- `apps/web/src/components/canvas/SourceTreeView.tsx` (LHS)
-- `apps/web/src/components/canvas/SourceInspector.tsx` (RHS)
-- `apps/web/src/components/canvas/GroupCard.tsx`
+- `apps/web/src/components/keimenon/SourceTreeView.tsx` (LHS)
+- `apps/web/src/components/keimenon/SourceInspector.tsx` (RHS)
+- `apps/web/src/components/keimenon/GroupCard.tsx`
 
 ### Phase 4: Backend Services
 

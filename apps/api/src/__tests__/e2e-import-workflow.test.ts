@@ -13,7 +13,7 @@
  * This test verifies the entire user journey works end-to-end.
  */
 
-import { describe, test, before, after, beforeEach, afterEach } from 'node:test';
+import { describe, test, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import assert from 'node:assert';
 import Database from 'better-sqlite3';
 import path from 'path';
@@ -81,7 +81,7 @@ async function register(
 }
 
 const API_URL = process.env.TEST_API_URL || 'http://localhost:4001';
-const DB_PATH = process.env.DB_PATH || path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+const DB_PATH = process.env.DB_PATH || path.join(os.homedir(), '.keimenon', 'keimenon.db');
 
 // Test credentials (from migration 001_seed_admin.ts)
 const ADMIN_EMAIL = 'admin@admin.com';
@@ -93,7 +93,7 @@ describe('E2E Import Workflow', () => {
   let adminAccountId: string;
   let adminUserId: string;
 
-  before(async () => {
+  beforeAll(async () => {
     try {
       // Initialize database connection
       console.log(`DEBUG: Connecting to DB at ${DB_PATH}`);
@@ -127,7 +127,7 @@ describe('E2E Import Workflow', () => {
     }
   });
 
-  after(() => {
+  afterAll(() => {
     if (db) {
       db.close();
     }
@@ -144,7 +144,7 @@ describe('E2E Import Workflow', () => {
   });
 
   describe('Complete Import Flow', () => {
-    test('should complete full import workflow with SSE updates', { timeout: 60000 }, async () => {
+    test('should complete full import workflow with SSE updates', async () => {
       // 1. Get initial counts
       const nodesBefore = countNodes(db, adminAccountId);
       const edgesBefore = countEdges(db, adminAccountId);
@@ -271,9 +271,9 @@ describe('E2E Import Workflow', () => {
       // 13. Close SSE connection
       sseCollector.close();
       console.log('🔌 SSE disconnected');
-    }); // 60 second timeout for full workflow
+    }, 60000); // 60 second timeout for full workflow
 
-    test('should handle small file import (< 10 conversations)', { timeout: 30000 }, async () => {
+    test('should handle small file import (< 10 conversations)', async () => {
       const testFile = getTestFilePath('tiny.json');
       const { jobId } = await createImportJob(testFile, adminToken);
 
@@ -286,9 +286,9 @@ describe('E2E Import Workflow', () => {
       assert.ok(nodes > 0);
 
       console.log(`✅ Imported ${nodes} nodes from tiny.json`);
-    });
+    }, 30000);
 
-    test('should handle medium file import (10-50 conversations)', { timeout: 90000 }, async () => {
+    test('should handle medium file import (10-50 conversations)', async () => {
       const testFile = getTestFilePath('small.json');
       const { jobId } = await createImportJob(testFile, adminToken);
 
@@ -301,9 +301,9 @@ describe('E2E Import Workflow', () => {
       assert.ok(nodes > 10);
 
       console.log(`✅ Imported ${nodes} nodes from small.json`);
-    });
+    }, 90000);
 
-    test('should emit progress updates during import', { timeout: 90000 }, async () => {
+    test('should emit progress updates during import', async () => {
       const sseCollector = new SSECollector(`${API_URL}/api/v1/stream/jobs`, adminToken);
       await sseCollector.connect();
 
@@ -330,9 +330,9 @@ describe('E2E Import Workflow', () => {
       assert.strictEqual(Math.max(...progressValues), 100);
 
       sseCollector.close();
-    });
+    }, 90000);
 
-    test('should include import metadata in job state', { timeout: 30000 }, async () => {
+    test('should include import metadata in job state', async () => {
       const testFile = getTestFilePath('tiny.json');
       const { jobId } = await createImportJob(testFile, adminToken, {
         export_code: true,
@@ -351,11 +351,11 @@ describe('E2E Import Workflow', () => {
       assert.ok(completedJob.state.result.nodesCreated > 0);
 
       console.log('📊 Import stats:', completedJob.state.result);
-    });
+    }, 30000);
   });
 
   describe('Import Error Handling', () => {
-    test('should fail gracefully on malformed JSON', { timeout: 20000 }, async () => {
+    test('should fail gracefully on malformed JSON', async () => {
       // Create a temporary malformed JSON file
       const fs = require('fs');
       const tempFile = path.join(os.tmpdir(), 'malformed.json');
@@ -375,9 +375,9 @@ describe('E2E Import Workflow', () => {
         // Cleanup temp file
         fs.unlinkSync(tempFile);
       }
-    });
+    }, 20000);
 
-    test('should handle empty file', { timeout: 20000 }, async () => {
+    test('should handle empty file', async () => {
       const fs = require('fs');
       const tempFile = path.join(os.tmpdir(), 'empty.json');
       fs.writeFileSync(tempFile, '[]');
@@ -398,9 +398,9 @@ describe('E2E Import Workflow', () => {
       } finally {
         fs.unlinkSync(tempFile);
       }
-    });
+    }, 20000);
 
-    test('should handle missing file gracefully', { timeout: 10000 }, async () => {
+    test('should handle missing file gracefully', async () => {
       const nonExistentFile = '/tmp/does-not-exist.json';
 
       try {
@@ -411,11 +411,11 @@ describe('E2E Import Workflow', () => {
         assert.ok(error.message.includes('ENOENT'));
         console.log('✅ Missing file error caught');
       }
-    });
+    }, 10000);
   });
 
   describe('Import Jobs List API', () => {
-    test('should list active import jobs', { timeout: 90000 }, async () => {
+    test('should list active import jobs', async () => {
       // Create multiple import jobs
       const job1 = await createImportJob(getTestFilePath('tiny.json'), adminToken);
       const job2 = await createImportJob(getTestFilePath('tiny.json'), adminToken);
@@ -434,7 +434,7 @@ describe('E2E Import Workflow', () => {
       // Wait for completion to avoid interfering with other tests
       await waitForJobCompletion(job1.jobId, adminToken);
       await waitForJobCompletion(job2.jobId, adminToken);
-    });
+    }, 90000);
 
     test('should filter jobs by status', async () => {
       const { jobId } = await createImportJob(getTestFilePath('tiny.json'), adminToken);
@@ -460,7 +460,7 @@ describe('E2E Import Workflow', () => {
   });
 
   describe('Concurrent Import Jobs', () => {
-    test('should handle multiple concurrent imports', { timeout: 120000 }, async () => {
+    test('should handle multiple concurrent imports', async () => {
       // Start 3 imports simultaneously
       const [job1, job2, job3] = await Promise.all([
         createImportJob(getTestFilePath('tiny.json'), adminToken),
@@ -488,9 +488,9 @@ describe('E2E Import Workflow', () => {
       assert.ok(nodes > 10); // At least some data
 
       console.log(`📊 Total nodes imported: ${nodes}`);
-    });
+    }, 120000);
 
-    test('should respect worker pool concurrency limits', { timeout: 150000 }, async () => {
+    test('should respect worker pool concurrency limits', async () => {
       const sseCollector = new SSECollector(`${API_URL}/api/v1/stream/jobs`, adminToken);
       await sseCollector.connect();
 
@@ -526,11 +526,11 @@ describe('E2E Import Workflow', () => {
 
       sseCollector.close();
       console.log('✅ All jobs completed');
-    });
+    }, 150000);
   });
 
   describe('SSE Integration', () => {
-    test('should broadcast to correct account only', { timeout: 30000 }, async () => {
+    test('should broadcast to correct account only', async () => {
       // This test would require a second account
       // For now, verify our account receives events
 
@@ -551,9 +551,9 @@ describe('E2E Import Workflow', () => {
 
       sseCollector.close();
       console.log(`📡 Received ${ourEvents.length} SSE events for our job`);
-    });
+    }, 30000);
 
-    test('should include job type in SSE events', { timeout: 30000 }, async () => {
+    test('should include job type in SSE events', async () => {
       const sseCollector = new SSECollector(`${API_URL}/api/v1/stream/jobs`, adminToken);
       await sseCollector.connect();
 
@@ -578,6 +578,6 @@ describe('E2E Import Workflow', () => {
       sseCollector.close();
 
       console.log('✅ All SSE events have correct job type');
-    });
+    }, 30000);
   });
 });

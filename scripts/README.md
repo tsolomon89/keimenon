@@ -1,6 +1,6 @@
 # Scripts Directory
 
-Development and production orchestration scripts for Canvas Memory OS.
+Development and production orchestration scripts for Keimenon.
 
 ## Quick Start
 
@@ -254,8 +254,8 @@ pm2 start ecosystem.config.js
 ### systemd (Linux)
 
 ```bash
-sudo systemctl enable canvas-api
-sudo systemctl start canvas-api
+sudo systemctl enable keimenon-api
+sudo systemctl start keimenon-api
 ```
 
 ### Docker
@@ -292,4 +292,4 @@ When adding new scripts:
 
 ## License
 
-Part of Canvas Memory OS - see root LICENSE file.
+Part of Keimenon - see root LICENSE file.

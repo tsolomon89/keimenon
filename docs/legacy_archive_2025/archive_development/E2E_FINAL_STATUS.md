@@ -21,7 +21,7 @@
 ### Evidence:
 
 1. **Settings Page**: "Failed to load settings - Failed to communicate with server"
-2. **Canvas Page**: "Failed to load graph - An error occurred"
+2. **Keimenon Page**: "Failed to load graph - An error occurred"
 3. **Dev Servers**: Running correctly (web:3000, api:4001) ✅
 4. **Test User**: admin@admin.com likely doesn't exist in database ❌
 
@@ -46,7 +46,7 @@
 All tests fail at the same points:
 
 - **Settings tests**: Can't find "Data" category (sidebar empty due to failed API call)
-- **Canvas tests**: Can't find "Background Operations" table (canvas fails to load graph)
+- **Keimenon tests**: Can't find "Background Operations" table (keimenon fails to load graph)
 
 ---
 
@@ -73,12 +73,12 @@ const dataCategory = page.locator('text="Data"').first();
 await dataCategory.click();
 
 // ✅ Correct: Verify DataManagementCard loaded
-await page.getByText('Clear Canvas Data').waitFor({ timeout: 10000 });
+await page.getByText('Clear Keimenon Data').waitFor({ timeout: 10000 });
 ```
 
 **Validation**: This is correct based on:
 
-- [CanvasToolbar.tsx:236-242](apps/web/src/components/canvas/CanvasToolbar.tsx#L236-L242) - Settings button
+- [KeimenonToolbar.tsx:236-242](apps/web/src/components/keimenon/KeimenonToolbar.tsx#L236-L242) - Settings button
 - [settings.ts:428-468](packages/types/src/settings.ts#L428-L468) - "Data" category structure
 
 ### 2. Helper Function: `waitForOperationsTable()` ([Lines 84-112](tests/e2e/data-management-ui-updates.spec.ts#L84-L112))
@@ -86,8 +86,8 @@ await page.getByText('Clear Canvas Data').waitFor({ timeout: 10000 });
 **Before:**
 
 ```typescript
-// ❌ Wrong: Checked if canvas button was visible, but didn't ensure canvas mode
-if (await canvasButton.isVisible()) {
+// ❌ Wrong: Checked if keimenon button was visible, but didn't ensure keimenon mode
+if (await keimenonButton.isVisible()) {
   const settingsActive = await page
     .locator('button[title="Settings"]')
     .evaluate((el) => el.classList.contains('bg-slate-800'));
@@ -97,13 +97,13 @@ if (await canvasButton.isVisible()) {
 **After:**
 
 ```typescript
-// ✅ Correct: Explicitly navigate to canvas and click Canvas mode button
-await page.goto('/canvas');
+// ✅ Correct: Explicitly navigate to keimenon and click Keimenon mode button
+await page.goto('/keimenon');
 await dismissWelcomeModal(page);
 
-const canvasButton = page.locator('button[title="Canvas"]');
-if (await canvasButton.isVisible({ timeout: 5000 })) {
-  await canvasButton.click(); // Always click to ensure canvas mode
+const keimenonButton = page.locator('button[title="Keimenon"]');
+if (await keimenonButton.isVisible({ timeout: 5000 })) {
+  await keimenonButton.click(); // Always click to ensure keimenon mode
 }
 
 // ✅ Correct: Wait for operations table with explicit visibility check
@@ -113,15 +113,15 @@ await operationsHeading.waitFor({ state: 'visible', timeout: 10000 });
 
 **Validation**: This is correct based on:
 
-- [CanvasLayout.tsx:356-367](apps/web/src/components/canvas/CanvasLayout.tsx#L356-L367) - Canvas mode rendering
-- [ImportsTableCard.tsx](apps/web/src/components/canvas/ImportsTableCard.tsx) - "Background Operations" heading
+- [KeimenonLayout.tsx:356-367](apps/web/src/components/keimenon/KeimenonLayout.tsx#L356-L367) - Keimenon mode rendering
+- [ImportsTableCard.tsx](apps/web/src/components/keimenon/ImportsTableCard.tsx) - "Background Operations" heading
 
 ### 3. Helper Function: `dismissWelcomeModal()` ([Lines 21-42](tests/e2e/data-management-ui-updates.spec.ts#L21-L42))
 
 **Working Correctly**: Successfully dismisses modal in all tests
 
 ```typescript
-const welcomeModal = page.locator('text=/Welcome to Canvas Memory OS/i');
+const welcomeModal = page.locator('text=/Welcome to Keimenon/i');
 if (await welcomeModal.isVisible({ timeout: 2000 })) {
   const closeButton = page.locator('.fixed.inset-0 button').first();
   await closeButton.click();
@@ -164,7 +164,7 @@ Create `scripts/seed-test-db.js`:
 // 1. Initialize database schema
 // 2. Create test user: admin@admin.com / admin123
 // 3. Create sample import jobs (completed, failed, running)
-// 4. Create sample nodes/sources for canvas
+// 4. Create sample nodes/sources for keimenon
 ```
 
 Then update test workflow:
@@ -200,9 +200,9 @@ npm run | grep setup
 **All 7 critical UI issues RESOLVED and validated:**
 
 1. ✅ No page reloads - Reactive state updates ([DataManagementCard.tsx:38-68](apps/web/src/components/settings/DataManagementCard.tsx#L38-L68))
-2. ✅ Jobs/operations sync - `removeOperationsByJobIds()` ([ImportsTableCard.tsx:587-593](apps/web/src/components/canvas/ImportsTableCard.tsx#L587-L593))
+2. ✅ Jobs/operations sync - `removeOperationsByJobIds()` ([ImportsTableCard.tsx:587-593](apps/web/src/components/keimenon/ImportsTableCard.tsx#L587-L593))
 3. ✅ Fast auto-cleanup - 15s instead of 30s ([BackgroundOperationsContext.tsx:329-358](apps/web/src/contexts/BackgroundOperationsContext.tsx#L329-L358))
-4. ✅ Bulk deletion sync - Removes from both states ([ImportsTableCard.tsx:587-593](apps/web/src/components/canvas/ImportsTableCard.tsx#L587-L593))
+4. ✅ Bulk deletion sync - Removes from both states ([ImportsTableCard.tsx:587-593](apps/web/src/components/keimenon/ImportsTableCard.tsx#L587-L593))
 5. ✅ Operating context - Cache invalidation ([OperatingContext.tsx:94-95](apps/web/src/contexts/OperatingContext.tsx#L94-L95))
 6. ✅ SSE filtering - Old jobs removed client-side ([useJobStream.ts:227-241](apps/web/src/hooks/useJobStream.ts#L227-L241))
 7. ✅ Improved timing - Selection cleared correctly
@@ -218,7 +218,7 @@ npm run | grep setup
 - ✅ Helper functions implemented correctly
 - ✅ Selectors validated against actual UI components
 - ✅ Welcome modal dismissal working
-- ✅ Canvas/Settings mode switching working
+- ✅ Keimenon/Settings mode switching working
 - ⚠️ Blocked by database initialization
 
 **Ready for execution**: ❌ NO (database seeding required)
@@ -232,7 +232,7 @@ npm run | grep setup
 **Changes:**
 
 - Lines 50-76: `navigateToSettings()` - Fixed to click Settings button + Data category
-- Lines 84-112: `waitForOperationsTable()` - Added explicit canvas mode click
+- Lines 84-112: `waitForOperationsTable()` - Added explicit keimenon mode click
 - Lines 21-42: `dismissWelcomeModal()` - Already working correctly
 
 **Status**: ✅ **COMPLETE AND CORRECT**
@@ -252,7 +252,7 @@ npm run | grep setup
 - Dev servers start correctly ✅
 - Welcome modal dismissal works ✅
 - Settings button click works ✅
-- Canvas button click works ✅
+- Keimenon button click works ✅
 - **API communication fails** ❌ (database not initialized)
 
 ---

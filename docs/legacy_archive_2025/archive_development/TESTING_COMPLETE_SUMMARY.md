@@ -273,7 +273,7 @@ curl http://localhost:4001/api/v1/nodes
 
 7. **Frontend Testing**
    - Start Next.js dev server
-   - Test Canvas 2D rendering
+   - Test Keimenon 2D rendering
    - Test file upload UI
    - Test board visualization
    - Test import configuration panel
@@ -393,7 +393,7 @@ curl http://localhost:4001/api/v1/nodes
 
 ### Summary
 
-Canvas Memory OS has **excellent infrastructure and parsing capabilities**, but is blocked by **1 critical bug** that prevents data persistence. Once fixed, the system will be ready for MVP release.
+Keimenon has **excellent infrastructure and parsing capabilities**, but is blocked by **1 critical bug** that prevents data persistence. Once fixed, the system will be ready for MVP release.
 
 ### Actual Status
 

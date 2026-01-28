@@ -17,7 +17,7 @@ import {
 const router = Router();
 
 // Default config path
-const DEFAULT_CONFIG_PATH = path.join(os.homedir(), '.canvas-memory', 'config.json');
+const DEFAULT_CONFIG_PATH = path.join(os.homedir(), '.keimenon', 'config.json');
 
 /**
  * Get config file path
@@ -60,7 +60,7 @@ async function saveConfig(config: AppConfig): Promise<void> {
  */
 function getDefaultConfig(): AppConfig {
   const homeDir = os.homedir();
-  const basePath = path.join(homeDir, '.canvas-memory');
+  const basePath = path.join(homeDir, '.keimenon');
 
   return {
     version: '1.0',
@@ -301,9 +301,9 @@ router.put('/storage-mode', async (req: Request, res: Response) => {
   try {
     const { mode } = req.body;
 
-    if (!mode || !['local', 'canvas', 'hybrid'].includes(mode)) {
+    if (!mode || !['local', 'keimenon', 'hybrid'].includes(mode)) {
       return res.status(400).json({
-        error: 'Invalid storage mode. Must be: local, canvas, or hybrid',
+        error: 'Invalid storage mode. Must be: local, keimenon, or hybrid',
       });
     }
 
@@ -323,7 +323,7 @@ router.put('/storage-mode', async (req: Request, res: Response) => {
       success: true,
       message: `Storage mode changed to: ${mode}`,
       storageMode: mode,
-      requiresRestart: mode === 'canvas', // Canvas mode may need Neo4j setup
+      requiresRestart: mode === 'keimenon', // Keimenon mode may need Neo4j setup
     });
   } catch (error: any) {
     console.error('Update storage mode error:', error);

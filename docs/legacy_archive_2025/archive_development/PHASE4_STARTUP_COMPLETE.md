@@ -252,7 +252,7 @@ node scripts/validate-env.js
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  🚀 Canvas Memory OS - Development Server
+  🚀 Keimenon - Development Server
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ━━━ Pre-flight Checks ━━━
@@ -278,7 +278,7 @@ node scripts/validate-env.js
 [API] ✅ Connected to Neo4j
 [API] 💾 Initializing storage...
 [API] ✅ Storage initialized
-[API] ⚡️ Canvas Memory API running on port 3001
+[API] ⚡️ Keimenon API running on port 3001
 ✓ API ready (http://localhost:3001)
 
 ⏳ Starting Frontend...
@@ -592,10 +592,10 @@ pm2 start ecosystem.config.js
 pm2 logs
 
 # Restart
-pm2 restart canvas-api
+pm2 restart keimenon-api
 
 # Stop
-pm2 stop canvas-api
+pm2 stop keimenon-api
 
 # Monitor
 pm2 monit
@@ -603,23 +603,23 @@ pm2 monit
 
 #### Using systemd (Linux)
 
-Create `/etc/systemd/system/canvas-api.service`:
+Create `/etc/systemd/system/keimenon-api.service`:
 
 ```ini
 [Unit]
-Description=Canvas Memory API
+Description=Keimenon API
 After=network.target
 
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/var/www/canvas-memory
+WorkingDirectory=/var/www/keimenon
 ExecStart=/usr/bin/node apps/api/dist/index.js
 Restart=on-failure
 RestartSec=10
 StandardOutput=syslog
 StandardError=syslog
-SyslogIdentifier=canvas-api
+SyslogIdentifier=keimenon-api
 
 [Install]
 WantedBy=multi-user.target
@@ -627,14 +627,14 @@ WantedBy=multi-user.target
 
 ```bash
 # Enable and start
-sudo systemctl enable canvas-api
-sudo systemctl start canvas-api
+sudo systemctl enable keimenon-api
+sudo systemctl start keimenon-api
 
 # Check status
-sudo systemctl status canvas-api
+sudo systemctl status keimenon-api
 
 # View logs
-sudo journalctl -u canvas-api -f
+sudo journalctl -u keimenon-api -f
 ```
 
 ## Troubleshooting
@@ -670,7 +670,7 @@ docker ps | grep neo4j
 node scripts/wait-for.js bolt://localhost:7687 --verbose
 
 # Test with cypher-shell
-docker exec -it canvas-neo4j cypher-shell -u neo4j -p testpassword
+docker exec -it keimenon-neo4j cypher-shell -u neo4j -p testpassword
 ```
 
 ### Environment Validation Failed
@@ -809,7 +809,7 @@ curl http://localhost:3001/ready | jq
 
 ## Summary
 
-Phase 4 transforms Canvas Memory OS from a manually-managed development setup into a professionally orchestrated application with:
+Phase 4 transforms Keimenon from a manually-managed development setup into a professionally orchestrated application with:
 
 ✅ **Intelligent Startup**: Automatic dependency resolution and sequencing
 ✅ **Port Management**: Conflict detection and graceful termination

@@ -38,7 +38,7 @@ export function FirstTimeUploadModal({
             </div>
             <div>
               <h2 id="welcome-modal-title" className="text-2xl font-bold mb-2">
-                Welcome to Canvas Memory OS!
+                Welcome to Keimenon!
               </h2>
               <p id="welcome-modal-description" className="text-slate-400">
                 Let's get you started by uploading your first sources
@@ -64,7 +64,7 @@ export function FirstTimeUploadModal({
                 <h3 className="font-semibold mb-1">Upload Files</h3>
                 <p className="text-sm text-slate-400">
                   Drag and drop PDFs, text files, markdown documents, images, JSON, or CSV files
-                  onto the canvas. Up to 10 files at once, 10MB each.
+                  onto the keimenon. Up to 10 files at once, 10MB each.
                 </p>
               </div>
             </button>
@@ -94,7 +94,7 @@ export function FirstTimeUploadModal({
             <h4 className="text-sm font-semibold text-blue-400 mb-2">💡 Pro Tip</h4>
             <p className="text-sm text-slate-400">
               After uploading, sources are automatically grouped by similarity. You can reorganize
-              them on the canvas, create custom groups, and build connections between related
+              them on the keimenon, create custom groups, and build connections between related
               content.
             </p>
           </div>

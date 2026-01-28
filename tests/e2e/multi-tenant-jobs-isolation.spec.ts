@@ -96,14 +96,14 @@ test.describe('Multi-Tenant Isolation - Jobs', () => {
     // Cleanup test data
     if (tokenA) {
       // Delete any jobs created during test
-      await apiRequest.delete('/api/v1/data/canvas', {
+      await apiRequest.delete('/api/v1/data/keimenon', {
         headers: { Authorization: `Bearer ${tokenA}` },
         params: { data_tag: 'test' },
       });
     }
 
     if (tokenB) {
-      await apiRequest.delete('/api/v1/data/canvas', {
+      await apiRequest.delete('/api/v1/data/keimenon', {
         headers: { Authorization: `Bearer ${tokenB}` },
         params: { data_tag: 'test' },
       });

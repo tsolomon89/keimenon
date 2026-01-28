@@ -23,7 +23,7 @@ The chunked upload system enables reliable uploads of large files (up to 2GB) by
 │         ↓                                                          │
 │  Triggers import job processing                                   │
 │         ↓                                                          │
-│  User sees imported data in canvas                                │
+│  User sees imported data in keimenon                                │
 │                                                                    │
 └────────────────────────────────────────────────────────────────────┘
 ```
@@ -35,11 +35,13 @@ The chunked upload system enables reliable uploads of large files (up to 2GB) by
 **Technology:** React + TypeScript
 
 **Components:**
+
 - `useChunkedUpload` - React hook for file upload
 - `useUploadProgress` - React hook for SSE progress
 - `useUploadProgressPolling` - Fallback polling hook
 
 **Responsibilities:**
+
 - File chunking (browser-side, using `File.slice()`)
 - Concurrent chunk uploads (6 parallel, with AbortController)
 - Progress tracking and UI updates
@@ -47,6 +49,7 @@ The chunked upload system enables reliable uploads of large files (up to 2GB) by
 - LocalStorage persistence for resume after browser close
 
 **Key Design Decisions:**
+
 - **Client-side chunking** - Reduces server CPU, better for local-first
 - **Concurrent uploads** - 6 parallel requests, optimal for most networks
 - **AbortController** - Proper cancellation of in-flight requests
@@ -57,6 +60,7 @@ The chunked upload system enables reliable uploads of large files (up to 2GB) by
 **Technology:** Express.js
 
 **Endpoints:**
+
 1. `POST /initiate` - Create upload session
 2. `POST /:sessionId/chunks/:chunkIndex` - Upload chunk
 3. `GET /:sessionId/progress` - SSE stream for real-time progress
@@ -64,6 +68,7 @@ The chunked upload system enables reliable uploads of large files (up to 2GB) by
 5. `DELETE /:sessionId` - Cancel upload
 
 **Responsibilities:**
+
 - Request validation (Zod schemas)
 - Authentication/authorization (JWT)
 - Multi-tenant isolation (account_id filtering)
@@ -71,6 +76,7 @@ The chunked upload system enables reliable uploads of large files (up to 2GB) by
 - SSE connection management
 
 **Key Design Decisions:**
+
 - **SSE for progress** - Better than polling, lower server load
 - **Separate SSE endpoint** - Keeps chunk upload simple
 - **Raw binary chunks** - No JSON encoding overhead
@@ -81,24 +87,28 @@ The chunked upload system enables reliable uploads of large files (up to 2GB) by
 **Services:**
 
 #### UploadProgressBroadcaster
+
 - Manages SSE connections for real-time progress
 - Broadcasts progress events to connected clients
 - Heartbeat mechanism (30s) to keep connections alive
 - Automatic cleanup on completion/failure
 
 #### ChunkAssemblyService
+
 - Assembles uploaded chunks into complete file
 - Sequential assembly (order matters)
 - File size validation
 - Cleanup of chunk files after success
 
 #### UploadCleanupService
+
 - Background job (runs hourly)
 - Finds and deletes expired sessions (4h expiry)
 - Cleans up orphaned chunk files
 - Statistics tracking (disk space freed, etc.)
 
 **Key Design Decisions:**
+
 - **Separation of concerns** - Each service has single responsibility
 - **Event-driven** - Assembly triggered automatically when complete
 - **Background cleanup** - Prevents disk space accumulation
@@ -109,6 +119,7 @@ The chunked upload system enables reliable uploads of large files (up to 2GB) by
 **Aggregate Root:** `UploadSession`
 
 **Properties:**
+
 - `id` - Unique identifier (upl_timestamp_random)
 - `accountId` - Multi-tenant isolation
 - `userId` - User who initiated upload
@@ -122,6 +133,7 @@ The chunked upload system enables reliable uploads of large files (up to 2GB) by
 - `expiresAt` - Expiry timestamp (4 hours from creation)
 
 **Methods:**
+
 - `create()` - Factory method for new sessions
 - `recordChunk()` - Mark chunk as received
 - `isComplete()` - Check if all chunks received
@@ -133,6 +145,7 @@ The chunked upload system enables reliable uploads of large files (up to 2GB) by
 - `toJSON() / fromJSON()` - Serialization
 
 **Business Rules (Invariants):**
+
 1. ❌ Cannot record chunk with invalid index (< 0 or >= totalChunks)
 2. ❌ Cannot mark completed unless all chunks received
 3. ❌ Cannot record chunk if session expired or failed
@@ -142,6 +155,7 @@ The chunked upload system enables reliable uploads of large files (up to 2GB) by
 7. ✅ Session expires 4 hours after creation
 
 **Key Design Decisions:**
+
 - **Domain-driven design** - Business logic lives in domain model
 - **Aggregate root** - UploadSession enforces invariants
 - **Value objects** - UploadSessionSpec for creation
@@ -153,6 +167,7 @@ The chunked upload system enables reliable uploads of large files (up to 2GB) by
 **Repository:** `SQLiteUploadSessionRepository`
 
 **Database Schema:**
+
 ```sql
 CREATE TABLE upload_sessions (
   id TEXT PRIMARY KEY,
@@ -182,6 +197,7 @@ CREATE INDEX idx_upload_sessions_expires_at ON upload_sessions(expires_at);
 ```
 
 **Repository Methods:**
+
 - `create(spec)` - Create new session in DB
 - `save(session)` - Upsert session (insert or update)
 - `findById(id, accountId)` - Find by ID with multi-tenant isolation
@@ -191,12 +207,14 @@ CREATE INDEX idx_upload_sessions_expires_at ON upload_sessions(expires_at);
 - `cancelAll()` - Cancel all in-progress uploads (for graceful shutdown)
 
 **File System:**
+
 - **Chunks directory:** `/tmp/uploads/chunks/<sessionId>/`
 - **Chunk files:** `chunk_0`, `chunk_1`, ..., `chunk_N`
 - **Assembled files:** `/tmp/uploads/assembled/<sessionId>-<filename>`
 - **Cleanup:** Chunks deleted after successful assembly or expiry
 
 **Key Design Decisions:**
+
 - **SQLite** - Simple, embedded, no external dependencies
 - **JSON serialization** - chunksReceived stored as JSON string
 - **Upsert pattern** - Single method for create/update (ON CONFLICT)
@@ -326,6 +344,7 @@ Concurrent uploads (max 6 parallel)
 ```
 
 **Concurrency control:**
+
 - Max 6 concurrent uploads (optimal for most networks)
 - `Promise.race()` pattern for filling slots
 - AbortController for cancellation
@@ -333,12 +352,14 @@ Concurrent uploads (max 6 parallel)
 ### Server-Side (Backend)
 
 **No server-side concurrency limits:**
+
 - Each chunk upload is independent
 - No locking required (chunks written to separate files)
 - Session updates use SQLite transaction (ACID)
 - SSE broadcasting is non-blocking
 
 **Potential bottlenecks:**
+
 - Disk I/O (mitigated by using SSD, separate mount point)
 - Database writes (minimal, only session state updates)
 - Memory (chunks are streamed to disk, not buffered in RAM)
@@ -369,6 +390,7 @@ If failure: Mark upload as failed, show error to user
 ```
 
 **Retry policy:**
+
 - Max 3 attempts per chunk
 - Exponential backoff: 1s, 2s, 4s
 - User can manually retry failed uploads
@@ -376,6 +398,7 @@ If failure: Mark upload as failed, show error to user
 ### Server Errors
 
 **Chunk write failure:**
+
 ```
 Error: ENOSPC (no space left on device)
       ↓
@@ -387,6 +410,7 @@ Client shows error to user
 ```
 
 **Assembly failure:**
+
 ```
 Error: Chunk file missing or corrupted
       ↓
@@ -412,11 +436,13 @@ Admin investigates and retries manually
 const session = db.prepare('SELECT * FROM upload_sessions WHERE id = ?').get(sessionId);
 
 // ✅ GOOD: Multi-tenant isolation
-const session = db.prepare('SELECT * FROM upload_sessions WHERE id = ? AND account_id = ?')
+const session = db
+  .prepare('SELECT * FROM upload_sessions WHERE id = ? AND account_id = ?')
   .get(sessionId, accountId);
 ```
 
 **Account ID derived from JWT:**
+
 - User logs in, receives JWT with `accountId` claim
 - Every request extracts `accountId` from JWT
 - Never trust client-provided `accountId`
@@ -424,10 +450,11 @@ const session = db.prepare('SELECT * FROM upload_sessions WHERE id = ? AND accou
 ### Authentication
 
 All endpoints require authentication:
+
 ```typescript
 router.post('/initiate', requireAuth(authService), async (req, res) => {
   const accountId = (req as any).user?.accountId; // From JWT
-  const userId = (req as any).user?.userId;       // From JWT
+  const userId = (req as any).user?.userId; // From JWT
 
   if (!accountId || !userId) {
     return res.status(401).json({ error: 'Authentication required' });
@@ -446,16 +473,22 @@ router.post('/initiate', requireAuth(authService), async (req, res) => {
 ### Data Validation
 
 **Input validation (Zod):**
+
 ```typescript
 const InitiateUploadSchema = z.object({
   fileName: z.string().min(1),
-  fileSize: z.number().int().positive().max(2 * 1024 * 1024 * 1024), // Max 2GB
+  fileSize: z
+    .number()
+    .int()
+    .positive()
+    .max(2 * 1024 * 1024 * 1024), // Max 2GB
   mimeType: z.string().optional(),
   chunkSize: z.number().int().positive().optional(),
 });
 ```
 
 **Business rule enforcement:**
+
 ```typescript
 // Domain model validates chunk indexes
 recordChunk(chunkIndex: number): void {
@@ -492,6 +525,7 @@ To scale beyond a single server:
 4. **Redis for SSE** - Centralized pub/sub for progress events
 
 **Example architecture:**
+
 ```
          Load Balancer (sticky sessions)
                   ↓
@@ -624,20 +658,24 @@ To scale beyond a single server:
 ### Logging
 
 **Structured logging:**
+
 ```typescript
-console.log(JSON.stringify({
-  level: 'info',
-  module: 'chunked-upload',
-  operation: 'chunk-upload',
-  sessionId: session.id,
-  accountId: session.accountId,
-  chunkIndex: 0,
-  progress: 20,
-  timestamp: Date.now(),
-}));
+console.log(
+  JSON.stringify({
+    level: 'info',
+    module: 'chunked-upload',
+    operation: 'chunk-upload',
+    sessionId: session.id,
+    accountId: session.accountId,
+    chunkIndex: 0,
+    progress: 20,
+    timestamp: Date.now(),
+  })
+);
 ```
 
 **Log levels:**
+
 - **DEBUG:** Detailed state transitions
 - **INFO:** Significant events (session created, chunk uploaded, assembly complete)
 - **WARN:** Recoverable errors (retry, missing chunk file)

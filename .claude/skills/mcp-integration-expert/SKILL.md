@@ -1,6 +1,6 @@
 ---
 name: mcp-integration-expert
-description: Expert in using project's 6 MCP servers (canvas-database, canvas-docs, canvas-api-testing, canvas-chat-import, canvas-settings-crm, playwright-e2e). Orchestrates multi-server workflows for testing, validation, and debugging. Use when needing to query database, search docs, test APIs, or run E2E tests.
+description: Expert in using project's 6 MCP servers (keimenon-database, keimenon-docs, keimenon-api-testing, keimenon-chat-import, keimenon-settings-crm, playwright-e2e). Orchestrates multi-server workflows for testing, validation, and debugging. Use when needing to query database, search docs, test APIs, or run E2E tests.
 ---
 
 ---
@@ -19,13 +19,13 @@ description: Expert in using project's 6 MCP servers (canvas-database, canvas-do
 
 ## Purpose
 
-Master of the Canvas Memory OS MCP (Model Context Protocol) server ecosystem:
+Master of the Keimenon MCP (Model Context Protocol) server ecosystem:
 
-- **canvas-database**: Query nodes/edges, inspect schema, get stats
-- **canvas-docs**: Search documentation, find TODOs, get architecture info
-- **canvas-api-testing**: Test endpoints, validate responses, check multi-tenant isolation
-- **canvas-chat-import**: Import test datasets, verify results, compare imports
-- **canvas-settings-crm**: Manage users/accounts, query memberships
+- **keimenon-database**: Query nodes/edges, inspect schema, get stats
+- **keimenon-docs**: Search documentation, find TODOs, get architecture info
+- **keimenon-api-testing**: Test endpoints, validate responses, check multi-tenant isolation
+- **keimenon-chat-import**: Import test datasets, verify results, compare imports
+- **keimenon-settings-crm**: Manage users/accounts, query memberships
 - **playwright-e2e**: List/run tests, check failures, get artifacts
 
 ## When to Activate
@@ -43,7 +43,7 @@ This skill activates when you need to:
 
 ## Available MCP Servers
 
-### 1. Canvas Database Server (`canvas-database`)
+### 1. Keimenon Database Server (`keimenon-database`)
 
 **Purpose**: Direct database access for querying and inspection
 
@@ -52,7 +52,7 @@ This skill activates when you need to:
 **query_nodes** - Find nodes by type, account, date range
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   database__query_nodes({
     kind: 'Source', // Optional: Filter by node kind
     account_id: 'acc_xyz789', // Optional: Filter by account
@@ -66,7 +66,7 @@ mcp__canvas -
 **query_edges** - Find edges by kind, direction
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   database__query_edges({
     kind: 'CONTAINS', // Optional: Edge kind to filter
     from_id: 'grp_abc123', // Optional: Source node ID
@@ -78,7 +78,7 @@ mcp__canvas -
 **inspect_schema** - View database schema
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   database__inspect_schema({
     table_name: 'nodes', // Optional: 'nodes' | 'edges' | 'accounts' | 'users'
     // Omit to get all tables
@@ -88,7 +88,7 @@ mcp__canvas -
 **get_stats** - Database statistics
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   database__get_stats({
     detailed: true, // Optional: Include per-account breakdown
   });
@@ -97,7 +97,7 @@ mcp__canvas -
 **search_content** - Full-text search using FTS5
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   database__search_content({
     query: 'machine learning', // Search query (FTS5 syntax supported)
     limit: 20, // Optional: Max results (default 20, max 100)
@@ -111,7 +111,7 @@ mcp__canvas -
 ```typescript
 // 1. Get all nodes in a conversation
 const threads =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   database__query_nodes({
     kind: 'ChatThread',
     limit: 5,
@@ -119,7 +119,7 @@ const threads =
 
 // 2. Get messages in a thread
 const messages =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   database__query_edges({
     kind: 'CONTAINS',
     from_id: threads[0].id,
@@ -127,7 +127,7 @@ const messages =
 
 // 3. Find duplicates
 const duplicates =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   database__query_edges({
     kind: 'DUP_OF',
     limit: 100,
@@ -138,11 +138,11 @@ const duplicates =
 
 ```typescript
 // After import, check what was created
-const stats = (await mcp__canvas) - database__get_stats({ detailed: true });
+const stats = (await mcp__keimenon) - database__get_stats({ detailed: true });
 
 // Search for specific content
 const results =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   database__search_content({
     query: 'imported content',
     limit: 10,
@@ -151,7 +151,7 @@ const results =
 
 ---
 
-### 2. Canvas Docs Server (`canvas-docs`)
+### 2. Keimenon Docs Server (`keimenon-docs`)
 
 **Purpose**: Search and navigate project documentation
 
@@ -160,7 +160,7 @@ const results =
 **search_docs** - Full-text search across markdown files
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   docs__search_docs({
     query: 'authentication RBAC', // Search query (case-insensitive)
     context_lines: 3, // Optional: Lines of context (default 3)
@@ -171,7 +171,7 @@ mcp__canvas -
 **find_related** - Find related documentation
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   docs__find_related({
     topic: 'database', // Optional: Topic to search (alternative to file_path)
     file_path: 'apps/api/src/routes/auth.ts', // Optional: File to find related docs
@@ -182,7 +182,7 @@ mcp__canvas -
 **list_todos** - Extract TODO/FIXME/HACK comments
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   docs__list_todos({
     path: 'apps/api/src/routes', // Optional: Specific directory/file
     type: 'TODO', // Optional: 'TODO' | 'FIXME' | 'HACK' | 'NOTE' | 'BUG' | 'XXX' | 'all'
@@ -193,7 +193,7 @@ mcp__canvas -
 **get_architecture_info** - Query architecture decisions
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   docs__get_architecture_info({
     category: 'database', // Optional: 'overview' | 'database' | 'api' | 'authentication' | 'features' | 'all'
   });
@@ -202,7 +202,7 @@ mcp__canvas -
 **read_doc** - Read specific documentation file
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   docs__read_doc({
     path: 'docs/architecture/OVERVIEW.md', // Relative path from project root
   });
@@ -215,7 +215,7 @@ mcp__canvas -
 ```typescript
 // 1. Search for related docs
 const docs =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   docs__search_docs({
     query: 'chat import deduplication',
     limit: 5,
@@ -223,14 +223,14 @@ const docs =
 
 // 2. Find related architecture info
 const arch =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   docs__get_architecture_info({
     category: 'features',
   });
 
 // 3. Check for TODOs in the area
 const todos =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   docs__list_todos({
     path: 'apps/api/src/routes/import-enhanced.ts',
     type: 'all',
@@ -242,21 +242,21 @@ const todos =
 ```typescript
 // 1. Start with overview
 const overview =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   docs__read_doc({
     path: 'docs/architecture/OVERVIEW.md',
   });
 
 // 2. Get architecture decisions
 const arch =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   docs__get_architecture_info({
     category: 'all',
   });
 
 // 3. Find TODOs to understand what needs work
 const todos =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   docs__list_todos({
     type: 'all',
     limit: 100,
@@ -265,7 +265,7 @@ const todos =
 
 ---
 
-### 3. Canvas API Testing Server (`canvas-api-testing`)
+### 3. Keimenon API Testing Server (`keimenon-api-testing`)
 
 **Purpose**: Test API endpoints with authentication
 
@@ -274,7 +274,7 @@ const todos =
 **login** - Authenticate and get JWT token
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   api -
   testing__login({
     email: 'admin@admin.com',
@@ -286,7 +286,7 @@ mcp__canvas -
 **test_endpoint** - Make authenticated API request
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   api -
   testing__test_endpoint({
     path: '/nodes', // API path (e.g., '/nodes', '/accounts')
@@ -303,7 +303,7 @@ mcp__canvas -
 **test_crud** - Test complete CRUD lifecycle
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   api -
   testing__test_crud({
     resource_type: 'nodes', // 'nodes' | 'edges' | 'users' | 'accounts' | 'boards' | 'groups'
@@ -322,7 +322,7 @@ mcp__canvas -
 **test_multi_tenant** - Test data isolation between accounts
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   api -
   testing__test_multi_tenant({
     account_a_email: 'user1@test.com',
@@ -336,7 +336,7 @@ mcp__canvas -
 **test_import** - Test chat import pipeline
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   api -
   testing__test_import({
     import_data: {
@@ -360,7 +360,7 @@ mcp__canvas -
 **test_permissions** - Test RBAC enforcement
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   api -
   testing__test_permissions({
     email: 'user@test.com',
@@ -377,13 +377,13 @@ mcp__canvas -
 **get_auth_status** - Get current authentication status
 
 ```typescript
-mcp__canvas - api - testing__get_auth_status();
+mcp__keimenon - api - testing__get_auth_status();
 ```
 
 **create_test_account** - Create account for testing
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   api -
   testing__create_test_account({
     user_email: 'testuser@example.com',
@@ -397,7 +397,7 @@ mcp__canvas -
 **cleanup_test_data** - Clean up test data
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   api -
   testing__cleanup_test_data({
     account_id: 'acc_xyz789', // Optional: Account to clean (defaults to current)
@@ -412,7 +412,7 @@ mcp__canvas -
 
 ```typescript
 // 1. Login
-(await mcp__canvas) -
+(await mcp__keimenon) -
   api -
   testing__login({
     email: 'admin@admin.com',
@@ -421,7 +421,7 @@ mcp__canvas -
 
 // 2. Test endpoint
 const result =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   api -
   testing__test_endpoint({
     path: '/api/v1/nodes',
@@ -431,7 +431,7 @@ const result =
   });
 
 // 3. Test CRUD
-(await mcp__canvas) -
+(await mcp__keimenon) -
   api -
   testing__test_crud({
     resource_type: 'nodes',
@@ -443,7 +443,7 @@ const result =
 
 ```typescript
 // Create two test accounts and verify isolation
-(await mcp__canvas) -
+(await mcp__keimenon) -
   api -
   testing__test_multi_tenant({
     account_a_email: 'user1@test.com',
@@ -456,7 +456,7 @@ const result =
 
 ---
 
-### 4. Canvas Chat Import Server (`canvas-chat-import`)
+### 4. Keimenon Chat Import Server (`keimenon-chat-import`)
 
 **Purpose**: Test chat import functionality
 
@@ -465,14 +465,14 @@ const result =
 **list_test_datasets** - List available test datasets
 
 ```typescript
-mcp__canvas - chat - import__list_test_datasets();
+mcp__keimenon - chat - import__list_test_datasets();
 // Returns: tiny, small, medium, edge-cases with statistics
 ```
 
 **get_test_dataset** - Retrieve specific test dataset
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   chat -
   import__get_test_dataset({
     name: 'tiny', // 'tiny' | 'small' | 'medium' | 'edge-cases'
@@ -482,11 +482,11 @@ mcp__canvas -
 **import_test_dataset** - Import test dataset via API
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   chat -
   import__import_test_dataset({
     dataset_name: 'tiny',
-    auth_token: 'jwt_token', // Optional: Use mcp__canvas-api-testing__login first
+    auth_token: 'jwt_token', // Optional: Use mcp__keimenon-api-testing__login first
     config: {
       // Optional: Import configuration
       deduplication: {
@@ -501,7 +501,7 @@ mcp__canvas -
 **verify_import_results** - Verify import matched expectations
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   chat -
   import__verify_import_results({
     import_id: 'import_123', // From import_test_dataset
@@ -512,7 +512,7 @@ mcp__canvas -
 **compare_imports** - Compare two import runs
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   chat -
   import__compare_imports({
     import_id_a: 'import_123',
@@ -523,7 +523,7 @@ mcp__canvas -
 **generate_test_data** - Generate synthetic test data
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   chat -
   import__generate_test_data({
     conversations: 10, // Optional: Number of conversations (default: 10)
@@ -537,7 +537,7 @@ mcp__canvas -
 **test_deduplication** - Test duplicate detection
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   chat -
   import__test_deduplication({
     algorithm: 'jaccard', // Optional: 'jaccard' | 'levenshtein' | 'cosine' (default: jaccard)
@@ -549,7 +549,7 @@ mcp__canvas -
 **get_import_history** - Get history of imports
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   chat -
   import__get_import_history({
     limit: 10, // Optional: Max results (default: 10)
@@ -562,7 +562,7 @@ mcp__canvas -
 
 ```typescript
 // 1. Login first
-(await mcp__canvas) -
+(await mcp__keimenon) -
   api -
   testing__login({
     email: 'admin@admin.com',
@@ -570,11 +570,11 @@ mcp__canvas -
   });
 
 // 2. Get auth status to retrieve token
-const auth = (await mcp__canvas) - api - testing__get_auth_status();
+const auth = (await mcp__keimenon) - api - testing__get_auth_status();
 
 // 3. Import test dataset
 const result =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   chat -
   import__import_test_dataset({
     dataset_name: 'small',
@@ -585,7 +585,7 @@ const result =
   });
 
 // 4. Verify results
-(await mcp__canvas) -
+(await mcp__keimenon) -
   chat -
   import__verify_import_results({
     import_id: result.import_id,
@@ -594,7 +594,7 @@ const result =
 
 // 5. Check database
 const nodes =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   database__query_nodes({
     kind: 'ChatThread',
     limit: 10,
@@ -606,7 +606,7 @@ const nodes =
 ```typescript
 // Test with Jaccard
 const jaccard =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   chat -
   import__import_test_dataset({
     dataset_name: 'tiny',
@@ -615,7 +615,7 @@ const jaccard =
 
 // Test with Levenshtein
 const levenshtein =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   chat -
   import__import_test_dataset({
     dataset_name: 'tiny',
@@ -623,7 +623,7 @@ const levenshtein =
   });
 
 // Compare results
-(await mcp__canvas) -
+(await mcp__keimenon) -
   chat -
   import__compare_imports({
     import_id_a: jaccard.import_id,
@@ -633,7 +633,7 @@ const levenshtein =
 
 ---
 
-### 5. Canvas Settings CRM Server (`canvas-settings-crm`)
+### 5. Keimenon Settings CRM Server (`keimenon-settings-crm`)
 
 **Purpose**: Manage users, accounts, and settings
 
@@ -642,7 +642,7 @@ const levenshtein =
 **list_users** - List all users with filtering
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   settings -
   crm__list_users({
     account_id: 'acc_xyz789', // Optional: Filter by account
@@ -654,7 +654,7 @@ mcp__canvas -
 **get_user_details** - Get detailed user information
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   settings -
   crm__get_user_details({
     user_id: 'usr_abc123', // User ID or email
@@ -664,7 +664,7 @@ mcp__canvas -
 **list_accounts** - List all accounts with statistics
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   settings -
   crm__list_accounts({
     account_type: 'client', // Optional: 'admin' | 'client'
@@ -676,7 +676,7 @@ mcp__canvas -
 **get_account_details** - Get detailed account information
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   settings -
   crm__get_account_details({
     account_id: 'acc_xyz789',
@@ -686,7 +686,7 @@ mcp__canvas -
 **query_user_account_memberships** - Query user-account relationships
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   settings -
   crm__query_user_account_memberships({
     user_id: 'usr_abc123', // Optional: Filter by user
@@ -697,7 +697,7 @@ mcp__canvas -
 **get_settings** - Get settings from graph
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   settings -
   crm__get_settings({
     category: 'notification', // Optional: Settings category
@@ -707,7 +707,7 @@ mcp__canvas -
 **search_settings** - Search settings by key/value
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   settings -
   crm__search_settings({
     query: 'email notification', // Search query
@@ -720,11 +720,11 @@ mcp__canvas -
 
 ```typescript
 // 1. List all users
-const users = (await mcp__canvas) - settings - crm__list_users({ limit: 100 });
+const users = (await mcp__keimenon) - settings - crm__list_users({ limit: 100 });
 
 // 2. Get details for specific user
 const user =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   settings -
   crm__get_user_details({
     user_id: 'usr_abc123',
@@ -732,7 +732,7 @@ const user =
 
 // 3. Check account memberships
 const memberships =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   settings -
   crm__query_user_account_memberships({
     user_id: 'usr_abc123',
@@ -744,7 +744,7 @@ const memberships =
 ```typescript
 // Get all accounts with stats
 const accounts =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   settings -
   crm__list_accounts({
     include_stats: true,
@@ -752,14 +752,14 @@ const accounts =
 
 // Get specific account details
 const account =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   settings -
   crm__get_account_details({
     account_id: 'acc_xyz789',
   });
 
 // Check database stats
-const stats = (await mcp__canvas) - database__get_stats({ detailed: true });
+const stats = (await mcp__keimenon) - database__get_stats({ detailed: true });
 ```
 
 ---
@@ -775,7 +775,7 @@ const stats = (await mcp__canvas) - database__get_stats({ detailed: true });
 ```typescript
 mcp__playwright -
   e2e__pw_listTests({
-    grep: 'canvas', // Optional: Filter tests by pattern (e.g., 'login', '@smoke')
+    grep: 'keimenon', // Optional: Filter tests by pattern (e.g., 'login', '@smoke')
   });
 ```
 
@@ -902,14 +902,14 @@ const trace =
 async function validateFeature(featureName: string) {
   // 1. Search documentation
   const docs =
-    (await mcp__canvas) -
+    (await mcp__keimenon) -
     docs__search_docs({
       query: featureName,
       limit: 5,
     });
 
   // 2. Test API endpoints
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
     api -
     testing__login({
       email: 'admin@admin.com',
@@ -917,7 +917,7 @@ async function validateFeature(featureName: string) {
     });
 
   const apiResult =
-    (await mcp__canvas) -
+    (await mcp__keimenon) -
     api -
     testing__test_endpoint({
       path: `/api/v1/${featureName}`,
@@ -926,7 +926,7 @@ async function validateFeature(featureName: string) {
     });
 
   // 3. Check database state
-  const dbStats = (await mcp__canvas) - database__get_stats({ detailed: true });
+  const dbStats = (await mcp__keimenon) - database__get_stats({ detailed: true });
 
   // 4. Run E2E tests
   const testResult =
@@ -953,21 +953,21 @@ async function validateFeature(featureName: string) {
 
 async function testImportPipeline() {
   // 1. Login
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
     api -
     testing__login({
       email: 'admin@admin.com',
       password: 'admin123',
     });
 
-  const auth = (await mcp__canvas) - api - testing__get_auth_status();
+  const auth = (await mcp__keimenon) - api - testing__get_auth_status();
 
   // 2. Get baseline stats
-  const before = (await mcp__canvas) - database__get_stats();
+  const before = (await mcp__keimenon) - database__get_stats();
 
   // 3. Import test dataset
   const importResult =
-    (await mcp__canvas) -
+    (await mcp__keimenon) -
     chat -
     import__import_test_dataset({
       dataset_name: 'small',
@@ -978,7 +978,7 @@ async function testImportPipeline() {
     });
 
   // 4. Verify import
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
     chat -
     import__verify_import_results({
       import_id: importResult.import_id,
@@ -986,11 +986,11 @@ async function testImportPipeline() {
     });
 
   // 5. Check database changes
-  const after = (await mcp__canvas) - database__get_stats();
+  const after = (await mcp__keimenon) - database__get_stats();
 
   // 6. Query imported data
   const threads =
-    (await mcp__canvas) -
+    (await mcp__keimenon) -
     database__query_nodes({
       kind: 'ChatThread',
       limit: 10,
@@ -998,7 +998,7 @@ async function testImportPipeline() {
 
   // 7. Check for duplicates
   const duplicates =
-    (await mcp__canvas) -
+    (await mcp__keimenon) -
     database__query_edges({
       kind: 'DUP_OF',
       limit: 50,
@@ -1032,14 +1032,14 @@ async function preDe ployValidation() {
 
   try {
     // 1. Check database health
-    const stats = await mcp__canvas-database__get_stats({ detailed: true });
+    const stats = await mcp__keimenon-database__get_stats({ detailed: true });
     results.database = {
       status: stats.total_nodes > 0 ? 'healthy' : 'empty',
       details: stats
     };
 
     // 2. Test critical API endpoints
-    await mcp__canvas-api-testing__login({
+    await mcp__keimenon-api-testing__login({
       email: 'admin@admin.com',
       password: 'admin123'
     });
@@ -1049,7 +1049,7 @@ async function preDe ployValidation() {
 
     for (const endpoint of endpoints) {
       try {
-        await mcp__canvas-api-testing__test_endpoint({
+        await mcp__keimenon-api-testing__test_endpoint({
           path: endpoint,
           method: 'GET',
           expect_status: 200
@@ -1077,7 +1077,7 @@ async function preDe ployValidation() {
     };
 
     // 4. Check for critical TODOs
-    const criticalTodos = await mcp__canvas-docs__list_todos({
+    const criticalTodos = await mcp__keimenon-docs__list_todos({
       type: 'XXX',
       limit: 50
     });
@@ -1109,33 +1109,33 @@ async function preDe ployValidation() {
 
 ```typescript
 // ✅ GOOD: Login before using API testing tools
-(await mcp__canvas) - api - testing__login({ email: '...', password: '...' });
-(await mcp__canvas) - api - testing__test_endpoint({ path: '/nodes' });
+(await mcp__keimenon) - api - testing__login({ email: '...', password: '...' });
+(await mcp__keimenon) - api - testing__test_endpoint({ path: '/nodes' });
 
 // ❌ BAD: Forgot to login
-(await mcp__canvas) - api - testing__test_endpoint({ path: '/nodes' }); // Will fail
+(await mcp__keimenon) - api - testing__test_endpoint({ path: '/nodes' }); // Will fail
 ```
 
 ### 2. Use Limits to Avoid Large Results
 
 ```typescript
 // ✅ GOOD: Limit results
-(await mcp__canvas) - database__query_nodes({ limit: 50 });
+(await mcp__keimenon) - database__query_nodes({ limit: 50 });
 
 // ⚠️ OKAY but slow: No limit (uses default 50)
-(await mcp__canvas) - database__query_nodes();
+(await mcp__keimenon) - database__query_nodes();
 ```
 
 ### 3. Orchestrate Sequential Operations
 
 ```typescript
 // ✅ GOOD: Sequential operations (each depends on previous)
-const auth = await mcp__canvas-api-testing__login({ ... });
-const authStatus = await mcp__canvas-api-testing__get_auth_status();
-const importResult = await mcp__canvas-chat-import__import_test_dataset({
+const auth = await mcp__keimenon-api-testing__login({ ... });
+const authStatus = await mcp__keimenon-api-testing__get_auth_status();
+const importResult = await mcp__keimenon-chat-import__import_test_dataset({
   auth_token: authStatus.token
 });
-await mcp__canvas-chat-import__verify_import_results({
+await mcp__keimenon-chat-import__verify_import_results({
   import_id: importResult.import_id
 });
 ```
@@ -1144,7 +1144,7 @@ await mcp__canvas-chat-import__verify_import_results({
 
 ```typescript
 // After testing, clean up
-(await mcp__canvas) -
+(await mcp__keimenon) -
   api -
   testing__cleanup_test_data({
     data_tag: 'test',

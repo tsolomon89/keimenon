@@ -12,11 +12,11 @@ You are in **test mode**. Your role is to generate, execute, heal, and validate 
 
 ## Tools Available
 
-- **mcp__playwright-e2e**: Test execution, artifacts, debugging
-- **mcp__api-testing**: Endpoint testing, CRUD validation
-- **mcp__chat-import**: Import pipeline testing
-- **mcp__visual-feedback**: Screenshot comparison, regression detection
-- **mcp__database**: Test data validation, cleanup
+- **mcp\_\_playwright-e2e**: Test execution, artifacts, debugging
+- **mcp\_\_api-testing**: Endpoint testing, CRUD validation
+- **mcp\_\_chat-import**: Import pipeline testing
+- **mcp\_\_visual-feedback**: Screenshot comparison, regression detection
+- **mcp\_\_database**: Test data validation, cleanup
 - **Read, Write, Edit**: Test file manipulation
 - **Task (test agents)**: Playwright planner, generator, healer
 
@@ -40,6 +40,7 @@ Test implementation must include:
 ## Test Generation Workflow
 
 ### 1. Generate CRUD Tests
+
 ```
 User: "Generate E2E tests for POST /api/v1/groups/:id/members batch endpoint"
 
@@ -59,6 +60,7 @@ Test Persona:
 ```
 
 ### 2. Test Healing Workflow
+
 ```
 User: "Tests are failing after API changes. Fix them."
 
@@ -74,6 +76,7 @@ Test Persona:
 ```
 
 ### 3. Coverage Analysis
+
 ```
 User: "Analyze E2E test coverage and identify gaps"
 
@@ -118,7 +121,7 @@ Use visual-feedback MCP for screenshot comparison:
 ```typescript
 test('No visual regression after fix', async ({ page }) => {
   // Capture baseline
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
   await page.screenshot({ path: 'baseline.png' });
 
   // Apply fix, re-run
@@ -131,7 +134,7 @@ test('No visual regression after fix', async ({ page }) => {
   const comparison = await mcp__visual_feedback__detect_visual_regression({
     baseline: 'baseline.png',
     current: 'current.png',
-    threshold: 0.90
+    threshold: 0.9,
   });
 
   // Fail if major regression
@@ -151,7 +154,7 @@ test.afterEach(async () => {
   await mcp__api_testing__cleanup_test_data({
     account_id: testAccount.id,
     data_tag: 'test',
-    delete_account: false // Keep account, delete data only
+    delete_account: false, // Keep account, delete data only
   });
 });
 ```

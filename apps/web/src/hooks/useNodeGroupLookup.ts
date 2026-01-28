@@ -16,7 +16,7 @@ interface NodeGroupLookupResult {
 
 /**
  * Hook to perform reverse lookup: find which groups contain the given nodes
- * Used for Canvas ↔ Navigation bidirectional sync
+ * Used for Keimenon ↔ Navigation bidirectional sync
  *
  * @param nodeIds Array of node IDs to look up
  * @returns Set of group IDs that contain any of the given nodes
@@ -45,7 +45,7 @@ export function useNodeGroupLookup(nodeIds: string[]): NodeGroupLookupResult {
         const promises = nodeIds.map(async (nodeId) => {
           const response = await fetch(`/api/v1/groups/nodes/${nodeId}/groups`, {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('canvas_memory_token')}`,
+              Authorization: `Bearer ${localStorage.getItem('keimenon_token')}`,
             },
           });
 
@@ -74,7 +74,7 @@ export function useNodeGroupLookup(nodeIds: string[]): NodeGroupLookupResult {
         }
 
         const uniqueGroups = Array.from(uniqueGroupMap.values());
-        const uniqueGroupIds = new Set(uniqueGroups.map(g => g.id));
+        const uniqueGroupIds = new Set(uniqueGroups.map((g) => g.id));
 
         setGroupIds(uniqueGroupIds);
         setGroups(uniqueGroups);

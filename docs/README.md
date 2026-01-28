@@ -1,6 +1,6 @@
-# Canvas Memory OS - Documentation
+# Keimenon - Documentation
 
-**Welcome to Canvas Memory OS**, a local-first, graph-native memory operating system for research and knowledge management with advanced AI chat import capabilities.
+**Welcome to Keimenon**, a local-first, graph-native memory operating system for research and knowledge management with advanced AI chat import capabilities.
 
 This documentation hub provides comprehensive guides for users, developers, and system administrators.
 
@@ -10,7 +10,7 @@ This documentation hub provides comprehensive guides for users, developers, and 
 
 ### 🚀 Getting Started
 
-Start here if you're new to Canvas Memory OS:
+Start here if you're new to Keimenon:
 
 - **[Quick Start Guide](getting-started/QUICK_START.md)** - Get running in 5 minutes
 - **[Installation Guide](getting-started/INSTALLATION.md)** - Detailed setup instructions

@@ -8,7 +8,7 @@
 
 ## Problem Summary
 
-The [DataManagementCard.tsx](apps/web/src/components/settings/DataManagementCard.tsx) and [ImportsTableCard.tsx](apps/web/src/components/canvas/ImportsTableCard.tsx) components had **7 critical issues** preventing proper UI updates:
+The [DataManagementCard.tsx](apps/web/src/components/settings/DataManagementCard.tsx) and [ImportsTableCard.tsx](apps/web/src/components/keimenon/ImportsTableCard.tsx) components had **7 critical issues** preventing proper UI updates:
 
 1. ❌ Page reloads instead of reactive state updates
 2. ❌ Job deletions not syncing with background operations
@@ -39,7 +39,7 @@ setTimeout(() => {
 
 ```tsx
 // ✅ GOOD: Reactive state update, no reload
-setSuccess('Data cleared successfully! Canvas is now empty.');
+setSuccess('Data cleared successfully! Keimenon is now empty.');
 setTimeout(() => {
   setDeletionJobId(null);
   setIsClearing(false);
@@ -101,7 +101,7 @@ const removeOperationsByJobIds = useCallback((jobIds: string[]) => {
 
 ### **Phase 4: Fixed Job Deletion Sync ✅**
 
-#### [ImportsTableCard.tsx:587-593](apps/web/src/components/canvas/ImportsTableCard.tsx#L587-L593)
+#### [ImportsTableCard.tsx:587-593](apps/web/src/components/keimenon/ImportsTableCard.tsx#L587-L593)
 
 **Before:**
 
@@ -149,7 +149,7 @@ const [operatingContextVersion, setOperatingContextVersion] = useState(0);
 setOperatingContextVersion((v) => v + 1);
 ```
 
-#### [ImportsTableCard.tsx:428](apps/web/src/components/canvas/ImportsTableCard.tsx#L428)
+#### [ImportsTableCard.tsx:428](apps/web/src/components/keimenon/ImportsTableCard.tsx#L428)
 
 **Used in dependency array:**
 
@@ -191,7 +191,7 @@ for (const update of updates) {
 | File                                                                                     | Lines Changed | Description                                                |
 | ---------------------------------------------------------------------------------------- | ------------- | ---------------------------------------------------------- |
 | [DataManagementCard.tsx](apps/web/src/components/settings/DataManagementCard.tsx)        | ~40 lines     | Removed `window.location.reload()`, added reactive updates |
-| [ImportsTableCard.tsx](apps/web/src/components/canvas/ImportsTableCard.tsx)              | ~15 lines     | Fixed bulk deletion, added sync with background ops        |
+| [ImportsTableCard.tsx](apps/web/src/components/keimenon/ImportsTableCard.tsx)            | ~15 lines     | Fixed bulk deletion, added sync with background ops        |
 | [BackgroundOperationsContext.tsx](apps/web/src/contexts/BackgroundOperationsContext.tsx) | ~35 lines     | Added `removeOperationsByJobIds()`, improved auto-cleanup  |
 | [useJobStream.ts](apps/web/src/hooks/useJobStream.ts)                                    | ~20 lines     | Added client-side filtering for completed jobs             |
 | [OperatingContext.tsx](apps/web/src/contexts/OperatingContext.tsx)                       | ~15 lines     | Added `operatingContextVersion` cache invalidation         |
@@ -225,7 +225,7 @@ for (const update of updates) {
 ### E2E Tests Created (8 total):
 
 1. ✅ **should show delete job in background operations table** - PASSED
-2. ⚠️ **should update UI without reload after canvas data deletion** - Needs locator fix
+2. ⚠️ **should update UI without reload after keimenon data deletion** - Needs locator fix
 3. ⚠️ **should remove job from table after deletion** - Needs locator fix
 4. ⚠️ **should sync background operations with job table** - Needs locator fix
 5. ⚠️ **should handle bulk job deletion** - Modal blocking clicks
@@ -258,16 +258,16 @@ for (const update of updates) {
 ## Next Steps
 
 1. **Fix E2E Test Locators** ⚠️
-   - Settings page: Update selectors to find "Clear Canvas Data" button
-   - Canvas page: Update table selectors for Background Operations
+   - Settings page: Update selectors to find "Clear Keimenon Data" button
+   - Keimenon page: Update table selectors for Background Operations
    - Modal handling: Dismiss import modal if blocking interactions
 
 2. **Manual Testing** ✅ (Recommended)
    - Navigate to `/settings`
-   - Click "Clear Canvas Data"
+   - Click "Clear Keimenon Data"
    - Verify no page reload occurs
    - Check success message appears
-   - Navigate to `/canvas`
+   - Navigate to `/keimenon`
    - Verify jobs table updates correctly
 
 3. **Monitor SSE Performance** 📊
@@ -342,10 +342,10 @@ for (const update of updates) {
 
 Use this checklist to validate the fixes:
 
-### Canvas Data Deletion
+### Keimenon Data Deletion
 
 - [ ] Navigate to `/settings`
-- [ ] Click "Clear Canvas Data"
+- [ ] Click "Clear Keimenon Data"
 - [ ] Confirm deletion in modal
 - [ ] ✅ Success message appears (no reload)
 - [ ] ✅ Still on `/settings` page
@@ -353,7 +353,7 @@ Use this checklist to validate the fixes:
 
 ### Job Table Operations
 
-- [ ] Navigate to `/canvas`
+- [ ] Navigate to `/keimenon`
 - [ ] Verify "Background Operations" table visible
 - [ ] Select a completed job
 - [ ] Click "Delete"
@@ -363,7 +363,7 @@ Use this checklist to validate the fixes:
 
 ### Bulk Job Deletion
 
-- [ ] Navigate to `/canvas`
+- [ ] Navigate to `/keimenon`
 - [ ] Ctrl+Click to select multiple jobs
 - [ ] Click "Delete" button
 - [ ] Confirm deletion
@@ -373,7 +373,7 @@ Use this checklist to validate the fixes:
 
 ### SSE Updates
 
-- [ ] Navigate to `/canvas`
+- [ ] Navigate to `/keimenon`
 - [ ] Open browser DevTools → Network tab
 - [ ] Find SSE connection (`/api/v1/stream/jobs`)
 - [ ] ✅ Connection status: "pending" (streaming)
@@ -382,7 +382,7 @@ Use this checklist to validate the fixes:
 
 ### CRM Mode (Admin Only)
 
-- [ ] Navigate to `/canvas` (as admin)
+- [ ] Navigate to `/keimenon` (as admin)
 - [ ] Switch to different account context
 - [ ] ✅ Jobs table refreshes immediately
 - [ ] ✅ Correct account's data shown

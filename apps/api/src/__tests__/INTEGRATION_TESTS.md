@@ -15,7 +15,7 @@ cd apps/api
 PORT=4001 npm run dev
 ```
 
-Wait for "Canvas Memory API running on port 4001" message.
+Wait for "Keimenon API running on port 4001" message.
 
 **Terminal 2 - Run tests:**
 

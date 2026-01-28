@@ -16,7 +16,7 @@ export function AccountInspector({
   isMultiSelect = false,
   onCreateUser,
 }: AccountInspectorProps) {
-  const { setCanvasMode } = useShell();
+  const { setKeimenonMode } = useShell();
   const [stats, setStats] = useState<{ nodes: number; edges: number; users: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -137,12 +137,12 @@ export function AccountInspector({
         <div className="space-y-2">
           <h4 className="text-xs font-semibold text-slate-400 uppercase">Actions</h4>
           <button
-            onClick={() => setCanvasMode('canvas')}
+            onClick={() => setKeimenonMode('keimenon')}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-            title="View this account's canvas"
+            title="View this account's keimenon"
           >
             <GitBranch className="w-4 h-4" />
-            <span>View Canvas</span>
+            <span>View Keimenon</span>
           </button>
           <button
             onClick={onCreateUser}

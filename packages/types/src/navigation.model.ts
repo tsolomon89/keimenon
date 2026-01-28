@@ -2,13 +2,13 @@
  * Navigation Model Factory
  *
  * Provides a clean, testable abstraction for determining which navigation data
- * to show in the left sidebar based on shell mode, canvas mode, and user permissions.
+ * to show in the left sidebar based on shell mode, keimenon mode, and user permissions.
  *
- * Replaces 40+ lines of conditional logic in CanvasSidebar with a single factory call.
+ * Replaces 40+ lines of conditional logic in KeimenonSidebar with a single factory call.
  */
 
 export type ShellMode = 'admin' | 'client';
-export type CanvasMode = 'auth' | 'dashboard' | 'settings' | 'canvas';
+export type KeimenonMode = 'auth' | 'dashboard' | 'settings' | 'keimenon';
 export type OperatingMode = 'native' | 'nested' | 'crm';
 export type NavigationMode = 'groups' | 'accounts' | 'settings';
 
@@ -56,8 +56,8 @@ export interface NavigationContext {
   /** Current shell mode (CRM or Portal) */
   shellMode: ShellMode;
 
-  /** Current canvas mode (dashboard, settings, canvas, etc.) */
-  canvasMode: CanvasMode;
+  /** Current keimenon mode (dashboard, settings, keimenon, etc.) */
+  keimenonMode: KeimenonMode;
 
   /** Current operating mode (native, nested, crm) */
   operatingMode: OperatingMode;
@@ -68,7 +68,7 @@ export interface NavigationContext {
   /** Account tree data (for CRM mode) */
   accountTreeData: TreeNode[];
 
-  /** Groups tree data (for canvas/portal modes) */
+  /** Groups tree data (for keimenon/portal modes) */
   groupsTreeData: TreeNode[];
 
   /** Settings tree data (for settings mode) */
@@ -94,7 +94,7 @@ export interface NavigationContext {
  *
  * Rules (in priority order):
  * 1. Settings mode → Always show settings tree
- * 2. CRM shell + Dashboard canvas → Show accounts tree
+ * 2. CRM shell + Dashboard keimenon → Show accounts tree
  * 3. Default → Show groups tree
  */
 export class NavigationModelFactory {
@@ -108,7 +108,7 @@ export class NavigationModelFactory {
    * ```typescript
    * const navModel = NavigationModelFactory.get({
    *   shellMode: 'admin',
-   *   canvasMode: 'dashboard',
+   *   keimenonMode: 'dashboard',
    *   operatingMode: 'native',
    *   user: { accountType: 'admin', accountId: '123' },
    *   accountTreeData: [...],
@@ -122,12 +122,12 @@ export class NavigationModelFactory {
    */
   static get(context: NavigationContext): NavigationModel {
     // Rule 1: Settings mode always shows settings tree
-    if (context.canvasMode === 'settings') {
+    if (context.keimenonMode === 'settings') {
       return this.getSettingsModel(context);
     }
 
     // Rule 2: Admin + Dashboard shows accounts tree
-    if (context.shellMode === 'admin' && context.canvasMode === 'dashboard') {
+    if (context.shellMode === 'admin' && context.keimenonMode === 'dashboard') {
       return this.getAccountsModel(context);
     }
 
@@ -177,7 +177,7 @@ export class NavigationModelFactory {
   }
 
   /**
-   * Get groups navigation model (default for canvas/portal)
+   * Get groups navigation model (default for keimenon/portal)
    */
   private static getGroupsModel(context: NavigationContext): NavigationModel {
     const emptyMessage = context.groupsLoading
@@ -211,13 +211,13 @@ export function supportsMultiSelect(mode: NavigationMode): boolean {
 }
 
 /**
- * Get default canvas mode for a given shell mode
+ * Get default keimenon mode for a given shell mode
  */
-export function getDefaultCanvasMode(shellMode: ShellMode, user: User | null): CanvasMode {
+export function getDefaultKeimenonMode(shellMode: ShellMode, user: User | null): KeimenonMode {
   if (user?.accountType === 'admin' && shellMode === 'admin') {
     return 'dashboard';
   }
-  return 'canvas';
+  return 'keimenon';
 }
 
 /**

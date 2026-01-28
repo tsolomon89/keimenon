@@ -2,11 +2,11 @@
 
 ## Executive Summary
 
-Fixed **three critical bugs** in the data deletion system that prevented users from properly clearing canvas data and caused the UI to become unresponsive.
+Fixed **three critical bugs** in the data deletion system that prevented users from properly clearing keimenon data and caused the UI to become unresponsive.
 
 **Impact**:
 
-- ✅ Users can now successfully delete canvas data
+- ✅ Users can now successfully delete keimenon data
 - ✅ System nodes (UserNode, AccountNode, Board, Constellation) are preserved
 - ✅ Button no longer gets stuck in disabled state
 - ✅ Proper error handling and timeout recovery
@@ -21,13 +21,13 @@ Fixed **three critical bugs** in the data deletion system that prevented users f
 **Component**: `apps/api/src/modules/workers/infrastructure/DeleteWorker.ts`
 
 **Problem**:
-The DeleteWorker was deleting **ALL nodes** when `scope === 'canvas'`, including system-critical nodes like UserNode, AccountNode, Board, and Constellation.
+The DeleteWorker was deleting **ALL nodes** when `scope === 'keimenon'`, including system-critical nodes like UserNode, AccountNode, Board, and Constellation.
 
 **Root Cause**:
 
 ```typescript
 // BEFORE (Broken):
-if (scope === 'canvas') {
+if (scope === 'keimenon') {
   query = `SELECT id FROM nodes WHERE account_id = ? LIMIT ?`; // Deletes EVERYTHING!
 }
 ```
@@ -42,7 +42,7 @@ if (scope === 'canvas') {
 
 ```typescript
 // AFTER (Fixed):
-if (scope === 'canvas') {
+if (scope === 'keimenon') {
   query = `SELECT id FROM nodes
            WHERE account_id = ?
            AND kind IN ('ChatThread', 'Message', 'Source', 'CodeBlock', 'Group', 'Folder')
@@ -63,7 +63,7 @@ if (scope === 'canvas') {
 **Component**: `apps/web/src/components/settings/DataManagementCard.tsx`
 
 **Problem**:
-The "Clear Canvas Data" button could become permanently disabled if:
+The "Clear Keimenon Data" button could become permanently disabled if:
 
 - The delete job got stuck in 'running' state
 - The operation wasn't found in BackgroundOperationsContext
@@ -128,8 +128,8 @@ if (!operation) {
 **Problem**:
 Two different delete endpoints with different behavior:
 
-- `DELETE /api/v1/data/canvas` - deletes specific node kinds
-- `POST /api/v1/jobs/delete` with `scope: 'canvas'` - was deleting everything
+- `DELETE /api/v1/data/keimenon` - deletes specific node kinds
+- `POST /api/v1/jobs/delete` with `scope: 'keimenon'` - was deleting everything
 
 **Fix**:
 Aligned both endpoints to use the same node kind filters:
@@ -214,7 +214,7 @@ uploadCleanupService = initializeCleanupService(uploadRepo, cleanupIntervalMs);
 **New Tests Added**:
 
 1. ✅ **Delete Scope Verification** - Verifies system nodes are preserved
-   - Tests canvas data deletion only removes canvas nodes
+   - Tests keimenon data deletion only removes keimenon nodes
    - Ensures UserNode, AccountNode, Board, Constellation remain
    - CRITICAL: Catches the bug we just fixed
 
@@ -234,7 +234,7 @@ uploadCleanupService = initializeCleanupService(uploadRepo, cleanupIntervalMs);
 **Helper Functions Added**:
 
 ```typescript
-countCanvasNodes(accountId); // Count nodes that should be deleted
+countKeimenonNodes(accountId); // Count nodes that should be deleted
 countSystemNodes(accountId); // Count nodes that should NOT be deleted
 ```
 
@@ -244,7 +244,7 @@ countSystemNodes(accountId); // Count nodes that should NOT be deleted
 
 **Enhanced Tests**:
 
-1. ✅ **Canvas data deletion UI update** (enhanced)
+1. ✅ **Keimenon data deletion UI update** (enhanced)
    - Verifies button is not disabled before click
    - Checks modal shows stats correctly
    - Confirms delete job creation
@@ -286,7 +286,7 @@ Users need to refresh their browser to get the updated UI component:
 **Test 1: Button Works**
 
 1. Navigate to Settings → Data → Data Management
-2. Click "Clear Canvas Data"
+2. Click "Clear Keimenon Data"
 3. Modal should appear ✅
 4. Button should NOT be disabled ✅
 
@@ -296,7 +296,7 @@ Users need to refresh their browser to get the updated UI component:
 2. Job should be created ✅
 3. Check Background Operations table
 4. Job should appear and complete ✅
-5. Canvas data should be deleted ✅
+5. Keimenon data should be deleted ✅
 6. Graph should only show Board/system nodes ✅
 
 **Test 3: Recovery Works**
@@ -331,7 +331,7 @@ node --import tsx --test apps/api/src/__tests__/jobs-batched-delete.test.ts
 npx playwright test tests/e2e/data-management-ui-updates.spec.ts
 
 # Expected output:
-# ✓ should update UI without reload after canvas data deletion
+# ✓ should update UI without reload after keimenon data deletion
 # ✓ should show delete job in background operations table
 # ✓ should remove job from table after deletion
 # ✓ should handle bulk job deletion
@@ -362,7 +362,7 @@ ORDER BY created_at DESC;
 ✅ Worker pool initialized and started
 
 # During deletion:
-🗑️ Delete worker processing canvas for job job_xxx
+🗑️ Delete worker processing keimenon for job job_xxx
 ✅ Delete worker completed job job_xxx: N nodes deleted
 ```
 
@@ -527,10 +527,10 @@ if (recentDeleteFailures > 3) {
 
 #### Backend
 
-- Fixed DeleteWorker to only delete canvas data nodes
+- Fixed DeleteWorker to only delete keimenon data nodes
 - Fixed DeleteWorker to preserve system nodes (UserNode, AccountNode, Board, Constellation)
 - Updated countNodesToDelete() to match getNodeIdBatch() logic
-- Added comments explaining system vs canvas node distinction
+- Added comments explaining system vs keimenon node distinction
 
 #### Frontend
 
@@ -544,7 +544,7 @@ if (recentDeleteFailures > 3) {
 #### Tests
 
 - Added Delete Scope Verification test
-- Added countCanvasNodes() and countSystemNodes() helpers
+- Added countKeimenonNodes() and countSystemNodes() helpers
 - Enhanced E2E tests with button state checks
 - Added modal content verification
 - Added delete job creation verification

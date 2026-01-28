@@ -9,7 +9,7 @@ describe('PermissionGate', () => {
   describe('Conditional Rendering', () => {
     it('should render children when permission is allowed', () => {
       renderWithProviders(
-        <PermissionGate permission="view_canvas">
+        <PermissionGate permission="view_keimenon">
           <div data-testid="protected-content">Protected Content</div>
         </PermissionGate>,
         { authContext: { user: mockUser({ rank: 1 }) } }
@@ -211,12 +211,9 @@ describe('PermissionGate', () => {
 describe('PermissionButton', () => {
   describe('Button State', () => {
     it('should enable button when permission is allowed', () => {
-      renderWithProviders(
-        <PermissionButton permission="edit_nodes">
-          Edit
-        </PermissionButton>,
-        { authContext: { user: mockUser({ rank: 1 }) } }
-      );
+      renderWithProviders(<PermissionButton permission="edit_nodes">Edit</PermissionButton>, {
+        authContext: { user: mockUser({ rank: 1 }) },
+      });
 
       const button = screen.getByRole('button', { name: /edit/i });
       expect(button).not.toBeDisabled();
@@ -224,9 +221,7 @@ describe('PermissionButton', () => {
 
     it('should disable button when permission is denied', () => {
       renderWithProviders(
-        <PermissionButton permission="delete_nodes">
-          Delete
-        </PermissionButton>,
+        <PermissionButton permission="delete_nodes">Delete</PermissionButton>,
         { authContext: { user: mockUser({ rank: 1 }) } } // Junior cannot delete
       );
 
@@ -286,12 +281,9 @@ describe('PermissionButton', () => {
 
   describe('Tooltip/Title', () => {
     it('should show reason as title when permission denied', () => {
-      renderWithProviders(
-        <PermissionButton permission="delete_nodes">
-          Delete
-        </PermissionButton>,
-        { authContext: { user: mockUser({ rank: 1 }) } }
-      );
+      renderWithProviders(<PermissionButton permission="delete_nodes">Delete</PermissionButton>, {
+        authContext: { user: mockUser({ rank: 1 }) },
+      });
 
       const button = screen.getByRole('button', { name: /delete/i });
       expect(button).toHaveAttribute('title');

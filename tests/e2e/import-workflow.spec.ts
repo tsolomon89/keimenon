@@ -44,7 +44,7 @@ test.describe('Import Workflow', () => {
 
   test.afterEach(async ({ apiRequest }) => {
     // Cleanup test data
-    await apiRequest.delete('/api/v1/data/canvas', {
+    await apiRequest.delete('/api/v1/data/keimenon', {
       headers: { Authorization: `Bearer ${authToken}` },
       params: { data_tag: 'test' },
     });

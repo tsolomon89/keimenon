@@ -1,11 +1,11 @@
 /**
  * Navigation Model Factory Tests
  *
- * Tests all 12 permutations of shell/canvas mode combinations
+ * Tests all 12 permutations of shell/keimenon mode combinations
  * to ensure correct navigation data is shown in each case.
  */
 
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from 'vitest';
 import {
   NavigationModelFactory,
   type NavigationContext,
@@ -13,7 +13,7 @@ import {
   type TreeNode,
   requiresAdminPermission,
   supportsMultiSelect,
-  getDefaultCanvasMode,
+  getDefaultKeimenonMode,
   getDefaultShellMode,
 } from './navigation.model';
 
@@ -49,7 +49,7 @@ const mockSettingsTree: TreeNode[] = [
 function createContext(overrides: Partial<NavigationContext> = {}): NavigationContext {
   return {
     shellMode: 'client',
-    canvasMode: 'canvas',
+    keimenonMode: 'keimenon',
     operatingMode: 'native',
     user: mockClientUser,
     accountTreeData: mockAccountTree,
@@ -65,10 +65,10 @@ function createContext(overrides: Partial<NavigationContext> = {}): NavigationCo
 
 describe('NavigationModelFactory', () => {
   describe('Settings Mode (Rule 1 - Highest Priority)', () => {
-    it('should show settings tree when canvasMode is settings (admin, crm)', () => {
+    it('should show settings tree when keimenonMode is settings (admin, crm)', () => {
       const context = createContext({
         shellMode: 'admin',
-        canvasMode: 'settings',
+        keimenonMode: 'settings',
         user: mockAdminUser,
       });
 
@@ -82,10 +82,10 @@ describe('NavigationModelFactory', () => {
       expect(model.multiSelect).toBe(false);
     });
 
-    it('should show settings tree when canvasMode is settings (admin, portal)', () => {
+    it('should show settings tree when keimenonMode is settings (admin, portal)', () => {
       const context = createContext({
         shellMode: 'client',
-        canvasMode: 'settings',
+        keimenonMode: 'settings',
         user: mockAdminUser,
       });
 
@@ -96,10 +96,10 @@ describe('NavigationModelFactory', () => {
       expect(model.data).toEqual(mockSettingsTree);
     });
 
-    it('should show settings tree when canvasMode is settings (client, portal)', () => {
+    it('should show settings tree when keimenonMode is settings (client, portal)', () => {
       const context = createContext({
         shellMode: 'client',
-        canvasMode: 'settings',
+        keimenonMode: 'settings',
         user: mockClientUser,
       });
 
@@ -111,7 +111,7 @@ describe('NavigationModelFactory', () => {
 
     it('should show loading message when settings are loading', () => {
       const context = createContext({
-        canvasMode: 'settings',
+        keimenonMode: 'settings',
         settingsLoading: true,
       });
 
@@ -122,7 +122,7 @@ describe('NavigationModelFactory', () => {
 
     it('should show error message when settings fail to load', () => {
       const context = createContext({
-        canvasMode: 'settings',
+        keimenonMode: 'settings',
         settingsError: 'Failed to load settings',
       });
 
@@ -136,7 +136,7 @@ describe('NavigationModelFactory', () => {
     it('should show accounts tree when in CRM + Dashboard (admin)', () => {
       const context = createContext({
         shellMode: 'admin',
-        canvasMode: 'dashboard',
+        keimenonMode: 'dashboard',
         user: mockAdminUser,
       });
 
@@ -150,10 +150,10 @@ describe('NavigationModelFactory', () => {
       expect(model.multiSelect).toBe(true);
     });
 
-    it('should NOT show accounts tree in CRM + Canvas (default to groups)', () => {
+    it('should NOT show accounts tree in CRM + Keimenon (default to groups)', () => {
       const context = createContext({
         shellMode: 'admin',
-        canvasMode: 'canvas',
+        keimenonMode: 'keimenon',
         user: mockAdminUser,
       });
 
@@ -167,7 +167,7 @@ describe('NavigationModelFactory', () => {
       // Edge case: client shouldn't be in CRM mode, but if they are, show accounts
       const context = createContext({
         shellMode: 'admin',
-        canvasMode: 'dashboard',
+        keimenonMode: 'dashboard',
         user: mockClientUser,
       });
 
@@ -180,7 +180,7 @@ describe('NavigationModelFactory', () => {
     it('should show loading message when accounts are loading', () => {
       const context = createContext({
         shellMode: 'admin',
-        canvasMode: 'dashboard',
+        keimenonMode: 'dashboard',
         accountsLoading: true,
       });
 
@@ -191,10 +191,10 @@ describe('NavigationModelFactory', () => {
   });
 
   describe('Groups Mode (Rule 3 - Default/Fallback)', () => {
-    it('should show groups tree in portal + canvas (client)', () => {
+    it('should show groups tree in portal + keimenon (client)', () => {
       const context = createContext({
         shellMode: 'client',
-        canvasMode: 'canvas',
+        keimenonMode: 'keimenon',
         user: mockClientUser,
       });
 
@@ -211,7 +211,7 @@ describe('NavigationModelFactory', () => {
     it('should show groups tree in portal + dashboard (admin-as-client)', () => {
       const context = createContext({
         shellMode: 'client',
-        canvasMode: 'dashboard',
+        keimenonMode: 'dashboard',
         user: mockAdminUser,
       });
 
@@ -221,10 +221,10 @@ describe('NavigationModelFactory', () => {
       expect(model.data).toEqual(mockGroupsTree);
     });
 
-    it('should show groups tree in crm + canvas (admin in canvas view)', () => {
+    it('should show groups tree in crm + keimenon (admin in keimenon view)', () => {
       const context = createContext({
         shellMode: 'admin',
-        canvasMode: 'canvas',
+        keimenonMode: 'keimenon',
         user: mockAdminUser,
       });
 
@@ -233,10 +233,10 @@ describe('NavigationModelFactory', () => {
       expect(model.mode).toBe('groups');
     });
 
-    it('should show groups tree in portal + canvas', () => {
+    it('should show groups tree in portal + keimenon', () => {
       const context = createContext({
         shellMode: 'client',
-        canvasMode: 'canvas',
+        keimenonMode: 'keimenon',
       });
 
       const model = NavigationModelFactory.get(context);
@@ -244,10 +244,10 @@ describe('NavigationModelFactory', () => {
       expect(model.mode).toBe('groups');
     });
 
-    it('should show groups tree in crm + canvas', () => {
+    it('should show groups tree in crm + keimenon', () => {
       const context = createContext({
         shellMode: 'admin',
-        canvasMode: 'canvas',
+        keimenonMode: 'keimenon',
         user: mockAdminUser,
       });
 
@@ -258,7 +258,7 @@ describe('NavigationModelFactory', () => {
 
     it('should show loading message when groups are loading', () => {
       const context = createContext({
-        canvasMode: 'canvas',
+        keimenonMode: 'keimenon',
         groupsLoading: true,
       });
 
@@ -269,7 +269,7 @@ describe('NavigationModelFactory', () => {
 
     it('should show helpful empty message when no groups exist', () => {
       const context = createContext({
-        canvasMode: 'canvas',
+        keimenonMode: 'keimenon',
         groupsTreeData: [],
       });
 
@@ -282,7 +282,7 @@ describe('NavigationModelFactory', () => {
   describe('All 12 Permutations (Comprehensive Matrix)', () => {
     const testCases: Array<{
       shell: 'admin' | 'client';
-      canvas: 'auth' | 'dashboard' | 'settings' | 'canvas';
+      keimenon: 'auth' | 'dashboard' | 'settings' | 'keimenon';
       user: User;
       expectedMode: 'accounts' | 'settings' | 'groups';
       description: string;
@@ -290,76 +290,76 @@ describe('NavigationModelFactory', () => {
       // CRM shell variations
       {
         shell: 'admin',
-        canvas: 'dashboard',
+        keimenon: 'dashboard',
         user: mockAdminUser,
         expectedMode: 'accounts',
         description: 'Admin in CRM dashboard shows accounts',
       },
       {
         shell: 'admin',
-        canvas: 'canvas',
+        keimenon: 'keimenon',
         user: mockAdminUser,
         expectedMode: 'groups',
-        description: 'Admin in CRM canvas shows groups',
+        description: 'Admin in CRM keimenon shows groups',
       },
       {
         shell: 'admin',
-        canvas: 'settings',
+        keimenon: 'settings',
         user: mockAdminUser,
         expectedMode: 'settings',
         description: 'Admin in CRM settings shows settings',
       },
       {
         shell: 'admin',
-        canvas: 'canvas',
+        keimenon: 'keimenon',
         user: mockAdminUser,
         expectedMode: 'groups',
-        description: 'Admin in CRM canvas shows groups',
+        description: 'Admin in CRM keimenon shows groups',
       },
 
       // Portal shell variations (admin-as-client or client)
       {
         shell: 'client',
-        canvas: 'dashboard',
+        keimenon: 'dashboard',
         user: mockAdminUser,
         expectedMode: 'groups',
         description: 'Admin-as-client in portal dashboard shows groups',
       },
       {
         shell: 'client',
-        canvas: 'canvas',
+        keimenon: 'keimenon',
         user: mockAdminUser,
         expectedMode: 'groups',
-        description: 'Admin-as-client in portal canvas shows groups',
+        description: 'Admin-as-client in portal keimenon shows groups',
       },
       {
         shell: 'client',
-        canvas: 'settings',
+        keimenon: 'settings',
         user: mockAdminUser,
         expectedMode: 'settings',
         description: 'Admin-as-client in portal settings shows settings',
       },
       {
         shell: 'client',
-        canvas: 'canvas',
+        keimenon: 'keimenon',
         user: mockClientUser,
         expectedMode: 'groups',
-        description: 'Client in portal canvas shows groups',
+        description: 'Client in portal keimenon shows groups',
       },
       {
         shell: 'client',
-        canvas: 'settings',
+        keimenon: 'settings',
         user: mockClientUser,
         expectedMode: 'settings',
         description: 'Client in portal settings shows settings',
       },
     ];
 
-    testCases.forEach(({ shell, canvas, user, expectedMode, description }) => {
+    testCases.forEach(({ shell, keimenon, user, expectedMode, description }) => {
       it(description, () => {
         const context = createContext({
           shellMode: shell,
-          canvasMode: canvas,
+          keimenonMode: keimenon,
           user,
         });
 
@@ -399,22 +399,22 @@ describe('NavigationModelFactory', () => {
       });
     });
 
-    describe('getDefaultCanvasMode', () => {
+    describe('getDefaultKeimenonMode', () => {
       it('should return dashboard for admin in CRM shell', () => {
-        expect(getDefaultCanvasMode('admin', mockAdminUser)).toBe('dashboard');
+        expect(getDefaultKeimenonMode('admin', mockAdminUser)).toBe('dashboard');
       });
 
-      it('should return canvas for admin in portal shell', () => {
-        expect(getDefaultCanvasMode('client', mockAdminUser)).toBe('canvas');
+      it('should return keimenon for admin in portal shell', () => {
+        expect(getDefaultKeimenonMode('client', mockAdminUser)).toBe('keimenon');
       });
 
-      it('should return canvas for client in any shell', () => {
-        expect(getDefaultCanvasMode('client', mockClientUser)).toBe('canvas');
-        expect(getDefaultCanvasMode('admin', mockClientUser)).toBe('canvas');
+      it('should return keimenon for client in any shell', () => {
+        expect(getDefaultKeimenonMode('client', mockClientUser)).toBe('keimenon');
+        expect(getDefaultKeimenonMode('admin', mockClientUser)).toBe('keimenon');
       });
 
-      it('should return canvas when user is null', () => {
-        expect(getDefaultCanvasMode('admin', null)).toBe('canvas');
+      it('should return keimenon when user is null', () => {
+        expect(getDefaultKeimenonMode('admin', null)).toBe('keimenon');
       });
     });
 
@@ -460,7 +460,7 @@ describe('NavigationModelFactory', () => {
     it('should prioritize settings mode even if accounts would match', () => {
       const context = createContext({
         shellMode: 'admin',
-        canvasMode: 'settings', // Settings takes priority
+        keimenonMode: 'settings', // Settings takes priority
         user: mockAdminUser,
       });
 

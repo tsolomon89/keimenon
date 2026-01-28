@@ -12,7 +12,7 @@ describe('usePermissions', () => {
         ),
       });
 
-      expect(result.current.canViewCanvas).toBe(false);
+      expect(result.current.canViewKeimenon).toBe(false);
       expect(result.current.canEditNodes).toBe(false);
       expect(result.current.canDeleteNodes).toBe(false);
       expect(result.current.canManageGroups).toBe(false);
@@ -38,13 +38,15 @@ describe('usePermissions', () => {
     it('should allow junior (rank 1) to view and edit in native mode', () => {
       const { result } = renderHook(() => usePermissions(), {
         wrapper: ({ children }) => (
-          <ProvidersWrapper authContext={{ user: mockUser({ rank: 1, permissionLevel: 'junior' }) }}>
+          <ProvidersWrapper
+            authContext={{ user: mockUser({ rank: 1, permissionLevel: 'junior' }) }}
+          >
             {children}
           </ProvidersWrapper>
         ),
       });
 
-      expect(result.current.canViewCanvas).toBe(true);
+      expect(result.current.canViewKeimenon).toBe(true);
       expect(result.current.canEditNodes).toBe(true);
       expect(result.current.canUploadSources).toBe(true);
       expect(result.current.rank).toBe(1);
@@ -53,7 +55,9 @@ describe('usePermissions', () => {
     it('should deny junior (rank 1) from deleting and managing groups', () => {
       const { result } = renderHook(() => usePermissions(), {
         wrapper: ({ children }) => (
-          <ProvidersWrapper authContext={{ user: mockUser({ rank: 1, permissionLevel: 'junior' }) }}>
+          <ProvidersWrapper
+            authContext={{ user: mockUser({ rank: 1, permissionLevel: 'junior' }) }}
+          >
             {children}
           </ProvidersWrapper>
         ),
@@ -67,7 +71,9 @@ describe('usePermissions', () => {
     it('should allow senior (rank 2) to delete nodes and manage groups', () => {
       const { result } = renderHook(() => usePermissions(), {
         wrapper: ({ children }) => (
-          <ProvidersWrapper authContext={{ user: mockUser({ rank: 2, permissionLevel: 'senior' }) }}>
+          <ProvidersWrapper
+            authContext={{ user: mockUser({ rank: 2, permissionLevel: 'senior' }) }}
+          >
             {children}
           </ProvidersWrapper>
         ),
@@ -82,7 +88,9 @@ describe('usePermissions', () => {
     it('should allow leader (rank 3) to edit account settings', () => {
       const { result } = renderHook(() => usePermissions(), {
         wrapper: ({ children }) => (
-          <ProvidersWrapper authContext={{ user: mockUser({ rank: 3, permissionLevel: 'leader' }) }}>
+          <ProvidersWrapper
+            authContext={{ user: mockUser({ rank: 3, permissionLevel: 'leader' }) }}
+          >
             {children}
           </ProvidersWrapper>
         ),
@@ -111,7 +119,9 @@ describe('usePermissions', () => {
     it('should allow admin-junior (rank 1) basic permissions', () => {
       const { result } = renderHook(() => usePermissions(), {
         wrapper: ({ children }) => (
-          <ProvidersWrapper authContext={{ user: mockAdminUser({ rank: 1, permissionLevel: 'junior' }) }}>
+          <ProvidersWrapper
+            authContext={{ user: mockAdminUser({ rank: 1, permissionLevel: 'junior' }) }}
+          >
             {children}
           </ProvidersWrapper>
         ),
@@ -126,7 +136,9 @@ describe('usePermissions', () => {
     it('should allow admin-senior (rank 2) to view audit log', () => {
       const { result } = renderHook(() => usePermissions(), {
         wrapper: ({ children }) => (
-          <ProvidersWrapper authContext={{ user: mockAdminUser({ rank: 2, permissionLevel: 'senior' }) }}>
+          <ProvidersWrapper
+            authContext={{ user: mockAdminUser({ rank: 2, permissionLevel: 'senior' }) }}
+          >
             {children}
           </ProvidersWrapper>
         ),
@@ -139,7 +151,9 @@ describe('usePermissions', () => {
     it('should allow admin-admin (rank 4) to edit global settings', () => {
       const { result } = renderHook(() => usePermissions(), {
         wrapper: ({ children }) => (
-          <ProvidersWrapper authContext={{ user: mockAdminUser({ rank: 4, permissionLevel: 'admin' }) }}>
+          <ProvidersWrapper
+            authContext={{ user: mockAdminUser({ rank: 4, permissionLevel: 'admin' }) }}
+          >
             {children}
           </ProvidersWrapper>
         ),
@@ -200,7 +214,7 @@ describe('usePermissions', () => {
         ),
       });
 
-      expect(result.current.canViewCanvas).toBe(true);
+      expect(result.current.canViewKeimenon).toBe(true);
       expect(result.current.canExportData).toBe(true); // Read operation
     });
   });
@@ -333,16 +347,14 @@ describe('usePermissions', () => {
   });
 
   describe('checkPermission - All Permission Types', () => {
-    it('should correctly check view_canvas permission', () => {
+    it('should correctly check view_keimenon permission', () => {
       const { result } = renderHook(() => usePermissions(), {
         wrapper: ({ children }) => (
-          <ProvidersWrapper authContext={{ user: mockUser() }}>
-            {children}
-          </ProvidersWrapper>
+          <ProvidersWrapper authContext={{ user: mockUser() }}>{children}</ProvidersWrapper>
         ),
       });
 
-      const check = result.current.checkPermission('view_canvas');
+      const check = result.current.checkPermission('view_keimenon');
       expect(check.allowed).toBe(true);
     });
 

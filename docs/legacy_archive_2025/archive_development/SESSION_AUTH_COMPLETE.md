@@ -538,7 +538,7 @@ PORT=4001
 NODE_ENV=production
 JWT_SECRET=<strong-random-secret>
 STORAGE_MODE=local
-SQLITE_PATH=/var/canvas-memory/canvas.db
+SQLITE_PATH=/var/keimenon/keimenon.db
 
 # Optional (if using Neo4j)
 NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io

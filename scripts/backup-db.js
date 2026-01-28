@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Backup the Canvas Memory database
+ * Backup the Keimenon database
  * Usage: npm run backup
  * Options:
  *   --output <path>  - Custom backup location
@@ -12,8 +12,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const DEFAULT_DB_PATH = path.join(os.homedir(), '.canvas-memory', 'canvas.db');
-const DEFAULT_BACKUP_DIR = path.join(os.homedir(), '.canvas-memory', 'backups');
+const DEFAULT_DB_PATH = path.join(os.homedir(), '.keimenon', 'keimenon.db');
+const DEFAULT_BACKUP_DIR = path.join(os.homedir(), '.keimenon', 'backups');
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -39,13 +39,13 @@ function formatBytes(bytes) {
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
 async function main() {
   const options = parseArgs();
 
-  console.log('💾 Canvas Memory Database Backup\n');
+  console.log('💾 Keimenon Database Backup\n');
 
   // Check if database exists
   if (!fs.existsSync(DEFAULT_DB_PATH)) {
@@ -71,7 +71,7 @@ async function main() {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T');
   const dateStr = timestamp[0];
   const timeStr = timestamp[1].split('-')[0]; // HH-MM-SS
-  const backupFilename = `canvas-${dateStr}_${timeStr}.db`;
+  const backupFilename = `keimenon-${dateStr}_${timeStr}.db`;
 
   const backupPath = options.output || path.join(DEFAULT_BACKUP_DIR, backupFilename);
 
@@ -94,9 +94,7 @@ async function main() {
       const destination = fs.createWriteStream(backupPath + '.gz');
 
       await new Promise((resolve, reject) => {
-        source.pipe(gzip).pipe(destination)
-          .on('finish', resolve)
-          .on('error', reject);
+        source.pipe(gzip).pipe(destination).on('finish', resolve).on('error', reject);
       });
 
       // Remove uncompressed version
@@ -111,9 +109,10 @@ async function main() {
     }
 
     // List recent backups
-    const backups = fs.readdirSync(DEFAULT_BACKUP_DIR)
-      .filter(f => f.startsWith('canvas-') && (f.endsWith('.db') || f.endsWith('.db.gz')))
-      .map(f => {
+    const backups = fs
+      .readdirSync(DEFAULT_BACKUP_DIR)
+      .filter((f) => f.startsWith('keimenon-') && (f.endsWith('.db') || f.endsWith('.db.gz')))
+      .map((f) => {
         const stats = fs.statSync(path.join(DEFAULT_BACKUP_DIR, f));
         return { name: f, size: stats.size, mtime: stats.mtime };
       })
@@ -134,14 +133,13 @@ async function main() {
 
     console.log('\n💡 Restore with:');
     console.log(`   npm run restore -- --file "${backupPath}"`);
-
   } catch (error) {
     console.error('❌ Backup failed:', error.message);
     process.exit(1);
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('Error:', error.message);
   process.exit(1);
 });

@@ -23,7 +23,7 @@ Phase 2 will implement a **per-worker database isolation system** to eliminate r
 The current E2E test suite experiences failures due to **shared database state** across parallel test workers:
 
 1. **Resource Contention**:
-   - Both workers access the same `canvas-memory.db` file
+   - Both workers access the same `keimenon.db` file
    - Concurrent writes cause SQLite locking
    - Tests read stale data from other workers' operations
 
@@ -72,7 +72,7 @@ Worker 0: Expects 10 jobs → FAILS (Worker 1 deleted them)
          │                                     │
          ▼                                     ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              Canvas Memory API Server                        │
+│              Keimenon API Server                        │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │   Test Isolation Middleware                          │   │
@@ -161,7 +161,7 @@ global.dbClient = dbClient; // Global singleton
 1. **Create helper function** (`apps/api/src/utils/get-db-client.ts`):
 
 ```typescript
-import { DatabaseFactory } from '@canvas-memory/db';
+import { DatabaseFactory } from '@keimenon/db';
 import { Request } from 'express';
 import path from 'path';
 
@@ -271,12 +271,12 @@ import { test, expect } from './fixtures/test-isolation';
 
 **Files to Update** (8 total):
 
-1. `tests/e2e/canvas-operations.spec.ts`
+1. `tests/e2e/keimenon-operations.spec.ts`
 2. `tests/e2e/console-error-filtering.spec.ts`
 3. `tests/e2e/data-management-ui-updates.spec.ts`
 4. `tests/e2e/debug-auth.spec.ts`
 5. `tests/e2e/debug-client-env.spec.ts`
-6. `tests/e2e/flow-auth-canvas.spec.ts`
+6. `tests/e2e/flow-auth-keimenon.spec.ts`
 7. `tests/e2e/settings-navigation.spec.ts`
 8. `tests/e2e/smoke.spec.ts`
 
@@ -332,7 +332,7 @@ export const test = base.extend<TestIsolationFixtures>({
     console.log(`[Worker ${workerInfo.workerIndex}] Using isolated DB: ${dbPath}`);
 
     // Initialize DB from template
-    const templateDb = path.join(process.cwd(), 'packages/db/data/canvas-memory.db');
+    const templateDb = path.join(process.cwd(), 'packages/db/data/keimenon.db');
     if (fs.existsSync(templateDb) && !fs.existsSync(dbPath)) {
       console.log(`[Worker ${workerInfo.workerIndex}] Copying template DB...`);
       fs.copyFileSync(templateDb, dbPath);
@@ -407,7 +407,7 @@ export { expect } from '@playwright/test';
 import Database from 'better-sqlite3';
 
 async function initializeWorkerDb(workerIndex: number, dbPath: string): Promise<void> {
-  const templateDb = path.join(process.cwd(), 'packages/db/data/canvas-memory.db');
+  const templateDb = path.join(process.cwd(), 'packages/db/data/keimenon.db');
 
   // Copy template if DB doesn't exist
   if (!fs.existsSync(dbPath)) {
@@ -660,7 +660,7 @@ npx playwright test --reporter=html,list
 
 ### Risk 1: Template DB Missing
 
-**Problem**: `packages/db/data/canvas-memory.db` doesn't exist
+**Problem**: `packages/db/data/keimenon.db` doesn't exist
 **Mitigation**:
 
 - Check for template in global setup

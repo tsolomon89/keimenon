@@ -95,7 +95,7 @@ apiProc = await startServer(
 ```
 [API] 🧪 Test isolation middleware enabled  ← SUCCESS!
 [API] [Test Helpers] Routes enabled for test environment  ← SUCCESS!
-[API] ⚡️ Canvas Memory API running on port 4001  ← SUCCESS!
+[API] ⚡️ Keimenon API running on port 4001  ← SUCCESS!
 
 [API Error] Origin header required  ← Health check failing
 ❌ API failed to start within 120s  ← False negative

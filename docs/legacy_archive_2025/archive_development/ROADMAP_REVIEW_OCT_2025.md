@@ -1,4 +1,4 @@
-# Canvas Memory OS - Roadmap Review (October 2025)
+# Keimenon - Roadmap Review (October 2025)
 
 **Date**: October 12, 2025
 **Reviewer**: Claude (AI Assistant)
@@ -51,8 +51,8 @@ After a thorough review of the entire codebase, I discovered that **significantl
    - Frontend UI complete
    - **Missing**: Rate limiting, circuit breaker
 
-6. **Phase 1C: 2D Canvas Visualization** ✅ (Mostly Complete)
-   - Canvas2D component with D3-force layout
+6. **Phase 1C: 2D Keimenon Visualization** ✅ (Mostly Complete)
+   - Keimenon2D component with D3-force layout
    - Pan & zoom controls
    - Node and edge rendering
    - Board CRUD endpoints
@@ -121,11 +121,11 @@ After a thorough review of the entire codebase, I discovered that **significantl
 
 **Completion: 95%**
 
-### Phase 1C: 2D Canvas Visualization ✅ MOSTLY COMPLETE
+### Phase 1C: 2D Keimenon Visualization ✅ MOSTLY COMPLETE
 
 **What Was Thought to Be Missing:**
 
-- Canvas component with D3-force
+- Keimenon component with D3-force
 - Pan & zoom
 - Node rendering
 - Board endpoints
@@ -133,7 +133,7 @@ After a thorough review of the entire codebase, I discovered that **significantl
 
 **What Was Actually Found:**
 
-- ✅ `Canvas2D.tsx` - Full implementation with D3-force
+- ✅ `Keimenon2D.tsx` - Full implementation with D3-force
   - Pan & zoom with trackpad/mousewheel
   - Stable layout (seed: 42, iterations: 300)
   - All node types rendered
@@ -150,7 +150,7 @@ After a thorough review of the entire codebase, I discovered that **significantl
   - calculateLayout function
   - Force simulation configuration
   - Transform handling (pan/zoom state)
-- ✅ `CanvasLayout.tsx` with modal integrations
+- ✅ `KeimenonLayout.tsx` with modal integrations
 - ✅ Multiple node/edge query endpoints
 
 **Only Missing:**
@@ -243,8 +243,8 @@ After a thorough review of the entire codebase, I discovered that **significantl
 
 Key components:
 
-- Canvas2D.tsx (D3-force visualization)
-- CanvasLayout.tsx (layout container)
+- Keimenon2D.tsx (D3-force visualization)
+- KeimenonLayout.tsx (layout container)
 - StreamingUploadModal.tsx (real-time progress)
 - ChatImportModal.tsx (import configuration)
 - FileUploadZone.tsx (drag-and-drop)
@@ -452,7 +452,7 @@ Key components:
 - ✅ 12 route handlers
 - ✅ Full SQLite integration with FTS5
 - ✅ Complete chat import system
-- ✅ 2D canvas visualization
+- ✅ 2D keimenon visualization
 - ✅ Duplicate detection (4 algorithms)
 - ✅ Code extraction
 - ✅ Auto-grouping (2 implementations)
@@ -480,7 +480,7 @@ Key components:
 
 ## Conclusion
 
-**Canvas Memory OS is much further along than the roadmap indicated.**
+**Keimenon is much further along than the roadmap indicated.**
 
 The project has:
 

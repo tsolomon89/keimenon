@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The Chat Import feature has been successfully completed with all requested functionality implemented. The feature enables users to import AI chat conversations from JSON/JSONL files with advanced duplicate detection, code extraction, and canvas visualization.
+The Chat Import feature has been successfully completed with all requested functionality implemented. The feature enables users to import AI chat conversations from JSON/JSONL files with advanced duplicate detection, code extraction, and keimenon visualization.
 
 **Completion Status: 100%**
 
@@ -52,14 +52,14 @@ Enhancements: 5. ✅ **Undo/Redo System** - Full history management with keyboar
 7. ✅ **Import Service** - Backend processing with Neo4j persistence
 8. ✅ **Duplicate Detection Service** - Advanced similarity detection
 
-### Phase 4: Canvas Integration (100% Complete)
+### Phase 4: Keimenon Integration (100% Complete)
 
 **State Management + Visualization**
 
-1. ✅ **Canvas Store** - Zustand store for graph state management
-2. ✅ **Canvas Viewport Integration** - Display imported data in canvas
+1. ✅ **Keimenon Store** - Zustand store for graph state management
+2. ✅ **Keimenon Viewport Integration** - Display imported data in keimenon
 3. ✅ **Selection Synchronization** - Cross-component selection state
-4. ✅ **Data Conversion Utilities** - Import result to canvas nodes/edges conversion
+4. ✅ **Data Conversion Utilities** - Import result to keimenon nodes/edges conversion
 5. ✅ **Node Types** - Conversation, Message, Source, and Code nodes
 6. ✅ **Edge Types** - Contains, References, Derives, and Compiled relationships
 
@@ -105,7 +105,7 @@ Enhancements: 5. ✅ **Undo/Redo System** - Full history management with keyboar
 - `apps/web/src/hooks/useUndoRedo.ts`
 - `apps/web/src/hooks/useToast.ts`
 - `apps/web/src/hooks/useSelectionSync.ts`
-- `apps/web/src/store/canvasStore.ts`
+- `apps/web/src/store/keimenonStore.ts`
 - `apps/web/src/lib/import-utils.ts`
 - `apps/web/src/lib/error-handler.ts`
 
@@ -134,7 +134,7 @@ Enhancements: 5. ✅ **Undo/Redo System** - Full history management with keyboar
 
 ### Architecture Decisions
 
-1. **State Management**: Zustand for canvas state, React hooks for component state
+1. **State Management**: Zustand for keimenon state, React hooks for component state
 2. **Error Handling**: Centralized error classes with retry logic and user-friendly messages
 3. **Type Safety**: Full TypeScript coverage with strict type checking
 4. **Performance**: Optimized with React.memo, useCallback, and efficient selectors
@@ -160,7 +160,7 @@ Enhancements: 5. ✅ **Undo/Redo System** - Full history management with keyboar
    - Network error detection and recovery
    - User-friendly error messages
 
-4. **Canvas Integration**
+4. **Keimenon Integration**
    - Automatic conversion of imports to graph nodes
    - Synchronized selection across views
    - Viewport controls (zoom, pan, fit)
@@ -183,7 +183,7 @@ Enhancements: 5. ✅ **Undo/Redo System** - Full history management with keyboar
 - **Medium files (1-5MB)**: Process in <5s
 - **Large files (5-10MB)**: Show progress, complete in <15s
 - **Batch upload**: Handles 10 files concurrently
-- **Canvas rendering**: Supports 100+ nodes smoothly
+- **Keimenon rendering**: Supports 100+ nodes smoothly
 - **Undo/Redo**: Instant response (<50ms)
 
 ## Browser Compatibility
@@ -216,7 +216,7 @@ Enhancements: 5. ✅ **Undo/Redo System** - Full history management with keyboar
 
 While the feature is 100% complete, potential future enhancements include:
 
-1. **Visual Graph Rendering** - Full force-directed graph visualization on canvas
+1. **Visual Graph Rendering** - Full force-directed graph visualization on keimenon
 2. **Advanced Search** - Full-text search across imported conversations
 3. **Export Functionality** - Export processed data in various formats
 4. **Batch Operations** - Edit/delete multiple imports at once
@@ -230,12 +230,12 @@ While the feature is 100% complete, potential future enhancements include:
 1. Review [TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md) for comprehensive test cases
 2. Start API server: `cd apps/api && npm run dev`
 3. Start web app: `cd apps/web && npm run dev`
-4. Navigate to `/canvas` route
+4. Navigate to `/keimenon` route
 5. Click "Import Chat Conversations"
 6. Upload sample JSON/JSONL files
 7. Configure import settings
 8. Review duplicates (if detected)
-9. Verify canvas updates with imported data
+9. Verify keimenon updates with imported data
 
 ## Sample Test Files
 
@@ -297,16 +297,16 @@ Before deploying to production:
 - Maximum file size: 10MB per file
 - Maximum batch size: 10 files
 - History limit: 50 undo/redo states
-- Canvas node limit: Recommended <1000 nodes for optimal performance
+- Keimenon node limit: Recommended <1000 nodes for optimal performance
 
 **Browser Console Commands:**
 
 ```javascript
-// Clear all canvas data
-useCanvasStore.getState().reset();
+// Clear all keimenon data
+useKeimenonStore.getState().reset();
 
 // Get current selection
-Array.from(useCanvasStore.getState().selectedNodeIds);
+Array.from(useKeimenonStore.getState().selectedNodeIds);
 
 // Export current configuration
 console.log(JSON.stringify(getCurrentConfig(), null, 2));
@@ -323,7 +323,7 @@ The Chat Import feature is **100% complete** with all originally requested funct
 - ✅ Complete keyboard navigation
 - ✅ Toast notifications
 - ✅ Advanced loading states
-- ✅ Canvas state management
+- ✅ Keimenon state management
 - ✅ Selection synchronization
 - ✅ Data conversion utilities
 - ✅ Comprehensive error handling

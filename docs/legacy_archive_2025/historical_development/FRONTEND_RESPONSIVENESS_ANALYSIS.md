@@ -490,8 +490,8 @@ if (result?.requiresAccountSelection) {
     tempToken: result.tempToken,
   });
 } else {
-  // Single account - direct to canvas
-  router.push('/canvas');
+  // Single account - direct to keimenon
+  router.push('/keimenon');
 }
 ```
 
@@ -502,7 +502,7 @@ if (result?.requiresAccountSelection) {
 const handleSelect = async (accountId: string) => {
   await authContext.selectAccount(tempToken, accountId);
   // Now authenticated with full token for selected account
-  router.push('/canvas');
+  router.push('/keimenon');
 };
 ```
 
@@ -635,7 +635,7 @@ class ImportService {
 
 - Alice (Account A): Importing 50,000-node conversation history
 - Bob (Account B): Importing 500-node small dataset
-- Carol (Account C): Browsing canvas, viewing nodes
+- Carol (Account C): Browsing keimenon, viewing nodes
 
 **Timeline with M:N Architecture:**
 
@@ -662,7 +662,7 @@ class ImportService {
            ↓
            Response (immediate): { nodes: [...] }
            ↓
-           Carol's UI: Canvas renders nodes (not blocked!)
+           Carol's UI: Keimenon renders nodes (not blocked!)
 
 -- Background Processing (Round-Robin) --
 
@@ -827,7 +827,7 @@ class ImportService {
 **Timeline with M:N Authentication:**
 
 ```
-09:00:00 - Alice: Opens app at https://app.canvas-memory.com
+09:00:00 - Alice: Opens app at https://app.keimenon.com
            ↓
            AuthContext: No token found → Redirect to /login
 
@@ -868,9 +868,9 @@ class ImportService {
            ↓
            Frontend: localStorage.setItem(TOKEN_KEY, token)
            ↓
-           Redirect to /canvas
+           Redirect to /keimenon
 
-09:01:00 - Alice: Working in Engineering account canvas
+09:01:00 - Alice: Working in Engineering account keimenon
            ↓
            Header shows: "🛡️ Engineering (admin)"
            ↓
@@ -911,13 +911,13 @@ class ImportService {
            ↓
            window.location.reload() // Refresh with new account context
 
-10:30:03 - Alice: Canvas reloads with Sales account data
+10:30:03 - Alice: Keimenon reloads with Sales account data
            ↓
            Header shows: "💼 Sales (senior)"
            ↓
            All API calls now use new token (accountId: "B")
            ↓
-           Canvas shows Sales account's nodes/edges
+           Keimenon shows Sales account's nodes/edges
 ```
 
 **Key Observations:**
@@ -947,7 +947,7 @@ class ImportService {
 | Import request | 15-60s (blocking) | <50ms (immediate)       | **99.9%**   |
 | Delete request | 5-30s (blocking)  | <50ms (immediate)       | **99.8%**   |
 | Node update    | 100-500ms         | <50ms (immediate)       | **90%**     |
-| Canvas load    | 200-800ms         | 200-800ms (no change)   | -           |
+| Keimenon load  | 200-800ms         | 200-800ms (no change)   | -           |
 
 **Metric: SSE Update Latency**
 
@@ -1260,12 +1260,12 @@ Result: All accounts make progress simultaneously, none starve!
 
 **Story 2: Team Lead Importing Large Dataset**
 
-> "As a team lead, I want to import 50,000 conversations without blocking my team from working on the canvas."
+> "As a team lead, I want to import 50,000 conversations without blocking my team from working on the keimenon."
 
 **Before:**
 
 - Import blocks for 60+ seconds
-- Team can't load canvas during import
+- Team can't load keimenon during import
 - No progress visibility
 
 **After:**
@@ -1398,9 +1398,9 @@ await authContext.switchAccount('acct_999');
 **Multi-Account Authentication:**
 
 - [ ] Register new user → Creates account + membership
-- [ ] Login with single-account user → Direct to canvas
+- [ ] Login with single-account user → Direct to keimenon
 - [ ] Login with multi-account user → Shows AccountSelector
-- [ ] Select account from list → Redirects to canvas
+- [ ] Select account from list → Redirects to keimenon
 - [ ] Switch account via dropdown → Updates context
 - [ ] Logout → Clears token
 - [ ] Token expiry → Auto-logout
@@ -1409,7 +1409,7 @@ await authContext.switchAccount('acct_999');
 
 - [ ] Import 10K nodes → API responds <50ms
 - [ ] Import shows progress bar → Updates every 500ms
-- [ ] Open canvas during import → Loads immediately
+- [ ] Open keimenon during import → Loads immediately
 - [ ] Edit node during import → No UI lag
 - [ ] Delete 5K nodes → API responds <50ms
 - [ ] Multiple users import simultaneously → All make progress
@@ -1431,7 +1431,7 @@ await authContext.switchAccount('acct_999');
 
 **SSE Updates:**
 
-- [ ] Open canvas in two browsers (same account)
+- [ ] Open keimenon in two browsers (same account)
 - [ ] Import file in browser A
 - [ ] Verify: Browser B sees progress updates
 - [ ] Edit node in browser A
@@ -1529,7 +1529,7 @@ test('SSEBroadcaster: Sends progress updates every 500ms', async () => {
 **1. Real-Time Presence**
 
 - Show who's online in each account
-- Live cursor tracking on canvas
+- Live cursor tracking on keimenon
 - "User X is editing this node" indicators
 
 **2. User Invitations**
@@ -1586,7 +1586,7 @@ The M:N user-account architecture, built on top of existing non-blocking infrast
 4. **✅ Concurrent Editing:** Optimistic locking enables collaboration without data loss
 5. **✅ Multi-Account Support:** Users seamlessly work across unlimited accounts
 
-**The Ultimate Goal is Achieved:** Users can import 100K nodes, delete 50K nodes, or perform any heavy operation **without the frontend UI freezing or becoming unresponsive**. The canvas remains interactive, other users can work simultaneously, and everyone receives real-time progress updates.
+**The Ultimate Goal is Achieved:** Users can import 100K nodes, delete 50K nodes, or perform any heavy operation **without the frontend UI freezing or becoming unresponsive**. The keimenon remains interactive, other users can work simultaneously, and everyone receives real-time progress updates.
 
 **Production Ready:** ✅ All core components implemented, tested, and documented.
 

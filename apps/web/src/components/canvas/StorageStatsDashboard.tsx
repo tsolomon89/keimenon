@@ -35,8 +35,8 @@ export function StorageStatsDashboard() {
 
       // Fetch deduplication stats (optional - won't fail if unavailable)
       try {
-        const token = localStorage.getItem('canvas_memory_token');
-        const userStr = localStorage.getItem('canvas_memory_user');
+        const token = localStorage.getItem('keimenon_token');
+        const userStr = localStorage.getItem('keimenon_user');
         if (token && userStr) {
           const user = JSON.parse(userStr);
           const response = await fetch(

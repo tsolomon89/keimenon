@@ -132,7 +132,7 @@ const testDbsDir = path.resolve(projectRoot, '.test-dbs');
 **Solution**: Clear login_attempts table before running tests
 
 ```bash
-sqlite3 ~/.canvas-memory/canvas.db "DELETE FROM login_attempts"
+sqlite3 ~/.keimenon/keimenon.db "DELETE FROM login_attempts"
 ```
 
 ### 2. Audit Log Foreign Key Failures
@@ -222,7 +222,7 @@ npm run e2e:dev -- tests/e2e/boards-crud-operations.spec.ts --project=chromium
 1. **Clear account lockout data** (5 min)
 
    ```bash
-   sqlite3 ~/.canvas-memory/canvas.db "DELETE FROM login_attempts"
+   sqlite3 ~/.keimenon/keimenon.db "DELETE FROM login_attempts"
    ```
 
 2. **Re-run test suite** (10 min)

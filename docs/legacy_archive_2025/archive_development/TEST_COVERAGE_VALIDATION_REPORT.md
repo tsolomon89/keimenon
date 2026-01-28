@@ -34,12 +34,12 @@ Found **24 active E2E test files** covering the following areas:
 - ✅ `auth-account-switching.spec.ts` - Account switching flows
 - ✅ `auth-registration-flow.spec.ts` - User registration
 - ✅ `debug-auth.spec.ts` - Auth debugging
-- ✅ `flow-auth-canvas.spec.ts` - Auth + canvas integration
+- ✅ `flow-auth-keimenon.spec.ts` - Auth + keimenon integration
 
 #### Core Resources (2 files)
 
 - ✅ `nodes-crud-operations.spec.ts` - Node CRUD operations
-- ⚠️ `canvas-operations.spec.ts` - Basic canvas operations (partial coverage)
+- ⚠️ `keimenon-operations.spec.ts` - Basic keimenon operations (partial coverage)
 
 #### Multi-Tenant Isolation (4 files - CRITICAL)
 

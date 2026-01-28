@@ -108,14 +108,14 @@ const EventSource = (EventSourcePolyfill as any).default || EventSourcePolyfill;
 
 ```
 ✅ SQLite schema initialized
-✅ Connected to SQLite at: C:\Users\Audna\.canvas-memory\canvas.db
+✅ Connected to SQLite at: C:\Users\Audna\.keimenon\keimenon.db
 🔑 Admin authenticated
    Account: admin
    User: user_admin_1760985928228
 
 ▶ Data Management API
   ✔ should create test data successfully (4.0ms)
-  ✔ should clear canvas data via API (36.3ms)
+  ✔ should clear keimenon data via API (36.3ms)
   ✔ should handle empty database gracefully (6.2ms)
   ✔ should require authentication (3.4ms)
 ✔ Data Management API (171.8ms)
@@ -276,7 +276,7 @@ node --import tsx --test src/__tests__/comprehensive-test.test.ts
 - Delete job workflow
 - Batched deletion (500 nodes/batch)
 - Concurrent delete handling
-- Scope variations (canvas vs all-clients)
+- Scope variations (keimenon vs all-clients)
 - Error scenarios
 
 **sse-multi-account.test.ts**:

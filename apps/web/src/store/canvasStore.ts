@@ -7,7 +7,7 @@ import {
   GraphEdge as APIGraphEdge,
 } from '@/lib/api-client';
 
-// Helper functions to map API types to Canvas types
+// Helper functions to map API types to Keimenon types
 function mapNodeKindToType(kind: string): 'conversation' | 'message' | 'source' | 'code' {
   switch (kind) {
     case 'ChatThread':
@@ -43,7 +43,7 @@ function mapEdgeKindToType(kind: string): 'contains' | 'references' | 'derives' 
   }
 }
 
-export interface CanvasNode {
+export interface KeimenonNode {
   id: string;
   type: 'conversation' | 'message' | 'source' | 'code';
   position: { x: number; y: number };
@@ -55,7 +55,7 @@ export interface CanvasNode {
   selected?: boolean;
 }
 
-export interface CanvasEdge {
+export interface KeimenonEdge {
   id: string;
   source: string;
   target: string;
@@ -63,31 +63,31 @@ export interface CanvasEdge {
   data?: Record<string, any>;
 }
 
-export interface CanvasViewport {
+export interface KeimenonViewport {
   x: number;
   y: number;
   zoom: number;
 }
 
-interface CanvasState {
+interface KeimenonState {
   // Nodes and edges
-  nodes: CanvasNode[];
-  edges: CanvasEdge[];
+  nodes: KeimenonNode[];
+  edges: KeimenonEdge[];
 
   // Loading state
   isLoading: boolean;
   error: string | null;
 
   // Selection
-  selectedNode: CanvasNode | null;
+  selectedNode: KeimenonNode | null;
   selectedNodeIds: Set<string>;
   hoveredNodeId: string | null;
 
   // Detail panel
-  detailPanelNode: CanvasNode | null;
+  detailPanelNode: KeimenonNode | null;
 
   // Viewport
-  viewport: CanvasViewport;
+  viewport: KeimenonViewport;
 
   // Filters
   filters: {
@@ -100,17 +100,17 @@ interface CanvasState {
   currentAccountId: string | null;
 
   // Actions
-  setNodes: (nodes: CanvasNode[]) => void;
-  setEdges: (edges: CanvasEdge[]) => void;
+  setNodes: (nodes: KeimenonNode[]) => void;
+  setEdges: (edges: KeimenonEdge[]) => void;
   loadGraphData: () => Promise<void>;
-  addNode: (node: CanvasNode) => void;
-  addEdge: (edge: CanvasEdge) => void;
-  updateNode: (id: string, updates: Partial<CanvasNode>) => void;
+  addNode: (node: KeimenonNode) => void;
+  addEdge: (edge: KeimenonEdge) => void;
+  updateNode: (id: string, updates: Partial<KeimenonNode>) => void;
   deleteNode: (id: string) => void;
   deleteEdge: (id: string) => void;
 
   // Selection actions
-  setSelectedNode: (node: CanvasNode | null) => void;
+  setSelectedNode: (node: KeimenonNode | null) => void;
   selectNode: (id: string, multi?: boolean) => void;
   deselectNode: (id: string) => void;
   clearSelection: () => void;
@@ -118,11 +118,11 @@ interface CanvasState {
   setHoveredNode: (id: string | null) => void;
 
   // Detail panel actions
-  openDetailPanel: (node: CanvasNode) => void;
+  openDetailPanel: (node: KeimenonNode) => void;
   closeDetailPanel: () => void;
 
   // Viewport actions
-  setViewport: (viewport: Partial<CanvasViewport>) => void;
+  setViewport: (viewport: Partial<KeimenonViewport>) => void;
   resetViewport: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -135,8 +135,8 @@ interface CanvasState {
   clearFilters: () => void;
 
   // Utility
-  getNode: (id: string) => CanvasNode | undefined;
-  getConnectedNodes: (id: string) => CanvasNode[];
+  getNode: (id: string) => KeimenonNode | undefined;
+  getConnectedNodes: (id: string) => KeimenonNode[];
   reset: () => void;
 
   // Account isolation actions
@@ -161,7 +161,7 @@ const initialState = {
   currentAccountId: null,
 };
 
-export const useCanvasStore = create<CanvasState>()(
+export const useKeimenonStore = create<KeimenonState>()(
   devtools(
     (set, get) => ({
       ...initialState,
@@ -194,8 +194,8 @@ export const useCanvasStore = create<CanvasState>()(
               : null,
           });
 
-          // Transform API nodes to Canvas nodes
-          const canvasNodes: CanvasNode[] = nodesResult.nodes.map((apiNode: APIGraphNode) => ({
+          // Transform API nodes to Keimenon nodes
+          const keimenonNodes: KeimenonNode[] = nodesResult.nodes.map((apiNode: APIGraphNode) => ({
             id: apiNode.id,
             type: mapNodeKindToType(apiNode.kind),
             position: {
@@ -210,8 +210,8 @@ export const useCanvasStore = create<CanvasState>()(
             },
           }));
 
-          // Transform API edges to Canvas edges
-          const canvasEdges: CanvasEdge[] = edgesResult.edges.map((apiEdge: APIGraphEdge) => ({
+          // Transform API edges to Keimenon edges
+          const keimenonEdges: KeimenonEdge[] = edgesResult.edges.map((apiEdge: APIGraphEdge) => ({
             id: apiEdge.id,
             source: typeof apiEdge.from === 'string' ? apiEdge.from : apiEdge.from.id,
             target: typeof apiEdge.to === 'string' ? apiEdge.to : apiEdge.to.id,
@@ -219,27 +219,27 @@ export const useCanvasStore = create<CanvasState>()(
             data: apiEdge.properties,
           }));
 
-          console.log('🎨 Transformed to canvas format:', {
-            canvasNodesCount: canvasNodes.length,
-            canvasEdgesCount: canvasEdges.length,
-            sampleCanvasNode: canvasNodes[0]
+          console.log('🎨 Transformed to keimenon format:', {
+            keimenonNodesCount: keimenonNodes.length,
+            keimenonEdgesCount: keimenonEdges.length,
+            sampleKeimenonNode: keimenonNodes[0]
               ? {
-                  id: canvasNodes[0].id,
-                  type: canvasNodes[0].type,
-                  label: canvasNodes[0].data.label,
-                  hasMetadata: !!canvasNodes[0].data.metadata,
+                  id: keimenonNodes[0].id,
+                  type: keimenonNodes[0].type,
+                  label: keimenonNodes[0].data.label,
+                  hasMetadata: !!keimenonNodes[0].data.metadata,
                 }
               : null,
           });
 
           set({
-            nodes: canvasNodes,
-            edges: canvasEdges,
+            nodes: keimenonNodes,
+            edges: keimenonEdges,
             isLoading: false,
             error: null,
           });
 
-          console.log('✅ Canvas store updated successfully');
+          console.log('✅ Keimenon store updated successfully');
         } catch (error: any) {
           console.error('Failed to load graph data:', error);
           // TODO: Add retry logic and exponential backoff for graph data loading failures
@@ -346,7 +346,7 @@ export const useCanvasStore = create<CanvasState>()(
         if (nodes.length === 0) return;
 
         // TODO: Handle edge case where window dimensions are unavailable (SSR, tests)
-        // Related: apps/web/src/components/canvas/CanvasViewport.tsx (viewport management)
+        // Related: apps/web/src/components/keimenon/KeimenonViewport.tsx (viewport management)
         // See: docs/features/CANVAS_VIEWPORT.md (needs creation)
         // Add: Check for window existence and fallback dimensions
         const padding = 50;
@@ -412,6 +412,6 @@ export const useCanvasStore = create<CanvasState>()(
 
       reset: () => set(initialState),
     }),
-    { name: 'CanvasStore' }
+    { name: 'KeimenonStore' }
   )
 );

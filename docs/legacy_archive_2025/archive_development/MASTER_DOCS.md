@@ -1,4 +1,4 @@
-# Canvas Memory OS — Master Documentation
+# Keimenon — Master Documentation
 
 **Version**: 0.3.0
 **Last Updated**: 2025-10-11
@@ -8,11 +8,11 @@
 
 ## Executive Summary
 
-**Canvas Memory OS** is a graph-native, canvas-first knowledge management system designed to replace linear AI chat interfaces with a versioned, visual knowledge graph. The system treats all information as nodes (sources, messages, claims, documents, etc.) connected by typed edges with policy enforcement.
+**Keimenon** is a graph-native, keimenon-first knowledge management system designed to replace linear AI chat interfaces with a versioned, visual knowledge graph. The system treats all information as nodes (sources, messages, claims, documents, etc.) connected by typed edges with policy enforcement.
 
 ### Core Value Proposition
 
-1. **Visual Knowledge Graph**: Everything lives on a spatial canvas - files, chats, summaries, code, even the user
+1. **Visual Knowledge Graph**: Everything lives on a spatial keimenon - files, chats, summaries, code, even the user
 2. **Scope-Based Context**: Replace "vibes" with concrete, reproducible scope sets
 3. **Objectivity Pipeline**: Transform subjective sources into verified objective claims
 4. **Local-First**: Free/Pro tiers default to on-device processing with BYO keys
@@ -70,7 +70,7 @@ Replace linear chat interfaces with a **versioned knowledge graph** you can see 
 
 - **Edges are policy**: include/exclude, derive, verify, scope, duplicate, supports/refutes
 - **UserAgent** helps ingest, group, verify, and consolidate into UnifiedDocs
-- **Canvas-first UI** with lenses revealing different "nearness" geometries
+- **Keimenon-first UI** with lenses revealing different "nearness" geometries
 - **Receipt system** makes every answer reproducible
 
 ---
@@ -83,7 +83,7 @@ Replace linear chat interfaces with a **versioned knowledge graph** you can see 
 ┌─────────────────────────────────────────────────────────────┐
 │                       Frontend (Next.js)                     │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   Canvas     │  │   Ingest     │  │   Docs       │      │
+│  │   Keimenon     │  │   Ingest     │  │   Docs       │      │
 │  │   2D/3D/nD   │  │   Pipeline   │  │   Viewer     │      │
 │  └──────────────┘  └──────────────┘  └──────────────┘      │
 └─────────────────────────────────────────────────────────────┘
@@ -116,16 +116,16 @@ Replace linear chat interfaces with a **versioned knowledge graph** you can see 
 ### Monorepo Structure
 
 ```
-canvas-memory-os/
+keimenon/
 ├── apps/
 │   ├── web/                    # Next.js 14 frontend (port 3000)
 │   │   ├── src/
 │   │   │   ├── app/            # App Router pages
 │   │   │   │   ├── page.tsx              # Landing page
 │   │   │   │   ├── ingest/page.tsx       # File upload UI
-│   │   │   │   └── board/[id]/page.tsx   # Canvas viewer
+│   │   │   │   └── board/[id]/page.tsx   # Keimenon viewer
 │   │   │   └── components/
-│   │   │       ├── canvas/Canvas2D.tsx   # 2D graph renderer
+│   │   │       ├── keimenon/Keimenon2D.tsx   # 2D graph renderer
 │   │   │       ├── ingest/               # Upload components
 │   │   │       └── layout/               # Layout components
 │   │   ├── package.json
@@ -181,7 +181,7 @@ canvas-memory-os/
 │   └── verifiers/              # Verification tools (placeholder)
 │
 ├── ai_context/                 # Specifications & documentation
-│   ├── canvas_memory_os_living_spec_v_0.md
+│   ├── keimenon_living_spec_v_0.md
 │   ├── mvp_vs_final_vision_roadmap_model_v_0.md
 │   ├── plans_tiers_accounts_roles_and_phased_rollout_v_0.md
 │   ├── ui_screens_layout_view_map_v_0.md
@@ -250,9 +250,9 @@ canvas-memory-os/
 - [x] Content viewing routes
 - [x] Local document store for embedded storage
 
-### ✅ Phase 1C: 2D Canvas Visualization (COMPLETE)
+### ✅ Phase 1C: 2D Keimenon Visualization (COMPLETE)
 
-- [x] Canvas2D component with HTML Canvas API
+- [x] Keimenon2D component with HTML Keimenon API
 - [x] D3-force layout algorithm
 - [x] Pan & zoom controls
 - [x] Node rendering (color-coded by type)
@@ -645,8 +645,8 @@ ObjectiveClaim → VerifierRun
 | Constellations                                | ✅              | ✅              | ✅             |
 | Sequester controls                            | ✅              | ✅              | ✅ Advanced    |
 | **Visualization**                             |
-| 2D canvas                                     | ✅              | ✅              | ✅             |
-| 3D canvas                                     | ❌              | ✅              | ✅             |
+| 2D keimenon                                   | ✅              | ✅              | ✅             |
+| 3D keimenon                                   | ❌              | ✅              | ✅             |
 | Galaxy lens (trust-warped)                    | ❌              | ✅              | ✅             |
 | nD lens                                       | ❌              | ✅              | ✅             |
 | Custom lenses                                 | ❌              | ❌              | ✅             |
@@ -791,7 +791,7 @@ Legend: ✅ Full support | 🔸 Partial/Limited | ❌ Not available
 3. Files fingerprinted (SHA-256)
 4. Auto-grouped by type/domain
 5. Persisted to Neo4j
-6. View on canvas at `/board/default_board`
+6. View on keimenon at `/board/default_board`
 
 **Building Packages**:
 
@@ -844,7 +844,7 @@ Returns API health status and Neo4j connection.
 {
   "status": "ok",
   "timestamp": "2025-10-11T...",
-  "service": "canvas-memory-api",
+  "service": "keimenon-api",
   "neo4j": "connected"
 }
 ```
@@ -1078,9 +1078,9 @@ Delete a board (optional cascade).
 - Neo4j persistence
 - Upload UI
 
-#### Phase 1C: Canvas ✅ COMPLETE
+#### Phase 1C: Keimenon ✅ COMPLETE
 
-- 2D canvas rendering
+- 2D keimenon rendering
 - D3-force layout
 - Pan & zoom
 - Node selection
@@ -1098,7 +1098,7 @@ Delete a board (optional cascade).
 
 **Acceptance Criteria**:
 
-- Upload mixed files → see grouped on canvas
+- Upload mixed files → see grouped on keimenon
 - Toggle sequester on nodes
 - Extract 10-50 claims manually
 - Compose L0 doc with citations
@@ -1144,7 +1144,7 @@ Delete a board (optional cascade).
 
 ## Key Differences from Linear Chat Systems
 
-| Aspect              | Traditional Chat                  | Canvas Memory OS                   |
+| Aspect              | Traditional Chat                  | Keimenon                           |
 | ------------------- | --------------------------------- | ---------------------------------- |
 | **Context**         | Implicit conversation history     | Explicit scope sets with receipts  |
 | **Organization**    | Linear threads                    | Spatial graph with typed edges     |
@@ -1161,7 +1161,7 @@ Delete a board (optional cascade).
 
 **Board**: Top-level workspace container for nodes and edges
 
-**Canvas**: Visual spatial interface for graph exploration
+**Keimenon**: Visual spatial interface for graph exploration
 
 **Claim**: Testable factual statement (ObjectiveClaim node)
 
@@ -1201,14 +1201,14 @@ Delete a board (optional cascade).
 2. Update database schema in `packages/db/src/schemas.ts`
 3. Add API endpoints in `apps/api/src/routes/nodes.ts`
 4. Create UI component in `apps/web/src/components/`
-5. Update canvas renderer to handle new type
+5. Update keimenon renderer to handle new type
 
 ### Adding a New Edge Type
 
 1. Add to EdgeKind enum in `packages/types/src/edges.ts`
 2. Update edge CRUD in `apps/api/src/routes/edges.ts`
 3. Add policy validation if needed
-4. Update canvas edge rendering
+4. Update keimenon edge rendering
 
 ### Testing
 
@@ -1216,7 +1216,7 @@ Delete a board (optional cascade).
 
 1. Upload files at `/ingest`
 2. Verify in Neo4j Browser
-3. Check canvas rendering
+3. Check keimenon rendering
 4. Test selection and zoom
 
 **Automated Testing** (TODO):
@@ -1229,7 +1229,7 @@ Delete a board (optional cascade).
 
 See `ai_context/` for detailed specifications:
 
-- [canvas_memory_os_living_spec_v_0.md](ai_context/canvas_memory_os_living_spec_v_0.md) - Core concepts
+- [keimenon_living_spec_v_0.md](ai_context/keimenon_living_spec_v_0.md) - Core concepts
 - [mvp_vs_final_vision_roadmap_model_v_0.md](ai_context/mvp_vs_final_vision_roadmap_model_v_0.md) - Roadmap
 - [plans_tiers_accounts_roles_and_phased_rollout_v_0 (1).md](ai_context/plans_tiers_accounts_roles_and_phased_rollout_v_0 (1).md) - Tiering
 - [ui_screens_layout_view_map_v_0.md](ai_context/ui_screens_layout_view_map_v_0.md) - UI layout
@@ -1247,4 +1247,4 @@ See `ai_context/` for detailed specifications:
 
 **Last Updated**: 2025-10-11
 **Version**: 0.2.0
-**Maintainers**: Canvas Memory Team
+**Maintainers**: Keimenon Team

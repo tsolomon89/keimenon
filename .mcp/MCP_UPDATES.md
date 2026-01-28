@@ -10,7 +10,7 @@
 
 ## Summary
 
-Updated MCP servers to support recent changes to the Canvas Memory OS architecture, particularly:
+Updated MCP servers to support recent changes to the Keimenon architecture, particularly:
 
 1. **AccountNode support** - New graph node type for visualizing accounts
 2. **UserNode support** - Graph nodes for user management
@@ -63,9 +63,9 @@ A specialized server for the new settings and CRM features.
 
 **Resources (3)**:
 
-- `canvas-crm://users` - Users directory
-- `canvas-crm://accounts` - Accounts directory
-- `canvas-crm://user-account-graph` - User-account graph visualization
+- `keimenon-crm://users` - Users directory
+- `keimenon-crm://accounts` - Accounts directory
+- `keimenon-crm://user-account-graph` - User-account graph visualization
 
 **Use cases**:
 
@@ -82,25 +82,25 @@ Updated MCP configuration in multiple locations:
 
 **Global config**: `~/.mcp.json` (C:\Users\Audna\.mcp.json)
 
-- Added canvas-settings-crm server
+- Added keimenon-settings-crm server
 
 **Project config**: `.mcp.json`
 
-- Added canvas-settings-crm server
+- Added keimenon-settings-crm server
 
 **VS Code config**: `.vscode/settings.json`
 
-- Added canvas-settings-crm to both GitHub Copilot and Claude Code sections
+- Added keimenon-settings-crm to both GitHub Copilot and Claude Code sections
 
 ## Testing
 
 All 5 MCP servers tested and working:
 
-- ✅ canvas-database (5 tools)
-- ✅ canvas-docs (5 tools)
-- ✅ canvas-api-testing (9 tools)
-- ✅ canvas-chat-import (8 tools)
-- ✅ canvas-settings-crm (7 tools) - **NEW**
+- ✅ keimenon-database (5 tools)
+- ✅ keimenon-docs (5 tools)
+- ✅ keimenon-api-testing (9 tools)
+- ✅ keimenon-chat-import (8 tools)
+- ✅ keimenon-settings-crm (7 tools) - **NEW**
 
 **Total**: 34 specialized tools available for AI-assisted development
 

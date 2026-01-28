@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const PROJECT_ROOT = __dirname;
+const PROJECT_ROOT = resolve(__dirname, '..');
 
 // ANSI color codes
 const colors = {
@@ -42,7 +42,7 @@ async function testMCPServer(name, scriptPath) {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: {
         ...process.env,
-        SQLITE_PATH: `${process.env.HOME || process.env.USERPROFILE}/.canvas-memory/canvas.db`,
+        SQLITE_PATH: `${process.env.HOME || process.env.USERPROFILE}/.keimenon/keimenon.db`,
         API_BASE_URL: 'http://localhost:4001',
       },
     });

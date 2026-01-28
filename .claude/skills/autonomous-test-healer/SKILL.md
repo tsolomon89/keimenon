@@ -1,3 +1,11 @@
+---
+name: autonomous-test-healer
+description: Detects and fixes failing E2E tests using visual feedback. Analyzes failure screenshots, identifies root causes, applies fixes, and verifies stability.
+allowed-tools: Read, Edit, Grep, mcp__playwright-e2e__pw_run, mcp__playwright-e2e__pw_lastFailures, mcp__playwright-e2e__artifacts_read, mcp__visual-feedback__compare_screenshots, mcp__keimenon-api-testing__test_endpoint
+context: fork
+agent: general-purpose
+---
+
 # Autonomous Test Healer (with Visual Feedback)
 
 ---**Operational Ethos Compliance:** This skill operates under the principles defined in [CLAUDE.md Section 13](../../CLAUDE.md#13-operational-ethos--recursive-intelligence):- **Context Consolidation**: Automatic, not optional (Section 13.0)- **Professional Standards**: Security, testing, documentation mandatory (Section 13.1)- **Anticipatory Design**: Think 3 steps ahead (Section 13.2)- **Full-Scope Traversal**: Address all layers (Section 13.3)- **Recursive Intelligence**: Enrich system with every run (Section 13.4)---
@@ -244,14 +252,14 @@ For each failing test, perform **visual-first analysis**:
 
 #### **C. Data Issues**
 
-1. Query `canvas-database` MCP for expected test data
+1. Query `keimenon-database` MCP for expected test data
 2. Check if data setup in `beforeEach` is correct
 3. Verify test isolation (worker database) is working
 4. Look for leftover data from previous runs
 
 #### **D. API Changes**
 
-1. Use `canvas-api-testing` MCP to verify endpoint still works
+1. Use `keimenon-api-testing` MCP to verify endpoint still works
 2. Check if request/response schema changed
 3. Verify auth requirements didn't change
 4. Look for new required fields

@@ -116,14 +116,14 @@ Expected response:
 {
   "status": "ok",
   "timestamp": "2025-10-06T...",
-  "service": "canvas-memory-api",
+  "service": "keimenon-api",
   "version": "0.1.0"
 }
 ```
 
 ### Frontend
 
-Open http://localhost:3000 in your browser. You should see the Canvas Memory OS landing page.
+Open http://localhost:3000 in your browser. You should see the Keimenon landing page.
 
 ### Neo4j Browser
 
@@ -229,7 +229,7 @@ cd ../ui && npm run build
 ## Next Steps
 
 1. ✅ Verify all services are running
-2. 📝 Review [Living Spec](ai_context/canvas_memory_os_living_spec_v_0.md)
+2. 📝 Review [Living Spec](ai_context/keimenon_living_spec_v_0.md)
 3. 🎨 Explore UI mockups in `ai_context/mock_screenshots/`
 4. 🔧 Start implementing Phase 1B: File ingest pipeline
 

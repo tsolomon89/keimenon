@@ -12,7 +12,7 @@
  * - Manual disconnect vs automatic reconnection
  */
 
-import { describe, test, before, after, type TestContext } from 'node:test';
+import { describe, test, beforeAll, afterAll, type TestContext } from 'vitest';
 import assert from 'node:assert';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -43,9 +43,9 @@ describe('SSE Reconnection', () => {
   let server: Server;
   let sseBroadcaster: SSEBroadcaster;
 
-  before(async () => {
+  beforeAll(async () => {
     // Initialize DB
-    const dbPath = path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+    const dbPath = path.join(os.homedir(), '.keimenon', 'keimenon.db');
     const dbClient = await DatabaseFactory.getClient({
       mode: 'local',
       local: { databasePath: dbPath },
@@ -106,7 +106,7 @@ describe('SSE Reconnection', () => {
     });
   });
 
-  after(() => {
+  afterAll(() => {
     if (server) {
       server.close();
     }
@@ -116,37 +116,33 @@ describe('SSE Reconnection', () => {
   });
 
   describe('Connection Lifecycle', () => {
-    test(
-      'should establish initial connection successfully',
-      { timeout: 10000 },
-      async (_t: TestContext) => {
-        const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
-        const eventSource = new EventSource(sseUrl);
+    test('should establish initial connection successfully', async (_t: TestContext) => {
+      const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
+      const eventSource = new EventSource(sseUrl);
 
-        // Wait for connection to open
-        await new Promise<void>((resolve, reject) => {
-          eventSource.onopen = () => {
-            console.log('[TEST] Connection opened');
-            resolve();
-          };
-          eventSource.onerror = (err) => {
-            console.error('[TEST] Connection error:', err);
-            // EventSource error object often doesn't have message, try to inspect it
-            try {
-              console.error('Error details:', JSON.stringify(err));
-            } catch (e) {}
-            // Don't reject immediately, wait for timeout or retries?
-            // But for "establish initial connection", error is bad.
-          };
-        });
+      // Wait for connection to open
+      await new Promise<void>((resolve, reject) => {
+        eventSource.onopen = () => {
+          console.log('[TEST] Connection opened');
+          resolve();
+        };
+        eventSource.onerror = (err) => {
+          console.error('[TEST] Connection error:', err);
+          // EventSource error object often doesn't have message, try to inspect it
+          try {
+            console.error('Error details:', JSON.stringify(err));
+          } catch (e) {}
+          // Don't reject immediately, wait for timeout or retries?
+          // But for "establish initial connection", error is bad.
+        };
+      });
 
-        assert.strictEqual(eventSource.readyState, eventSource.OPEN);
+      assert.strictEqual(eventSource.readyState, eventSource.OPEN);
 
-        eventSource.close();
-      }
-    );
+      eventSource.close();
+    });
 
-    test('should receive heartbeat events', { timeout: 40000 }, async (_t: TestContext) => {
+    test('should receive heartbeat events', async (_t: TestContext) => {
       const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
       const eventSource = new EventSource(sseUrl);
       const heartbeats: any[] = [];
@@ -169,9 +165,9 @@ describe('SSE Reconnection', () => {
       assert.ok(heartbeats[0].timestamp);
 
       eventSource.close();
-    });
+    }, 40000);
 
-    test('should handle manual close gracefully', { timeout: 10000 }, async (_t: TestContext) => {
+    test('should handle manual close gracefully', async (_t: TestContext) => {
       const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
       const eventSource = new EventSource(sseUrl);
 
@@ -187,158 +183,142 @@ describe('SSE Reconnection', () => {
 
       // Should be closed
       assert.strictEqual(eventSource.readyState, eventSource.CLOSED);
-    });
+    }, 10000);
 
-    test(
-      'should cleanup connection on client disconnect',
-      { timeout: 10000 },
-      async (_t: TestContext) => {
-        const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
+    test('should cleanup connection on client disconnect', async (_t: TestContext) => {
+      const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
 
-        // Create multiple connections
-        const eventSource1 = new EventSource(sseUrl);
-        const eventSource2 = new EventSource(sseUrl);
+      // Create multiple connections
+      const eventSource1 = new EventSource(sseUrl);
+      const eventSource2 = new EventSource(sseUrl);
 
-        // Wait for both to connect
-        await Promise.all([
-          new Promise<void>((resolve) => {
-            eventSource1.onopen = () => resolve();
-          }),
-          new Promise<void>((resolve) => {
-            eventSource2.onopen = () => resolve();
-          }),
-        ]);
+      // Wait for both to connect
+      await Promise.all([
+        new Promise<void>((resolve) => {
+          eventSource1.onopen = () => resolve();
+        }),
+        new Promise<void>((resolve) => {
+          eventSource2.onopen = () => resolve();
+        }),
+      ]);
 
-        assert.strictEqual(eventSource1.readyState, eventSource1.OPEN);
-        assert.strictEqual(eventSource2.readyState, eventSource2.OPEN);
+      assert.strictEqual(eventSource1.readyState, eventSource1.OPEN);
+      assert.strictEqual(eventSource2.readyState, eventSource2.OPEN);
 
-        console.log('   ✅ Two connections established');
+      console.log('   ✅ Two connections established');
 
-        // Close first connection
-        eventSource1.close();
-        await new Promise((resolve) => setTimeout(resolve, 500)); // Give time for cleanup
+      // Close first connection
+      eventSource1.close();
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Give time for cleanup
 
-        assert.strictEqual(eventSource1.readyState, eventSource1.CLOSED);
-        assert.strictEqual(eventSource2.readyState, eventSource2.OPEN);
+      assert.strictEqual(eventSource1.readyState, eventSource1.CLOSED);
+      assert.strictEqual(eventSource2.readyState, eventSource2.OPEN);
 
-        console.log('   ✅ First connection closed, second still open');
+      console.log('   ✅ First connection closed, second still open');
 
-        // Close second connection
-        eventSource2.close();
-        await new Promise((resolve) => setTimeout(resolve, 500)); // Give time for cleanup
+      // Close second connection
+      eventSource2.close();
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Give time for cleanup
 
-        assert.strictEqual(eventSource2.readyState, eventSource2.CLOSED);
+      assert.strictEqual(eventSource2.readyState, eventSource2.CLOSED);
 
-        console.log('   ✅ All connections cleaned up');
-      }
-    );
+      console.log('   ✅ All connections cleaned up');
+    }, 10000);
   });
 
   describe('Automatic Reconnection', () => {
-    test(
-      'should reconnect automatically on disconnect',
-      { timeout: 15000 },
-      async (_t: TestContext) => {
-        const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
-        let eventSource = new EventSource(sseUrl);
-        let connectionCount = 0;
+    test('should reconnect automatically on disconnect', async (_t: TestContext) => {
+      const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
+      let eventSource = new EventSource(sseUrl);
+      let connectionCount = 0;
 
-        // Track connections
+      // Track connections
+      eventSource.onopen = () => {
+        connectionCount++;
+      };
+
+      // Wait for initial connection
+      await new Promise<void>((resolve) => {
+        const checkOpen = () => {
+          if (connectionCount > 0) {
+            resolve();
+          } else {
+            setTimeout(checkOpen, 100);
+          }
+        };
+        checkOpen();
+      });
+
+      assert.strictEqual(connectionCount, 1);
+
+      // Simulate disconnect by closing and creating new connection
+      eventSource.close();
+
+      // Create new connection (simulating reconnect)
+      eventSource = new EventSource(sseUrl);
+
+      // Wait for reconnection
+      await new Promise<void>((resolve) => {
         eventSource.onopen = () => {
           connectionCount++;
+          resolve();
         };
+      });
 
-        // Wait for initial connection
-        await new Promise<void>((resolve) => {
-          const checkOpen = () => {
-            if (connectionCount > 0) {
-              resolve();
-            } else {
-              setTimeout(checkOpen, 100);
-            }
-          };
-          checkOpen();
-        });
+      assert.strictEqual(connectionCount, 2);
 
-        assert.strictEqual(connectionCount, 1);
+      eventSource.close();
+    }, 15000);
 
-        // Simulate disconnect by closing and creating new connection
-        eventSource.close();
+    test('should use exponential backoff for reconnection attempts', async (_t: TestContext) => {
+      // This test simulates the client-side reconnection logic
+      const reconnectDelays: number[] = [];
+      let currentDelay = 1000; // Start at 1 second
+      const maxDelay = 30000; // Max 30 seconds
 
-        // Create new connection (simulating reconnect)
-        eventSource = new EventSource(sseUrl);
-
-        // Wait for reconnection
-        await new Promise<void>((resolve) => {
-          eventSource.onopen = () => {
-            connectionCount++;
-            resolve();
-          };
-        });
-
-        assert.strictEqual(connectionCount, 2);
-
-        eventSource.close();
+      // Simulate 10 reconnection attempts
+      for (let i = 0; i < 10; i++) {
+        reconnectDelays.push(currentDelay);
+        currentDelay = Math.min(currentDelay * 2, maxDelay);
       }
-    );
 
-    test(
-      'should use exponential backoff for reconnection attempts',
-      { timeout: 5000 },
-      async (_t: TestContext) => {
-        // This test simulates the client-side reconnection logic
-        const reconnectDelays: number[] = [];
-        let currentDelay = 1000; // Start at 1 second
-        const maxDelay = 30000; // Max 30 seconds
+      // Verify exponential backoff pattern
+      assert.strictEqual(reconnectDelays[0], 1000); // 1s
+      assert.strictEqual(reconnectDelays[1], 2000); // 2s
+      assert.strictEqual(reconnectDelays[2], 4000); // 4s
+      assert.strictEqual(reconnectDelays[3], 8000); // 8s
+      assert.strictEqual(reconnectDelays[4], 16000); // 16s
+      assert.strictEqual(reconnectDelays[5], 30000); // 30s (capped)
+      assert.strictEqual(reconnectDelays[9], 30000); // Still capped
 
-        // Simulate 10 reconnection attempts
-        for (let i = 0; i < 10; i++) {
-          reconnectDelays.push(currentDelay);
-          currentDelay = Math.min(currentDelay * 2, maxDelay);
-        }
+      // All subsequent delays should be capped at 30s
+      for (let i = 5; i < reconnectDelays.length; i++) {
+        assert.strictEqual(reconnectDelays[i], 30000);
+      }
+    }, 5000);
 
-        // Verify exponential backoff pattern
-        assert.strictEqual(reconnectDelays[0], 1000); // 1s
-        assert.strictEqual(reconnectDelays[1], 2000); // 2s
-        assert.strictEqual(reconnectDelays[2], 4000); // 4s
-        assert.strictEqual(reconnectDelays[3], 8000); // 8s
-        assert.strictEqual(reconnectDelays[4], 16000); // 16s
-        assert.strictEqual(reconnectDelays[5], 30000); // 30s (capped)
-        assert.strictEqual(reconnectDelays[9], 30000); // Still capped
+    test('should limit maximum reconnection attempts', async (_t: TestContext) => {
+      // This test verifies the reconnection limit logic
+      const MAX_RECONNECT_ATTEMPTS = 10;
+      let reconnectAttempts = 0;
 
-        // All subsequent delays should be capped at 30s
-        for (let i = 5; i < reconnectDelays.length; i++) {
-          assert.strictEqual(reconnectDelays[i], 30000);
+      // Simulate reconnection attempts
+      while (reconnectAttempts < MAX_RECONNECT_ATTEMPTS + 2) {
+        reconnectAttempts++;
+
+        // Check if we should stop
+        if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+          break;
         }
       }
-    );
 
-    test(
-      'should limit maximum reconnection attempts',
-      { timeout: 5000 },
-      async (_t: TestContext) => {
-        // This test verifies the reconnection limit logic
-        const MAX_RECONNECT_ATTEMPTS = 10;
-        let reconnectAttempts = 0;
-
-        // Simulate reconnection attempts
-        while (reconnectAttempts < MAX_RECONNECT_ATTEMPTS + 2) {
-          reconnectAttempts++;
-
-          // Check if we should stop
-          if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
-            break;
-          }
-        }
-
-        // Should stop at max attempts
-        assert.strictEqual(reconnectAttempts, MAX_RECONNECT_ATTEMPTS + 1);
-      }
-    );
+      // Should stop at max attempts
+      assert.strictEqual(reconnectAttempts, MAX_RECONNECT_ATTEMPTS + 1);
+    }, 5000);
   });
 
   describe('Error Handling', () => {
-    test('should handle connection errors', { timeout: 10000 }, async (_t: TestContext) => {
+    test('should handle connection errors', async (_t: TestContext) => {
       // Try to connect with invalid token
       const sseUrl = `${SSE_BASE_URL}?token=invalid-token`;
       const eventSource = new EventSource(sseUrl);
@@ -354,9 +334,9 @@ describe('SSE Reconnection', () => {
       assert.ok(errors.length > 0);
 
       eventSource.close();
-    });
+    }, 10000);
 
-    test('should handle network errors gracefully', { timeout: 10000 }, async (_t: TestContext) => {
+    test('should handle network errors gracefully', async (_t: TestContext) => {
       // Connect to non-existent endpoint
       const sseUrl = `${API_BASE_URL}/api/v1/nonexistent/stream?token=${adminToken}`;
       const eventSource = new EventSource(sseUrl);
@@ -372,9 +352,9 @@ describe('SSE Reconnection', () => {
 
       assert.ok(errors.length > 0);
       assert.strictEqual(eventSource.readyState, eventSource.CLOSED);
-    });
+    }, 10000);
 
-    test('should handle malformed event data', { timeout: 10000 }, async (_t: TestContext) => {
+    test('should handle malformed event data', async (_t: TestContext) => {
       const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
       const eventSource = new EventSource(sseUrl);
       const parseErrors: any[] = [];
@@ -402,156 +382,140 @@ describe('SSE Reconnection', () => {
       assert.strictEqual(parseErrors.length, 0);
 
       eventSource.close();
-    });
+    }, 10000);
   });
 
   describe('Connection State Tracking', () => {
-    test(
-      'should track connection state transitions',
-      { timeout: 10000 },
-      async (_t: TestContext) => {
-        const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
-        const eventSource = new EventSource(sseUrl);
-        const states: number[] = [];
+    test('should track connection state transitions', async (_t: TestContext) => {
+      const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
+      const eventSource = new EventSource(sseUrl);
+      const states: number[] = [];
 
-        // Track state changes
-        const checkState = () => {
-          states.push(eventSource.readyState);
+      // Track state changes
+      const checkState = () => {
+        states.push(eventSource.readyState);
+      };
+
+      // Initial state (CONNECTING)
+      checkState();
+      assert.strictEqual(states[0], eventSource.CONNECTING);
+
+      // Wait for OPEN
+      await new Promise<void>((resolve) => {
+        eventSource.onopen = () => {
+          checkState();
+          resolve();
         };
+      });
 
-        // Initial state (CONNECTING)
-        checkState();
-        assert.strictEqual(states[0], eventSource.CONNECTING);
+      assert.ok(states.includes(eventSource.OPEN));
 
-        // Wait for OPEN
-        await new Promise<void>((resolve) => {
-          eventSource.onopen = () => {
-            checkState();
-            resolve();
-          };
-        });
+      // Close and check CLOSED state
+      eventSource.close();
+      checkState();
 
-        assert.ok(states.includes(eventSource.OPEN));
+      assert.ok(states.includes(eventSource.CLOSED));
+    }, 10000);
 
-        // Close and check CLOSED state
-        eventSource.close();
-        checkState();
+    test('should maintain connection state during active session', async (_t: TestContext) => {
+      const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
+      const eventSource = new EventSource(sseUrl);
 
-        assert.ok(states.includes(eventSource.CLOSED));
+      // Wait for connection
+      await new Promise<void>((resolve) => {
+        eventSource.onopen = () => resolve();
+      });
+
+      // Check state multiple times over 5 seconds
+      const states: number[] = [];
+      for (let i = 0; i < 5; i++) {
+        states.push(eventSource.readyState);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
-    );
 
-    test(
-      'should maintain connection state during active session',
-      { timeout: 10000 },
-      async (_t: TestContext) => {
-        const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
-        const eventSource = new EventSource(sseUrl);
+      // All states should be OPEN
+      states.forEach((state) => {
+        assert.strictEqual(state, eventSource.OPEN);
+      });
 
-        // Wait for connection
-        await new Promise<void>((resolve) => {
-          eventSource.onopen = () => resolve();
-        });
-
-        // Check state multiple times over 5 seconds
-        const states: number[] = [];
-        for (let i = 0; i < 5; i++) {
-          states.push(eventSource.readyState);
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-
-        // All states should be OPEN
-        states.forEach((state) => {
-          assert.strictEqual(state, eventSource.OPEN);
-        });
-
-        eventSource.close();
-      }
-    );
+      eventSource.close();
+    }, 10000);
   });
 
   describe('Multiple Connections', () => {
-    test(
-      'should handle multiple simultaneous connections',
-      { timeout: 15000 },
-      async (_t: TestContext) => {
-        const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
-        const connections: EventSource[] = [];
+    test('should handle multiple simultaneous connections', async (_t: TestContext) => {
+      const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
+      const connections: EventSource[] = [];
 
-        // Create 3 connections
-        for (let i = 0; i < 3; i++) {
-          const es = new EventSource(sseUrl);
-          connections.push(es);
-        }
-
-        // Wait for all to connect
-        await Promise.all(
-          connections.map(
-            (es) =>
-              new Promise<void>((resolve) => {
-                es.onopen = () => resolve();
-              })
-          )
-        );
-
-        // All should be open
-        connections.forEach((es) => {
-          assert.strictEqual(es.readyState, es.OPEN);
-        });
-
-        // Close all
-        connections.forEach((es) => es.close());
-
-        // All should be closed
-        connections.forEach((es) => {
-          assert.strictEqual(es.readyState, es.CLOSED);
-        });
+      // Create 3 connections
+      for (let i = 0; i < 3; i++) {
+        const es = new EventSource(sseUrl);
+        connections.push(es);
       }
-    );
 
-    test(
-      'should deliver events to all active connections',
-      { timeout: 40000 },
-      async (_t: TestContext) => {
-        const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
-        const connection1 = new EventSource(sseUrl);
-        const connection2 = new EventSource(sseUrl);
+      // Wait for all to connect
+      await Promise.all(
+        connections.map(
+          (es) =>
+            new Promise<void>((resolve) => {
+              es.onopen = () => resolve();
+            })
+        )
+      );
 
-        const events1: any[] = [];
-        const events2: any[] = [];
+      // All should be open
+      connections.forEach((es) => {
+        assert.strictEqual(es.readyState, es.OPEN);
+      });
 
-        // Listen on both connections
-        connection1.addEventListener('heartbeat', (event: any) => {
-          events1.push(JSON.parse(event.data));
-        });
+      // Close all
+      connections.forEach((es) => es.close());
 
-        connection2.addEventListener('heartbeat', (event: any) => {
-          events2.push(JSON.parse(event.data));
-        });
+      // All should be closed
+      connections.forEach((es) => {
+        assert.strictEqual(es.readyState, es.CLOSED);
+      });
+    }, 15000);
 
-        // Wait for connections
-        await Promise.all([
-          new Promise<void>((resolve) => {
-            connection1.onopen = () => resolve();
-          }),
-          new Promise<void>((resolve) => {
-            connection2.onopen = () => resolve();
-          }),
-        ]);
+    test('should deliver events to all active connections', async (_t: TestContext) => {
+      const sseUrl = `${SSE_BASE_URL}?token=${adminToken}`;
+      const connection1 = new EventSource(sseUrl);
+      const connection2 = new EventSource(sseUrl);
 
-        // Wait for heartbeat on both (up to 35s)
-        await waitFor(() => events1.length > 0 && events2.length > 0, {
-          timeout: 35000,
-          interval: 1000,
-        });
+      const events1: any[] = [];
+      const events2: any[] = [];
 
-        // Both should have received events
-        assert.ok(events1.length > 0);
-        assert.ok(events2.length > 0);
+      // Listen on both connections
+      connection1.addEventListener('heartbeat', (event: any) => {
+        events1.push(JSON.parse(event.data));
+      });
 
-        connection1.close();
-        connection2.close();
-      }
-    );
+      connection2.addEventListener('heartbeat', (event: any) => {
+        events2.push(JSON.parse(event.data));
+      });
+
+      // Wait for connections
+      await Promise.all([
+        new Promise<void>((resolve) => {
+          connection1.onopen = () => resolve();
+        }),
+        new Promise<void>((resolve) => {
+          connection2.onopen = () => resolve();
+        }),
+      ]);
+
+      // Wait for heartbeat on both (up to 35s)
+      await waitFor(() => events1.length > 0 && events2.length > 0, {
+        timeout: 35000,
+        interval: 1000,
+      });
+
+      // Both should have received events
+      assert.ok(events1.length > 0);
+      assert.ok(events2.length > 0);
+
+      connection1.close();
+      connection2.close();
+    }, 40000);
   });
 });

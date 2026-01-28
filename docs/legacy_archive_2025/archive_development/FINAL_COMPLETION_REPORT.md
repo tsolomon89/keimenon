@@ -1,4 +1,4 @@
-# 🎉 Final Completion Report - Canvas Memory OS
+# 🎉 Final Completion Report - Keimenon
 
 ## Local-First Chat Corpus Parser - 100% Complete!
 
@@ -10,7 +10,7 @@
 
 ## 🏆 Mission Accomplished!
 
-**The Canvas Memory OS local-first chat corpus parser is now COMPLETE with all major features implemented, tested, and documented!**
+**The Keimenon local-first chat corpus parser is now COMPLETE with all major features implemented, tested, and documented!**
 
 ---
 
@@ -215,8 +215,8 @@ const similarity = dotProduct / (magnitudeA * magnitudeB);
 ```typescript
 // Seamless switching between SQLite ↔ Neo4j
 const db = await DatabaseFactory.getClient({
-  mode: 'local' | 'canvas' | 'hybrid',
-  local: { databasePath: '~/.canvas-memory/graph.db' },
+  mode: 'local' | 'keimenon' | 'hybrid',
+  local: { databasePath: '~/.keimenon/graph.db' },
 });
 
 // Unified interface
@@ -306,7 +306,7 @@ await db.createEdge(edge);
 ## 📚 Documentation Created
 
 1. **README.md** - Project overview (existing, preserved)
-2. **CLAUDE.md** - Canvas Memory OS operating guide (existing, followed)
+2. **CLAUDE.md** - Keimenon operating guide (existing, followed)
 3. **PHASE2_PROGRESS.md** (400 lines) - Phase 2 details
 4. **PHASE3_PROGRESS.md** (280 lines) - Phase 3 details
 5. **SESSION_SUMMARY.md** (410 lines) - Session overview
@@ -478,7 +478,7 @@ While the project is **100% complete**, here are optional enhancements for futur
 
 ## 📣 Final Statement
 
-**The Canvas Memory OS local-first chat corpus parser is COMPLETE!**
+**The Keimenon local-first chat corpus parser is COMPLETE!**
 
 ✅ **100% of planned features implemented**
 ✅ **All major issues resolved (including embedded schema fix)**

@@ -13,14 +13,14 @@
  */
 
 /**
- * Canvas Data Node Kinds
+ * Keimenon Data Node Kinds
  *
  * These node kinds represent user-generated content and conversation data.
- * They are safe to delete when clearing canvas data without affecting
+ * They are safe to delete when clearing keimenon data without affecting
  * system integrity.
  *
  * Use cases:
- * - Delete canvas data operations (scope: 'canvas')
+ * - Delete keimenon data operations (scope: 'keimenon')
  * - Data export/import
  * - User data queries
  */
@@ -37,7 +37,7 @@ export const CANVAS_DATA_NODE_KINDS = [
  * System Node Kinds
  *
  * These node kinds represent system-critical data that should NEVER be
- * deleted during canvas data operations. Deleting these would corrupt
+ * deleted during keimenon data operations. Deleting these would corrupt
  * the account structure or user identity.
  *
  * Use cases:
@@ -45,12 +45,7 @@ export const CANVAS_DATA_NODE_KINDS = [
  * - System integrity checks
  * - Multi-tenant boundary verification
  */
-export const SYSTEM_NODE_KINDS = [
-  'UserNode',
-  'AccountNode',
-  'Board',
-  'Constellation',
-] as const;
+export const SYSTEM_NODE_KINDS = ['UserNode', 'AccountNode', 'Board', 'Constellation'] as const;
 
 /**
  * All Node Kinds (Comprehensive)
@@ -61,8 +56,8 @@ export const SYSTEM_NODE_KINDS = [
 export const ALL_NODE_KINDS = [
   ...CANVAS_DATA_NODE_KINDS,
   ...SYSTEM_NODE_KINDS,
-  'ObjectiveClaim', // Claims are preserved separately, not canvas data
-  'UnifiedDoc',     // Documentation is preserved separately
+  'ObjectiveClaim', // Claims are preserved separately, not keimenon data
+  'UnifiedDoc', // Documentation is preserved separately
 ] as const;
 
 /**
@@ -71,26 +66,21 @@ export const ALL_NODE_KINDS = [
  * Node kinds that have content stored externally (content_location field).
  * Useful for cleanup operations and storage management.
  */
-export const CONTENT_NODE_KINDS = [
-  'Source',
-  'Message',
-  'CodeBlock',
-  'UnifiedDoc',
-] as const;
+export const CONTENT_NODE_KINDS = ['Source', 'Message', 'CodeBlock', 'UnifiedDoc'] as const;
 
 // TypeScript type exports for type safety
-export type CanvasDataNodeKind = (typeof CANVAS_DATA_NODE_KINDS)[number];
+export type KeimenonDataNodeKind = (typeof CANVAS_DATA_NODE_KINDS)[number];
 export type SystemNodeKind = (typeof SYSTEM_NODE_KINDS)[number];
 export type NodeKind = (typeof ALL_NODE_KINDS)[number];
 export type ContentNodeKind = (typeof CONTENT_NODE_KINDS)[number];
 
 /**
- * Helper: Check if a node kind is canvas data
+ * Helper: Check if a node kind is keimenon data
  *
  * @example
- * if (isCanvasDataNode('Message')) { ... }
+ * if (isKeimenonDataNode('Message')) { ... }
  */
-export function isCanvasDataNode(kind: string): kind is CanvasDataNodeKind {
+export function isKeimenonDataNode(kind: string): kind is KeimenonDataNodeKind {
   return (CANVAS_DATA_NODE_KINDS as readonly string[]).includes(kind);
 }
 
@@ -105,12 +95,12 @@ export function isSystemNode(kind: string): kind is SystemNodeKind {
 }
 
 /**
- * Helper: Get SQL IN clause for canvas data nodes
+ * Helper: Get SQL IN clause for keimenon data nodes
  *
  * @example
- * const query = `SELECT * FROM nodes WHERE kind IN (${getCanvasDataInClause()})`;
+ * const query = `SELECT * FROM nodes WHERE kind IN (${getKeimenonDataInClause()})`;
  */
-export function getCanvasDataInClause(): string {
+export function getKeimenonDataInClause(): string {
   return CANVAS_DATA_NODE_KINDS.map((k) => `'${k}'`).join(', ');
 }
 

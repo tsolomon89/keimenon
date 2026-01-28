@@ -145,7 +145,7 @@ npm run test:all
 
 - Batched deletion (500 nodes/batch)
 - SSE progress tracking
-- Scope-based deletion (canvas vs all-clients)
+- Scope-based deletion (keimenon vs all-clients)
 - Database cleanup verification
 - Concurrent operation handling
 - Orphaned job detection
@@ -319,7 +319,7 @@ All in `docs/active_development/`:
 2. **Check database exists**
 
    ```bash
-   ls -la ~/.canvas-memory/canvas.db
+   ls -la ~/.keimenon/keimenon.db
    ```
 
 3. **View test logs**

@@ -18,7 +18,7 @@ if (!email) {
 
 const DB_PATH =
   process.env.DB_PATH ||
-  path.join(process.env.HOME || process.env.USERPROFILE, '.canvas-memory', 'canvas.db');
+  path.join(process.env.HOME || process.env.USERPROFILE, '.keimenon', 'keimenon.db');
 
 console.log(`🔓 Unlocking account: ${email}\n`);
 console.log(`📂 Database: ${DB_PATH}\n`);

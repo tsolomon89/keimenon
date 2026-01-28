@@ -434,7 +434,7 @@ interface ImportConfiguration {
 ✅ **API Build**: Successful
 
 ```bash
-> @canvas-memory/api@0.1.0 build
+> @keimenon/api@0.1.0 build
 > tsc
 ```
 

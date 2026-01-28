@@ -169,7 +169,7 @@ export async function runMigration(databasePath: string): Promise<void> {
 
 // Allow running directly with: npx tsx src/migrations/001_seed_admin.ts
 if (require.main === module) {
-  const dbPath = process.env.DB_PATH || './data/canvas.db';
+  const dbPath = process.env.DB_PATH || './data/keimenon.db';
   console.log(`Running migration on database: ${dbPath}`);
   runMigration(dbPath)
     .then(() => {

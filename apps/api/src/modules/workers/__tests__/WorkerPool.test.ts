@@ -9,7 +9,7 @@
  * - apps/api/src/__tests__/jobs-system.test.ts (integration tests)
  */
 
-import { describe, test as it, beforeEach, afterEach, mock } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import assert from 'node:assert/strict';
 import { WorkerPool } from '../domain/WorkerPool';
 import { Job, JobSpec } from '../../jobs/domain/Job';
@@ -70,7 +70,9 @@ class MockJobRepository implements JobRepository {
     if (!job || job.accountId !== accountId) {
       return null;
     }
-    return job;
+    // Return a clone to simulate DB behavior (prevent shared reference mutation)
+    // StartJob modifies the job instance before calling atomicTransition
+    return Job.fromJSON(job.toJSON());
   }
 
   async find(criteria: any): Promise<Job[]> {
@@ -125,6 +127,30 @@ class MockJobRepository implements JobRepository {
       return false;
     }
     // Simulate successful transition
+    // In a real DB, this would update the row.
+    // Since we are now using clones, we need to update the stored instance with the new state
+    if (job) {
+      // We can simply update the job in the map with the new stateData
+      // But since we don't have the full new job object passed here (only stateData),
+      // and StartJob only updates state...
+      // Actually, StartJob modifies the INSTANCE it got from findById.
+      // But we returned a clone. So the instance StartJob has is different from this.jobs.get(id).
+      // We need to reflect the change in our "DB" (this.jobs).
+      // However, for this mock, we can just say "it succeeded" and assume
+      // subsequent fetches (if any) might need to be correct.
+      // Parse state data and convert date strings to Date objects
+      const parsed = JSON.parse(stateData);
+      const newState: any = { ...parsed };
+
+      // Rehydrate dates
+      ['queuedAt', 'startedAt', 'completedAt', 'canceledAt', 'blockedAt'].forEach((field) => {
+        if (newState[field]) {
+          newState[field] = new Date(newState[field]);
+        }
+      });
+
+      (job as any)._state = { ...job.state, ...newState };
+    }
     return true;
   }
 
@@ -161,10 +187,14 @@ describe('WorkerPool', () => {
   let startJob: StartJob;
   let mockWorker: MockImportWorker;
 
-  beforeEach(() => {
+  beforeAll(async () => {
     jobRepository = new MockJobRepository();
     concurrencyGuard = new MockConcurrencyGuard();
     startJob = new StartJob(jobRepository);
+
+    // Force NODE_ENV to 'development' for unit tests to bypass WorkerPool's "MultiDatabase" integration logic
+    // which tries to import 'get-db-client' and query real databases.
+    vi.stubEnv('NODE_ENV', 'development');
 
     workerPool = new WorkerPool(jobRepository, concurrencyGuard, startJob, {
       maxConcurrentJobs: 2,
@@ -176,10 +206,11 @@ describe('WorkerPool', () => {
   });
 
   // Cleanup after each test to prevent hanging
-  afterEach(async () => {
+  afterAll(async () => {
     if (workerPool) {
       await workerPool.stop();
     }
+    vi.unstubAllEnvs();
   });
 
   it('should cancel a running job', async () => {

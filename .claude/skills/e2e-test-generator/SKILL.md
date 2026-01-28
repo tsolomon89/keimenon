@@ -1,6 +1,6 @@
 ---
 name: e2e-test-generator
-description: Generates Playwright E2E tests following project patterns. Creates tests for canvas operations, data management, authentication flows, and API integration. Ensures proper test isolation, tags (@smoke/@full), and fixture usage. Use when adding features or components requiring E2E coverage.
+description: Generates Playwright E2E tests following project patterns. Creates tests for keimenon operations, data management, authentication flows, and API integration. Ensures proper test isolation, tags (@smoke/@full), and fixture usage. Use when adding features or components requiring E2E coverage.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(npx playwright test:*), mcp__playwright-e2e__pw_listTests, mcp__playwright-e2e__pw_run
 ---
 
@@ -22,7 +22,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(npx playwright test:*), mcp__
 
 Generate comprehensive Playwright E2E tests that validate full-stack functionality:
 
-- Canvas operations (node/edge visualization)
+- Keimenon operations (node/edge visualization)
 - Data management (imports, exports, backups)
 - Authentication flows (login, registration, sessions)
 - Settings and CRM (user management, account settings)
@@ -47,10 +47,10 @@ tests/e2e/
 ├── fixtures/
 │   └── testId.ts          # Custom test fixtures
 ├── smoke.spec.ts          # Critical path tests (@smoke tag)
-├── canvas-operations.spec.ts
+├── keimenon-operations.spec.ts
 ├── data-management-ui-updates.spec.ts
 ├── settings-navigation.spec.ts
-├── flow-auth-canvas.spec.ts
+├── flow-auth-keimenon.spec.ts
 ├── console-error-filtering.spec.ts
 └── debug-auth.spec.ts
 ```
@@ -83,7 +83,7 @@ test.describe('[Feature Name]', () => {
     await page.getByRole('button', { name: /sign in/i }).click();
 
     // Wait for redirect (uses global 30s timeout)
-    await page.waitForURL(/\/canvas/);
+    await page.waitForURL(/\/keimenon/);
     await page.waitForLoadState('domcontentloaded');
   });
 
@@ -98,7 +98,7 @@ test.describe('[Feature Name]', () => {
 **@smoke Tags** - Critical path tests (run on every commit):
 
 - Login/logout flow
-- Canvas page loads
+- Keimenon page loads
 - Basic node creation
 - API connectivity
 
@@ -116,7 +116,7 @@ test.describe('[Feature Name]', () => {
 1. **Read feature implementation**:
 
    ```bash
-   Read apps/web/src/components/canvas/[ComponentName].tsx
+   Read apps/web/src/components/keimenon/[ComponentName].tsx
    Read apps/api/src/routes/[endpoint].ts
    ```
 
@@ -195,13 +195,13 @@ test('should submit [form name] successfully', async ({ page }) => {
 ```typescript
 test('should display [data] from backend', async ({ page }) => {
   // Navigate to page showing data
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
 
   // Wait for data to load
   await page.waitForLoadState('networkidle');
 
   // Verify data appears (use data-testid for reliability)
-  const nodeCount = await page.locator('[data-testid="canvas-node"]').count();
+  const nodeCount = await page.locator('[data-testid="keimenon-node"]').count();
   expect(nodeCount).toBeGreaterThan(0);
 
   // Verify specific data (if known)
@@ -225,7 +225,7 @@ test('should reflect backend changes in UI', async ({ page }) => {
   await expect(page.getByText('New Node')).toBeVisible();
 
   // Optional: Verify in database
-  // const nodes = await mcp__canvas-database__query_nodes({ kind: 'Source' });
+  // const nodes = await mcp__keimenon-database__query_nodes({ kind: 'Source' });
   // expect(nodes.find(n => n.properties.title === 'New Node')).toBeDefined();
 });
 ```
@@ -315,7 +315,7 @@ npx playwright test
 npx playwright test --grep @smoke
 
 # Run specific file
-npx playwright test tests/e2e/canvas-operations.spec.ts
+npx playwright test tests/e2e/keimenon-operations.spec.ts
 
 # Run in headed mode (see browser)
 npx playwright test --headed
@@ -329,7 +329,7 @@ npx playwright test --debug
 
 ## Backend Integration Validation
 
-### Using MCP Canvas-Database
+### Using MCP Keimenon-Database
 
 ```typescript
 // Query database to verify test data
@@ -337,7 +337,7 @@ import { test, expect } from './fixtures/testId';
 
 test('should create node in database', async ({ page }) => {
   // Perform UI action
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
   await page.getByRole('button', { name: /create source/i }).click();
   await page.getByLabel(/title/i).fill('Test Source');
   await page.getByRole('button', { name: /save/i }).click();
@@ -381,10 +381,10 @@ test('should create node in database', async ({ page }) => {
 
 ```typescript
 // ✅ GOOD: Wait for specific element
-await page.waitForSelector('[data-testid="canvas-loaded"]');
+await page.waitForSelector('[data-testid="keimenon-loaded"]');
 
 // ✅ GOOD: Wait for URL change
-await page.waitForURL(/\/canvas/);
+await page.waitForURL(/\/keimenon/);
 
 // ✅ GOOD: Wait for network idle
 await page.waitForLoadState('networkidle');
@@ -447,7 +447,7 @@ A good E2E test should:
 const tests =
   (await mcp__playwright) -
   e2e__pw_listTests({
-    grep: 'canvas', // Filter tests
+    grep: 'keimenon', // Filter tests
   });
 ```
 
@@ -495,7 +495,7 @@ test.describe('Data Management', () => {
     await page.getByLabel(/email/i).fill(TEST_EMAIL);
     await page.getByLabel(/password/i).fill(TEST_PASSWORD);
     await page.getByRole('button', { name: /sign in/i }).click();
-    await page.waitForURL(/\/canvas/);
+    await page.waitForURL(/\/keimenon/);
 
     // Navigate to data management
     await page.goto('/settings/data');
@@ -521,7 +521,7 @@ test.describe('Data Management', () => {
 
     // Wait for download
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/canvas-export.*\.json/);
+    expect(download.suggestedFilename()).toMatch(/keimenon-export.*\.json/);
 
     // Verify download completed
     const path = await download.path();
@@ -578,7 +578,7 @@ A generated E2E test is complete when:
 
 ## Reference Files
 
-- [tests/e2e/canvas-operations.spec.ts](../../../tests/e2e/canvas-operations.spec.ts) - Example test patterns
+- [tests/e2e/keimenon-operations.spec.ts](../../../tests/e2e/keimenon-operations.spec.ts) - Example test patterns
 - [tests/e2e/fixtures/testId.ts](../../../tests/e2e/fixtures/testId.ts) - Custom fixtures
 - [playwright.config.ts](../../../playwright.config.ts) - Test configuration
 - [docs/architecture/OVERVIEW.md](../../../docs/architecture/OVERVIEW.md) - System architecture

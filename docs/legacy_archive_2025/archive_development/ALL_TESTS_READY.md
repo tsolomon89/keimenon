@@ -120,7 +120,7 @@ npm run test:coverage
 - ✅ Complete delete flow with SSE updates (1000 nodes)
 - ✅ Small dataset deletion (< 500 nodes)
 - ✅ Empty dataset handling
-- ✅ Canvas scope deletion (preserve groups/settings)
+- ✅ Keimenon scope deletion (preserve groups/settings)
 - ✅ All-clients scope deletion (everything)
 - ✅ Concurrent delete prevention (concurrency_group)
 - ✅ Delete while import running
@@ -410,7 +410,7 @@ curl http://localhost:4001/api/v1/stream/jobs?token=YOUR_TOKEN
 
 ```bash
 # Solution: Manually clean test data
-npx better-sqlite3 ~/.canvas-memory/canvas.db "DELETE FROM nodes WHERE account_id = 'test-account-*'"
+npx better-sqlite3 ~/.keimenon/keimenon.db "DELETE FROM nodes WHERE account_id = 'test-account-*'"
 ```
 
 ---

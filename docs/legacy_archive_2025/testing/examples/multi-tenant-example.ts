@@ -5,7 +5,7 @@ import { login } from '../helpers/login';
  * Multi-Tenant Isolation Template with Visual Regression
  *
  * This template ensures that account A cannot access account B's data.
- * This is a CRITICAL security requirement for the Canvas Memory OS application.
+ * This is a CRITICAL security requirement for the Keimenon application.
  *
  * Visual regression testing validates that:
  * - Each account sees ONLY their own data visually
@@ -42,7 +42,7 @@ const VISUAL_REGRESSION_CONFIG = {
  * @param page - Playwright page object
  * @param testName - Name of the test (e.g., 'ui-isolation')
  * @param accountContext - Which account view ('account-a' or 'account-b')
- * @param step - Current step (e.g., 'canvas-view')
+ * @param step - Current step (e.g., 'keimenon-view')
  */
 async function captureAccountBaseline(
   page: Page,
@@ -242,16 +242,16 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
   test('should not display Account A resources in Account B UI', async ({ page }) => {
     // Step 1: Login as Account A first to capture baseline
     await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     await page.waitForLoadState('networkidle');
 
     // 📸 Visual check: Account A sees ONLY their resources
-    await captureAccountBaseline(page, 'ui-isolation', 'account-a', 'canvas-view');
+    await captureAccountBaseline(page, 'ui-isolation', 'account-a', 'keimenon-view');
 
     // Step 2: Switch to Account B
     await page.goto('/logout');
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     await page.waitForLoadState('networkidle');
 
     // Step 3: Verify Account A's resource is NOT visible in UI
@@ -262,7 +262,7 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
     await expect(page.getByText('Account B Resource')).toBeVisible();
 
     // 📸 Visual check: Account B sees ONLY their resources (CRITICAL - validates isolation)
-    await captureAccountBaseline(page, 'ui-isolation', 'account-b', 'canvas-view');
+    await captureAccountBaseline(page, 'ui-isolation', 'account-b', 'keimenon-view');
 
     // Step 5: Try searching for Account A's resource (should find nothing)
     if (await page.getByPlaceholder(/search|filter/i).isVisible()) {
@@ -282,12 +282,12 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
 
     // Step 2: Try to access Account A's resource directly via URL
-    await page.goto(`/canvas/RESOURCE_NAME/${resourceAId}`);
+    await page.goto(`/keimenon/RESOURCE_NAME/${resourceAId}`);
 
     // Step 3: Verify access is denied
     // Should show error page or redirect to home
     await expect(page.getByText(/not found|forbidden|access denied/i)).toBeVisible();
-    // OR: await expect(page).toHaveURL(/\/canvas$|\/error/);
+    // OR: await expect(page).toHaveURL(/\/keimenon$|\/error/);
 
     // 📸 Visual check: Error page displayed (CRITICAL - prevents URL manipulation)
     await captureAccountBaseline(page, 'direct-url-access', 'account-b', 'access-denied-error');
@@ -319,7 +319,7 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
 
     // Step 2: Login as Account B and verify only 1 resource is visible
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     await page.waitForLoadState('networkidle');
 
     // Step 3: Count resources with that name (should be exactly 1)
@@ -335,7 +335,7 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
 
     // Step 1: Login as Account A
     await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     await expect(page.getByText('Account A Resource')).toBeVisible();
 
     // 📸 Visual check: Account A session showing Account A data
@@ -344,7 +344,7 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
     // Step 2: Switch to Account B
     await page.goto('/logout');
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
 
     // Step 3: Verify Account A's resources are no longer visible
     await expect(page.getByText('Account A Resource')).not.toBeVisible();
@@ -374,7 +374,7 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
 
     // Step 1: Login as admin
     await login(page, ADMIN.email, ADMIN.password);
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     await page.waitForLoadState('networkidle');
 
     // 📸 Visual check: Admin view shows ALL accounts' resources (intentional exception)
@@ -419,7 +419,7 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
       page,
       ['mobile', 'tablet', 'desktop'],
       async (viewportName) => {
-        await page.goto('/canvas');
+        await page.goto('/keimenon');
         await page.waitForLoadState('networkidle');
 
         // SECURITY CHECK: Account A's resource MUST NOT be visible on any viewport
@@ -449,7 +449,7 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
 
     // Capture Account A's view across viewports
     await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     await page.waitForLoadState('networkidle');
 
     await captureMultiViewport(page, 'multi-tenant-account-a', VIEWPORT_TEST_SUITES.standard, {
@@ -460,7 +460,7 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
     // Capture Account B's view across viewports
     await page.goto('/logout');
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     await page.waitForLoadState('networkidle');
 
     await captureMultiViewport(page, 'multi-tenant-account-b', VIEWPORT_TEST_SUITES.standard, {
@@ -487,7 +487,7 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
       ['mobile', 'tablet', 'desktop'],
       async (viewportName) => {
         // Attempt to access Account A's resource
-        await page.goto(`/canvas/RESOURCE_NAME/${resourceAId}`);
+        await page.goto(`/keimenon/RESOURCE_NAME/${resourceAId}`);
 
         // Error message should be visible on all viewports
         await expect(page.getByText(/not found|forbidden|access denied/i)).toBeVisible();
@@ -521,7 +521,7 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
       page,
       ['mobile', 'tablet', 'desktop'],
       async (viewportName) => {
-        await page.goto('/canvas');
+        await page.goto('/keimenon');
         await page.waitForLoadState('networkidle');
 
         // Admin should see resources from both accounts
@@ -549,13 +549,13 @@ test.describe('Multi-Tenant Isolation - RESOURCE_NAME', () => {
       async (viewportName) => {
         // Login as Account A
         await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
-        await page.goto('/canvas');
+        await page.goto('/keimenon');
         await expect(page.getByText('Account A Resource')).toBeVisible();
 
         // Switch to Account B
         await page.goto('/logout');
         await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
-        await page.goto('/canvas');
+        await page.goto('/keimenon');
 
         // SECURITY CHECK: Account A data MUST be gone
         await expect(page.getByText('Account A Resource')).not.toBeVisible();

@@ -21,7 +21,7 @@ import { MetricsService } from '../MetricsService';
 export interface DeleteJobMetadata {
   jobId: string;
   accountId: string;
-  scope: 'canvas' | 'all-clients';
+  scope: 'keimenon' | 'all-clients';
   nodesDeleted: number;
   durationMs: number;
   batchCount?: number;
@@ -31,7 +31,7 @@ export interface DeleteJobMetadata {
 export interface DeleteFailureMetadata {
   jobId: string;
   accountId: string;
-  scope: 'canvas' | 'all-clients';
+  scope: 'keimenon' | 'all-clients';
   errorCode: string;
   errorMessage: string;
 }
@@ -47,7 +47,7 @@ export interface DeleteFailureMetadata {
  * deleteMetrics.recordJobCompletion({
  *   jobId: 'job_123',
  *   accountId: 'acc_456',
- *   scope: 'canvas',
+ *   scope: 'keimenon',
  *   nodesDeleted: 1000,
  *   durationMs: 5000,
  * });
@@ -56,7 +56,7 @@ export interface DeleteFailureMetadata {
  * deleteMetrics.recordJobFailure({
  *   jobId: 'job_789',
  *   accountId: 'acc_456',
- *   scope: 'canvas',
+ *   scope: 'keimenon',
  *   errorCode: 'TIMEOUT',
  *   errorMessage: 'Job exceeded 5 minute timeout',
  * });
@@ -115,9 +115,7 @@ export class DeleteMetrics extends MetricsService {
     this.incrementCounter('jobs_completed', { status: 'failed', scope });
     this.incrementCounter('job_failures', { error_code: errorCode, scope });
 
-    console.error(
-      `[DeleteMetrics] Job ${jobId} failed: ${errorCode} - ${errorMessage} (${scope})`
-    );
+    console.error(`[DeleteMetrics] Job ${jobId} failed: ${errorCode} - ${errorMessage} (${scope})`);
   }
 
   /**
@@ -127,19 +125,13 @@ export class DeleteMetrics extends MetricsService {
     this.incrementCounter('concurrent_attempts', { scope });
     this.setGauge('last_concurrent_attempt_time', Date.now());
 
-    console.warn(
-      `[DeleteMetrics] Concurrent deletion attempt for account ${accountId} (${scope})`
-    );
+    console.warn(`[DeleteMetrics] Concurrent deletion attempt for account ${accountId} (${scope})`);
   }
 
   /**
    * Record batch processing performance
    */
-  recordBatchProcessed(
-    batchNumber: number,
-    nodesInBatch: number,
-    processingTimeMs: number
-  ): void {
+  recordBatchProcessed(batchNumber: number, nodesInBatch: number, processingTimeMs: number): void {
     this.recordValue('batch_processing_time_ms', processingTimeMs);
     this.recordValue('batch_size', nodesInBatch);
   }
@@ -255,9 +247,11 @@ Performance:
 - Average Nodes Deleted: ${performance.nodesDeletedAvg?.toFixed(0) || 'N/A'}
 
 Failures by Error Code:
-${Object.entries(failures)
-  .map(([code, count]) => `- ${code}: ${count}`)
-  .join('\n') || 'None'}
+${
+  Object.entries(failures)
+    .map(([code, count]) => `- ${code}: ${count}`)
+    .join('\n') || 'None'
+}
 
 Concurrent Attempts Blocked: ${concurrentAttempts}
     `.trim();

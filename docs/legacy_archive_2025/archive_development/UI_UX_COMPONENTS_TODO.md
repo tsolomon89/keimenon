@@ -1,7 +1,7 @@
 # UI/UX Components - Remaining Work Analysis
 
 **Generated**: 2025-10-14
-**Project**: Canvas Memory OS
+**Project**: Keimenon
 **Status**: Phase 1 Complete, Multi-Feature Gaps Identified
 
 ---
@@ -18,13 +18,13 @@
 - Admin CRM dashboard
 - Portal mode wrapper
 - Settings page framework
-- Basic 2D canvas with force-directed layout
+- Basic 2D keimenon with force-directed layout
 - File upload & chat import modals
 - Streaming upload with progress tracking
 
 **🔴 Critical Missing Components:**
 
-- Advanced canvas lenses (3D, nD, Matrix, Timeline, Diff)
+- Advanced keimenon lenses (3D, nD, Matrix, Timeline, Diff)
 - Claims extraction UI & workflow
 - Verification panel & verification runs UI
 - UnifiedDoc composer & viewer
@@ -43,9 +43,9 @@
 
 ## 1. Main Viewport - Board Lenses (Core Views)
 
-### A. Canvas2D (2D Board) - ✅ 80% Complete
+### A. Keimenon2D (2D Board) - ✅ 80% Complete
 
-**Location**: `apps/web/src/components/canvas/Canvas2D.tsx`
+**Location**: `apps/web/src/components/keimenon/Keimenon2D.tsx`
 
 **Status**: Basic force-directed layout working
 
@@ -74,9 +74,9 @@
 
 ---
 
-### B. Canvas3D (3D Board) - ❌ Not Started
+### B. Keimenon3D (3D Board) - ❌ Not Started
 
-**Expected Location**: `apps/web/src/components/canvas/Canvas3D.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/Keimenon3D.tsx`
 
 **Status**: Not implemented (Pro feature)
 
@@ -96,7 +96,7 @@
 
 ### C. Galaxy / nD View - ❌ Not Started
 
-**Expected Location**: `apps/web/src/components/canvas/CanvasGalaxy.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/KeimenonGalaxy.tsx`
 
 **Status**: Not implemented (Pro/Admin feature)
 
@@ -106,7 +106,7 @@
 - Particle density throttling by zoom level
 - Constellations as single stars (clickable to expand)
 - Verification warp (visual distortion for verified/unverified)
-- WebGL or Canvas2D rendering for performance
+- WebGL or Keimenon2D rendering for performance
 - Lens dial for morphing metrics (semantic ↔ provenance ↔ verification)
 
 **Priority**: 🟢 LOW (Future) (24-30 hours)
@@ -116,7 +116,7 @@
 
 ### D. Matrix / Adjacency View - ❌ Not Started
 
-**Expected Location**: `apps/web/src/components/canvas/CanvasMatrix.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/KeimenonMatrix.tsx`
 
 **Status**: Not implemented
 
@@ -135,7 +135,7 @@
 
 ### E. Timeline / Staleness View - ❌ Not Started
 
-**Expected Location**: `apps/web/src/components/canvas/CanvasTimeline.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/KeimenonTimeline.tsx`
 
 **Status**: Not implemented
 
@@ -155,7 +155,7 @@
 
 ### F. Diff / Receipt Replay View - ❌ Not Started
 
-**Expected Location**: `apps/web/src/components/canvas/CanvasDiff.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/KeimenonDiff.tsx`
 
 **Status**: Not implemented (Pro feature)
 
@@ -176,7 +176,7 @@
 
 ### Current Status: ✅ 75% Complete
 
-**Location**: `apps/web/src/components/canvas/CanvasHeader.tsx`
+**Location**: `apps/web/src/components/keimenon/KeimenonHeader.tsx`
 
 **✅ Implemented:**
 
@@ -210,11 +210,11 @@
 
 ### Current Status: ✅ 60% Complete
 
-**Location**: `apps/web/src/components/canvas/CanvasSidebar.tsx`
+**Location**: `apps/web/src/components/keimenon/KeimenonSidebar.tsx`
 
 **✅ Implemented:**
 
-- Mode switcher (Canvas/Dashboard/Settings)
+- Mode switcher (Keimenon/Dashboard/Settings)
 - Settings tree navigation (static)
 - Collapsible panel
 
@@ -247,7 +247,7 @@
 
 ### Current Status: ✅ 40% Complete
 
-**Location**: `apps/web/src/components/canvas/CanvasSidebar.tsx`
+**Location**: `apps/web/src/components/keimenon/KeimenonSidebar.tsx`
 
 **✅ Implemented:**
 
@@ -259,7 +259,7 @@
 
 ### A. Node Details Tile - ⏳ Partial
 
-**Component**: `apps/web/src/components/canvas/NodeDetailPanel.tsx` (exists but not integrated)
+**Component**: `apps/web/src/components/keimenon/NodeDetailPanel.tsx` (exists but not integrated)
 
 **Needs:**
 
@@ -275,7 +275,7 @@
 
 ### B. Selection Stack Tile - ❌ Not Started
 
-**Expected Location**: `apps/web/src/components/canvas/SelectionStack.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/SelectionStack.tsx`
 
 **Needs:**
 
@@ -294,7 +294,7 @@
 
 ### C. ObjectiveClaim Editor Tile - ❌ Not Started
 
-**Expected Location**: `apps/web/src/components/canvas/ClaimEditor.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/ClaimEditor.tsx`
 
 **Needs:**
 
@@ -312,7 +312,7 @@
 
 ### D. UnifiedDoc Preview Tile - ❌ Not Started
 
-**Expected Location**: `apps/web/src/components/canvas/DocPreview.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/DocPreview.tsx`
 
 **Needs:**
 
@@ -330,7 +330,7 @@
 
 ### E. Scope Builder Tile - ❌ Not Started
 
-**Expected Location**: `apps/web/src/components/canvas/ScopeBuilder.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/ScopeBuilder.tsx`
 
 **Needs:**
 
@@ -348,7 +348,7 @@
 
 ### F. Verification Panel Tile - ❌ Not Started
 
-**Expected Location**: `apps/web/src/components/canvas/VerificationPanel.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/VerificationPanel.tsx`
 
 **Needs:**
 
@@ -368,7 +368,7 @@
 
 ### Current Status: ✅ 30% Complete
 
-**Location**: `apps/web/src/components/canvas/CanvasFooter.tsx`
+**Location**: `apps/web/src/components/keimenon/KeimenonFooter.tsx`
 
 **✅ Implemented:**
 
@@ -456,7 +456,7 @@ doc compose L0
 
 ### A. Upload Modal - ✅ 90% Complete
 
-**Location**: `apps/web/src/components/canvas/UploadModal.tsx`
+**Location**: `apps/web/src/components/keimenon/UploadModal.tsx`
 
 **✅ Implemented:**
 
@@ -477,7 +477,7 @@ doc compose L0
 
 ### B. Chat Import Modal - ✅ 85% Complete
 
-**Location**: `apps/web/src/components/canvas/ChatImportModal.tsx`
+**Location**: `apps/web/src/components/keimenon/ChatImportModal.tsx`
 
 **✅ Implemented:**
 
@@ -498,7 +498,7 @@ doc compose L0
 
 ### C. First Time Upload Modal - ✅ Complete
 
-**Location**: `apps/web/src/components/canvas/FirstTimeUploadModal.tsx`
+**Location**: `apps/web/src/components/keimenon/FirstTimeUploadModal.tsx`
 
 **Status**: Onboarding modal for new users - functional
 
@@ -506,7 +506,7 @@ doc compose L0
 
 ### D. Group Creation Modal - ❌ Not Started
 
-**Expected Location**: `apps/web/src/components/canvas/GroupCreationModal.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/GroupCreationModal.tsx`
 
 **Needs:**
 
@@ -523,7 +523,7 @@ doc compose L0
 
 ### E. Claim Creation Modal - ❌ Not Started
 
-**Expected Location**: `apps/web/src/components/canvas/ClaimCreationModal.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/ClaimCreationModal.tsx`
 
 **Needs:**
 
@@ -567,7 +567,7 @@ doc compose L0
 
 - Claims table with sorting/filtering
 - Claim status badges (unverified/verified/refuted)
-- Click to center on canvas
+- Click to center on keimenon
 - Bulk operations (verify/delete)
 - Export claims to CSV
 
@@ -614,7 +614,7 @@ doc compose L0
 
 ### E. /admin - ⏳ Partial
 
-**Location**: `apps/web/src/components/canvas/CRMDashboard.tsx` (admin view)
+**Location**: `apps/web/src/components/keimenon/CRMDashboard.tsx` (admin view)
 
 **✅ Implemented:**
 
@@ -658,7 +658,7 @@ doc compose L0
 
 ### A. Context Ring Menu - ❌ Not Started
 
-**Expected Location**: `apps/web/src/components/canvas/ContextRing.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/ContextRing.tsx`
 
 **Needs:**
 
@@ -705,11 +705,11 @@ doc compose L0
 
 ### D. Lens Dial - ❌ Not Started (Pro)
 
-**Expected Location**: `apps/web/src/components/canvas/LensDial.tsx`
+**Expected Location**: `apps/web/src/components/keimenon/LensDial.tsx`
 
 **Needs:**
 
-- On-canvas control (draggable)
+- On-keimenon control (draggable)
 - Morph metrics slider (semantic ↔ provenance ↔ verification)
 - Visual feedback (graph animates)
 
@@ -772,7 +772,7 @@ doc compose L0
 
 **✅ Implemented:**
 
-- Canvas empty state (guides)
+- Keimenon empty state (guides)
 - Loading spinners
 - Basic error messages
 
@@ -801,8 +801,8 @@ doc compose L0
 - **Mobile responsiveness**:
   - LHS → bottom sheet
   - RHS → full screen overlay
-  - Canvas gestures optimized
-- **Tablet split view** (LHS 25%, canvas 50%, RHS 25%)
+  - Keimenon gestures optimized
+- **Tablet split view** (LHS 25%, keimenon 50%, RHS 25%)
 - **Keyboard shortcuts** (full parity with mouse actions)
 - **Focus rings** and ARIA roles
 - **Reduced motion** preference support
@@ -832,7 +832,7 @@ doc compose L0
 
 | Component                    | Hours | Dependencies                |
 | ---------------------------- | ----- | --------------------------- |
-| Canvas3D                     | 16-20 | Three.js, 3D layout         |
+| Keimenon3D                   | 16-20 | Three.js, 3D layout         |
 | Verification panel           | 12-16 | Verifier service            |
 | Receipt replay/diff          | 16-20 | Receipt storage             |
 | Matrix view                  | 8-12  | Adjacency query             |
@@ -928,7 +928,7 @@ doc compose L0
 
 ### Sprint 5 (Week 6-7): Advanced Lenses
 
-16. **Canvas3D** (16-20 hours)
+16. **Keimenon3D** (16-20 hours)
 17. **Matrix view** (8-12 hours)
 18. **Lens selector** (6-8 hours)
 

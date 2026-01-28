@@ -1,24 +1,24 @@
 {
   "$schema": "https://modelcontextprotocol.io/schema/mcp-config.json",
   "mcpServers": {
-    "canvas-database": {
+    "keimenon-database": {
       "command": "node",
       "args": ["servers/database/index.js"],
-      "description": "Query and inspect Canvas Memory OS SQLite database",
+      "description": "Query and inspect Keimenon SQLite database",
       "enabled": true,
       "permissions": ["read", "write"],
       "env": {
-        "SQLITE_PATH": "${env:HOME}/.keimenon/canvas.db"
+        "SQLITE_PATH": "${env:HOME}/.keimenon/keimenon.db"
       }
     },
-    "canvas-docs": {
+    "keimenon-docs": {
       "command": "node",
       "args": ["servers/docs/index.js"],
       "description": "Search and navigate project documentation",
       "enabled": true,
       "permissions": ["read"]
     },
-    "canvas-api-testing": {
+    "keimenon-api-testing": {
       "command": "node",
       "args": ["servers/api-testing/index.js"],
       "description": "Test API endpoints with authentication",
@@ -26,7 +26,7 @@
       "permissions": ["read", "write"],
       "note": "Comprehensive API testing including auth, CRUD, multi-tenant, and import workflows"
     },
-    "canvas-chat-import": {
+    "keimenon-chat-import": {
       "command": "node",
       "args": ["servers/chat-import/index.js"],
       "description": "Test chat import functionality with sample datasets",
@@ -34,7 +34,7 @@
       "permissions": ["read", "write"],
       "note": "Import testing with pre-built datasets (tiny, small, medium, edge-cases)"
     },
-    "canvas-codebase": {
+    "keimenon-codebase": {
       "command": "node",
       "args": ["servers/codebase/index.js"],
       "description": "Analyze code patterns and dependencies",
@@ -42,7 +42,7 @@
       "permissions": ["read"],
       "note": "Not implemented yet - placeholder for future code analysis features"
     },
-    "canvas-git-workflow": {
+    "keimenon-git-workflow": {
       "command": "node",
       "args": ["servers/git-workflow/index.js"],
       "description": "Git operations following project conventions",

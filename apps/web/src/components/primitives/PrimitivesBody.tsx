@@ -19,30 +19,30 @@ import { Settings, Users, Database, Building2 } from 'lucide-react';
  * This component replaces the old viewport structure with a clean
  * primitives-based architecture:
  * - Bar (left): Navigation
- * - Viewer (center): Content based on canvasMode
+ * - Viewer (center): Content based on keimenonMode
  * - Bar (right): Inspector
  *
  * Mode handling:
- * - canvasMode determines what Viewer shows
+ * - keimenonMode determines what Viewer shows
  * - shellMode + operatingMode determine Bar configurations
  * - No conditional branching in render tree (mode is data, not structure)
  */
 export function PrimitivesBody() {
-  const { shellMode, canvasMode } = useShell();
+  const { shellMode, keimenonMode } = useShell();
   const { user } = useAuth();
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [viewerData, setViewerData] = useState<any>(null);
   const [viewerLoading, setViewerLoading] = useState(false);
 
-  // Load data based on canvas mode and selected section
+  // Load data based on keimenon mode and selected section
   useEffect(() => {
     loadViewerData();
-  }, [canvasMode, selectedSection, user]);
+  }, [keimenonMode, selectedSection, user]);
 
   async function loadViewerData() {
     setViewerLoading(true);
     try {
-      if (canvasMode === 'settings' && selectedSection) {
+      if (keimenonMode === 'settings' && selectedSection) {
         // Load settings data for selected section
         const sectionConfig = Object.values(SETTINGS_SECTIONS).find(
           (s) => s.id === selectedSection
@@ -56,7 +56,7 @@ export function PrimitivesBody() {
             },
           });
         }
-      } else if (canvasMode === 'dashboard') {
+      } else if (keimenonMode === 'dashboard') {
         // Mock dashboard metrics
         setViewerData([
           { title: 'Total Users', value: '1,234', subtitle: '+12% this month' },
@@ -71,12 +71,12 @@ export function PrimitivesBody() {
     }
   }
 
-  // Navigation items based on canvas mode
+  // Navigation items based on keimenon mode
   const getNavigationItems = () => {
-    if (canvasMode === 'settings') {
+    if (keimenonMode === 'settings') {
       return Object.values(SETTINGS_SECTIONS);
     }
-    if (canvasMode === 'dashboard') {
+    if (keimenonMode === 'dashboard') {
       return [
         { id: 'overview', label: 'Overview', icon: Database },
         { id: 'users', label: 'Users', icon: Users },
@@ -93,9 +93,9 @@ export function PrimitivesBody() {
         mode="navigation"
         position="left"
         title={
-          canvasMode === 'settings'
+          keimenonMode === 'settings'
             ? 'Settings'
-            : canvasMode === 'dashboard'
+            : keimenonMode === 'dashboard'
               ? 'Dashboard'
               : 'Navigation'
         }
@@ -127,7 +127,7 @@ export function PrimitivesBody() {
             </Text>
             <div className="space-y-1">
               <Text role="hint">Shell: {shellMode}</Text>
-              <Text role="hint">Canvas: {canvasMode}</Text>
+              <Text role="hint">Keimenon: {keimenonMode}</Text>
               <Text role="hint">Section: {selectedSection || 'none'}</Text>
             </div>
           </Card>
@@ -135,7 +135,7 @@ export function PrimitivesBody() {
       </Bar>
 
       {/* Center Viewer - Main Content */}
-      <Viewer mode={canvasMode as any} data={viewerData} loading={viewerLoading} />
+      <Viewer mode={keimenonMode as any} data={viewerData} loading={viewerLoading} />
 
       {/* Right Bar - Inspector */}
       <Bar mode="inspector" position="right" title="Details" width="320px">

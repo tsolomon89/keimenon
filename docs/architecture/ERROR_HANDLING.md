@@ -5,7 +5,7 @@
 
 ## Overview
 
-The Canvas Memory OS uses a **centralized, reactive error handling system** that captures, categorizes, and displays errors across the entire application. All errors are automatically routed to the Console Footer for real-time debugging.
+The Keimenon uses a **centralized, reactive error handling system** that captures, categorizes, and displays errors across the entire application. All errors are automatically routed to the Console Footer for real-time debugging.
 
 ## Architecture Components
 
@@ -82,9 +82,9 @@ const importErrors = useDomainErrors('import');
 
 ---
 
-### 3. CanvasFooter (UI)
+### 3. KeimenonFooter (UI)
 
-**Location**: [CanvasFooter.tsx](../../apps/web/src/components/canvas/CanvasFooter.tsx)
+**Location**: [KeimenonFooter.tsx](../../apps/web/src/components/keimenon/KeimenonFooter.tsx)
 
 **Purpose**: Visual console UI with intelligent tabs and real-time error display.
 
@@ -249,7 +249,7 @@ export default withErrorBoundary(MyComponent);
            │  useConsole()                       │
            ▼                                     │
 ┌──────────────────────────────────────────────┐│
-│  CanvasFooter UI                              ││
+│  KeimenonFooter UI                              ││
 │  • Console tab (error-focused, stack traces)  ││
 │  • Logs tab (structured view)                 ││
 │  • Tasks tab (import/processing status)       ││
@@ -419,7 +419,7 @@ describe('Error Handling', () => {
   });
 
   it('should display errors in console footer', () => {
-    const { getByText } = render(<CanvasFooter isOpen={true} />);
+    const { getByText } = render(<KeimenonFooter isOpen={true} />);
 
     errorCapture.capture(
       new Error('Test error'),
@@ -475,7 +475,7 @@ try {
 ### Error not appearing in console?
 
 1. **Check if ConsoleProvider is mounted**:
-   - [canvas/page.tsx](../../apps/web/src/app/canvas/page.tsx) should wrap app with `<ConsoleProvider>`
+   - [keimenon/page.tsx](../../apps/web/src/app/keimenon/page.tsx) should wrap app with `<ConsoleProvider>`
 
 2. **Check if error is being captured**:
 

@@ -8,7 +8,7 @@
 
 ## Summary
 
-Successfully wired the existing Groups/Folders backend API to the frontend navigation tree. Users can now browse groups, expand folders with lazy-loading, and filter canvas nodes by group membership.
+Successfully wired the existing Groups/Folders backend API to the frontend navigation tree. Users can now browse groups, expand folders with lazy-loading, and filter keimenon nodes by group membership.
 
 ---
 
@@ -38,7 +38,7 @@ Successfully wired the existing Groups/Folders backend API to the frontend navig
 
 ### 2. ✅ Lazy Loading for Folders
 
-**Location**: `apps/web/src/components/canvas/CanvasSidebar.tsx`
+**Location**: `apps/web/src/components/keimenon/KeimenonSidebar.tsx`
 
 **Implementation**:
 
@@ -65,16 +65,16 @@ Successfully wired the existing Groups/Folders backend API to the frontend navig
 
 ### 3. ✅ Group Member Filtering
 
-**Location**: `apps/web/src/components/canvas/CanvasSidebar.tsx`
+**Location**: `apps/web/src/components/keimenon/KeimenonSidebar.tsx`
 
 **Implementation**:
 
 - When user clicks a Group (not Folder):
   - Fetches member node IDs from API
-  - Calls `canvasStore.setFilteredNodeIds(memberIds)`
-  - Canvas displays only those nodes
+  - Calls `keimenonStore.setFilteredNodeIds(memberIds)`
+  - Keimenon displays only those nodes
 
-**Canvas Store Enhancement**:
+**Keimenon Store Enhancement**:
 Added `filteredNodeIds` to filters:
 
 ```typescript
@@ -87,14 +87,14 @@ filters: {
 
 **New Store Actions**:
 
-- `setFilteredNodeIds(ids)` - Filter canvas to specific node IDs
+- `setFilteredNodeIds(ids)` - Filter keimenon to specific node IDs
 - Enhanced `clearFilters()` - Resets filteredNodeIds to null
 
 ---
 
 ### 4. ✅ Navigation Bar Integration
 
-**Location**: `apps/web/src/components/canvas/CanvasSidebar.tsx`
+**Location**: `apps/web/src/components/keimenon/KeimenonSidebar.tsx`
 
 **Features**:
 
@@ -113,9 +113,9 @@ handleSelect(node) {
     fetchFolderChildren(node.id)
     expandFolder(node.id)
   } else {
-    // Group: filter canvas nodes
+    // Group: filter keimenon nodes
     fetchGroupMembers(node.id)
-    canvasStore.setFilteredNodeIds(memberIds)
+    keimenonStore.setFilteredNodeIds(memberIds)
   }
 }
 ```
@@ -126,9 +126,9 @@ handleSelect(node) {
 
 ### Frontend (4 files):
 
-1. **`apps/web/src/components/canvas/CanvasSidebar.tsx`**
+1. **`apps/web/src/components/keimenon/KeimenonSidebar.tsx`**
    - Added useState for expandedTreeData and loadingFolders
-   - Imported fetchFolderChildren and useCanvasStore
+   - Imported fetchFolderChildren and useKeimenonStore
    - Implemented async handleSelect with lazy loading
    - Added group member filtering logic
 
@@ -136,7 +136,7 @@ handleSelect(node) {
    - Already existed and working
    - No changes needed (already fetches from API)
 
-3. **`apps/web/src/store/canvasStore.ts`**
+3. **`apps/web/src/store/keimenonStore.ts`**
    - Added `filteredNodeIds` to filters interface
    - Added `setFilteredNodeIds` action
    - Enhanced `clearFilters` to reset filteredNodeIds
@@ -187,17 +187,17 @@ handleSelect(node) {
 
 ## What's Still TODO
 
-### ⏳ Canvas Display Integration (HIGH priority)
+### ⏳ Keimenon Display Integration (HIGH priority)
 
-**Task**: Update Canvas2D to respect `filteredNodeIds`
+**Task**: Update Keimenon2D to respect `filteredNodeIds`
 
-**Location**: `apps/web/src/components/canvas/Canvas2D.tsx`
+**Location**: `apps/web/src/components/keimenon/Keimenon2D.tsx`
 
 **Required Changes**:
 
 ```typescript
-// In Canvas2D component
-const { nodes, edges, filters } = useCanvasStore();
+// In Keimenon2D component
+const { nodes, edges, filters } = useKeimenonStore();
 
 // Filter nodes if filteredNodeIds is set
 const displayNodes = useMemo(() => {
@@ -221,7 +221,7 @@ const displayNodes = useMemo(() => {
 
 **Files to Create**:
 
-- `apps/web/src/components/canvas/GroupCreationModal.tsx`
+- `apps/web/src/components/keimenon/GroupCreationModal.tsx`
 
 **Features Needed**:
 
@@ -284,7 +284,7 @@ POST /api/v1/groups/nav
 
 **Features**:
 
-- Drag from canvas → drop on group in sidebar
+- Drag from keimenon → drop on group in sidebar
 - Drag group → drop on folder (move)
 - Visual feedback during drag
 
@@ -309,8 +309,8 @@ POST /api/v1/groups/nav
 ### ⏳ Pending Tests:
 
 - [ ] Folder lazy-loading works on expand
-- [ ] Group click filters canvas nodes
-- [ ] Canvas respects filteredNodeIds filter
+- [ ] Group click filters keimenon nodes
+- [ ] Keimenon respects filteredNodeIds filter
 - [ ] Clear filters button resets display
 - [ ] Empty state shows when no groups
 - [ ] Error handling displays errors
@@ -337,7 +337,7 @@ cd apps/web && npm run dev
 #### 1. View Groups Tree
 
 1. Login to application
-2. Navigate to Canvas mode (not CRM/Settings)
+2. Navigate to Keimenon mode (not CRM/Settings)
 3. Open left sidebar
 4. Verify groups/folders appear in tree
 5. Verify icons match types (Folder icon for folders, Tag for groups)
@@ -349,11 +349,11 @@ cd apps/web && npm run dev
 3. Verify children appear after loading
 4. Verify children have correct icons/badges
 
-#### 3. Filter Canvas by Group
+#### 3. Filter Keimenon by Group
 
 1. Click on a Group (not Folder)
 2. Check browser console for: "Group {id} has N members: [...]"
-3. Verify canvas only shows those nodes (after Canvas2D update)
+3. Verify keimenon only shows those nodes (after Keimenon2D update)
 4. Click "Clear Filters" to show all nodes again
 
 #### 4. Search Groups
@@ -373,7 +373,7 @@ cd apps/web && npm run dev
    - Reduces initial API payload
    - Faster tree rendering
 
-2. **Filtered Rendering**: Canvas only renders visible nodes
+2. **Filtered Rendering**: Keimenon only renders visible nodes
    - Better performance with large graphs
    - Reduces D3 layout calculations
 
@@ -408,9 +408,9 @@ cd apps/web && npm run dev
    - **Fix**: Show spinner icon on loading folders
    - **Priority**: MEDIUM
 
-3. **Canvas doesn't respect filteredNodeIds yet**
+3. **Keimenon doesn't respect filteredNodeIds yet**
    - **Impact**: Group filtering doesn't visually work
-   - **Fix**: Update Canvas2D (see TODO above)
+   - **Fix**: Update Keimenon2D (see TODO above)
    - **Priority**: HIGH
 
 4. **No "Clear Filter" button** - User must know to click elsewhere
@@ -429,15 +429,15 @@ Backend API
   ↓
 useGroupsTree hook
   ↓
-CanvasSidebar (expandedTreeData state)
+KeimenonSidebar (expandedTreeData state)
   ↓
 NavigationBar component
   ↓
 handleSelect → fetchFolderChildren / fetchGroupMembers
   ↓
-canvasStore.setFilteredNodeIds
+keimenonStore.setFilteredNodeIds
   ↓
-Canvas2D (reads filteredNodeIds filter)
+Keimenon2D (reads filteredNodeIds filter)
   ↓
 Display filtered nodes
 ```
@@ -446,7 +446,7 @@ Display filtered nodes
 
 **Global State** (Zustand):
 
-- Canvas nodes & edges
+- Keimenon nodes & edges
 - Filters (including filteredNodeIds)
 - Selection state
 
@@ -467,7 +467,7 @@ Display filtered nodes
 
 ### Immediate (Complete Option B):
 
-1. ✅ **Update Canvas2D** to respect filteredNodeIds (15-30 min)
+1. ✅ **Update Keimenon2D** to respect filteredNodeIds (15-30 min)
    - Filter nodes before passing to D3 layout
    - Add visual indicator when filter is active
    - Add "Clear Filter" button
@@ -507,11 +507,11 @@ Display filtered nodes
 **Groups Tree Navigation**: ✅ 90% Complete
 **Backend API Integration**: ✅ Fully wired
 **Lazy Loading**: ✅ Implemented
-**Group Filtering**: ✅ Store logic complete, Canvas update pending
+**Group Filtering**: ✅ Store logic complete, Keimenon update pending
 **Critical Bugs**: None
-**Blockers**: Canvas2D needs 30-minute update
+**Blockers**: Keimenon2D needs 30-minute update
 
-**Ready for**: Canvas update + testing, then Option C (Claims backend)
+**Ready for**: Keimenon update + testing, then Option C (Claims backend)
 
 ---
 

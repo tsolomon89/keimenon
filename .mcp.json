@@ -1,35 +1,35 @@
 {
   "mcpServers": {
-    "canvas-database": {
+    "keimenon-database": {
       "command": "node",
       "args": [".mcp/servers/database/index.js"],
       "env": {
-        "SQLITE_PATH": "${HOME}/.keimenon/canvas.db"
+        "SQLITE_PATH": "${HOME}/.keimenon/keimenon.db"
       }
     },
-    "canvas-docs": {
+    "keimenon-docs": {
       "command": "node",
       "args": [".mcp/servers/docs/index.js"]
     },
-    "canvas-api-testing": {
+    "keimenon-api-testing": {
       "command": "node",
       "args": [".mcp/servers/api-testing/index.js"],
       "env": {
         "API_BASE_URL": "http://localhost:4001"
       }
     },
-    "canvas-chat-import": {
+    "keimenon-chat-import": {
       "command": "node",
       "args": [".mcp/servers/chat-import/index.js"],
       "env": {
         "API_BASE_URL": "http://localhost:4001"
       }
     },
-    "canvas-settings-crm": {
+    "keimenon-settings-crm": {
       "command": "node",
       "args": [".mcp/servers/settings-crm/index.js"],
       "env": {
-        "SQLITE_PATH": "${HOME}/.keimenon/canvas.db"
+        "SQLITE_PATH": "${HOME}/.keimenon/keimenon.db"
       }
     },
     "playwright-e2e": {
@@ -48,8 +48,28 @@
       "description": "Visual testing and screenshot comparison for E2E test automation"
     },
     "playwright-test": {
-      "command": "npx",
-      "args": ["playwright", "run-test-mcp-server"]
+      "command": "cmd",
+      "args": ["/c", "npx", "playwright", "run-test-mcp-server"]
+    },
+    "mui": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@mui/mcp@latest"],
+      "description": "Official Material UI MCP server - components, theming, and documentation"
+    },
+    "vercel": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@vercel/mcp@latest"],
+      "description": "Official Vercel MCP server - deployments, projects, and AI SDK docs"
+    },
+    "lean-lsp": {
+      "command": "cmd",
+      "args": ["/c", "uvx", "lean-lsp-mcp"],
+      "description": "Lean 4 theorem prover via LSP - diagnostics, goal states, theorem search"
+    },
+    "coq-rocq": {
+      "command": "cmd",
+      "args": ["/c", "uvx", "mcp-rocq"],
+      "description": "Coq/Rocq proof assistant - dependent type checking, inductive types, property proving"
     }
   }
 }

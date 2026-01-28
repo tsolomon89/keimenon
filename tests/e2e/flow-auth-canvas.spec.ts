@@ -2,28 +2,28 @@ import { test, expect } from './fixtures/testId';
 import { login } from './helpers/login';
 
 /**
- * Authentication and Canvas Flow Test
+ * Authentication and Keimenon Flow Test
  *
  * Tests a real end-to-end user journey:
  * 1. User navigates to app
  * 2. Gets redirected to login
  * 3. Logs in with credentials
  * 4. Backend authenticates and returns JWT
- * 5. User is redirected to canvas
- * 6. Canvas loads graph data from backend
+ * 5. User is redirected to keimenon
+ * 6. Keimenon loads graph data from backend
  *
  * This test exercises the full stack from browser to backend database.
  * Tagged with @smoke for critical path and @full for comprehensive test runs.
  */
 
-test.describe('Authentication and Canvas Flow', () => {
+test.describe('Authentication and Keimenon Flow', () => {
   test.describe.configure({ tag: ['@smoke', '@full'] });
 
   // Test credentials - should exist in test database
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
   const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'TestPass123!';
 
-  test('complete login flow: redirect → authenticate → canvas', async ({ page, context }) => {
+  test('complete login flow: redirect → authenticate → keimenon', async ({ page, context }) => {
     // Step 1: Navigate to home page
     await page.goto('/');
 
@@ -31,7 +31,7 @@ test.describe('Authentication and Canvas Flow', () => {
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
 
     // Step 3: Verify login page elements
-    await expect(page.getByRole('heading', { name: /Canvas Memory OS/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Keimenon/i })).toBeVisible();
 
     // Step 4: Fill in login form using ID selectors for WebKit compatibility
     const emailInput = page.locator('#email');
@@ -66,11 +66,11 @@ test.describe('Authentication and Canvas Flow', () => {
     expect(responseData).toHaveProperty('token');
     expect(responseData).toHaveProperty('user');
 
-    // Step 7: Should redirect to canvas after successful login (uses global 30s timeout)
-    await page.waitForURL(/\/canvas/);
+    // Step 7: Should redirect to keimenon after successful login (uses global 30s timeout)
+    await page.waitForURL(/\/keimenon/);
 
-    // Step 8: Verify canvas page loaded successfully
-    // The canvas page might have polling/SSE, so networkidle won't work
+    // Step 8: Verify keimenon page loaded successfully
+    // The keimenon page might have polling/SSE, so networkidle won't work
     // Instead, just verify the DOM is ready and stable
     await page.waitForLoadState('domcontentloaded');
 
@@ -105,7 +105,7 @@ test.describe('Authentication and Canvas Flow', () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test('authenticated user should access canvas directly', async ({ page, context }) => {
+  test('authenticated user should access keimenon directly', async ({ page, context }) => {
     // First, log in using WebKit-friendly helper
     await login(page, TEST_EMAIL, TEST_PASSWORD);
 
@@ -115,8 +115,8 @@ test.describe('Authentication and Canvas Flow', () => {
     // Wait for page to load before checking redirect
     await page.waitForLoadState('domcontentloaded');
 
-    // Should redirect directly to canvas (already authenticated)
-    await page.waitForURL(/\/canvas/, { timeout: 15000 });
+    // Should redirect directly to keimenon (already authenticated)
+    await page.waitForURL(/\/keimenon/, { timeout: 15000 });
   });
 
   test('logout should clear session and redirect to login', async ({ page, context }) => {

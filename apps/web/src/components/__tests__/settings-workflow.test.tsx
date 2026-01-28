@@ -506,9 +506,9 @@ describe('Settings Workflow E2E', () => {
       const emailToggle = screen.getByLabelText(/Receive email notifications/i);
       fireEvent.click(emailToggle);
 
-      // Try to navigate away (simulate clicking on Canvas view)
-      const canvasButton = screen.getByRole('button', { name: /Canvas/i });
-      fireEvent.click(canvasButton);
+      // Try to navigate away (simulate clicking on Keimenon view)
+      const keimenonButton = screen.getByRole('button', { name: /Keimenon/i });
+      fireEvent.click(keimenonButton);
 
       // Confirmation dialog should appear
       await waitFor(() => {
@@ -540,8 +540,8 @@ describe('Settings Workflow E2E', () => {
       fireEvent.click(emailToggle);
 
       // Try to navigate away
-      const canvasButton = screen.getByRole('button', { name: /Canvas/i });
-      fireEvent.click(canvasButton);
+      const keimenonButton = screen.getByRole('button', { name: /Keimenon/i });
+      fireEvent.click(keimenonButton);
 
       // Confirm discard
       await waitFor(() => {
@@ -550,7 +550,7 @@ describe('Settings Workflow E2E', () => {
       });
 
       // Should navigate
-      expect(mockSetActiveView).toHaveBeenCalledWith('canvas');
+      expect(mockSetActiveView).toHaveBeenCalledWith('keimenon');
     });
   });
 });

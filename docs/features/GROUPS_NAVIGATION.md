@@ -4,7 +4,7 @@
 
 ## Overview
 
-Implemented a complete Groups/Folders navigation system with multi-tenant isolation, role-based access control, and hierarchical organization. This system enables users to organize their canvas items (sources, messages, code blocks) into folders and groups for better navigation and workspace management.
+Implemented a complete Groups/Folders navigation system with multi-tenant isolation, role-based access control, and hierarchical organization. This system enables users to organize their keimenon items (sources, messages, code blocks) into folders and groups for better navigation and workspace management.
 
 ## Architecture
 
@@ -13,12 +13,12 @@ Implemented a complete Groups/Folders navigation system with multi-tenant isolat
 **Two Node Types**:
 
 - **Folder**: Hierarchical container that can contain folders or groups
-- **Group**: Membership set that contains canvas items (manual, smart, or cluster-based)
+- **Group**: Membership set that contains keimenon items (manual, smart, or cluster-based)
 
 **Two Edge Types**:
 
 - `FOLDS_INTO_FOLDER`: Hierarchy (child folder/group → parent folder)
-- `IN_GROUP`: Membership (canvas item → group)
+- `IN_GROUP`: Membership (keimenon item → group)
 
 **Group Kinds**:
 
@@ -158,7 +158,7 @@ If group: returns member nodes.
 
 #### 3. `GET /api/v1/groups/nav/:id/nodes` - Get Member Node IDs
 
-Returns just the node IDs for displaying in canvas.
+Returns just the node IDs for displaying in keimenon.
 
 **Query Parameters**:
 
@@ -326,11 +326,11 @@ function MyComponent() {
 // Fetch folder children (lazy loading)
 const children = await fetchFolderChildren(folderId);
 
-// Fetch group members for canvas display
+// Fetch group members for keimenon display
 const members = await fetchGroupMembers(groupId, (recursive = false));
 ```
 
-### Integration: `CanvasSidebar` (`apps/web/src/components/canvas/CanvasSidebar.tsx`)
+### Integration: `KeimenonSidebar` (`apps/web/src/components/keimenon/KeimenonSidebar.tsx`)
 
 Updated to display groups in Portal/Client mode.
 
@@ -346,7 +346,7 @@ Updated to display groups in Portal/Client mode.
 - **Folder click**: Expand/collapse with lazy loading
   // ✅ Implemented: [apps/web/src/hooks/useGroupsTree.ts:203](apps/web/src/hooks/useGroupsTree.ts#L203) (fetchFolderChildren)
   // ✅ Supports: Lazy-loading children when folder is expanded
-- **Group click**: Fetch members → display in Canvas
+- **Group click**: Fetch members → display in Keimenon
   // ✅ Implemented: [apps/web/src/hooks/useGroupsTree.ts:252](apps/web/src/hooks/useGroupsTree.ts#L252) (fetchGroupMembers)
   // ✅ Supports: Recursive member fetching with ?recursive=true parameter
 
@@ -359,12 +359,12 @@ if (navMode === 'groups') {
     const children = await fetchFolderChildren(node.id);
     // Children are loaded and displayed in tree
   } else {
-    // ✅ Group: fetch members and set active canvas nodes
+    // ✅ Group: fetch members and set active keimenon nodes
     fetchGroupMembers(node.id)
       .then((memberIds) => {
         console.log(`Group has ${memberIds.length} members:`, memberIds);
-        // ✅ Canvas filtering by group members is implemented
-        // See: apps/web/src/store/canvasStore.ts:220 (setFilteredNodeIds)
+        // ✅ Keimenon filtering by group members is implemented
+        // See: apps/web/src/store/keimenonStore.ts:220 (setFilteredNodeIds)
       })
       .catch((error) => {
         console.error('Failed to fetch group members:', error);
@@ -468,7 +468,7 @@ Icons are assigned based on node type:
   // See: apps/web/src/components/common/NavigationBar.tsx (add collapse/expand handlers)
 
 - TODO: Add "Include descendants" toggle UI in sidebar
-  // Related: apps/web/src/components/canvas/CanvasSidebar.tsx (add toggle in folder header)
+  // Related: apps/web/src/components/keimenon/KeimenonSidebar.tsx (add toggle in folder header)
   // Backend: recursive parameter already supported in API
 
 ### Group Click
@@ -480,9 +480,9 @@ Icons are assigned based on node type:
   // Implemented: [apps/web/src/hooks/useGroupsTree.ts:252](apps/web/src/hooks/useGroupsTree.ts#L252) (fetchGroupMembers function)
   // API endpoint: GET /api/v1/groups/:id/nodes with optional ?recursive=true
 
-- ✅ Filter Canvas by IN_GROUP edge relationships
-  // Implemented: apps/web/src/components/canvas/CanvasSidebar.tsx:226
-  // Uses: apps/web/src/store/canvasStore.ts:220 (setFilteredNodeIds method)
+- ✅ Filter Keimenon by IN_GROUP edge relationships
+  // Implemented: apps/web/src/components/keimenon/KeimenonSidebar.tsx:226
+  // Uses: apps/web/src/store/keimenonStore.ts:220 (setFilteredNodeIds method)
 
 **Remaining TODOs**:
 
@@ -555,15 +555,15 @@ JOIN edges m ON m.to_id = g.id AND m.kind = 'IN_GROUP';
 
 ```bash
 # Check existing groups
-sqlite3 ~/.canvas-memory/canvas.db \
+sqlite3 ~/.keimenon/keimenon.db \
   "SELECT id, kind, json_extract(properties, '$.name') as name FROM nodes WHERE kind IN ('Folder', 'Group');"
 
 # Check hierarchy edges
-sqlite3 ~/.canvas-memory/canvas.db \
+sqlite3 ~/.keimenon/keimenon.db \
   "SELECT id, kind, from_id, to_id FROM edges WHERE kind = 'FOLDS_INTO_FOLDER';"
 
 # Check membership edges
-sqlite3 ~/.canvas-memory/canvas.db \
+sqlite3 ~/.keimenon/keimenon.db \
   "SELECT id, kind, from_id, to_id FROM edges WHERE kind = 'IN_GROUP';"
 ```
 
@@ -588,7 +588,7 @@ sqlite3 ~/.canvas-memory/canvas.db \
 1. **`apps/api/src/index.ts`** (5 lines)
    - Import and register groups routes
 
-2. **`apps/web/src/components/canvas/CanvasSidebar.tsx`** (30 lines)
+2. **`apps/web/src/components/keimenon/KeimenonSidebar.tsx`** (30 lines)
    - Integrate useGroupsTree hook
    - Handle group/folder clicks
 
@@ -636,7 +636,7 @@ sqlite3 ~/.canvas-memory/canvas.db \
 ### Phase 1 (Immediate)
 
 - [ ] Lazy-load folder children on expand
-- [ ] Wire group members to Canvas display
+- [ ] Wire group members to Keimenon display
 - [ ] Add "Include descendants" toggle
 - [ ] Implement folder expand/collapse state management
 
@@ -717,4 +717,4 @@ The existing auto-grouping system (`apps/api/src/routes/groups.ts`) remains sepa
 
 **Status**: ✅ Phase Complete
 **Date**: 2025-01-14
-**Next Steps**: Wire Canvas display, implement lazy loading, add UI controls
+**Next Steps**: Wire Keimenon display, implement lazy loading, add UI controls

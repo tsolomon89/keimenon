@@ -24,6 +24,15 @@ vi.mock('@/contexts/BackgroundOperationsContext', () => ({
   useBackgroundOperations: vi.fn(),
 }));
 
+vi.mock('@/lib/env.config', () => ({
+  API_BASE_URL: 'http://localhost:3000',
+}));
+
+// Mock useJobStream (relative path to avoid alias issues)
+vi.mock('../../hooks/useJobStream', () => ({
+  useJobStream: vi.fn(),
+}));
+
 vi.mock('@/services/error-capture.service', () => ({
   errorCapture: {
     capture: vi.fn((error) => ({
@@ -36,6 +45,8 @@ vi.mock('@/services/error-capture.service', () => ({
 // Import mocked modules
 import { useAuth } from '@/contexts/AuthContext';
 import { useBackgroundOperations } from '@/contexts/BackgroundOperationsContext';
+// Import the mocked hook to manipulate it
+import { useJobStream } from '../../hooks/useJobStream';
 
 describe('DataManagementCard', () => {
   const mockUser = {
@@ -43,9 +54,13 @@ describe('DataManagementCard', () => {
     accountId: 'test-account-id',
     permissionLevel: 'admin',
     accountType: 'admin',
+    email: 'test@example.com',
+    isAuthenticated: true,
   };
 
   const mockAddOperation = vi.fn();
+  // Cast the mock to the correct type for usage
+  const mockUseJobStream = useJobStream as unknown as ReturnType<typeof vi.fn>;
 
   const mockStats = {
     nodes: [
@@ -62,10 +77,26 @@ describe('DataManagementCard', () => {
     (useAuth as any).mockReturnValue({ user: mockUser });
     (useBackgroundOperations as any).mockReturnValue({
       addOperation: mockAddOperation,
+      getOperation: vi.fn(),
+      updateOperation: vi.fn(),
     });
 
-    // Mock fetch
-    global.fetch = vi.fn();
+    // Default mock implementation for useJobStream
+    mockUseJobStream.mockReturnValue({
+      jobs: new Map(),
+      connected: true,
+      error: null,
+      removeJobs: vi.fn(),
+    });
+
+    // Mock fetch with logging
+    global.fetch = vi.fn((url, options) => {
+      console.log(`[TEST FETCH] Call to: ${url}`, options);
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ stats: mockStats }), // Default success
+      });
+    });
 
     // Mock localStorage
     const localStorageMock = {
@@ -91,7 +122,7 @@ describe('DataManagementCard', () => {
     it('should render data management card', () => {
       render(<DataManagementCard />);
 
-      expect(screen.getByText(/Clear Canvas Data/i)).toBeInTheDocument();
+      expect(screen.getByText(/Clear Keimenon Data/i)).toBeInTheDocument();
     });
 
     it('should show warning message', () => {
@@ -102,16 +133,16 @@ describe('DataManagementCard', () => {
       ).toBeInTheDocument();
     });
 
-    it('should show "Clear Canvas Data" button', () => {
+    it('should show "Clear Keimenon Data" button', () => {
       render(<DataManagementCard />);
 
-      const clearButton = screen.getByRole('button', { name: /Clear Canvas Data/i });
+      const clearButton = screen.getByRole('button', { name: /Clear Keimenon Data/i });
       expect(clearButton).toBeInTheDocument();
     });
   });
 
   describe('Stats Loading', () => {
-    it('should load stats when "Clear Canvas Data" clicked', async () => {
+    it('should load stats when "Clear Keimenon Data" clicked', async () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         json: async () => ({ stats: mockStats }),
@@ -119,7 +150,7 @@ describe('DataManagementCard', () => {
 
       render(<DataManagementCard />);
 
-      const clearButton = screen.getByRole('button', { name: /Clear Canvas Data/i });
+      const clearButton = screen.getByRole('button', { name: /Clear Keimenon Data/i });
       fireEvent.click(clearButton);
 
       await waitFor(() => {
@@ -142,7 +173,7 @@ describe('DataManagementCard', () => {
 
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         // Should show total nodes
@@ -161,7 +192,7 @@ describe('DataManagementCard', () => {
 
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText('Message')).toBeInTheDocument();
@@ -180,7 +211,7 @@ describe('DataManagementCard', () => {
 
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/Failed to load stats/i)).toBeInTheDocument();
@@ -192,7 +223,7 @@ describe('DataManagementCard', () => {
 
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         // Modal should still open even if stats fail
@@ -208,16 +239,18 @@ describe('DataManagementCard', () => {
         if (url.includes('/api/v1/data/stats')) {
           return Promise.resolve({
             ok: true,
+            status: 200,
             json: async () => ({ stats: mockStats }),
           });
         }
         if (url.includes('/api/v1/jobs/delete')) {
           return Promise.resolve({
             ok: true,
+            status: 200,
             json: async () => ({ jobId: 'job_123', message: 'Job created' }),
           });
         }
-        return Promise.reject(new Error('Unknown endpoint'));
+        return Promise.reject(new Error(`Unknown endpoint: ${url}`));
       });
     });
 
@@ -225,12 +258,17 @@ describe('DataManagementCard', () => {
       render(<DataManagementCard />);
 
       // Open modal
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       // Wait for stats to load
-      await waitFor(() => {
-        expect(screen.getByText('115')).toBeInTheDocument();
-      });
+      try {
+        await waitFor(() => {
+          expect(screen.getByText('115')).toBeInTheDocument();
+        });
+      } catch (e) {
+        screen.debug();
+        throw e;
+      }
 
       // Click confirm
       const confirmButton = screen.getByRole('button', { name: /Confirm Delete/i });
@@ -245,7 +283,7 @@ describe('DataManagementCard', () => {
               Authorization: 'Bearer test-token',
               'Content-Type': 'application/json',
             }),
-            body: JSON.stringify({ scope: 'canvas' }),
+            body: JSON.stringify({ scope: 'keimenon' }),
           })
         );
       });
@@ -254,7 +292,7 @@ describe('DataManagementCard', () => {
     it('should add operation to background context', async () => {
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText('115')).toBeInTheDocument();
@@ -268,7 +306,7 @@ describe('DataManagementCard', () => {
           expect.objectContaining({
             id: 'job_123',
             type: 'deletion',
-            title: 'Clearing canvas data',
+            title: 'Clearing keimenon data',
             status: 'processing',
             stats: expect.objectContaining({
               nodesToDelete: 115,
@@ -282,7 +320,7 @@ describe('DataManagementCard', () => {
     it('should close modal after job created', async () => {
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText('115')).toBeInTheDocument();
@@ -299,7 +337,7 @@ describe('DataManagementCard', () => {
     it('should show success message after job created', async () => {
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText('115')).toBeInTheDocument();
@@ -332,7 +370,7 @@ describe('DataManagementCard', () => {
 
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText('115')).toBeInTheDocument();
@@ -371,7 +409,7 @@ describe('DataManagementCard', () => {
     it('should show minimize button after job started', async () => {
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText('115')).toBeInTheDocument();
@@ -387,7 +425,7 @@ describe('DataManagementCard', () => {
     it('should add to background operations when minimized', async () => {
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText('115')).toBeInTheDocument();
@@ -413,7 +451,7 @@ describe('DataManagementCard', () => {
     it('should close modal when minimized', async () => {
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText('115')).toBeInTheDocument();
@@ -444,7 +482,7 @@ describe('DataManagementCard', () => {
     it('should close modal when Cancel clicked', async () => {
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText('115')).toBeInTheDocument();
@@ -461,7 +499,7 @@ describe('DataManagementCard', () => {
     it('should not create job when cancelled', async () => {
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText('115')).toBeInTheDocument();
@@ -486,7 +524,7 @@ describe('DataManagementCard', () => {
 
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText('0')).toBeInTheDocument();
@@ -501,7 +539,7 @@ describe('DataManagementCard', () => {
 
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/Not authenticated/i)).toBeInTheDocument();
@@ -513,7 +551,7 @@ describe('DataManagementCard', () => {
 
       render(<DataManagementCard />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Clear Canvas Data/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/Network error/i)).toBeInTheDocument();
@@ -527,7 +565,7 @@ describe('DataManagementCard', () => {
 
       render(<DataManagementCard />);
 
-      const clearButton = screen.getByRole('button', { name: /Clear Canvas Data/i });
+      const clearButton = screen.getByRole('button', { name: /Clear Keimenon Data/i });
       fireEvent.click(clearButton);
 
       // Button should be disabled

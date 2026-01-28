@@ -1,4 +1,4 @@
-# MCP Usage Guide - Canvas Memory OS
+# MCP Usage Guide - Keimenon
 
 **Complete guide to using Model Context Protocol servers for AI-assisted development**
 
@@ -24,7 +24,7 @@ The servers should be automatically discovered by VSCode 1.102+ or Claude Deskto
 
 1. Open VSCode Command Palette (`Ctrl+Shift+P`)
 2. Run "MCP: List Servers"
-3. You should see `canvas-database` and `canvas-docs`
+3. You should see `keimenon-database` and `keimenon-docs`
 
 ### 3. Test the Servers
 
@@ -468,7 +468,7 @@ Cross-reference information:
 
 **Solutions**:
 
-1. Check `~/.keimenon/canvas.db` exists
+1. Check `~/.keimenon/keimenon.db` exists
 2. Start API server once to initialize: `cd apps/api && npm run dev`
 3. Verify environment variable in `.vscode/settings.json`
 
@@ -480,7 +480,7 @@ Cross-reference information:
 
 ```bash
 # Fix database permissions
-chmod 644 ~/.keimenon/canvas.db
+chmod 644 ~/.keimenon/keimenon.db
 
 # Fix server script permissions
 chmod +x .mcp/servers/*/index.js

@@ -66,7 +66,7 @@ The tests aren't empty - **they're written in Jest syntax but the project uses N
 **Failing Tests**:
 
 - ❌ should create test data successfully (accountId undefined)
-- ❌ should clear canvas data via API (accountId undefined)
+- ❌ should clear keimenon data via API (accountId undefined)
 
 **What Works**:
 
@@ -83,7 +83,7 @@ The tests aren't empty - **they're written in Jest syntax but the project uses N
 
 ```typescript
 // Clean async/await patterns
-const response = await fetch(`${API_URL}/api/v1/data/canvas`, {
+const response = await fetch(`${API_URL}/api/v1/data/keimenon`, {
   method: 'DELETE',
   headers: { Authorization: `Bearer ${adminToken}` },
 });

@@ -24,7 +24,7 @@
 ```typescript
 // Added .first() to handle multiple matching buttons
 await page
-  .getByRole('button', { name: /canvas/i })
+  .getByRole('button', { name: /keimenon/i })
   .first()
   .waitFor({ state: 'visible', timeout: 10000 });
 ```
@@ -127,7 +127,7 @@ test.describe.serial('Data Management UI Updates', () => {
 
 **Problem**: Welcome modal appearing and blocking button clicks despite localStorage checks
 
-**Discovery**: Modal appears on fresh navigation to /canvas, even with localStorage
+**Discovery**: Modal appears on fresh navigation to /keimenon, even with localStorage
 
 **Changes**: Added `dismissWelcomeModal()` calls to 3 helper functions:
 
@@ -135,7 +135,7 @@ test.describe.serial('Data Management UI Updates', () => {
 
 ```typescript
 async function clearAllBackgroundOperations(page: Page): Promise<void> {
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
   await page.waitForLoadState('domcontentloaded');
 
   // Dismiss welcome modal if present
@@ -146,7 +146,7 @@ async function clearAllBackgroundOperations(page: Page): Promise<void> {
 
 ```typescript
 async function waitForOperationsTable(page: Page): Promise<typeof page.locator> {
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
   await page.waitForLoadState('domcontentloaded');
 
   // Dismiss welcome modal if present
@@ -157,7 +157,7 @@ async function waitForOperationsTable(page: Page): Promise<typeof page.locator> 
 
 ```typescript
 async function navigateToSettings(page: Page): Promise<void> {
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
   await page.waitForLoadState('domcontentloaded');
 
   // Dismiss welcome modal if present

@@ -506,7 +506,7 @@ const groupsForANode = await apiRequest.get(`/api/v1/groups/nodes/${nodeA1Id}/gr
 
 ```typescript
 await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
-await page.goto('/canvas');
+await page.goto('/keimenon');
 await page.waitForLoadState('networkidle');
 
 // Should NOT see Account A's group name
@@ -519,13 +519,13 @@ await expect(page.getByText('Account A Confidential Group')).not.toBeVisible();
 
 1. Run test in headed mode: `npx playwright test --headed`
 2. Check browser console for errors
-3. Verify /canvas page loads properly
+3. Verify /keimenon page loads properly
 4. May need to increase timeout or change wait strategy
 
 **Potential Fixes**:
 
 - Change from `networkidle` to `domcontentloaded`
-- Add explicit wait for canvas element
+- Add explicit wait for keimenon element
 - Check if authentication state is properly set
 
 ---
@@ -596,7 +596,7 @@ npx playwright test --grep @smoke
 
 ```bash
 # Open database
-sqlite3 ~/.canvas-memory/canvas.db
+sqlite3 ~/.keimenon/keimenon.db
 
 # Check groups
 SELECT id, kind, properties FROM nodes WHERE kind = 'Group' LIMIT 5;
@@ -629,7 +629,7 @@ curl -s http://localhost:4000/api/v1/groups/$GROUP_ID \
   -H "Authorization: Bearer $TOKEN_A" | jq
 
 # Cleanup
-curl -X DELETE http://localhost:4000/api/v1/data/canvas?data_tag=test \
+curl -X DELETE http://localhost:4000/api/v1/data/keimenon?data_tag=test \
   -H "Authorization: Bearer $TOKEN_A"
 ```
 
@@ -774,7 +774,7 @@ Before starting new work:
 - [ ] Check groups isolation tests specifically: `npx playwright test tests/e2e/multi-tenant-groups-isolation.spec.ts`
 - [ ] Review remaining 3 failing tests (documented above)
 - [ ] Check for related TODOs in code: `git grep "TODO.*group" apps/api/src/routes/groups.routes.ts`
-- [ ] Verify test database is clean: `sqlite3 ~/.canvas-memory/canvas.db "SELECT COUNT(*) FROM nodes WHERE data_tag='test';"` (should be 0)
+- [ ] Verify test database is clean: `sqlite3 ~/.keimenon/keimenon.db "SELECT COUNT(*) FROM nodes WHERE data_tag='test';"` (should be 0)
 
 ---
 

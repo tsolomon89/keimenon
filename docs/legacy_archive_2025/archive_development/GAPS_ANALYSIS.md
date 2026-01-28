@@ -13,7 +13,7 @@
 
 ### 2. ❌ Missing Workspace References in API
 
-**Problem**: API uses `@canvas-memory/types` but doesn't declare dependency
+**Problem**: API uses `@keimenon/types` but doesn't declare dependency
 **Impact**: Type errors, build failures
 **Fix**: Add to dependencies
 
@@ -38,7 +38,7 @@
 ### 6. ❌ Ingest Doesn't Create Neo4j Nodes
 
 **Problem**: Upload creates Source objects but doesn't persist to DB
-**Impact**: Canvas shows empty (no nodes saved)
+**Impact**: Keimenon shows empty (no nodes saved)
 **Fix**: Call Neo4j create in ingest route
 
 ### 7. ❌ Groups Not Created in Database
@@ -54,7 +54,7 @@
 **Problem**: Unhandled errors crash entire app
 **Fix**: Add error boundary components
 
-### 9. ⚠️ No Loading States in Canvas
+### 9. ⚠️ No Loading States in Keimenon
 
 **Problem**: Blank screen during layout calculation
 **Fix**: Add loading spinner
@@ -190,7 +190,7 @@
 **Problem**: Imports entire libraries
 **Fix**: Tree-shaking, code splitting
 
-### 34. ⚡ Canvas Redraws Too Often
+### 34. ⚡ Keimenon Redraws Too Often
 
 **Problem**: Renders on every state change
 **Fix**: Use memo and callback hooks

@@ -1,4 +1,4 @@
-# Canvas Memory OS — Architecture Guide
+# Keimenon — Architecture Guide
 
 **Last Updated**: 2025-10-11
 **For**: Developers joining the project
@@ -8,7 +8,7 @@
 
 ## System Overview
 
-Canvas Memory OS is a **graph-native knowledge management system** with dual storage options (Neo4j or SQLite), a React frontend, and Express backend. Everything is a node, relationships are typed edges with policy.
+Keimenon is a **graph-native knowledge management system** with dual storage options (Neo4j or SQLite), a React frontend, and Express backend. Everything is a node, relationships are typed edges with policy.
 
 ```
 User Interface (Next.js)
@@ -30,7 +30,7 @@ User Interface (Next.js)
 ┌────────────────────────────────────────────────────────────────┐
 │                         Browser (Client)                        │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
-│  │  Next.js     │  │  React       │  │  Canvas2D    │         │
+│  │  Next.js     │  │  React       │  │  Keimenon2D    │         │
 │  │  App Router  │  │  Components  │  │  (D3/Three)  │         │
 │  └──────────────┘  └──────────────┘  └──────────────┘         │
 └────────────────────────────────────────────────────────────────┘
@@ -100,7 +100,7 @@ User Interface (Next.js)
 12. Frontend displays results
 ```
 
-### Canvas Render Flow
+### Keimenon Render Flow
 
 ```
 1. User visits /board/:id
@@ -116,11 +116,11 @@ User Interface (Next.js)
    ↓
 5. Return nodes[] + edges[] JSON
    ↓
-6. Canvas2D component receives data
+6. Keimenon2D component receives data
    ↓
 7. D3-force calculates layout
    ↓
-8. Canvas draws nodes + edges
+8. Keimenon draws nodes + edges
    ↓
 9. User can pan/zoom/select
 ```
@@ -172,7 +172,7 @@ User Interface (Next.js)
 ### Turborepo Workspaces
 
 ```
-canvas-memory-os/
+keimenon/
 ├── apps/
 │   ├── web/          # Frontend application
 │   └── api/          # Backend API
@@ -228,7 +228,7 @@ app/
 │
 ├── board/
 │   └── [id]/
-│       └── page.tsx              # Canvas viewer (dynamic route)
+│       └── page.tsx              # Keimenon viewer (dynamic route)
 │
 ├── claims/
 │   └── page.tsx                  # Claims panel (future)
@@ -253,7 +253,7 @@ RootLayout
 │       └── FourRegionLayout
 │           ├── Header (lens selector, scope chips)
 │           ├── LHS (groups tree, filters)
-│           ├── Main (Canvas2D)
+│           ├── Main (Keimenon2D)
 │           ├── RHS (selection inspector, claims panel)
 │           └── Footer (console, collapsible)
 │
@@ -273,12 +273,12 @@ RootLayout
 - Direct fetch to API
 - Props drilling (currently simple)
 
-### Canvas Rendering (Canvas2D.tsx)
+### Keimenon Rendering (Keimenon2D.tsx)
 
 ```typescript
 // Simplified flow
-function Canvas2D({ nodes, edges }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+function Keimenon2D({ nodes, edges }) {
+  const keimenonRef = useRef<HTMLKeimenonElement>(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
 
   // 1. Calculate layout
@@ -287,9 +287,9 @@ function Canvas2D({ nodes, edges }) {
     setNodePositions(layout);
   }, [nodes, edges]);
 
-  // 2. Draw on canvas
+  // 2. Draw on keimenon
   useEffect(() => {
-    const ctx = canvasRef.current?.getContext('2d');
+    const ctx = keimenonRef.current?.getContext('2d');
     drawNodes(ctx, nodes, transform);
     drawEdges(ctx, edges, transform);
   }, [nodes, edges, transform]);
@@ -298,13 +298,13 @@ function Canvas2D({ nodes, edges }) {
   function handleMouseDown(e) { /* pan or select */ }
   function handleWheel(e) { /* zoom */ }
 
-  return <canvas ref={canvasRef} onMouseDown={...} onWheel={...} />;
+  return <keimenon ref={keimenonRef} onMouseDown={...} onWheel={...} />;
 }
 ```
 
 **Key Technologies**:
 
-- HTML Canvas API (2D rendering)
+- HTML Keimenon API (2D rendering)
 - D3-force (layout algorithm)
 - React hooks (state & lifecycle)
 
@@ -484,7 +484,7 @@ WHERE board_id = ?
 ORDER BY created_at DESC
 ```
 
-**Get graph (nodes + edges) for canvas** (Neo4j):
+**Get graph (nodes + edges) for keimenon** (Neo4j):
 
 ```cypher
 MATCH (n:Node {board_id: $boardId})
@@ -698,11 +698,11 @@ RETURN n
 
 ### Frontend
 
-**Canvas Optimization**:
+**Keimenon Optimization**:
 
 - Viewport culling (only render visible nodes)
 - LOD (level of detail based on zoom)
-- OffscreenCanvas (future)
+- OffscreenKeimenon (future)
 - Web Workers for layout (future)
 
 **Bundle Optimization**:
@@ -878,7 +878,7 @@ describe('POST /api/v1/nodes/source', () => {
 ```typescript
 import { test, expect } from '@playwright/test';
 
-test('upload and view on canvas', async ({ page }) => {
+test('upload and view on keimenon', async ({ page }) => {
   // 1. Go to ingest page
   await page.goto('http://localhost:3000/ingest');
 
@@ -889,11 +889,11 @@ test('upload and view on canvas', async ({ page }) => {
   // 3. Wait for success
   await expect(page.locator('text=Upload Successful')).toBeVisible();
 
-  // 4. Go to canvas
-  await page.click('text=View on Canvas');
+  // 4. Go to keimenon
+  await page.click('text=View on Keimenon');
 
   // 5. Verify node appears
-  await expect(page.locator('canvas')).toBeVisible();
+  await expect(page.locator('keimenon')).toBeVisible();
 });
 ```
 
@@ -1014,7 +1014,7 @@ docker logs neo4j       # Check logs
 # Verify .env has correct NEO4J_URI, USER, PASSWORD
 ```
 
-### 3. Canvas not rendering nodes
+### 3. Keimenon not rendering nodes
 
 **Cause**: No data in database or query error
 
@@ -1048,7 +1048,7 @@ npm run type-check
 
 ### Why Neo4j + SQLite?
 
-**Neo4j** (canvas mode):
+**Neo4j** (keimenon mode):
 
 - Graph-native storage for relationships
 - Relationships are first-class (not foreign keys)
@@ -1068,7 +1068,7 @@ npm run type-check
 **Hybrid mode**:
 
 - Primary storage in SQLite
-- Background sync to Neo4j for canvas features
+- Background sync to Neo4j for keimenon features
 - Best of both worlds for Pro tier
 
 **Alternatives considered**:
@@ -1143,4 +1143,4 @@ npm run type-check
 ---
 
 **Last Updated**: 2025-10-11
-**Maintainers**: Canvas Memory Team
+**Maintainers**: Keimenon Team

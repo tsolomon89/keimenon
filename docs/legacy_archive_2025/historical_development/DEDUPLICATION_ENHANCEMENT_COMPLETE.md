@@ -46,7 +46,7 @@ Updated to use new database method:
 
 Added proper authentication to all API calls:
 
-- Retrieves token from `localStorage.getItem('canvas_memory_token')`
+- Retrieves token from `localStorage.getItem('keimenon_token')`
 - Adds Authorization header: `Bearer ${token}`
 - Throws error if not authenticated
 - Applied to both `fetchStats()` and `handleMergeDuplicates()`
@@ -143,7 +143,7 @@ const capturedError = errorCapture.capture(
 
 ### 8. StorageStatsDashboard Integration
 
-**File**: `apps/web/src/components/canvas/StorageStatsDashboard.tsx`
+**File**: `apps/web/src/components/keimenon/StorageStatsDashboard.tsx`
 
 **Changes**:
 
@@ -207,7 +207,7 @@ const capturedError = errorCapture.capture(
    - Added ConfirmationModal
    - Changed button to use `Loader2` icon
 
-4. **apps/web/src/components/canvas/StorageStatsDashboard.tsx** (+40 lines)
+4. **apps/web/src/components/keimenon/StorageStatsDashboard.tsx** (+40 lines)
    - Added DeduplicationStats interface
    - Added dedupStats state
    - Updated loadStats() to fetch dedup data

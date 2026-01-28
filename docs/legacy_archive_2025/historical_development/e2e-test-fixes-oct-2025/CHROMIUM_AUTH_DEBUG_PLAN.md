@@ -11,15 +11,15 @@
 **Chromium Behavior:**
 
 - Tests using test-isolation fixture get stuck on `/login` page
-- Login form submission doesn't redirect to `/canvas`
-- Error: `expect(page).toHaveURL(/\/canvas/)`
-  - Expected: `/canvas`
+- Login form submission doesn't redirect to `/keimenon`
+- Error: `expect(page).toHaveURL(/\/keimenon/)`
+  - Expected: `/keimenon`
   - Received: `/login`
 
 **Firefox Behavior:**
 
 - Same tests pass 100% (6/6)
-- Login succeeds, redirects to canvas
+- Login succeeds, redirects to keimenon
 - All functionality works as expected
 
 **Test Context:**
@@ -35,7 +35,7 @@
 
 - Test isolation infrastructure (logs show worker DBs being used)
 - Firefox authentication with isolated DBs (100% success)
-- Chromium authentication WITHOUT isolated DBs (flow-auth-canvas tests pass)
+- Chromium authentication WITHOUT isolated DBs (flow-auth-keimenon tests pass)
 - Worker database initialization (DBs contain test user)
 - Middleware activation (logs show DB path routing)
 
@@ -249,8 +249,8 @@ test.describe('Chromium Isolation Debug', () => {
 
     // Wait for navigation (will fail, but we'll see logs)
     try {
-      await expect(page).toHaveURL(/\/canvas/, { timeout: 10000 });
-      console.log(`[Debug] ✅ Navigated to canvas`);
+      await expect(page).toHaveURL(/\/keimenon/, { timeout: 10000 });
+      console.log(`[Debug] ✅ Navigated to keimenon`);
     } catch (error) {
       console.log(`[Debug] ❌ Still on: ${page.url()}`);
       throw error;
@@ -404,7 +404,7 @@ sqlite3 .test-dbs/worker-4.db ".schema users"
 sqlite3 .test-dbs/worker-4.db "SELECT id, email, rank FROM users;"
 
 # Compare to main database
-sqlite3 .canvas-memory/canvas.db "SELECT id, email, rank FROM users;"
+sqlite3 .keimenon/keimenon.db "SELECT id, email, rank FROM users;"
 ```
 
 **Verification:**

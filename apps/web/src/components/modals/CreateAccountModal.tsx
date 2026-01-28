@@ -31,7 +31,7 @@ export function CreateAccountModal({ onClose, onSuccess }: CreateAccountModalPro
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('canvas_memory_token')}`,
+          Authorization: `Bearer ${localStorage.getItem('keimenon_token')}`,
         },
         body: JSON.stringify({
           accountName: formData.accountName,

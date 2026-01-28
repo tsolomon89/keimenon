@@ -50,7 +50,9 @@ export class UploadCleanupService {
       return;
     }
 
-    console.log(`[UploadCleanup] 🚀 Starting cleanup service (interval: ${this.cleanupIntervalMs / 1000}s)`);
+    console.log(
+      `[UploadCleanup] 🚀 Starting cleanup service (interval: ${this.cleanupIntervalMs / 1000}s)`
+    );
 
     this.isRunning = true;
 
@@ -119,7 +121,10 @@ export class UploadCleanupService {
         try {
           await this.cleanupSession(session, stats);
         } catch (error: any) {
-          console.error(`[UploadCleanup] ❌ Failed to cleanup session ${session.id}:`, error.message);
+          console.error(
+            `[UploadCleanup] ❌ Failed to cleanup session ${session.id}:`,
+            error.message
+          );
           stats.errors++;
         }
       }
@@ -159,8 +164,9 @@ export class UploadCleanupService {
     }
 
     // Step 2: Clean up chunk files
-    const diskSpaceFreed = await this.cleanupChunkFiles(session);
-    stats.diskSpaceFreed += diskSpaceFreed;
+    const { freedBytes, filesDeleted } = await this.cleanupChunkFiles(session);
+    stats.diskSpaceFreed += freedBytes;
+    stats.chunkFilesDeleted += filesDeleted;
 
     // Step 3: Delete session from database
     await this.uploadRepo.delete(session.id, session.accountId);
@@ -170,9 +176,11 @@ export class UploadCleanupService {
 
   /**
    * Clean up chunk files for a session
-   * Returns number of bytes freed
+   * Returns stats about cleanup
    */
-  private async cleanupChunkFiles(session: UploadSession): Promise<number> {
+  private async cleanupChunkFiles(
+    session: UploadSession
+  ): Promise<{ freedBytes: number; filesDeleted: number }> {
     let diskSpaceFreed = 0;
     let filesDeleted = 0;
 
@@ -182,7 +190,7 @@ export class UploadCleanupService {
         await fs.access(session.chunksPath);
       } catch {
         // Directory doesn't exist, nothing to clean up
-        return 0;
+        return { freedBytes: 0, filesDeleted: 0 };
       }
 
       // Get list of chunk files
@@ -209,12 +217,14 @@ export class UploadCleanupService {
         console.warn(`   Failed to delete chunks directory:`, error);
       }
 
-      console.log(`   Deleted ${filesDeleted} chunk files (${(diskSpaceFreed / 1024 / 1024).toFixed(2)} MB)`);
+      console.log(
+        `   Deleted ${filesDeleted} chunk files (${(diskSpaceFreed / 1024 / 1024).toFixed(2)} MB)`
+      );
     } catch (error: any) {
       console.warn(`   Failed to cleanup chunk files:`, error.message);
     }
 
-    return diskSpaceFreed;
+    return { freedBytes: diskSpaceFreed, filesDeleted };
   }
 
   /**

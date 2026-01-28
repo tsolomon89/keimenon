@@ -3,7 +3,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const os = require('os');
 
-const dbPath = path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+const dbPath = path.join(os.homedir(), '.keimenon', 'keimenon.db');
 const db = new Database(dbPath);
 
 console.log('Migrating database to add Board node kind...');

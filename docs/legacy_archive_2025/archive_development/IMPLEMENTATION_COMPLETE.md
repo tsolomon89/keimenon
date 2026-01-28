@@ -14,7 +14,7 @@ Your conversation documents now stay **100% local** on the user's machine while 
 
 1. **LocalDocumentStore Service**
    - File: `apps/api/src/services/local-document-store.ts`
-   - Stores documents in `~/.canvas-memory/documents/`
+   - Stores documents in `~/.keimenon/documents/`
    - Content-addressable storage with SHA256 deduplication
    - ~400 lines of production code
 
@@ -63,14 +63,14 @@ Your conversation documents now stay **100% local** on the user's machine while 
    - Deduplication
 
 3. **NodeDetailPanel Component**
-   - File: `apps/web/src/components/canvas/NodeDetailPanel.tsx`
+   - File: `apps/web/src/components/keimenon/NodeDetailPanel.tsx`
    - Auto-loads content
    - Shows metadata + full content
    - Syntax highlighting for code
    - Source badge (Local vs Neo4j)
 
 4. **StorageStatsDashboard Component**
-   - File: `apps/web/src/components/canvas/StorageStatsDashboard.tsx`
+   - File: `apps/web/src/components/keimenon/StorageStatsDashboard.tsx`
    - Local storage stats
    - Neo4j stats
    - Efficiency metrics
@@ -93,7 +93,7 @@ Your conversation documents now stay **100% local** on the user's machine while 
 npm run dev:boot
 ```
 
-The server automatically initializes local storage at `~/.canvas-memory/`
+The server automatically initializes local storage at `~/.keimenon/`
 
 ### **Import Data**
 
@@ -117,8 +117,8 @@ npm run migrate:to-local
 
 ```typescript
 // Simple integration
-import { NodeDetailPanel } from '@/components/canvas/NodeDetailPanel';
-import { StorageStatsDashboard } from '@/components/canvas/StorageStatsDashboard';
+import { NodeDetailPanel } from '@/components/keimenon/NodeDetailPanel';
+import { StorageStatsDashboard } from '@/components/keimenon/StorageStatsDashboard';
 
 <NodeDetailPanel node={selectedNode} onClose={() => setSelectedNode(null)} />
 <StorageStatsDashboard />
@@ -171,7 +171,7 @@ Frontend:
 │   │   └── api-client.ts                 ← Content API methods
 │   ├── hooks/
 │   │   └── useContentLoader.ts           ← Content loading hook
-│   └── components/canvas/
+│   └── components/keimenon/
 │       ├── NodeDetailPanel.tsx           ← Detail panel component
 │       └── StorageStatsDashboard.tsx     ← Stats dashboard
 
@@ -209,7 +209,7 @@ Documentation:
 
 - Handle millions of messages
 - Filesystem scales better than graph DB
-- Easy backup: copy `~/.canvas-memory/`
+- Easy backup: copy `~/.keimenon/`
 
 ### **Developer Friendly 🛠️**
 
@@ -226,7 +226,7 @@ Documentation:
 
 ```bash
 # Check local storage initialized
-ls -la ~/.canvas-memory/
+ls -la ~/.keimenon/
 
 # Get storage stats
 curl http://localhost:4001/api/v1/content/stats
@@ -254,12 +254,12 @@ console.log(stats);
 
 1. Start the server: `npm run dev:boot`
 2. Import some test data
-3. Check `~/.canvas-memory/documents/` for saved files
+3. Check `~/.keimenon/documents/` for saved files
 4. Test content API: `curl http://localhost:4001/api/v1/content/stats`
 
 ### **Frontend Integration**
 
-1. Add `NodeDetailPanel` to your canvas page
+1. Add `NodeDetailPanel` to your keimenon page
 2. Add `StorageStatsDashboard` for stats
 3. Test clicking nodes loads content
 
@@ -295,8 +295,8 @@ NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=password
 
-# Local storage (optional, defaults to ~/.canvas-memory)
-LOCAL_DOCS_PATH=~/.canvas-memory
+# Local storage (optional, defaults to ~/.keimenon)
+LOCAL_DOCS_PATH=~/.keimenon
 
 # Frontend API URL
 # apps/web/.env.local
@@ -310,7 +310,7 @@ NEXT_PUBLIC_API_URL=http://localhost:4001
 ### **1. NodeDetailPanel**
 
 ```typescript
-import { NodeDetailPanel } from '@/components/canvas/NodeDetailPanel';
+import { NodeDetailPanel } from '@/components/keimenon/NodeDetailPanel';
 
 <NodeDetailPanel
   node={selectedNode}
@@ -328,7 +328,7 @@ import { NodeDetailPanel } from '@/components/canvas/NodeDetailPanel';
 ### **2. StorageStatsDashboard**
 
 ```typescript
-import { StorageStatsDashboard } from '@/components/canvas/StorageStatsDashboard';
+import { StorageStatsDashboard } from '@/components/keimenon/StorageStatsDashboard';
 
 <StorageStatsDashboard />
 ```
@@ -368,7 +368,7 @@ const loading = isLoading(nodeId);
 curl http://localhost:4001/health
 
 # Check storage initialized
-ls ~/.canvas-memory/documents/
+ls ~/.keimenon/documents/
 
 # Check node has content_location
 curl http://localhost:4001/api/v1/nodes/{node_id}

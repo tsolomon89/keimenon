@@ -591,7 +591,7 @@ async function runPhase1to3Processing(
   near_dup_edges_created: number;
 }> {
   // Get SQLite database path
-  const dbPath = process.env.SQLITE_PATH || path.join(os.homedir(), '.canvas-memory', 'canvas.db');
+  const dbPath = process.env.SQLITE_PATH || path.join(os.homedir(), '.keimenon', 'keimenon.db');
   const dbClient = global.dbClient;
   const db = dbClient.getDatabase();
 

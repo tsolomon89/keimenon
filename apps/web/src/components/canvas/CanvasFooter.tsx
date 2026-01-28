@@ -16,11 +16,11 @@ import { useConsole } from '@/contexts/ConsoleContext';
 import { ErrorDomain, ErrorSeverity } from '@/services/error-capture.service';
 import { useState, useEffect } from 'react';
 
-interface CanvasFooterProps {
+interface KeimenonFooterProps {
   isOpen: boolean;
 }
 
-export function CanvasFooter({ isOpen }: CanvasFooterProps) {
+export function KeimenonFooter({ isOpen }: KeimenonFooterProps) {
   const { errors, errorCounts, setFilters, clearErrors, exportErrors, activeTab, setActiveTab } =
     useConsole();
 

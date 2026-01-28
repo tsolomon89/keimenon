@@ -8,6 +8,7 @@
 ## ✅ Completed Implementation
 
 ### Phase 1: Critical Fixes & Schema Constants
+
 - [x] Created `packages/types/src/node-kinds.ts` with schema constants
 - [x] Exported constants from `packages/types/src/index.ts`
 - [x] Updated `DeleteWorker.ts` to use constants and track metrics
@@ -17,9 +18,11 @@
 - [x] Added multi-tenant isolation tests
 
 ### Phase 2: Roadmap Documentation
+
 - [x] Created `docs/roadmap/DELETE_SYSTEM_IMPROVEMENTS.md`
 
 ### Phase 3: Metrics & Monitoring Infrastructure
+
 - [x] Created `apps/api/src/services/MetricsService.ts` (base class)
 - [x] Created `apps/api/src/services/metrics/DeleteMetrics.ts` (delete-specific)
 - [x] Created `apps/api/src/services/monitoring/DeleteMonitor.ts` (alerting)
@@ -31,6 +34,7 @@
 **File**: `apps/api/src/index.ts`
 
 **Changes Made**:
+
 ```typescript
 // Line 35: Import added
 import { createMetricsRoutes } from './routes/metrics.routes';
@@ -53,14 +57,15 @@ app.use('/api/v1/metrics', (req, res, next) => {
 ## 📦 Build Status
 
 ### ✅ Types Package Build: **SUCCESS**
+
 ```
-@canvas-memory/types:build: ✅ Compiled successfully
+@keimenon/types:build: ✅ Compiled successfully
 - node-kinds.d.ts ✅
 - node-kinds.js ✅
 - Exports from index.d.ts ✅
 ```
 
-The schema constants (`getCanvasDataInClause`, `getSystemNodeInClause`) are now available for import.
+The schema constants (`getKeimenonDataInClause`, `getSystemNodeInClause`) are now available for import.
 
 ### ⚠️ API Package Build: **FAILED** (Pre-existing Errors)
 
@@ -79,12 +84,14 @@ The API build failed with **~150 TypeScript errors**, but these are **pre-existi
 ### Option A: Deploy Despite Build Errors (Recommended for Testing)
 
 **Why this works**:
+
 - TypeScript build errors are compile-time only
 - The types package built successfully, so runtime imports will work
 - Metrics routes are registered correctly in `index.ts`
 - JavaScript execution will succeed even if TypeScript compilation fails
 
 **Steps**:
+
 ```bash
 # 1. Start the API server (ignore build errors)
 npm run dev:api
@@ -96,6 +103,7 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:4001/api/v1/metric
 ```
 
 **What to verify**:
+
 - ✅ Server starts without runtime errors
 - ✅ Metrics endpoints return 200 (not 404 or 503)
 - ✅ DeleteWorker tracks metrics during delete operations
@@ -104,11 +112,13 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:4001/api/v1/metric
 ### Option B: Fix Build Errors First (Recommended for Production)
 
 **Steps**:
+
 1. Fix pre-existing TypeScript errors (see error list in build output)
 2. Run `npm run build` to verify clean build
 3. Deploy to staging/production
 
 **Priority fixes**:
+
 - Test file errors (low priority - don't affect production)
 - CompensateJob errors (medium priority - experimental feature)
 - import-enhanced-v2 config errors (medium priority - legacy code)
@@ -148,7 +158,7 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" \
   http://localhost:4001/api/v1/metrics/delete/prometheus
 
 # Expected: Prometheus format metrics
-# delete_operations_jobs_completed{status="success",scope="canvas"} 0
+# delete_operations_jobs_completed{status="success",scope="keimenon"} 0
 ```
 
 ### Generate Metrics (Run Delete Operation)
@@ -166,11 +176,11 @@ curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
     "timestamp": 1234567890
   }'
 
-# 2. Delete canvas data (creates metrics)
+# 2. Delete keimenon data (creates metrics)
 curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   http://localhost:4001/api/v1/jobs/delete \
-  -d '{"scope": "canvas"}'
+  -d '{"scope": "keimenon"}'
 
 # 3. Wait for job to complete (check job status)
 curl -H "Authorization: Bearer $ADMIN_TOKEN" \
@@ -190,6 +200,7 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" \
 Based on the [DEPLOYMENT_GUIDE_METRICS.md](./docs/DEPLOYMENT_GUIDE_METRICS.md):
 
 ### Pre-Deployment
+
 - [x] Review all modified files for correctness
 - [x] ~~Run full test suite~~ (Skipped - pre-existing test errors)
 - [x] ~~Run E2E tests~~ (Skipped - pre-existing test errors)
@@ -197,6 +208,7 @@ Based on the [DEPLOYMENT_GUIDE_METRICS.md](./docs/DEPLOYMENT_GUIDE_METRICS.md):
 - [x] **✅ Register metrics routes in app startup** ⚠️ **COMPLETE**
 
 ### Post-Deployment
+
 - [ ] Start API server: `npm run dev:api`
 - [ ] Verify server starts without runtime errors
 - [ ] Test metrics endpoints (see checklist above)
@@ -205,6 +217,7 @@ Based on the [DEPLOYMENT_GUIDE_METRICS.md](./docs/DEPLOYMENT_GUIDE_METRICS.md):
 - [ ] Check concurrent deletion prevention works (409 response)
 
 ### Optional (Production)
+
 - [ ] Configure Prometheus scraping (see deployment guide)
 - [ ] Set up Grafana dashboard (see deployment guide)
 - [ ] Configure alert notifications (email/Slack)
@@ -215,12 +228,14 @@ Based on the [DEPLOYMENT_GUIDE_METRICS.md](./docs/DEPLOYMENT_GUIDE_METRICS.md):
 ## 🐛 Known Issues & Workarounds
 
 ### Issue 1: TypeScript Build Errors
+
 **Status**: Pre-existing, not related to metrics system
 **Impact**: None (runtime execution works)
 **Workaround**: Run `npm run dev:api` directly (skips TypeScript compilation)
 
 ### Issue 2: Import Errors in Test Files
-**Error**: `Module '"@canvas-memory/types"' has no exported member 'getCanvasDataInClause'`
+
+**Error**: `Module '"@keimenon/types"' has no exported member 'getKeimenonDataInClause'`
 **Status**: Resolved at runtime (types package built successfully)
 **Impact**: Tests won't compile, but production code works
 **Workaround**: Run API server without running tests first
@@ -230,6 +245,7 @@ Based on the [DEPLOYMENT_GUIDE_METRICS.md](./docs/DEPLOYMENT_GUIDE_METRICS.md):
 ## 📁 Files Modified/Created
 
 ### New Files (6)
+
 1. `packages/types/src/node-kinds.ts` - Schema constants (120 lines)
 2. `apps/api/src/services/MetricsService.ts` - Base metrics class (309 lines)
 3. `apps/api/src/services/metrics/DeleteMetrics.ts` - Delete metrics (296 lines)
@@ -238,6 +254,7 @@ Based on the [DEPLOYMENT_GUIDE_METRICS.md](./docs/DEPLOYMENT_GUIDE_METRICS.md):
 6. `docs/roadmap/DELETE_SYSTEM_IMPROVEMENTS.md` - Roadmap (600+ lines)
 
 ### Modified Files (6)
+
 1. `packages/types/src/index.ts` - Export node-kinds (1 line added)
 2. `apps/api/src/modules/workers/infrastructure/DeleteWorker.ts` - Use constants, track metrics (40+ lines changed)
 3. `apps/api/src/routes/data-management.ts` - Use constants (4 lines changed)
@@ -250,12 +267,14 @@ Based on the [DEPLOYMENT_GUIDE_METRICS.md](./docs/DEPLOYMENT_GUIDE_METRICS.md):
 ## 🎯 Next Steps
 
 ### Immediate (Testing)
+
 1. **Start API server**: `npm run dev:api`
 2. **Test metrics endpoints** using curl commands above
 3. **Run delete operation** to generate test metrics
 4. **Verify metrics tracking** works end-to-end
 
 ### Short-term (Production Readiness)
+
 1. Fix pre-existing TypeScript build errors (separate task)
 2. Run full test suite after fixes
 3. Deploy to staging environment
@@ -263,7 +282,9 @@ Based on the [DEPLOYMENT_GUIDE_METRICS.md](./docs/DEPLOYMENT_GUIDE_METRICS.md):
 5. Deploy to production
 
 ### Long-term (Q1 2025)
+
 See `docs/roadmap/DELETE_SYSTEM_IMPROVEMENTS.md` for:
+
 - Job cleanup service
 - Cascading delete verification
 - Soft delete with recovery
@@ -275,18 +296,22 @@ See `docs/roadmap/DELETE_SYSTEM_IMPROVEMENTS.md` for:
 ## 🆘 Troubleshooting
 
 ### Problem: Metrics API returns 404
+
 **Cause**: Routes not registered (but we just fixed this!)
 **Solution**: ✅ Already fixed - routes registered in index.ts:318-321
 
 ### Problem: Metrics API returns 503
+
 **Cause**: AuthService not initialized yet
 **Solution**: Wait for server to fully start, check `/ready` endpoint
 
 ### Problem: Metrics show all zeros
+
 **Cause**: No delete jobs have run yet
 **Solution**: Run a delete operation to generate metrics (see testing checklist)
 
 ### Problem: Server fails to start
+
 **Cause**: Runtime error (not TypeScript compilation)
 **Solution**: Check server logs for error details, verify database connection
 

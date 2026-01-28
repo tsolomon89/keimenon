@@ -62,7 +62,7 @@
 
 ### Issue #1: Database Snapshot Creation (BLOCKED)
 
-- **Problem**: Module linking error when importing `@canvas-memory/db` in test setup
+- **Problem**: Module linking error when importing `@keimenon/db` in test setup
 - **Error**: `ERR_VM_MODULE_LINK_FAILURE` - ESM/CommonJS interop issue
 - **Location**: `tests/e2e/fixtures/database-snapshots.ts:68`
 - **Impact**: Cannot create pristine snapshot in global setup
@@ -70,7 +70,7 @@
 **Root Cause**:
 
 - Playwright runs test files in a special context
-- Importing `@canvas-memory/db` (which has better-sqlite3 native module) fails during ESM module linking
+- Importing `@keimenon/db` (which has better-sqlite3 native module) fails during ESM module linking
 - The db package has complex dependencies (parsers → clustering-engine → better-sqlite3)
 
 ### Issue #2: Migration Application
@@ -92,7 +92,7 @@ Instead of creating from scratch, copy existing database:
 // In database-snapshots.ts
 async createSnapshot(): Promise<void> {
   // Copy existing database instead of creating from scratch
-  const mainDb = path.join(process.cwd(), 'packages/db/data/canvas.db');
+  const mainDb = path.join(process.cwd(), 'packages/db/data/keimenon.db');
 
   if (fs.existsSync(mainDb)) {
     fs.copyFileSync(mainDb, this.snapshotPath);
@@ -127,7 +127,7 @@ Remove snapshot architecture entirely, just use worker-specific copies:
 // In test-isolation.ts
 dbPath: [
   async ({}, use, workerInfo) => {
-    const mainDb = path.join(process.cwd(), 'packages/db/data/canvas.db');
+    const mainDb = path.join(process.cwd(), 'packages/db/data/keimenon.db');
     const workerDb = path.join('.test-dbs', `worker-${workerInfo.workerIndex}.db`);
 
     // Copy main DB to worker DB
@@ -209,7 +209,7 @@ curl -X POST http://localhost:4001/api/v1/test/savepoint \
   -d '{"action": "rollback", "savepointId": "test_123"}'
 
 # 6. Verify data was rolled back
-sqlite3 packages/db/data/canvas.db "SELECT * FROM users WHERE email='test@test.com'"
+sqlite3 packages/db/data/keimenon.db "SELECT * FROM users WHERE email='test@test.com'"
 # Should return nothing
 ```
 

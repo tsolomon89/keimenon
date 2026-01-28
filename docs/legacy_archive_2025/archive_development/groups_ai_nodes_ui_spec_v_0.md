@@ -170,5 +170,5 @@
 ## 13) Open questions
 
 - Should the Objective Hub be per‑board or per‑selection (i.e., multiple hubs)?
-- Do Action Nodes persist (like tools on canvas) or are they transient each time?
+- Do Action Nodes persist (like tools on keimenon) or are they transient each time?
 - Where to surface **scope receipts** in UI outside Admin mode?

@@ -18,7 +18,7 @@ import {
 import { logJobEvent } from '@/lib/error-handler';
 import { API_BASE_URL } from '@/lib/env.config';
 import { useJobStream } from '@/hooks/useJobStream';
-import { useCanvasStore } from '@/store/canvasStore';
+import { useKeimenonStore } from '@/store/keimenonStore';
 
 interface DataStats {
   nodes: Array<{ kind: string; count: number }>;
@@ -50,13 +50,13 @@ export function DataManagementCard() {
       console.log('[DataManagementCard] Deletion complete via SSE');
       console.log('[DataManagementCard] Job details:', job);
 
-      // CRITICAL: Refresh canvas data immediately so stale nodes disappear
-      // Without this, canvas shows old cached nodes until page refresh
-      console.log('[DataManagementCard] Calling loadGraphData() to refresh canvas...');
-      useCanvasStore.getState().loadGraphData();
+      // CRITICAL: Refresh keimenon data immediately so stale nodes disappear
+      // Without this, keimenon shows old cached nodes until page refresh
+      console.log('[DataManagementCard] Calling loadGraphData() to refresh keimenon...');
+      useKeimenonStore.getState().loadGraphData();
       console.log('[DataManagementCard] loadGraphData() called successfully');
 
-      setSuccess('Data cleared successfully! Canvas is now empty.');
+      setSuccess('Data cleared successfully! Keimenon is now empty.');
 
       // Clear deletion state after showing success
       setTimeout(() => {
@@ -97,7 +97,8 @@ export function DataManagementCard() {
       setLoadingStats(true);
       setError(null);
 
-      const token = localStorage.getItem('canvas_memory_token');
+      const token = localStorage.getItem('keimenon_token');
+
       if (!token) {
         throw new Error('Not authenticated');
       }
@@ -153,7 +154,10 @@ export function DataManagementCard() {
     try {
       await loadStats();
     } catch (err) {
-      console.warn('[DataManagementCard] Failed to load stats before deletion, continuing anyway:', err);
+      console.warn(
+        '[DataManagementCard] Failed to load stats before deletion, continuing anyway:',
+        err
+      );
       // Stats will show as unknown in modal, but user can still proceed
     }
 
@@ -174,7 +178,7 @@ export function DataManagementCard() {
     const nodeCount = totals?.nodeCount ?? stats?.nodes?.reduce((sum, n) => sum + n.count, 0) ?? 0;
     const edgeCount = totals?.edgeCount ?? stats?.edges ?? 0;
 
-    const title = 'Clearing canvas data';
+    const title = 'Clearing keimenon data';
     const description = `Deleting ${nodeCount} nodes and ${edgeCount} edges`;
 
     const existing = getOperation(operationId);
@@ -221,7 +225,7 @@ export function DataManagementCard() {
       setIsClearing(true);
       setError(null);
 
-      const token = localStorage.getItem('canvas_memory_token');
+      const token = localStorage.getItem('keimenon_token');
       if (!token) {
         throw new Error('Not authenticated');
       }
@@ -238,7 +242,7 @@ export function DataManagementCard() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          scope: 'canvas', // Delete canvas data for current account
+          scope: 'keimenon', // Delete keimenon data for current account
         }),
       });
 
@@ -250,7 +254,7 @@ export function DataManagementCard() {
           new Error(errorData.error || 'Failed to clear data'),
           {
             domain: 'database',
-            operation: 'dataManagement.clearCanvas',
+            operation: 'dataManagement.clearKeimenon',
             userId: user?.userId,
             accountId: user?.accountId,
             metadata: {
@@ -289,7 +293,7 @@ export function DataManagementCard() {
           jobId: resolvedJobId,
           nodeCount,
           edgeCount,
-          scope: 'canvas',
+          scope: 'keimenon',
         }
       );
 
@@ -304,7 +308,7 @@ export function DataManagementCard() {
         err,
         {
           domain: 'database',
-          operation: 'dataManagement.clearCanvas',
+          operation: 'dataManagement.clearKeimenon',
           userId: user?.userId,
           accountId: user?.accountId,
           metadata: {
@@ -358,7 +362,7 @@ export function DataManagementCard() {
           </div>
 
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-slate-200 mb-1">Clear Canvas Data</h3>
+            <h3 className="text-sm font-semibold text-slate-200 mb-1">Clear Keimenon Data</h3>
             <p className="text-xs text-slate-400">
               Delete all imported conversations, sources, code blocks, folders, and groups. Your
               account and settings will NOT be affected.
@@ -390,7 +394,7 @@ export function DataManagementCard() {
           }
         >
           {isClearing && <Loader2 className="w-4 h-4 animate-spin" />}
-          {isClearing ? 'Clearing Data...' : 'Clear Canvas Data'}
+          {isClearing ? 'Clearing Data...' : 'Clear Keimenon Data'}
         </button>
 
         {/* Warning footer */}
@@ -399,7 +403,7 @@ export function DataManagementCard() {
           <div>
             <p className="font-semibold mb-1">This action cannot be undone</p>
             <p className="text-yellow-400/80">
-              All your canvas data will be permanently deleted. Your user account, settings, and
+              All your keimenon data will be permanently deleted. Your user account, settings, and
               preferences will remain intact.
             </p>
           </div>
@@ -412,8 +416,8 @@ export function DataManagementCard() {
         onClose={() => setShowClearModal(false)}
         onConfirm={handleConfirmClear}
         variant="warning"
-        title="Clear All Canvas Data?"
-        message="This will permanently delete all your imported data from the canvas. Your account and settings will not be affected."
+        title="Clear All Keimenon Data?"
+        message="This will permanently delete all your imported data from the keimenon. Your account and settings will not be affected."
         details={loadingStats ? 'Loading statistics...' : getStatsMessage()}
         confirmText="Clear Data"
         cancelText="Cancel"
@@ -432,12 +436,17 @@ export function AdminDataManagementCard() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Permission check
+  if (user?.accountType !== 'admin') {
+    return null;
+  }
+
   const handleConfirmClear = async () => {
     try {
       setIsClearing(true);
       setError(null);
 
-      const token = localStorage.getItem('canvas_memory_token');
+      const token = localStorage.getItem('keimenon_token');
       if (!token) {
         throw new Error('Not authenticated');
       }
@@ -541,7 +550,7 @@ export function AdminDataManagementCard() {
               Clear All Client Data (Admin Only)
             </h3>
             <p className="text-xs text-red-400/80">
-              Delete canvas data for ALL client accounts. Admin data, user accounts, and settings
+              Delete keimenon data for ALL client accounts. Admin data, user accounts, and settings
               will NOT be affected. Use with extreme caution!
             </p>
           </div>
@@ -578,8 +587,8 @@ export function AdminDataManagementCard() {
         onClose={() => setShowClearModal(false)}
         onConfirm={handleConfirmClear}
         variant="error"
-        title="Clear ALL Client Canvas Data?"
-        message="This will permanently delete canvas data for ALL client accounts. This action affects multiple users and cannot be undone. Admin data, user accounts, and all settings will remain intact."
+        title="Clear ALL Client Keimenon Data?"
+        message="This will permanently delete keimenon data for ALL client accounts. This action affects multiple users and cannot be undone. Admin data, user accounts, and all settings will remain intact."
         confirmText="Clear All Client Data"
         cancelText="Cancel"
         isProcessing={isClearing}

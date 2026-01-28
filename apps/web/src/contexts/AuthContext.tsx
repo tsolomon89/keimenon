@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useCanvasStore } from '@/store/canvasStore';
+import { useKeimenonStore } from '@/store/keimenonStore';
 import { logApiEvent } from '@/lib/error-handler';
 
 interface AccountInfo {
@@ -62,7 +62,7 @@ import { API_BASE_URL } from '@/lib/env.config';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = 'canvas_memory_token';
+const TOKEN_KEY = 'keimenon_token';
 
 /**
  * CRITICAL FIX #4: Get test headers for E2E test isolation
@@ -164,22 +164,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * Reset canvas store when account changes
+   * Reset keimenon store when account changes
    */
   useEffect(() => {
     if (user && user.accountId) {
-      const currentAccountId = useCanvasStore.getState().currentAccountId;
+      const currentAccountId = useKeimenonStore.getState().currentAccountId;
 
-      // If account changed (or first login), reset canvas store
+      // If account changed (or first login), reset keimenon store
       if (currentAccountId && currentAccountId !== user.accountId) {
         console.log(
-          `🔄 Account switched from ${currentAccountId} to ${user.accountId} - resetting canvas store`
+          `🔄 Account switched from ${currentAccountId} to ${user.accountId} - resetting keimenon store`
         );
-        useCanvasStore.getState().reset();
+        useKeimenonStore.getState().reset();
       }
 
       // Update stored account ID
-      useCanvasStore.getState().setCurrentAccountId(user.accountId);
+      useKeimenonStore.getState().setCurrentAccountId(user.accountId);
     }
   }, [user?.accountId]);
 
@@ -244,8 +244,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           accountType: parsedUser.accountType,
         });
 
-        // Redirect to canvas
-        router.push('/canvas');
+        // Redirect to keimenon
+        router.push('/keimenon');
       } catch (error: any) {
         setIsLoading(false);
         console.error('Login error:', error);
@@ -315,8 +315,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           accountClass: parsedUser.accountClass,
         });
 
-        // Redirect to canvas
-        router.push('/canvas');
+        // Redirect to keimenon
+        router.push('/keimenon');
       } catch (error: any) {
         setIsLoading(false);
         console.error('Registration error:', error);
@@ -379,8 +379,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: parsedUser.email,
         });
 
-        // Redirect to canvas
-        router.push('/canvas');
+        // Redirect to keimenon
+        router.push('/keimenon');
       } catch (error: any) {
         setIsLoading(false);
         console.error('Account selection error:', error);
@@ -405,10 +405,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Not authenticated');
       }
 
-      // CRITICAL FIX #1: Clear canvas store BEFORE API call
+      // CRITICAL FIX #1: Clear keimenon store BEFORE API call
       // This prevents cached nodes/edges from Account A appearing in Account B
-      console.log('🧹 Clearing canvas store before account switch...');
-      useCanvasStore.getState().reset();
+      console.log('🧹 Clearing keimenon store before account switch...');
+      useKeimenonStore.getState().reset();
 
       // CRITICAL FIX #2: Clear window globals that might cache account data
       if (typeof window !== 'undefined') {
@@ -510,8 +510,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Clear user state
     setUser(null);
 
-    // Reset canvas store (clear all selected nodes, loaded data, etc.)
-    useCanvasStore.getState().reset();
+    // Reset keimenon store (clear all selected nodes, loaded data, etc.)
+    useKeimenonStore.getState().reset();
 
     // Redirect to login
     router.push('/login');

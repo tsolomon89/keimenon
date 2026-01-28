@@ -1,10 +1,10 @@
 # Data Schemas & Type Definitions
 
-**Package**: `@canvas-memory/types`
+**Package**: `@keimenon/types`
 
 ## Overview
 
-Canvas Memory OS uses a shared type system to ensure consistency between the database, API, and frontend. This document defines the core data structures.
+Keimenon uses a shared type system to ensure consistency between the database, API, and frontend. This document defines the core data structures.
 
 ## Core Entities
 

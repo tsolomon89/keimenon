@@ -9,7 +9,7 @@
  * - apps/api/src/modules/jobs/domain/JobStateMachine.ts
  */
 
-import { describe, test as it } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import { Job, JobSpec } from '../domain/Job';
 

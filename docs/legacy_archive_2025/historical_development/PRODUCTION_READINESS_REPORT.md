@@ -1,6 +1,6 @@
 # Production Readiness Report
 
-## Canvas Memory - End-to-End Testing Results
+## Keimenon - End-to-End Testing Results
 
 **Date**: 2025-10-18
 **Test Environment**: Windows, Node.js, SQLite
@@ -170,7 +170,7 @@ database
 - The `/api/v1/import/enhanced` route uses Phase 1-3 processing (ContentProcessor, GroupingStorage, DeduplicationEngine)
 - These services expect a raw better-sqlite3 database instance with `.prepare()` method
 - `global.dbClient` is the Neo4j wrapper which uses `.createNode()` / `.createEdge()` methods
-- Phase 1-3 services (from @canvas-memory/parsers package) operate on a separate SQLite database for grouping/clustering
+- Phase 1-3 services (from @keimenon/parsers package) operate on a separate SQLite database for grouping/clustering
 
 **Affected Code**:
 
@@ -216,7 +216,7 @@ try {
 
 - Unify database interfaces
 - Make Phase 1-3 services work with Neo4j wrapper
-- Update @canvas-memory/parsers package
+- Update @keimenon/parsers package
 
 **Recommendation**: **Option A** for immediate production deployment, then **Option B** for next sprint.
 
@@ -468,7 +468,7 @@ node test-end-to-end.js
 - `apps/web/src/hooks/useSettingsTree.ts` (error capture)
 - `apps/web/src/hooks/useGroupsTree.ts` (error capture)
 - `apps/web/src/hooks/useAccountTree.ts` (error capture)
-- `apps/web/src/components/canvas/CRMDashboard.tsx` (analytics loading fix)
+- `apps/web/src/components/keimenon/CRMDashboard.tsx` (analytics loading fix)
 - `apps/web/src/components/inspector/ImportFlowPanel.tsx` (7-section UI)
 
 ---

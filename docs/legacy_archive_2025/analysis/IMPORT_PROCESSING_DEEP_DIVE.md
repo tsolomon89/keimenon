@@ -622,7 +622,7 @@ canonical_node_id → {
 
 ### Import Module UI
 
-**Location:** `apps/web/src/components/canvas/ImportModule.tsx:69-809`
+**Location:** `apps/web/src/components/keimenon/ImportModule.tsx:69-809`
 
 **Stage Visualization:**
 
@@ -695,9 +695,9 @@ await resolveDuplicate(candidateId, action);
 // Body: { action: 'keep-primary' | ... }
 ```
 
-### Canvas Display
+### Keimenon Display
 
-**Location:** `apps/web/src/components/canvas/Canvas2D.tsx` (inferred)
+**Location:** `apps/web/src/components/keimenon/Keimenon2D.tsx` (inferred)
 
 **Node Rendering:**
 
@@ -1205,7 +1205,7 @@ export function jaccard(setA: Set<string>, setB: Set<string>): number {
               │ Frontend SSE stream
               ▼
 ┌──────────────────────────────────┐
-│ Canvas Visualization             │
+│ Keimenon Visualization             │
 │ - ChatThreads as nodes           │
 │ - Clusters as groups             │
 │ - Duplicate edges (dashed)       │
@@ -1444,7 +1444,7 @@ Result:
 
 | Feature                | File                                                      | Lines   |
 | ---------------------- | --------------------------------------------------------- | ------- |
-| Import module          | `apps/web/src/components/canvas/ImportModule.tsx`         | 69-809  |
+| Import module          | `apps/web/src/components/keimenon/ImportModule.tsx`       | 69-809  |
 | Local import service   | `apps/web/src/lib/local-import.ts`                        | 169-354 |
 | Duplicate review panel | `apps/web/src/components/import/DuplicateReviewPanel.tsx` | 22-398  |
 | Progress context       | `apps/web/src/contexts/ImportProgressContext.tsx`         | -       |
@@ -1566,7 +1566,7 @@ if (combinedContent.length < minChars) continue;
 
 - `packages/parsers/src/services/__tests__/deduplication.test.ts` - Deduplication engine
 - `packages/types/src/navigation.model.test.ts` - Navigation models
-- `apps/web/src/components/canvas/ImportsTableCard.test.tsx` - UI component
+- `apps/web/src/components/keimenon/ImportsTableCard.test.tsx` - UI component
 - `apps/web/src/components/settings/UsersListCard.test.tsx` - Settings UI
 
 **Integration Tests:**

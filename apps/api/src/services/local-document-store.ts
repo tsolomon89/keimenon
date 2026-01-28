@@ -13,7 +13,7 @@ export interface DocumentMetadata {
 }
 
 export interface LocalStoreConfig {
-  basePath?: string; // Defaults to ~/.canvas-memory
+  basePath?: string; // Defaults to ~/.keimenon
   enableDeduplication?: boolean;
 }
 
@@ -26,7 +26,7 @@ export class LocalDocumentStore {
   private enableDedup: boolean;
 
   constructor(config: LocalStoreConfig = {}) {
-    this.basePath = config.basePath || path.join(os.homedir(), '.canvas-memory');
+    this.basePath = config.basePath || path.join(os.homedir(), '.keimenon');
     this.enableDedup = config.enableDeduplication ?? true;
   }
 
@@ -53,10 +53,7 @@ export class LocalDocumentStore {
   /**
    * Save a full conversation export
    */
-  async saveConversation(
-    conversationId: string,
-    conversationData: any
-  ): Promise<DocumentMetadata> {
+  async saveConversation(conversationId: string, conversationData: any): Promise<DocumentMetadata> {
     const content = JSON.stringify(conversationData, null, 2);
     const hash = this.computeHash(content);
 
@@ -130,10 +127,7 @@ export class LocalDocumentStore {
   /**
    * Save source document
    */
-  async saveSource(
-    sourceId: string,
-    content: string
-  ): Promise<DocumentMetadata> {
+  async saveSource(sourceId: string, content: string): Promise<DocumentMetadata> {
     const hash = this.computeHash(content);
 
     if (this.enableDedup) {
@@ -162,11 +156,7 @@ export class LocalDocumentStore {
   /**
    * Save code block
    */
-  async saveCodeBlock(
-    codeId: string,
-    code: string,
-    language: string
-  ): Promise<DocumentMetadata> {
+  async saveCodeBlock(codeId: string, code: string, language: string): Promise<DocumentMetadata> {
     const hash = this.computeHash(code);
 
     if (this.enableDedup) {
@@ -196,10 +186,7 @@ export class LocalDocumentStore {
   /**
    * Get content by ID
    */
-  async getContent(
-    id: string,
-    type: DocumentMetadata['type']
-  ): Promise<string | null> {
+  async getContent(id: string, type: DocumentMetadata['type']): Promise<string | null> {
     try {
       const metadata = await this.getMetadata(id);
       if (!metadata || metadata.type !== type) {

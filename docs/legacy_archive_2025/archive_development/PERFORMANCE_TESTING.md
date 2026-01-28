@@ -1,4 +1,4 @@
-# Performance Testing Results - Canvas Memory OS
+# Performance Testing Results - Keimenon
 
 **Date**: 2025-10-12
 **Test Environment**: Windows 10, SQLite 3 (WAL mode)

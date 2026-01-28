@@ -7,7 +7,7 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
   webpack: (config, { isServer }) => {
-    config.externals = [...(config.externals || []), { canvas: 'canvas' }];
+    config.externals = [...(config.externals || []), { keimenon: 'keimenon' }];
 
     // Fix case-sensitivity warnings on Windows
     // See: https://github.com/vercel/next.js/issues/36953

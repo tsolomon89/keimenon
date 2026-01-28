@@ -34,13 +34,13 @@ Previous test run showed WebKit tests timing out at 20-22 seconds despite global
 
 ### Files Modified (5 test files, 9 timeouts removed)
 
-#### 1. [tests/e2e/canvas-operations.spec.ts](tests/e2e/canvas-operations.spec.ts#L25)
+#### 1. [tests/e2e/keimenon-operations.spec.ts](tests/e2e/keimenon-operations.spec.ts#L25)
 
 **Line 25**: Removed hardcoded 20s timeout
 
 ```diff
--    await page.waitForURL(/\/canvas/, { timeout: 20000 });
-+    await page.waitForURL(/\/canvas/); // Uses global 30s timeout
+-    await page.waitForURL(/\/keimenon/, { timeout: 20000 });
++    await page.waitForURL(/\/keimenon/); // Uses global 30s timeout
 ```
 
 #### 2. [tests/e2e/settings-navigation.spec.ts](tests/e2e/settings-navigation.spec.ts#L25)
@@ -48,17 +48,17 @@ Previous test run showed WebKit tests timing out at 20-22 seconds despite global
 **Line 25**: Removed hardcoded 20s timeout
 
 ```diff
--    await page.waitForURL(/\/canvas/, { timeout: 20000 });
-+    await page.waitForURL(/\/canvas/); // Uses global 30s timeout
+-    await page.waitForURL(/\/keimenon/, { timeout: 20000 });
++    await page.waitForURL(/\/keimenon/); // Uses global 30s timeout
 ```
 
-#### 3. [tests/e2e/flow-auth-canvas.spec.ts](tests/e2e/flow-auth-canvas.spec.ts)
+#### 3. [tests/e2e/flow-auth-keimenon.spec.ts](tests/e2e/flow-auth-keimenon.spec.ts)
 
 **Lines 62, 101, 119, 120**: Removed 4 hardcoded 20s timeouts
 
 ```diff
--    await page.waitForURL(/\/canvas/, { timeout: 20000 });
-+    await page.waitForURL(/\/canvas/); // Uses global 30s timeout
+-    await page.waitForURL(/\/keimenon/, { timeout: 20000 });
++    await page.waitForURL(/\/keimenon/); // Uses global 30s timeout
 ```
 
 #### 4. [tests/e2e/debug-auth.spec.ts](tests/e2e/debug-auth.spec.ts#L34)
@@ -66,8 +66,8 @@ Previous test run showed WebKit tests timing out at 20-22 seconds despite global
 **Line 34**: Removed hardcoded 20s timeout
 
 ```diff
--    await page.waitForURL(/\/canvas/, { timeout: 20000 });
-+    await page.waitForURL(/\/canvas/); // Uses global 30s timeout
+-    await page.waitForURL(/\/keimenon/, { timeout: 20000 });
++    await page.waitForURL(/\/keimenon/); // Uses global 30s timeout
 ```
 
 #### 5. [tests/e2e/data-management-ui-updates.spec.ts](tests/e2e/data-management-ui-updates.spec.ts)
@@ -75,8 +75,8 @@ Previous test run showed WebKit tests timing out at 20-22 seconds despite global
 **Lines 197, 216**: Removed 2 hardcoded 20s timeouts
 
 ```diff
--    await page.waitForURL(/\/canvas/, { timeout: 20000 });
-+    await page.waitForURL(/\/canvas/); // Uses global 30s timeout
+-    await page.waitForURL(/\/keimenon/, { timeout: 20000 });
++    await page.waitForURL(/\/keimenon/); // Uses global 30s timeout
 ```
 
 ### Verification
@@ -112,7 +112,7 @@ Did not run:   22 (24%)
 
 #### Chromium (2 failures)
 
-1. **data-management-ui-updates** › should update UI without reload after canvas data deletion
+1. **data-management-ui-updates** › should update UI without reload after keimenon data deletion
    - Settings API returning 401 errors
    - Pre-existing issue, not related to timeout changes
 
@@ -125,7 +125,7 @@ Did not run:   22 (24%)
 1. **console-error-filtering** › should display correct error counts by severity
    - Console badge visibility issue (known from previous session)
 
-2. **data-management-ui-updates** › should update UI without reload after canvas data deletion
+2. **data-management-ui-updates** › should update UI without reload after keimenon data deletion
    - Same Settings API issue as Chromium
 
 3. **debug-auth** › should have token and API access after login
@@ -135,11 +135,11 @@ Did not run:   22 (24%)
 
 All failures are authentication/navigation timeouts reaching full 30s:
 
-**Canvas Operations** (3 failures):
+**Keimenon Operations** (3 failures):
 
-- should load canvas page successfully
-- should display canvas sidebar or navigation
-- should have accessible canvas content
+- should load keimenon page successfully
+- should display keimenon sidebar or navigation
+- should have accessible keimenon content
 
 **Console Error Filtering** (5 failures):
 
@@ -155,7 +155,7 @@ All failures are authentication/navigation timeouts reaching full 30s:
 
 **Authentication Flow** (2 failures):
 
-- authenticated user should access canvas directly
+- authenticated user should access keimenon directly
 - logout should clear session and redirect to login
 
 **Settings Navigation** (2 failures):
@@ -163,7 +163,7 @@ All failures are authentication/navigation timeouts reaching full 30s:
 - should navigate to settings page
 - authenticated user can access settings directly
 
-**Common Pattern**: All WebKit failures involve login → canvas navigation stuck on `/login` page
+**Common Pattern**: All WebKit failures involve login → keimenon navigation stuck on `/login` page
 
 ---
 
@@ -187,7 +187,7 @@ With proper 30s timeout, we can now clearly see WebKit has a systemic issue with
 
 - Login form submits successfully
 - Auth API responds with 200 + JWT token
-- Browser gets stuck on `/login` page instead of redirecting to `/canvas`
+- Browser gets stuck on `/login` page instead of redirecting to `/keimenon`
 - 30 seconds is insufficient for WebKit to complete the navigation
 
 **Possible Root Causes**:
@@ -240,7 +240,7 @@ Skipped:   22 (24%)
 
 ### Immediate Priority: WebKit Authentication Investigation
 
-**Goal**: Understand why WebKit cannot navigate from `/login` to `/canvas` within 30 seconds
+**Goal**: Understand why WebKit cannot navigate from `/login` to `/keimenon` within 30 seconds
 
 **Investigation Steps**:
 
@@ -309,9 +309,9 @@ Skipped:   22 (24%)
 
 ### Test Files (5 modified)
 
-1. `tests/e2e/canvas-operations.spec.ts` - Line 25
+1. `tests/e2e/keimenon-operations.spec.ts` - Line 25
 2. `tests/e2e/settings-navigation.spec.ts` - Line 25
-3. `tests/e2e/flow-auth-canvas.spec.ts` - Lines 62, 101, 119
+3. `tests/e2e/flow-auth-keimenon.spec.ts` - Lines 62, 101, 119
 4. `tests/e2e/debug-auth.spec.ts` - Line 34
 5. `tests/e2e/data-management-ui-updates.spec.ts` - Lines 197, 216
 

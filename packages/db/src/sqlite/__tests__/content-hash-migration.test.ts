@@ -16,7 +16,7 @@
  * - Graceful failure handling
  */
 
-import { describe, test as it, before, after, beforeEach } from 'node:test';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import fs from 'fs';

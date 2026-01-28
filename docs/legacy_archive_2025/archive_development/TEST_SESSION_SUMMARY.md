@@ -268,7 +268,7 @@ test.beforeEach(async ({ page }) => {
 
 ### Priority 2: Validate Infrastructure
 
-- Run existing passing tests (smoke.spec.ts, canvas-operations.spec.ts)
+- Run existing passing tests (smoke.spec.ts, keimenon-operations.spec.ts)
 - Verify test isolation fixtures work correctly
 - Test with single worker, then parallel
 

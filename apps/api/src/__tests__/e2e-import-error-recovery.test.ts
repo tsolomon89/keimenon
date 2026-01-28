@@ -17,7 +17,7 @@
  * - Database operations
  */
 
-import { describe, test as it, after, beforeEach, afterEach } from 'node:test';
+import { describe, it, afterAll, beforeEach, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { DatabaseWriteQueue } from '../services/DatabaseWriteQueue';
@@ -188,7 +188,7 @@ afterEach(async () => {
   }
 });
 
-after(async () => {
+afterAll(async () => {
   // Final cleanup (in case any tests skip afterEach)
   if (queue) {
     await queue.stop();

@@ -1,6 +1,6 @@
 /**
  * Settings Configuration Types - JSON-Driven Settings System
- * Canvas Memory OS
+ * Keimenon
  */
 
 /**
@@ -268,12 +268,12 @@ export const SETTINGS_REGISTRY: SettingCategory[] = [
     order: 3,
     sections: [
       {
-        id: 'canvas',
-        label: 'Canvas View',
+        id: 'keimenon',
+        label: 'Keimenon View',
         order: 1,
         controls: [
           {
-            id: 'canvas_grid',
+            id: 'keimenon_grid',
             label: 'Show Grid',
             type: 'boolean',
             defaultValue: true,
@@ -281,7 +281,7 @@ export const SETTINGS_REGISTRY: SettingCategory[] = [
             previewable: true,
           },
           {
-            id: 'canvas_minimap',
+            id: 'keimenon_minimap',
             label: 'Show Minimap',
             type: 'boolean',
             defaultValue: true,
@@ -455,8 +455,8 @@ export const SETTINGS_REGISTRY: SettingCategory[] = [
         order: 2,
         controls: [
           {
-            id: 'clear_canvas_data',
-            label: 'Clear Canvas Data',
+            id: 'clear_keimenon_data',
+            label: 'Clear Keimenon Data',
             description:
               'Delete all imported conversations, sources, code blocks, folders, and groups. Your account and settings will NOT be affected.',
             type: 'string',
@@ -477,7 +477,7 @@ export const SETTINGS_REGISTRY: SettingCategory[] = [
             id: 'clear_all_client_data',
             label: 'Clear All Client Data',
             description:
-              'Delete canvas data for ALL client accounts (preserves admin data, user accounts, and settings). Use with extreme caution!',
+              'Delete keimenon data for ALL client accounts (preserves admin data, user accounts, and settings). Use with extreme caution!',
             type: 'string',
             defaultValue: '',
             scope: 'workspace',
@@ -600,8 +600,7 @@ export const SETTINGS_REGISTRY: SettingCategory[] = [
           {
             id: 'error_tracking_consent',
             label: 'Error Tracking',
-            description:
-              'Help improve Canvas Memory OS by sending anonymous error reports via Sentry',
+            description: 'Help improve Keimenon by sending anonymous error reports via Sentry',
             type: 'boolean',
             defaultValue: false,
             scope: 'user',

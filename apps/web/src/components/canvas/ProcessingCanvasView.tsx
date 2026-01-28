@@ -1,5 +1,5 @@
 /**
- * Processing Canvas View
+ * Processing Keimenon View
  *
  * Full-screen visualization of active import operations showing:
  * - 7-stage pipeline progress (queued → reading → parsing → normalizing → indexing → linking → done)
@@ -8,7 +8,7 @@
  * - SSE-powered updates from backend
  *
  * Integration:
- * - Auto-shown when import job starts (CanvasLayout.tsx:98)
+ * - Auto-shown when import job starts (KeimenonLayout.tsx:98)
  * - Receives graph updates via useJobStream hook (SSEBroadcaster → graph.update events)
  * - Displays ImportMiniGraph with force-directed layout and particle effects
  *
@@ -33,11 +33,11 @@ import { cancelJob, pauseJob, resumeJob } from '@/lib/api-client';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 
-interface ProcessingCanvasViewProps {
+interface ProcessingKeimenonViewProps {
   operation: Operation | null;
 }
 
-export function ProcessingCanvasView({ operation }: ProcessingCanvasViewProps) {
+export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProps) {
   const { jobs, graphUpdates, connected } = useJobStream();
   const jobUpdate = operation ? jobs.get(operation.id) : undefined;
   const [isCanceling, setIsCanceling] = useState(false);
@@ -53,7 +53,7 @@ export function ProcessingCanvasView({ operation }: ProcessingCanvasViewProps) {
     if (!operation?.id) return;
 
     const confirmed = window.confirm(
-      'Are you sure you want to cancel this import?\n\nThe job will stop at the next checkpoint. Any data already imported will remain in your canvas.'
+      'Are you sure you want to cancel this import?\n\nThe job will stop at the next checkpoint. Any data already imported will remain in your keimenon.'
     );
 
     if (!confirmed) return;

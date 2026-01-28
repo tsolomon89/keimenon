@@ -1,7 +1,7 @@
 ---
 name: code-review-enforcer
 description: Reviews code changes for graph-native patterns, schema compliance, proper TODO formatting, citation requirements, and architectural contracts. Checks CLAUDE.md rules, verification-first approach, and scope-based context. Use when reviewing PRs, commits, or code changes.
-allowed-tools: Read, Grep, Glob, Edit, mcp__canvas-docs__list_todos, mcp__canvas-docs__search_docs, mcp__canvas-database__query_nodes
+allowed-tools: Read, Grep, Glob, Edit, mcp__keimenon-docs__list_todos, mcp__keimenon-docs__search_docs, mcp__keimenon-database__query_nodes
 ---
 
 ---
@@ -20,7 +20,7 @@ allowed-tools: Read, Grep, Glob, Edit, mcp__canvas-docs__list_todos, mcp__canvas
 
 ## Purpose
 
-Automated code review against Canvas Memory OS architectural principles, enforcing:
+Automated code review against Keimenon architectural principles, enforcing:
 
 - Graph-native patterns
 - Schema-driven development
@@ -187,7 +187,7 @@ await db.createNode({
 
 ```typescript
 // ✅ GOOD: Zod validation + type inference
-import { NodeSchema } from '@canvas/types';
+import { NodeSchema } from '@keimenon/types';
 const node = NodeSchema.parse(req.body);
 
 // ❌ BAD: No validation
@@ -226,14 +226,14 @@ git diff --name-only
 Read each modified file
 
 # Search for related TODOs
-mcp__canvas-docs__list_todos({ path: "specific/directory" })
+mcp__keimenon-docs__list_todos({ path: "specific/directory" })
 ```
 
 ### Step 2: Cross-Reference Documentation
 
 ```bash
 # Search for related architecture docs
-mcp__canvas-docs__search_docs({
+mcp__keimenon-docs__search_docs({
   query: "authentication RBAC",
   limit: 5
 })
@@ -327,7 +327,7 @@ For each file:
 ```typescript
 // Find all TODOs in a specific area
 const todos =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   docs__list_todos({
     path: 'apps/api/src/routes',
     type: 'TODO',
@@ -335,7 +335,7 @@ const todos =
 
 // Find critical items (XXX, BUG)
 const critical =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   docs__list_todos({
     type: 'XXX',
   });
@@ -346,7 +346,7 @@ const critical =
 ```typescript
 // Find related architecture docs
 const docs =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   docs__search_docs({
     query: 'authentication JWT session',
     context_lines: 3,
@@ -359,7 +359,7 @@ const docs =
 ```typescript
 // Check existing patterns
 const nodes =
-  (await mcp__canvas) -
+  (await mcp__keimenon) -
   database__query_nodes({
     kind: 'Source',
     limit: 5,

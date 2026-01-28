@@ -127,7 +127,7 @@ if (upload.accountId !== targetAccountId) {
 
 **Files Modified**:
 
-- [ImportsTableCard.tsx](apps/web/src/components/canvas/ImportsTableCard.tsx) - Lines 32-33, 111, 159-216
+- [ImportsTableCard.tsx](apps/web/src/components/keimenon/ImportsTableCard.tsx) - Lines 32-33, 111, 159-216
 
 **Headers Example**:
 
@@ -169,7 +169,7 @@ if (isOperatingMode && operating.accountId) {
    - Added progress bar UI
    - Lines modified: 258-413
 
-4. **apps/web/src/components/canvas/ImportsTableCard.tsx** (423 lines)
+4. **apps/web/src/components/keimenon/ImportsTableCard.tsx** (423 lines)
    - Added operating context headers
    - Replaced mock data with real API call
    - Added `useOperating` and `getToken` imports

@@ -117,9 +117,9 @@ export const CONCURRENCY_CONFIG = {
 
   /** Known concurrency groups and their limits */
   groups: {
-    'delete-canvas': 1, // Only one delete operation per account at a time
-    'import': 3, // Allow up to 3 concurrent imports per account
-    'analysis': 5, // Allow up to 5 concurrent analysis jobs
+    'delete-keimenon': 1, // Only one delete operation per account at a time
+    import: 3, // Allow up to 3 concurrent imports per account
+    analysis: 5, // Allow up to 5 concurrent analysis jobs
   },
 } as const;
 

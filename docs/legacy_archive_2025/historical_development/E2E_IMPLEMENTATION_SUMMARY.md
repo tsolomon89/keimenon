@@ -21,7 +21,7 @@
 
 - **Test Suite**: 8 tests × 3 browsers = 24 test executions
   - `smoke.spec.ts` - 4 smoke tests tagged `@smoke`
-  - `flow-auth-canvas.spec.ts` - 4 full flow tests tagged `@full`
+  - `flow-auth-keimenon.spec.ts` - 4 full flow tests tagged `@full`
   - Uses ARIA-first locators for resilience
   - Full stack testing (browser → API → database)
 
@@ -204,7 +204,7 @@
 
 - ✅ `tests/e2e/fixtures/testId.ts` - Test ID injection fixture
 - ✅ `tests/e2e/smoke.spec.ts` - 4 smoke tests
-- ✅ `tests/e2e/flow-auth-canvas.spec.ts` - 4 full flow tests
+- ✅ `tests/e2e/flow-auth-keimenon.spec.ts` - 4 full flow tests
 
 ### Backend Integration
 

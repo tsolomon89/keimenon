@@ -158,9 +158,9 @@ AND status = 'running'
 #### Write Path (Command)
 
 ```
-User clicks "Clear Canvas Data"
+User clicks "Clear Keimenon Data"
   ↓
-POST /api/v1/jobs/delete { scope: 'canvas' }
+POST /api/v1/jobs/delete { scope: 'keimenon' }
   ↓
 EnqueueJob.execute()
   ├─ Validate input
@@ -386,7 +386,7 @@ export class MigrationRunner {
 **Integration**: `apps/api/src/index.ts`
 
 ```typescript
-import { MigrationRunner } from '@canvas-memory/db/sqlite/MigrationRunner';
+import { MigrationRunner } from '@keimenon/db/sqlite/MigrationRunner';
 import path from 'path';
 
 // After database initialization
@@ -582,7 +582,7 @@ private sendHeartbeat(): void {
 
 Remove `BackgroundOperationsContext` state duplication - use only SSE + initial fetch.
 
-**File**: `apps/web/src/components/canvas/ImportsTableCard.tsx`
+**File**: `apps/web/src/components/keimenon/ImportsTableCard.tsx`
 
 ```typescript
 // REMOVE: Local state managed by context
@@ -640,7 +640,7 @@ describe('Complete Job Flow', () => {
     // 1. Create job
     const response = await request(app)
       .post('/api/v1/jobs/delete')
-      .send({ scope: 'canvas' })
+      .send({ scope: 'keimenon' })
       .expect(201);
 
     const { jobId } = response.body;

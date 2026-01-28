@@ -405,7 +405,7 @@ These are automatically available to Claude without explicit prompts.
 
 - "Run all smoke tests"
 - "Test the login flow on all browsers"
-- "Run tests for the canvas component"
+- "Run tests for the keimenon component"
 - "Execute webkit tests in headed mode"
 
 ### Debugging

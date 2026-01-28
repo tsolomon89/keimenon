@@ -1,7 +1,7 @@
 # AI Agents Framework
 
 **Status**: Experimental / Alpha
-**Package**: `@canvas-memory/agents`
+**Package**: `@keimenon/agents`
 
 ## Overview
 

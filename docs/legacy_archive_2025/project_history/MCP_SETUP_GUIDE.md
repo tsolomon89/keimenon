@@ -1,4 +1,4 @@
-# MCP Server Setup Guide for Canvas Memory
+# MCP Server Setup Guide for Keimenon
 
 ## Status: ✅ Ready to Use
 
@@ -6,7 +6,7 @@ Your MCP servers are installed and ready to use with Claude Code!
 
 ## Available MCP Servers (7 Total)
 
-### 1. canvas-database
+### 1. keimenon-database
 
 **What it does:** Direct SQLite database access
 **Tools:**
@@ -19,15 +19,15 @@ Your MCP servers are installed and ready to use with Claude Code!
 
 **Resources:** schema, migrations, health
 
-### 2. canvas-docs
+### 2. keimenon-docs
 
 **What it does:** Documentation access and search
 
-### 3. canvas-api-testing
+### 3. keimenon-api-testing
 
 **What it does:** API testing and validation tools
 
-### 4. canvas-chat-import
+### 4. keimenon-chat-import
 
 **What it does:** Test chat import functionality with curated datasets
 **Tools:**
@@ -44,7 +44,7 @@ Your MCP servers are installed and ready to use with Claude Code!
 
 **Test Datasets:** tiny (10 msgs), small (50 msgs), medium (200 msgs), large (1000 msgs), edge-cases
 
-### 5. canvas-settings-crm
+### 5. keimenon-settings-crm
 
 **What it does:** Settings and CRM operations
 
@@ -113,15 +113,15 @@ To make these servers available in ALL your projects:
 
 ```bash
 # Add each server to user scope
-claude mcp add --transport stdio --scope user canvas-database -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\database\index.js
+claude mcp add --transport stdio --scope user keimenon-database -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\database\index.js
 
-claude mcp add --transport stdio --scope user canvas-docs -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\docs\index.js
+claude mcp add --transport stdio --scope user keimenon-docs -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\docs\index.js
 
-claude mcp add --transport stdio --scope user canvas-api-testing -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\api-testing\index.js
+claude mcp add --transport stdio --scope user keimenon-api-testing -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\api-testing\index.js
 
-claude mcp add --transport stdio --scope user canvas-chat-import -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\chat-import\index.js
+claude mcp add --transport stdio --scope user keimenon-chat-import -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\chat-import\index.js
 
-claude mcp add --transport stdio --scope user canvas-settings-crm -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\settings-crm\index.js
+claude mcp add --transport stdio --scope user keimenon-settings-crm -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\settings-crm\index.js
 
 claude mcp add --transport stdio --scope user playwright-e2e -- node C:\Development\Projects\ai_convo_parser\.mcp\servers\playwright-e2e\index.js
 
@@ -139,36 +139,36 @@ If auto-detection doesn't work, you can manually configure in Claude Code's sett
 ```json
 {
   "mcpServers": {
-    "canvas-database": {
+    "keimenon-database": {
       "command": "node",
       "args": ["C:\\Development\\Projects\\ai_convo_parser\\.mcp\\servers\\database\\index.js"],
       "env": {
-        "SQLITE_PATH": "${HOME}/.canvas-memory/canvas.db"
+        "SQLITE_PATH": "${HOME}/.keimenon/keimenon.db"
       }
     },
-    "canvas-docs": {
+    "keimenon-docs": {
       "command": "node",
       "args": ["C:\\Development\\Projects\\ai_convo_parser\\.mcp\\servers\\docs\\index.js"]
     },
-    "canvas-api-testing": {
+    "keimenon-api-testing": {
       "command": "node",
       "args": ["C:\\Development\\Projects\\ai_convo_parser\\.mcp\\servers\\api-testing\\index.js"],
       "env": {
         "API_BASE_URL": "http://localhost:4001"
       }
     },
-    "canvas-chat-import": {
+    "keimenon-chat-import": {
       "command": "node",
       "args": ["C:\\Development\\Projects\\ai_convo_parser\\.mcp\\servers\\chat-import\\index.js"],
       "env": {
         "API_BASE_URL": "http://localhost:4001"
       }
     },
-    "canvas-settings-crm": {
+    "keimenon-settings-crm": {
       "command": "node",
       "args": ["C:\\Development\\Projects\\ai_convo_parser\\.mcp\\servers\\settings-crm\\index.js"],
       "env": {
-        "SQLITE_PATH": "${HOME}/.canvas-memory/canvas.db"
+        "SQLITE_PATH": "${HOME}/.keimenon/keimenon.db"
       }
     },
     "playwright-e2e": {
@@ -234,10 +234,10 @@ Claude should use the `pw.listTests` tool and show you the tests.
 Ask Claude:
 
 ```
-Can you query the canvas database and show me the schema?
+Can you query the keimenon database and show me the schema?
 ```
 
-Claude should use the `inspect_schema` tool from canvas-database.
+Claude should use the `inspect_schema` tool from keimenon-database.
 
 ### Test 4: Chat Import Test
 
@@ -330,7 +330,7 @@ cd ../chat-import && npm install
 ### Issue: Database not found
 
 **Fix:**
-Make sure `~/.canvas-memory/canvas.db` exists. The database server will create it if missing.
+Make sure `~/.keimenon/keimenon.db` exists. The database server will create it if missing.
 
 ### Issue: API server not running
 
@@ -347,11 +347,11 @@ Or use the `app.start` tool from playwright-e2e.
 
 ## Environment Variables
 
-### canvas-database
+### keimenon-database
 
-- `SQLITE_PATH` - Path to canvas.db (default: `~/.canvas-memory/canvas.db`)
+- `SQLITE_PATH` - Path to keimenon.db (default: `~/.keimenon/keimenon.db`)
 
-### canvas-api-testing, canvas-chat-import
+### keimenon-api-testing, keimenon-chat-import
 
 - `API_BASE_URL` - API server URL (default: `http://localhost:4001`)
 

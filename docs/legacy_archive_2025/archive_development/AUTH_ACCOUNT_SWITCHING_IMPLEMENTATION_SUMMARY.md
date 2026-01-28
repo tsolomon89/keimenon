@@ -333,7 +333,7 @@ E2E tests and the API server are using **different databases**:
    - Tests expect API to query the same worker database
 
 2. **API Server** (production mode):
-   - Uses production database: `C:\Users\Audna\.canvas-memory\canvas.db`
+   - Uses production database: `C:\Users\Audna\.keimenon\keimenon.db`
    - NODE_ENV is NOT "test", so test helper routes are disabled
    - Cannot access worker-specific databases
 
@@ -356,7 +356,7 @@ E2E tests fail because:
 
 ### Evidence
 
-**Production Database** (`C:\Users\Audna\.canvas-memory\canvas.db`):
+**Production Database** (`C:\Users\Audna\.keimenon\keimenon.db`):
 
 ```sql
 sqlite> SELECT user_id, account_id FROM user_accounts WHERE user_id = 'usr_fixture_gamma';
@@ -405,7 +405,7 @@ NODE_ENV=test npm run dev:api
 Configure all tests to use the same database:
 
 ```bash
-cp .test-dbs/snapshot-template.db C:\Users\Audna\.canvas-memory\canvas.db
+cp .test-dbs/snapshot-template.db C:\Users\Audna\.keimenon\keimenon.db
 ```
 
 **Changes Needed**:
@@ -440,7 +440,7 @@ cp .test-dbs/snapshot-template.db C:\Users\Audna\.canvas-memory\canvas.db
 
 ### Database
 
-4. **C:\Users\Audna\.canvas-memory\canvas.db**
+4. **C:\Users\Audna\.keimenon\keimenon.db**
    - Manually updated with gamma user fixtures for manual testing
 
 ---
@@ -512,7 +512,7 @@ Running 10 tests using 1 worker
 
 ✓ [chromium] › auth-account-switching.spec.ts:38:7 › should show account selector when user has multiple accounts
 
-✗ [chromium] › auth-account-switching.spec.ts:60:7 › should navigate to canvas after selecting account
+✗ [chromium] › auth-account-switching.spec.ts:60:7 › should navigate to keimenon after selecting account
 ✗ [chromium] › auth-account-switching.spec.ts:84:7 › should allow switching between accounts via settings
 ✗ [chromium] › auth-account-switching.spec.ts:116:7 › should update JWT token when switching accounts
 ✗ [chromium] › auth-account-switching.spec.ts:154:7 › should only show current account data after switching

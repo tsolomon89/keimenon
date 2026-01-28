@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * Storage mode configuration
  */
-export const StorageModeSchema = z.enum(['local', 'canvas', 'hybrid']);
+export const StorageModeSchema = z.enum(['local', 'keimenon', 'hybrid']);
 export type StorageMode = z.infer<typeof StorageModeSchema>;
 
 /**
@@ -13,22 +13,26 @@ export const GroupingConfigSchema = z.object({
   mode: z.enum(['auto', 'manual', 'hybrid']),
 
   // Auto-grouping settings
-  auto: z.object({
-    targetGroupCount: z.number().min(1).max(500).default(25),
-    createCatchAll: z.boolean().default(true),
-    minGroupSize: z.number().min(1).default(2),
-    algorithm: z.enum(['keyword', 'tfidf', 'embedding']).default('tfidf'),
-  }).optional(),
+  auto: z
+    .object({
+      targetGroupCount: z.number().min(1).max(500).default(25),
+      createCatchAll: z.boolean().default(true),
+      minGroupSize: z.number().min(1).default(2),
+      algorithm: z.enum(['keyword', 'tfidf', 'embedding']).default('tfidf'),
+    })
+    .optional(),
 
   // Manual groups
-  manual: z.array(
-    z.object({
-      name: z.string().min(1).max(100),
-      keywords: z.array(z.string()),
-      color: z.string().optional(),
-      icon: z.string().optional(),
-    })
-  ).default([]),
+  manual: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(100),
+        keywords: z.array(z.string()),
+        color: z.string().optional(),
+        icon: z.string().optional(),
+      })
+    )
+    .default([]),
 });
 
 export type GroupingConfig = z.infer<typeof GroupingConfigSchema>;
@@ -90,7 +94,7 @@ export const DuplicateConfigSchema = z.object({
 
   // Layer 3: Semantic (Pro feature)
   detectSemantic: z.boolean().default(false),
-  semanticThreshold: z.number().min(0).max(1).default(0.90),
+  semanticThreshold: z.number().min(0).max(1).default(0.9),
 
   // Action
   createReviewFolders: z.boolean().default(true),
@@ -124,7 +128,7 @@ export const ImportConfigurationSchema = z.object({
 export type ImportConfiguration = z.infer<typeof ImportConfigurationSchema>;
 
 /**
- * Application configuration (stored in ~/.canvas-memory/config.json)
+ * Application configuration (stored in ~/.keimenon/config.json)
  */
 export const AppConfigSchema = z.object({
   version: z.string().default('1.0'),
@@ -200,7 +204,7 @@ export const DEFAULT_DUPLICATE_CONFIG: DuplicateConfig = {
   detectNear: true,
   nearThreshold: 0.85,
   detectSemantic: false,
-  semanticThreshold: 0.90,
+  semanticThreshold: 0.9,
   createReviewFolders: true,
   autoMergeSuggestions: false,
 };

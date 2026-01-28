@@ -1,4 +1,4 @@
-# Canvas Memory OS — Comprehensive Deep Dive Analysis
+# Keimenon — Comprehensive Deep Dive Analysis
 
 **Date**: 2025-10-13
 **Version**: 1.0
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Canvas Memory OS is a **graph-native knowledge management system** with significant documentation and ambitious vision docs, but with **mixed implementation status**. The project has made excellent progress on backend infrastructure and authentication, but has **critical gaps** between the comprehensive specifications in `ai_context/` and the actual implemented features.
+Keimenon is a **graph-native knowledge management system** with significant documentation and ambitious vision docs, but with **mixed implementation status**. The project has made excellent progress on backend infrastructure and authentication, but has **critical gaps** between the comprehensive specifications in `ai_context/` and the actual implemented features.
 
 ### Health Score by Component
 
@@ -116,13 +116,13 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 
 ### 1.2 Frontend (PARTIAL - Core Only)
 
-#### ✅ Canvas Visualization (2D Only)
+#### ✅ Keimenon Visualization (2D Only)
 
 - **Status**: Working but basic
 - **Files**:
-  - `apps/web/src/components/canvas/Canvas2D.tsx`
-  - `apps/web/src/components/canvas/CanvasLayout.tsx`
-  - `apps/web/src/app/canvas/page.tsx`
+  - `apps/web/src/components/keimenon/Keimenon2D.tsx`
+  - `apps/web/src/components/keimenon/KeimenonLayout.tsx`
+  - `apps/web/src/app/keimenon/page.tsx`
 - **Features**:
   - D3-force layout
   - Pan/zoom controls
@@ -138,7 +138,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 - **Status**: Complete
 - **Files**:
   - `apps/web/src/app/ingest/page.tsx`
-  - `apps/web/src/components/canvas/UploadModal.tsx`
+  - `apps/web/src/components/keimenon/UploadModal.tsx`
 - **Features**:
   - Drag-and-drop
   - Progress tracking
@@ -162,8 +162,8 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 | Page          | Status      | What Exists        | What's Missing                                            |
 | ------------- | ----------- | ------------------ | --------------------------------------------------------- |
 | `/` Landing   | ✅ Exists   | Basic landing page | Content, links, navigation                                |
-| `/canvas`     | ✅ Working  | 2D visualization   | Selection tools, keyboard shortcuts, context menus        |
-| `/board/[id]` | ✅ Working  | Canvas view        | FourRegionLayout (LHS/RHS sidebars), proper zoom controls |
+| `/keimenon`   | ✅ Working  | 2D visualization   | Selection tools, keyboard shortcuts, context menus        |
+| `/board/[id]` | ✅ Working  | Keimenon view      | FourRegionLayout (LHS/RHS sidebars), proper zoom controls |
 | `/ingest`     | ✅ Complete | Upload UI          | Better progress indicators, batch controls                |
 | `/login`      | ⚠️ Mock     | Login form         | Integration with real auth API                            |
 | `/claims`     | ❌ Missing  | -                  | Entire page needs building                                |
@@ -176,14 +176,14 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 
 ### 2.2 UI Component Library (30% Complete)
 
-**What Exists** (from `apps/web/src/components/canvas/`):
+**What Exists** (from `apps/web/src/components/keimenon/`):
 
-- ✅ Canvas2D.tsx
-- ✅ CanvasLayout.tsx
-- ✅ CanvasHeader.tsx
-- ✅ CanvasFooter.tsx
-- ✅ CanvasSidebar.tsx
-- ✅ CanvasToolbar.tsx
+- ✅ Keimenon2D.tsx
+- ✅ KeimenonLayout.tsx
+- ✅ KeimenonHeader.tsx
+- ✅ KeimenonFooter.tsx
+- ✅ KeimenonSidebar.tsx
+- ✅ KeimenonToolbar.tsx
 - ✅ UploadModal.tsx
 - ✅ ChatImportModal.tsx
 - ✅ GroupCard.tsx
@@ -197,7 +197,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 - ❌ RHS Sidebar (Selection Stack, Claims Editor, Scope Builder, Verification Panel)
 - ❌ Context Ring Menu (radial menu on selection)
 - ❌ Edge Sculpting Tools
-- ❌ Lens Dial (on-canvas control)
+- ❌ Lens Dial (on-keimenon control)
 - ❌ Zoom HUD with fit-to-selection
 - ❌ Toast notifications
 - ❌ Error boundaries
@@ -253,7 +253,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 
 **Spec Location**:
 
-- `canvas_memory_os_living_spec_v_0.md` lines 89-99
+- `keimenon_living_spec_v_0.md` lines 89-99
 - `MASTER_DOCS.md` lines 362-381
 
 **What's Missing**:
@@ -273,7 +273,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 
 **Spec Location**:
 
-- `canvas_memory_os_living_spec_v_0.md` lines 100-104
+- `keimenon_living_spec_v_0.md` lines 100-104
 - `MASTER_DOCS.md` lines 382-407
 - `TODO_TRACKER.md` lines 93-121
 
@@ -294,7 +294,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 
 **Spec Location**:
 
-- `canvas_memory_os_living_spec_v_0.md` lines 89-99
+- `keimenon_living_spec_v_0.md` lines 89-99
 - `TODO_TRACKER.md` lines 335-357
 
 **What's Missing**:
@@ -315,7 +315,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 
 **Spec Location**:
 
-- `canvas_memory_os_living_spec_v_0.md` lines 62-66
+- `keimenon_living_spec_v_0.md` lines 62-66
 - `ui_screens_layout_view_map_v_0.md` lines 112-114
 
 **What's Missing**:
@@ -334,7 +334,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 
 **Spec Location**:
 
-- `canvas_memory_os_living_spec_v_0.md` lines 67-85
+- `keimenon_living_spec_v_0.md` lines 67-85
 - `MASTER_DOCS.md` lines 556-568
 
 **What's Missing**:
@@ -369,7 +369,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 
 **Impact**: **HIGH** - Professional UI needed for usability at scale.
 
-#### ❌ Advanced Canvas Features
+#### ❌ Advanced Keimenon Features
 
 **Spec Location**: `ui_screens_layout_view_map_v_0.md` lines 28-58
 
@@ -384,7 +384,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 - Multi-select (Shift+click)
 - Context ring menu (radial menu)
 - Edge sculpting
-- Lens dial (on-canvas control)
+- Lens dial (on-keimenon control)
 - Zoom HUD with fit-to-selection
 - Minimap
 
@@ -481,7 +481,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 
 ### 4.1 Living Spec Coverage
 
-**File**: `ai_context/docs_archive/canvas_memory_os_living_spec_v_0.md` (152 lines)
+**File**: `ai_context/docs_archive/keimenon_living_spec_v_0.md` (152 lines)
 
 | Section                               | Spec Lines | Implemented                  | % Complete |
 | ------------------------------------- | ---------- | ---------------------------- | ---------- |
@@ -509,7 +509,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 | Section                       | Implemented | Notes                           |
 | ----------------------------- | ----------- | ------------------------------- |
 | **1) Global frame & Z-order** | ❌ 0%       | No FourRegionLayout             |
-| **2) Main Viewport lenses**   | 25%         | Only 2D canvas                  |
+| **2) Main Viewport lenses**   | 25%         | Only 2D keimenon                |
 | **3) Header / Top Tools**     | 10%         | Basic header only               |
 | **4) LHS Sidebar**            | 0%          | Not implemented                 |
 | **5) RHS Sidebar**            | 0%          | Not implemented                 |
@@ -711,7 +711,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 - `MASTER_DOCS.md` (1224 lines) - Mixes vision with reality
 - `ARCHITECTURE.md` (1093 lines) - Accurate for backend
 - `TODO_TRACKER.md` (674 lines) - Lists what's missing
-- `canvas_memory_os_living_spec_v_0.md` (152 lines) - Vision doc
+- `keimenon_living_spec_v_0.md` (152 lines) - Vision doc
 - `ui_screens_layout_view_map_v_0.md` (216 lines) - Detailed UI spec
 - `plans_tiers_accounts_roles_and_phased_rollout_v_0.md` (327 lines) - Tiering spec
 
@@ -777,7 +777,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 
 ### 8.3 Phase 2 (1 Month)
 
-11. **3D Canvas** (12-16 hours)
+11. **3D Keimenon** (12-16 hours)
 12. **Archetype Framework** (16-20 hours)
 13. **Chat with Scope** (16-20 hours)
 14. **Verifiers (HTTP/Schema/Compute)** (20-24 hours)
@@ -937,11 +937,11 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 
 - ✅ page.tsx (landing)
 - ✅ ingest/page.tsx
-- ✅ canvas/page.tsx
+- ✅ keimenon/page.tsx
 - ✅ board/[id]/page.tsx
 - ⚠️ login/page.tsx (mock)
 
-**Components** (~20 files in canvas/):
+**Components** (~20 files in keimenon/):
 
 - Mixed completion status
 
@@ -966,7 +966,7 @@ Canvas Memory OS is a **graph-native knowledge management system** with signific
 
 ## Conclusion
 
-Canvas Memory OS is a **well-architected project** with **excellent backend foundations** (database abstraction, authentication, chat import) but **significant gaps** between its ambitious specifications and actual implementation.
+Keimenon is a **well-architected project** with **excellent backend foundations** (database abstraction, authentication, chat import) but **significant gaps** between its ambitious specifications and actual implementation.
 
 **Key Takeaways**:
 

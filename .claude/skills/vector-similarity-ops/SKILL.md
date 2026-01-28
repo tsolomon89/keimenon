@@ -1,7 +1,7 @@
 ---
 name: vector-similarity-ops
 description: Operates on similarity detection, duplicate resolution, and vector-based operations. Understands Jaccard, Levenshtein, Cosine algorithms. Validates deduplication logic, fingerprinting, and DUP_OF edge creation. Use when working with import, deduplication, or similarity features.
-allowed-tools: Read, Write, Edit, Grep, mcp__canvas-database__query_nodes, mcp__canvas-database__query_edges
+allowed-tools: Read, Write, Edit, Grep, mcp__keimenon-database__query_nodes, mcp__keimenon-database__query_edges
 ---
 
 ---
@@ -683,7 +683,7 @@ for (const bucket in buckets) {
 
 ```typescript
 // Test deduplication with known duplicates
-mcp__canvas -
+mcp__keimenon -
   chat -
   import__test_deduplication({
     algorithm: 'jaccard',
@@ -691,7 +691,7 @@ mcp__canvas -
   });
 
 // Import test dataset
-mcp__canvas -
+mcp__keimenon -
   chat -
   import__import_test_dataset({
     dataset_name: 'tiny', // Has known duplicates
@@ -705,7 +705,7 @@ mcp__canvas -
   });
 
 // Verify results
-mcp__canvas -
+mcp__keimenon -
   chat -
   import__verify_import_results({
     import_id: 'result_from_above',
@@ -716,14 +716,14 @@ mcp__canvas -
 
 ```typescript
 // Find all DUP_OF edges
-mcp__canvas -
+mcp__keimenon -
   database__query_edges({
     kind: 'DUP_OF',
     limit: 100,
   });
 
 // Find SIMILAR_TO edges with high scores
-mcp__canvas -
+mcp__keimenon -
   database__query_edges({
     kind: 'SIMILAR_TO',
     limit: 50,

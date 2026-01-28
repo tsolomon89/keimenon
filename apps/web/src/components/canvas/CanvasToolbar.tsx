@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useShell } from '@/contexts/ShellContext';
 
-interface CanvasToolbarProps {
+interface KeimenonToolbarProps {
   onUploadClick: () => void;
   onLeftSidebarToggle: () => void;
   onRightSidebarToggle: () => void;
@@ -29,14 +29,14 @@ interface CanvasToolbarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onCenterView: () => void;
-  canvasSurface: 'canvas' | 'legacy' | 'processing';
-  onCanvasSurfaceChange: (surface: 'canvas' | 'legacy' | 'processing') => void;
+  keimenonSurface: 'keimenon' | 'legacy' | 'processing';
+  onKeimenonSurfaceChange: (surface: 'keimenon' | 'legacy' | 'processing') => void;
   dashboardView: 'analytics' | 'storage';
   onDashboardViewChange: (view: 'analytics' | 'storage') => void;
   processingAvailable?: boolean;
 }
 
-export function CanvasToolbar({
+export function KeimenonToolbar({
   onUploadClick,
   onLeftSidebarToggle,
   onRightSidebarToggle,
@@ -47,29 +47,29 @@ export function CanvasToolbar({
   onZoomIn,
   onZoomOut,
   onCenterView,
-  canvasSurface,
-  onCanvasSurfaceChange,
+  keimenonSurface,
+  onKeimenonSurfaceChange,
   dashboardView,
   onDashboardViewChange,
   processingAvailable = false,
-}: CanvasToolbarProps) {
-  const { canvasMode, setCanvasMode } = useShell();
+}: KeimenonToolbarProps) {
+  const { keimenonMode, setKeimenonMode } = useShell();
 
-  const isCanvasMode = canvasMode === 'canvas';
-  const isDashboardMode = canvasMode === 'dashboard';
+  const isKeimenonMode = keimenonMode === 'keimenon';
+  const isDashboardMode = keimenonMode === 'dashboard';
 
-  const handleCanvasMode = () => {
-    setCanvasMode('canvas');
-    onCanvasSurfaceChange('canvas');
+  const handleKeimenonMode = () => {
+    setKeimenonMode('keimenon');
+    onKeimenonSurfaceChange('keimenon');
   };
 
   const handleDashboardMode = () => {
-    setCanvasMode('dashboard');
+    setKeimenonMode('dashboard');
     onDashboardViewChange('analytics');
   };
 
   const handleSettingsMode = () => {
-    setCanvasMode('settings');
+    setKeimenonMode('settings');
   };
 
   const sidebarButtonClass = (isActive: boolean, extra?: string) =>
@@ -122,32 +122,32 @@ export function CanvasToolbar({
         </button>
       </div>
 
-      {isCanvasMode && (
+      {isKeimenonMode && (
         <div className="hidden md:flex items-center gap-2 lg:gap-3">
           <div className="flex items-center bg-slate-800/50 rounded-lg p-0.5 border border-slate-700/50 shadow-inner">
             <button
-              onClick={() => onCanvasSurfaceChange('canvas')}
+              onClick={() => onKeimenonSurfaceChange('keimenon')}
               type="button"
-              className={surfaceButtonClass(canvasSurface === 'canvas')}
-              title="Canvas View"
+              className={surfaceButtonClass(keimenonSurface === 'keimenon')}
+              title="Keimenon View"
             >
               <Grid3x3 className="w-4 h-4" />
             </button>
 
             <button
-              onClick={() => onCanvasSurfaceChange('legacy')}
+              onClick={() => onKeimenonSurfaceChange('legacy')}
               type="button"
-              className={surfaceButtonClass(canvasSurface === 'legacy')}
+              className={surfaceButtonClass(keimenonSurface === 'legacy')}
               title="Legacy Board View"
             >
               <Layers3 className="w-4 h-4" />
             </button>
 
             <button
-              onClick={() => onCanvasSurfaceChange('processing')}
+              onClick={() => onKeimenonSurfaceChange('processing')}
               type="button"
               disabled={!processingAvailable}
-              className={surfaceButtonClass(canvasSurface === 'processing', !processingAvailable)}
+              className={surfaceButtonClass(keimenonSurface === 'processing', !processingAvailable)}
               title="Processing View"
             >
               <Activity className="w-4 h-4" />
@@ -210,15 +210,15 @@ export function CanvasToolbar({
         </div>
       )}
 
-      {!isCanvasMode && !isDashboardMode && <div className="flex-1" />}
+      {!isKeimenonMode && !isDashboardMode && <div className="flex-1" />}
 
       <div className="flex items-center gap-2">
         <div className="flex items-center bg-slate-800/50 rounded-lg p-0.5 border border-slate-700/50 shadow-inner">
           <button
-            onClick={handleCanvasMode}
+            onClick={handleKeimenonMode}
             type="button"
-            className={modeButtonClass(canvasMode === 'canvas')}
-            title="Canvas"
+            className={modeButtonClass(keimenonMode === 'keimenon')}
+            title="Keimenon"
           >
             <Grid3x3 className="w-4 h-4" />
           </button>
@@ -226,7 +226,7 @@ export function CanvasToolbar({
           <button
             onClick={handleDashboardMode}
             type="button"
-            className={modeButtonClass(canvasMode === 'dashboard')}
+            className={modeButtonClass(keimenonMode === 'dashboard')}
             title="Dashboard"
           >
             <LayoutDashboard className="w-4 h-4" />
@@ -235,7 +235,7 @@ export function CanvasToolbar({
           <button
             onClick={handleSettingsMode}
             type="button"
-            className={modeButtonClass(canvasMode === 'settings')}
+            className={modeButtonClass(keimenonMode === 'settings')}
             title="Settings"
           >
             <Settings className="w-4 h-4" />

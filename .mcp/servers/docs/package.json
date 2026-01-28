@@ -15,7 +15,7 @@
     "search",
     "keimenon"
   ],
-  "author": "Canvas Memory OS Team",
+  "author": "Keimenon Team",
   "license": "PRIVATE",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.0",

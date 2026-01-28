@@ -32,7 +32,7 @@
 - **Status**: 6/8 tests passing (75%)
 - **Duration**: ~23.6 seconds
 - **Failed Tests**:
-  1. `authenticated user should access canvas directly` - Timeout at 20s
+  1. `authenticated user should access keimenon directly` - Timeout at 20s
   2. `logout should clear session and redirect to login` - Timeout at 20s
 
 #### WebKit Failure Analysis
@@ -42,7 +42,7 @@
 **Specific Issues**:
 
 1. **Test**: Authenticated user direct access
-   - Symptom: Timeout waiting for redirect to /canvas
+   - Symptom: Timeout waiting for redirect to /keimenon
    - Likely cause: localStorage read timing in WebKit
 
 2. **Test**: Logout flow

@@ -623,7 +623,7 @@ Task({
       "locator": "page.getByRole('button', { name: /create node/i })",
       "triggers_endpoint": "POST /api/v1/nodes",
       "has_test": true,
-      "screenshot": "visual-crawl/canvas-full.png"
+      "screenshot": "visual-crawl/keimenon-full.png"
     }
   ]
 }

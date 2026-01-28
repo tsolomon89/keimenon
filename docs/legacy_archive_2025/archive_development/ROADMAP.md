@@ -104,7 +104,7 @@ See [ai_context/PHASE6_LOCAL_FIRST_COMPLETE.md](./PHASE6_LOCAL_FIRST_COMPLETE.md
 ### Key Achievements
 
 ✅ **Complete Full-Stack Application** - Frontend + API + Database all running locally
-✅ **60+ React Components** - Canvas2D, import UI, layout components already built
+✅ **60+ React Components** - Keimenon2D, import UI, layout components already built
 ✅ **D3-Force Visualization** - Interactive 2D graph with pan/zoom/selection
 ✅ **Real-Time Import UI** - Streaming progress for chat file uploads
 ✅ **Zero New Code** - Discovered frontend was already complete
@@ -122,7 +122,7 @@ See [ai_context/PHASE6_LOCAL_FIRST_COMPLETE.md](./PHASE6_LOCAL_FIRST_COMPLETE.md
 **Access Points**:
 
 - Web UI: http://localhost:3000
-- Canvas: http://localhost:3000/canvas
+- Keimenon: http://localhost:3000/keimenon
 - Import: http://localhost:3000/ingest
 - API: http://localhost:4001/api/v1
 
@@ -191,16 +191,16 @@ See [ai_context/PHASE7_FRONTEND_CONNECTION.md](./PHASE7_FRONTEND_CONNECTION.md) 
 
 ---
 
-## Phase 1C: 2D Canvas Visualization ✅ MOSTLY COMPLETE
+## Phase 1C: 2D Keimenon Visualization ✅ MOSTLY COMPLETE
 
 **Timeline**: Complete (prior sessions)
 **Status**: ✅ Core visualization complete, ⚠️ some advanced features pending
-**Goal**: Users can see their graph on an interactive 2D canvas
+**Goal**: Users can see their graph on an interactive 2D keimenon
 
 ### Frontend Tasks ✅
 
-- [x] Create `/canvas` page (apps/web/src/app/canvas/)
-- [x] Build Canvas component (Canvas2D.tsx)
+- [x] Create `/keimenon` page (apps/web/src/app/keimenon/)
+- [x] Build Keimenon component (Keimenon2D.tsx)
   - [x] Pan & zoom (trackpad/mousewheel)
   - [x] D3-force graph layout with calculateLayout()
   - [x] Stable layout with seed (seed: 42, iterations: 300)
@@ -214,7 +214,7 @@ See [ai_context/PHASE7_FRONTEND_CONNECTION.md](./PHASE7_FRONTEND_CONNECTION.md) 
   - [x] Hover state handling
   - [x] Selection state (normal, hover, selected)
   - [ ] Advanced cards with thumbnails (PARTIAL)
-- [x] Canvas Layout (CanvasLayout.tsx)
+- [x] Keimenon Layout (KeimenonLayout.tsx)
   - [x] Upload modal integration
   - [x] Chat import modal integration
   - [x] FirstTimeUploadModal for onboarding
@@ -252,7 +252,7 @@ See [ai_context/PHASE7_FRONTEND_CONNECTION.md](./PHASE7_FRONTEND_CONNECTION.md) 
   - [x] Force simulation configuration
 - [x] Basic node/edge utilities
   - [x] Transform handling (pan/zoom state)
-  - [x] Canvas coordinate calculations
+  - [x] Keimenon coordinate calculations
   - [ ] Distance calculations (PARTIAL)
   - [ ] Intersection detection for lasso (NOT YET IMPLEMENTED)
   - [ ] Collision detection (NOT YET IMPLEMENTED)
@@ -481,7 +481,7 @@ See [ai_context/PHASE7_FRONTEND_CONNECTION.md](./PHASE7_FRONTEND_CONNECTION.md) 
 - ✅ **Phase 6**: Local-First Migration (SQLite, DatabaseClient, 20+ endpoints)
 - ✅ **Phase 7**: Frontend Connection (60+ components, D3 visualization)
 - ✅ **Phase 1B**: File Ingest & Autogroup (upload, fingerprinting, grouping)
-- ✅ **Phase 1C**: 2D Canvas Visualization (mostly complete, some advanced features pending)
+- ✅ **Phase 1C**: 2D Keimenon Visualization (mostly complete, some advanced features pending)
 - ✅ **Phase 1E**: Chat Import & Duplicate Detection (full system with streaming)
 
 ### What's Pending ⚠️

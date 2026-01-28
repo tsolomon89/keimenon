@@ -30,7 +30,12 @@ export interface MigrationRecord {
 }
 
 export class MigrationRunner {
-  constructor(private db: Database.Database) {}
+  constructor(
+    private db: Database.Database,
+    private migrationsDir?: string
+  ) {
+    console.log('DEBUG RUNNER DB:', db.name);
+  }
 
   /**
    * Run all pending migrations
@@ -73,7 +78,9 @@ export class MigrationRunner {
    * Ensure migrations tracking table exists
    */
   private ensureMigrationsTable(): void {
-    this.db.exec(`
+    console.log('DEBUG: Creating migrations table if not exists...');
+    try {
+      this.db.exec(`
       CREATE TABLE IF NOT EXISTS migrations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
@@ -81,6 +88,10 @@ export class MigrationRunner {
         checksum TEXT
       )
     `);
+    } catch (err: any) {
+      console.error('ERROR in ensureMigrationsTable:', err);
+      throw err;
+    }
   }
 
   /**
@@ -96,7 +107,10 @@ export class MigrationRunner {
    */
   private async getAvailableMigrations(): Promise<Array<{ name: string; path: string }>> {
     // Migrations are in packages/db/src/sqlite/migrations/
-    const migrationsDir = path.join(__dirname, 'migrations');
+    // Migrations are in packages/db/src/sqlite/migrations/
+    const migrationsDir = this.migrationsDir || path.join(__dirname, 'migrations');
+    console.log('DEBUG: __dirname:', __dirname);
+    console.log('DEBUG: migrationsDir:', migrationsDir);
 
     let files: string[];
     try {

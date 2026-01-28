@@ -1,6 +1,6 @@
-// Canvas visualization types
+// Keimenon visualization types
 
-export interface CanvasNode {
+export interface KeimenonNode {
   id: string;
   type: 'source' | 'group' | 'conversation' | 'code';
   position: { x: number; y: number };
@@ -12,7 +12,7 @@ export interface CanvasNode {
   selected?: boolean;
 }
 
-export interface CanvasGroup {
+export interface KeimenonGroup {
   id: string;
   name: string;
   color?: string;
@@ -44,9 +44,9 @@ export interface FolderNode {
 
 export type TreeNode = SourceNode | FolderNode;
 
-export interface CanvasState {
-  nodes: CanvasNode[];
-  groups: CanvasGroup[];
+export interface KeimenonState {
+  nodes: KeimenonNode[];
+  groups: KeimenonGroup[];
   selectedNodeIds: string[];
   viewport: {
     x: number;

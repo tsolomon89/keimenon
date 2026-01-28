@@ -93,7 +93,7 @@ curl -N -H "Authorization: Bearer $TOKEN" \
      - Upload flow with FormData and backend config mapping
      - Error handling and connection state indicators
 
-2. **`apps/web/src/components/canvas/ImportsTableCard.tsx`** (+50 lines)
+2. **`apps/web/src/components/keimenon/ImportsTableCard.tsx`** (+50 lines)
    - Imported `useImportProgressStream`
    - Added `updateJobFromProgress()` callback
    - Active imports tracking with `activeImportIds`
@@ -133,7 +133,7 @@ cd apps/api && npm run dev
 cd apps/web && npm run dev
 
 # In browser:
-1. Navigate to http://localhost:3000/canvas
+1. Navigate to http://localhost:3000/keimenon
 2. Click Upload button → Opens ImportFlowPanel in Inspector Bar
 3. Select JSON file → Auto-advance to config
 4. Click "Start Import" → Watch real-time progress
@@ -165,7 +165,7 @@ cd apps/web && npm run dev
    - `CompactImportStats` variant for table rows
 
 3. **`apps/web/src/components/import/ImportMiniGraph.tsx`** (319 lines)
-   - Canvas-based force-directed graph
+   - Keimenon-based force-directed graph
    - Galaxy-style visual effects:
      - Radial gradients (2-layer: outer glow + inner core)
      - Particle systems (20 particles per node spawn)
@@ -173,7 +173,7 @@ cd apps/web && npm run dev
      - Node physics (gravity toward center, orbital motion)
      - Boundary bounce with damping (0.8 coefficient)
      - Connection lines between nearby nodes (distance < 100px)
-     - Canvas trails with fade effect (rgba alpha 0.3)
+     - Keimenon trails with fade effect (rgba alpha 0.3)
    - Node types: ChatThread, Message, Source, CodeBlock
    - Colors: Purple, Blue, Green, Orange
    - Sizes: 20px, 8px, 14px, 12px
@@ -187,7 +187,7 @@ cd apps/web && npm run dev
    - Integrated into `StageProcessing` component:
      - `ImportPipelineProgress` at top (full width)
      - `ImportStatsPanel` in middle (3-column grid)
-     - `ImportMiniGraph` at bottom (600x400 canvas)
+     - `ImportMiniGraph` at bottom (600x400 keimenon)
    - Removed old `StatCard` component (replaced by `ImportStatsPanel`)
    - Enhanced error display with icon and better styling
    - Connection state indicator with amber styling
@@ -198,7 +198,7 @@ cd apps/web && npm run dev
 
 - Pipeline visualization with 7 stages and smooth transitions
 - Animated counters with easing (numbers grow smoothly)
-- Canvas graph with particles, gradients, and glow effects
+- Keimenon graph with particles, gradients, and glow effects
 - Real-time node spawning with spawn animations
 - Orbital physics (nodes orbit around center)
 - Particle emission from nodes (continuous sparkles)
@@ -211,7 +211,7 @@ cd apps/web && npm run dev
 - **Theme**: Galaxy/solar-system with dark space background
 - **Colors**: Purple (ChatThread), Blue (Message), Green (Source), Orange (CodeBlock)
 - **Effects**: Radial gradients, particle trails, pulse animations, glow auras
-- **Performance**: 60 FPS target, canvas rendering, automatic particle cleanup
+- **Performance**: 60 FPS target, keimenon rendering, automatic particle cleanup
 
 **Testing:**
 
@@ -220,7 +220,7 @@ cd apps/web && npm run dev
 1. Start import
 2. Watch pipeline stages light up sequentially
 3. See counters animate smoothly (15 → 342)
-4. Observe canvas graph with nodes orbiting and particles flowing
+4. Observe keimenon graph with nodes orbiting and particles flowing
 5. Notice connection lines appearing between nodes
 ```
 
@@ -247,14 +247,14 @@ cd apps/web && npm run dev
 1. `apps/web/src/hooks/useImportProgressStream.ts` - SSE consumer hook
 2. `apps/web/src/components/import/ImportPipelineProgress.tsx` - Pipeline visualization
 3. `apps/web/src/components/import/ImportStatsPanel.tsx` - Animated counters
-4. `apps/web/src/components/import/ImportMiniGraph.tsx` - Canvas graph
+4. `apps/web/src/components/import/ImportMiniGraph.tsx` - Keimenon graph
 5. `apps/web/src/components/inspector/ImportFlowPanel.tsx` - Unified import panel
 
 **Modified Files (2):**
 
 1. `apps/web/src/components/inspector/ImportFlowPanel.tsx` - Integrated visualizations
-2. `apps/web/src/components/canvas/ImportsTableCard.tsx` - Added SSE callback (partial)
-3. `apps/web/src/components/canvas/CanvasLayout.tsx` - Fixed syntax error (onZoomOut)
+2. `apps/web/src/components/keimenon/ImportsTableCard.tsx` - Added SSE callback (partial)
+3. `apps/web/src/components/keimenon/KeimenonLayout.tsx` - Fixed syntax error (onZoomOut)
 
 ### Total Lines Changed
 
@@ -290,14 +290,14 @@ cd apps/web && npm run dev
 
 4. **Add deprecation headers to legacy modals** (Cleanup)
    - Files:
-     - `apps/web/src/components/canvas/UploadModal.tsx`
-     - `apps/web/src/components/canvas/ChatImportModal.tsx`
+     - `apps/web/src/components/keimenon/UploadModal.tsx`
+     - `apps/web/src/components/keimenon/ChatImportModal.tsx`
      - `apps/web/src/components/import/StreamingUploadModal.tsx`
    - Add comment: `@deprecated Use ImportFlowPanel instead`
    - Plan removal date: After ImportFlowPanel is fully tested
 
 5. **Complete ImportsTableCard integration** (Feature)
-   - File: `apps/web/src/components/canvas/ImportsTableCard.tsx`
+   - File: `apps/web/src/components/keimenon/ImportsTableCard.tsx`
    - Replace mock data with real API calls
    - Subscribe to SSE for each active import
    - Add row selection → open Import Inspector in right sidebar
@@ -314,7 +314,7 @@ cd apps/web && npm run dev
    - `useImportProgressStream.test.ts` - Mock SSE, test reconnection logic
    - `ImportPipelineProgress.test.tsx` - Test stage transitions
    - `ImportStatsPanel.test.tsx` - Test counter animations
-   - `ImportMiniGraph.test.tsx` - Test canvas rendering
+   - `ImportMiniGraph.test.tsx` - Test keimenon rendering
 
 8. **Accessibility improvements** (A11y)
    - Add ARIA labels to pipeline stages
@@ -323,7 +323,7 @@ cd apps/web && npm run dev
    - Focus management in ImportFlowPanel
 
 9. **Performance optimizations** (Scale)
-   - Canvas rendering: Use offscreen canvas for particles
+   - Keimenon rendering: Use offscreen keimenon for particles
    - Counter animations: Use Web Animations API instead of RAF
    - Large imports: Virtual scrolling for stats (1000+ conversations)
    - Memory: Limit particle pool size (max 500 particles)
@@ -423,7 +423,7 @@ cd apps/web && npm run dev
 
 ### Unfinished/Incomplete:
 
-1. **`apps/web/src/components/canvas/ImportsTableCard.tsx`**
+1. **`apps/web/src/components/keimenon/ImportsTableCard.tsx`**
    - Line 110-117: Mock data, needs real API
    - Line 112-114: TODO comment to replace with real endpoint
    - Line 165: `setActiveImportIds` called but not used
@@ -440,7 +440,7 @@ cd apps/web && npm run dev
 
 ### Syntax Errors (FIXED ✅):
 
-1. **`apps/web/src/components/canvas/CanvasLayout.tsx`**
+1. **`apps/web/src/components/keimenon/KeimenonLayout.tsx`**
    - Line 104: Missing `=>` in arrow function (FIXED)
    - Was: `onZoomOut(() => ...)`
    - Now: `onZoomOut={() => ...}`
@@ -470,12 +470,12 @@ cd apps/web && npm run dev
 - **Future**: Consider aggregated stream (`/stream/all` returns all active imports)
 - **Tradeoff**: Simplicity vs efficiency
 
-### Canvas vs SVG for Graph:
+### Keimenon vs SVG for Graph:
 
-- **Chose Canvas** for performance with particles
+- **Chose Keimenon** for performance with particles
 - **Pros**: 60 FPS with hundreds of particles, smooth animations
 - **Cons**: Not accessible (no DOM nodes), harder to debug
-- **Alternative**: SVG for static graph, Canvas overlay for particles
+- **Alternative**: SVG for static graph, Keimenon overlay for particles
 
 ### Animated Counters: RAF vs CSS:
 
@@ -502,12 +502,12 @@ cd apps/web && npm run dev
 - **Memory**: ~5KB per hook instance
 - **Cleanup**: Automatic on unmount
 
-### Canvas Graph:
+### Keimenon Graph:
 
 - **FPS**: 60 (target), typically 55-60 actual
 - **Nodes**: Tested up to 100 (smooth)
 - **Particles**: Tested up to 500 (smooth)
-- **Memory**: ~5MB for canvas + particle arrays
+- **Memory**: ~5MB for keimenon + particle arrays
 - **CPU**: ~5-10% on modern browsers
 
 ### Animated Counters:

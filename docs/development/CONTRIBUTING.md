@@ -1,6 +1,6 @@
-# Contributing to Canvas Memory OS
+# Contributing to Keimenon
 
-Thank you for your interest in contributing to Canvas Memory OS! This document provides guidelines and workflows for contributing to the project.
+Thank you for your interest in contributing to Keimenon! This document provides guidelines and workflows for contributing to the project.
 
 ## Table of Contents
 
@@ -317,4 +317,4 @@ By contributing, you agree that your contributions will be licensed under the sa
 
 ---
 
-Thank you for contributing to Canvas Memory OS!
+Thank you for contributing to Keimenon!

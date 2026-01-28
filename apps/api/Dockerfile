@@ -9,7 +9,7 @@ WORKDIR /app
 RUN npm install -g turbo
 COPY . .
 # Prune the workspace for the api app
-RUN turbo prune --scope=@canvas-memory/api --docker
+RUN turbo prune --scope=@keimenon/api --docker
 
 # Add lockfile and package.json's of isolated subworkspace
 FROM base AS installer
@@ -27,7 +27,7 @@ COPY --from=builder /app/out/full/ .
 COPY turbo.json turbo.json
 
 # Build the project
-RUN npx turbo run build --filter=@canvas-memory/api...
+RUN npx turbo run build --filter=@keimenon/api...
 
 FROM base AS runner
 WORKDIR /app

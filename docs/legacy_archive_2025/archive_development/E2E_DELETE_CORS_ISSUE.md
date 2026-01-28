@@ -66,7 +66,7 @@ The browser is either:
 
 - `apps/api/src/modules/jobs/infrastructure/jobs.routes.ts` - Added SSE broadcast
 - `apps/api/src/app.ts` - Passed sseBroadcaster parameter
-- `apps/web/src/components/canvas/ImportsTableCard.tsx` - State capture fix
+- `apps/web/src/components/keimenon/ImportsTableCard.tsx` - State capture fix
 - `apps/api/src/middleware/security.middleware.ts` - Multiple CORS attempts
 - `tests/e2e/fixtures/testId.ts` - Disabled x-test-id header
 

@@ -1,6 +1,6 @@
 # Chat Import & Export — Spec (v0.2)
 
-**Purpose.** Define the user‑configurable import/export surface for AI‑chat JSON (ChatGPT/Claude/Gemini/etc.) as it enters **Canvas Memory**. This extends the old Colab v8 pipeline from "export‑only" to **import‑into‑graph**, while preserving offline/Free‑tier guarantees and the “no AI edits to user content” rule.
+**Purpose.** Define the user‑configurable import/export surface for AI‑chat JSON (ChatGPT/Claude/Gemini/etc.) as it enters **Keimenon**. This extends the old Colab v8 pipeline from "export‑only" to **import‑into‑graph**, while preserving offline/Free‑tier guarantees and the “no AI edits to user content” rule.
 
 **Non‑goals.** No LLM rewriting, summarizing, or semantic clustering during import by default. Models may **suggest** duplicates/aliases only when the user opts in; content written to Sources remains verbatim.
 

@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { errorCapture } from '@/services/error-capture.service';
 import { API_BASE_URL } from '@/lib/env.config';
 
-const TOKEN_KEY = 'canvas_memory_token';
+const TOKEN_KEY = 'keimenon_token';
 
 interface GroupNode {
   id: string;
@@ -247,7 +247,7 @@ export async function fetchFolderChildren(folderId: string): Promise<TreeNode[]>
 
 /**
  * Fetch member node IDs from a group
- * Used when a group is clicked to display its members in Canvas
+ * Used when a group is clicked to display its members in Keimenon
  */
 export async function fetchGroupMembers(groupId: string, recursive = false): Promise<string[]> {
   try {

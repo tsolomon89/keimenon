@@ -21,7 +21,7 @@
 | File                                                                                     | Status      | Impact                                 |
 | ---------------------------------------------------------------------------------------- | ----------- | -------------------------------------- |
 | [DataManagementCard.tsx](apps/web/src/components/settings/DataManagementCard.tsx)        | ✅ Complete | Removed page reloads, reactive updates |
-| [ImportsTableCard.tsx](apps/web/src/components/canvas/ImportsTableCard.tsx)              | ✅ Complete | Fixed bulk deletion sync               |
+| [ImportsTableCard.tsx](apps/web/src/components/keimenon/ImportsTableCard.tsx)            | ✅ Complete | Fixed bulk deletion sync               |
 | [BackgroundOperationsContext.tsx](apps/web/src/contexts/BackgroundOperationsContext.tsx) | ✅ Complete | Added bulk removal API                 |
 | [useJobStream.ts](apps/web/src/hooks/useJobStream.ts)                                    | ✅ Complete | Client-side job filtering              |
 | [OperatingContext.tsx](apps/web/src/contexts/OperatingContext.tsx)                       | ✅ Complete | Cache invalidation signal              |
@@ -50,12 +50,12 @@
 
 2. **✅ Helper Functions Created**
    - `dismissWelcomeModal(page)` - Handles z-50 overlay modal
-   - `navigateToSettings(page)` - Navigates to canvas
+   - `navigateToSettings(page)` - Navigates to keimenon
    - `waitForOperationsTable(page)` - Waits for table visibility
    - **Result**: Reusable test utilities
 
 3. **✅ Improved Locators**
-   - Changed from `getByRole('button', { name: /clear canvas data/i })` to `getByText('Clear Canvas Data')`
+   - Changed from `getByRole('button', { name: /clear keimenon data/i })` to `getByText('Clear Keimenon Data')`
    - Added force clicks: `firstRow.click({ force: true })`
    - Better confirmation modal selectors
    - **Result**: More reliable element finding
@@ -64,15 +64,15 @@
 
 #### **Issue 1: Settings Navigation** (Tests 2, 8)
 
-**Problem**: `navigateToSettings()` goes to `/canvas` but doesn't actually show settings
-**Why**: Settings are embedded in CanvasLayout, not a standalone route
-**Fix Needed**: Find and click the actual settings button/link in canvas UI
+**Problem**: `navigateToSettings()` goes to `/keimenon` but doesn't actually show settings
+**Why**: Settings are embedded in KeimenonLayout, not a standalone route
+**Fix Needed**: Find and click the actual settings button/link in keimenon UI
 
 **Current Code**:
 
 ```ts
 async function navigateToSettings(page: Page) {
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
   await dismissWelcomeModal(page);
   // ❌ Missing: Actually navigate to settings view
 }
@@ -82,7 +82,7 @@ async function navigateToSettings(page: Page) {
 
 ```ts
 async function navigateToSettings(page: Page) {
-  await page.goto('/canvas');
+  await page.goto('/keimenon');
   await dismissWelcomeModal(page);
 
   // TODO: Find the actual settings button
@@ -108,7 +108,7 @@ async function navigateToSettings(page: Page) {
 
 **Potential Solutions**:
 
-1. Force navigation back to canvas homepage between tests
+1. Force navigation back to keimenon homepage between tests
 2. Check if table is in a different part of DOM
 3. Add longer waits for page state to settle
 
@@ -138,16 +138,16 @@ expect(finalRowCount).toBeLessThan(initialRowCount); // ❌ Fails (18 === 18)
 
 ## Test-by-Test Status
 
-| #   | Test Name                                           | Status     | Issue              | Fix Required            |
-| --- | --------------------------------------------------- | ---------- | ------------------ | ----------------------- |
-| 1   | show delete job in background operations table      | ✅ PASSING | None               | None                    |
-| 2   | update UI without reload after canvas data deletion | ❌ FAILING | Settings not shown | Navigate to settings UI |
-| 3   | remove job from table after deletion                | ❌ FAILING | Table not found    | Fix table locator/state |
-| 4   | sync background operations with job table           | ❌ FAILING | Table not found    | Fix table locator/state |
-| 5   | auto-remove completed jobs after timeout            | ⏭️ SKIPPED | No completed jobs  | Expected behavior       |
-| 6   | handle bulk job deletion                            | ❌ FAILING | Delete not working | Fix delete confirmation |
-| 7   | refresh data when switching contexts                | ⏭️ SKIPPED | Not admin          | Expected behavior       |
-| 8   | show loading states during operations               | ❌ FAILING | Settings not shown | Navigate to settings UI |
+| #   | Test Name                                             | Status     | Issue              | Fix Required            |
+| --- | ----------------------------------------------------- | ---------- | ------------------ | ----------------------- |
+| 1   | show delete job in background operations table        | ✅ PASSING | None               | None                    |
+| 2   | update UI without reload after keimenon data deletion | ❌ FAILING | Settings not shown | Navigate to settings UI |
+| 3   | remove job from table after deletion                  | ❌ FAILING | Table not found    | Fix table locator/state |
+| 4   | sync background operations with job table             | ❌ FAILING | Table not found    | Fix table locator/state |
+| 5   | auto-remove completed jobs after timeout              | ⏭️ SKIPPED | No completed jobs  | Expected behavior       |
+| 6   | handle bulk job deletion                              | ❌ FAILING | Delete not working | Fix delete confirmation |
+| 7   | refresh data when switching contexts                  | ⏭️ SKIPPED | Not admin          | Expected behavior       |
+| 8   | show loading states during operations                 | ❌ FAILING | Settings not shown | Navigate to settings UI |
 
 ---
 
@@ -175,18 +175,18 @@ expect(finalRowCount).toBeLessThan(initialRowCount); // ❌ Fails (18 === 18)
 
 ### Investigation Task 1: Find Settings Navigation Path
 
-**Goal**: Determine how to navigate from `/canvas` to settings view
+**Goal**: Determine how to navigate from `/keimenon` to settings view
 
 **Steps**:
 
-1. Open browser to http://localhost:3000/canvas
+1. Open browser to http://localhost:3000/keimenon
 2. Log in as `admin@admin.com` / `admin123`
 3. Find the settings button/link (likely in sidebar or header)
 4. Click it and observe:
    - Does URL change?
    - Does a panel slide out?
    - Does main content switch?
-5. Find the "Clear Canvas Data" button
+5. Find the "Clear Keimenon Data" button
 6. Note the DOM hierarchy
 
 **Expected Findings**:
@@ -201,7 +201,7 @@ Option B: Settings is a modal/panel
   → Result: Panel slides in from right
 
 Option C: Settings is a route
-  → Navigate: await page.goto('/canvas/settings')
+  → Navigate: await page.goto('/keimenon/settings')
   → Result: Settings shown in main area
 ```
 
@@ -211,7 +211,7 @@ Option C: Settings is a route
 
 **Steps**:
 
-1. Open browser to http://localhost:3000/canvas
+1. Open browser to http://localhost:3000/keimenon
 2. Select a job in Background Operations table
 3. Click "Delete" button
 4. Observe:
@@ -238,7 +238,7 @@ if (await settingsButton.isVisible()) {
 }
 
 // Verify DataManagementCard is visible
-await page.getByText('Clear Canvas Data').waitFor({ timeout: 10000 });
+await page.getByText('Clear Keimenon Data').waitFor({ timeout: 10000 });
 ```
 
 ### Win #2: Fix Table State (15 min)

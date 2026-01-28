@@ -4,7 +4,7 @@ services:
   # Neo4j Database
   neo4j:
     image: neo4j:5.19
-    container_name: canvas-neo4j
+    container_name: keimenon-neo4j
     ports:
       - '7474:7474' # HTTP (Browser UI)
       - '7687:7687' # Bolt (API)
@@ -23,7 +23,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - canvas-network
+      - keimenon-network
 
   # API Server (Optional - can run locally for hot reload)
   # Uncomment if you want to run API in Docker
@@ -31,7 +31,7 @@ services:
   #   build:
   #     context: .
   #     dockerfile: apps/api/Dockerfile.dev
-  #   container_name: canvas-api
+  #   container_name: keimenon-api
   #   ports:
   #     - "3001:3001"
   #   depends_on:
@@ -52,7 +52,7 @@ services:
   #     - /app/node_modules
   #     - /app/apps/api/node_modules
   #   networks:
-  #     - canvas-network
+  #     - keimenon-network
   #   command: npm run dev
 
   # Frontend (Optional - can run locally for hot reload)
@@ -61,7 +61,7 @@ services:
   #   build:
   #     context: .
   #     dockerfile: apps/web/Dockerfile.dev
-  #   container_name: canvas-web
+  #   container_name: keimenon-web
   #   ports:
   #     - "3000:3000"
   #   depends_on:
@@ -76,7 +76,7 @@ services:
   #     - /app/apps/web/node_modules
   #     - /app/apps/web/.next
   #   networks:
-  #     - canvas-network
+  #     - keimenon-network
   #   command: npm run dev
 
 volumes:
@@ -86,5 +86,5 @@ volumes:
     driver: local
 
 networks:
-  canvas-network:
+  keimenon-network:
     driver: bridge

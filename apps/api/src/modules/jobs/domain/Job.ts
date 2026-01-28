@@ -34,7 +34,7 @@ export interface JobConfig {
   };
 
   // Delete job config
-  deleteScope?: 'canvas' | 'all-clients';
+  deleteScope?: 'keimenon' | 'all-clients';
 
   // Export job config
   exportFormat?: 'json' | 'csv' | 'markdown';
@@ -421,6 +421,42 @@ export class Job {
         total: stateData.progress.total || 0,
         message: stateData.progress.message,
       };
+    }
+
+    return job;
+  }
+
+  /**
+   * Reconstitute from JSON (e.g., from API or test clone)
+   */
+  static fromJSON(json: any): Job {
+    const state: JobState = {
+      status: json.state.status,
+      queuedAt: json.state.queuedAt ? new Date(json.state.queuedAt) : undefined,
+      startedAt: json.state.startedAt ? new Date(json.state.startedAt) : undefined,
+      completedAt: json.state.completedAt ? new Date(json.state.completedAt) : undefined,
+      canceledAt: json.state.canceledAt ? new Date(json.state.canceledAt) : undefined,
+      blockedAt: json.state.blockedAt ? new Date(json.state.blockedAt) : undefined,
+      error: json.state.error,
+      blockedReason: json.state.blockedReason,
+      retryCount: json.state.retryCount,
+    };
+
+    const job = new Job({
+      id: json.id,
+      type: json.type,
+      accountId: json.accountId,
+      createdBy: json.createdBy,
+      config: json.config,
+      idempotencyKey: json.idempotencyKey,
+      concurrencyGroup: json.concurrencyGroup,
+      state,
+      events: [],
+    });
+
+    // Restore progress
+    if (json.state.progress) {
+      (job as any)._progress = { ...json.state.progress };
     }
 
     return job;

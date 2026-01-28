@@ -17,7 +17,7 @@
  * - packages/db/src/sqlite/migrations/008_unified_jobs.sql
  */
 
-import { describe, test as it, before, after, beforeEach } from 'node:test';
+import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import assert from 'node:assert/strict';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
@@ -29,7 +29,7 @@ import Database from 'better-sqlite3';
 const API_URL = process.env.TEST_API_URL || 'http://localhost:4001';
 const DB_PATH =
   process.env.DB_PATH ||
-  path.join(process.env.HOME || process.env.USERPROFILE || '', '.canvas-memory', 'canvas.db');
+  path.join(process.env.HOME || process.env.USERPROFILE || '', '.keimenon', 'keimenon.db');
 
 // Test credentials (from migration 001_seed_admin.ts)
 const ADMIN_CREDENTIALS = {
@@ -208,58 +208,55 @@ function _countJobs(accountId: string, status?: string): number {
 // Test Suite Setup
 // ============================================================================
 
-before(
-  async () => {
-    console.log('\n🧪 Jobs System Integration Tests');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+beforeAll(async () => {
+  console.log('\n🧪 Jobs System Integration Tests');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-    // Open database connection
-    db = new Database(DB_PATH);
+  // Open database connection
+  db = new Database(DB_PATH);
 
-    // Dynamic credentials to ensure clean state
-    const timestamp = Date.now();
-    const adminEmail = `admin_${timestamp}@test.com`;
-    const clientEmail = `client_${timestamp}@test.com`;
+  // Dynamic credentials to ensure clean state
+  const timestamp = Date.now();
+  const adminEmail = `admin_${timestamp}@test.com`;
+  const clientEmail = `client_${timestamp}@test.com`;
 
-    // Register admin
-    try {
-      const adminAuth = await register(adminEmail, ADMIN_CREDENTIALS.password, 'Admin User');
-      adminToken = adminAuth.token;
-      adminAccountId = adminAuth.accountId;
-      console.log(`✓ Admin registered (${adminEmail}, ${adminAccountId})`);
-    } catch (e) {
-      console.warn('Registration failed, trying login:', (e as Error).message);
-      // Fallback to login if registration fails (e.g. user exists from previous run within same ms?)
-      const adminAuth = await login(ADMIN_CREDENTIALS.email, ADMIN_CREDENTIALS.password);
-      adminToken = adminAuth.token;
-      adminAccountId = adminAuth.accountId;
-      console.log(`✓ Admin logged in (${adminAccountId})`);
-    }
+  // Register admin
+  try {
+    const adminAuth = await register(adminEmail, ADMIN_CREDENTIALS.password, 'Admin User');
+    adminToken = adminAuth.token;
+    adminAccountId = adminAuth.accountId;
+    console.log(`✓ Admin registered (${adminEmail}, ${adminAccountId})`);
+  } catch (e) {
+    console.warn('Registration failed, trying login:', (e as Error).message);
+    // Fallback to login if registration fails (e.g. user exists from previous run within same ms?)
+    const adminAuth = await login(ADMIN_CREDENTIALS.email, ADMIN_CREDENTIALS.password);
+    adminToken = adminAuth.token;
+    adminAccountId = adminAuth.accountId;
+    console.log(`✓ Admin logged in (${adminAccountId})`);
+  }
 
-    // Register client
-    try {
-      const clientAuth = await register(clientEmail, CLIENT_CREDENTIALS.password, 'Client User');
-      clientToken = clientAuth.token;
-      clientAccountId = clientAuth.accountId;
-      console.log(`✓ Client registered (${clientEmail}, ${clientAccountId})`);
-    } catch (e) {
-      // Fallback
-      const clientAuth = await login(CLIENT_CREDENTIALS.email, CLIENT_CREDENTIALS.password);
-      clientToken = clientAuth.token;
-      clientAccountId = clientAuth.accountId;
-      console.log(`✓ Client logged in (${clientAccountId})`);
-    }
+  // Register client
+  try {
+    const clientAuth = await register(clientEmail, CLIENT_CREDENTIALS.password, 'Client User');
+    clientToken = clientAuth.token;
+    clientAccountId = clientAuth.accountId;
+    console.log(`✓ Client registered (${clientEmail}, ${clientAccountId})`);
+  } catch (e) {
+    // Fallback
+    const clientAuth = await login(CLIENT_CREDENTIALS.email, CLIENT_CREDENTIALS.password);
+    clientToken = clientAuth.token;
+    clientAccountId = clientAuth.accountId;
+    console.log(`✓ Client logged in (${clientAccountId})`);
+  }
 
-    // Verify test files exist
-    if (!fs.existsSync(TEST_FILES.tiny)) {
-      throw new Error(`Test file not found: ${TEST_FILES.tiny}`);
-    }
-    console.log(`✓ Test files verified\n`);
-  },
-  { timeout: 30000 }
-);
+  // Verify test files exist
+  if (!fs.existsSync(TEST_FILES.tiny)) {
+    throw new Error(`Test file not found: ${TEST_FILES.tiny}`);
+  }
+  console.log(`✓ Test files verified\n`);
+}, 30000);
 
-after(async () => {
+afterAll(async () => {
   // Cleanup test data
   if (db) {
     cleanupTestData(adminAccountId);
@@ -285,7 +282,7 @@ beforeEach(() => {
 // ============================================================================
 
 describe('Import Jobs', () => {
-  it('should create import job from file upload', { timeout: 10000 }, async () => {
+  it('should create import job from file upload', async () => {
     const form = createFormData(TEST_FILES.tiny, {
       exportCode: true,
       codeMinChars: 50,
@@ -309,9 +306,9 @@ describe('Import Jobs', () => {
     assert.strictEqual(data.job.state.status, 'queued');
     assert.strictEqual(data.job.config.files.length, 1);
     assert.ok(data.job.config.files[0].fileName.includes('tiny.json'));
-  });
+  }, 10000);
 
-  it('should process import job and update progress', { timeout: 60000 }, async () => {
+  it('should process import job and update progress', async () => {
     // Create job
     const form = createFormData(TEST_FILES.tiny);
     const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
@@ -356,9 +353,9 @@ describe('Import Jobs', () => {
     assert.ok(eventTypes.includes('job.succeeded'), 'Missing job.succeeded event');
 
     console.log(`   📝 Recorded ${events.length} job events`);
-  });
+  }, 60000);
 
-  it('should handle import job failure', { timeout: 60000 }, async () => {
+  it('should handle import job failure', async () => {
     // Create a temp file with invalid JSON
     const invalidFile = path.join(__dirname, 'invalid.json');
     fs.writeFileSync(invalidFile, '{ invalid json }');
@@ -392,9 +389,9 @@ describe('Import Jobs', () => {
         fs.unlinkSync(invalidFile);
       }
     }
-  });
+  }, 60000);
 
-  it('should support job cancellation', { timeout: 30000 }, async () => {
+  it('should support job cancellation', async () => {
     // Create job
     const form = createFormData(TEST_FILES.small); // Use small file for longer runtime
     const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
@@ -455,9 +452,9 @@ describe('Import Jobs', () => {
       assert.ok(statusData.job.state.canceledAt, 'Canceled job should have canceledAt timestamp');
       console.log(`   ✅ Job has canceledAt timestamp`);
     }
-  });
+  }, 30000);
 
-  it('should cancel queued job before it starts', { timeout: 60000 }, async () => {
+  it('should cancel queued job before it starts', async () => {
     // Create multiple jobs to fill the worker pool
     const jobIds: string[] = [];
 
@@ -510,9 +507,9 @@ describe('Import Jobs', () => {
     await Promise.all(
       jobIds.map((id) => waitForJobCompletion(id, adminToken, 30000).catch(() => null))
     );
-  });
+  }, 60000);
 
-  it('should pause a running job', { timeout: 30000 }, async () => {
+  it('should pause a running job', async () => {
     // Create job with small file for longer runtime
     const form = createFormData(TEST_FILES.small);
     const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
@@ -572,9 +569,9 @@ describe('Import Jobs', () => {
       assert.ok(statusData.job.state.blockedAt, 'Paused job should have blockedAt timestamp');
       console.log(`   ✅ Job has blockedAt timestamp`);
     }
-  });
+  }, 30000);
 
-  it('should resume a paused job', { timeout: 60000 }, async () => {
+  it('should resume a paused job', async () => {
     // Create and pause a job
     const form = createFormData(TEST_FILES.small);
     const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
@@ -649,9 +646,9 @@ describe('Import Jobs', () => {
     } else {
       console.log(`   ⏭️  Job completed before pause took effect, skipping resume test`);
     }
-  });
+  }, 60000);
 
-  it('should not pause a job that is not running', { timeout: 30000 }, async () => {
+  it('should not pause a job that is not running', async () => {
     // Create job
     const form = createFormData(TEST_FILES.tiny);
     const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
@@ -689,9 +686,9 @@ describe('Import Jobs', () => {
     );
 
     console.log(`   ✅ Correctly rejected pause on completed job`);
-  });
+  }, 30000);
 
-  it('should embed tenancy metadata in job config', { timeout: 10000 }, async () => {
+  it('should embed tenancy metadata in job config', async () => {
     const form = createFormData(TEST_FILES.tiny, {
       exportCode: true,
     });
@@ -744,7 +741,7 @@ describe('Import Jobs', () => {
       userType: job.config.tenancy.userType,
       membership: job.config.tenancy.accountMembership,
     });
-  });
+  }, 10000);
 });
 
 // ============================================================================
@@ -770,14 +767,14 @@ describe('Delete Jobs', () => {
     console.log(`   📝 Setup: Imported test data (${countNodes(adminAccountId)} nodes)`);
   });
 
-  it('should create delete job with exclusive lock', { timeout: 10000 }, async () => {
+  it('should create delete job with exclusive lock', async () => {
     const response = await fetch(`${API_URL}/api/v1/jobs/delete`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ scope: 'canvas' }),
+      body: JSON.stringify({ scope: 'keimenon' }),
     });
 
     assert.strictEqual(response.ok, true);
@@ -791,9 +788,9 @@ describe('Delete Jobs', () => {
     assert.strictEqual(job.concurrency_group, `delete:${adminAccountId}`);
 
     console.log(`   ✅ Delete job created with exclusive lock`);
-  });
+  }, 10000);
 
-  it('should delete all canvas data', { timeout: 60000 }, async () => {
+  it('should delete all keimenon data', async () => {
     const nodesBefore = countNodes(adminAccountId);
     assert.ok(nodesBefore > 0);
 
@@ -806,7 +803,7 @@ describe('Delete Jobs', () => {
         Authorization: `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ scope: 'canvas' }),
+      body: JSON.stringify({ scope: 'keimenon' }),
     });
 
     const data = (await response.json()) as any;
@@ -822,9 +819,9 @@ describe('Delete Jobs', () => {
     assert.strictEqual(nodesAfter, 0);
 
     console.log(`   ✅ All nodes deleted (${nodesBefore} → ${nodesAfter})`);
-  });
+  }, 60000);
 
-  it('should delete client data only (preserve system nodes)', { timeout: 10000 }, async () => {
+  it('should delete client data only (preserve system nodes)', async () => {
     // This test would require UserNode to exist
     // For now, just verify scope parameter works
     const response = await fetch(`${API_URL}/api/v1/jobs/delete`, {
@@ -846,7 +843,7 @@ describe('Delete Jobs', () => {
     assert.strictEqual(job.deleteScope, 'all-clients');
 
     console.log(`   ✅ Delete job created with scope: all-clients`);
-  });
+  }, 10000);
 });
 
 // ============================================================================
@@ -854,7 +851,7 @@ describe('Delete Jobs', () => {
 // ============================================================================
 
 describe('Job Idempotency', () => {
-  it('should prevent duplicate jobs with same idempotency key', { timeout: 10000 }, async () => {
+  it('should prevent duplicate jobs with same idempotency key', async () => {
     const idempotencyKey = `test-${Date.now()}`;
 
     // Create first job
@@ -895,7 +892,7 @@ describe('Job Idempotency', () => {
     assert.strictEqual(data2.jobId, jobId1);
 
     console.log(`   ✅ Idempotency key prevented duplicate job creation`);
-  });
+  }, 10000);
 });
 
 // ============================================================================
@@ -903,7 +900,7 @@ describe('Job Idempotency', () => {
 // ============================================================================
 
 describe('Multi-Tenant Isolation', () => {
-  it('should isolate jobs by account', { timeout: 30000 }, async () => {
+  it('should isolate jobs by account', async () => {
     // Create job for admin account
     const formAdmin = createFormData(TEST_FILES.tiny);
     const responseAdmin = await fetch(`${API_URL}/api/v1/jobs/import`, {
@@ -955,7 +952,7 @@ describe('Multi-Tenant Isolation', () => {
     assert.ok(!clientJobIds.includes(adminJobId));
 
     console.log(`   ✅ Jobs correctly isolated by account`);
-  });
+  }, 30000);
 });
 
 // ============================================================================
@@ -963,7 +960,7 @@ describe('Multi-Tenant Isolation', () => {
 // ============================================================================
 
 describe('Worker Pool', () => {
-  it('should process queued jobs automatically', { timeout: 60000 }, async () => {
+  it('should process queued jobs automatically', async () => {
     // Create job
     const form = createFormData(TEST_FILES.tiny);
     const response = await fetch(`${API_URL}/api/v1/jobs/import`, {
@@ -988,7 +985,7 @@ describe('Worker Pool', () => {
     assert.strictEqual(completedJob.state.status, 'succeeded');
 
     console.log(`   ✅ Worker pool automatically processed job`);
-  });
+  }, 60000);
 });
 
 console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');

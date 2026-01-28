@@ -104,8 +104,8 @@ import EventSource from 'eventsource';
 
 ```bash
 $ npm list eventsource
-canvas-memory-os@0.1.0
-└─┬ @canvas-memory/api@0.1.0
+keimenon@0.1.0
+└─┬ @keimenon/api@0.1.0
   └── eventsource@4.0.0 ✅
 ```
 
@@ -202,7 +202,7 @@ $ cd apps/api && npm test
 
 ▶ Data Management API
   ✔ should create test data successfully (11.1078ms)
-  ✔ should clear canvas data via API (35.8613ms)
+  ✔ should clear keimenon data via API (35.8613ms)
   ✔ should handle empty database gracefully (36.4248ms)
   ✔ should require authentication (2.3048ms)
 ✔ Data Management API (194.4219ms)

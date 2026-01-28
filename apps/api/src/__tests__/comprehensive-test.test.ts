@@ -11,7 +11,7 @@
  * =============================================================================
  */
 
-import { describe, test, before, after, type TestContext } from 'node:test';
+import { describe, it, beforeAll, afterAll } from 'vitest';
 import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs/promises';
@@ -38,7 +38,7 @@ const CLAUDE_FILE = path.join(CHAT_DATA_DIR, 'claude_conversations.json');
 const GPT_FILE = path.join(CHAT_DATA_DIR, 'gpt_conversations.json');
 
 // Test database path
-const TEST_DB_PATH = path.join(os.homedir(), '.canvas-memory', 'test_canvas.db');
+const TEST_DB_PATH = path.join(os.homedir(), '.keimenon', 'test_keimenon.db');
 
 /**
  * Helper: Check if file exists
@@ -78,7 +78,7 @@ describe('Comprehensive System Test - ALL Implementations', () => {
   /**
    * Setup
    */
-  before(async () => {
+  beforeAll(async () => {
     console.log('\n========================================');
     console.log('🚀 Starting Comprehensive System Test');
     console.log('========================================\n');
@@ -87,7 +87,7 @@ describe('Comprehensive System Test - ALL Implementations', () => {
   /**
    * Cleanup
    */
-  after(() => {
+  afterAll(() => {
     console.log('\n========================================');
     console.log('✅ Comprehensive System Test Complete');
     console.log('========================================\n');
@@ -100,7 +100,7 @@ describe('Comprehensive System Test - ALL Implementations', () => {
    */
 
   describe('Phase 1: Platform Detection & Parsing', () => {
-    test('1.1 Platform Detection - Claude Format', async (_t: TestContext) => {
+    it('1.1 Platform Detection - Claude Format', async () => {
       const exists = await fileExists(CLAUDE_FILE);
       if (!exists) {
         console.log('⚠️  claude_conversations.json not found, skipping');
@@ -134,7 +134,7 @@ describe('Comprehensive System Test - ALL Implementations', () => {
       console.log(`✅ Claude format detected (${sizeMB.toFixed(2)} MB file)\n`);
     });
 
-    test('1.2 Platform Detection - GPT Format', async (_t: TestContext) => {
+    it('1.2 Platform Detection - GPT Format', async () => {
       const exists = await fileExists(GPT_FILE);
       if (!exists) {
         console.log('⚠️  gpt_conversations.json not found, skipping');
@@ -162,7 +162,7 @@ describe('Comprehensive System Test - ALL Implementations', () => {
       console.log(`✅ GPT format detected (${sizeMB.toFixed(2)} MB file)\n`);
     });
 
-    test('1.3 Parse Small File - Full Pipeline', async (_t: TestContext) => {
+    it('1.3 Parse Small File - Full Pipeline', async () => {
       const exists = await fileExists(SMALL_FILE);
       if (!exists) {
         console.log('⚠️  small.json not found, skipping');
@@ -199,7 +199,7 @@ describe('Comprehensive System Test - ALL Implementations', () => {
    */
 
   describe('Phase 2: Content Processing & Grouping', () => {
-    test('2.1 Multi-Level Breaking with ContentProcessor', async (_t: TestContext) => {
+    it('2.1 Multi-Level Breaking with ContentProcessor', async () => {
       const processor = new ContentProcessor({
         extractTokens: false,
         extractPhrases: false,
@@ -240,7 +240,7 @@ Another paragraph here with more content.
    */
 
   describe('Performance Benchmarks', () => {
-    test('Performance - Small File (9.8MB)', async (_t: TestContext) => {
+    it('Performance - Small File (9.8MB)', async () => {
       const exists = await fileExists(SMALL_FILE);
       if (!exists) {
         console.log('⚠️  small.json not found, skipping');
@@ -275,7 +275,7 @@ Another paragraph here with more content.
    */
 
   describe('Phase 3: Grouping, Deduplication & Clustering', () => {
-    test('3.1 Verify Phase 1-3 Processing on Small File', async (_t: TestContext) => {
+    it('3.1 Verify Phase 1-3 Processing on Small File', async () => {
       const exists = await fileExists(SMALL_FILE);
       if (!exists) {
         console.log('⚠️  small.json not found, skipping Phase 3 test');
@@ -298,6 +298,16 @@ Another paragraph here with more content.
 
       // Ensure database directory exists
       const dbDir = path.dirname(TEST_DB_PATH);
+
+      // Cleanup previous run
+      try {
+        await fs.unlink(TEST_DB_PATH);
+        await fs.unlink(`${TEST_DB_PATH}-wal`);
+        await fs.unlink(`${TEST_DB_PATH}-shm`);
+      } catch {
+        // Ignore if files don't exist
+      }
+
       await fs.mkdir(dbDir, { recursive: true });
 
       const db = new Database(TEST_DB_PATH);
@@ -483,7 +493,7 @@ Another paragraph here with more content.
    */
 
   describe('Database Cleanup', () => {
-    test('4.1 Clean Test Data from Database', async (_t: TestContext) => {
+    it('4.1 Clean Test Data from Database', async () => {
       try {
         const db = new Database(TEST_DB_PATH);
 

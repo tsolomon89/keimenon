@@ -1,4 +1,4 @@
-# Canvas Memory OS — ACTUAL Current State
+# Keimenon — ACTUAL Current State
 
 **Last Updated**: 2025-10-11
 **Status**: CORRECTION - This document reflects what's ACTUALLY implemented
@@ -81,12 +81,12 @@ Uses **better-sqlite3** for local storage (not just Neo4j!).
 - Fast lookups by fingerprint
 - Metadata storage
 - Automatic initialization
-- Default location: `~/.canvas-memory/`
+- Default location: `~/.keimenon/`
 
 **Why SQLite + Neo4j?**
 
 - SQLite: Fast local lookups, dedup checking
-- Neo4j: Graph relationships, canvas visualization
+- Neo4j: Graph relationships, keimenon visualization
 
 ### ✅ Advanced Services
 
@@ -131,7 +131,7 @@ Uses **better-sqlite3** for local storage (not just Neo4j!).
 
 - `/` - Redirects based on auth
 - `/login` - Mock authentication page
-- `/canvas` - Main canvas interface (NOT `/board/:id`!)
+- `/keimenon` - Main keimenon interface (NOT `/board/:id`!)
 - `/ingest` - File upload
 - `/board/[id]` - Individual board view (legacy?)
 
@@ -148,11 +148,11 @@ Uses **better-sqlite3** for local storage (not just Neo4j!).
 - `GroupsSection` - Grouping config
 - `MinLengthSection` - Message filtering config
 
-**Canvas Components**:
+**Keimenon Components**:
 
-- `CanvasLayout` - Main layout (FourRegion concept)
+- `KeimenonLayout` - Main layout (FourRegion concept)
 - `FirstTimeUploadModal` - Onboarding
-- Plus all the canvas rendering components
+- Plus all the keimenon rendering components
 
 ### ✅ Content API
 
@@ -240,7 +240,7 @@ POST /api/v1/duplicates/ignore        - Ignore duplicate
 | **Code Extraction**     | ✅ Complete    | From chat messages                |
 | **Duplicate Detection** | ✅ Complete    | Multiple algorithms               |
 | **Streaming Upload**    | ✅ Complete    | For large files                   |
-| **Canvas 2D**           | ✅ Complete    | `/canvas` page                    |
+| **Keimenon 2D**         | ✅ Complete    | `/keimenon` page                  |
 | **Node CRUD**           | ✅ Complete    | Full API                          |
 | **Edge CRUD**           | ✅ Complete    | Full API                          |
 | **Board CRUD**          | ✅ Complete    | Full API                          |
@@ -323,13 +323,13 @@ POST /api/v1/duplicates/ignore        - Ignore duplicate
          ┌──────────────────┐
          │  File System     │
          │  storage/uploads/│
-         │  ~/.canvas-memory│
+         │  ~/.keimenon│
          └──────────────────┘
 ```
 
 **Why Dual Storage?**
 
-- **Neo4j**: Graph relationships, canvas visualization, complex queries
+- **Neo4j**: Graph relationships, keimenon visualization, complex queries
 - **SQLite**: Fast fingerprint lookups, deduplication, local metadata
 - **File System**: Actual file content
 
@@ -502,7 +502,7 @@ GET    /api/v1/edges/node/:nodeId
 ### The Corrections Needed
 
 1. **Primary use case is chat import**, not generic file upload
-2. **Main page is `/canvas`**, not `/board/:id`
+2. **Main page is `/keimenon`**, not `/board/:id`
 3. **Parsers package is critical**, not a placeholder
 4. **SQLite is used**, not just Neo4j
 5. **Much more sophisticated** than documented
@@ -511,7 +511,7 @@ GET    /api/v1/edges/node/:nodeId
 
 **Actual Core Feature**: Import and organize AI chat conversations
 
-**Secondary Features**: File upload, canvas visualization, grouping
+**Secondary Features**: File upload, keimenon visualization, grouping
 
 **Future Features**: Claims, UnifiedDocs, Verifiers, Galaxy lens
 
@@ -539,7 +539,7 @@ GET    /api/v1/edges/node/:nodeId
 - Import UI ✅
 - Minor polish needed
 
-### Phase 1C: Canvas ✅ 90%
+### Phase 1C: Keimenon ✅ 90%
 
 - 2D rendering ✅
 - Layout algorithm ✅
@@ -590,7 +590,7 @@ GET    /api/v1/edges/node/:nodeId
    - [ ] Upload ChatGPT export
    - [ ] Upload Claude export
    - [ ] Upload Gemini export
-   - [ ] Verify messages appear in canvas
+   - [ ] Verify messages appear in keimenon
    - [ ] Check code blocks are extracted
    - [ ] Review duplicates panel
 
@@ -613,8 +613,8 @@ GET    /api/v1/edges/node/:nodeId
    - [ ] Cancel mid-upload
    - [ ] Resume upload
 
-5. **Canvas**:
-   - [ ] View imported chats on canvas
+5. **Keimenon**:
+   - [ ] View imported chats on keimenon
    - [ ] Select nodes
    - [ ] Pan and zoom
    - [ ] Check grouping

@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-Canvas Memory now stores your documents **locally** (`~/.canvas-memory/`) and only keeps metadata in Neo4j. This gives you:
+Keimenon now stores your documents **locally** (`~/.keimenon/`) and only keeps metadata in Neo4j. This gives you:
 
 - 🔒 **Privacy:** Documents never leave your machine
 - 💰 **Cost:** 90% reduction in Neo4j storage
@@ -20,7 +20,7 @@ npm run dev:boot
 
 The server will automatically:
 
-- ✅ Initialize `~/.canvas-memory/documents/`
+- ✅ Initialize `~/.keimenon/documents/`
 - ✅ Create metadata directories
 - ✅ Connect to Neo4j
 - ✅ Print storage location
@@ -29,7 +29,7 @@ You'll see:
 
 ```
 📁 Initializing local document store...
-✅ Local document store initialized at: /Users/you/.canvas-memory
+✅ Local document store initialized at: /Users/you/.keimenon
 ```
 
 ### 2. Import Conversations
@@ -44,7 +44,7 @@ curl -X POST http://localhost:4001/api/v1/import/enhanced \
 
 **What happens:**
 
-1. Content saves to `~/.canvas-memory/documents/`
+1. Content saves to `~/.keimenon/documents/`
 2. Metadata saves to Neo4j with `content_location` pointers
 3. You can view the graph immediately (metadata only, fast!)
 
@@ -61,7 +61,7 @@ curl http://localhost:4001/api/v1/content/stats
 ```
 
 **Via Frontend:**
-The canvas loads graph structure instantly, then lazy-loads content when you click nodes.
+The keimenon loads graph structure instantly, then lazy-loads content when you click nodes.
 
 ---
 
@@ -102,7 +102,7 @@ npm run migrate:to-local
 
 1. Reads all Messages/Sources/CodeBlocks from Neo4j
 2. Extracts content fields
-3. Saves to `~/.canvas-memory/documents/`
+3. Saves to `~/.keimenon/documents/`
 4. Updates Neo4j nodes with `content_location` pointers
 5. Removes `content` fields from Neo4j
 6. Verifies integrity
@@ -111,8 +111,8 @@ npm run migrate:to-local
 
 ```bash
 # Check local storage
-ls -lah ~/.canvas-memory/documents/messages/
-ls -lah ~/.canvas-memory/documents/sources/
+ls -lah ~/.keimenon/documents/messages/
+ls -lah ~/.keimenon/documents/sources/
 
 # Check Neo4j (should show metadata only)
 curl http://localhost:4001/api/v1/content/stats
@@ -125,7 +125,7 @@ curl http://localhost:4001/api/v1/content/stats
 After import/migration, your local storage looks like:
 
 ```
-~/.canvas-memory/
+~/.keimenon/
 ├── documents/
 │   ├── conversations/
 │   │   └── conv_abc123/
@@ -169,7 +169,7 @@ Example response:
       "source": { "count": 45, "size": 8942400 },
       "code": { "count": 67, "size": 5200000 }
     },
-    "path": "~/.canvas-memory"
+    "path": "~/.keimenon"
   },
   "neo4j": {
     "total_nodes": 1500,
@@ -245,7 +245,7 @@ function MessageNode({ node }) {
 
 ## Environment Config
 
-### Default (Uses `~/.canvas-memory`)
+### Default (Uses `~/.keimenon`)
 
 ```bash
 # apps/api/.env
@@ -274,16 +274,16 @@ LOCAL_DOCS_PATH=/custom/path/to/documents
 
 ```bash
 # Backup everything
-tar -czf canvas-backup-$(date +%Y%m%d).tar.gz ~/.canvas-memory/
+tar -czf keimenon-backup-$(date +%Y%m%d).tar.gz ~/.keimenon/
 
 # Backup only documents (no metadata cache)
-tar -czf canvas-docs-$(date +%Y%m%d).tar.gz ~/.canvas-memory/documents/
+tar -czf keimenon-docs-$(date +%Y%m%d).tar.gz ~/.keimenon/documents/
 ```
 
 ### Restore
 
 ```bash
-tar -xzf canvas-backup-20250110.tar.gz -C ~/
+tar -xzf keimenon-backup-20250110.tar.gz -C ~/
 ```
 
 ### Selective Backup
@@ -291,11 +291,11 @@ tar -xzf canvas-backup-20250110.tar.gz -C ~/
 ```bash
 # Backup only conversations
 tar -czf conversations-backup.tar.gz \
-  ~/.canvas-memory/documents/conversations/
+  ~/.keimenon/documents/conversations/
 
 # Backup only sources
 tar -czf sources-backup.tar.gz \
-  ~/.canvas-memory/documents/sources/
+  ~/.keimenon/documents/sources/
 ```
 
 ---
@@ -307,7 +307,7 @@ tar -czf sources-backup.tar.gz \
 **Check if file exists:**
 
 ```bash
-ls ~/.canvas-memory/documents/messages/{conv_id}/{msg_id}.md
+ls ~/.keimenon/documents/messages/{conv_id}/{msg_id}.md
 ```
 
 **Check Neo4j node:**
@@ -321,7 +321,7 @@ curl http://localhost:4001/api/v1/nodes/{msg_id} | jq '.node.content_location'
 
 ```bash
 # Ensure directory is writable
-chmod -R u+w ~/.canvas-memory/
+chmod -R u+w ~/.keimenon/
 ```
 
 ### Migration didn't work
@@ -406,7 +406,7 @@ const content = await localStore.getContentByPath(location); // ✅ Fast, local
 ## Next Steps
 
 1. ✅ **Backend complete** - All APIs ready
-2. ⏳ **Frontend pending** - Update canvas to use content APIs
+2. ⏳ **Frontend pending** - Update keimenon to use content APIs
 3. 🔮 **Future:**
    - Optional cloud backup (encrypted)
    - Multi-device sync

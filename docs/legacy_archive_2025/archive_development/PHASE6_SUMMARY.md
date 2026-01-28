@@ -8,7 +8,7 @@
 
 ## 🎯 What Is Phase 6?
 
-Phase 6 documents and polishes the **local-first migration** completed in the previous sessions. This was an unplanned but critical phase that transformed Canvas Memory OS from a cloud-dependent application to a **100% local-first system**.
+Phase 6 documents and polishes the **local-first migration** completed in the previous sessions. This was an unplanned but critical phase that transformed Keimenon from a cloud-dependent application to a **100% local-first system**.
 
 ---
 
@@ -148,7 +148,7 @@ npm run dev
 
 **No configuration needed!** The system automatically:
 
-- Creates SQLite database at `~/.canvas-memory/canvas.db`
+- Creates SQLite database at `~/.keimenon/keimenon.db`
 - Initializes schema with tables and indexes
 - Starts API server on port 4001
 
@@ -181,8 +181,8 @@ After Phase 6, the project is ready for:
 
 ### Option A: Return to Original Roadmap
 
-- **Phase 1C**: 2D Canvas Visualization
-  - Canvas component with D3-force layout
+- **Phase 1C**: 2D Keimenon Visualization
+  - Keimenon component with D3-force layout
   - Node/edge rendering
   - Selection tools
 - **Phase 1D**: Claims & UnifiedDocs
@@ -268,7 +268,7 @@ Comprehensive documentation created during the migration makes it easy for new d
 
 ## 🎊 Conclusion
 
-**Phase 6 is complete!** Canvas Memory OS is now:
+**Phase 6 is complete!** Keimenon is now:
 
 ✅ **100% local-first** - Runs entirely on your machine
 ✅ **Zero cost** - No monthly fees

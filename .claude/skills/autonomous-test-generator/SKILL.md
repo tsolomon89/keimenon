@@ -1,10 +1,18 @@
+---
+name: autonomous-test-generator
+description: Generates Playwright E2E tests with visual verification. Creates tests for untested endpoints using live browser inspection to ensure accurate locators.
+allowed-tools: Read, Write, Edit, Glob, Grep, mcp__keimenon-database__query_nodes, mcp__keimenon-api-testing__test_endpoint, mcp__playwright-e2e__pw_run, mcp__playwright-test__browser_snapshot
+context: fork
+agent: general-purpose
+---
+
 # Autonomous Test Generator (with Visual Verification)
 
 ---**Operational Ethos Compliance:** This skill operates under the principles defined in [CLAUDE.md Section 13](../../CLAUDE.md#13-operational-ethos--recursive-intelligence):- **Context Consolidation**: Automatic, not optional (Section 13.0)- **Professional Standards**: Security, testing, documentation mandatory (Section 13.1)- **Anticipatory Design**: Think 3 steps ahead (Section 13.2)- **Full-Scope Traversal**: Address all layers (Section 13.3)- **Recursive Intelligence**: Enrich system with every run (Section 13.4)---
 
 ## Purpose
 
-Automatically generates comprehensive Playwright E2E tests for untested endpoints and user flows by coordinating the Playwright Generator agent with Canvas Memory OS MCP servers. **Enhanced with visual reconnaissance** to verify elements exist before generating tests, ensuring tests target real UI components with accurate locators.
+Automatically generates comprehensive Playwright E2E tests for untested endpoints and user flows by coordinating the Playwright Generator agent with Keimenon MCP servers. **Enhanced with visual reconnaissance** to verify elements exist before generating tests, ensuring tests target real UI components with accurate locators.
 
 **Visual Verification Integration**: Following Anthropic's Agent SDK pattern, this skill uses live browser inspection to generate tests that match the actual UI state, not assumptions from code analysis alone.
 
@@ -44,11 +52,11 @@ Invoke this skill when you need to:
    - Auth: Required permission level
    - Schema: Zod request/response validators
    - Account type: client, admin, or both
-3. Query `canvas-api-testing` MCP to verify endpoint is accessible
+3. Query `keimenon-api-testing` MCP to verify endpoint is accessible
 
 ### Phase 2: Test Data Preparation
 
-1. Query `canvas-database` MCP for relevant node/edge types
+1. Query `keimenon-database` MCP for relevant node/edge types
 2. Generate realistic test data matching schemas:
    - Use Faker.js for strings, numbers, dates
    - Follow project patterns (e.g., `id` format: `src_abc123`)
@@ -78,7 +86,7 @@ Invoke this skill when you need to:
    // Determine which page/view contains the endpoint's UI
    const targetPage = mapEndpointToUIPath(endpoint);
    // Examples:
-   // - POST /api/v1/nodes → "/canvas" (create node UI)
+   // - POST /api/v1/nodes → "/keimenon" (create node UI)
    // - GET /api/v1/groups → "/groups" (groups list)
    // - PUT /api/v1/settings → "/settings" (settings panel)
 
@@ -172,7 +180,7 @@ Invoke this skill when you need to:
      submit_element: uiElements.find((e) => e.text === 'Submit'),
      success_indicators: [
        { type: 'toast', text: 'Node created successfully' },
-       { type: 'element', selector: 'canvas .node', description: 'New node appears in canvas' },
+       { type: 'element', selector: 'keimenon .node', description: 'New node appears in keimenon' },
      ],
      error_indicators: [
        { type: 'toast', text: /error/i },
@@ -244,17 +252,17 @@ Invoke this skill when you need to:
        "4. Fill 'Content' input",
        "5. Click 'Submit' button",
        '6. Wait for success toast',
-       '7. Verify new node appears in canvas',
+       '7. Verify new node appears in keimenon',
      ],
      success_criteria: [
        "Toast message: 'Node created successfully'",
-       'New node element appears in canvas',
+       'New node element appears in keimenon',
        'API response: 201 Created',
      ],
      timing_considerations: [
        'Wait for dialog to open (animation ~300ms)',
        'Wait for API response (POST /api/v1/nodes)',
-       'Wait for canvas to re-render with new node',
+       'Wait for keimenon to re-render with new node',
      ],
      responsive_notes: 'Tested at 1920x1080, may need mobile viewport tests',
    };
@@ -304,7 +312,7 @@ Invoke this skill when you need to:
        },
        {
          type: 'visual',
-         check: 'New node appears in canvas',
+         check: 'New node appears in keimenon',
          how_to_verify: 'Check for new .node element with matching title',
        },
        {
@@ -415,7 +423,7 @@ test('should create node', async ({ page }) => {
   // 📸 Visual verification: Capture success state
   await expect(page).toHaveScreenshot('node-created-success.png', {
     fullPage: false,
-    clip: { x: 0, y: 0, width: 800, height: 600 } // Canvas area
+    clip: { x: 0, y: 0, width: 800, height: 600 } // Keimenon area
   });
 });
 ````
@@ -561,7 +569,7 @@ test.describe('Nodes CRUD - Client Account', () => {
 
   test.beforeEach(async ({ page }) => {
     await login(page, 'client@test.com', '123456');
-    await page.goto('/canvas');
+    await page.goto('/keimenon');
     await page.waitForLoadState('domcontentloaded');
   });
 
@@ -593,12 +601,12 @@ test.describe('Nodes CRUD - Client Account', () => {
     // 5. Wait for success feedback
     await expect(page.getByText(/created successfully/i)).toBeVisible({ timeout: 10000 });
 
-    // 📸 Visual verification: New node should appear in canvas
-    // 6. Verify node appears in canvas
+    // 📸 Visual verification: New node should appear in keimenon
+    // 6. Verify node appears in keimenon
     await expect(page.getByText('Test Source Node')).toBeVisible();
 
     // 📸 Capture success state for baseline
-    await expect(page).toHaveScreenshot('node-created-canvas-state.png', {
+    await expect(page).toHaveScreenshot('node-created-keimenon-state.png', {
       fullPage: false,
       clip: { x: 0, y: 0, width: 1200, height: 800 },
     });
@@ -630,7 +638,7 @@ test.describe('Nodes CRUD - Client Account', () => {
   "method": "POST",
   "visual_verification": {
     "performed": true,
-    "page_url": "/canvas",
+    "page_url": "/keimenon",
     "screenshot_evidence": [
       ".claude/test-generation/2025-11-01/nodes-create-verification.png",
       ".claude/test-generation/2025-11-01/create-button.png",
@@ -651,7 +659,7 @@ test.describe('Nodes CRUD - Client Account', () => {
     "dry_run": "passed",
     "visual_alignment": "passed"
   },
-  "baseline_screenshots": ["tests/e2e/__screenshots__/node-created-canvas-state.png"]
+  "baseline_screenshots": ["tests/e2e/__screenshots__/node-created-keimenon-state.png"]
 }
 ```
 
@@ -703,7 +711,7 @@ mcp__visual -
 // Navigate and inspect page
 Task({
   subagent_type: 'playwright-test-planner',
-  prompt: 'Navigate to /canvas and list all interactive elements',
+  prompt: 'Navigate to /keimenon and list all interactive elements',
 });
 // Returns: List of elements with locators, screenshots, page structure
 ```
@@ -846,12 +854,12 @@ describe('Import Workflow', () => {
   // 2. Progress bar/spinner
   // 3. SSE updates (visual feedback)
   // 4. Completion state
-  // 5. Nodes appearing in canvas
+  // 5. Nodes appearing in keimenon
 
   test('End-to-end import flow', async () => {
     // 1. Upload file (verified file input exists)
     // 2. Monitor progress via SSE (verified progress UI exists)
-    // 3. Verify nodes created (verified canvas updates)
+    // 3. Verify nodes created (verified keimenon updates)
     // 4. Verify edges created (verified edge rendering)
     // 5. Verify organization (verified folder/group UI)
     // 📸 Capture each major state for baseline

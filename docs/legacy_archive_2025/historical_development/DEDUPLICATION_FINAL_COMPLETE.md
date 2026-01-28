@@ -118,7 +118,7 @@ async mergeDuplicateNodes(
 
 1. `apps/api/src/routes/deduplication.ts` (395 lines) - API routes
 2. `apps/web/src/components/settings/DeduplicationCard.tsx` (463 lines) - UI component
-3. `apps/web/src/components/canvas/StorageStatsDashboard.tsx` (updated) - Dashboard integration
+3. `apps/web/src/components/keimenon/StorageStatsDashboard.tsx` (updated) - Dashboard integration
 4. `DEDUPLICATION_API_COMPLETE.md` - Initial implementation doc
 5. `DEDUPLICATION_ENHANCEMENT_COMPLETE.md` - Phase 1-3 enhancements doc
 6. `DEDUPLICATION_FINAL_COMPLETE.md` - This document
@@ -397,13 +397,13 @@ This codebase has **two separate deduplication systems**:
 
 ```bash
 # Check if content hashing is enabled
-sqlite3 data/canvas-memory.db "SELECT COUNT(*) FROM nodes WHERE content_hash IS NOT NULL"
+sqlite3 data/keimenon.db "SELECT COUNT(*) FROM nodes WHERE content_hash IS NOT NULL"
 
 # Check for duplicate groups
-sqlite3 data/canvas-memory.db "SELECT content_hash, COUNT(*) as count FROM nodes WHERE content_hash IS NOT NULL GROUP BY content_hash HAVING count > 1"
+sqlite3 data/keimenon.db "SELECT content_hash, COUNT(*) as count FROM nodes WHERE content_hash IS NOT NULL GROUP BY content_hash HAVING count > 1"
 
 # Check deduplication log
-sqlite3 data/canvas-memory.db "SELECT * FROM deduplication_log ORDER BY performed_at DESC LIMIT 10"
+sqlite3 data/keimenon.db "SELECT * FROM deduplication_log ORDER BY performed_at DESC LIMIT 10"
 ```
 
 ---
@@ -442,4 +442,4 @@ All that remains is manual testing and optional automated test coverage. The sys
 
 **Last Updated**: October 23, 2025
 **Author**: Claude (Anthropic)
-**Project**: Canvas Memory OS - Deduplication System
+**Project**: Keimenon - Deduplication System

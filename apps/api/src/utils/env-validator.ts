@@ -53,7 +53,7 @@ const ENV_VARS: EnvVarDefinition[] = [
   {
     name: 'STORAGE_MODE',
     required: true,
-    validator: (val) => ['local', 'canvas', 'hybrid'].includes(val),
+    validator: (val) => ['local', 'keimenon', 'hybrid'].includes(val),
     description: 'Storage backend mode',
     example: 'local',
   },
@@ -67,7 +67,7 @@ const ENV_VARS: EnvVarDefinition[] = [
     name: 'SQLITE_PATH',
     required: false, // Required if STORAGE_MODE includes 'local'
     description: 'Path to SQLite database file',
-    example: '~/.keimenon/canvas.db',
+    example: '~/.keimenon/keimenon.db',
   },
   {
     name: 'STORAGE_PATH',
@@ -124,7 +124,7 @@ const ENV_VARS: EnvVarDefinition[] = [
   // Neo4j (Optional)
   {
     name: 'NEO4J_URI',
-    required: false, // Required if STORAGE_MODE is 'canvas' or 'hybrid'
+    required: false, // Required if STORAGE_MODE is 'keimenon' or 'hybrid'
     description: 'Neo4j connection URI',
     example: 'bolt://localhost:7687',
   },
@@ -213,7 +213,7 @@ export function validateEnvironment(): EnvValidationResult {
     }
 
     if (envVar.name.startsWith('NEO4J_')) {
-      if ((storageMode === 'canvas' || storageMode === 'hybrid') && !value) {
+      if ((storageMode === 'keimenon' || storageMode === 'hybrid') && !value) {
         warnings.push({
           variable: envVar.name,
           message: `${envVar.name} is recommended when STORAGE_MODE is '${storageMode}'. ${envVar.description}`,

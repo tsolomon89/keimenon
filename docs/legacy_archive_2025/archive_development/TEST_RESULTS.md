@@ -1,4 +1,4 @@
-# Canvas Memory OS - Test Results Report
+# Keimenon - Test Results Report
 
 **Test Date**: 2025-10-11
 **Tested By**: Claude Code
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This report documents comprehensive testing of Canvas Memory OS against its documentation (README.md, QUICK_START.md, TODO_TRACKER.md, IMPORT_GUIDE.md, PROJECT_SUMMARY.md).
+This report documents comprehensive testing of Keimenon against its documentation (README.md, QUICK_START.md, TODO_TRACKER.md, IMPORT_GUIDE.md, PROJECT_SUMMARY.md).
 
 ### Overall Status
 
@@ -81,7 +81,7 @@ This report documents comprehensive testing of Canvas Memory OS against its docu
 ✓ Neo4j connection established
 ✓ Schema initialized (5 constraints, 5 indexes)
 ✓ Storage initialized
-✓ Local document store initialized at C:\Users\Audna\.canvas-memory
+✓ Local document store initialized at C:\Users\Audna\.keimenon
 ```
 
 **Verdict**: Core infrastructure works as documented.
@@ -109,7 +109,7 @@ This report documents comprehensive testing of Canvas Memory OS against its docu
 {
   "status": "ok",
   "timestamp": "2025-10-11T09:33:48.055Z",
-  "service": "canvas-memory-api",
+  "service": "keimenon-api",
   "version": "0.1.0",
   "dependencies": {
     "neo4j": "connected"
@@ -358,7 +358,7 @@ cd apps/api && npm run test:integration
 **Tests Needed**:
 
 - [ ] Local mode (SQLite only)
-- [ ] Canvas mode (Neo4j only)
+- [ ] Keimenon mode (Neo4j only)
 - [ ] Hybrid mode (both)
 - [ ] Migration scripts
 

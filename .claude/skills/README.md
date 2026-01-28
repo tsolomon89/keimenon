@@ -1,8 +1,8 @@
-# Canvas Memory OS - Claude Skills
+# Keimenon - Claude Skills
 
 **Project-Specific Skills for AI-Assisted Development**
 
-This directory contains Claude Skills that extend AI assistant capabilities with Canvas Memory OS-specific knowledge and workflows.
+This directory contains Claude Skills that extend AI assistant capabilities with Keimenon-specific knowledge and workflows.
 
 ---
 
@@ -33,7 +33,7 @@ Claude Skills are modular capabilities that Claude automatically activates based
 - Ensures edge semantics are correct
 - References CLAUDE.md operating guide
 
-**Tools**: Read, Grep, Glob, canvas-database MCP tools (read-only)
+**Tools**: Read, Grep, Glob, keimenon-database MCP tools (read-only)
 
 **Example**:
 
@@ -41,7 +41,7 @@ Claude Skills are modular capabilities that Claude automatically activates based
 You: "I'm creating a Source node. Can you validate this structure?"
 
 Claude: [Activates graph-schema-validator skill]
-        "Let me check that against the schema and Canvas Memory OS principles..."
+        "Let me check that against the schema and Keimenon principles..."
 ```
 
 ---
@@ -58,7 +58,7 @@ Claude: [Activates graph-schema-validator skill]
 - Ensures multi-tenant safety
 - Verifies schema compliance
 
-**Tools**: Read, Grep, Glob, Edit, canvas-docs MCP tools
+**Tools**: Read, Grep, Glob, Edit, keimenon-docs MCP tools
 
 **Example**:
 
@@ -78,7 +78,7 @@ Claude: [Activates code-review-enforcer skill]
 **What It Does**:
 
 - Generates Playwright tests following project patterns
-- Creates tests for canvas operations, auth flows, data management
+- Creates tests for keimenon operations, auth flows, data management
 - Ensures proper test isolation and tagging (@smoke/@full)
 - Validates backend integration in tests
 - Uses project fixtures and utilities
@@ -134,7 +134,7 @@ Claude: [Activates pipeline-verifier skill]
 - Optimizes similarity thresholds
 - Tests deduplication with chat-import MCP tools
 
-**Tools**: Read, Write, Edit, Grep, canvas-database MCP tools (read-only)
+**Tools**: Read, Write, Edit, Grep, keimenon-database MCP tools (read-only)
 
 **Example**:
 
@@ -169,7 +169,162 @@ Claude: [Activates vector-similarity-ops skill]
 You: "Show me all ChatThread nodes created in the last 7 days"
 
 Claude: [Activates mcp-integration-expert skill]
-        "I'll query the database using the canvas-database MCP server..."
+        "I'll query the database using the keimenon-database MCP server..."
+```
+
+---
+
+### 7. 🔬 research-specialist
+
+**When It Activates**: "Research OAuth patterns", "What are the latest best practices for...", "Compare libraries"
+
+**What It Does**:
+
+- Web research using WebFetch and WebSearch
+- Documentation search across project
+- Technology evaluation and comparison
+- Architecture decision research
+- Security-isolated (no code execution)
+
+**Tools**: Read, Grep, Glob, WebFetch, WebSearch, keimenon-docs MCP tools
+
+**Context**: Forked (isolated execution)
+
+**Example**:
+
+```
+You: "Research React Server Components patterns for our dashboard"
+
+Claude: [Activates research-specialist skill]
+        "I'll research RSC patterns and compare them to our current architecture..."
+```
+
+---
+
+### 8. 🔍 autonomous-test-discoverer
+
+**When It Activates**: "What's our test coverage?", "Find untested endpoints", "Analyze E2E coverage"
+
+**What It Does**:
+
+- Discovers testable endpoints and user flows
+- Analyzes existing E2E test coverage
+- Generates coverage matrix
+- Identifies gaps in test coverage
+
+**Tools**: Read, Glob, Grep, keimenon-database, keimenon-docs, playwright-e2e MCP tools
+
+**Context**: Forked (isolated execution)
+
+**Example**:
+
+```
+You: "What endpoints are missing E2E test coverage?"
+
+Claude: [Activates autonomous-test-discoverer skill]
+        "I'll analyze the API routes and existing tests to find coverage gaps..."
+```
+
+---
+
+### 9. 🧪 autonomous-test-generator
+
+**When It Activates**: "Generate tests for untested endpoints", "Create E2E tests with visual verification"
+
+**What It Does**:
+
+- Generates Playwright E2E tests with visual verification
+- Uses live browser inspection for accurate locators
+- Creates tests for untested endpoints
+- Follows project test patterns
+
+**Tools**: Read, Write, Edit, Glob, Grep, keimenon-database, keimenon-api-testing, playwright-e2e, playwright-test MCP tools
+
+**Context**: Forked (isolated execution)
+
+**Example**:
+
+```
+You: "Generate E2E tests for the new user profile endpoint"
+
+Claude: [Activates autonomous-test-generator skill]
+        "I'll inspect the endpoint and create comprehensive E2E tests..."
+```
+
+---
+
+### 10. 🩹 autonomous-test-healer
+
+**When It Activates**: "Fix failing E2E tests", "Debug test failures", "Heal broken tests"
+
+**What It Does**:
+
+- Detects and fixes failing E2E tests
+- Analyzes failure screenshots and traces
+- Identifies root causes of failures
+- Applies fixes and verifies stability
+
+**Tools**: Read, Edit, Grep, playwright-e2e, visual-feedback, keimenon-api-testing MCP tools
+
+**Context**: Forked (isolated execution)
+
+**Example**:
+
+```
+You: "The login E2E test is failing, can you fix it?"
+
+Claude: [Activates autonomous-test-healer skill]
+        "I'll analyze the failure screenshots and traces to identify the issue..."
+```
+
+---
+
+### 11. 🎯 autonomous-test-runner
+
+**When It Activates**: "Run autonomous testing", "Achieve target test coverage", "Orchestrate test lifecycle"
+
+**What It Does**:
+
+- Master orchestrator for autonomous testing lifecycle
+- Coordinates discovery, generation, execution, and healing
+- Achieves target coverage with minimal intervention
+- Tracks progress and reports results
+
+**Tools**: Read, Write, Edit, Glob, Grep, Task, playwright-e2e, keimenon-database MCP tools
+
+**Context**: Forked (isolated execution)
+
+**Example**:
+
+```
+You: "Run autonomous testing to reach 80% coverage"
+
+Claude: [Activates autonomous-test-runner skill]
+        "I'll orchestrate the full testing lifecycle to achieve target coverage..."
+```
+
+---
+
+### 12. 🔒 security-auditor
+
+**When It Activates**: "Run security audit", "Check for vulnerabilities", "OWASP compliance"
+
+**What It Does**:
+
+- OWASP Top 10 vulnerability scanning
+- Multi-tenant security validation
+- Pre-deployment security checks
+- Authentication/authorization review
+
+**Tools**: Read, Grep, Glob, keimenon-database, keimenon-api-testing MCP tools
+
+**Example**:
+
+```
+You: "Run a security audit before deployment"
+
+Claude: [Activates security-auditor skill]
+        "I'll check for OWASP Top 10 vulnerabilities and multi-tenant isolation..."
 ```
 
 ---
@@ -315,14 +470,20 @@ Claude:
 
 Skills _use_ MCP servers as tools:
 
-| Skill                  | Primary MCP Servers Used            |
-| ---------------------- | ----------------------------------- |
-| graph-schema-validator | canvas-database                     |
-| code-review-enforcer   | canvas-docs, canvas-database        |
-| e2e-test-generator     | playwright-e2e                      |
-| pipeline-verifier      | ALL (orchestrates everything)       |
-| vector-similarity-ops  | canvas-database, canvas-chat-import |
-| mcp-integration-expert | ALL (direct MCP access)             |
+| Skill                      | Primary MCP Servers Used                              |
+| -------------------------- | ----------------------------------------------------- |
+| graph-schema-validator     | keimenon-database                                     |
+| code-review-enforcer       | keimenon-docs, keimenon-database                      |
+| e2e-test-generator         | playwright-e2e                                        |
+| pipeline-verifier          | ALL (orchestrates everything)                         |
+| vector-similarity-ops      | keimenon-database, keimenon-chat-import               |
+| mcp-integration-expert     | ALL (direct MCP access)                               |
+| research-specialist        | keimenon-docs (+ WebFetch/WebSearch)                  |
+| autonomous-test-discoverer | keimenon-database, keimenon-docs, playwright-e2e      |
+| autonomous-test-generator  | keimenon-api-testing, playwright-e2e, playwright-test |
+| autonomous-test-healer     | playwright-e2e, visual-feedback                       |
+| autonomous-test-runner     | playwright-e2e, keimenon-database                     |
+| security-auditor           | keimenon-database, keimenon-api-testing               |
 
 ---
 
@@ -342,8 +503,21 @@ Skills are configured via `SKILL.md` files in each subdirectory:
 │   └── SKILL.md
 ├── vector-similarity-ops/
 │   └── SKILL.md
-└── mcp-integration-expert/
-    └── SKILL.md
+├── mcp-integration-expert/
+│   └── SKILL.md
+├── research-specialist/
+│   └── SKILL.md
+├── autonomous-test-discoverer/
+│   └── SKILL.md
+├── autonomous-test-generator/
+│   └── SKILL.md
+├── autonomous-test-healer/
+│   └── SKILL.md
+├── autonomous-test-runner/
+│   └── SKILL.md
+├── security-auditor/
+│   └── SKILL.md
+└── README.md              # This file
 ```
 
 ### SKILL.md Format
@@ -352,7 +526,12 @@ Skills are configured via `SKILL.md` files in each subdirectory:
 ---
 name: skill-name
 description: When to activate and what the skill does (max 1024 chars)
-allowed-tools: Read, Grep, Glob  # Optional: Restrict tools
+allowed-tools: Read, Grep, Glob  # Optional: Restrict available tools
+context: fork                     # Optional: 'fork' for isolated execution
+agent: Explore                    # Optional: Explore, Plan, or general-purpose
+model: haiku                      # Optional: haiku, sonnet, or opus
+user-invocable: true              # Optional: Allow /skill-name invocation
+disable-model-invocation: false   # Optional: Prevent automatic activation
 ---
 
 # Skill Name
@@ -365,6 +544,19 @@ allowed-tools: Read, Grep, Glob  # Optional: Restrict tools
 
 ## [Detailed instructions for Claude...]
 ```
+
+### Frontmatter Fields
+
+| Field                      | Required | Description                                             |
+| -------------------------- | -------- | ------------------------------------------------------- |
+| `name`                     | Yes      | Unique skill identifier (kebab-case)                    |
+| `description`              | Yes      | When to activate, max 1024 chars. Shows in skill list   |
+| `allowed-tools`            | No       | Comma-separated list of tools skill can use             |
+| `context`                  | No       | `fork` = isolated session, default = shared context     |
+| `agent`                    | No       | Subagent type: `Explore`, `Plan`, or `general-purpose`  |
+| `model`                    | No       | Override model: `haiku`, `sonnet`, or `opus`            |
+| `user-invocable`           | No       | Allow explicit `/skill-name` invocation (default: true) |
+| `disable-model-invocation` | No       | Prevent auto-activation (default: false)                |
 
 ---
 
@@ -494,7 +686,7 @@ You: "Use mcp-integration-expert to query the database"
 
 - [Claude Skills Official Docs](https://docs.claude.com/en/docs/claude-code/skills.md) - Official skill documentation
 - [.mcp/README.md](../../.mcp/README.md) - MCP servers overview
-- [CLAUDE.md](../../CLAUDE.md) - Operating guide for Canvas Memory OS
+- [CLAUDE.md](../../CLAUDE.md) - Operating guide for Keimenon
 - [docs/architecture/OVERVIEW.md](../../docs/architecture/OVERVIEW.md) - System architecture
 
 ---
@@ -517,27 +709,33 @@ You: "Show me the skill's instructions"
 
 ---
 
-**Last Updated**: 2025-10-30
-**Skills Version**: 1.0
+**Last Updated**: 2026-01-26
+**Skills Version**: 2.0
 **Compatible with**: Claude Code, Claude Desktop, VSCode with Claude extension
 
 ---
 
 ## Quick Reference
 
-| Task                         | Skill to Use           |
-| ---------------------------- | ---------------------- |
-| Validate node/edge structure | graph-schema-validator |
-| Review code changes          | code-review-enforcer   |
-| Generate E2E tests           | e2e-test-generator     |
-| Validate complete feature    | pipeline-verifier      |
-| Debug deduplication          | vector-similarity-ops  |
-| Query database               | mcp-integration-expert |
-| Search documentation         | mcp-integration-expert |
-| Run tests                    | mcp-integration-expert |
-| Test API endpoints           | mcp-integration-expert |
-| Manage users/accounts        | mcp-integration-expert |
+| Task                              | Skill to Use               |
+| --------------------------------- | -------------------------- |
+| Validate node/edge structure      | graph-schema-validator     |
+| Review code changes               | code-review-enforcer       |
+| Generate E2E tests                | e2e-test-generator         |
+| Validate complete feature         | pipeline-verifier          |
+| Debug deduplication               | vector-similarity-ops      |
+| Query database                    | mcp-integration-expert     |
+| Search documentation              | mcp-integration-expert     |
+| Run tests                         | mcp-integration-expert     |
+| Test API endpoints                | mcp-integration-expert     |
+| Manage users/accounts             | mcp-integration-expert     |
+| Research technologies/patterns    | research-specialist        |
+| Find test coverage gaps           | autonomous-test-discoverer |
+| Generate tests with visual verify | autonomous-test-generator  |
+| Fix failing E2E tests             | autonomous-test-healer     |
+| Full autonomous testing           | autonomous-test-runner     |
+| Security audit                    | security-auditor           |
 
 ---
 
-**Happy coding with Claude Skills!** 🚀
+**Happy coding with Claude Skills!**

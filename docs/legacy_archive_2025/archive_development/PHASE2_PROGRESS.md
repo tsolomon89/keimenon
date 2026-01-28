@@ -117,11 +117,11 @@ Successfully integrated the enhanced auto-grouping system into the API layer wit
 
 **Configuration Features**:
 
-- ✅ File-based config at `~/.canvas-memory/config.json`
+- ✅ File-based config at `~/.keimenon/config.json`
 - ✅ Auto-creation with sensible defaults
 - ✅ Schema validation with Zod
 - ✅ Password sanitization in responses
-- ✅ Storage mode toggle (local/canvas/hybrid)
+- ✅ Storage mode toggle (local/keimenon/hybrid)
 
 **Test Results**:
 
@@ -131,7 +131,7 @@ Successfully integrated the enhanced auto-grouping system into the API layer wit
 1. GET /api/v1/config
    ✅ Status: 200
    Storage mode: local
-   Config path: C:\Users\Audna\.canvas-memory\config.json
+   Config path: C:\Users\Audna\.keimenon\config.json
 
 2. GET /api/v1/config/defaults
    ✅ Status: 200
@@ -140,7 +140,7 @@ Successfully integrated the enhanced auto-grouping system into the API layer wit
 3. GET /api/v1/config/storage-mode
    ✅ Status: 200
    Storage mode: local
-   Local DB path: ~/.canvas-memory/graph.db
+   Local DB path: ~/.keimenon/graph.db
 ```
 
 ---

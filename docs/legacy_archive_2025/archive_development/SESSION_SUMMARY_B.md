@@ -72,9 +72,9 @@
 
 ```
 User's Machine
-├── Canvas Memory OS (Next.js + Express)
-├── SQLite Database (~/.canvas-memory/canvas.db)
-├── File Storage (~/.canvas-memory/files/)
+├── Keimenon (Next.js + Express)
+├── SQLite Database (~/.keimenon/keimenon.db)
+├── File Storage (~/.keimenon/files/)
 └── User's API Keys (.env)
 ```
 
@@ -187,16 +187,16 @@ User's Machine
 
 ### Recommended Decision Matrix
 
-| Feature           | SQLite Only | + Neo4j Docker | Electron + Neo4j |
-| ----------------- | ----------- | -------------- | ---------------- |
-| **Local Storage** | ✅          | ✅             | ✅               |
-| **Graph Queries** | Limited     | ✅✅           | ✅✅             |
-| **Canvas 2D/3D**  | ✅          | ✅             | ✅               |
-| **Embeddings**    | Via API     | Local          | Local            |
-| **Setup**         | Easy        | Medium         | Easy             |
-| **Size**          | ~50MB       | ~600MB         | ~500MB           |
-| **Install**       | Node.js     | Node + Docker  | Just .exe        |
-| **Professional**  | ⭐⭐⭐      | ⭐⭐⭐⭐       | ⭐⭐⭐⭐⭐       |
+| Feature            | SQLite Only | + Neo4j Docker | Electron + Neo4j |
+| ------------------ | ----------- | -------------- | ---------------- |
+| **Local Storage**  | ✅          | ✅             | ✅               |
+| **Graph Queries**  | Limited     | ✅✅           | ✅✅             |
+| **Keimenon 2D/3D** | ✅          | ✅             | ✅               |
+| **Embeddings**     | Via API     | Local          | Local            |
+| **Setup**          | Easy        | Medium         | Easy             |
+| **Size**           | ~50MB       | ~600MB         | ~500MB           |
+| **Install**        | Node.js     | Node + Docker  | Just .exe        |
+| **Professional**   | ⭐⭐⭐      | ⭐⭐⭐⭐       | ⭐⭐⭐⭐⭐       |
 
 ### My Recommendation: **Electron + SQLite** (default) + **Optional Neo4j toggle**
 
@@ -260,7 +260,7 @@ User's Machine
 **Modes**:
 
 - `local`: SQLite only
-- `canvas`: Neo4j only
+- `keimenon`: Neo4j only
 - `hybrid`: Both (SQLite primary, Neo4j sync)
 
 ### Current Problem
@@ -277,7 +277,7 @@ await neo4jClient.connect();
 const dbClient = await DatabaseFactory.getClient({
   mode: process.env.STORAGE_MODE || 'local',
   local: { ... },
-  canvas: { ... }
+  keimenon: { ... }
 });
 ```
 

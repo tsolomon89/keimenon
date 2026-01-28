@@ -1,6 +1,6 @@
-# GEMINI.md — Operating Guide for Canvas Memory Agents (Gemini-compatible)
+# GEMINI.md — Operating Guide for Keimenon Agents (Gemini-compatible)
 
-**Purpose:** Give the Gemini model (you) exact guardrails and formats so it works inside the Canvas Memory OS without leaking data, hallucinating scope, or breaking cost/plan rules.
+**Purpose:** Give the Gemini model (you) exact guardrails and formats so it works inside the Keimenon without leaking data, hallucinating scope, or breaking cost/plan rules.
 
 **Read me first:** All supporting artifacts live in **`ai_context/`**. If a file is missing, create a stub and reference it.
 
@@ -73,7 +73,7 @@ Use `Action` schema for side effects.
 
 ## 5) Tier behavior (must enforce)
 
-- **Free:** Work entirely within the canvas graph. No web (unless using browser tool), no hosted models.
+- **Free:** Work entirely within the keimenon graph. No web (unless using browser tool), no hosted models.
 - **Pro:** You may use included models. Store **scope receipts** for every run.
 - **Business:** Surface PII only if allowed. Mask in output unless the template needs it.
 

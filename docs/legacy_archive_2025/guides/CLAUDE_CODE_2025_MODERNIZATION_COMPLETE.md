@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document provides the complete, exhaustive implementation plan for modernizing the Canvas Memory OS Claude Code ecosystem to 2025 best practices. Implements three breakthrough patterns:
+This document provides the complete, exhaustive implementation plan for modernizing the Keimenon Claude Code ecosystem to 2025 best practices. Implements three breakthrough patterns:
 
 1. **Code Execution with MCP** (98.7% token savings)
 2. **Progressive Disclosure** (83% skill activation savings)
@@ -63,7 +63,7 @@ Add to `.claude/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "canvas-code-execution": {
+    "keimenon-code-execution": {
       "command": "node",
       "args": ["${workspaceFolder}/.mcp/servers/code-execution/dist/index.js"],
       "description": "Code execution with MCP modules for 98.7% token savings"
@@ -254,9 +254,9 @@ Move detailed matrices and checklists from CLAUDE.md Section 13 here.
 ```json
 {
   "mcpServers": {
-    "canvas-code-execution": { "...": "..." },
-    "canvas-database": { "...": "..." },
-    "canvas-docs": { "...": "..." }
+    "keimenon-code-execution": { "...": "..." },
+    "keimenon-database": { "...": "..." },
+    "keimenon-docs": { "...": "..." }
   }
 }
 ```
@@ -266,7 +266,7 @@ Move detailed matrices and checklists from CLAUDE.md Section 13 here.
 ```json
 {
   "mcpServers": {
-    "canvas-docs": { "...": "..." }
+    "keimenon-docs": { "...": "..." }
   }
 }
 ```
@@ -276,9 +276,9 @@ Move detailed matrices and checklists from CLAUDE.md Section 13 here.
 ```json
 {
   "mcpServers": {
-    "canvas-code-execution": { "...": "..." },
-    "canvas-database": { "...": "..." },
-    "canvas-playwright-e2e": { "...": "..." }
+    "keimenon-code-execution": { "...": "..." },
+    "keimenon-database": { "...": "..." },
+    "keimenon-playwright-e2e": { "...": "..." }
   }
 }
 ```
@@ -288,11 +288,11 @@ Move detailed matrices and checklists from CLAUDE.md Section 13 here.
 ```json
 {
   "mcpServers": {
-    "canvas-playwright-e2e": { "...": "..." },
-    "canvas-api-testing": { "...": "..." },
-    "canvas-chat-import": { "...": "..." },
-    "canvas-visual-feedback": { "...": "..." },
-    "canvas-database": { "...": "..." }
+    "keimenon-playwright-e2e": { "...": "..." },
+    "keimenon-api-testing": { "...": "..." },
+    "keimenon-chat-import": { "...": "..." },
+    "keimenon-visual-feedback": { "...": "..." },
+    "keimenon-database": { "...": "..." }
   }
 }
 ```
@@ -302,9 +302,9 @@ Move detailed matrices and checklists from CLAUDE.md Section 13 here.
 ```json
 {
   "mcpServers": {
-    "canvas-git-workflow": { "...": "..." },
-    "canvas-api-testing": { "...": "..." },
-    "canvas-database": { "...": "..." }
+    "keimenon-git-workflow": { "...": "..." },
+    "keimenon-api-testing": { "...": "..." },
+    "keimenon-database": { "...": "..." }
   }
 }
 ```
@@ -312,7 +312,7 @@ Move detailed matrices and checklists from CLAUDE.md Section 13 here.
 #### Shell Aliases (add to `.bashrc` or `.zshrc`)
 
 ```bash
-# Canvas Memory OS - Claude Code Personas
+# Keimenon - Claude Code Personas
 
 # Default coding persona
 alias cc="claude"
@@ -354,7 +354,7 @@ You are in **research mode**. Focus on:
 - Competitive analysis
 - Technology evaluation
 
-**Tools available**: WebFetch, WebSearch, canvas-docs MCP, filesystem (read-only)
+**Tools available**: WebFetch, WebSearch, keimenon-docs MCP, filesystem (read-only)
 
 **Constraints**:
 
@@ -478,7 +478,7 @@ You are in **deployment mode**. Focus on:
 6. **e2e-test-generator**
    - Current: 183 chars
    - Target: <100 chars
-   - New: "Generates Playwright tests for canvas ops, data mgmt, auth. Use when adding E2E coverage."
+   - New: "Generates Playwright tests for keimenon ops, data mgmt, auth. Use when adding E2E coverage."
 
 7. **graph-schema-validator**
    - Current: 197 chars
@@ -686,7 +686,7 @@ Wrapper for the Code Execution MCP server. Implements 2025 "Code Execution with 
 
 ```python
 # Query all Source nodes and find duplicates
-from canvas_database import query_nodes
+from keimenon_database import query_nodes
 
 # This happens in execution env (zero LLM tokens)
 nodes = query_nodes(kind="Source", limit=10000)
@@ -1062,12 +1062,12 @@ router.put('/api/users/:id', updateProfileLimiter, async (req, res) => {
 
 All MCP servers loaded at startup:
 
-- canvas-database: 5 tools × ~100 tokens = 500 tokens
-- canvas-docs: 5 tools × ~100 tokens = 500 tokens
-- canvas-api-testing: 9 tools × ~100 tokens = 900 tokens
-- canvas-chat-import: 8 tools × ~100 tokens = 800 tokens
-- canvas-settings-crm: 7 tools × ~100 tokens = 700 tokens
-- canvas-playwright-e2e: 9 tools × ~100 tokens = 900 tokens
+- keimenon-database: 5 tools × ~100 tokens = 500 tokens
+- keimenon-docs: 5 tools × ~100 tokens = 500 tokens
+- keimenon-api-testing: 9 tools × ~100 tokens = 900 tokens
+- keimenon-chat-import: 8 tools × ~100 tokens = 800 tokens
+- keimenon-settings-crm: 7 tools × ~100 tokens = 700 tokens
+- keimenon-playwright-e2e: 9 tools × ~100 tokens = 900 tokens
 - **Total: ~4,300 tokens upfront (every session)**
 
 #### Target (Token-Light)
@@ -1099,7 +1099,7 @@ Add to each MCP server:
 
 ```json
 {
-  "server": "canvas-database",
+  "server": "keimenon-database",
   "version": "1.0.0",
   "tool_count": 5,
   "tools": [
@@ -1160,7 +1160,7 @@ Add to each MCP server:
 **On-Demand (when needed)**:
 
 1. User: "Query all Source nodes from last week"
-2. Agent: Identifies need for `canvas-database` server
+2. Agent: Identifies need for `keimenon-database` server
 3. Agent: Calls `load_tool_definition("query_nodes")`
 4. Agent: Receives full definition (~100 tokens)
 5. Agent: Uses tool with correct parameters
@@ -1252,14 +1252,14 @@ class ComposableMCPServer {
 **Example Usage** (Database server calling Docs server):
 
 ```typescript
-// In canvas-database MCP server
+// In keimenon-database MCP server
 
 async function inspectSchemaWithDocs(tableName: string) {
   // Get schema from database
   const schema = await getTableSchema(tableName);
 
   // Call docs server to get documentation for this table
-  const docs = await this.callMCPServer('canvas-docs', 'search_docs', {
+  const docs = await this.callMCPServer('keimenon-docs', 'search_docs', {
     query: `schema ${tableName}`,
     limit: 5,
   });
@@ -1370,7 +1370,7 @@ Code execution with MCP modules:
 ### Example
 
 ```python
-from canvas_database import query_nodes
+from keimenon_database import query_nodes
 
 # Query all nodes (in execution env, zero LLM tokens)
 nodes = query_nodes(kind="Source", limit=10000)
@@ -1771,4 +1771,4 @@ npm run measure-tokens
 **Document Version**: 1.0
 **Last Updated**: 2025-11-16
 **Status**: ACTIVE - Implementation in progress
-**Owner**: Canvas Memory OS Team
+**Owner**: Keimenon Team

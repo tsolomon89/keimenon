@@ -121,7 +121,7 @@ duplicate_auto_merge_threshold: number(0 - 1);
 
 #### 5. Connected ChatImportModal
 
-**File**: [apps/web/src/components/canvas/ChatImportModal.tsx](apps/web/src/components/canvas/ChatImportModal.tsx)
+**File**: [apps/web/src/components/keimenon/ChatImportModal.tsx](apps/web/src/components/keimenon/ChatImportModal.tsx)
 
 **Changes Made**:
 
@@ -202,7 +202,7 @@ Frontend config is automatically converted to backend format:
 ### Frontend (2 files):
 
 1. ✅ **NEW**: [apps/web/src/lib/api-client.ts](apps/web/src/lib/api-client.ts) (207 lines)
-2. ✅ **UPDATED**: [apps/web/src/components/canvas/ChatImportModal.tsx](apps/web/src/components/canvas/ChatImportModal.tsx) (~60 lines changed)
+2. ✅ **UPDATED**: [apps/web/src/components/keimenon/ChatImportModal.tsx](apps/web/src/components/keimenon/ChatImportModal.tsx) (~60 lines changed)
 
 ### Documentation (3 files):
 
@@ -258,7 +258,7 @@ npm run dev
 
 #### 3. Test Upload Flow
 
-1. Open http://localhost:3001/canvas
+1. Open http://localhost:3001/keimenon
 2. Click "Import Chat Conversations" button
 3. Upload a ChatGPT/Claude/Gemini export file (.json)
 4. Verify platform detection badge appears
@@ -339,16 +339,16 @@ Import happens all at once - no streaming or chunked progress updates.
 
 ## Next Steps (Options 2-4)
 
-### Option 2: Phase 3 - Canvas Integration ⏳
+### Option 2: Phase 3 - Keimenon Integration ⏳
 
-**Goal**: Visualize imported conversations on the canvas
+**Goal**: Visualize imported conversations on the keimenon
 
 **Components to Create**:
 
 1. `SourceTreeView.tsx` - LHS sidebar with folder tree
 2. `SourceInspector.tsx` - RHS sidebar with accordion details
-3. `GroupCard.tsx` - Canvas cards representing conversation groups
-4. Selection synchronization between tree and canvas
+3. `GroupCard.tsx` - Keimenon cards representing conversation groups
+4. Selection synchronization between tree and keimenon
 
 **Features**:
 
@@ -412,7 +412,7 @@ Import happens all at once - no streaming or chunked progress updates.
 
 ### 🎯 Future:
 
-- [ ] Canvas visualization (Option 2)
+- [ ] Keimenon visualization (Option 2)
 - [ ] Keyboard shortcuts (Option 3)
 - [ ] Comprehensive testing (Option 4)
 
@@ -451,4 +451,4 @@ The remaining 5% is implementing the "apply decisions" endpoint, which is a nice
 - ✅ Display duplicate review UI
 - ⏳ Apply decisions (currently console-logged only)
 
-**Ready to proceed to Option 2 (Canvas Integration)!** 🚀
+**Ready to proceed to Option 2 (Keimenon Integration)!** 🚀

@@ -1,4 +1,4 @@
-# Canvas Memory OS - Permissions Matrix
+# Keimenon - Permissions Matrix
 
 ## Overview
 
@@ -15,7 +15,7 @@ The system has two account types (`admin` and `client`), four permission levels 
 
 ### Admin Account
 
-- System-level account for Canvas Memory OS operators
+- System-level account for Keimenon operators
 - Has "debug mode" - can operate as if it's a client account for its own data
 - Has CRM controls - can view/manage all client accounts
 - Can modify global system settings
@@ -460,7 +460,7 @@ router.patch('/global', requireAuth, requireAdmin, requirePermission('admin'), a
 
 ### Account System Settings
 
-- Canvas visibility defaults
+- Keimenon visibility defaults
 - Data retention policies
 - Export formats allowed
 - API rate limits

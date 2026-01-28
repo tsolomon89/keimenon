@@ -1,4 +1,4 @@
-# Canvas Memory OS
+# Keimenon
 
 **A local-first, graph-native memory operating system for research and knowledge management with advanced AI chat import capabilities.**
 
@@ -30,7 +30,7 @@ npm run dev
 
 **That's it!** The system will automatically:
 
-- ✅ Create local SQLite database at `~/.canvas-memory/canvas.db`
+- ✅ Create local SQLite database at `~/.keimenon/keimenon.db`
 - ✅ Initialize database schema with tables and indexes
 - ✅ Set up local document storage
 - ✅ Start API server on port 4001
@@ -43,13 +43,13 @@ npm run dev
 
 #### Start the Frontend (Optional)
 
-To use the visual interface with 2D canvas visualization:
+To use the visual interface with 2D keimenon visualization:
 
 ```bash
 # In a new terminal window
 
 # 1. Install frontend dependencies (first time only)
-npm install --workspace=@canvas-memory/web
+npm install --workspace=@keimenon/web
 
 # 2. Start the frontend server
 cd apps/web
@@ -59,7 +59,7 @@ npm run dev
 **Access the Frontend**:
 
 - 🌐 Web UI: http://localhost:3000
-- 🎨 Canvas View: http://localhost:3000/canvas
+- 🎨 Keimenon View: http://localhost:3000/keimenon
 - 📥 Import UI: http://localhost:3000/ingest
 
 **Features**:
@@ -71,7 +71,7 @@ npm run dev
 
 ## 🔐 Authentication System
 
-Canvas Memory OS includes a **production-ready multi-tenant authentication system** with JWT tokens, role-based access control (RBAC), and complete data isolation between accounts.
+Keimenon includes a **production-ready multi-tenant authentication system** with JWT tokens, role-based access control (RBAC), and complete data isolation between accounts.
 
 ### Authentication Features
 
@@ -300,8 +300,8 @@ The system supports **three storage modes**:
 ```bash
 # In apps/api/.env
 STORAGE_MODE=local
-SQLITE_PATH=~/.canvas-memory/canvas.db
-LOCAL_DOCS_PATH=~/.canvas-memory
+SQLITE_PATH=~/.keimenon/keimenon.db
+LOCAL_DOCS_PATH=~/.keimenon
 ```
 
 **Benefits**:
@@ -317,7 +317,7 @@ LOCAL_DOCS_PATH=~/.canvas-memory
 
 ```bash
 # In apps/api/.env
-STORAGE_MODE=canvas
+STORAGE_MODE=keimenon
 NEO4J_URI=neo4j+s://YOUR_INSTANCE.databases.neo4j.io
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password
@@ -328,13 +328,13 @@ NEO4J_PASSWORD=your-password
 ```bash
 # In apps/api/.env
 STORAGE_MODE=hybrid
-SQLITE_PATH=~/.canvas-memory/canvas.db
+SQLITE_PATH=~/.keimenon/keimenon.db
 NEO4J_URI=neo4j+s://YOUR_INSTANCE.databases.neo4j.io
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password
 ```
 
-#### Optional: Neo4j Setup (Only if using canvas/hybrid mode)
+#### Optional: Neo4j Setup (Only if using keimenon/hybrid mode)
 
 ```bash
 # Option 1: Neo4j Aura (Cloud)
@@ -349,7 +349,7 @@ docker-compose -f docker-compose.dev.yml up -d neo4j
 
 ### 🏗️ Local-First Design
 
-Canvas Memory OS is built on a **DatabaseClient abstraction layer** that supports multiple database backends:
+Keimenon is built on a **DatabaseClient abstraction layer** that supports multiple database backends:
 
 ```typescript
 interface DatabaseClient {
@@ -403,7 +403,7 @@ CREATE VIRTUAL TABLE nodes_fts USING fts5(id UNINDEXED, content);
 ## Project Structure
 
 ```
-canvas-memory-os/
+keimenon/
 ├── apps/
 │   └── api/              # Express.js backend
 │       ├── src/
@@ -768,7 +768,7 @@ node tests/integration/test-e2e-pipeline.js
 ### 🚧 In Progress
 
 - Frontend UI (Next.js application)
-- Canvas visualization
+- Keimenon visualization
 - 3D Galaxy lens view
 
 ### 📋 Roadmap
@@ -834,7 +834,7 @@ If you have existing data in Neo4j and want to migrate to local-first:
 
 ### Architecture Specifications
 
-- [Living Spec](ai_context/canvas_memory_os_living_spec_v_0.md)
+- [Living Spec](ai_context/keimenon_living_spec_v_0.md)
 - [Agent Architecture](agents.md)
 - [Tiers & Plans](<ai_context/plans_tiers_accounts_roles_and_phased_rollout_v_0%20(1).md>)
 
@@ -842,13 +842,13 @@ If you have existing data in Neo4j and want to migrate to local-first:
 
 ### Database Location
 
-Default location: `~/.canvas-memory/canvas.db`
+Default location: `~/.keimenon/keimenon.db`
 
 To change:
 
 ```bash
 # In apps/api/.env
-SQLITE_PATH=/custom/path/canvas.db
+SQLITE_PATH=/custom/path/keimenon.db
 ```
 
 ### Database Locked
@@ -857,7 +857,7 @@ If you see "database is locked" errors:
 
 ```bash
 # Check for other processes using the database
-lsof ~/.canvas-memory/canvas.db
+lsof ~/.keimenon/keimenon.db
 
 # Kill conflicting processes
 node scripts/kill-port.js 4001
@@ -870,10 +870,10 @@ cd apps/api && npm run dev
 
 ```bash
 # Backup first!
-cp ~/.canvas-memory/canvas.db ~/.canvas-memory/canvas.db.backup
+cp ~/.keimenon/keimenon.db ~/.keimenon/keimenon.db.backup
 
 # Delete database (will recreate on next start)
-rm ~/.canvas-memory/canvas.db
+rm ~/.keimenon/keimenon.db
 
 # Restart server
 cd apps/api && npm run dev
@@ -883,7 +883,7 @@ cd apps/api && npm run dev
 
 ```bash
 # Using sqlite3 CLI
-sqlite3 ~/.canvas-memory/canvas.db
+sqlite3 ~/.keimenon/keimenon.db
 
 # Run queries
 sqlite> SELECT COUNT(*) FROM nodes;
@@ -1008,7 +1008,7 @@ const db = global.dbClient;
 const node = await db.getNode(id);
 
 // ❌ WRONG: Don't import Neo4j directly
-import { getNeo4jClient } from '@canvas-memory/db';
+import { getNeo4jClient } from '@keimenon/db';
 const neo4j = getNeo4jClient();
 ```
 

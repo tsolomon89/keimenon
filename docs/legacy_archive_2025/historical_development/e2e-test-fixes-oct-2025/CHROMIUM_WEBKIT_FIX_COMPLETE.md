@@ -26,13 +26,13 @@ The Chromium/WebKit test failures were caused by **TWO separate issues**:
 **Files Updated**:
 
 1. `tests/e2e/global-setup.ts` - Line 12
-2. `tests/e2e/canvas-operations.spec.ts` - Line 15
+2. `tests/e2e/keimenon-operations.spec.ts` - Line 15
 3. `tests/e2e/console-error-filtering.spec.ts` - Line 18
 4. `tests/e2e/data-management-ui-updates.spec.ts` - Line 193
 5. `tests/e2e/debug-auth.spec.ts` - Line 14
 6. `tests/e2e/debug-chromium-isolation.spec.ts` - Lines 111, 199
 7. `tests/e2e/debug-env-config.spec.ts` - Line 31
-8. `tests/e2e/flow-auth-canvas.spec.ts` - Line 23
+8. `tests/e2e/flow-auth-keimenon.spec.ts` - Line 23
 9. `tests/e2e/settings-navigation.spec.ts` - Line 15
 
 **Change**: Replaced all instances of `'admin123'` with `'123456'`
@@ -71,9 +71,9 @@ const apiUrl = API_BASE_URL;
 
 **Key Passing Tests**:
 
-1. ✅ Canvas Operations - sidebar display
-2. ✅ Canvas Operations - page load
-3. ✅ Canvas Operations - accessible content
+1. ✅ Keimenon Operations - sidebar display
+2. ✅ Keimenon Operations - page load
+3. ✅ Keimenon Operations - accessible content
 4. ✅ Debug Auth - token and API access
 5. ✅ Debug Client Env - environment variables
 6. ✅ Debug Auth Response - authentication flow
@@ -101,7 +101,7 @@ const apiUrl = API_BASE_URL;
 
 ```
 [DEBUG] Token in localStorage: PRESENT
-✅ Redirected to canvas
+✅ Redirected to keimenon
 ```
 
 ## Remaining Issues (Non-Critical)
@@ -139,7 +139,7 @@ export const API_BASE_URL = getEnv('NEXT_PUBLIC_API_URL', 'http://localhost:4001
 
 ## Database Investigation
 
-**Database Path**: `C:\Users\Audna\.canvas-memory\canvas.db`
+**Database Path**: `C:\Users\Audna\.keimenon\keimenon.db`
 
 **User Accounts Found**:
 | Email | Name | Password |
@@ -171,13 +171,13 @@ Expected: Same 6+ tests should now pass with correct authentication.
 **Lines Changed**: ~25
 
 1. ✅ `tests/e2e/global-setup.ts` - Password fix
-2. ✅ `tests/e2e/canvas-operations.spec.ts` - Password fix
+2. ✅ `tests/e2e/keimenon-operations.spec.ts` - Password fix
 3. ✅ `tests/e2e/console-error-filtering.spec.ts` - Password fix
 4. ✅ `tests/e2e/data-management-ui-updates.spec.ts` - Password fix
 5. ✅ `tests/e2e/debug-auth.spec.ts` - Password fix
 6. ✅ `tests/e2e/debug-chromium-isolation.spec.ts` - Password fix
 7. ✅ `tests/e2e/debug-env-config.spec.ts` - Password + env.config import fix
-8. ✅ `tests/e2e/flow-auth-canvas.spec.ts` - Password fix
+8. ✅ `tests/e2e/flow-auth-keimenon.spec.ts` - Password fix
 9. ✅ `tests/e2e/settings-navigation.spec.ts` - Password fix
 10. ✅ `tests/e2e/debug-network-connectivity.spec.ts` - env.config import fix
 11. ✅ `tests/e2e/debug-auth-response.spec.ts` - Password fix
@@ -187,7 +187,7 @@ Expected: Same 6+ tests should now pass with correct authentication.
 - ✅ **Authentication**: Working across all browsers
 - ✅ **Environment Variables**: Browser-safe access established
 - ✅ **Test Pass Rate**: Increased from 0% to 100% for core tests
-- ✅ **Canvas Operations**: All basic operations passing
+- ✅ **Keimenon Operations**: All basic operations passing
 - ✅ **API Connectivity**: Verified with 200 OK responses
 
 ## Conclusion

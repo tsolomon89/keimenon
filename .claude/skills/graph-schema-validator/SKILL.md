@@ -1,7 +1,7 @@
 ---
 name: graph-schema-validator
 description: Validates node and edge operations against JSON schemas in ai_context/schemas/. Checks account_id isolation, proper fingerprinting, edge type correctness, and graph-native principles compliance. Use when creating/modifying nodes, edges, or database operations.
-allowed-tools: Read, Grep, Glob, mcp__canvas-database__query_nodes, mcp__canvas-database__query_edges, mcp__canvas-database__inspect_schema
+allowed-tools: Read, Grep, Glob, mcp__keimenon-database__query_nodes, mcp__keimenon-database__query_edges, mcp__keimenon-database__inspect_schema
 ---
 
 ---
@@ -20,7 +20,7 @@ allowed-tools: Read, Grep, Glob, mcp__canvas-database__query_nodes, mcp__canvas-
 
 ## Purpose
 
-Ensure all graph operations comply with Canvas Memory OS architectural principles:
+Ensure all graph operations comply with Keimenon architectural principles:
 
 - Graph-native data model (everything is a node)
 - Schema-driven validation
@@ -162,7 +162,7 @@ if (existing.length > 0) {
 
 1. **Read the code** being modified (use Read tool)
 2. **Check for schemas** in `ai_context/schemas/` (use Glob tool)
-3. **Query database** for similar operations (use MCP canvas-database tools)
+3. **Query database** for similar operations (use MCP keimenon-database tools)
 4. **Validate** against rules above
 5. **Report findings**:
    - ✅ What's correct
@@ -184,8 +184,8 @@ if (existing.length > 0) {
 ### Query Nodes
 
 ```typescript
-// Use canvas-database MCP server
-mcp__canvas -
+// Use keimenon-database MCP server
+mcp__keimenon -
   database__query_nodes({
     kind: 'Source',
     account_id: 'acc_xyz789',
@@ -196,7 +196,7 @@ mcp__canvas -
 ### Query Edges
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   database__query_edges({
     kind: 'CONTAINS',
     from_id: 'grp_abc123',
@@ -207,7 +207,7 @@ mcp__canvas -
 ### Inspect Schema
 
 ```typescript
-mcp__canvas -
+mcp__keimenon -
   database__inspect_schema({
     table_name: 'nodes', // or "edges"
   });

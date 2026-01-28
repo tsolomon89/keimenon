@@ -22,7 +22,7 @@
 
 ## Overview
 
-Canvas Memory OS is designed as a **local-first** application that runs entirely on the user's machine. This guide covers deployment scenarios:
+Keimenon is designed as a **local-first** application that runs entirely on the user's machine. This guide covers deployment scenarios:
 
 - **Free Tier**: Fully local deployment (no server required)
 - **Pro Tier**: Local deployment with optional cloud sync
@@ -78,10 +78,10 @@ NODE_ENV=production
 # =============================================================================
 # STORAGE MODE
 # =============================================================================
-STORAGE_MODE=local  # Options: local, canvas (neo4j), hybrid
-LOCAL_DOCS_PATH=/var/lib/canvas-memory
-SQLITE_PATH=/var/lib/canvas-memory/canvas.db
-STORAGE_PATH=/var/lib/canvas-memory/storage
+STORAGE_MODE=local  # Options: local, keimenon (neo4j), hybrid
+LOCAL_DOCS_PATH=/var/lib/keimenon
+SQLITE_PATH=/var/lib/keimenon/keimenon.db
+STORAGE_PATH=/var/lib/keimenon/storage
 MAX_FILE_SIZE_MB=10
 
 # =============================================================================
@@ -209,7 +209,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 5. **Access Application**:
    - Open browser: `http://localhost:3000`
 
-**Data Location**: `~/.canvas-memory/`
+**Data Location**: `~/.keimenon/`
 
 ---
 
@@ -231,7 +231,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
    module.exports = {
      apps: [
        {
-         name: 'canvas-api',
+         name: 'keimenon-api',
          cwd: './apps/api',
          script: 'npm',
          args: 'start',
@@ -242,12 +242,12 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
          instances: 2,
          exec_mode: 'cluster',
          max_memory_restart: '500M',
-         error_file: '/var/log/canvas-memory/api-error.log',
-         out_file: '/var/log/canvas-memory/api-out.log',
+         error_file: '/var/log/keimenon/api-error.log',
+         out_file: '/var/log/keimenon/api-out.log',
          log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
        },
        {
-         name: 'canvas-web',
+         name: 'keimenon-web',
          cwd: './apps/web',
          script: 'npm',
          args: 'start',
@@ -257,8 +257,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
          },
          instances: 1,
          max_memory_restart: '1G',
-         error_file: '/var/log/canvas-memory/web-error.log',
-         out_file: '/var/log/canvas-memory/web-out.log',
+         error_file: '/var/log/keimenon/web-error.log',
+         out_file: '/var/log/keimenon/web-out.log',
          log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
        },
      ],
@@ -289,17 +289,17 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 #### Using Systemd (Alternative)
 
-1. **Create Service File** (`/etc/systemd/system/canvas-api.service`):
+1. **Create Service File** (`/etc/systemd/system/keimenon-api.service`):
 
    ```ini
    [Unit]
-   Description=Canvas Memory OS API Server
+   Description=Keimenon API Server
    After=network.target
 
    [Service]
    Type=simple
-   User=canvas
-   WorkingDirectory=/opt/canvas-memory/apps/api
+   User=keimenon
+   WorkingDirectory=/opt/keimenon/apps/api
    Environment="NODE_ENV=production"
    Environment="PORT=4001"
    ExecStart=/usr/bin/npm start
@@ -312,9 +312,9 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 2. **Enable and Start**:
    ```bash
-   sudo systemctl enable canvas-api
-   sudo systemctl start canvas-api
-   sudo systemctl status canvas-api
+   sudo systemctl enable keimenon-api
+   sudo systemctl start keimenon-api
+   sudo systemctl status keimenon-api
    ```
 
 ---
@@ -338,9 +338,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=4001
-      - SQLITE_PATH=/data/canvas.db
+      - SQLITE_PATH=/data/keimenon.db
     volumes:
-      - canvas-data:/data
+      - keimenon-data:/data
       - ./apps/api/.env:/app/.env
     restart: unless-stopped
     healthcheck:
@@ -363,7 +363,7 @@ services:
     restart: unless-stopped
 
 volumes:
-  canvas-data:
+  keimenon-data:
     driver: local
 ```
 
@@ -446,9 +446,9 @@ docker-compose logs -f
 1. **Create Data Directory**:
 
    ```bash
-   sudo mkdir -p /var/lib/canvas-memory
-   sudo chown -R canvas:canvas /var/lib/canvas-memory
-   sudo chmod 750 /var/lib/canvas-memory
+   sudo mkdir -p /var/lib/keimenon
+   sudo chown -R keimenon:keimenon /var/lib/keimenon
+   sudo chmod 750 /var/lib/keimenon
    ```
 
 2. **Initialize Database** (automatic on first run):
@@ -458,7 +458,7 @@ docker-compose logs -f
 3. **Verify Database**:
 
    ```bash
-   sqlite3 /var/lib/canvas-memory/canvas.db
+   sqlite3 /var/lib/keimenon/keimenon.db
 
    # Check tables
    .tables
@@ -472,8 +472,8 @@ docker-compose logs -f
 
 4. **Database Permissions**:
    ```bash
-   sudo chmod 640 /var/lib/canvas-memory/canvas.db
-   sudo chown canvas:canvas /var/lib/canvas-memory/canvas.db
+   sudo chmod 640 /var/lib/keimenon/keimenon.db
+   sudo chown keimenon:keimenon /var/lib/keimenon/keimenon.db
    ```
 
 ### WAL Mode (Write-Ahead Logging)
@@ -481,7 +481,7 @@ docker-compose logs -f
 Enable WAL mode for better concurrency:
 
 ```bash
-sqlite3 /var/lib/canvas-memory/canvas.db "PRAGMA journal_mode=WAL;"
+sqlite3 /var/lib/keimenon/keimenon.db "PRAGMA journal_mode=WAL;"
 ```
 
 ---
@@ -507,7 +507,7 @@ sudo ufw enable
 
 ### 2. Reverse Proxy (Nginx)
 
-Create `/etc/nginx/sites-available/canvas-memory`:
+Create `/etc/nginx/sites-available/keimenon`:
 
 ```nginx
 # API Server
@@ -590,7 +590,7 @@ server {
 Enable site:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/canvas-memory /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/keimenon /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
@@ -612,18 +612,18 @@ sudo systemctl status certbot.timer
 
 ```bash
 # Application files
-sudo chown -R canvas:canvas /opt/canvas-memory
-sudo chmod -R 750 /opt/canvas-memory
+sudo chown -R keimenon:keimenon /opt/keimenon
+sudo chmod -R 750 /opt/keimenon
 
 # Data directory
-sudo chown -R canvas:canvas /var/lib/canvas-memory
-sudo chmod 750 /var/lib/canvas-memory
-sudo chmod 640 /var/lib/canvas-memory/canvas.db
+sudo chown -R keimenon:keimenon /var/lib/keimenon
+sudo chmod 750 /var/lib/keimenon
+sudo chmod 640 /var/lib/keimenon/keimenon.db
 
 # Logs
-sudo mkdir -p /var/log/canvas-memory
-sudo chown -R canvas:canvas /var/log/canvas-memory
-sudo chmod 750 /var/log/canvas-memory
+sudo mkdir -p /var/log/keimenon
+sudo chown -R keimenon:keimenon /var/log/keimenon
+sudo chmod 750 /var/log/keimenon
 ```
 
 ---
@@ -647,16 +647,16 @@ Response:
 
 ### Log Rotation
 
-Create `/etc/logrotate.d/canvas-memory`:
+Create `/etc/logrotate.d/keimenon`:
 
 ```
-/var/log/canvas-memory/*.log {
+/var/log/keimenon/*.log {
     daily
     rotate 30
     compress
     delaycompress
     notifempty
-    create 0640 canvas canvas
+    create 0640 keimenon keimenon
     sharedscripts
     postrotate
         pm2 reloadLogs
@@ -684,13 +684,13 @@ See [ERROR_TRACKING_SENTRY.md](ERROR_TRACKING_SENTRY.md) for detailed setup.
 
 ### Automated Backup Script
 
-Create `/usr/local/bin/backup-canvas.sh`:
+Create `/usr/local/bin/backup-keimenon.sh`:
 
 ```bash
 #!/bin/bash
 
-BACKUP_DIR="/var/backups/canvas-memory"
-DB_PATH="/var/lib/canvas-memory/canvas.db"
+BACKUP_DIR="/var/backups/keimenon"
+DB_PATH="/var/lib/keimenon/keimenon.db"
 RETENTION_DAYS=30
 
 # Create backup directory
@@ -700,21 +700,21 @@ mkdir -p "$BACKUP_DIR"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Backup database
-sqlite3 "$DB_PATH" ".backup '$BACKUP_DIR/canvas_$TIMESTAMP.db'"
+sqlite3 "$DB_PATH" ".backup '$BACKUP_DIR/keimenon_$TIMESTAMP.db'"
 
 # Compress
-gzip "$BACKUP_DIR/canvas_$TIMESTAMP.db"
+gzip "$BACKUP_DIR/keimenon_$TIMESTAMP.db"
 
 # Remove old backups
-find "$BACKUP_DIR" -name "canvas_*.db.gz" -mtime +$RETENTION_DAYS -delete
+find "$BACKUP_DIR" -name "keimenon_*.db.gz" -mtime +$RETENTION_DAYS -delete
 
-echo "Backup completed: $BACKUP_DIR/canvas_$TIMESTAMP.db.gz"
+echo "Backup completed: $BACKUP_DIR/keimenon_$TIMESTAMP.db.gz"
 ```
 
 Make executable:
 
 ```bash
-sudo chmod +x /usr/local/bin/backup-canvas.sh
+sudo chmod +x /usr/local/bin/backup-keimenon.sh
 ```
 
 ### Cron Schedule
@@ -723,7 +723,7 @@ Add to crontab:
 
 ```bash
 # Daily backup at 2 AM
-0 2 * * * /usr/local/bin/backup-canvas.sh >> /var/log/canvas-memory/backup.log 2>&1
+0 2 * * * /usr/local/bin/backup-keimenon.sh >> /var/log/keimenon/backup.log 2>&1
 ```
 
 ### Restore from Backup
@@ -733,11 +733,11 @@ Add to crontab:
 pm2 stop all
 
 # Restore database
-gunzip -c /var/backups/canvas-memory/canvas_20250101_020000.db.gz > /var/lib/canvas-memory/canvas.db
+gunzip -c /var/backups/keimenon/keimenon_20250101_020000.db.gz > /var/lib/keimenon/keimenon.db
 
 # Fix permissions
-sudo chown canvas:canvas /var/lib/canvas-memory/canvas.db
-sudo chmod 640 /var/lib/canvas-memory/canvas.db
+sudo chown keimenon:keimenon /var/lib/keimenon/keimenon.db
+sudo chmod 640 /var/lib/keimenon/keimenon.db
 
 # Start services
 pm2 start all
@@ -804,10 +804,10 @@ NODE_OPTIONS="--max-old-space-size=2048"
 
 ```bash
 # Check WAL mode
-sqlite3 /var/lib/canvas-memory/canvas.db "PRAGMA journal_mode;"
+sqlite3 /var/lib/keimenon/keimenon.db "PRAGMA journal_mode;"
 
 # Enable WAL if not set
-sqlite3 /var/lib/canvas-memory/canvas.db "PRAGMA journal_mode=WAL;"
+sqlite3 /var/lib/keimenon/keimenon.db "PRAGMA journal_mode=WAL;"
 
 # Increase busy timeout in code
 PRAGMA busy_timeout = 5000;
@@ -824,7 +824,7 @@ PRAGMA busy_timeout = 5000;
 NODE_OPTIONS="--max-old-space-size=2048"
 
 # Reduce PM2 instances
-pm2 scale canvas-api 2
+pm2 scale keimenon-api 2
 ```
 
 #### 3. High CPU Usage

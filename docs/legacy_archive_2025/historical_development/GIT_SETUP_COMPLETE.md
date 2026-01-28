@@ -1,6 +1,6 @@
 # Git Setup Complete
 
-This document summarizes the professional Git setup for Canvas Memory OS.
+This document summarizes the professional Git setup for Keimenon.
 
 ## What Was Configured
 

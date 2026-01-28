@@ -4,7 +4,7 @@
 
 ## Executive Summary
 
-This session addressed **3 critical security vulnerabilities** identified during the comprehensive issue hunt across the Canvas Memory codebase. All Phase 1 (Week 1) critical security issues have been resolved or have fixes in progress.
+This session addressed **3 critical security vulnerabilities** identified during the comprehensive issue hunt across the Keimenon codebase. All Phase 1 (Week 1) critical security issues have been resolved or have fixes in progress.
 
 ### Issues Addressed
 

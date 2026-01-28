@@ -2,7 +2,7 @@
 
 **Automatic code block detection and extraction from AI conversations**
 
-Canvas Memory OS can automatically detect, extract, and organize code blocks from your AI chat conversations, building a searchable code snippet library from your ChatGPT, Claude, and Gemini exports.
+Keimenon can automatically detect, extract, and organize code blocks from your AI chat conversations, building a searchable code snippet library from your ChatGPT, Claude, and Gemini exports.
 
 ---
 

@@ -42,7 +42,7 @@ import { useJobStream, type JobUpdate } from '@/hooks/useJobStream';
 import { errorCapture } from '@/services/error-capture.service';
 import { cancelJob, pauseJob, resumeJob } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/env.config';
-import { useCanvasStore } from '@/store/canvasStore';
+import { useKeimenonStore } from '@/store/keimenonStore';
 
 // Import job status
 export type ImportStatus =
@@ -164,9 +164,9 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       // All jobs completed or failed, clear loading state
       console.log('[ImportsTable] All bulk operations complete via SSE');
 
-      // CRITICAL: Refresh canvas data when bulk deletion completes
-      // This ensures deleted jobs' data disappears from canvas immediately
-      useCanvasStore.getState().loadGraphData();
+      // CRITICAL: Refresh keimenon data when bulk deletion completes
+      // This ensures deleted jobs' data disappears from keimenon immediately
+      useKeimenonStore.getState().loadGraphData();
 
       setBulkActionLoading(false);
       setJobsBeingOperated(new Set());
@@ -251,8 +251,8 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
     if (sseJob.config?.fileName) {
       fileName = sseJob.config.fileName;
     } else if (sseJob.type === 'delete') {
-      const scope = sseJob.config?.deleteScope || 'canvas';
-      fileName = scope === 'canvas' ? 'Delete Canvas Data' : 'Delete All Client Data';
+      const scope = sseJob.config?.deleteScope || 'keimenon';
+      fileName = scope === 'keimenon' ? 'Delete Keimenon Data' : 'Delete All Client Data';
     } else {
       fileName = `${sseJob.type.charAt(0).toUpperCase() + sseJob.type.slice(1)} Job`;
     }
@@ -278,19 +278,13 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
   }, []);
 
   // Sync jobs list with SSE (SSE is source of truth for real-time updates)
+  // Sync jobs list with SSE (SSE is source of truth for real-time updates)
   useEffect(() => {
     if (sseJobs.size > 0) {
-      console.log(`[ImportsTable] SSE update received: ${sseJobs.size} jobs`);
       setJobs(() => {
         // Convert all SSE jobs to ImportJob format
         // This replaces local state completely, ensuring deleted jobs are removed
         const sseJobsArray = Array.from(sseJobs.values()).map((sseJob) => {
-          console.log(`[ImportsTable] SSE job update:`, {
-            jobId: sseJob.jobId,
-            status: sseJob.status,
-            progress: sseJob.progress.percent,
-            timestamp: sseJob.timestamp,
-          });
           return convertSSEJobToImportJob(sseJob);
         });
 

@@ -290,7 +290,7 @@ Failed to fetch dynamically imported module: http://localhost:3000/src/lib/env.c
 The backend fixes were successfully implemented and improved the pass rate from 73.3% to 78.3% (+5 tests). However, the actual improvement fell short of expectations due to:
 
 1. **Runtime session lookup issues** - Fixture account sessions not being found
-2. **FTS query error still exists** - In job deletion worker, not clearCanvas
+2. **FTS query error still exists** - In job deletion worker, not clearKeimenon
 3. **Frontend module loading errors** - Blocking registration tests
 4. **Integration issues** - Some fixes implemented but not yet fully working
 

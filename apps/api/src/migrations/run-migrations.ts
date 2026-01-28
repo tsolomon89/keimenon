@@ -32,8 +32,8 @@ const MIGRATIONS: Record<string, MigrationModule> = {
 };
 
 function getDatabasePath(): string {
-  // Default to ~/.canvas-memory/canvas.db
-  const defaultPath = path.join(os.homedir(), '.keimenon', 'canvas.db');
+  // Default to ~/.keimenon/keimenon.db
+  const defaultPath = path.join(os.homedir(), '.keimenon', 'keimenon.db');
 
   // Check environment variable
   const envPath = process.env.DB_PATH || process.env.DATABASE_PATH;

@@ -1,11 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CanvasLayout } from '@/components/canvas/CanvasLayout';
-import { FirstTimeUploadModal } from '@/components/canvas/FirstTimeUploadModal';
-// LEGACY (quarantined): import { ImportModule } from '@/components/canvas/ImportModule.old';
+import { KeimenonLayout } from '@/components/keimenon/KeimenonLayout';
+import { FirstTimeUploadModal } from '@/components/keimenon/FirstTimeUploadModal';
+// LEGACY (quarantined): import { ImportModule } from '@/components/keimenon/ImportModule.old';
 // Using ChatImportModal as primary import rail
-import { useCanvasStore } from '@/store/canvasStore';
+import { useKeimenonStore } from '@/store/keimenonStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { ImportProgressProvider } from '@/contexts/ImportProgressContext';
 import { ConsoleProvider } from '@/contexts/ConsoleContext';
@@ -15,7 +15,7 @@ import {
 } from '@/contexts/BackgroundOperationsContext';
 import { E2E_TESTING } from '@/lib/env.config';
 
-export default function CanvasPage() {
+export default function KeimenonPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
   const [isFirstTime, setIsFirstTime] = useState(false);
@@ -23,7 +23,7 @@ export default function CanvasPage() {
   const [showChatImportModal, setShowChatImportModal] = useState(false);
   const [showImportModule, setShowImportModule] = useState(false);
   const [restoredOperation, setRestoredOperation] = useState<Operation | null>(null);
-  const loadGraphData = useCanvasStore((state) => state.loadGraphData);
+  const loadGraphData = useKeimenonStore((state) => state.loadGraphData);
 
   useEffect(() => {
     if (isLoading) {
@@ -36,7 +36,7 @@ export default function CanvasPage() {
     }
 
     // Check if E2E testing mode is enabled (disables welcome modal)
-    const hasSeenWelcome = localStorage.getItem('canvas_memory_welcome_shown');
+    const hasSeenWelcome = localStorage.getItem('keimenon_welcome_shown');
     if (!hasSeenWelcome && !E2E_TESTING) {
       setIsFirstTime(true);
     }
@@ -60,15 +60,15 @@ export default function CanvasPage() {
   }
 
   const handleDismissWelcome = () => {
-    localStorage.setItem('canvas_memory_welcome_shown', 'true');
+    localStorage.setItem('keimenon_welcome_shown', 'true');
     setIsFirstTime(false);
   };
 
   const handleOpenUpload = () => {
     // Temporarily default to new local-first modal
     // Hold shift to use old modal for comparison
-    // TODO(agent:canvas): Replace window.event with proper React event handling
-    // Related: apps/web/src/components/canvas/CanvasViewport.tsx (keyboard event handling)
+    // TODO(agent:keimenon): Replace window.event with proper React event handling
+    // Related: apps/web/src/components/keimenon/KeimenonViewport.tsx (keyboard event handling)
     // See: docs/features/CANVAS_KEYBOARD_SHORTCUTS.md (needs creation)
     // Use: React synthetic events or window.addEventListener for keyboard shortcuts
     if (typeof window !== 'undefined' && (window.event as KeyboardEvent | undefined)?.shiftKey) {
@@ -86,7 +86,7 @@ export default function CanvasPage() {
     <ConsoleProvider>
       <BackgroundOperationsProvider onRestoreOperation={setRestoredOperation}>
         <ImportProgressProvider>
-          <CanvasLayout
+          <KeimenonLayout
             showUploadModal={showUploadModal}
             onShowUploadModal={setShowUploadModal}
             onOpenUpload={handleOpenUpload}
@@ -105,7 +105,7 @@ export default function CanvasPage() {
           )}
           {/* LEGACY (quarantined): showImportModule pathway removed
               Import Module quarantined to ImportModule.old.tsx
-              Use ChatImportModal via CanvasSidebar or FirstTimeUploadModal instead */}
+              Use ChatImportModal via KeimenonSidebar or FirstTimeUploadModal instead */}
         </ImportProgressProvider>
       </BackgroundOperationsProvider>
     </ConsoleProvider>

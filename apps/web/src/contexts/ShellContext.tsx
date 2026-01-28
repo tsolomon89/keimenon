@@ -6,7 +6,7 @@ import { useAuth } from './AuthContext';
 /**
  * ShellMode: LOCKED to user.accountType
  * - Admin: Dashboard/management layer for all accounts and client data
- * - Client: Canvas UI for own data only
+ * - Client: Keimenon UI for own data only
  *
  * ShellMode is determined by accountType and cannot be manually changed.
  */
@@ -28,22 +28,22 @@ export function getShellModeLabel(mode: ShellMode): string {
 }
 
 /**
- * CanvasMode: Pages within a shell
+ * KeimenonMode: Pages within a shell
  * - auth: Login/registration (unauthenticated state)
  * - dashboard: Analytics and overview
  * - settings: Configuration
- * - canvas: Main graph canvas
+ * - keimenon: Main graph keimenon
  */
-type CanvasMode = 'auth' | 'dashboard' | 'settings' | 'canvas';
+type KeimenonMode = 'auth' | 'dashboard' | 'settings' | 'keimenon';
 
 interface ShellContextType {
   // Shell state
   shellMode: ShellMode;
-  canvasMode: CanvasMode;
+  keimenonMode: KeimenonMode;
 
   // Shell actions
   setShellMode: (mode: ShellMode) => void;
-  setCanvasMode: (mode: CanvasMode) => void;
+  setKeimenonMode: (mode: KeimenonMode) => void;
 
   // Permission checks
   canAccessPortal: () => boolean;
@@ -63,7 +63,7 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
   };
 
   const [shellMode, setShellModeState] = useState<ShellMode>(getDefaultShellMode());
-  const [canvasMode, setCanvasModeState] = useState<CanvasMode>('canvas');
+  const [keimenonMode, setKeimenonModeState] = useState<KeimenonMode>('keimenon');
   const initializedRef = useRef(false);
 
   // Lock shell mode to account type when user loads
@@ -71,10 +71,10 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user && !initializedRef.current) {
       const shellMode = user.accountType === 'admin' ? 'admin' : 'client';
-      const defaultCanvasMode = user.accountType === 'admin' ? 'dashboard' : 'canvas';
+      const defaultKeimenonMode = user.accountType === 'admin' ? 'dashboard' : 'keimenon';
 
       setShellModeState(shellMode);
-      setCanvasModeState(defaultCanvasMode);
+      setKeimenonModeState(defaultKeimenonMode);
 
       initializedRef.current = true;
       console.log('Shell locked to account type:', { shellMode, accountType: user.accountType });
@@ -123,18 +123,18 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
   );
 
   /**
-   * Set canvas mode (page within shell)
+   * Set keimenon mode (page within shell)
    */
-  const setCanvasMode = useCallback((mode: CanvasMode) => {
-    setCanvasModeState(mode);
-    console.log('Canvas mode changed:', mode);
+  const setKeimenonMode = useCallback((mode: KeimenonMode) => {
+    setKeimenonModeState(mode);
+    console.log('Keimenon mode changed:', mode);
   }, []);
 
   const value: ShellContextType = {
     shellMode,
-    canvasMode,
+    keimenonMode,
     setShellMode,
-    setCanvasMode,
+    setKeimenonMode,
     canAccessPortal,
     isAdminShell,
   };

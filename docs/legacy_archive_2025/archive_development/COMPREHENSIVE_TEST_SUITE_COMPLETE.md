@@ -50,7 +50,7 @@ All manual testing is now **irrelevant** - the comprehensive automated test suit
 **3. DataManagementCard.test.tsx** (550 lines, 40 tests)
 
 - Delete job creation workflow
-- Scope selection (canvas vs all-clients)
+- Scope selection (keimenon vs all-clients)
 - Confirmation dialogs
 - Background operations integration
 - Minimize to background
@@ -88,7 +88,7 @@ All manual testing is now **irrelevant** - the comprehensive automated test suit
 - Batched deletion (500 nodes/batch)
 - Small dataset (< 500 nodes)
 - Empty dataset handling
-- Delete scope variations (canvas vs all-clients)
+- Delete scope variations (keimenon vs all-clients)
 - Concurrent delete prevention (concurrency_group)
 - Performance benchmarks (1000 nodes < 30s)
 - Database cleanup verification
@@ -262,7 +262,7 @@ await sseCollector.waitForCondition(
 const nodesBefore = countNodes(db, accountId);
 
 // Perform action
-await createDeleteJob('canvas', token);
+await createDeleteJob('keimenon', token);
 
 // Verify state after
 const nodesAfter = countNodes(db, accountId);
@@ -507,6 +507,6 @@ All manual testing is now irrelevant. The automated tests cover:
 ---
 
 **Authored by**: Claude (AI Agent)
-**Project**: Canvas Memory OS
+**Project**: Keimenon
 **Phase**: Final 5% Completion - Testing Infrastructure
 **Status**: ✅ COMPLETE

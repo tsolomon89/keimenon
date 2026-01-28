@@ -146,7 +146,7 @@ export class UploadSession {
     const now = Date.now();
 
     // Temp directory path for chunk storage (OS-appropriate)
-    const chunksPath = join(tmpdir(), 'canvas-uploads', id);
+    const chunksPath = join(tmpdir(), 'keimenon-uploads', id);
 
     return new UploadSession({
       id,

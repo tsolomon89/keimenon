@@ -99,7 +99,7 @@ duplicate_auto_merge_threshold: number(0 - 1);
 
 ### 🔄 5. Connect ChatImportModal to Real API
 
-**File**: [apps/web/src/components/canvas/ChatImportModal.tsx](apps/web/src/components/canvas/ChatImportModal.tsx)
+**File**: [apps/web/src/components/keimenon/ChatImportModal.tsx](apps/web/src/components/keimenon/ChatImportModal.tsx)
 
 **Changes Needed**:
 
@@ -151,7 +151,7 @@ apps/web/src/
 ├── lib/
 │   └── api-client.ts            ✅ NEW - API integration layer
 ├── components/
-│   ├── canvas/
+│   ├── keimenon/
 │   │   └── ChatImportModal.tsx  🔄 IN PROGRESS - Connecting to API
 │   └── import/
 │       ├── DuplicateReviewPanel.tsx      ✅ Phase 2

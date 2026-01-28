@@ -64,7 +64,7 @@ export class SQLiteJobRepository implements JobRepository {
    *
    * Architecture:
    * - Test mode: Uses getJobsDbClient (separate database file: worker-0-jobs.db)
-   * - Production: Uses global database (single file: canvas.db with all data)
+   * - Production: Uses global database (single file: keimenon.db with all data)
    */
   private async getDbForJob(job: Job): Promise<Database.Database> {
     const testDbPath = job.config.testContext?.dbPath;

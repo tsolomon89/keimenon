@@ -34,7 +34,7 @@ Successfully implemented the Console Footer state synchronization fix that was d
 
 2. **Overall Pass Rate Improvement**: +14 percentage points (45% → 59%)
 
-3. **Critical Bug Discovery**: Found that the fix documented in [E2E_FIXES_COMPLETE_SUMMARY.md](E2E_FIXES_COMPLETE_SUMMARY.md) was never actually applied to [CanvasLayout.tsx](apps/web/src/components/canvas/CanvasLayout.tsx)
+3. **Critical Bug Discovery**: Found that the fix documented in [E2E_FIXES_COMPLETE_SUMMARY.md](E2E_FIXES_COMPLETE_SUMMARY.md) was never actually applied to [KeimenonLayout.tsx](apps/web/src/components/keimenon/KeimenonLayout.tsx)
 
 ---
 
@@ -42,9 +42,9 @@ Successfully implemented the Console Footer state synchronization fix that was d
 
 ### Problem
 
-The `ConsoleContext` and `CanvasLayout` had separate, unsynchronized state for the console footer visibility:
+The `ConsoleContext` and `KeimenonLayout` had separate, unsynchronized state for the console footer visibility:
 
-**CanvasLayout** ([before fix](apps/web/src/components/canvas/CanvasLayout.tsx#L57)):
+**KeimenonLayout** ([before fix](apps/web/src/components/keimenon/KeimenonLayout.tsx#L57)):
 
 ```typescript
 const [footerOpen, setFooterOpen] = useState(false);
@@ -66,19 +66,19 @@ useEffect(() => {
 }, []);
 ```
 
-**Result**: Pressing backtick toggled `ConsoleContext.isOpen` but **NOT** `CanvasLayout.footerOpen`, so the footer appeared closed even though errors were being captured.
+**Result**: Pressing backtick toggled `ConsoleContext.isOpen` but **NOT** `KeimenonLayout.footerOpen`, so the footer appeared closed even though errors were being captured.
 
 ### Solution
 
-**File**: [apps/web/src/components/canvas/CanvasLayout.tsx](apps/web/src/components/canvas/CanvasLayout.tsx)
+**File**: [apps/web/src/components/keimenon/KeimenonLayout.tsx](apps/web/src/components/keimenon/KeimenonLayout.tsx)
 
-1. **Added import** ([line 24](apps/web/src/components/canvas/CanvasLayout.tsx#L24)):
+1. **Added import** ([line 24](apps/web/src/components/keimenon/KeimenonLayout.tsx#L24)):
 
 ```typescript
 import { useConsole } from '@/contexts/ConsoleContext';
 ```
 
-2. **Replaced local state with ConsoleContext** ([line 54](apps/web/src/components/canvas/CanvasLayout.tsx#L54)):
+2. **Replaced local state with ConsoleContext** ([line 54](apps/web/src/components/keimenon/KeimenonLayout.tsx#L54)):
 
 ```typescript
 // Before:
@@ -104,7 +104,7 @@ const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
 
 **Failures**:
 
-1. `data-management-ui-updates.spec.ts:239` - "should update UI without reload after canvas data deletion"
+1. `data-management-ui-updates.spec.ts:239` - "should update UI without reload after keimenon data deletion"
 2. `debug-auth.spec.ts:16` - "should have token and API access after login" (401 token expired)
 
 **Performance**: Best performing browser with 74% pass rate
@@ -138,11 +138,11 @@ const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
 
 **Failures**: Multiple 30-second timeouts
 
-- All 3 canvas-operations tests (timeouts during login)
+- All 3 keimenon-operations tests (timeouts during login)
 - 3 console-error-filtering tests (page navigation timeouts)
 - data-management cleanup test (timeout)
 - debug-auth test (timeout)
-- 3 flow-auth-canvas tests (timeouts)
+- 3 flow-auth-keimenon tests (timeouts)
 - 2 settings-navigation tests (timeouts)
 
 **Performance**: Significantly lower than Chromium/Firefox due to WebKit-specific timing issues
@@ -168,15 +168,15 @@ const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
 
 ---
 
-### 2. canvas-operations.spec.ts (3 tests × 3 browsers = 9 total)
+### 2. keimenon-operations.spec.ts (3 tests × 3 browsers = 9 total)
 
 **Overall**: 6/9 passing (67%)
 
-| Test                                        | Chromium | Firefox | WebKit     |
-| ------------------------------------------- | -------- | ------- | ---------- |
-| should load canvas page successfully        | ✅       | ✅      | ❌ timeout |
-| should display canvas sidebar or navigation | ✅       | ✅      | ❌ timeout |
-| should have accessible canvas content       | ✅       | ✅      | ❌ timeout |
+| Test                                          | Chromium | Firefox | WebKit     |
+| --------------------------------------------- | -------- | ------- | ---------- |
+| should load keimenon page successfully        | ✅       | ✅      | ❌ timeout |
+| should display keimenon sidebar or navigation | ✅       | ✅      | ❌ timeout |
+| should have accessible keimenon content       | ✅       | ✅      | ❌ timeout |
 
 **Status**: Chromium and Firefox stable, WebKit has navigation timeouts
 
@@ -186,17 +186,17 @@ const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
 
 **Overall**: 3/27 passing (11% - most skipped)
 
-| Test                                                       | Chromium | Firefox | WebKit     |
-| ---------------------------------------------------------- | -------- | ------- | ---------- |
-| cleanup: clear all background operations                   | ✅       | ✅      | ❌ timeout |
-| should update UI without reload after canvas data deletion | ❌       | ❌      | ⏭️         |
-| should show delete job in background operations table      | ⏭️       | ⏭️      | ⏭️         |
-| should remove job from table after deletion                | ⏭️       | ⏭️      | ⏭️         |
-| should sync background operations with job table           | ⏭️       | ⏭️      | ⏭️         |
-| should auto-remove completed jobs after timeout            | ⏭️       | ⏭️      | ⏭️         |
-| should handle bulk job deletion                            | ⏭️       | ⏭️      | ⏭️         |
-| should refresh data when switching operating contexts      | ⏭️       | ⏭️      | ⏭️         |
-| should show loading states during operations               | ⏭️       | ⏭️      | ⏭️         |
+| Test                                                         | Chromium | Firefox | WebKit     |
+| ------------------------------------------------------------ | -------- | ------- | ---------- |
+| cleanup: clear all background operations                     | ✅       | ✅      | ❌ timeout |
+| should update UI without reload after keimenon data deletion | ❌       | ❌      | ⏭️         |
+| should show delete job in background operations table        | ⏭️       | ⏭️      | ⏭️         |
+| should remove job from table after deletion                  | ⏭️       | ⏭️      | ⏭️         |
+| should sync background operations with job table             | ⏭️       | ⏭️      | ⏭️         |
+| should auto-remove completed jobs after timeout              | ⏭️       | ⏭️      | ⏭️         |
+| should handle bulk job deletion                              | ⏭️       | ⏭️      | ⏭️         |
+| should refresh data when switching operating contexts        | ⏭️       | ⏭️      | ⏭️         |
+| should show loading states during operations                 | ⏭️       | ⏭️      | ⏭️         |
 
 **Status**: First test failure blocks remaining 7 DELETE tests from running
 
@@ -222,16 +222,16 @@ const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
 
 ---
 
-### 6. flow-auth-canvas.spec.ts (4 tests × 3 browsers = 12 total)
+### 6. flow-auth-keimenon.spec.ts (4 tests × 3 browsers = 12 total)
 
 **Overall**: 9/12 passing (75%)
 
-| Test                                                  | Chromium | Firefox | WebKit     |
-| ----------------------------------------------------- | -------- | ------- | ---------- |
-| complete login flow: redirect → authenticate → canvas | ✅       | ✅      | ✅         |
-| invalid credentials should show error message         | ✅       | ✅      | ✅         |
-| authenticated user should access canvas directly      | ✅       | ✅      | ❌ timeout |
-| logout should clear session and redirect to login     | ✅       | ✅      | ❌ timeout |
+| Test                                                    | Chromium | Firefox | WebKit     |
+| ------------------------------------------------------- | -------- | ------- | ---------- |
+| complete login flow: redirect → authenticate → keimenon | ✅       | ✅      | ✅         |
+| invalid credentials should show error message           | ✅       | ✅      | ✅         |
+| authenticated user should access keimenon directly      | ✅       | ✅      | ❌ timeout |
+| logout should clear session and redirect to login       | ✅       | ✅      | ❌ timeout |
 
 **Status**: Chromium and Firefox stable, WebKit has navigation timeouts
 
@@ -272,7 +272,7 @@ const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
 
 **Tests Affected**: 12 tests (all console-error-filtering tests in Chromium/Firefox)
 **Status**: **RESOLVED**
-**Fix**: Applied ConsoleContext state synchronization to CanvasLayout.tsx
+**Fix**: Applied ConsoleContext state synchronization to KeimenonLayout.tsx
 
 **Before Fix**: 0/12 passing (0%)
 **After Fix**: 12/12 passing (100%)
@@ -287,9 +287,9 @@ const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
 
 **Affected Tests**:
 
-- Canvas operations (3 tests)
+- Keimenon operations (3 tests)
 - Console error filtering (3 tests)
-- Flow auth canvas (2 tests)
+- Flow auth keimenon (2 tests)
 - Settings navigation (2 tests)
 
 **Hypothesis**: WebKit-specific performance issues or SSE connection failures
@@ -299,7 +299,7 @@ const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
 ### Category 3: Data Management UI Test (BLOCKING 🚫)
 
 **Tests Affected**: 1 test (blocking 7 DELETE tests)
-**Test**: "should update UI without reload after canvas data deletion"
+**Test**: "should update UI without reload after keimenon data deletion"
 **Error**: `getByText(/Delete job created.*Monitor progress in Background Operations/i)` not visible
 **Status**: **NEEDS INVESTIGATION**
 
@@ -340,11 +340,11 @@ const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
 | Test File                  | Before       | After           | Change      |
 | -------------------------- | ------------ | --------------- | ----------- |
 | console-error-filtering    | 0/18 (0%)    | **12/18 (67%)** | **+67%** 🎉 |
-| canvas-operations          | 6/9 (67%)    | 6/9 (67%)       | 0%          |
+| keimenon-operations        | 6/9 (67%)    | 6/9 (67%)       | 0%          |
 | data-management-ui-updates | 3/27 (11%)   | 3/27 (11%)      | 0%          |
 | debug-auth                 | 0/3 (0%)     | 0/3 (0%)        | 0%          |
 | debug-client-env           | 3/3 (100%)   | 3/3 (100%)      | 0% ✅       |
-| flow-auth-canvas           | 9/12 (75%)   | 9/12 (75%)      | 0%          |
+| flow-auth-keimenon         | 9/12 (75%)   | 9/12 (75%)      | 0%          |
 | settings-navigation        | 7/9 (78%)    | 7/9 (78%)       | 0%          |
 | smoke                      | 12/12 (100%) | 12/12 (100%)    | 0% ✅       |
 
@@ -469,7 +469,7 @@ The fix demonstrates the importance of verifying that documented changes are act
 
 ### Production Code
 
-- ✏️ [apps/web/src/components/canvas/CanvasLayout.tsx](apps/web/src/components/canvas/CanvasLayout.tsx)
+- ✏️ [apps/web/src/components/keimenon/KeimenonLayout.tsx](apps/web/src/components/keimenon/KeimenonLayout.tsx)
   - Added `useConsole` import (line 24)
   - Replaced local `footerOpen` state with ConsoleContext state (line 54)
 

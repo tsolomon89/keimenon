@@ -7,7 +7,7 @@
  * Related: Chunked Upload System - Phase 7 (Testing)
  */
 
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
 import {
   SQLiteUploadSessionRepository,
@@ -422,9 +422,9 @@ describe('UploadSessionRepository', () => {
     it('should only return uploading and assembling sessions', async () => {
       const expired = await repository.findExpired();
 
-      expect(
-        expired.every((s) => s.status === 'uploading' || s.status === 'assembling')
-      ).toBe(true);
+      expect(expired.every((s) => s.status === 'uploading' || s.status === 'assembling')).toBe(
+        true
+      );
     });
 
     it('should limit to 100 results', async () => {
@@ -452,9 +452,7 @@ describe('UploadSessionRepository', () => {
       const sessions: string[] = [];
 
       for (let i = 0; i < 3; i++) {
-        const session = await repository.create(
-          createSessionSpec({ fileName: `file_${i}.json` })
-        );
+        const session = await repository.create(createSessionSpec({ fileName: `file_${i}.json` }));
         sessions.push(session.id);
 
         // Wait a bit to ensure different timestamps
@@ -538,7 +536,9 @@ describe('UploadSessionRepository', () => {
       await repository.create(createSessionSpec({ fileName: 'uploading2.json' }));
 
       // Create assembling session
-      const assembling = await repository.create(createSessionSpec({ fileName: 'assembling.json' }));
+      const assembling = await repository.create(
+        createSessionSpec({ fileName: 'assembling.json' })
+      );
       for (let i = 0; i < assembling.totalChunks; i++) {
         assembling.recordChunk(i);
       }
@@ -633,7 +633,7 @@ describe('UploadSessionRepository', () => {
 
     it('should handle special characters in file names', async () => {
       const spec = createSessionSpec({
-        fileName: "test file (with) [special] {chars} & 'quotes\".json",
+        fileName: 'test file (with) [special] {chars} & \'quotes".json',
       });
 
       const session = await repository.create(spec);

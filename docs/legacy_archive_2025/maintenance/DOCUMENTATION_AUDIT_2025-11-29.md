@@ -95,7 +95,7 @@ Comprehensive audit of TODOs in documentation files to verify alignment with cur
 - [docs/features/GROUPS_NAVIGATION.md:479-481](docs/features/GROUPS_NAVIGATION.md#L479-L481) - Moved from TODO to Implemented
 - [docs/features/GROUPS_NAVIGATION.md:460-462](docs/features/GROUPS_NAVIGATION.md#L460-L462) - Documented recursive support
 
-#### 5. Canvas Filtering by Group (COMPLETED)
+#### 5. Keimenon Filtering by Group (COMPLETED)
 
 **Previous state**: Marked as TODO in [docs/features/GROUPS_NAVIGATION.md:484-486](docs/features/GROUPS_NAVIGATION.md#L484-L486)
 
@@ -103,8 +103,8 @@ Comprehensive audit of TODOs in documentation files to verify alignment with cur
 
 **Implementation**:
 
-- File: apps/web/src/components/canvas/CanvasSidebar.tsx:226
-- Uses: apps/web/src/store/canvasStore.ts:220 (setFilteredNodeIds method)
+- File: apps/web/src/components/keimenon/KeimenonSidebar.tsx:226
+- Uses: apps/web/src/store/keimenonStore.ts:220 (setFilteredNodeIds method)
 
 **Documentation updated**:
 

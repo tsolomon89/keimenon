@@ -103,7 +103,7 @@ export async function createDatabaseClient(mode: StorageMode): Promise<DatabaseC
   switch (mode) {
     case 'local':
       return new SQLiteClient(sqlitePath);
-    case 'canvas':
+    case 'keimenon':
       return new Neo4jClient(uri, user, pass);
     case 'hybrid':
       return new HybridClient(sqlitePath, uri, user, pass);
@@ -116,9 +116,9 @@ export async function createDatabaseClient(mode: StorageMode): Promise<DatabaseC
 **Configuration** ([apps/api/.env](../apps/api/.env)):
 
 ```env
-STORAGE_MODE=local              # 'local' | 'canvas' | 'hybrid'
-SQLITE_PATH=~/.canvas-memory/canvas.db
-LOCAL_DOCS_PATH=~/.canvas-memory
+STORAGE_MODE=local              # 'local' | 'keimenon' | 'hybrid'
+SQLITE_PATH=~/.keimenon/keimenon.db
+LOCAL_DOCS_PATH=~/.keimenon
 ```
 
 ---
@@ -329,19 +329,19 @@ npm run backup
 Output:
 
 ```
-💾 Canvas Memory Database Backup
+💾 Keimenon Database Backup
 
-📊 Database: ~/.canvas-memory/canvas.db
+📊 Database: ~/.keimenon/keimenon.db
    Size: 7.7 MB
    Modified: 10/12/2025, 6:00:00 AM
 
 📋 Creating backup...
 ✅ Backup created successfully!
-   Location: ~/.canvas-memory/backups/canvas-2025-10-12_06-00-00.db
+   Location: ~/.keimenon/backups/keimenon-2025-10-12_06-00-00.db
    Size: 7.7 MB
 
 📚 Recent backups (1 total):
-   1. canvas-2025-10-12_06-00-00.db (7.7 MB) - 0m ago
+   1. keimenon-2025-10-12_06-00-00.db (7.7 MB) - 0m ago
 ```
 
 **Backup with compression**:
@@ -353,15 +353,15 @@ npm run backup:compress
 **Restore from backup**:
 
 ```bash
-npm run restore -- --file ~/.canvas-memory/backups/canvas-2025-10-12_06-00-00.db
+npm run restore -- --file ~/.keimenon/backups/keimenon-2025-10-12_06-00-00.db
 ```
 
 Output:
 
 ```
-♻️  Canvas Memory Database Restore
+♻️  Keimenon Database Restore
 
-📊 Backup file: ~/.canvas-memory/backups/canvas-2025-10-12_06-00-00.db
+📊 Backup file: ~/.keimenon/backups/keimenon-2025-10-12_06-00-00.db
    Size: 7.7 MB
    Created: 10/12/2025, 6:00:00 AM
 
@@ -372,11 +372,11 @@ Output:
 ⚠️  Are you sure you want to restore from backup? (yes/no): yes
 
 💾 Creating safety backup of current database...
-✅ Safety backup created: ~/.canvas-memory/canvas.db.before-restore
+✅ Safety backup created: ~/.keimenon/keimenon.db.before-restore
 
 ♻️  Restoring database...
 ✅ Database restored successfully!
-   Location: ~/.canvas-memory/canvas.db
+   Location: ~/.keimenon/keimenon.db
    Size: 7.7 MB
 ```
 
@@ -388,7 +388,7 @@ Output:
 
 ```typescript
 // Tightly coupled to Neo4j
-import { getNeo4jClient } from '@canvas-memory/db';
+import { getNeo4jClient } from '@keimenon/db';
 
 router.get('/:id', async (req, res) => {
   const neo4j = getNeo4jClient();
@@ -626,7 +626,7 @@ All criteria met ✅:
 - ✅ Performance tested with large dataset (136MB medium.json)
 - ✅ Comprehensive documentation (README, SESSION\_\*, PERFORMANCE_TESTING)
 - ✅ Production tools created (backup/restore, dev management)
-- ✅ Backward compatible (Neo4j mode still works via `STORAGE_MODE=canvas`)
+- ✅ Backward compatible (Neo4j mode still works via `STORAGE_MODE=keimenon`)
 - ✅ Zero breaking changes to API
 - ✅ Cost savings validated ($0 vs $65-200/month)
 
@@ -638,7 +638,7 @@ After Phase 6, the project is ready for:
 
 **Option A: Continue Original Roadmap**
 
-- Phase 1C: 2D Canvas Visualization
+- Phase 1C: 2D Keimenon Visualization
 - Phase 1D: Claims & UnifiedDocs
 - Phase 2: Pro Tier Features (AI agents)
 
@@ -660,7 +660,7 @@ After Phase 6, the project is ready for:
 
 ## Conclusion
 
-**Phase 6 is complete and successful.** The Canvas Memory OS has been transformed from a cloud-dependent application to a **100% local-first system** with:
+**Phase 6 is complete and successful.** The Keimenon has been transformed from a cloud-dependent application to a **100% local-first system** with:
 
 ✅ **Zero ongoing costs** ($0/month savings)
 ✅ **Complete data ownership** (stays on user's machine)

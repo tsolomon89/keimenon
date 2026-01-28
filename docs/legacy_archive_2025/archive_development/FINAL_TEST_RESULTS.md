@@ -127,11 +127,11 @@ TimeoutError: page.waitForURL: Timeout 10000ms exceeded.
 waiting for navigation until "load"
 ```
 
-**Location**: After account selection, waiting for navigation to `/canvas`
+**Location**: After account selection, waiting for navigation to `/keimenon`
 
 **Root Cause**: One of:
 
-1. `/canvas` route doesn't exist or isn't implemented in frontend
+1. `/keimenon` route doesn't exist or isn't implemented in frontend
 2. Frontend redirect logic after account selection isn't configured
 3. Frontend authentication state management isn't updating properly
 
@@ -209,7 +209,7 @@ curl http://localhost:4001/api/v1/auth/me \
 ### To Achieve 100% E2E Test Pass Rate
 
 1. **Frontend Implementation** (Primary Blocker)
-   - Create or fix `/canvas` route
+   - Create or fix `/keimenon` route
    - Implement account selection UI component
    - Configure post-login navigation logic
    - Update authentication context to handle multi-account flow
@@ -319,10 +319,10 @@ All implementations meet security requirements:
    // Route: apps/web/src/app/select-account/page.tsx
    ```
 
-2. **Fix Canvas Navigation**
+2. **Fix Keimenon Navigation**
 
    ```typescript
-   // Verify route exists: apps/web/src/app/canvas/page.tsx
+   // Verify route exists: apps/web/src/app/keimenon/page.tsx
    // Add redirect logic after account selection
    ```
 

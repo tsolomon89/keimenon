@@ -14,7 +14,7 @@ interface FourRegionLayoutProps {
  * Four-region layout as specified in ui_screens_layout_view_map_v_0.md
  * - Header (top)
  * - LHS sidebar (collapsible nav)
- * - Main viewport (canvas)
+ * - Main viewport (keimenon)
  * - RHS sidebar (inspector/selection stack)
  * - Footer (console/logs)
  */
@@ -34,9 +34,7 @@ export function FourRegionLayout({
     <div className={cn('h-screen flex flex-col bg-slate-950', className)}>
       {/* Header */}
       {header && (
-        <header className="h-16 border-b border-slate-800 flex-shrink-0 z-50">
-          {header}
-        </header>
+        <header className="h-16 border-b border-slate-800 flex-shrink-0 z-50">{header}</header>
       )}
 
       {/* Main content area with sidebars */}
@@ -49,16 +47,12 @@ export function FourRegionLayout({
               lhsCollapsed ? 'w-0' : 'w-64'
             )}
           >
-            {!lhsCollapsed && (
-              <div className="h-full overflow-y-auto p-4">{leftSidebar}</div>
-            )}
+            {!lhsCollapsed && <div className="h-full overflow-y-auto p-4">{leftSidebar}</div>}
           </aside>
         )}
 
         {/* Main Viewport */}
-        <main className="flex-1 overflow-hidden relative">
-          {children}
-        </main>
+        <main className="flex-1 overflow-hidden relative">{children}</main>
 
         {/* Right Sidebar */}
         {rightSidebar && (
@@ -68,9 +62,7 @@ export function FourRegionLayout({
               rhsCollapsed ? 'w-0' : 'w-96'
             )}
           >
-            {!rhsCollapsed && (
-              <div className="h-full overflow-y-auto p-4">{rightSidebar}</div>
-            )}
+            {!rhsCollapsed && <div className="h-full overflow-y-auto p-4">{rightSidebar}</div>}
           </aside>
         )}
       </div>
@@ -83,9 +75,7 @@ export function FourRegionLayout({
             footerCollapsed ? 'h-8' : 'h-48'
           )}
         >
-          <div className="h-full overflow-y-auto">
-            {footer}
-          </div>
+          <div className="h-full overflow-y-auto">{footer}</div>
         </footer>
       )}
     </div>

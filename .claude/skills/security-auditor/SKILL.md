@@ -22,66 +22,76 @@ Validates security compliance before deployment. Checks for OWASP Top 10 vulnera
 Comprehensive security validation against latest OWASP threats:
 
 #### A01: Broken Access Control
+
 - ✅ Multi-tenant isolation (`account_id` filtering)
 - ✅ RBAC enforcement (permission_level checks)
 - ✅ No direct object reference vulnerabilities
 - ✅ API endpoints validate user belongs to requested account
 
 #### A02: Cryptographic Failures
+
 - ✅ No secrets in code (all in .env)
 - ✅ Password hashing (bcrypt/scrypt, not MD5/SHA1)
 - ✅ HTTPS enforced (HTTP redirects)
 - ✅ Sensitive data encrypted at rest
 
 #### A03: Injection
+
 - ✅ SQL injection prevented (parameterized queries)
 - ✅ Command injection prevented (no `child_process.exec` with user input)
 - ✅ XSS prevented (sanitize all user inputs)
 - ✅ NoSQL injection prevented (validate MongoDB queries)
 
 #### A04: Insecure Design
+
 - ✅ Authentication before authorization
 - ✅ Rate limiting on sensitive endpoints
 - ✅ Audit logging for privileged operations
 - ✅ Defense in depth (multiple security layers)
 
 #### A05: Security Misconfiguration
+
 - ✅ No default credentials
 - ✅ Error messages don't leak stack traces
 - ✅ CORS policies restrictive
 - ✅ Security headers configured (helmet.js)
 
 #### A06: Vulnerable and Outdated Components
+
 - ✅ `npm audit` passing (no critical/high CVEs)
 - ✅ Dependencies up to date (<6 months old)
 - ✅ No known vulnerabilities in dependencies
 
 #### A07: Identification and Authentication Failures
+
 - ✅ Multi-factor authentication available
 - ✅ Session management secure (httpOnly, secure, sameSite cookies)
 - ✅ Account lockout after failed attempts
 - ✅ Password complexity enforced
 
 #### A08: Software and Data Integrity Failures
+
 - ✅ Dependency checksums verified
 - ✅ CI/CD pipeline secured
 - ✅ Code signing for releases
 - ✅ Integrity monitoring for critical files
 
 #### A09: Security Logging and Monitoring Failures
+
 - ✅ All auth events logged
 - ✅ Security alerts configured
 - ✅ Log retention policy enforced
 - ✅ Audit trail for sensitive operations
 
 #### A10: Server-Side Request Forgery (SSRF)
+
 - ✅ Whitelist external URLs
 - ✅ No user-controlled redirect URLs
 - ✅ Validate all external API calls
 
 ### 2. Multi-Tenant Isolation (CRITICAL)
 
-**Canvas Memory OS specific**: Graph-native multi-tenancy
+**Keimenon specific**: Graph-native multi-tenancy
 
 - ✅ All database queries filter by `account_id`
 - ✅ API endpoints validate user belongs to requested account
@@ -99,16 +109,16 @@ Comprehensive security validation against latest OWASP threats:
 // Grep for common vulnerabilities
 
 // SQL injection patterns
-Grep: "db.query.*\+\s*req\." // String concatenation in queries
+Grep: 'db.query.*\+\s*req\.'; // String concatenation in queries
 
 // Command injection patterns
-Grep: "child_process.exec.*req\." // User input in exec()
+Grep: 'child_process.exec.*req\.'; // User input in exec()
 
 // XSS vulnerabilities
-Grep: "innerHTML\s*=\s*.*req\." // Direct HTML injection
+Grep: 'innerHTML\s*=\s*.*req\.'; // Direct HTML injection
 
 // Hardcoded secrets
-Grep: "password.*=.*['\"].*['\"]" // Passwords in code
+Grep: 'password.*=.*[\'"].*[\'"]'; // Passwords in code
 ```
 
 ### Step 2: Multi-Tenant Validation
@@ -145,11 +155,11 @@ npm audit --audit-level=moderate
 // Use api-testing MCP to validate isolation
 
 await mcp__api_testing__test_multi_tenant({
-  account_a_email: "user_a@test.com",
-  account_a_password: "TestPass123!",
-  account_b_email: "user_b@test.com",
-  account_b_password: "TestPass123!",
-  test_resource: "nodes" // Test nodes isolation
+  account_a_email: 'user_a@test.com',
+  account_a_password: 'TestPass123!',
+  account_b_email: 'user_b@test.com',
+  account_b_password: 'TestPass123!',
+  test_resource: 'nodes', // Test nodes isolation
 });
 
 // Expected: Account A cannot access Account B data
@@ -160,7 +170,7 @@ await mcp__api_testing__test_multi_tenant({
 
 ## Audit Output Format
 
-```markdown
+````markdown
 # Security Audit Report
 
 **Date**: 2025-11-16
@@ -189,13 +199,16 @@ Pre-deployment security audit for user profile editing feature. Identified 1 CRI
 **Location**: apps/api/src/routes/users.routes.ts:87
 
 **Issue**:
+
 ```typescript
 // Vulnerable code
 const query = `UPDATE users SET bio = '${req.body.bio}' WHERE id = ${req.params.id}`;
 db.query(query);
 ```
+````
 
 **Attack Vector**:
+
 ```
 POST /api/users/123
 { "bio": "'; DROP TABLE users; --" }
@@ -204,6 +217,7 @@ POST /api/users/123
 **Impact**: Database compromise, data loss, privilege escalation
 
 **Remediation**:
+
 ```typescript
 // Fixed code
 const query = `UPDATE users SET bio = ? WHERE id = ? AND account_id = ?`;
@@ -211,6 +225,7 @@ db.query(query, [req.body.bio, req.params.id, req.user.account_id]);
 ```
 
 **Verification**:
+
 - [ ] Apply fix
 - [ ] Run `npm run test:security`
 - [ ] Manual penetration test
@@ -233,20 +248,17 @@ db.query(query, [req.body.bio, req.params.id, req.user.account_id]);
 **Attack Vector**: Brute force attacks, DoS via excessive requests
 
 **Remediation**:
+
 ```typescript
 import rateLimit from 'express-rate-limit';
 
 const updateProfileLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // limit each IP to 10 requests per window
-  message: 'Too many profile updates, try again later'
+  message: 'Too many profile updates, try again later',
 });
 
-router.put('/api/users/:id',
-  authenticate,
-  updateProfileLimiter,
-  updateUserProfile
-);
+router.put('/api/users/:id', authenticate, updateProfileLimiter, updateUserProfile);
 ```
 
 ### HIGH-002: No Audit Logging for Profile Changes
@@ -261,6 +273,7 @@ router.put('/api/users/:id',
 **Impact**: Cannot detect unauthorized changes, no forensics
 
 **Remediation**:
+
 ```typescript
 import { auditLog } from '../utils/audit-logger';
 
@@ -275,7 +288,7 @@ router.put('/api/users/:id', async (req, res) => {
     target_id: req.params.id,
     changes: diff(oldProfile, updated),
     ip_address: req.ip,
-    user_agent: req.headers['user-agent']
+    user_agent: req.headers['user-agent'],
   });
 
   res.json(updated);
@@ -287,7 +300,9 @@ router.put('/api/users/:id', async (req, res) => {
 ## Medium Issues (3)
 
 ### MED-001: Email Format Not Validated
+
 ### MED-002: Password Complexity Not Enforced on Update
+
 ### MED-003: Missing CSRF Token on Form
 
 [Details for each...]
@@ -297,9 +312,13 @@ router.put('/api/users/:id', async (req, res) => {
 ## Low Issues (5)
 
 ### LOW-001: Verbose Error Messages
+
 ### LOW-002: No Security Headers on Response
+
 ### LOW-003: Session Timeout Too Long
+
 ### LOW-004: No Content Security Policy
+
 ### LOW-005: Deprecated TLS Version Supported
 
 [Details for each...]
@@ -310,13 +329,13 @@ router.put('/api/users/:id', async (req, res) => {
 
 ✅ **PASSED**: All multi-tenant isolation tests
 
-| Resource | Test | Result |
-|----------|------|--------|
-| Users | Account A cannot read Account B users | ✅ Pass |
-| Users | Account A cannot update Account B users | ✅ Pass |
-| Users | Account A cannot delete Account B users | ✅ Pass |
-| Nodes | Account A cannot query Account B nodes | ✅ Pass |
-| Edges | Cannot create edge between accounts | ✅ Pass |
+| Resource | Test                                    | Result  |
+| -------- | --------------------------------------- | ------- |
+| Users    | Account A cannot read Account B users   | ✅ Pass |
+| Users    | Account A cannot update Account B users | ✅ Pass |
+| Users    | Account A cannot delete Account B users | ✅ Pass |
+| Nodes    | Account A cannot query Account B nodes  | ✅ Pass |
+| Edges    | Cannot create edge between accounts     | ✅ Pass |
 
 ---
 
@@ -327,6 +346,7 @@ router.put('/api/users/:id', async (req, res) => {
 **Reason**: 1 Critical and 2 High severity issues
 
 **Required Actions**:
+
 1. Fix CRITICAL-001 (SQL injection)
 2. Fix HIGH-001 (rate limiting)
 3. Fix HIGH-002 (audit logging)
@@ -336,6 +356,7 @@ router.put('/api/users/:id', async (req, res) => {
 **Estimated Fix Time**: 2-4 hours
 
 **SLA**:
+
 - Critical: Fix immediately (< 4 hours)
 - High: Fix before deployment (< 24 hours)
 - Medium: Fix in next sprint (< 1 week)
@@ -345,6 +366,7 @@ router.put('/api/users/:id', async (req, res) => {
 
 **Report Generated**: 2025-11-16 14:30:00 UTC
 **Next Audit**: After fixes applied
+
 ```
 
 ## Tools Used
@@ -373,3 +395,4 @@ router.put('/api/users/:id', async (req, res) => {
 - [Deploy Persona](.claude/personas/deploy.md)
 - [OWASP Top 10 2025](https://owasp.org/www-project-top-ten/)
 - [Security Standards](docs/guides/PROFESSIONAL_STANDARDS.md)
+```

@@ -23,7 +23,7 @@ async function generateTestImage(
   height: number,
   variant: 'base' | 'slight' | 'major'
 ): Promise<Buffer> {
-  const canvas = sharp({
+  const keimenon = sharp({
     create: {
       width,
       height,
@@ -40,7 +40,7 @@ async function generateTestImage(
     composite.push({
       input: Buffer.from(`<svg width="${width}" height="80">
         <rect width="${width}" height="80" fill="#3b82f6"/>
-        <text x="20" y="50" font-family="Arial" font-size="32" fill="white">Canvas Memory</text>
+        <text x="20" y="50" font-family="Arial" font-size="32" fill="white">Keimenon</text>
       </svg>`),
       top: 0,
       left: 0,
@@ -96,10 +96,10 @@ async function generateTestImage(
   }
 
   if (composite.length > 0) {
-    canvas.composite(composite);
+    keimenon.composite(composite);
   }
 
-  return await canvas.png().toBuffer();
+  return await keimenon.png().toBuffer();
 }
 
 /**

@@ -30,7 +30,7 @@ export const test = base.extend<{ page: Page }>({
         if (
           text.includes('localStorage') ||
           text.includes('token') ||
-          text.includes('canvas_memory_token') ||
+          text.includes('keimenon_token') ||
           text.includes('Login successful') ||
           text.includes('Redirected')
         ) {

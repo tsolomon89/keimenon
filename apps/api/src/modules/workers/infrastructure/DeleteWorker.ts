@@ -28,7 +28,7 @@ import {
   trackEdgesDeleted,
   serializeChangeTracker,
 } from '../../jobs/domain/ChangeTracker';
-import { getCanvasDataInClause, getSystemNodeInClause } from '@keimenon/types';
+import { getKeimenonDataInClause, getSystemNodeInClause } from '@keimenon/types';
 import { getDeleteMetrics } from '../../../services/metrics/DeleteMetrics';
 
 export class DeleteWorker extends BaseWorker {
@@ -45,7 +45,7 @@ export class DeleteWorker extends BaseWorker {
     }
 
     // Validate scope value
-    const validScopes = ['canvas', 'all-clients'];
+    const validScopes = ['keimenon', 'all-clients'];
     if (!validScopes.includes(job.config.deleteScope)) {
       return false;
     }
@@ -134,7 +134,7 @@ export class DeleteWorker extends BaseWorker {
       deleteMetrics.recordJobCompletion({
         jobId: job.id,
         accountId: job.accountId,
-        scope: scope as 'canvas' | 'all-clients',
+        scope: scope as 'keimenon' | 'all-clients',
         nodesDeleted: deletedNodes,
         durationMs,
       });
@@ -160,7 +160,7 @@ export class DeleteWorker extends BaseWorker {
       deleteMetrics.recordJobFailure({
         jobId: job.id,
         accountId: job.accountId,
-        scope: scope as 'canvas' | 'all-clients',
+        scope: scope as 'keimenon' | 'all-clients',
         errorCode: error.code || 'DELETE_FAILED',
         errorMessage: error.message || 'Deletion failed',
       });
@@ -188,13 +188,13 @@ export class DeleteWorker extends BaseWorker {
    * See also: getNodeIdBatch() for matching deletion logic
    */
   private async countNodesToDelete(scope: string, accountId: string): Promise<number> {
-    if (scope === 'canvas') {
-      // Only count canvas data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
+    if (scope === 'keimenon') {
+      // Only count keimenon data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
       // System nodes are excluded: UserNode, AccountNode, Board, Constellation
       const result = await this.db.execute(
         `SELECT COUNT(*) as count FROM nodes
          WHERE account_id = ?
-         AND kind IN (${getCanvasDataInClause()})`,
+         AND kind IN (${getKeimenonDataInClause()})`,
         [accountId]
       );
       return result.records[0]?.count || 0;
@@ -317,12 +317,12 @@ export class DeleteWorker extends BaseWorker {
     let query: string;
     let params: any[];
 
-    if (scope === 'canvas') {
-      // Only delete canvas data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
+    if (scope === 'keimenon') {
+      // Only delete keimenon data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
       // System nodes are preserved: UserNode, AccountNode, Board, Constellation
       query = `SELECT id FROM nodes
                WHERE account_id = ?
-               AND kind IN (${getCanvasDataInClause()})
+               AND kind IN (${getKeimenonDataInClause()})
                LIMIT ?`;
       params = [accountId, batchSize];
     } else if (scope === 'all-clients') {

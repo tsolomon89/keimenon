@@ -1,10 +1,10 @@
 # Authentication & Authorization Guide
 
-**Canvas Memory OS - Multi-Tenant Security Architecture**
+**Keimenon - Multi-Tenant Security Architecture**
 
 ## Overview
 
-Canvas Memory OS implements a comprehensive multi-tenant authentication and authorization system with:
+Keimenon implements a comprehensive multi-tenant authentication and authorization system with:
 
 - **JWT-based authentication** (JSON Web Tokens)
 - **Multi-tenant data isolation** (account-level segregation)
@@ -690,7 +690,7 @@ POST /api/v1/auth/register/google
 2. Frontend sends Google ID token to backend
 3. Backend verifies token with Google API (TODO)
 4. Backend creates/finds user with google_id
-5. Returns Canvas Memory JWT token
+5. Returns Keimenon JWT token
 
 ## Migration Guide
 

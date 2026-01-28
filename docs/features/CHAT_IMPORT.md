@@ -1,6 +1,6 @@
 # Chat Import Guide
 
-**Complete guide to importing AI chat conversations into Canvas Memory OS**
+**Complete guide to importing AI chat conversations into Keimenon**
 
 **Supported Platforms**: ChatGPT, Claude, Gemini
 
@@ -25,7 +25,7 @@
 
 ### What is Chat Import?
 
-Canvas Memory OS can parse your AI chat conversation exports and transform them into an organized knowledge graph. Instead of scrolling through hundreds of chats, you get:
+Keimenon can parse your AI chat conversation exports and transform them into an organized knowledge graph. Instead of scrolling through hundreds of chats, you get:
 
 - 🗂️ **Organized nodes** - Each conversation becomes a node
 - 📚 **Source extraction** - Meaningful segments extracted as standalone sources
@@ -151,7 +151,7 @@ Canvas Memory OS can parse your AI chat conversation exports and transform them 
 
 ### Method 1: Web UI (Easiest)
 
-1. Open Canvas Memory OS: http://localhost:3000/ingest
+1. Open Keimenon: http://localhost:3000/ingest
 2. Click **"Upload File"** or drag & drop
 3. Select your exported JSON file
 4. Choose **"Import as Chat"**
@@ -768,7 +768,7 @@ curl -X POST .../import-stream -F "file=@large.json"
 ### After Import
 
 1. **Review duplicates**: Check decisions UI carefully
-2. **Browse canvas**: Visually inspect organization
+2. **Browse keimenon**: Visually inspect organization
 3. **Test search**: Verify sources are findable
 4. **Export samples**: Generate docs from sources to verify quality
 5. **Adjust and re-import**: If unhappy, tweak config and try again
@@ -841,7 +841,7 @@ A: Rule of thumb: 1000 conversations ≈ 50-100MB
 ## Next Steps
 
 - ✅ Import your chats using this guide
-- 📊 Explore the canvas visualization
+- 📊 Explore the keimenon visualization
 - 📝 Generate UnifiedDocs from sources
 - 🔍 Use duplicate detection to clean up
 - 📚 Build your personal knowledge graph

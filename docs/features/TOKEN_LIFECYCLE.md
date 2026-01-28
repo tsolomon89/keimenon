@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes how JWT token lifecycle and expiration are handled in Canvas Memory OS, including automatic logout, user notifications, and error recovery.
+This document describes how JWT token lifecycle and expiration are handled in Keimenon, including automatic logout, user notifications, and error recovery.
 
 ## Token Structure
 
@@ -109,7 +109,7 @@ The [login page](../../apps/web/src/app/login/page.tsx):
 
 **Flow:**
 
-1. User bookmarks `/canvas` and returns after token expires
+1. User bookmarks `/keimenon` and returns after token expires
 2. Page loads, React components mount
 3. First API call triggers pre-flight validation
 4. Token detected as expired
@@ -153,8 +153,8 @@ Currently, the system does NOT implement token refresh. When a token expires, th
 
    ```typescript
    // In browser console:
-   localStorage.setItem('canvas_memory_token', 'eyJhbGci...EXPIRED_TOKEN');
-   // Then navigate to /canvas or reload page
+   localStorage.setItem('keimenon_token', 'eyJhbGci...EXPIRED_TOKEN');
+   // Then navigate to /keimenon or reload page
    ```
 
 2. **401 Error Scenario:**

@@ -46,7 +46,7 @@ Verify documentation claims against actual codebase implementation and fix criti
 
 #### 4. UsersList Refresh TODO - RESOLVED
 
-**File**: [apps/web/src/components/canvas/CanvasLayout.tsx:127](apps/web/src/components/canvas/CanvasLayout.tsx:127)
+**File**: [apps/web/src/components/keimenon/KeimenonLayout.tsx:127](apps/web/src/components/keimenon/KeimenonLayout.tsx:127)
 
 - **Problem**: TODO claimed feature was incomplete
 - **Discovery**: Feature was already implemented via `onSuccess` callback
@@ -150,7 +150,7 @@ This is normal in rapid development but needs acknowledgment.
 1. `apps/api/src/__tests__/comprehensive-test.test.ts` - Fixed syntax error
 2. `apps/api/src/__tests__/utils/test-helpers.ts` - Fixed database schema mismatch
 3. `apps/api/src/__tests__/sse-reconnection.test.ts` - Fixed EventSource import
-4. `apps/web/src/components/canvas/CanvasLayout.tsx` - Clarified TODO (already fixed)
+4. `apps/web/src/components/keimenon/KeimenonLayout.tsx` - Clarified TODO (already fixed)
 
 ### Documentation Created
 
@@ -208,7 +208,7 @@ This is normal in rapid development but needs acknowledgment.
 
 2. **Fix Critical TODOs** (~2 hours)
    - Import inspector integration (CRMDashboard.tsx:172)
-   - Account refetch after creation (CanvasSidebar.tsx:340)
+   - Account refetch after creation (KeimenonSidebar.tsx:340)
    - (Defer zoom/sequester/scope builder - nice-to-have)
 
 3. **Update Stakeholder Docs** (~30 minutes)

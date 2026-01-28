@@ -236,7 +236,9 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       // TODO: Add support for parallel multi-file uploads if needed
       const file = files[0]; // Start with first file
 
-      console.log(`[ChatImportModal] Uploading file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+      console.log(
+        `[ChatImportModal] Uploading file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`
+      );
 
       // Upload with chunked upload hook
       const uploadResult = await chunkedUpload.upload(file, importConfig);
@@ -248,22 +250,21 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         return;
       }
 
-      console.log('[ChatImportModal] Chunked upload complete, import job created:', uploadResult.jobId);
+      console.log(
+        '[ChatImportModal] Chunked upload complete, import job created:',
+        uploadResult.jobId
+      );
 
       // Store job ID to track progress via SSE
       setCurrentJobId(uploadResult.jobId);
 
-      // Log event for canvas console
-      logJobEvent(
-        `Import job created via chunked upload: ${file.name}`,
-        'import.jobCreated',
-        {
-          jobId: uploadResult.jobId,
-          fileName: file.name,
-          fileSize: file.size,
-          uploadMethod: 'chunked',
-        }
-      );
+      // Log event for keimenon console
+      logJobEvent(`Import job created via chunked upload: ${file.name}`, 'import.jobCreated', {
+        jobId: uploadResult.jobId,
+        fileName: file.name,
+        fileSize: file.size,
+        uploadMethod: 'chunked',
+      });
 
       console.log(
         `[ChatImportModal] Import job ${uploadResult.jobId} created. Tracking progress via SSE...`

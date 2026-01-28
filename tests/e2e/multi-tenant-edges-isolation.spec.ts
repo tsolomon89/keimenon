@@ -131,14 +131,14 @@ test.describe('Multi-Tenant Isolation - Edges', () => {
   test.afterEach(async ({ apiRequest }) => {
     // Cleanup test data
     if (tokenA) {
-      await apiRequest.delete('/api/v1/data/canvas', {
+      await apiRequest.delete('/api/v1/data/keimenon', {
         headers: { Authorization: `Bearer ${tokenA}` },
         params: { data_tag: 'test' },
       });
     }
 
     if (tokenB) {
-      await apiRequest.delete('/api/v1/data/canvas', {
+      await apiRequest.delete('/api/v1/data/keimenon', {
         headers: { Authorization: `Bearer ${tokenB}` },
         params: { data_tag: 'test' },
       });
