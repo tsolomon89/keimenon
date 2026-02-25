@@ -10,6 +10,7 @@ import { UsersListCard } from './UsersListCard';
 import { ErrorTrackingCard } from './ErrorTrackingCard';
 import { DebugModalsCard } from './DebugModalsCard';
 import { DeduplicationCard } from './DeduplicationCard';
+import { ExportDataCard } from './ExportDataCard';
 import { SETTINGS_REGISTRY } from '@keimenon/types/src/settings';
 
 interface SettingsPageProps {
@@ -274,6 +275,9 @@ export function SettingsPage({
           {/* Special handling for deduplication section */}
           {sectionId === 'deduplication' && categoryId === 'data' && <DeduplicationCard />}
 
+          {/* Special handling for export data section */}
+          {sectionId === 'export' && categoryId === 'import_export' && <ExportDataCard />}
+
           {/* Debug modals inventory */}
           {sectionId === 'modals' && categoryId === 'debug' && user?.accountType === 'admin' && (
             <DebugModalsCard />
@@ -285,11 +289,14 @@ export function SettingsPage({
             sectionId !== 'users' &&
             sectionId !== 'privacy' &&
             sectionId !== 'deduplication' &&
+            sectionId !== 'export' &&
             sectionId !== 'modals' &&
             controls
               .filter(
                 (control) =>
-                  control.id !== 'clear_keimenon_data' && control.id !== 'clear_all_client_data'
+                  control.id !== 'clear_keimenon_data' &&
+                  control.id !== 'clear_all_client_data' &&
+                  control.id !== 'export_format'
               )
               .map((control) => {
                 const effectiveSetting = getSetting(control.id);

@@ -460,5 +460,86 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
     })
   );
 
+  /**
+   * GET /api/v1/data/export
+   * Export all Keimenon graph data for the current user/account
+   *
+   * Returns a JSON payload containing all nodes and edges belonging
+   * to the account.
+   */
+  router.get(
+    '/export',
+    requireAuth(authService),
+    asyncHandler(async (req: Request, res: Response) => {
+      // Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
+      const accountId = (req as any).user.accountId;
+
+      try {
+        // Fetch all Keimenon data nodes
+        const nodes = database
+          .prepare(
+            `
+          SELECT *
+          FROM nodes
+          WHERE account_id = ?
+            AND kind IN (${getKeimenonDataInClause()})
+        `
+          )
+          .all(accountId) as any[];
+
+        // Fetch all edges (excluding system edges)
+        const edges = database
+          .prepare(
+            `
+          SELECT *
+          FROM edges
+          WHERE account_id = ?
+            AND kind IN ('CONTAINS', 'DERIVES_FROM', 'IN_GROUP', 'FOLDS_INTO_FOLDER', 'DUP_OF')
+        `
+          )
+          .all(accountId) as any[];
+
+        // Parse properties for nodes/edges where applicable
+        const formattedNodes = nodes.map((n) => ({
+          ...n,
+          properties: n.properties ? JSON.parse(n.properties) : {},
+          metadata: n.metadata ? JSON.parse(n.metadata) : {},
+        }));
+
+        const formattedEdges = edges.map((e) => ({
+          ...e,
+          properties: e.properties ? JSON.parse(e.properties) : {},
+          metadata: e.metadata ? JSON.parse(e.metadata) : {},
+        }));
+
+        const exportData = {
+          version: '1.0',
+          timestamp: new Date().toISOString(),
+          accountId: accountId,
+          graph: {
+            nodes: formattedNodes,
+            edges: formattedEdges,
+          },
+        };
+
+        // Set headers for file download
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename="keimenon-export.json"');
+
+        return res.json(exportData);
+      } catch (error: any) {
+        throw ErrorFactory.database(
+          error.message || 'Failed to export data',
+          'dataManagement.exportData',
+          { accountId, errorName: error.name }
+        );
+      }
+    })
+  );
+
   return router;
 }
