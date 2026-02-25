@@ -24,6 +24,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { apiClient } from '../lib/api-client';
 import { API_BASE_URL } from '../lib/env.config';
+import { getToken } from '../contexts/AuthContext';
 
 // ============================================================================
 // Types
@@ -156,17 +157,21 @@ export function useChunkedUpload() {
   /**
    * Upload a single chunk with retry logic
    */
+  /**
+   * Upload a single chunk
+   * Returns { success: boolean; jobId?: string } - jobId is set on the final chunk
+   */
   const uploadChunk = useCallback(
     async (
       sessionId: string,
       file: File,
       chunkIndex: number,
       retryCount = 0
-    ): Promise<boolean> => {
+    ): Promise<{ success: boolean; jobId?: string }> => {
       try {
         // Check if canceled or paused
         if (state.isCanceled || state.isPaused) {
-          return false;
+          return { success: false };
         }
 
         // Read chunk data
@@ -179,13 +184,20 @@ export function useChunkedUpload() {
         abortControllersRef.current.set(chunkIndex, abortController);
 
         // Upload chunk using raw fetch (to support AbortController)
+        const headers: HeadersInit = {
+          'Content-Type': 'application/octet-stream',
+        };
+
+        const token = getToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const response = await fetch(
           `${API_BASE_URL}/api/v1/uploads/${sessionId}/chunks/${chunkIndex}`,
           {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/octet-stream',
-            },
+            headers,
             body: chunkData,
             signal: abortController.signal,
           }
@@ -196,15 +208,20 @@ export function useChunkedUpload() {
 
         if (response.ok) {
           const result = await response.json();
-          return result.success === true;
+          // Return both success status and jobId (if present on final chunk)
+          return {
+            success: result.success === true,
+            jobId: result.jobId, // Set when isComplete=true
+          };
         } else {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Chunk upload failed');
+          // Read message field for actual error (e.g., ENOSPC, EPERM)
+          throw new Error(errorData.message || errorData.error || 'Chunk upload failed');
         }
       } catch (error: any) {
         // Handle abort (pause/cancel)
         if (error.name === 'AbortError') {
-          return false;
+          return { success: false };
         }
 
         // Retry logic
@@ -223,82 +240,108 @@ export function useChunkedUpload() {
 
   /**
    * Upload chunks with concurrency control
+   * Uses proper promise tracking to avoid memory leaks
+   * Returns the jobId from the final chunk response
    */
   const uploadChunksInParallel = useCallback(
-    async (sessionId: string, file: File, missingChunks: number[], totalChunks: number) => {
+    async (sessionId: string, file: File, missingChunks: number[], totalChunks: number): Promise<string | undefined> => {
       const startTime = Date.now();
-      let completedChunks = 0;
       const uploadedChunks = new Set(state.uploadedChunks);
-
-      // Process chunks in parallel with concurrency limit
       const chunks = [...missingChunks];
-      const activeUploads: Promise<void>[] = [];
 
-      while (chunks.length > 0 || activeUploads.length > 0) {
+      // Track active uploads with completion status
+      const activeUploads = new Map<number, Promise<void>>();
+
+      // Track jobId from final chunk response
+      let finalJobId: string | undefined;
+
+      // Throttle progress updates to avoid flooding React state
+      let lastProgressUpdate = 0;
+      const PROGRESS_UPDATE_INTERVAL = 200; // ms
+
+      const updateProgress = (chunkIndex: number) => {
+        const now = Date.now();
+        if (now - lastProgressUpdate < PROGRESS_UPDATE_INTERVAL) return;
+        lastProgressUpdate = now;
+
+        const bytesUploaded = uploadedChunks.size * CHUNK_SIZE;
+        const percentage = Math.round((uploadedChunks.size / totalChunks) * 100);
+        const elapsed = (now - startTime) / 1000;
+        const uploadSpeed = elapsed > 0 ? bytesUploaded / elapsed : 0;
+        const bytesRemaining = file.size - bytesUploaded;
+        const estimatedTimeRemaining = uploadSpeed > 0 ? Math.round(bytesRemaining / uploadSpeed) : 0;
+
+        setState((prev) => ({
+          ...prev,
+          uploadedChunks,
+          progress: {
+            ...prev.progress,
+            bytesUploaded,
+            percentage,
+            chunkIndex,
+            chunksUploaded: uploadedChunks.size,
+            uploadSpeed,
+            estimatedTimeRemaining,
+            status: 'uploading',
+          },
+        }));
+      };
+
+      while (chunks.length > 0 || activeUploads.size > 0) {
         // Check if paused or canceled
         if (state.isPaused || state.isCanceled) {
-          // Abort all active uploads
-          abortControllersRef.current.forEach((controller) => controller.abort());
+          abortControllersRef.current.forEach((controller: AbortController) => controller.abort());
           abortControllersRef.current.clear();
-          return;
+          return finalJobId;
         }
 
         // Fill up to MAX_CONCURRENT_UPLOADS
-        while (activeUploads.length < MAX_CONCURRENT_UPLOADS && chunks.length > 0) {
+        while (activeUploads.size < MAX_CONCURRENT_UPLOADS && chunks.length > 0) {
           const chunkIndex = chunks.shift()!;
 
-          const uploadPromise = uploadChunk(sessionId, file, chunkIndex).then((success) => {
-            if (success) {
-              uploadedChunks.add(chunkIndex);
-              completedChunks++;
+          const uploadPromise = uploadChunk(sessionId, file, chunkIndex)
+            .then((result) => {
+              if (result.success) {
+                uploadedChunks.add(chunkIndex);
+                updateProgress(chunkIndex);
+                saveSessionToStorage(sessionId, file, uploadedChunks);
 
-              // Calculate progress
-              const bytesUploaded = uploadedChunks.size * CHUNK_SIZE;
-              const percentage = Math.round((uploadedChunks.size / totalChunks) * 100);
-              const elapsed = (Date.now() - startTime) / 1000; // seconds
-              const uploadSpeed = bytesUploaded / elapsed;
-              const bytesRemaining = file.size - bytesUploaded;
-              const estimatedTimeRemaining = Math.round(bytesRemaining / uploadSpeed);
+                // Capture jobId from final chunk (when isComplete=true)
+                if (result.jobId) {
+                  console.log(`✅ Received jobId from final chunk: ${result.jobId}`);
+                  finalJobId = result.jobId;
+                }
+              }
+            })
+            .finally(() => {
+              // Remove this upload from active set when done
+              activeUploads.delete(chunkIndex);
+            });
 
-              // Update progress
-              setState((prev) => ({
-                ...prev,
-                uploadedChunks,
-                progress: {
-                  ...prev.progress,
-                  bytesUploaded,
-                  percentage,
-                  chunkIndex,
-                  chunksUploaded: uploadedChunks.size,
-                  uploadSpeed,
-                  estimatedTimeRemaining,
-                  status: 'uploading',
-                },
-              }));
-
-              // Save to localStorage for resume
-              saveSessionToStorage(sessionId, file, uploadedChunks);
-            }
-          });
-
-          activeUploads.push(uploadPromise);
+          activeUploads.set(chunkIndex, uploadPromise);
         }
 
         // Wait for at least one upload to complete
-        if (activeUploads.length > 0) {
-          await Promise.race(activeUploads);
-          // Remove completed uploads
-          activeUploads.splice(
-            0,
-            activeUploads.length,
-            ...activeUploads.filter((p) => {
-              let resolved = false;
-              p.then(() => { resolved = true; });
-              return !resolved;
-            })
-          );
+        if (activeUploads.size > 0) {
+          await Promise.race(activeUploads.values());
         }
       }
+
+      // Force final progress update
+      setState((prev) => ({
+        ...prev,
+        uploadedChunks,
+        progress: {
+          ...prev.progress,
+          bytesUploaded: file.size,
+          percentage: 100,
+          chunksUploaded: totalChunks,
+          status: 'uploading',
+        },
+      }));
+
+      // Return the jobId captured from final chunk response
+      return finalJobId;
     },
     [state.isPaused, state.isCanceled, state.uploadedChunks, uploadChunk, saveSessionToStorage]
   );
@@ -335,7 +378,7 @@ export function useChunkedUpload() {
         });
 
         // Step 1: Initiate upload session
-        const initResponse = await apiClient.post('/uploads/initiate', {
+        const initResponse = await apiClient.post('/api/v1/uploads/initiate', {
           fileName: file.name,
           fileSize: file.size,
           mimeType: file.type || 'application/json',
@@ -348,21 +391,18 @@ export function useChunkedUpload() {
         }
 
         const session: UploadSession = initResponse.data.session;
-        const { jobId } = initResponse.data;
 
         console.log(`✅ Upload session created: ${session.id}`);
         console.log(`   Total chunks: ${session.totalChunks}`);
-        console.log(`   Job ID: ${jobId}`);
 
         setState((prev) => ({
           ...prev,
           sessionId: session.id,
-          jobId,
         }));
 
-        // Step 2: Upload missing chunks
+        // Step 2: Upload all chunks (jobId is returned from final chunk response)
         const missingChunks = Array.from({ length: session.totalChunks }, (_, i) => i);
-        await uploadChunksInParallel(session.id, file, missingChunks, session.totalChunks);
+        const jobId = await uploadChunksInParallel(session.id, file, missingChunks, session.totalChunks);
 
         // Check if canceled or paused
         if (state.isCanceled) {
@@ -377,13 +417,15 @@ export function useChunkedUpload() {
 
         // Step 3: Upload complete
         console.log(`✅ Upload complete: ${file.name}`);
+        console.log(`   Job ID: ${jobId}`);
 
         // Clear localStorage
         clearSessionStorage(session.id);
 
-        // Update state
+        // Update state with jobId
         setState((prev) => ({
           ...prev,
+          jobId,
           progress: {
             ...prev.progress,
             status: 'completed',
@@ -431,7 +473,7 @@ export function useChunkedUpload() {
     console.log('Resuming upload...');
 
     // Get session status to find missing chunks
-    const statusResponse = await apiClient.get(`/uploads/${state.sessionId}`);
+    const statusResponse = await apiClient.get(`/api/v1/uploads/${state.sessionId}`);
 
     if (!statusResponse.data.success) {
       throw new Error(statusResponse.data.error || 'Failed to get upload status');
@@ -472,7 +514,7 @@ export function useChunkedUpload() {
 
     // Delete session on server
     try {
-      await apiClient.delete(`/uploads/${state.sessionId}`);
+      await apiClient.delete(`/api/v1/uploads/${state.sessionId}`);
       clearSessionStorage(state.sessionId);
     } catch (error) {
       console.error('Failed to cancel upload session:', error);

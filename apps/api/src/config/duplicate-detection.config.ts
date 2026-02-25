@@ -28,6 +28,24 @@ export function getFTS5Config(): FTS5Config {
   };
 }
 
+export interface LSHConfig {
+  enabled: boolean;
+  permutations: number;
+  bands: number;
+  rows: number;
+  threshold: number;
+}
+
+export function getLSHConfig(): LSHConfig {
+  return {
+    enabled: process.env.ENABLE_LSH_DUPLICATE_DETECTION !== 'false', // Default: true
+    permutations: parseInt(process.env.LSH_PERMUTATIONS || '128', 10),
+    bands: parseInt(process.env.LSH_BANDS || '16', 10),
+    rows: parseInt(process.env.LSH_ROWS || '8', 10),
+    threshold: parseFloat(process.env.LSH_SIMILARITY_THRESHOLD || '0.7'),
+  };
+}
+
 /**
  * Feature flag: Is FTS5 duplicate detection enabled?
  *

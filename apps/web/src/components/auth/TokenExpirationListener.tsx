@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useToast } from '@/hooks/useToast';
-import { ToastContainer } from '@/components/ui/ToastContainer';
+import { ToastContainer } from '@keimenon/ui';
 
 /**
  * TokenExpirationListener Component

@@ -111,8 +111,15 @@ export function AccountSelector({
           <div className="space-y-3">
             {sortedAccounts.map((account) => {
               const isSelected = selectedAccountId === account.accountId;
-              const classBadge = ACCOUNT_CLASS_BADGES[account.accountClass];
-              const icon = ACCOUNT_TYPE_ICONS[account.accountType];
+              // Defensive coding: Handle missing or invalid fields from API
+              const accountClass = account.accountClass || 'free';
+              const accountType = account.accountType || 'client';
+              const status = account.status || 'active';
+              const permission = account.permission_level || 'junior';
+              
+              const classBadge = ACCOUNT_CLASS_BADGES[accountClass] || ACCOUNT_CLASS_BADGES['free'];
+              const icon = ACCOUNT_TYPE_ICONS[accountType] || ACCOUNT_TYPE_ICONS['client'];
+              const roleLabel = ROLE_LABELS[permission] || 'Member';
 
               return (
                 <button
@@ -129,7 +136,7 @@ export function AccountSelector({
                       <div className="text-3xl mt-1">{icon}</div>
                       <div className="flex-1">
                         <div className="flex items-center space-x-2">
-                          <h3 className="font-semibold text-gray-900">{account.accountName}</h3>
+                          <h3 className="font-semibold text-gray-900">{account.accountName || 'Unnamed Account'}</h3>
                           <span
                             className={`px-2 py-0.5 text-xs font-medium rounded ${classBadge.color}`}
                           >
@@ -137,16 +144,16 @@ export function AccountSelector({
                           </span>
                         </div>
                         <p className="text-sm text-gray-600 mt-1">
-                          {ROLE_LABELS[account.permission_level]}
+                          {roleLabel}
                           {account.last_accessed && (
                             <span className="text-gray-400 ml-2">
                               • Last used {new Date(account.last_accessed).toLocaleDateString()}
                             </span>
                           )}
                         </p>
-                        {account.status !== 'active' && (
+                        {status !== 'active' && (
                           <span className="inline-block mt-2 px-2 py-0.5 text-xs font-medium rounded bg-yellow-100 text-yellow-800">
-                            {account.status.toUpperCase()}
+                            {status.toUpperCase()}
                           </span>
                         )}
                       </div>

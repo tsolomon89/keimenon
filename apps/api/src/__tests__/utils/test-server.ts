@@ -10,15 +10,32 @@ import path from 'path';
 import { existsSync } from 'fs';
 import fetch from 'node-fetch';
 
+import { createServer } from 'net';
+
 // Singleton state
 let serverProcess: ChildProcess | null = null;
 let isInitialized = false;
+let currentPort = 4001;
+
+/**
+ * Find a free port
+ */
+function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.listen(0, () => {
+      const port = (server.address() as any).port;
+      server.close(() => resolve(port));
+    });
+    server.on('error', reject);
+  });
+}
 
 /**
  * Wait for server to be ready by polling health endpoint
  */
 async function waitForServer(maxAttempts = 30): Promise<void> {
-  const url = 'http://localhost:4001/health';
+  const url = `http://127.0.0.1:${currentPort}/health`;
 
   for (let i = 0; i < maxAttempts; i++) {
     try {
@@ -56,12 +73,15 @@ export async function startTestServer(): Promise<void> {
   isInitialized = true;
 
   try {
-    console.log('\n🧪 Starting test server on port 4001...');
+    // Find a free port
+    currentPort = await getFreePort();
+    console.log(`\n🧪 Starting test server on port ${currentPort}...`);
 
     // Set environment variables for test mode
     const env: NodeJS.ProcessEnv = {
       ...process.env,
-      PORT: '4001',
+      PORT: currentPort.toString(),
+      HOST: '127.0.0.1', // Force IPv4 loopback
       NODE_ENV: 'test',
       DISABLE_RATE_LIMIT: '1',
       MAX_CONCURRENT_JOBS: '2',
@@ -80,13 +100,19 @@ export async function startTestServer(): Promise<void> {
     const nodeModulesBin = path.join(projectRoot, 'node_modules', '.bin');
     env.PATH = env.PATH ? `${nodeModulesBin}${path.delimiter}${env.PATH}` : nodeModulesBin;
 
-    const executable = tsxModulePath ? process.execPath : 'tsx';
+    // If we resolved the module path, run it with node. Otherwise fallback to tsx/cmd
+    const executable = tsxModulePath ? process.execPath : (process.platform === 'win32' ? 'tsx.cmd' : 'tsx');
     const args = tsxModulePath ? [tsxModulePath, serverPath] : [serverPath];
+
+    console.log(`[test-server] Spawning: ${executable} ${args.join(' ')}`);
+    console.log(`[test-server] Cwd: ${process.cwd()}`);
+    console.log(`[test-server] Env PATH length: ${env.PATH?.length}`);
 
     serverProcess = spawn(executable, args, {
       env,
       stdio: ['ignore', 'pipe', 'pipe'], // Capture stdout/stderr
       detached: false,
+      shell: false, // We are invoking node directly or distinct cmd, shell not needed if full path
     });
 
     // Log server output (useful for debugging)
@@ -121,7 +147,10 @@ export async function startTestServer(): Promise<void> {
     console.log('⏳ Waiting for server to be ready...');
     await waitForServer();
 
-    console.log('✅ Test server running on port 4001\n');
+    // Update global env for tests to know where to connect
+    process.env.TEST_API_URL = `http://127.0.0.1:${currentPort}`;
+    console.log(`✅ Test server running on port ${currentPort}`);
+    console.log(`   TEST_API_URL=${process.env.TEST_API_URL}\n`);
   } catch (error) {
     isInitialized = false;
     console.error('❌ Failed to start test server:', error);

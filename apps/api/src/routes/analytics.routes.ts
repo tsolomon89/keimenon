@@ -90,8 +90,9 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
           )
           .get() as any;
       } else {
+
         // Account-scoped view: single account stats
-        accountStats = database
+        const stats = database
           .prepare(
             `
           SELECT
@@ -106,7 +107,15 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
           )
           .get(targetAccountId) as any;
 
-        totalSeats = database
+        accountStats = stats || {
+            total_accounts: 0,
+            client_accounts: 0,
+            free_tier: 0,
+            pro_tier: 0,
+            business_tier: 0
+        };
+
+        const seatsResult = database
           .prepare(
             `
           SELECT COUNT(*) as count
@@ -116,6 +125,8 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
         `
           )
           .get(targetAccountId) as any;
+          
+        totalSeats = seatsResult || { count: 0 };
       }
 
       // User Activity (last 7 and 30 days)

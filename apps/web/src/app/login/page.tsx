@@ -5,16 +5,24 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, ArrowRight, AlertCircle, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { AccountSelector, type UserAccount } from '@/components/auth/AccountSelector';
 
 // Separate component for reading search params (must be wrapped in Suspense)
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isAuthenticated } = useAuth();
+  const { login, selectAccount, isAuthenticated, isLoading: authLoading } = useAuth(); // rename to avoid clash
   const [isLoading, setIsLoading] = useState(false);
+  
+  console.log('[LoginPage] Render. AuthLoading:', authLoading, 'IsAuthenticated:', isAuthenticated);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  // Account selection state
+  const [showAccountSelector, setShowAccountSelector] = useState(false);
+  const [availableAccounts, setAvailableAccounts] = useState<UserAccount[]>([]);
+  const [tempToken, setTempToken] = useState<string | null>(null);
 
   // Check if user was redirected due to token expiration
   const isExpired = searchParams.get('reason') === 'expired';
@@ -32,12 +40,44 @@ function LoginForm() {
     setError(null);
 
     try {
-      await login(email, password);
-      // Router push handled by AuthContext
+      const result = await login(email, password);
+      
+      // Check for account selection requirements
+      if (result && result.requiresAccountSelection && result.availableAccounts && result.tempToken) {
+        setAvailableAccounts(result.availableAccounts);
+        setTempToken(result.tempToken);
+        setShowAccountSelector(true);
+        setIsLoading(false); // Stop loading to show selector
+        return;
+      }
+      
+      // Router push handled by AuthContext for direct login
     } catch (err: any) {
       console.error('Login failed:', err);
-      setError(err.message || 'Login failed. Please check your credentials.');
+      if (err.message === 'Account is locked') {
+           setError('Account is locked due to too many failed attempts. Please try again later.');
+      } else {
+           setError(err.message || 'Login failed. Please check your credentials.');
+      }
       setIsLoading(false);
+    }
+  };
+
+  const handleAccountSelect = async (accountId: string, accountPassword?: string) => {
+    if (!tempToken) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      await selectAccount(tempToken, accountId, accountPassword);
+      // Router push handled by AuthContext
+    } catch (err: any) {
+      console.error('Account selection failed:', err);
+      setError(err.message || 'Failed to select account');
+      setIsLoading(false);
+      // Keep selector open on error? Or close it? 
+      // Usually keep it open so they can try another account or retry password
     }
   };
 
@@ -140,6 +180,61 @@ function LoginForm() {
               </>
             )}
           </button>
+
+          {/* Dev Controls (Only visible in dev mode or if explicitly enabled) */}
+          {(process.env.NODE_ENV === 'development' || searchParams.get('dev') === 'true') && (
+            <div className="pt-6 border-t border-slate-700 space-y-3">
+               <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest text-center">Dev Controls</p>
+               <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                         try {
+                             // Dynamic port from query param (injected by Electron) or default
+                             const port = searchParams.get('apiPort') || '4001';
+                             // Hit the Dev Login endpoint via fetch since context login() is for standard auth
+                             const res = await fetch(`http://127.0.0.1:${port}/api/v1/auth/dev/login`, {
+                                 method: 'POST',
+                                 headers: { 'Content-Type': 'application/json' },
+                                 body: JSON.stringify({ email: 'dev@keimenon.local' })
+                             });
+                             const data = await res.json();
+                             if(data.token) {
+                                  // Manually trigger context update? Or just reload.
+                                  // For now, simpler to just start the standard login with dev credentials
+                                  // assuming the standard login() hits the same API which proxies to localhost:apiPort?
+                                  // Actually, client points to Next.js API, which needs to know where to proxy.
+                                  // But for Dev Login specifically, we are bypassing the proxy to hit the backend directly (or we should update proxy config).
+                                  // For now, let's assume standard login() works if we use dev creds:
+                                  setEmail('dev@keimenon.local');
+                                  setPassword('DevPass123!');
+                             }
+                         } catch(e) { console.error(e); }
+                         // Always pre-fill even if fetch fails, as user might want to try manually
+                         setEmail('dev@keimenon.local');
+                         setPassword('DevPass123!');
+                    }}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-lg transition-colors border border-slate-600"
+                  >
+                    🚀 Auto-Fill Dev
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                        // Invoke IPC
+                         if ((window as any).electronAPI) {
+                             (window as any).electronAPI.invoke('app:open-data-folder');
+                         } else {
+                             alert('Not in Electron environment');
+                         }
+                    }}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-lg transition-colors border border-slate-600"
+                  >
+                    📂 Open Data
+                  </button>
+               </div>
+            </div>
+          )}
         </form>
 
         <div className="text-center text-sm text-slate-400">
@@ -155,6 +250,21 @@ function LoginForm() {
           <p className="mt-3 text-xs text-slate-500">Development: admin@admin.com (any password)</p>
         </div>
       </div>
+
+      
+      {/* Account Selector Modal */}
+      {showAccountSelector && tempToken && (
+        <AccountSelector
+          accounts={availableAccounts}
+          tempToken={tempToken}
+          onSelect={handleAccountSelect}
+          onCancel={() => {
+            setShowAccountSelector(false);
+            setTempToken(null);
+            setAvailableAccounts([]);
+          }}
+        />
+      )}
     </div>
   );
 }

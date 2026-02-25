@@ -90,12 +90,12 @@ describe('DataManagementCard', () => {
     });
 
     // Mock fetch with logging
-    global.fetch = vi.fn((url, options) => {
+    global.fetch = vi.fn((url: RequestInfo | URL, options?: RequestInit) => {
       console.log(`[TEST FETCH] Call to: ${url}`, options);
       return Promise.resolve({
         ok: true,
         json: async () => ({ stats: mockStats }), // Default success
-      });
+      } as Response);
     });
 
     // Mock localStorage

@@ -76,11 +76,9 @@ export class GroupingStorage {
    * Insert blob (content-addressed storage)
    *
    * @param blob - Blob to insert
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  insertBlob(blob: Blob, accountId?: string): void {
+  insertBlob(blob: Blob, accountId: string): void {
     const stmt = this.db.prepare(`
       INSERT OR IGNORE INTO blobs (
         hash, size_bytes, mime_type, encoding, storage_path, account_id, data_tag, created_at
@@ -93,7 +91,7 @@ export class GroupingStorage {
       null, // mime_type
       blob.encoding,
       blob.original_path || blob.blob_id, // storage_path
-      accountId || null, // TODO: Remove null default after migration
+      accountId,
       blob.data_tag,
       blob.created_at
     );
@@ -103,26 +101,13 @@ export class GroupingStorage {
    * Get blob by ID
    *
    * @param blobId - Blob ID (hash)
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  getBlob(blobId: string, accountId?: string): Blob | null {
-    let stmt;
-    let row;
-
-    if (accountId) {
-      stmt = this.db.prepare(`
-        SELECT * FROM blobs WHERE hash = ? AND account_id = ?
-      `);
-      row = stmt.get(blobId, accountId) as any;
-    } else {
-      // Legacy behavior without account filtering (INSECURE - for migration only)
-      stmt = this.db.prepare(`
-        SELECT * FROM blobs WHERE hash = ?
-      `);
-      row = stmt.get(blobId) as any;
-    }
+  getBlob(blobId: string, accountId: string): Blob | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM blobs WHERE hash = ? AND account_id = ?
+    `);
+    const row = stmt.get(blobId, accountId) as any;
 
     if (!row) return null;
 
@@ -141,26 +126,13 @@ export class GroupingStorage {
    * Get blob by content hash
    *
    * @param hash - Content hash
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  getBlobByHash(hash: string, accountId?: string): Blob | null {
-    let stmt;
-    let row;
-
-    if (accountId) {
-      stmt = this.db.prepare(`
-        SELECT * FROM blobs WHERE hash = ? AND account_id = ?
-      `);
-      row = stmt.get(hash, accountId) as any;
-    } else {
-      // Legacy behavior without account filtering (INSECURE - for migration only)
-      stmt = this.db.prepare(`
-        SELECT * FROM blobs WHERE hash = ?
-      `);
-      row = stmt.get(hash) as any;
-    }
+  getBlobByHash(hash: string, accountId: string): Blob | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM blobs WHERE hash = ? AND account_id = ?
+    `);
+    const row = stmt.get(hash, accountId) as any;
 
     if (!row) return null;
 
@@ -181,11 +153,9 @@ export class GroupingStorage {
    * Insert node span (virtual node)
    *
    * @param span - Node span to insert
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  insertNodeSpan(span: NodeSpan, accountId?: string): void {
+  insertNodeSpan(span: NodeSpan, accountId: string): void {
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO node_spans (
         node_id, node_key, blob_hash, byte_start, byte_end, encoding, offset_kind,
@@ -204,7 +174,7 @@ export class GroupingStorage {
       span.level,
       span.modality,
       span.parent_node_id || null,
-      accountId || null, // TODO: Remove null default after migration
+      accountId,
       span.data_tag,
       span.created_at
     );
@@ -214,11 +184,9 @@ export class GroupingStorage {
    * Insert multiple node spans (batch)
    *
    * @param spans - Array of node spans to insert
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  insertNodeSpans(spans: NodeSpan[], accountId?: string): void {
+  insertNodeSpans(spans: NodeSpan[], accountId: string): void {
     const insert = this.db.prepare(`
       INSERT OR REPLACE INTO node_spans (
         node_id, node_key, blob_hash, byte_start, byte_end, encoding, offset_kind,
@@ -239,7 +207,7 @@ export class GroupingStorage {
           span.level,
           span.modality,
           span.parent_node_id || null,
-          accountId || null, // TODO: Remove null default after migration
+          accountId,
           span.data_tag,
           span.created_at
         );
@@ -253,112 +221,60 @@ export class GroupingStorage {
    * Get node span by ID
    *
    * @param nodeId - Node ID to query
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  getNodeSpan(nodeId: string, accountId?: string): NodeSpan[] {
-    let stmt;
-    let rows;
+  getNodeSpan(nodeId: string, accountId: string): NodeSpan[] {
+    const stmt = this.db.prepare(`
+      SELECT * FROM node_spans WHERE node_id = ? AND account_id = ?
+    `);
+    const rows = stmt.all(nodeId, accountId) as any[];
 
-    if (accountId) {
-      stmt = this.db.prepare(`
-        SELECT * FROM node_spans WHERE node_id = ? AND account_id = ?
-      `);
-      rows = stmt.all(nodeId, accountId) as any[];
-    } else {
-      // Legacy behavior without account filtering (INSECURE - for migration only)
-      stmt = this.db.prepare(`
-        SELECT * FROM node_spans WHERE node_id = ?
-      `);
-      rows = stmt.all(nodeId) as any[];
-    }
-
-    return rows.map(this.rowToNodeSpan);
+    return rows.map((row) => this.rowToNodeSpan(row));
   }
 
   /**
    * Get node spans by blob hash
    *
    * @param blobHash - Blob hash to query
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  getNodeSpansByBlob(blobHash: string, accountId?: string): NodeSpan[] {
-    let stmt;
-    let rows;
+  getNodeSpansByBlob(blobHash: string, accountId: string): NodeSpan[] {
+    const stmt = this.db.prepare(`
+      SELECT * FROM node_spans WHERE blob_hash = ? AND account_id = ?
+    `);
+    const rows = stmt.all(blobHash, accountId) as any[];
 
-    if (accountId) {
-      stmt = this.db.prepare(`
-        SELECT * FROM node_spans WHERE blob_hash = ? AND account_id = ?
-      `);
-      rows = stmt.all(blobHash, accountId) as any[];
-    } else {
-      // Legacy behavior without account filtering (INSECURE - for migration only)
-      stmt = this.db.prepare(`
-        SELECT * FROM node_spans WHERE blob_hash = ?
-      `);
-      rows = stmt.all(blobHash) as any[];
-    }
-
-    return rows.map(this.rowToNodeSpan);
+    return rows.map((row) => this.rowToNodeSpan(row));
   }
 
   /**
    * Get node spans by level
    *
    * @param level - Level to query (token, phrase, sentence, block, etc.)
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  getNodeSpansByLevel(level: NodeSpan['level'], accountId?: string): NodeSpan[] {
-    let stmt;
-    let rows;
+  getNodeSpansByLevel(level: NodeSpan['level'], accountId: string): NodeSpan[] {
+    const stmt = this.db.prepare(`
+      SELECT * FROM node_spans WHERE level = ? AND account_id = ?
+    `);
+    const rows = stmt.all(level, accountId) as any[];
 
-    if (accountId) {
-      stmt = this.db.prepare(`
-        SELECT * FROM node_spans WHERE level = ? AND account_id = ?
-      `);
-      rows = stmt.all(level, accountId) as any[];
-    } else {
-      // Legacy behavior without account filtering (INSECURE - for migration only)
-      stmt = this.db.prepare(`
-        SELECT * FROM node_spans WHERE level = ?
-      `);
-      rows = stmt.all(level) as any[];
-    }
-
-    return rows.map(this.rowToNodeSpan);
+    return rows.map((row) => this.rowToNodeSpan(row));
   }
 
   /**
    * Get child spans
    *
    * @param parentNodeId - Parent node ID to query
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  getChildSpans(parentNodeId: string, accountId?: string): NodeSpan[] {
-    let stmt;
-    let rows;
+  getChildSpans(parentNodeId: string, accountId: string): NodeSpan[] {
+    const stmt = this.db.prepare(`
+      SELECT * FROM node_spans WHERE parent_node_id = ? AND account_id = ?
+    `);
+    const rows = stmt.all(parentNodeId, accountId) as any[];
 
-    if (accountId) {
-      stmt = this.db.prepare(`
-        SELECT * FROM node_spans WHERE parent_node_id = ? AND account_id = ?
-      `);
-      rows = stmt.all(parentNodeId, accountId) as any[];
-    } else {
-      // Legacy behavior without account filtering (INSECURE - for migration only)
-      stmt = this.db.prepare(`
-        SELECT * FROM node_spans WHERE parent_node_id = ?
-      `);
-      rows = stmt.all(parentNodeId) as any[];
-    }
-
-    return rows.map(this.rowToNodeSpan);
+    return rows.map((row) => this.rowToNodeSpan(row));
   }
 
   private rowToNodeSpan(row: any): NodeSpan {
@@ -378,17 +294,15 @@ export class GroupingStorage {
     };
   }
 
-  // ==================== Node Signatures ====================
+// ... NodeSignature methods below ...
 
   /**
    * Insert node signature
    *
    * @param signature - Node signature to insert
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  insertNodeSignature(signature: NodeSignature, accountId?: string): void {
+  insertNodeSignature(signature: NodeSignature, accountId: string): void {
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO node_signatures (
         node_id, node_key, content_id, minhash, tfidf_vector,
@@ -404,7 +318,7 @@ export class GroupingStorage {
       signature.tfidf_vector ? JSON.stringify(signature.tfidf_vector) : null,
       signature.token_sketch || null,
       signature.structural_path,
-      accountId || null, // TODO: Remove null default after migration
+      accountId,
       signature.data_tag,
       signature.created_at
     );
@@ -414,11 +328,9 @@ export class GroupingStorage {
    * Insert multiple node signatures (batch)
    *
    * @param signatures - Array of node signatures to insert
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  insertNodeSignatures(signatures: NodeSignature[], accountId?: string): void {
+  insertNodeSignatures(signatures: NodeSignature[], accountId: string): void {
     const insert = this.db.prepare(`
       INSERT OR REPLACE INTO node_signatures (
         node_id, node_key, content_id, minhash, tfidf_vector,
@@ -436,7 +348,7 @@ export class GroupingStorage {
           sig.tfidf_vector ? JSON.stringify(sig.tfidf_vector) : null,
           sig.token_sketch || null,
           sig.structural_path,
-          accountId || null, // TODO: Remove null default after migration
+          accountId,
           sig.data_tag,
           sig.created_at
         );
@@ -450,26 +362,13 @@ export class GroupingStorage {
    * Get node signature
    *
    * @param nodeId - Node ID to query
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  getNodeSignature(nodeId: string, accountId?: string): NodeSignature | null {
-    let stmt;
-    let row;
-
-    if (accountId) {
-      stmt = this.db.prepare(`
-        SELECT * FROM node_signatures WHERE node_id = ? AND account_id = ?
-      `);
-      row = stmt.get(nodeId, accountId) as any;
-    } else {
-      // Legacy behavior without account filtering (INSECURE - for migration only)
-      stmt = this.db.prepare(`
-        SELECT * FROM node_signatures WHERE node_id = ?
-      `);
-      row = stmt.get(nodeId) as any;
-    }
+  getNodeSignature(nodeId: string, accountId: string): NodeSignature | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM node_signatures WHERE node_id = ? AND account_id = ?
+    `);
+    const row = stmt.get(nodeId, accountId) as any;
 
     if (!row) return null;
 
@@ -480,28 +379,15 @@ export class GroupingStorage {
    * Find nodes by content ID (exact duplicates)
    *
    * @param contentId - Content ID to query
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  findNodesByContentId(contentId: string, accountId?: string): NodeSignature[] {
-    let stmt;
-    let rows;
+  findNodesByContentId(contentId: string, accountId: string): NodeSignature[] {
+    const stmt = this.db.prepare(`
+      SELECT * FROM node_signatures WHERE content_id = ? AND account_id = ?
+    `);
+    const rows = stmt.all(contentId, accountId) as any[];
 
-    if (accountId) {
-      stmt = this.db.prepare(`
-        SELECT * FROM node_signatures WHERE content_id = ? AND account_id = ?
-      `);
-      rows = stmt.all(contentId, accountId) as any[];
-    } else {
-      // Legacy behavior without account filtering (INSECURE - for migration only)
-      stmt = this.db.prepare(`
-        SELECT * FROM node_signatures WHERE content_id = ?
-      `);
-      rows = stmt.all(contentId) as any[];
-    }
-
-    return rows.map(this.rowToNodeSignature);
+    return rows.map((row) => this.rowToNodeSignature(row));
   }
 
   private rowToNodeSignature(row: any): NodeSignature {
@@ -518,55 +404,28 @@ export class GroupingStorage {
     };
   }
 
-  // ==================== LSH Bands ====================
-
   /**
-   * Insert LSH band
+   * Insert LSH bands (batch)
    *
-   * @param band - LSH band record to insert (includes account_id from LshBandRecord interface)
-   *
-   * NOTE: account_id is part of LshBandRecord interface. Ensure callers populate band.account_id.
+   * @param bands - Array of LSH bands to insert
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  insertLshBand(band: LshBandRecord): void {
-    const stmt = this.db.prepare(`
-      INSERT OR IGNORE INTO lsh_bands (
-        band_hash, band_index, node_id, account_id, data_tag, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    stmt.run(
-      band.band_hash,
-      band.band_index,
-      band.node_id,
-      band.account_id || null, // TODO: Make required after migration 007
-      band.data_tag,
-      band.created_at
-    );
-  }
-
-  /**
-   * Insert multiple LSH bands (batch)
-   *
-   * @param bands - Array of LSH band records to insert (each includes account_id from LshBandRecord interface)
-   *
-   * NOTE: account_id is part of LshBandRecord interface. Ensure callers populate band.account_id for each band.
-   */
-  insertLshBands(bands: LshBandRecord[]): void {
+  insertLshBands(bands: any[], accountId: string): void {
     const insert = this.db.prepare(`
       INSERT OR IGNORE INTO lsh_bands (
         band_hash, band_index, node_id, account_id, data_tag, created_at
       ) VALUES (?, ?, ?, ?, ?, ?)
     `);
 
-    const transaction = this.db.transaction((bands: LshBandRecord[]) => {
-      for (const band of bands) {
+    const transaction = this.db.transaction((items: any[]) => {
+      for (const item of items) {
         insert.run(
-          band.band_hash,
-          band.band_index,
-          band.node_id,
-          band.account_id || null, // TODO: Make required after migration 007
-          band.data_tag,
-          band.created_at
+          item.band_hash,
+          item.band_index,
+          item.node_id,
+          accountId,
+          item.data_tag,
+          item.created_at
         );
       }
     });
@@ -574,30 +433,18 @@ export class GroupingStorage {
     transaction(bands);
   }
 
+
   /**
    * Find candidate nodes by LSH band (O(1) lookup)
    *
    * @param bandHash - LSH band hash to query
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  findCandidatesByBandHash(bandHash: string, accountId?: string): string[] {
-    let stmt;
-    let rows;
-
-    if (accountId) {
-      stmt = this.db.prepare(`
-        SELECT DISTINCT node_id FROM lsh_bands WHERE band_hash = ? AND account_id = ?
-      `);
-      rows = stmt.all(bandHash, accountId) as any[];
-    } else {
-      // Legacy behavior without account filtering (INSECURE - for migration only)
-      stmt = this.db.prepare(`
-        SELECT DISTINCT node_id FROM lsh_bands WHERE band_hash = ?
-      `);
-      rows = stmt.all(bandHash) as any[];
-    }
+  findCandidatesByBandHash(bandHash: string, accountId: string): string[] {
+    const stmt = this.db.prepare(`
+      SELECT DISTINCT node_id FROM lsh_bands WHERE band_hash = ? AND account_id = ?
+    `);
+    const rows = stmt.all(bandHash, accountId) as any[];
 
     return rows.map((r) => r.node_id);
   }
@@ -606,42 +453,24 @@ export class GroupingStorage {
    * Find candidate nodes matching multiple bands
    *
    * @param bandHashes - Array of LSH band hashes to query
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
+   * @param accountId - Account ID for multi-tenant isolation (required)
    * @param minMatches - Minimum number of band matches required (default: 1)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
    */
   findCandidatesByBandHashes(
     bandHashes: string[],
-    accountId?: string,
+    accountId: string,
     minMatches: number = 1
   ): string[] {
     const placeholders = bandHashes.map(() => '?').join(',');
-    let stmt;
-    let rows;
-
-    if (accountId) {
-      stmt = this.db.prepare(`
-        SELECT node_id, COUNT(*) as match_count
-        FROM lsh_bands
-        WHERE band_hash IN (${placeholders}) AND account_id = ?
-        GROUP BY node_id
-        HAVING match_count >= ?
-        ORDER BY match_count DESC
-      `);
-      rows = stmt.all(...bandHashes, accountId, minMatches) as any[];
-    } else {
-      // Legacy behavior without account filtering (INSECURE - for migration only)
-      stmt = this.db.prepare(`
-        SELECT node_id, COUNT(*) as match_count
-        FROM lsh_bands
-        WHERE band_hash IN (${placeholders})
-        GROUP BY node_id
-        HAVING match_count >= ?
-        ORDER BY match_count DESC
-      `);
-      rows = stmt.all(...bandHashes, minMatches) as any[];
-    }
+    const stmt = this.db.prepare(`
+      SELECT node_id, COUNT(*) as match_count
+      FROM lsh_bands
+      WHERE band_hash IN (${placeholders}) AND account_id = ?
+      GROUP BY node_id
+      HAVING match_count >= ?
+      ORDER BY match_count DESC
+    `);
+    const rows = stmt.all(...bandHashes, accountId, minMatches) as any[];
 
     return rows.map((r) => r.node_id);
   }
@@ -747,48 +576,33 @@ export class GroupingStorage {
     };
   }
 
-  // ==================== Statistics ====================
+  // ==================== Stats ====================
 
   /**
    * Get statistics for all Phase 1-3 tables
    *
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  getStats(accountId?: string): {
+  getStats(accountId: string): {
     blob_count: number;
     node_count: number;
     signature_count: number;
     lsh_band_count: number;
     cluster_count: number;
   } {
-    let blobCount, nodeCount, sigCount, bandCount, clusterCount;
-
-    if (accountId) {
-      blobCount = this.db
-        .prepare('SELECT COUNT(*) as count FROM blobs WHERE account_id = ?')
-        .get(accountId) as any;
-      nodeCount = this.db
-        .prepare('SELECT COUNT(DISTINCT node_id) as count FROM node_spans WHERE account_id = ?')
-        .get(accountId) as any;
-      sigCount = this.db
-        .prepare('SELECT COUNT(*) as count FROM node_signatures WHERE account_id = ?')
-        .get(accountId) as any;
-      bandCount = this.db
-        .prepare('SELECT COUNT(*) as count FROM lsh_bands WHERE account_id = ?')
-        .get(accountId) as any;
-      clusterCount = this.db.prepare('SELECT COUNT(*) as count FROM clusters').get() as any; // Clusters don't have account_id yet
-    } else {
-      // Legacy behavior without account filtering (INSECURE - for migration only)
-      blobCount = this.db.prepare('SELECT COUNT(*) as count FROM blobs').get() as any;
-      nodeCount = this.db
-        .prepare('SELECT COUNT(DISTINCT node_id) as count FROM node_spans')
-        .get() as any;
-      sigCount = this.db.prepare('SELECT COUNT(*) as count FROM node_signatures').get() as any;
-      bandCount = this.db.prepare('SELECT COUNT(*) as count FROM lsh_bands').get() as any;
-      clusterCount = this.db.prepare('SELECT COUNT(*) as count FROM clusters').get() as any;
-    }
+    const blobCount = this.db
+      .prepare('SELECT COUNT(*) as count FROM blobs WHERE account_id = ?')
+      .get(accountId) as any;
+    const nodeCount = this.db
+      .prepare('SELECT COUNT(DISTINCT node_id) as count FROM node_spans WHERE account_id = ?')
+      .get(accountId) as any;
+    const sigCount = this.db
+      .prepare('SELECT COUNT(*) as count FROM node_signatures WHERE account_id = ?')
+      .get(accountId) as any;
+    const bandCount = this.db
+      .prepare('SELECT COUNT(*) as count FROM lsh_bands WHERE account_id = ?')
+      .get(accountId) as any;
+    const clusterCount = this.db.prepare('SELECT COUNT(*) as count FROM clusters').get() as any; // Clusters don't have account_id yet
 
     return {
       blob_count: blobCount.count,

@@ -1,0 +1,166 @@
+
+> desktop-e2e@0.1.0 test
+> playwright test
+
+
+Running 1 test using 1 worker
+
+Launching app from: C:\Development\Projects\keimenon\apps\desktop\dist\main.js
+[Renderer]: [Config] API_BASE_URL resolved to: http://localhost:4001
+[Renderer]: %c[system] errorCapture.init color: #3b82f6; font-weight: normal
+[Renderer]: {message: ErrorCaptureService initialized, name: LogMessage}
+[Renderer]: console.groupEnd
+Window title: Keimenon
+[Renderer]: %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+  Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+  this app to unnecessary security risks.
+
+For more information and help, consult
+https://electronjs.org/docs/tutorial/security.
+This warning will not show up
+once the app is packaged.
+[Renderer]: [AuthContext] Init check. Token present: false
+[Renderer]: [AuthContext] No token, stopping load.
+[Renderer]: 📊 Sentry: Disabled (no NEXT_PUBLIC_SENTRY_DSN provided)
+[Renderer]: [LoginPage] Render. AuthLoading: false IsAuthenticated: false
+[Renderer]: [LoginPage] Render. AuthLoading: false IsAuthenticated: false
+[Renderer]: [LoginPage] Render. AuthLoading: false IsAuthenticated: false
+Signing in...
+[Renderer]: [LoginPage] Render. AuthLoading: true IsAuthenticated: false
+[Renderer]: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[Renderer]: Login error: Error: Invalid email or password
+    at app://keimenon/_next/static/chunks/444-a5aefec8120ac934.js:1:1912
+    at async N (app://keimenon/_next/static/chunks/app/login/page-6471d3c1733f3d8f.js:1:722)
+[Renderer]: Login failed: Error: Invalid email or password
+    at app://keimenon/_next/static/chunks/444-a5aefec8120ac934.js:1:1912
+    at async N (app://keimenon/_next/static/chunks/app/login/page-6471d3c1733f3d8f.js:1:722)
+[Renderer]: [LoginPage] Render. AuthLoading: false IsAuthenticated: false
+Test Failed! ExpectError: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+Locator: getByText('Groups & Folders')
+Expected: visible
+Timeout: 15000ms
+Error: element(s) not found
+
+Call log:
+[2m  - Expect "toBeVisible" with timeout 15000ms[22m
+[2m  - waiting for getByText('Groups & Folders')[22m
+
+    at [90mC:\Development\Projects\keimenon\apps\desktop-e2e\[39mtests\dev-login.spec.ts:51:74 {
+  matcherResult: {
+    message: [32m'\x1B[2mexpect(\x1B[22m\x1B[31mlocator\x1B[39m\x1B[2m).\x1B[22mtoBeVisible\x1B[2m(\x1B[22m\x1B[2m)\x1B[22m failed\n'[39m +
+      [32m'\n'[39m +
+      [32m"Locator: getByText('Groups & Folders')\n"[39m +
+      [32m'Expected: visible\n'[39m +
+      [32m'Timeout: 15000ms\n'[39m +
+      [32m'Error: element(s) not found\n'[39m +
+      [32m'\n'[39m +
+      [32m'Call log:\n'[39m +
+      [32m'\x1B[2m  - Expect "toBeVisible" with timeout 15000ms\x1B[22m\n'[39m +
+      [32m"\x1B[2m  - waiting for getByText('Groups & Folders')\x1B[22m\n"[39m,
+    pass: [33mfalse[39m,
+    actual: [90mundefined[39m,
+    name: [32m'toBeVisible'[39m,
+    expected: [32m'visible'[39m,
+    log: [
+      [32m'  - Expect "toBeVisible" with timeout 15000ms'[39m,
+      [32m"  - waiting for getByText('Groups & Folders')"[39m
+    ],
+    timeout: [33m15000[39m
+  },
+  [32mSymbol(step)[39m: {
+    category: [32m'expect'[39m,
+    apiName: [32m'expect.toBeVisible'[39m,
+    title: [32m`Expect "toBeVisible" getByText('Groups & Folders')`[39m,
+    shortTitle: [32m'Expect "toBeVisible"'[39m,
+    params: { expected: [36m[Object][39m },
+    infectParentStepsWithError: [90mundefined[39m,
+    stepId: [32m'expect@41'[39m,
+    group: [90mundefined[39m,
+    boxedStack: [90mundefined[39m,
+    location: {
+      file: [32m'C:\\Development\\Projects\\keimenon\\apps\\desktop-e2e\\tests\\dev-login.spec.ts'[39m,
+      line: [33m51[39m,
+      column: [33m74[39m
+    },
+    steps: [],
+    attachmentIndices: [],
+    info: TestStepInfoImpl {
+      annotations: [],
+      _testInfo: [36m[TestInfoImpl][39m,
+      _stepId: [32m'expect@41'[39m,
+      _title: [32m`Expect "toBeVisible" getByText('Groups & Folders')`[39m,
+      _parentStep: [90mundefined[39m,
+      skip: [36m[Function (anonymous)][39m
+    },
+    complete: [36m[Function: complete][39m,
+    endWallTime: [33m1769839861121[39m,
+    error: {
+      message: [32m'Error: \x1B[2mexpect(\x1B[22m\x1B[31mlocator\x1B[39m\x1B[2m).\x1B[22mtoBeVisible\x1B[2m(\x1B[22m\x1B[2m)\x1B[22m failed\n'[39m +
+        [32m'\n'[39m +
+        [32m"Locator: getByText('Groups & Folders')\n"[39m +
+        [32m'Expected: visible\n'[39m +
+        [32m'Timeout: 15000ms\n'[39m +
+        [32m'Error: element(s) not found\n'[39m +
+        [32m'\n'[39m +
+        [32m'Call log:\n'[39m +
+        [32m'\x1B[2m  - Expect "toBeVisible" with timeout 15000ms\x1B[22m\n'[39m +
+        [32m"\x1B[2m  - waiting for getByText('Groups & Folders')\x1B[22m\n"[39m,
+      stack: [32m'Error: \x1B[2mexpect(\x1B[22m\x1B[31mlocator\x1B[39m\x1B[2m).\x1B[22mtoBeVisible\x1B[2m(\x1B[22m\x1B[2m)\x1B[22m failed\n'[39m +
+        [32m'\n'[39m +
+        [32m"Locator: getByText('Groups & Folders')\n"[39m +
+        [32m'Expected: visible\n'[39m +
+        [32m'Timeout: 15000ms\n'[39m +
+        [32m'Error: element(s) not found\n'[39m +
+        [32m'\n'[39m +
+        [32m'Call log:\n'[39m +
+        [32m'\x1B[2m  - Expect "toBeVisible" with timeout 15000ms\x1B[22m\n'[39m +
+        [32m"\x1B[2m  - waiting for getByText('Groups & Folders')\x1B[22m\n"[39m +
+        [32m'\n'[39m +
+        [32m'    at C:\\Development\\Projects\\keimenon\\apps\\desktop-e2e\\tests\\dev-login.spec.ts:51:74'[39m,
+      cause: [90mundefined[39m
+    }
+  }
+}
+--- PAGE CONTENT DUMP ---
+<!DOCTYPE html><html lang="en" class="dark" style=""><head><link rel="stylesheet" href="/_next/static/css/8fa78fc56ab8d4ec.css" data-precedence="next"><link rel="preload" as="script" fetchpriority="low" href="/_next/static/chunks/webpack-afeac7786a03131c.js"><script src="/_next/static/chunks/1dd3208c-2ce41d386cad154d.js" async=""></script><script src="/_next/static/chunks/528-a10b1f4bb5943ada.js" async=""></script><script src="/_next/static/chunks/main-app-d7880e81ae2d7903.js" async=""></script><script src="/_next/static/chunks/59c6eb5a-1d2781abfb0d1965.js" async=""></script><script src="/_next/static/chunks/982-151794976b824835.js" async=""></script><script src="/_next/static/chunks/837-ac33807fff218735.js" async=""></script><script src="/_next/static/chunks/482-3eec6713003b88a7.js" async=""></script><script src="/_next/static/chunks/444-a5aefec8120ac934.js" async=""></script><script src="/_next/static/chunks/app/page-a10799db808791ee.js" async=""></script><script src="/_next/static/chunks/app/layout-33c493cebb627a4c.js" async=""></script><script src="/_next/static/chunks/polyfills-42372ed130431b0a.js" nomodule=""></script><meta name="viewport" content="width=device-width, initial-scale=1"><meta charset="utf-8"><title>Keimenon</title><meta name="description" content="Graph-native knowledge management and research platform"></head><body class="__className_f367f3"><script src="/_next/static/chunks/webpack-afeac7786a03131c.js" async=""></script><script>(self.__next_f=self.__next_f||[]).push([0]);self.__next_f.push([2,null])</script><script>self.__next_f.push([1,"1:HL[\"/_next/static/css/8fa78fc56ab8d4ec.css\",\"style\"]\n"])</script><script>self.__next_f.push([1,"2:I[1815,[],\"\"]\n4:I[5428,[],\"ClientPageRoot\"]\n5:I[1403,[\"898\",\"static/chunks/59c6eb5a-1d2781abfb0d1965.js\",\"982\",\"static/chunks/982-151794976b824835.js\",\"837\",\"static/chunks/837-ac33807fff218735.js\",\"482\",\"static/chunks/482-3eec6713003b88a7.js\",\"444\",\"static/chunks/444-a5aefec8120ac934.js\",\"931\",\"static/chunks/app/page-a10799db808791ee.js\"],\"default\",1]\n6:I[521,[\"898\",\"static/chunks/59c6eb5a-1d2781abfb0d1965.js\",\"982\",\"static/chunks/982-151794976b824835.js\",\"837\",\"static/chunks/837-ac33807fff218735.js\",\"482\",\"static/chunks/482-3eec6713003b88a7.js\",\"444\",\"static/chunks/444-a5aefec8120ac934.js\",\"185\",\"static/chunks/app/layout-33c493cebb627a4c.js\"],\"SentryProvider\"]\n7:I[176,[\"898\",\"static/chunks/59c6eb5a-1d2781abfb0d1965.js\",\"982\",\"static/chunks/982-151794976b824835.js\",\"837\",\"static/chunks/837-ac33807fff218735.js\",\"482\",\"static/chunks/482-3eec6713003b88a7.js\",\"444\",\"static/chunks/444-a5aefec8120ac934.js\",\"185\",\"static/chunks/app/layout-33c493cebb627a4c.js\"],\"ErrorBoundary\"]\n8:I[7070,[\"898\",\"static/chunks/59c6eb5a-1d2781abfb0d1965.js\",\"982\",\"static/chunks/982-151794976b824835.js\",\"837\",\"static/chunks/837-ac33807fff218735.js\",\"482\",\"static/chunks/482-3eec6713003b88a7.js\",\"444\",\"static/chunks/444-a5aefec8120ac934.js\",\"185\",\"static/chunks/app/layout-33c493cebb627a4c.js\"],\"AuthProvider\"]\n9:I[7250,[\"898\",\"static/chunks/59c6eb5a-1d2781abfb0d1965.js\",\"982\",\"static/chunks/982-151794976b824835.js\",\"837\",\"static/chunks/837-ac33807fff218735.js\",\"482\",\"static/chunks/482-3eec6713003b88a7.js\",\"444\",\"static/chunks/444-a5aefec8120ac934.js\",\"185\",\"static/chunks/app/layout-33c493cebb627a4c.js\"],\"OperatingProvider\"]\na:I[6326,[\"898\",\"static/chunks/59c6eb5a-1d2781abfb0d1965.js\",\"982\",\"static/chunks/982-151794976b824835.js\",\"837\",\"static/chunks/837-ac33807fff218735.js\",\"482\",\"static/chunks/482-3eec6713003b88a7.js\",\"444\",\"static/chunks/444-a5aefec8120ac934.js\",\"185\",\"static/chunks/app/layout-33c493cebb627a4c.js\"],\"ShellProvider\"]\nb:I[7833,[\"898\",\"static/chunks/59c6eb5a-1d2781abfb0d1965.js\",\"982\",\"static/chunks/982-151794976b824835.js\",\"83"])</script><script>self.__next_f.push([1,"7\",\"static/chunks/837-ac33807fff218735.js\",\"482\",\"static/chunks/482-3eec6713003b88a7.js\",\"444\",\"static/chunks/444-a5aefec8120ac934.js\",\"185\",\"static/chunks/app/layout-33c493cebb627a4c.js\"],\"UIVersionProvider\"]\nc:I[5092,[],\"\"]\nd:I[2023,[],\"\"]\ne:I[7324,[\"898\",\"static/chunks/59c6eb5a-1d2781abfb0d1965.js\",\"982\",\"static/chunks/982-151794976b824835.js\",\"837\",\"static/chunks/837-ac33807fff218735.js\",\"482\",\"static/chunks/482-3eec6713003b88a7.js\",\"444\",\"static/chunks/444-a5aefec8120ac934.js\",\"185\",\"static/chunks/app/layout-33c493cebb627a4c.js\"],\"TokenExpirationListener\"]\n10:I[1584,[],\"\"]\n11:[]\n"])</script><script>self.__next_f.push([1,"0:[\"$\",\"$L2\",null,{\"buildId\":\"gSyXVj0XGDsEAE-wheu1O\",\"assetPrefix\":\"\",\"urlParts\":[\"\",\"\"],\"initialTree\":[\"\",{\"children\":[\"__PAGE__\",{}]},\"$undefined\",\"$undefined\",true],\"initialSeedData\":[\"\",{\"children\":[\"__PAGE__\",{},[[\"$L3\",[\"$\",\"$L4\",null,{\"props\":{\"params\":{},\"searchParams\":{}},\"Component\":\"$5\"}],null],null],null]},[[[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/8fa78fc56ab8d4ec.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\"}]],[\"$\",\"html\",null,{\"lang\":\"en\",\"className\":\"dark\",\"children\":[\"$\",\"body\",null,{\"className\":\"__className_f367f3\",\"children\":[\"$\",\"$L6\",null,{\"children\":[\"$\",\"$L7\",null,{\"children\":[\"$\",\"$L8\",null,{\"children\":[\"$\",\"$L9\",null,{\"children\":[\"$\",\"$La\",null,{\"children\":[\"$\",\"$Lb\",null,{\"children\":[[\"$\",\"$Lc\",null,{\"parallelRouterKey\":\"children\",\"segmentPath\":[\"children\"],\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$Ld\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":[[\"$\",\"title\",null,{\"children\":\"404: This page could not be found.\"}],[\"$\",\"div\",null,{\"style\":{\"fontFamily\":\"system-ui,\\\"Segoe UI\\\",Roboto,Helvetica,Arial,sans-serif,\\\"Apple Color Emoji\\\",\\\"Segoe UI Emoji\\\"\",\"height\":\"100vh\",\"textAlign\":\"center\",\"display\":\"flex\",\"flexDirection\":\"column\",\"alignItems\":\"center\",\"justifyContent\":\"center\"},\"children\":[\"$\",\"div\",null,{\"children\":[[\"$\",\"style\",null,{\"dangerouslySetInnerHTML\":{\"__html\":\"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}\"}}],[\"$\",\"h1\",null,{\"className\":\"next-error-h1\",\"style\":{\"display\":\"inline-block\",\"margin\":\"0 20px 0 0\",\"padding\":\"0 23px 0 0\",\"fontSize\":24,\"fontWeight\":500,\"verticalAlign\":\"top\",\"lineHeight\":\"49px\"},\"children\":\"404\"}],[\"$\",\"div\",null,{\"style\":{\"display\":\"inline-block\"},\"children\":[\"$\",\"h2\",null,{\"style\":{\"fontSize\":14,\"fontWeight\":400,\"lineHeight\":\"49px\",\"margin\":0},\"children\":\"This page could not be found.\"}]}]]}]}]],\"notFoundStyles\":[]}],[\"$\",\"$Le\",null,{}]]}]}]}]}]}]}]}]}]],null],null],\"couldBeIntercepted\":false,\"initialHead\":[null,\"$Lf\"],\"globalErrorComponent\":\"$10\",\"missingSlots\":\"$W11\"}]\n"])</script><script>self.__next_f.push([1,"f:[[\"$\",\"meta\",\"0\",{\"name\":\"viewport\",\"content\":\"width=device-width, initial-scale=1\"}],[\"$\",\"meta\",\"1\",{\"charSet\":\"utf-8\"}],[\"$\",\"title\",\"2\",{\"children\":\"Keimenon\"}],[\"$\",\"meta\",\"3\",{\"name\":\"description\",\"content\":\"Graph-native knowledge management and research platform\"}]]\n3:null\n"])</script><next-route-announcer style="position: absolute;"></next-route-announcer><div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900"><div class="w-full max-w-md space-y-8 p-8"><div class="text-center"><div class="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-purple-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock w-8 h-8 text-white"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div><h1 class="text-4xl font-bold text-white mb-2">Keimenon</h1><p class="text-slate-400">Sign in to your workspace</p></div><form class="mt-8 space-y-6"><div class="bg-red-900/20 border border-red-500/50 rounded-lg p-4 flex items-start gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-alert w-5 h-5 text-red-400 flex-shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg><div><p class="text-sm font-medium text-red-300">Login Failed</p><p class="text-sm text-red-400 mt-1">Invalid email or password</p></div></div><div class="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 space-y-4"><div><label for="email" class="block text-sm font-medium text-slate-300 mb-2">Email</label><input id="email" autocomplete="email" required="" class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed" placeholder="admin@admin.com" type="email" value="dev@keimenon.local" name="email"></div><div><label for="password" class="block text-sm font-medium text-slate-300 mb-2">Password</label><input id="password" autocomplete="current-password" required="" class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed" placeholder="any password" type="password" value="DevPass123!" name="password"></div></div><div class="flex items-center justify-end"><a class="text-sm text-purple-300 hover:text-purple-200 transition-colors" href="/forgot-password/">Forgot password? (debug)</a></div><button type="submit" class="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-all shadow-lg shadow-purple-500/30">Sign In<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right w-5 h-5"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button></form><div class="text-center text-sm text-slate-400"><p>Don't have an account? <a class="text-purple-400 hover:text-purple-300 font-medium transition-colors" href="/register/">Create one here</a></p><p class="mt-3 text-xs text-slate-500">Development: admin@admin.com (any password)</p></div></div></div></body></html>
+--- END CONTENT DUMP ---
+  ✘  1 tests\dev-login.spec.ts:4:5 › Dev Login Flow (17.6s)
+
+
+  1) tests\dev-login.spec.ts:4:5 › Dev Login Flow ──────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByText('Groups & Folders')
+    Expected: visible
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+    [2m  - waiting for getByText('Groups & Folders')[22m
+
+
+      49 |     // Wait for navigation/dashboard (simple check for now)
+      50 |     // Use a specific timeout as API/DB init might take a moment
+    > 51 |     await expect(window.getByText('Groups & Folders', { exact: false })).toBeVisible({ timeout: 15000 });
+         |                                                                          ^
+      52 |     
+      53 |     console.log('Dashboard loaded!');
+      54 |     await window.screenshot({ path: 'dashboard.png' });
+        at C:\Development\Projects\keimenon\apps\desktop-e2e\tests\dev-login.spec.ts:51:74
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\dev-login-Dev-Login-Flow\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests\dev-login.spec.ts:4:5 › Dev Login Flow ───────────────────────────────────────────────────
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path C:\Development\Projects\keimenon\apps\desktop-e2e
+npm error workspace desktop-e2e@0.1.0
+npm error location C:\Development\Projects\keimenon\apps\desktop-e2e
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c playwright test

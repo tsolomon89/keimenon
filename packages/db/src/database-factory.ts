@@ -1,11 +1,11 @@
-import { Neo4jClient } from './neo4j';
 import { SQLiteClient } from './sqlite/client';
 import { AnyNode, AnyEdge } from '@keimenon/types';
 
 /**
  * Storage modes
+ * @deprecated Only 'local' is supported in the Desktop version
  */
-export type StorageMode = 'local' | 'keimenon' | 'hybrid';
+export type StorageMode = 'local';
 
 /**
  * Unified database interface
@@ -19,7 +19,8 @@ export interface DatabaseClient {
   createNode(node: AnyNode): Promise<void>;
   createNodes?(nodes: AnyNode[]): Promise<void>;
   getNode(id: string): Promise<AnyNode | null>;
-  getNodesByKind?(kind: string): Promise<AnyNode[]>;
+  getNodesByKind?(kind: string, options?: { limit?: number; offset?: number; accountId?: string }): Promise<AnyNode[]>;
+  countNodesByKind?(kind: string, accountId?: string): Promise<number>;
   updateNode?(id: string, node: Partial<AnyNode>): Promise<void>;
   deleteNode?(id: string): Promise<void>;
 
@@ -46,13 +47,6 @@ export interface DatabaseConfig {
     readonly?: boolean;
     verbose?: boolean;
   };
-
-  // Keimenon (Neo4j) config
-  keimenon?: {
-    uri: string;
-    user: string;
-    password: string;
-  };
 }
 
 /**
@@ -61,27 +55,13 @@ export interface DatabaseConfig {
  */
 export class DatabaseFactory {
   private static sqliteInstance: SQLiteClient | null = null;
-  private static neo4jInstance: Neo4jClient | null = null;
 
   /**
    * Get database client for specified mode
    */
   static async getClient(config: DatabaseConfig): Promise<DatabaseClient> {
-    switch (config.mode) {
-      case 'local':
-        return this.getSQLiteClient(config.local!);
-
-      case 'keimenon':
-        return this.getNeo4jClient(config.keimenon!) as any as DatabaseClient;
-
-      case 'hybrid':
-        // For hybrid mode, return SQLite as primary
-        // Neo4j sync happens in background
-        return this.getSQLiteClient(config.local!);
-
-      default:
-        throw new Error(`Unknown storage mode: ${config.mode}`);
-    }
+    // Force local mode
+    return this.getSQLiteClient(config.local || { databasePath: ':memory:' });
   }
 
   /**
@@ -104,32 +84,12 @@ export class DatabaseFactory {
   }
 
   /**
-   * Get Neo4j client (singleton)
-   */
-  private static async getNeo4jClient(config: {
-    uri: string;
-    user: string;
-    password: string;
-  }): Promise<Neo4jClient> {
-    if (!this.neo4jInstance) {
-      this.neo4jInstance = new Neo4jClient(config.uri, config.user, config.password);
-      await this.neo4jInstance.connect();
-    }
-    return this.neo4jInstance;
-  }
-
-  /**
    * Close all connections
    */
   static async closeAll(): Promise<void> {
     if (this.sqliteInstance) {
       await this.sqliteInstance.disconnect();
       this.sqliteInstance = null;
-    }
-
-    if (this.neo4jInstance) {
-      await this.neo4jInstance.disconnect();
-      this.neo4jInstance = null;
     }
   }
 }
@@ -138,5 +98,5 @@ export class DatabaseFactory {
  * Helper function for backward compatibility
  */
 export async function getDatabaseClient(mode: StorageMode, config: any): Promise<DatabaseClient> {
-  return DatabaseFactory.getClient({ mode, ...config });
+  return DatabaseFactory.getClient({ mode: 'local', ...config });
 }

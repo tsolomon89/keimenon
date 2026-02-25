@@ -76,14 +76,18 @@ function computeTermFrequency(tokens: string[]): Map<string, number> {
 
 /**
  * Compute document frequency (DF) across all documents
+ * OPTIMIZATION: Accepts pre-computed tokens to avoid duplicate tokenization
  */
-function computeDocumentFrequency(messages: Message[]): Map<string, number> {
+function computeDocumentFrequency(
+  cachedTokens: Map<string, string[]>
+): Map<string, number> {
   const df = new Map<string, number>();
 
-  for (const msg of messages) {
-    const tokens = new Set(filterStopwords(tokenize(msg.content)));
+  for (const [_msgId, tokens] of cachedTokens) {
+    // Use Set to count each token once per document
+    const uniqueTokens = new Set(tokens);
 
-    for (const token of tokens) {
+    for (const token of uniqueTokens) {
       df.set(token, (df.get(token) || 0) + 1);
     }
   }
@@ -104,15 +108,22 @@ export function extractKeywords(
     return [];
   }
 
-  // Compute document frequency
-  const df = computeDocumentFrequency(messages);
+  // OPTIMIZATION: Pre-compute and cache tokens for all messages
+  // This avoids tokenizing each message twice (once for DF, once for TF-IDF)
+  const cachedTokens = new Map<string, string[]>();
+  for (const msg of messages) {
+    cachedTokens.set(msg.id, filterStopwords(tokenize(msg.content)));
+  }
 
-  // Compute TF-IDF for each message
+  // Compute document frequency using cached tokens
+  const df = computeDocumentFrequency(cachedTokens);
+
+  // Compute TF-IDF for each message using cached tokens
   const globalTfidf = new Map<string, number>();
   const globalFreq = new Map<string, number>();
 
   for (const msg of messages) {
-    const tokens = filterStopwords(tokenize(msg.content));
+    const tokens = cachedTokens.get(msg.id)!;
     const tf = computeTermFrequency(tokens);
 
     for (const [token, termFreq] of tf) {
@@ -191,7 +202,7 @@ export function clusterKeywords(
   }
 
   // Start with each keyword as its own cluster
-  let clusters: string[][] = keywords.map(k => [k]);
+  const clusters: string[][] = keywords.map(k => [k]);
 
   // Merge until we reach target count
   while (clusters.length > targetCount && clusters.length > 1) {

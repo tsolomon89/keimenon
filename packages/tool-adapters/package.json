@@ -1,0 +1,43 @@
+{
+  "name": "@keimenon/tool-adapters",
+  "version": "0.1.0",
+  "description": "Pluggable tool adapters for Keimenon agent services - LLM, Web search, Execution",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest --passWithNoTests",
+    "test:run": "vitest run --passWithNoTests",
+    "lint": "eslint src --ext .ts",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@keimenon/agent-core": "*",
+    "openai": "^4.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.2",
+    "vitest": "^1.0.0",
+    "rimraf": "^5.0.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "keimenon",
+    "llm",
+    "litellm",
+    "searxng",
+    "adapters"
+  ],
+  "license": "MIT"
+}

@@ -130,7 +130,7 @@ export function UserList({ users, onUserDeleted }: UserListProps) {
 
             <div className="flex items-center gap-2">
               <Link
-                href={`/users/${user.id}`}
+                href={`/users/edit?id=${user.id}`}
                 className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
                 title="Edit user"
               >

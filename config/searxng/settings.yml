@@ -1,0 +1,153 @@
+# SearXNG Configuration
+# Documentation: https://docs.searxng.org/admin/settings/index.html
+#
+# This configuration optimizes SearXNG for use as an API backend
+# for Keimenon's verification and search features.
+
+# Use SEARXNG_SECRET environment variable for secret key
+use_default_settings: true
+
+general:
+  # Debug mode (disable in production)
+  debug: false
+  # Instance name
+  instance_name: "Keimenon Search"
+  # Privacy notice
+  privacypolicy_url: false
+  # Contact
+  contact_url: false
+  # Enable metrics
+  enable_metrics: false
+
+search:
+  # Safe search: 0=off, 1=moderate, 2=strict
+  safe_search: 0
+  # Default autocomplete engine
+  autocomplete: "google"
+  # Default language
+  default_lang: "en"
+  # Max number of results per page
+  max_page: 10
+  # Default number of results
+  formats:
+    - html
+    - json  # Enable JSON API
+
+server:
+  # Secret key (set via environment variable)
+  secret_key: "ultrasecretkey"  # Override with SEARXNG_SECRET env var
+  # Bind address
+  bind_address: "0.0.0.0"
+  port: 8080
+  # Limiter settings
+  limiter: false  # Disable for API usage
+  # Public instance
+  public_instance: false
+  # Image proxy
+  image_proxy: false
+
+ui:
+  # Disable UI features for API-only usage
+  static_use_hash: true
+  default_locale: "en"
+  query_in_title: false
+  infinite_scroll: false
+  center_alignment: false
+  default_theme: simple
+  theme_args:
+    simple_style: auto
+
+# Engine settings
+# Enable the most reliable search engines for factual information
+engines:
+  # General web search
+  - name: google
+    engine: google
+    shortcut: g
+    disabled: false
+
+  - name: bing
+    engine: bing
+    shortcut: b
+    disabled: false
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: false
+
+  - name: brave
+    engine: brave
+    shortcut: br
+    disabled: false
+
+  # Academic/Research
+  - name: google scholar
+    engine: google_scholar
+    shortcut: gs
+    disabled: false
+
+  - name: arxiv
+    engine: arxiv
+    shortcut: arx
+    disabled: false
+
+  - name: semantic scholar
+    engine: semantic_scholar
+    shortcut: ss
+    disabled: false
+
+  # Wikipedia
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    disabled: false
+
+  - name: wikidata
+    engine: wikidata
+    shortcut: wd
+    disabled: false
+
+  # News
+  - name: google news
+    engine: google_news
+    shortcut: gn
+    disabled: false
+
+  - name: bing news
+    engine: bing_news
+    shortcut: bn
+    disabled: false
+
+  # Q&A
+  - name: stackoverflow
+    engine: stackoverflow
+    shortcut: so
+    disabled: false
+
+  # Disable less reliable or slow engines
+  - name: yahoo
+    disabled: true
+
+  - name: mojeek
+    disabled: true
+
+  - name: qwant
+    disabled: true
+
+# Outgoing request settings
+outgoing:
+  # Request timeout
+  request_timeout: 10.0
+  # Max request timeout
+  max_request_timeout: 30.0
+  # User agent (identify as Keimenon bot)
+  useragent_suffix: "Keimenon/1.0"
+  # Number of workers
+  pool_connections: 100
+  pool_maxsize: 20
+
+# Result settings
+result_proxy:
+  url: false
+  key: false

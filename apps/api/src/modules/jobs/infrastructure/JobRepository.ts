@@ -32,18 +32,21 @@ export interface JobRepository {
   save(job: Job): Promise<void>;
   findById(id: string, accountId: string, req?: any): Promise<Job | null>;
   find(filters: JobFilters, req?: any): Promise<Job[]>;
-  appendEvent(event: JobEvent): Promise<void>;
+  appendEvent(event: JobEvent, dbOrReq?: any): Promise<void>;
   loadEvents(jobId: string, accountId: string, req?: any): Promise<JobEvent[]>;
   existsByIdempotencyKey(key: string, accountId: string): Promise<Job | null>;
-  countActiveInGroup(concurrencyGroup: string, accountId: string): Promise<number>;
+  countActiveInGroup(concurrencyGroup: string, accountId: string, req?: any): Promise<number>;
   atomicTransition(
     jobId: string,
     accountId: string,
     fromStatus: JobStatus,
     toStatus: JobStatus,
-    stateData: string
+    stateData: string,
+    req?: any
   ): Promise<boolean>;
-  delete(id: string, accountId: string): Promise<void>;
+  delete(id: string, accountId: string, req?: any): Promise<void>;
+  getRawStateData(jobId: string, accountId: string): Promise<any | null>;
+  updateStateData(jobId: string, accountId: string, stateData: string): Promise<void>;
 }
 
 /**
@@ -129,8 +132,13 @@ export class SQLiteJobRepository implements JobRepository {
     try {
       const now = Date.now();
 
+      // DEBUG: Log saving context
+      console.log(`[JobRepository Save] Saving job ${job.id}`);
+      console.log(`[JobRepository Save] Job Test Context: ${JSON.stringify(job.config.testContext)}`);
+
       // CRITICAL FIX: Use correct database (test or production)
       const db = await this.getDbForJob(job);
+      console.log(`[JobRepository Save] DB File: ${db.name}`);
       const stmt = db.prepare(`
         INSERT INTO jobs (
           id, type, account_id, created_by, config, status,
@@ -157,6 +165,10 @@ export class SQLiteJobRepository implements JobRepository {
         job.concurrencyGroup || null,
         'real'
       );
+
+      console.log(`[JobRepository Save Result] Changes: ${result.changes}, ID: ${job.id}`);
+
+      console.log(`[JobRepository Save Result] Changes: ${result.changes}, ID: ${job.id}`);
 
       console.log(
         `[JobRepository] ✅ Saved job ${job.id} (status: ${job.status}, type: ${job.type}, changes: ${result.changes})`
@@ -210,6 +222,7 @@ export class SQLiteJobRepository implements JobRepository {
   async findById(id: string, accountId: string, req?: any): Promise<Job | null> {
     // CRITICAL FIX: Use request-scoped database if available
     const db = await this.getDbForRequest(req);
+    console.log(`[JobRepository.findById] DB File: ${db.name}`);
 
     // DEBUG: Log query details
     console.log(`[JobRepository.findById] Querying for job ${id}`);
@@ -255,7 +268,11 @@ export class SQLiteJobRepository implements JobRepository {
     const { accountId, status, type, limit = 100, offset = 0 } = filters;
 
     // CRITICAL FIX: Use request-scoped database if available
-    const db = await this.getDbForRequest(req);
+    const db = await this.getDbForRequest(req); // Logs internally in getDbForRequest? No, getDbForRequest calls getJobsDbClient which logs.
+
+    console.log(`[JobRepo Find] 🔍 Finding jobs. Filters:`, JSON.stringify(filters));
+    console.log(`[JobRepo Find] 📂  DB Context:`, (db as any).name);
+    if (req?.testDbPath) console.log(`[JobRepo Find] 🧪 Test DB Path:`, req.testDbPath);
 
     // Build query dynamically based on which filters are provided
     let query = 'SELECT * FROM jobs WHERE 1=1';
@@ -284,6 +301,9 @@ export class SQLiteJobRepository implements JobRepository {
 
     query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
+
+    console.log(`[JobRepo Find] 📝 Query: ${query}`);
+    console.log(`[JobRepo Find] 🔢 Params:`, params);
 
     const stmt = db.prepare(query);
     const records = stmt.all(...params) as any[];
@@ -319,9 +339,20 @@ export class SQLiteJobRepository implements JobRepository {
   /**
    * Append event to event log
    */
-  async appendEvent(event: JobEvent, db?: any): Promise<void> {
-    // Use provided db or fall back to production db
-    const database = db || this.db;
+  async appendEvent(event: JobEvent, dbOrReq?: any): Promise<void> {
+    // If dbOrReq has a prepare method, it's a DB connection
+    // If it has testDbPath or similar, it's a request object
+    // If undefined, use this.db
+    let database = this.db;
+    
+    if (dbOrReq) {
+      if (typeof (dbOrReq as any).prepare === 'function') {
+        database = dbOrReq;
+      } else {
+        // Assume req object, resolve DB
+        database = await this.getDbForRequest(dbOrReq);
+      }
+    }
     const stmt = database.prepare(`
       INSERT OR IGNORE INTO job_events (
         id, job_id, type, data, sequence_number, timestamp, account_id
@@ -398,8 +429,9 @@ export class SQLiteJobRepository implements JobRepository {
    * Count active jobs in concurrency group
    * Only counts RUNNING jobs (queued jobs haven't started yet)
    */
-  async countActiveInGroup(concurrencyGroup: string, accountId: string): Promise<number> {
-    const stmt = this.db.prepare(`
+  async countActiveInGroup(concurrencyGroup: string, accountId: string, req?: any): Promise<number> {
+    const db = await this.getDbForRequest(req);
+    const stmt = db.prepare(`
       SELECT COUNT(*) as count
       FROM jobs
       WHERE concurrency_group = ?
@@ -414,14 +446,50 @@ export class SQLiteJobRepository implements JobRepository {
   /**
    * Delete job and all related data
    */
-  async delete(id: string, accountId: string): Promise<void> {
+  async delete(id: string, accountId: string, req?: any): Promise<void> {
     // SQLite cascade delete will handle events and items
-    const stmt = this.db.prepare(`
+    const db = await this.getDbForRequest(req);
+    const stmt = db.prepare(`
       DELETE FROM jobs
       WHERE id = ? AND account_id = ?
     `);
 
     stmt.run(id, accountId);
+  }
+
+  /**
+   * Get raw state_data JSON for a job
+   * Used by CompensateJob to access changeTracker for rollback
+   */
+  async getRawStateData(jobId: string, accountId: string): Promise<any | null> {
+    const stmt = this.db.prepare(`
+      SELECT state_data FROM jobs
+      WHERE id = ? AND account_id = ?
+    `);
+
+    const record = stmt.get(jobId, accountId) as any;
+    if (!record) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(record.state_data);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Update state_data for a job (used by CompensateJob to mark as compensated)
+   */
+  async updateStateData(jobId: string, accountId: string, stateData: string): Promise<void> {
+    const stmt = this.db.prepare(`
+      UPDATE jobs
+      SET state_data = ?, updated_at = ?
+      WHERE id = ? AND account_id = ?
+    `);
+
+    stmt.run(stateData, Date.now(), jobId, accountId);
   }
 
   /**
@@ -473,12 +541,12 @@ export class SQLiteJobRepository implements JobRepository {
   /**
    * Find active jobs (queued or running)
    */
-  async findActive(accountId: string, limit = 100): Promise<Job[]> {
+  async findActive(accountId: string, limit = 100, req?: any): Promise<Job[]> {
     return this.find({
       accountId,
       status: ['queued', 'running'],
       limit,
-    });
+    }, req);
   }
 
   /**
@@ -517,9 +585,11 @@ export class SQLiteJobRepository implements JobRepository {
     accountId: string,
     fromStatus: JobStatus,
     toStatus: JobStatus,
-    stateData: string
+    stateData: string,
+    req?: any
   ): Promise<boolean> {
-    const stmt = this.db.prepare(`
+    const db = await this.getDbForRequest(req);
+    const stmt = db.prepare(`
       UPDATE jobs
       SET status = ?, state_data = ?, updated_at = ?
       WHERE id = ? AND account_id = ? AND status = ?

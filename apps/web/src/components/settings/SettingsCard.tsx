@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { RotateCcw, Info, Lock, AlertCircle } from 'lucide-react';
 import { SettingControl, EffectiveSettingValue, ConfigScope } from '@keimenon/types/src/settings';
+import { Button, cn } from '@keimenon/ui';
 
 interface SettingsCardProps {
   control: SettingControl;
@@ -54,7 +55,7 @@ export function SettingsCard({
   const showReset = effectiveValue.canReset && !effectiveValue.isDefault;
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-slate-600 transition-colors">
+    <div className={cn("bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-slate-600 transition-colors")}>
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
@@ -69,25 +70,29 @@ export function SettingsCard({
         <div className="flex items-center gap-2">
           {/* Help button */}
           {control.helpUrl && (
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setShowHelp(!showHelp)}
-              className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-300 transition-colors"
+              className="text-slate-400 hover:text-slate-300"
               title="Show help"
             >
               <Info className="w-4 h-4" />
-            </button>
+            </Button>
           )}
 
           {/* Reset button */}
           {showReset && (
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleReset}
               disabled={!isEditable}
-              className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-purple-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-slate-400 hover:text-purple-400"
               title="Reset to default"
             >
               <RotateCcw className="w-4 h-4" />
-            </button>
+            </Button>
           )}
         </div>
       </div>

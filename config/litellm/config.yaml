@@ -1,0 +1,154 @@
+# LiteLLM Proxy Configuration
+# Documentation: https://docs.litellm.ai/docs/proxy/configs
+#
+# This configuration provides unified access to multiple LLM providers
+# through a single OpenAI-compatible API endpoint.
+#
+# BYOK Model: Users provide their own API keys via environment variables
+# or through the Keimenon settings UI.
+
+# Model List
+# Each model gets an alias that can be used in API calls
+model_list:
+  # ============================================
+  # OpenAI Models (user provides OPENAI_API_KEY)
+  # ============================================
+  - model_name: gpt-4
+    litellm_params:
+      model: openai/gpt-4-turbo
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      max_tokens: 128000
+      input_cost_per_token: 0.00001
+      output_cost_per_token: 0.00003
+
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      max_tokens: 128000
+      input_cost_per_token: 0.000005
+      output_cost_per_token: 0.000015
+
+  - model_name: gpt-3.5-turbo
+    litellm_params:
+      model: openai/gpt-3.5-turbo
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      max_tokens: 16385
+      input_cost_per_token: 0.0000005
+      output_cost_per_token: 0.0000015
+
+  # ============================================
+  # Anthropic Models (user provides ANTHROPIC_API_KEY)
+  # ============================================
+  - model_name: claude-3-opus
+    litellm_params:
+      model: anthropic/claude-3-opus-20240229
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      max_tokens: 200000
+      input_cost_per_token: 0.000015
+      output_cost_per_token: 0.000075
+
+  - model_name: claude-3-sonnet
+    litellm_params:
+      model: anthropic/claude-3-sonnet-20240229
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      max_tokens: 200000
+      input_cost_per_token: 0.000003
+      output_cost_per_token: 0.000015
+
+  - model_name: claude-3-haiku
+    litellm_params:
+      model: anthropic/claude-3-haiku-20240307
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      max_tokens: 200000
+      input_cost_per_token: 0.00000025
+      output_cost_per_token: 0.00000125
+
+  # ============================================
+  # Groq Models (user provides GROQ_API_KEY)
+  # Fast inference, good for development
+  # ============================================
+  - model_name: groq-llama3-70b
+    litellm_params:
+      model: groq/llama3-70b-8192
+      api_key: os.environ/GROQ_API_KEY
+    model_info:
+      max_tokens: 8192
+
+  - model_name: groq-mixtral
+    litellm_params:
+      model: groq/mixtral-8x7b-32768
+      api_key: os.environ/GROQ_API_KEY
+    model_info:
+      max_tokens: 32768
+
+  # ============================================
+  # Local Ollama Models (no API key needed)
+  # Requires Ollama to be running locally or in docker
+  # ============================================
+  - model_name: llama3
+    litellm_params:
+      model: ollama/llama3
+      api_base: http://ollama:11434
+    model_info:
+      max_tokens: 8192
+
+  - model_name: mistral
+    litellm_params:
+      model: ollama/mistral
+      api_base: http://ollama:11434
+    model_info:
+      max_tokens: 8192
+
+  - model_name: codellama
+    litellm_params:
+      model: ollama/codellama
+      api_base: http://ollama:11434
+    model_info:
+      max_tokens: 16384
+
+# Proxy Settings
+litellm_settings:
+  # Enable caching with Redis
+  cache: True
+  cache_params:
+    type: redis
+    host: redis
+    port: 6379
+
+  # Fallback chain: if primary model fails, try alternatives
+  fallbacks:
+    - gpt-4: [claude-3-sonnet, groq-llama3-70b, llama3]
+    - gpt-4o: [gpt-4, claude-3-sonnet]
+    - claude-3-opus: [gpt-4, claude-3-sonnet]
+
+  # Rate limiting (per user/key)
+  max_budget: 100  # USD per month
+  budget_duration: 1mo
+
+  # Request logging
+  success_callback: ["langfuse"]  # Optional: for observability
+  failure_callback: []
+
+  # Timeout settings
+  request_timeout: 120  # seconds
+
+# General Settings
+general_settings:
+  # Master key for admin access
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+  # Database for tracking usage (optional)
+  database_url: null
+
+  # CORS settings for browser access
+  allow_requests_from_any_origin: true
+
+  # Health check settings
+  enable_health_check: true

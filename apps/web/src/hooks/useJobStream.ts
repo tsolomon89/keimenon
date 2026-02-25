@@ -33,6 +33,14 @@ export interface JobUpdate {
     percent: number;
     message?: string;
   };
+  stats?: {
+    nodesCreated?: number;
+    nodesDeleted?: number;
+    edgesCreated?: number;
+    edgesDeleted?: number;
+    sourcesCreated?: number;
+    conversationsProcessed?: number;
+  };
   config?: {
     fileName?: string; // Extracted from job config for display
     deleteScope?: string; // Extracted from delete job config
@@ -64,6 +72,11 @@ export interface UseJobStreamResult {
   error: string | null;
   reconnecting: boolean;
   removeJobs: (jobIds: string[]) => void;
+}
+
+export interface UseJobStreamOptions {
+  /** Callback when an import job completes successfully */
+  onImportComplete?: (jobId: string) => void;
 }
 
 const RECONNECT_DELAY_MS = 3000;
@@ -112,7 +125,7 @@ function getEventSourceErrorMessage(readyState: number, context: string, attempt
 /**
  * Hook to subscribe to job updates via SSE
  */
-export function useJobStream(): UseJobStreamResult {
+export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult {
   const [jobs, setJobs] = useState<Map<string, JobUpdate>>(new Map());
   const [graphUpdates, setGraphUpdates] = useState<GraphUpdate[]>([]);
   const [connected, setConnected] = useState(false);
@@ -123,6 +136,10 @@ export function useJobStream(): UseJobStreamResult {
   const reconnectAttempts = useRef(0);
   const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
+  // Track which jobs we've already fired completion callbacks for
+  const completedJobsRef = useRef<Set<string>>(new Set());
+  // Track locally deleted jobs to prevent "zombie" resurrections from SSE/API race conditions
+  const deletedJobIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     mountedRef.current = true;
@@ -147,53 +164,13 @@ export function useJobStream(): UseJobStreamResult {
         }
 
         // Create new EventSource
-        // Note: EventSource doesn't support custom headers
-        // We'll use a workaround with fetch + ReadableStream for now
-        // Or pass token as query param
+        // Note: EventSource doesn't support custom headers, so we pass token as query param
         const url = new URL(`${API_BASE_URL}/api/v1/stream/jobs`);
         url.searchParams.set('token', token);
 
-        // Pre-flight check: Test server accessibility with /health endpoint
-        // We can't use the SSE endpoint for pre-flight because it's a streaming connection
-        try {
-          const healthUrl = `${API_BASE_URL}/health`;
-          const controller = new AbortController();
-          const healthTimeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout (allows for multiple parallel checks)
-
-          const preflightResponse = await fetch(healthUrl, {
-            method: 'GET',
-            signal: controller.signal,
-          });
-
-          clearTimeout(healthTimeout);
-
-          if (!preflightResponse.ok) {
-            throw new Error(
-              `Server health check failed (HTTP ${preflightResponse.status}). The API server may be down.`
-            );
-          }
-
-          // Server is healthy, continue with SSE connection
-          // Health check debug logging removed to reduce console noise
-        } catch (preflightError) {
-          // If health check fails, provide clear error
-          if (preflightError instanceof Error) {
-            if (preflightError.name === 'AbortError') {
-              throw new Error(
-                `Server health check timed out during ${connectionContext}. The API server at ${API_BASE_URL} is not responding.`
-              );
-            }
-            if (preflightError instanceof TypeError) {
-              throw new Error(
-                `Network error during ${connectionContext}: Unable to reach ${API_BASE_URL}. Check your connection and ensure the API server is running.`
-              );
-            }
-          }
-          throw preflightError;
-        }
-
-        // SSE connection attempt - debug logging removed to reduce noise
-        // Connection status visible via 'connected' and 'reconnecting' state
+        // PERFORMANCE FIX: Removed blocking health check that delayed SSE connection by up to 15 seconds
+        // EventSource handles reconnection natively - error handlers below manage failures
+        // Connection status is visible via 'connected' and 'reconnecting' state
 
         const eventSource = new EventSource(url.toString());
 
@@ -227,8 +204,22 @@ export function useJobStream(): UseJobStreamResult {
           try {
             const data = JSON.parse(event.data);
             const updates: JobUpdate[] = data.jobs || [];
-            console.log(`[useJobStream] jobs.update event received with ${updates.length} updates`);
-            updates.forEach((u) => {
+            
+            // Filter out locally deleted jobs (Zombies)
+            const validUpdates = updates.filter(u => {
+              if (deletedJobIdsRef.current.has(u.jobId)) {
+                console.log(`[useJobStream] 🧟‍♂️ Blocking zombie job update for ${u.jobId} (locally deleted)`);
+                return false;
+              }
+              return true;
+            });
+
+            if (validUpdates.length !== updates.length) {
+               console.log(`[useJobStream] Filtered ${updates.length - validUpdates.length} zombie updates`);
+            }
+
+            console.log(`[useJobStream] jobs.update event received with ${validUpdates.length} valid updates`);
+            validUpdates.forEach((u) => {
               if (u.status === 'deleted') {
                 console.log(`[useJobStream] ⚠️ Found deletion update in batch: ${u.jobId}`);
               }
@@ -239,16 +230,15 @@ export function useJobStream(): UseJobStreamResult {
               const now = Date.now();
 
               // Update jobs, but filter out completed jobs older than 30 seconds
-              for (const update of updates) {
+              for (const update of validUpdates) {
                 // Handle deleted jobs - remove them immediately from UI
                 if (update.status === 'deleted') {
                   console.log(
                     `[useJobStream] 🗑️ Deletion event received for job ${update.jobId}, removing from UI`
                   );
                   newJobs.delete(update.jobId);
-                  console.log(
-                    `[useJobStream] Jobs map size before: ${prevJobs.size}, after: ${newJobs.size}`
-                  );
+                  // Also add to blacklist just in case
+                  deletedJobIdsRef.current.add(update.jobId);
                   continue;
                 }
 
@@ -264,6 +254,20 @@ export function useJobStream(): UseJobStreamResult {
 
                 // Otherwise, add/update the job
                 newJobs.set(update.jobId, update);
+
+                // Fire onImportComplete callback for newly completed import jobs
+                if (
+                  update.type === 'import' &&
+                  update.status === 'succeeded' &&
+                  options?.onImportComplete &&
+                  !completedJobsRef.current.has(update.jobId)
+                ) {
+                  completedJobsRef.current.add(update.jobId);
+                  // Defer callback to avoid state update during render
+                  setTimeout(() => {
+                    options.onImportComplete?.(update.jobId);
+                  }, 0);
+                }
               }
 
               return newJobs;
@@ -396,25 +400,7 @@ export function useJobStream(): UseJobStreamResult {
         const userMessage = error.message || `Failed to connect during ${connectionContext}`;
         setError(userMessage);
         setConnected(false);
-
-        // If pre-flight check failed, don't attempt reconnection (likely auth or server issue)
-        // Only reconnect on EventSource errors
-        if (reconnectAttempts.current > 0 && reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
-          setReconnecting(true);
-          const delay = RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts.current);
-
-          // Reconnection after pre-flight failure - debug logging removed
-
-          reconnectTimer.current = setTimeout(() => {
-            if (mountedRef.current) {
-              reconnectAttempts.current++;
-              connect();
-            }
-          }, delay);
-        } else if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
-          setReconnecting(false);
-          setError(`${userMessage} Maximum retry attempts reached.`);
-        }
+        setReconnecting(false);
       }
     };
 
@@ -446,6 +432,9 @@ export function useJobStream(): UseJobStreamResult {
     if (jobIds.length === 0) return;
 
     console.log(`[useJobStream] Removing ${jobIds.length} jobs from local state:`, jobIds);
+
+    // Add to blacklist to prevent resurrection
+    jobIds.forEach(id => deletedJobIdsRef.current.add(id));
 
     setJobs((prev) => {
       const next = new Map(prev);

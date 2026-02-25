@@ -138,8 +138,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY);
+    console.log('[AuthContext] Init check. Token present:', !!token);
 
     if (!token) {
+      console.log('[AuthContext] No token, stopping load.');
       setIsLoading(false);
       return;
     }

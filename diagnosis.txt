@@ -1,0 +1,21 @@
+🔍 DIAGNOSING IMPORT FAILURE
+📂 Database: C:\Users\Audna\.canvas-memory\canvas.db
+Found 40 tables.
+Job count: 1
+
+Found 1 recent jobs:
+Job: {
+  "id": "job_1770907236132_sfgz8v",
+  "type": "import",
+  "account_id": "00000000-0000-0000-0000-000000000001",
+  "created_by": "00000000-0000-0000-0000-000000000002",
+  "config": "{\"files\":[{\"fileName\":\"conversations.json\",\"fileSize\":200141920,\"mimeType\":\"application/json\",\"filePath\":\"C:\\\\Users\\\\Audna\\\\AppData\\\\Local\\\\Temp\\\\chat-imports\\\\upl_01KH94QTRVHT1BEE588JS8EY43-conversations.json\"}],\"importOptions\":{\"platform\":\"generic\",\"extraction\":{\"includeUser\":true,\"includeAssistant\":true},\"minMessageLength\":10,\"processingMode\":\"automatic\",\"branches\":\"first\",\"extractCode\":true,\"codeSettings\":{\"minLength\":50,\"languages\":[],\"groupBy\":\"language\",\"deduplicate\":true},\"duplicateDetection\":{\"enabled\":true,\"exactMatch\":true,\"similarityThreshold\":0.85,\"crossConversation\":true,\"algorithm\":\"jaccard\",\"normalizeTokens\":true,\"minTokenOverlap\":3,\"lengthRatioTolerance\":0.2,\"ignoreWhitespace\":true,\"ignoreCase\":true,\"ignoreTimestamp\":true,\"requireReview\":false,\"autoApproveExact\":true,\"autoMergeThreshold\":0.95}}}",
+  "status": "failed",
+  "state_data": "{\"status\":\"failed\",\"queuedAt\":\"2026-02-12T14:40:36.132Z\",\"startedAt\":\"2026-02-12T14:40:36.467Z\",\"completedAt\":\"2026-02-12T14:40:36.724Z\",\"error\":{\"code\":\"IMPORT_FAILED\",\"message\":\"es.mapSync is not a function\",\"stack\":\"Error: es.mapSync is not a function\\n    at Worker.<anonymous> (C:\\\\Development\\\\Projects\\\\keimenon\\\\apps\\\\api\\\\src\\\\modules\\\\workers\\\\infrastructure\\\\ImportWorker.ts:383:28)\\n    at Worker.emit (node:events:508:28)\\n    at MessagePort.<anonymous> (node:internal/worker:331:53)\\n    at [nodejs.internal.kHybridDispatch] (node:internal/event_target:827:20)\\n    at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)\"},\"retryCount\":0,\"progress\":{\"current\":10,\"total\":100,\"percent\":10,\"message\":\"Processing conversations.json: Worker started\"}}",
+  "created_at": 1770907236132,
+  "updated_at": 1770907236725,
+  "idempotency_key": null,
+  "concurrency_group": null,
+  "data_tag": "real"
+}
+Error fetching events: no such column: created_at

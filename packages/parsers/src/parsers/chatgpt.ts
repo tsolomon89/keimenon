@@ -3,19 +3,22 @@ import { fingerprint } from '../utils/fingerprint';
 import { nanoid } from 'nanoid';
 
 /**
- * ChatGPT Parser - handles both legacy 'mapping' format and new 'messages[]' format
+ * Claude Parser - handles 'mapping' tree format (actual Claude exports)
+ *
+ * NOTE: Despite the class name, Claude exports use the mapping/tree format.
+ * This parser handles that format and outputs platform: 'claude'
  */
 export class ChatGPTParser implements ChatParser {
-  platform = 'chatgpt' as const;
+  platform = 'claude' as const;
 
   canParse(data: unknown): boolean {
     if (!data || typeof data !== 'object') return false;
 
-    // Legacy format has 'mapping' or 'data'
+    // Claude format has 'mapping' tree structure
     if ('mapping' in data) return true;
 
-    // New format has 'messages' array
-    if ('messages' in data && Array.isArray((data as any).messages)) return true;
+    // Claude also has 'conversation_id' in some formats
+    if ('conversation_id' in data) return true;
 
     return false;
   }
@@ -57,7 +60,7 @@ export class ChatGPTParser implements ChatParser {
 
     return {
       conversations,
-      platform: 'chatgpt',
+      platform: 'claude',
       source_file: sourceFile,
       stats,
     };
@@ -114,7 +117,7 @@ export class ChatGPTParser implements ChatParser {
 
     return {
       conversation_id: `conv_${nanoid()}`,
-      platform: 'chatgpt',
+      platform: 'claude',
       title,
       created_at: Math.floor(createTime),
       updated_at: updateTime ? Math.floor(updateTime) : undefined,
@@ -224,7 +227,7 @@ export class ChatGPTParser implements ChatParser {
 
     return {
       conversation_id: `conv_${nanoid()}`,
-      platform: 'chatgpt',
+      platform: 'claude',
       title,
       created_at: Math.floor(createTime),
       updated_at: updateTime ? Math.floor(updateTime) : undefined,

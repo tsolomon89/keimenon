@@ -1,6 +1,16 @@
 // Export layout functions
-export { calculateLayout, updateLayout, getBoundingBox, pinNode as pinNodeLayout, unpinNode as unpinNodeLayout } from './layout';
-export type { GraphNode, GraphEdge, LayoutConfig } from './layout';
+export {
+  calculateLayout,
+  updateLayout,
+  createSimulation,
+  getNodeRadius,
+  pinNode,
+  unpinNode,
+  getBoundingBox,
+  type GraphNode,
+  type GraphEdge,
+  type LayoutConfig,
+} from './layout';
 
 // Export operations
 export * from './operations';
@@ -18,8 +28,6 @@ export {
   clearSelection,
   selectNodes,
   setHovered,
-  pinNode,
-  unpinNode,
   isSelected,
   isHovered,
   isPinned,

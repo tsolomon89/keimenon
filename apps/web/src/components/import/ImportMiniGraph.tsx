@@ -71,7 +71,7 @@ export function ImportMiniGraph({
   width = 400,
   height = 300,
 }: ImportMiniGraphProps) {
-  const keimenonRef = useRef<HTMLKeimenonElement>(null);
+  const keimenonRef = useRef<HTMLCanvasElement>(null);
   const nodesRef = useRef<Node[]>([]);
   const particlesRef = useRef<Particle[]>([]);
   const animationFrameRef = useRef<number>();
@@ -318,7 +318,7 @@ export function ImportMiniGraph({
 
   return (
     <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-900">
-      <keimenon
+      <canvas
         ref={keimenonRef}
         width={width}
         height={height}

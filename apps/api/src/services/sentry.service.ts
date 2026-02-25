@@ -29,9 +29,18 @@
  */
 
 import * as Sentry from '@sentry/node';
-import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { requestDataIntegration } from '@sentry/node';
 import { Express, Request, Response, NextFunction } from 'express';
+
+// Safely lazy-load profiling to avoid crashing Electron if native binding fails
+let nodeProfilingIntegration: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const profiling = require('@sentry/profiling-node');
+  nodeProfilingIntegration = profiling.nodeProfilingIntegration;
+} catch (e: any) {
+  console.warn('⚠️ Sentry Profiling disabled: Native module not found (common in Electron/Docker).', e.message);
+}
 
 /**
  * Check if Sentry is enabled
@@ -62,6 +71,14 @@ export function initSentry(app: Express): void {
 
   console.log(`📊 Sentry: Initializing (env: ${environment}, sample: ${sampleRate})`);
 
+  // Integrations list
+  const integrations: any[] = [];
+  
+  // Add profiling if enabled AND module loaded successfully
+  if (profilingEnabled && nodeProfilingIntegration) {
+      integrations.push(nodeProfilingIntegration());
+  }
+
   // Initialize Sentry
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
@@ -72,10 +89,8 @@ export function initSentry(app: Express): void {
     tracesSampleRate,
 
     // Integrations
-    integrations: [
-      // Profiling (optional, requires opt-in)
-      ...(profilingEnabled ? [nodeProfilingIntegration()] : []),
-    ],
+    integrations,
+
 
     // PII scrubbing
     beforeSend(event, hint) {

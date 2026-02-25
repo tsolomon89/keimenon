@@ -1,0 +1,42 @@
+[
+  {
+    "title": "Test Conversation",
+    "create_time": 1672531200,
+    "update_time": 1672531200,
+    "mapping": {
+      "aaa-111": {
+        "id": "aaa-111",
+        "message": {
+          "id": "aaa-111",
+          "author": { "role": "system" },
+          "create_time": 1672531200,
+          "content": { "content_type": "text", "parts": ["You are a helpful assistant."] }
+        },
+        "parent": null,
+        "children": ["bbb-222"]
+      },
+      "bbb-222": {
+        "id": "bbb-222",
+        "message": {
+          "id": "bbb-222",
+          "author": { "role": "user" },
+          "create_time": 1672531205,
+          "content": { "content_type": "text", "parts": ["Hello world!"] }
+        },
+        "parent": "aaa-111",
+        "children": ["ccc-333"]
+      },
+      "ccc-333": {
+        "id": "ccc-333",
+        "message": {
+          "id": "ccc-333",
+          "author": { "role": "assistant" },
+          "create_time": 1672531210,
+          "content": { "content_type": "text", "parts": ["Hello! How can I help you today?"] }
+        },
+        "parent": "bbb-222",
+        "children": []
+      }
+    }
+  }
+]

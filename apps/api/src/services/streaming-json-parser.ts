@@ -191,7 +191,7 @@ export class StreamingJSONParser extends EventEmitter {
   private normalizeConversation(raw: any): ConversationChunk | null {
     // Detect format and normalize
     let platform: ConversationChunk['platform'] = 'unknown';
-    let messages: ConversationChunk['messages'] = [];
+    const messages: ConversationChunk['messages'] = [];
 
     // ChatGPT format with mapping
     if (raw.mapping) {

@@ -1,0 +1,33 @@
+{
+  "conversations": [
+    {
+      "conversation_id": "conv_ABhr1syIzMPlPzNOMGwL9",
+      "platform": "chatgpt",
+      "title": "Golden Sample",
+      "created_at": 1672531200,
+      "messages": [
+        {
+          "role": "user",
+          "content": "Hello world",
+          "timestamp": 1672531200,
+          "index": 0,
+          "hash": "sha256:64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c",
+          "metadata": {
+            "id": "msg_1"
+          }
+        }
+      ],
+      "metadata": {
+        "source_file": "golden-test",
+        "format": "mapping"
+      }
+    }
+  ],
+  "processedBlobs": [
+    {
+      "blobHash": "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c",
+      "spanCount": 4,
+      "signatureCount": 3
+    }
+  ]
+}

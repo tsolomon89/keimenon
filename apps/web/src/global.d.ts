@@ -24,6 +24,27 @@ declare global {
      * @deprecated Use proper event handling instead
      */
     event?: Event & { shiftKey?: boolean };
+    
+    /**
+     * Electron Bridge API
+     * Only available when running in the Desktop Shell
+     */
+    electronAPI?: {
+      getVersion: () => Promise<string>;
+      secureStorage: {
+        saveToken: (key: string, token: string) => Promise<void>;
+        getToken: (key: string) => Promise<string | null>;
+        deleteToken: (key: string) => Promise<boolean>;
+        saveApiKey: (provider: string, key: string) => Promise<void>;
+        getApiKey: (provider: string) => Promise<string | null>;
+        deleteApiKey: (provider: string) => Promise<boolean>;
+      };
+      ingest: {
+        start: (filePath: string) => Promise<void>;
+        onProgress: (callback: (event: any, data: any) => void) => void;
+        offProgress: (callback: (event: any, data: any) => void) => void;
+      };
+    };
   }
 }
 

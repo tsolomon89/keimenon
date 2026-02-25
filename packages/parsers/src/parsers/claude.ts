@@ -3,20 +3,24 @@ import { fingerprint } from '../utils/fingerprint';
 import { nanoid } from 'nanoid';
 
 /**
- * Claude Parser - handles Claude chat exports
+ * ChatGPT Parser - handles chat_messages format (actual ChatGPT exports)
+ *
+ * NOTE: Despite the class name, ChatGPT exports use uuid/chat_messages/account format.
+ * This parser handles that format and outputs platform: 'chatgpt'
  */
 export class ClaudeParser implements ChatParser {
-  platform = 'claude' as const;
+  platform = 'chatgpt' as const;
 
   canParse(data: unknown): boolean {
     if (!data || typeof data !== 'object') return false;
 
-    // Claude format typically has 'uuid' and 'name' and 'chat_messages'
+    // ChatGPT format has 'uuid', 'chat_messages', and 'account'
     const obj = data as any;
-    if (obj.uuid && obj.name && obj.chat_messages) return true;
+    if (obj.uuid && obj.chat_messages) return true;
+    if (obj.uuid && obj.account) return true;
 
-    // Alternative: array of conversations
-    if (Array.isArray(data) && data.length > 0 && data[0].uuid) return true;
+    // ChatGPT array format - has chat_messages
+    if (Array.isArray(data) && data.length > 0 && data[0].chat_messages) return true;
 
     return false;
   }
@@ -60,7 +64,7 @@ export class ClaudeParser implements ChatParser {
 
     return {
       conversations,
-      platform: 'claude',
+      platform: 'chatgpt',
       source_file: sourceFile,
       stats,
     };
@@ -120,7 +124,7 @@ export class ClaudeParser implements ChatParser {
 
     return {
       conversation_id: uuid,
-      platform: 'claude',
+      platform: 'chatgpt',
       title,
       created_at: this.parseTimestamp(createdAt),
       updated_at: updatedAt ? this.parseTimestamp(updatedAt) : undefined,

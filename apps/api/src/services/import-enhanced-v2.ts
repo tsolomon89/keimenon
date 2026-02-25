@@ -15,6 +15,8 @@ import {
   type DuplicateDetectionResult,
 } from './duplicate-detection-integrated';
 import { SourcesStitcher } from '@keimenon/parsers';
+import { GraphSpineBuilder } from './graph-spine-builder';
+import type { LexemeNode, PhraseNode, TopicNode, SourceDoc } from '@keimenon/types';
 
 export interface ImportMessage {
   id: string;
@@ -54,7 +56,16 @@ export interface ImportResult {
       durationMs: number;
       messagesPerSecond: number;
     };
+    // V2: Spine extraction stats
+    spine?: {
+      lexemes: number;
+      phrases: number;
+      topics: number;
+    };
   };
+  // For ChangeTracker rollback support
+  createdNodeIds: string[];
+  createdEdgeIds: string[];
 }
 
 /**
@@ -67,6 +78,10 @@ export class EnhancedImportServiceV2 {
   private autogroupService: EnhancedAutogroupService;
   private duplicateService: IntegratedDuplicateDetectionService;
   private context: { accountId: string; userId: string } | null = null;
+
+  // Track created entities for ChangeTracker rollback support
+  private createdNodeIds: string[] = [];
+  private createdEdgeIds: string[] = [];
 
   constructor(db: DatabaseClient, writeQueue?: DatabaseWriteQueue) {
     this.db = db;
@@ -84,6 +99,7 @@ export class EnhancedImportServiceV2 {
 
   /**
    * Write node (queued if write queue available, otherwise direct)
+   * Tracks created node ID for ChangeTracker rollback support
    */
   private async writeNode(node: any): Promise<void> {
     if (!node.account_id && this.context) {
@@ -95,6 +111,11 @@ export class EnhancedImportServiceV2 {
     node.created_at = node.created_at || Date.now();
     node.updated_at = node.updated_at || Date.now();
 
+    // Track the node ID for rollback support
+    if (node.id) {
+      this.createdNodeIds.push(node.id);
+    }
+
     if (this.writeQueue) {
       this.writeQueue.enqueueNode(node);
     } else {
@@ -104,6 +125,7 @@ export class EnhancedImportServiceV2 {
 
   /**
    * Write edge (queued if write queue available, otherwise direct)
+   * Tracks created edge ID for ChangeTracker rollback support
    */
   private async writeEdge(edge: any): Promise<void> {
     if (!edge.account_id && this.context) {
@@ -113,6 +135,11 @@ export class EnhancedImportServiceV2 {
       edge.created_by = this.context.userId;
     }
     edge.created_at = edge.created_at || Date.now();
+
+    // Track the edge ID for rollback support
+    if (edge.id) {
+      this.createdEdgeIds.push(edge.id);
+    }
 
     if (this.writeQueue) {
       this.writeQueue.enqueueEdge(edge);
@@ -141,6 +168,10 @@ export class EnhancedImportServiceV2 {
   ): Promise<ImportResult> {
     this.context = context;
     const startTime = Date.now();
+
+    // Reset entity tracking for this import batch
+    this.createdNodeIds = [];
+    this.createdEdgeIds = [];
 
     // DIAGNOSTIC: Log conversations at start
     const fs = require('fs');
@@ -205,6 +236,14 @@ export class EnhancedImportServiceV2 {
         bundles = await this.createBundles(sources, config);
       }
 
+      // Step 9: Extract spine (V2 - if enabled)
+      let spineStats = { lexemes: 0, phrases: 0, topics: 0 };
+      if (config.spine?.enabled) {
+        console.log('[Import] Step 9: Spine extraction ENABLED');
+        spineStats = await this.extractSpine(allMessages, config);
+        console.log(`[Import] Spine extraction complete: ${spineStats.lexemes} lexemes, ${spineStats.phrases} phrases, ${spineStats.topics} topics`);
+      }
+
       // Flush all pending writes before completing
       await this.flushWrites();
 
@@ -232,10 +271,66 @@ export class EnhancedImportServiceV2 {
             durationMs,
             messagesPerSecond: Math.round((totalMessages / durationMs) * 1000),
           },
+          spine: config.spine?.enabled ? spineStats : undefined,
         },
+        // For ChangeTracker rollback support
+        createdNodeIds: this.createdNodeIds,
+        createdEdgeIds: this.createdEdgeIds,
       };
+    } catch (error: any) {
+      // Rollback: Delete any entities created during this batch on failure
+      // This prevents orphaned data from partial imports
+      console.error('[Import] Error during import, rolling back created entities:', error.message);
+      await this.rollbackCreatedEntities();
+      throw error; // Re-throw to let caller handle
     } finally {
       this.context = null;
+    }
+  }
+
+  /**
+   * Rollback created entities on import failure
+   * Deletes edges first (due to foreign key constraints), then nodes
+   */
+  private async rollbackCreatedEntities(): Promise<void> {
+    if (this.createdNodeIds.length === 0 && this.createdEdgeIds.length === 0) {
+      return;
+    }
+
+    console.log(`[Import] Rolling back ${this.createdEdgeIds.length} edges and ${this.createdNodeIds.length} nodes`);
+
+    try {
+      // Flush any pending writes first
+      await this.flushWrites();
+
+      const sqliteDb = (this.db as SQLiteClient).getDatabase();
+
+      // Delete edges first (foreign key constraints)
+      if (this.createdEdgeIds.length > 0) {
+        const edgePlaceholders = this.createdEdgeIds.map(() => '?').join(',');
+        const deleteEdgesStmt = sqliteDb.prepare(
+          `DELETE FROM edges WHERE id IN (${edgePlaceholders}) AND account_id = ?`
+        );
+        deleteEdgesStmt.run(...this.createdEdgeIds, this.context?.accountId || '');
+        console.log(`[Import] Rolled back ${this.createdEdgeIds.length} edges`);
+      }
+
+      // Delete nodes
+      if (this.createdNodeIds.length > 0) {
+        const nodePlaceholders = this.createdNodeIds.map(() => '?').join(',');
+        const deleteNodesStmt = sqliteDb.prepare(
+          `DELETE FROM nodes WHERE id IN (${nodePlaceholders}) AND account_id = ?`
+        );
+        deleteNodesStmt.run(...this.createdNodeIds, this.context?.accountId || '');
+        console.log(`[Import] Rolled back ${this.createdNodeIds.length} nodes`);
+      }
+
+      // Clear tracking arrays after successful rollback
+      this.createdNodeIds = [];
+      this.createdEdgeIds = [];
+    } catch (rollbackError: any) {
+      console.error('[Import] Rollback failed:', rollbackError.message);
+      // Don't throw - the original error is more important
     }
   }
 
@@ -402,6 +497,18 @@ export class EnhancedImportServiceV2 {
   ): Promise<string[]> {
     const sourceIds: string[] = [];
 
+    // OPTIMIZATION: Pre-build message-to-groups lookup map
+    // Converts O(m * g * s) to O(g * s + m) where m=messages, g=groups, s=sources per group
+    const messageToGroups = new Map<string, string[]>();
+    for (const group of groups) {
+      for (const sourceId of group.sources) {
+        if (!messageToGroups.has(sourceId)) {
+          messageToGroups.set(sourceId, []);
+        }
+        messageToGroups.get(sourceId)!.push(group.id);
+      }
+    }
+
     // Create Source nodes from messages
     // In future: stitch messages together, create bundles, etc.
 
@@ -414,10 +521,10 @@ export class EnhancedImportServiceV2 {
       // Calculate fingerprint for deduplication
       const fingerprint = `src:${msg.conversationId}:${msg.id}`;
 
-      // Determine which groups this source belongs to
-      const sourceGroups = groups.filter((g) => g.sources.includes(msg.id)).map((g) => g.id);
+      // OPTIMIZATION: O(1) lookup instead of O(g * s) filter+includes
+      const sourceGroups = messageToGroups.get(msg.id) || [];
 
-      // Create Source node in database
+      // Create Source node in database with full World Model provenance
       await this.writeNode({
         id: sourceId,
         kind: 'Source',
@@ -429,6 +536,15 @@ export class EnhancedImportServiceV2 {
         content_hash: contentMeta.hash,
         created_at: msg.timestamp,
         updated_at: Date.now(),
+        // World Model V5: Full provenance tracking (WHO/HOW/FROM/VERIFIED)
+        provenance: {
+          origin_principal_id: this.context!.userId,   // WHO: User who imported
+          origin_type: 'chat_import',                   // HOW: Chat import mechanism
+          origin_ref: msg.conversationId,               // FROM: Source conversation ID
+          trust_state: 'ugc',                           // VERIFIED: User-generated content
+          original_url: undefined,                      // N/A for chat imports
+          retrieved_at: Date.now(),
+        },
         metadata: {
           type: 'message_source',
           role: msg.role,
@@ -665,5 +781,162 @@ export class EnhancedImportServiceV2 {
 
     // For now, return 0 as bundling is handled differently in this architecture
     return 0; // Bundling deferred to createSources() refactor
+  }
+
+  /**
+   * Extract spine (V2): Create Lexeme, Phrase, and Topic nodes from imported content
+   * This implements "Step 2" of the Vision workflow: building the UGC wiki spine
+   *
+   * CROSS-CONVERSATION DEDUPLICATION:
+   * Uses extractSpineWithDedup to check for existing Lexeme/Phrase nodes before creating new ones.
+   * This enables cross-conversation linking where "Dark Matter" mentioned in multiple chats
+   * becomes a single hub node with multiple MENTIONS edges.
+   */
+  private async extractSpine(
+    messages: ImportMessage[],
+    config: ImportConfiguration
+  ): Promise<{ lexemes: number; phrases: number; topics: number }> {
+    const spineBuilder = GraphSpineBuilder.getInstance();
+    const spineConfig = config.spine;
+
+    if (!spineConfig?.enabled) {
+      return { lexemes: 0, phrases: 0, topics: 0 };
+    }
+
+    let totalLexemes = 0;
+    let totalPhrases = 0;
+    let linkedLexemes = 0;  // Existing nodes we linked to
+    let linkedPhrases = 0;
+    const allPhrases: PhraseNode[] = [];
+
+    // Process each message to extract lexemes and phrases with deduplication
+    for (const msg of messages) {
+      // Use the new deduplication-aware extraction
+      // Cast to SQLiteClient since extractSpineWithDedup needs access to findSpineNodesByTexts
+      const result = await spineBuilder.extractSpineWithDedup(
+        this.db as SQLiteClient,
+        this.context!.accountId,
+        msg.id,  // sourceDocId = message ID for MENTIONS edges
+        this.context!.userId,
+        msg.content
+      );
+
+      // Save NEW Lexeme nodes only (existing ones are already in DB)
+      if (spineConfig.extractLexemes) {
+        for (const lexeme of result.newLexemes) {
+          await this.writeNode({
+            id: lexeme.id,
+            kind: 'Lexeme',
+            lemma: lexeme.lemma,
+            pos: lexeme.pos,
+            frequency: lexeme.frequency,
+            created_at: lexeme.created_at,
+            updated_at: lexeme.updated_at,
+            metadata: {
+              ...lexeme.metadata,
+              source_message_id: msg.id,
+            },
+          });
+          totalLexemes++;
+        }
+        linkedLexemes += result.existingLexemes.length;
+      }
+
+      // Save NEW Phrase nodes only (existing ones are already in DB)
+      if (spineConfig.extractPhrases) {
+        // Filter new phrases by minimum frequency
+        const filteredNewPhrases = result.newPhrases.filter(
+          (p) => p.frequency >= (spineConfig.minPhraseFrequency || 2)
+        );
+
+        for (const phrase of filteredNewPhrases) {
+          await this.writeNode({
+            id: phrase.id,
+            kind: 'Phrase',
+            text: phrase.text,
+            normalized_text: phrase.normalized_text,
+            type: phrase.type,
+            entity_type: phrase.entity_type,
+            frequency: phrase.frequency,
+            created_at: phrase.created_at,
+            updated_at: phrase.updated_at,
+            metadata: {
+              ...phrase.metadata,
+              source_message_id: msg.id,
+            },
+          });
+          allPhrases.push(phrase);
+          totalPhrases++;
+        }
+
+        // Existing phrases are already in DB, just count them for linking
+        linkedPhrases += result.existingPhrases.length;
+        // Add existing phrases to allPhrases for topic clustering
+        allPhrases.push(...result.existingPhrases);
+      }
+
+      // Save ALL MENTIONS edges (both to new and existing nodes)
+      // This creates cross-conversation links!
+      for (const edge of result.edges) {
+        await this.writeEdge({
+          id: edge.id,
+          kind: 'MENTIONS',
+          from: edge.from,
+          to: edge.to,
+          created_at: edge.created_at,
+          metadata: {
+            count: edge.count,
+            ...(edge.metadata || {}),
+          },
+        });
+      }
+    }
+
+    // Log cross-conversation linking stats
+    if (linkedLexemes > 0 || linkedPhrases > 0) {
+      console.log(`[Import] Cross-conversation links created: ${linkedLexemes} lexemes, ${linkedPhrases} phrases linked to existing nodes`);
+    }
+
+    // Cluster phrases into topics (if enabled)
+    let totalTopics = 0;
+    if (spineConfig.clusterTopics && allPhrases.length >= (spineConfig.minPhrasesPerTopic || 3)) {
+      const topics = spineBuilder.clusterTopics(allPhrases);
+
+      for (const topic of topics) {
+        await this.writeNode({
+          id: topic.id,
+          kind: 'Topic',
+          name: topic.name,
+          description: topic.description,
+          keywords: topic.keywords,
+          strength: topic.strength,
+          created_at: topic.created_at,
+          updated_at: topic.updated_at,
+          metadata: topic.metadata,
+        });
+
+        // Create BELONGS_TO_TOPIC edges from phrases to topic
+        for (const keyword of topic.keywords) {
+          // Find phrase that matches this keyword
+          const matchingPhrase = allPhrases.find((p) => p.text === keyword);
+          if (matchingPhrase) {
+            await this.writeEdge({
+              id: `edge_belongs_${nanoid()}`,
+              kind: 'BELONGS_TO_TOPIC',
+              from: matchingPhrase.id,
+              to: topic.id,
+              created_at: Date.now(),
+              metadata: {
+                weight: 1.0 / topic.keywords.length, // Equal weight for now
+              },
+            });
+          }
+        }
+
+        totalTopics++;
+      }
+    }
+
+    return { lexemes: totalLexemes, phrases: totalPhrases, topics: totalTopics };
   }
 }

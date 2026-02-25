@@ -1,0 +1,140 @@
+# Docker Compose for Keimenon Agent Services Infrastructure
+#
+# This file provides self-hosted AI infrastructure:
+# - SearXNG: Privacy-focused metasearch (no API key needed)
+# - LiteLLM: Unified LLM proxy for 100+ providers
+# - Ollama: Local LLM inference (optional)
+#
+# Usage:
+#   # Start all services
+#   docker compose -f docker-compose.services.yml up -d
+#
+#   # Start only search
+#   docker compose -f docker-compose.services.yml up searxng -d
+#
+#   # Start with local LLM
+#   docker compose -f docker-compose.services.yml --profile local-llm up -d
+#
+#   # View logs
+#   docker compose -f docker-compose.services.yml logs -f
+#
+#   # Stop all
+#   docker compose -f docker-compose.services.yml down
+
+version: '3.8'
+
+services:
+  # ============================================
+  # SearXNG - Self-hosted metasearch engine
+  # ============================================
+  # Aggregates results from 70+ search engines
+  # No API keys required - completely self-hosted
+  # JSON API: GET /search?q={query}&format=json
+  searxng:
+    image: searxng/searxng:latest
+    container_name: keimenon-searxng
+    ports:
+      - "8888:8080"
+    volumes:
+      - ./config/searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-your-secret-key-change-me}
+      - SEARXNG_BASE_URL=http://localhost:8888
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # LiteLLM Proxy - Unified LLM Gateway
+  # ============================================
+  # OpenAI-compatible API for 100+ LLM providers
+  # Provides: fallbacks, cost tracking, rate limiting, caching
+  # Docs: https://docs.litellm.ai/docs/
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: keimenon-litellm
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./config/litellm/config.yaml:/app/config.yaml:ro
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-master-key}
+      # User provides their own keys via environment or config
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+    command: --config /app/config.yaml --port 4000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - redis
+
+  # ============================================
+  # Redis - LiteLLM Cache
+  # ============================================
+  # Caches LLM responses to reduce API calls and costs
+  redis:
+    image: redis:7-alpine
+    container_name: keimenon-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # Ollama - Local LLM Inference (Optional)
+  # ============================================
+  # Run LLMs locally without API keys
+  # Models: llama3, mistral, codellama, etc.
+  # Profile: local-llm (not started by default)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: keimenon-ollama
+    profiles:
+      - local-llm
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+    # GPU support (uncomment for NVIDIA)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  redis-data:
+    name: keimenon-redis-data
+  ollama-data:
+    name: keimenon-ollama-data
+
+networks:
+  default:
+    name: keimenon-services

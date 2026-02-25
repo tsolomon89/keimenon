@@ -1,0 +1,37 @@
+{
+  "title": "Golden Sample",
+  "create_time": 1672531200,
+  "mapping": {
+    "msg_1": {
+      "id": "msg_1",
+      "message": {
+        "id": "msg_1",
+        "author": {
+          "role": "user"
+        },
+        "content": {
+          "parts": [
+            "Hello world"
+          ]
+        },
+        "create_time": 1672531200
+      }
+    },
+    "msg_2": {
+      "id": "msg_2",
+      "parent": "msg_1",
+      "message": {
+        "id": "msg_2",
+        "author": {
+          "role": "assistant"
+        },
+        "content": {
+          "parts": [
+            "Hi there!"
+          ]
+        },
+        "create_time": 1672531201
+      }
+    }
+  }
+}

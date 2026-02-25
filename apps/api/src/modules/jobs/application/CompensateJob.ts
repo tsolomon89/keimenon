@@ -23,7 +23,7 @@
 import { Job } from '../domain/Job';
 import { JobRepository } from '../infrastructure/JobRepository';
 import { ChangeTracker, deserializeChangeTracker } from '../domain/ChangeTracker';
-import { DatabaseClient } from '@keimenon/db';
+import { SQLiteClient } from '@keimenon/db';
 
 export interface CompensateJobCommand {
   jobId: string;
@@ -46,11 +46,9 @@ export interface CompensateJobResult {
  * CompensateJob Use Case
  */
 export class CompensateJob {
-  private readonly BATCH_SIZE = 500; // Delete in batches to avoid blocking
-
   constructor(
     private jobRepository: JobRepository,
-    private db: DatabaseClient
+    private db: SQLiteClient
   ) {}
 
   async execute(command: CompensateJobCommand): Promise<CompensateJobResult> {
@@ -67,10 +65,8 @@ export class CompensateJob {
         };
       }
 
-      // 2. Check if job has already been compensated
-      // TODO: Implement JobRepository.getRawStateData() method
-      // const stateData = JSON.parse((await this.jobRepository.getRawStateData(job.id)) || '{}');
-      const stateData: any = {}; // FIXME: Placeholder until getRawStateData is implemented
+      // 2. Get raw state_data to access changeTracker
+      const stateData = await this.jobRepository.getRawStateData(job.id, command.accountId) || {};
 
       if (stateData.compensated) {
         console.log(`[CompensateJob] Job ${job.id} already compensated, skipping`);
@@ -101,54 +97,58 @@ export class CompensateJob {
       console.log(`   Nodes to delete: ${changeTracker.nodesCreated.length}`);
       console.log(`   Edges to delete: ${changeTracker.edgesCreated.length}`);
 
-      // 4. Delete created edges (must delete edges before nodes due to foreign keys)
-      let edgesDeleted = 0;
-      if (changeTracker.edgesCreated.length > 0) {
-        edgesDeleted = await this.deleteEdgesInBatches(
-          changeTracker.edgesCreated,
-          command.accountId
-        );
+      // 4. Enable direct writes for rollback operation
+      this.db.enableDirectWrites();
+
+      try {
+        // 5. Delete created edges (must delete edges before nodes due to foreign keys)
+        let edgesDeleted = 0;
+        if (changeTracker.edgesCreated.length > 0) {
+          edgesDeleted = this.db.batchDeleteEdges(
+            changeTracker.edgesCreated,
+            command.accountId
+          );
+        }
+
+        // 6. Delete created nodes
+        let nodesDeleted = 0;
+        if (changeTracker.nodesCreated.length > 0) {
+          nodesDeleted = this.db.batchDeleteNodes(
+            changeTracker.nodesCreated,
+            command.accountId
+          );
+        }
+
+        const duration = Date.now() - startTime;
+
+        // 7. Update job state with compensation metadata
+        const compensation = {
+          nodesDeleted,
+          edgesDeleted,
+          duration,
+          compensatedAt: new Date().toISOString(),
+          compensatedBy: command.compensatedBy,
+        };
+
+        // Update state_data with compensation info
+        stateData.compensated = true;
+        stateData.compensation = compensation;
+
+        await this.jobRepository.updateStateData(job.id, command.accountId, JSON.stringify(stateData));
+
+        console.log(`[CompensateJob] ✅ Compensation complete for job ${job.id}`);
+        console.log(`   Deleted: ${nodesDeleted} nodes, ${edgesDeleted} edges`);
+        console.log(`   Duration: ${duration}ms`);
+
+        return {
+          success: true,
+          job,
+          compensation,
+        };
+      } finally {
+        // Always disable direct writes when done
+        this.db.disableDirectWrites();
       }
-
-      // 5. Delete created nodes
-      let nodesDeleted = 0;
-      if (changeTracker.nodesCreated.length > 0) {
-        nodesDeleted = await this.deleteNodesInBatches(
-          changeTracker.nodesCreated,
-          command.accountId
-        );
-      }
-
-      const duration = Date.now() - startTime;
-
-      // 6. Update job state with compensation metadata
-      const compensation = {
-        nodesDeleted,
-        edgesDeleted,
-        duration,
-        compensatedAt: new Date().toISOString(),
-        compensatedBy: command.compensatedBy,
-      };
-
-      // Update state_data with compensation info
-      stateData.compensated = true;
-      stateData.compensation = compensation;
-
-      // TODO: Implement JobRepository.updateStateData() method or add Job.compensate() domain method
-      // await this.jobRepository.updateStateData(job.id, JSON.stringify(stateData));
-      console.warn(
-        '[CompensateJob] State data update skipped - updateStateData() not implemented yet'
-      );
-
-      console.log(`[CompensateJob] ✅ Compensation complete for job ${job.id}`);
-      console.log(`   Deleted: ${nodesDeleted} nodes, ${edgesDeleted} edges`);
-      console.log(`   Duration: ${duration}ms`);
-
-      return {
-        success: true,
-        job,
-        compensation,
-      };
     } catch (error: any) {
       console.error(`[CompensateJob] ❌ Compensation failed for job ${command.jobId}:`, error);
       return {
@@ -158,83 +158,4 @@ export class CompensateJob {
     }
   }
 
-  /**
-   * Delete edges in batches to avoid blocking event loop
-   */
-  private async deleteEdgesInBatches(edgeIds: string[], accountId: string): Promise<number> {
-    let deletedCount = 0;
-
-    for (let i = 0; i < edgeIds.length; i += this.BATCH_SIZE) {
-      const batch = edgeIds.slice(i, i + this.BATCH_SIZE);
-
-      try {
-        // TODO: Implement using DatabaseClient interface instead of prepare()
-        // The current DatabaseClient doesn't expose prepare() method
-        // Option 1: Change db type to Database.Database from better-sqlite3
-        // Option 2: Add batch delete methods to DatabaseClient interface
-        console.warn(
-          `[CompensateJob] Edge deletion not implemented - DatabaseClient missing prepare() method`
-        );
-
-        // FIXME: Placeholder implementation
-        // const placeholders = batch.map(() => '?').join(',');
-        // const stmt = this.db.prepare(
-        //   `DELETE FROM edges WHERE id IN (${placeholders}) AND account_id = ?`
-        // );
-        // const result = stmt.run(...batch, accountId);
-        // deletedCount += result.changes;
-
-        console.log(
-          `[CompensateJob] Would delete edge batch ${Math.floor(i / this.BATCH_SIZE) + 1}/${Math.ceil(edgeIds.length / this.BATCH_SIZE)} (${batch.length} edges)`
-        );
-
-        // Yield to event loop
-        await new Promise((resolve) => setImmediate(resolve));
-      } catch (error: any) {
-        console.error(`[CompensateJob] Failed to delete edge batch:`, error.message);
-        // Continue with next batch
-      }
-    }
-
-    return deletedCount;
-  }
-
-  /**
-   * Delete nodes in batches to avoid blocking event loop
-   */
-  private async deleteNodesInBatches(nodeIds: string[], accountId: string): Promise<number> {
-    let deletedCount = 0;
-
-    for (let i = 0; i < nodeIds.length; i += this.BATCH_SIZE) {
-      const batch = nodeIds.slice(i, i + this.BATCH_SIZE);
-
-      try {
-        // TODO: Implement using DatabaseClient interface instead of prepare()
-        // See deleteEdgesInBatches for implementation options
-        console.warn(
-          `[CompensateJob] Node deletion not implemented - DatabaseClient missing prepare() method`
-        );
-
-        // FIXME: Placeholder implementation
-        // const placeholders = batch.map(() => '?').join(',');
-        // const stmt = this.db.prepare(
-        //   `DELETE FROM nodes WHERE id IN (${placeholders}) AND account_id = ?`
-        // );
-        // const result = stmt.run(...batch, accountId);
-        // deletedCount += result.changes;
-
-        console.log(
-          `[CompensateJob] Would delete node batch ${Math.floor(i / this.BATCH_SIZE) + 1}/${Math.ceil(nodeIds.length / this.BATCH_SIZE)} (${batch.length} nodes)`
-        );
-
-        // Yield to event loop
-        await new Promise((resolve) => setImmediate(resolve));
-      } catch (error: any) {
-        console.error(`[CompensateJob] Failed to delete node batch:`, error.message);
-        // Continue with next batch
-      }
-    }
-
-    return deletedCount;
-  }
 }

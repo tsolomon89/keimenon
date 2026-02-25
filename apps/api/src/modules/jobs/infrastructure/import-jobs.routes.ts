@@ -22,6 +22,7 @@ import { requireAuth } from '../../../middleware/auth.middleware';
 import { streamingUploadService } from '../../../services/streaming-upload';
 import { SQLiteJobRepository } from './JobRepository';
 import { EnqueueJob, EnqueueJobCommand } from '../application/EnqueueJob';
+import { SSEBroadcaster } from './SSEBroadcaster';
 import Database from 'better-sqlite3';
 import { z } from 'zod';
 import { ulid } from 'ulid';
@@ -126,7 +127,8 @@ const ImportConfigSchema = z
 export function createImportJobsRoutes(
   authService: AuthService,
   db: Database.Database,
-  workerPool?: any // WorkerPool instance for signaling active workers
+  workerPool?: any, // WorkerPool instance for signaling active workers
+  broadcaster?: SSEBroadcaster // For broadcasting new jobs to UI
 ): Router {
   const router = Router();
 
@@ -136,7 +138,7 @@ export function createImportJobsRoutes(
 
   // Initialize repository and use case
   const jobRepository = new SQLiteJobRepository(db);
-  const enqueueJob = new EnqueueJob(jobRepository);
+  const enqueueJob = new EnqueueJob(jobRepository, broadcaster);
 
   /**
    * POST /api/v1/jobs/import
@@ -157,6 +159,12 @@ export function createImportJobsRoutes(
    * }
    */
   router.post('/import', requireAuth(authService), async (req: Request, res: Response) => {
+    console.log(`[Import Route] 📨 Received import request`);
+    console.log(`  - Content-Type: ${req.headers['content-type']}`);
+    console.log(`  - Files: ${(req as any).files?.length || 0}`);
+    console.log(`  - Body keys: ${Object.keys(req.body).join(', ')}`);
+    console.log(`  - Test DB Path: ${(req as any).testDbPath || req.headers['x-test-db-path']}`);
+
     try {
       // TENANCY SECURITY: Extract all tenancy fields from server-side validated token only
       // NEVER trust client-sent account_id, user_type, or membership fields
@@ -173,6 +181,8 @@ export function createImportJobsRoutes(
       console.log(`  User Type: ${userType}`);
       console.log(`  Membership: ${accountMembership}`);
       console.log(`  Timestamp: ${new Date().toISOString()}`);
+      console.log(`  [IMPORT JOB DEBUG] req.testDbPath: ${(req as any).testDbPath}`);
+      console.log(`  [IMPORT JOB DEBUG] Headers:`, JSON.stringify(req.headers));
 
       if (!userAccountId || !userId) {
         console.log('  ❌ IMPORT JOB FAILED: Missing authentication');
@@ -291,9 +301,9 @@ export function createImportJobsRoutes(
         },
         // Test isolation context (E2E testing only)
         // Propagates test database path from API request to background worker
-        testContext: (req as any).testDbPath
+        testContext: ((req as any).testDbPath || req.headers['x-test-db-path'])
           ? {
-              dbPath: (req as any).testDbPath,
+              dbPath: (req as any).testDbPath || (req.headers['x-test-db-path'] as string),
               testId: (req as any).testId,
             }
           : undefined,
@@ -493,7 +503,7 @@ export function createImportJobsRoutes(
 
       // Verify job exists and belongs to this account
       console.log(`[API DELETE] Looking up job ${jobId} in account ${targetAccountId}...`);
-      const job = await jobRepository.findById(jobId, targetAccountId);
+      const job = await jobRepository.findById(jobId, targetAccountId, req);
 
       if (!job) {
         console.error(`[API DELETE] ❌ Job ${jobId} NOT FOUND in account ${targetAccountId}`);
@@ -532,7 +542,7 @@ export function createImportJobsRoutes(
 
       // Delete job from database
       console.log(`[API DELETE] Deleting job ${jobId} from database...`);
-      await jobRepository.delete(jobId, targetAccountId);
+      await jobRepository.delete(jobId, targetAccountId, req);
 
       console.log(`[API DELETE] ✅ SUCCESS: Job deleted from database`);
       console.log(
@@ -576,7 +586,7 @@ export function createImportJobsRoutes(
       const { jobId } = req.params;
 
       // Find original job
-      const originalJob = await jobRepository.findById(jobId, targetAccountId);
+      const originalJob = await jobRepository.findById(jobId, targetAccountId, req);
 
       if (!originalJob) {
         return res.status(404).json({
@@ -646,7 +656,7 @@ export function createImportJobsRoutes(
       const { jobId } = req.params;
 
       // Find job
-      const job = await jobRepository.findById(jobId, targetAccountId);
+      const job = await jobRepository.findById(jobId, targetAccountId, req);
 
       if (!job) {
         return res.status(404).json({
@@ -718,7 +728,7 @@ export function createImportJobsRoutes(
       const { jobId } = req.params;
 
       // Find job
-      const job = await jobRepository.findById(jobId, targetAccountId);
+      const job = await jobRepository.findById(jobId, targetAccountId, req);
 
       if (!job) {
         return res.status(404).json({
@@ -788,7 +798,7 @@ export function createImportJobsRoutes(
       const { jobId } = req.params;
 
       // Find job
-      const job = await jobRepository.findById(jobId, targetAccountId);
+      const job = await jobRepository.findById(jobId, targetAccountId, req);
 
       if (!job) {
         return res.status(404).json({

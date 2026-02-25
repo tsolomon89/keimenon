@@ -39,10 +39,10 @@ export function createJobsRoutes(
 
   // Initialize repository and use cases
   const jobRepository = new SQLiteJobRepository(db);
-  const enqueueJob = new EnqueueJob(jobRepository);
+  const enqueueJob = new EnqueueJob(jobRepository, sseBroadcaster);
   const startJob = new StartJob(jobRepository);
   const cancelJob = new CancelJob(jobRepository);
-  const retryJob = new RetryJob(jobRepository);
+  const retryJob = new RetryJob(jobRepository, sseBroadcaster);
 
   /**
    * POST /api/v1/jobs
@@ -127,6 +127,7 @@ export function createJobsRoutes(
       // Determine target account based on operating context
       const targetAccountId = operating?.accountId || userAccountId;
 
+      console.log(`[API GET] Fetching job ${id} for account ${targetAccountId}, path: ${(req as any).testDbPath}`);
       // Get job - CRITICAL FIX: Pass request for database routing
       const job = await jobRepository.findById(id, targetAccountId, req);
 
@@ -226,6 +227,7 @@ export function createJobsRoutes(
       // Parse query params
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
       const offset = parseInt(req.query.offset as string) || 0;
+      console.log(`[jobs.routes.ts] Request params: query=${JSON.stringify(req.query)}, body=${JSON.stringify(req.body)}`);
       let status = req.query.status as any;
       if (status === 'all') {
         status = undefined;
@@ -384,6 +386,9 @@ export function createJobsRoutes(
 
       // Determine target account based on operating context
       const targetAccountId = operating?.accountId || userAccountId;
+
+      console.log(`[API DELETE] Deleting job ${id} for account ${targetAccountId}`);
+      console.log(`[API DELETE] Request testDbPath: ${(req as any).testDbPath}`);
 
       // Verify job exists and belongs to account - CRITICAL FIX: Pass request for database routing
       const job = await jobRepository.findById(id, targetAccountId, req);

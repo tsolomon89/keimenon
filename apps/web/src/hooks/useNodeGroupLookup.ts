@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { API_BASE_URL } from '@/lib/env.config';
 
 interface GroupInfo {
   id: string;
@@ -16,6 +17,7 @@ interface NodeGroupLookupResult {
 
 /**
  * Hook to perform reverse lookup: find which groups contain the given nodes
+ * OPTIMIZATION: Uses batch endpoint instead of O(n) individual API calls
  * Used for Keimenon ↔ Navigation bidirectional sync
  *
  * @param nodeIds Array of node IDs to look up
@@ -26,6 +28,12 @@ export function useNodeGroupLookup(nodeIds: string[]): NodeGroupLookupResult {
   const [groups, setGroups] = useState<GroupInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // OPTIMIZATION: Stable dependency - sort without mutating, memoize result
+  const sortedNodeIds = useMemo(() => {
+    if (!nodeIds || nodeIds.length === 0) return '';
+    return [...nodeIds].sort().join(',');
+  }, [nodeIds]);
 
   useEffect(() => {
     // If no nodes selected, clear the groups
@@ -41,43 +49,31 @@ export function useNodeGroupLookup(nodeIds: string[]): NodeGroupLookupResult {
       setError(null);
 
       try {
-        // Fetch groups for each node in parallel
-        const promises = nodeIds.map(async (nodeId) => {
-          const response = await fetch(`/api/v1/groups/nodes/${nodeId}/groups`, {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('keimenon_token')}`,
-            },
-          });
-
-          if (!response.ok) {
-            if (response.status === 404) {
-              // Node might not be in any group, that's okay
-              return [];
-            }
-            throw new Error(`Failed to fetch groups for node ${nodeId}`);
-          }
-
-          const data = await response.json();
-          return data.groups || [];
+        // OPTIMIZATION: Single batch request instead of O(n) individual requests
+        const response = await fetch(`${API_BASE_URL}/api/v1/groups/nodes/batch`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('keimenon_token')}`,
+          },
+          body: JSON.stringify({ nodeIds }),
         });
 
-        const results = await Promise.all(promises);
-
-        // Flatten and deduplicate groups
-        const allGroups = results.flat();
-        const uniqueGroupMap = new Map<string, GroupInfo>();
-
-        for (const group of allGroups) {
-          if (!uniqueGroupMap.has(group.id)) {
-            uniqueGroupMap.set(group.id, group);
-          }
+        if (!response.ok) {
+          throw new Error(`Failed to batch fetch groups: ${response.status}`);
         }
 
-        const uniqueGroups = Array.from(uniqueGroupMap.values());
-        const uniqueGroupIds = new Set(uniqueGroups.map((g) => g.id));
+        const data = await response.json();
 
-        setGroupIds(uniqueGroupIds);
-        setGroups(uniqueGroups);
+        if (data.success) {
+          const uniqueGroups: GroupInfo[] = data.groups || [];
+          const uniqueGroupIds = new Set<string>(uniqueGroups.map((g) => g.id));
+
+          setGroupIds(uniqueGroupIds);
+          setGroups(uniqueGroups);
+        } else {
+          throw new Error(data.error || 'Unknown error');
+        }
       } catch (err: any) {
         console.error('Node group lookup error:', err);
         setError(err.message || 'Failed to lookup groups');
@@ -89,7 +85,7 @@ export function useNodeGroupLookup(nodeIds: string[]): NodeGroupLookupResult {
     };
 
     fetchGroups();
-  }, [JSON.stringify(nodeIds.sort())]); // Stable dependency on sorted IDs
+  }, [sortedNodeIds]); // Use memoized stable dependency
 
   return { groupIds, groups, loading, error };
 }

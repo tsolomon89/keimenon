@@ -1,6 +1,6 @@
 import { createReadStream } from 'fs';
 import { EventEmitter } from 'events';
-import JSONStream from 'JSONStream';
+import JSONStream = require('jsonstream');
 
 export interface ParseProgress {
   conversationsProcessed: number;
@@ -27,15 +27,21 @@ export interface ConversationChunk {
  * Streaming JSON parser for large conversation files using JSONStream
  * Better handles large text nodes than clarinet
  */
+export interface ParserConfig {
+  roleSubset?: 'user' | 'assistant' | 'both'; // Default: 'both'
+}
+
 export class StreamingJSONParserV2 extends EventEmitter {
   private conversationBuffer: any[] = [];
   private bufferSize = 0;
   private maxBufferSize = 10; // Process in batches of 10 conversations
   private conversationsProcessed = 0;
   private messagesProcessed = 0;
+  private config: ParserConfig;
 
-  constructor() {
+  constructor(config: ParserConfig = {}) {
     super();
+    this.config = { roleSubset: 'both', ...config };
   }
 
   /**
@@ -114,7 +120,7 @@ export class StreamingJSONParserV2 extends EventEmitter {
   private normalizeConversation(raw: any): ConversationChunk | null {
     // Detect format and normalize
     let platform: ConversationChunk['platform'] = 'unknown';
-    let messages: ConversationChunk['messages'] = [];
+    const messages: ConversationChunk['messages'] = [];
 
     // ChatGPT format with mapping
     if (raw.mapping) {
@@ -144,11 +150,12 @@ export class StreamingJSONParserV2 extends EventEmitter {
 
     // Claude format with chat_messages
     else if (raw.chat_messages || raw.messages) {
-      platform = raw.uuid ? 'claude' : 'chatgpt';
+      platform = raw.uuid ? 'claude' : 'chatgpt'; // Fallback if uuid present likely Claude
       const msgArray = raw.chat_messages || raw.messages || [];
 
       for (const msg of msgArray) {
         const role = msg.sender || msg.role || msg.author?.role;
+        // Claude uses 'human'/'assistant'.
         if (role === 'system') continue;
 
         let content = msg.text || msg.content || msg.message || '';
@@ -167,14 +174,53 @@ export class StreamingJSONParserV2 extends EventEmitter {
       }
     }
 
+    // Gemini format (heuristic: often has 'events' or just 'messages' with 'model' role)
+    // Structure: { title, events: [ { role: 'user'|'model', parts: [...] } ] }
+    // Or sometimes { conversations: [...] } but the parser emits *items* of the root array.
+    else if (raw.events || (raw.messages && raw.messages.some((m: any) => m.role === 'model'))) {
+       platform = 'gemini';
+       const items = raw.events || raw.messages || [];
+       
+       for (const item of items) {
+         const role = item.role;
+         if (role === 'system') continue;
+         
+         let content = '';
+         if (item.parts) {
+            content = item.parts.map((p: any) => p.text || JSON.stringify(p)).join('\n');
+         } else if (item.content) {
+            content = item.content;
+         }
+
+         if (content) {
+            messages.push({
+               role: role === 'model' ? 'assistant' : 'user',
+               content: String(content),
+               timestamp: item.timestamp || item.created_at, // Gemini often lacks explicit timestamp in some exports
+               metadata: { id: item.eventId || item.id }
+            });
+         }
+       }
+    }
+
     if (messages.length === 0) {
+      // Quietly skip empty or unrecognized
       return null;
     }
 
+    // Apply strict role filtering if configured (optimization)
+    const filteredMessages = this.config.roleSubset === 'both' 
+      ? messages 
+      : messages.filter(m => m.role === 'user' ? this.config.roleSubset === 'user' : this.config.roleSubset === 'assistant');
+
+    if (filteredMessages.length === 0) {
+       return null;
+    }
+
     return {
-      id: raw.id || raw.uuid || `conv_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      id: raw.id || raw.uuid || raw.conversationId || `conv_${Date.now()}_${Math.random().toString(36).slice(2)}`,
       title: raw.title || raw.name || 'Untitled Conversation',
-      messages,
+      messages: filteredMessages,
       created_at: raw.created_at || raw.create_time,
       updated_at: raw.updated_at || raw.update_time,
       platform,

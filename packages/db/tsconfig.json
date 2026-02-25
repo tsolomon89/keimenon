@@ -5,7 +5,9 @@
     "rootDir": "./src",
     "skipLibCheck": true,
     "noEmit": false,
-    "declaration": true
+    "declaration": true,
+    "module": "commonjs",
+    "moduleResolution": "node"
   },
   "include": ["src/**/*"],
   "exclude": [
@@ -14,6 +16,7 @@
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/__tests__",
+    "src/sqlite/test-*.ts",
     "src/sqlite/migrations/013_user_accounts_junction.ts",
     "src/sqlite/migrations/014_add_account_node.ts",
     "src/sqlite/migrations/015_populate_account_nodes.ts"

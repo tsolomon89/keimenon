@@ -129,12 +129,28 @@ function preprocessValue(value: unknown, options: CanonicalizeOptions = {}): unk
   // Object: clean and recursively preprocess values
   if (typeof value === 'object' && value !== null) {
     const cleaned = cleanObject(value as Record<string, unknown>, options.preserveNullish);
+    
+    // Map to intermediate form with both original and normalized keys
+    const entries = Object.entries(cleaned).map(([k, v]) => ({
+      origKey: k,
+      normKey: normalizeWhitespace(k, options.preserveWhitespace),
+      value: preprocessValue(v, options),
+    }));
+
+    // Sort by normKey then origKey to ensure deterministic collision resolution
+    // When keys collide (e.g. "a " and "a"), valid JSON only keeps one.
+    // By sorting by origKey, we ensure the "winner" (last one) is always the same
+    // regardless of input order.
+    entries.sort((a, b) => {
+      const normCompare = a.normKey.localeCompare(b.normKey);
+      if (normCompare !== 0) return normCompare;
+      return a.origKey.localeCompare(b.origKey);
+    });
+
     const processed = Object.fromEntries(
-      Object.entries(cleaned).map(([k, v]) => [
-        normalizeWhitespace(k, options.preserveWhitespace),
-        preprocessValue(v, options),
-      ])
+      entries.map(e => [e.normKey, e.value])
     );
+
     // Remove entries with empty string keys after whitespace normalization
     return Object.fromEntries(Object.entries(processed).filter(([k]) => k.length > 0));
   }

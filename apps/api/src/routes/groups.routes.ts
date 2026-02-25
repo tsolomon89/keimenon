@@ -753,6 +753,95 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
   );
 
   /**
+   * POST /api/v1/groups/nodes/batch
+   * Batch lookup: Get all groups for multiple nodes in a single request
+   * OPTIMIZATION: Replaces O(n) individual API calls with single batched query
+   * Body: { nodeIds: string[] }
+   */
+  router.post(
+    '/nodes/batch',
+    requireAuth(authService),
+    async (req: Request, res: Response) => {
+      try {
+        // CRITICAL FIX #16-A: Get per-request database client for test isolation
+        const { getDbClient } = await import('../utils/get-db-client');
+        const dbClient = await getDbClient(req);
+        const database = dbClient.getDatabase();
+
+        const { nodeIds } = req.body;
+        const accountId = (req as any).user.accountId;
+
+        if (!Array.isArray(nodeIds) || nodeIds.length === 0) {
+          return res.status(400).json({ error: 'nodeIds must be a non-empty array' });
+        }
+
+        // Limit batch size to prevent abuse
+        const MAX_BATCH_SIZE = 100;
+        if (nodeIds.length > MAX_BATCH_SIZE) {
+          return res.status(400).json({
+            error: `Batch size exceeds maximum of ${MAX_BATCH_SIZE}`,
+          });
+        }
+
+        // Build placeholders for IN clause
+        const placeholders = nodeIds.map(() => '?').join(',');
+
+        // Single query to get all groups for all nodes
+        const results = database
+          .prepare(
+            `
+            SELECT
+              e.from_id as node_id,
+              g.id as group_id,
+              g.kind,
+              g.properties
+            FROM edges e
+            JOIN nodes g ON g.id = e.to_id
+            WHERE e.kind = 'IN_GROUP'
+              AND e.from_id IN (${placeholders})
+              AND e.account_id = ?
+              AND g.kind = 'Group'
+          `
+          )
+          .all(...nodeIds, accountId) as any[];
+
+        // Group results by node_id
+        const nodeToGroups = new Map<string, any[]>();
+        const allGroups = new Map<string, any>();
+
+        for (const row of results) {
+          const group = {
+            id: row.group_id,
+            kind: row.kind,
+            ...JSON.parse(row.properties),
+          };
+
+          // Track unique groups
+          if (!allGroups.has(group.id)) {
+            allGroups.set(group.id, group);
+          }
+
+          // Map node to its groups
+          if (!nodeToGroups.has(row.node_id)) {
+            nodeToGroups.set(row.node_id, []);
+          }
+          nodeToGroups.get(row.node_id)!.push(group.id);
+        }
+
+        return res.json({
+          success: true,
+          nodeToGroups: Object.fromEntries(nodeToGroups),
+          groups: Array.from(allGroups.values()),
+          totalGroups: allGroups.size,
+        });
+      } catch (error: any) {
+        console.error('Batch node groups lookup error:', error);
+        return res.status(500).json({ error: error.message || 'Failed to batch lookup groups' });
+      }
+    }
+  );
+
+  /**
    * POST /api/v1/groups/:id/members:batch
    * Batch add/remove IN_GROUP edges (manual curation)
    */

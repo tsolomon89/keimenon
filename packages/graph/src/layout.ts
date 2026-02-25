@@ -4,6 +4,7 @@ import {
   forceManyBody,
   forceCenter,
   forceCollide,
+  Simulation,
   SimulationNodeDatum,
   SimulationLinkDatum,
 } from 'd3-force';
@@ -34,6 +35,36 @@ export interface LayoutConfig {
 }
 
 /**
+ * Create a D3 force simulation instance (for interactive use)
+ */
+export function createSimulation(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  config: LayoutConfig
+): Simulation<GraphNode, GraphEdge> {
+  const {
+    width,
+    height,
+    strength = -300,
+    distance = 100,
+  } = config;
+
+  return forceSimulation(nodes)
+    .force(
+      'link',
+      forceLink<GraphNode, GraphEdge>(edges)
+        .id((d) => d.id)
+        .distance(distance)
+    )
+    .force('charge', forceManyBody().strength(strength))
+    .force('center', forceCenter(width / 2, height / 2))
+    .force(
+      'collide',
+      forceCollide<GraphNode>().radius((d) => getNodeRadius(d.kind))
+    );
+}
+
+/**
  * Calculate 2D force-directed layout for graph nodes
  * Uses D3-force with stable seeding for reproducibility
  */
@@ -46,8 +77,6 @@ export function calculateLayout(
     width,
     height,
     seed = 42,
-    strength = -300,
-    distance = 100,
     iterations = 300,
   } = config;
 
@@ -62,20 +91,7 @@ export function calculateLayout(
   }));
 
   // Create simulation
-  const simulation = forceSimulation(initializedNodes)
-    .force(
-      'link',
-      forceLink<GraphNode, GraphEdge>(edges)
-        .id((d) => d.id)
-        .distance(distance)
-    )
-    .force('charge', forceManyBody().strength(strength))
-    .force('center', forceCenter(width / 2, height / 2))
-    .force(
-      'collide',
-      forceCollide<GraphNode>().radius((d) => getNodeRadius(d.kind))
-    )
-    .stop();
+  const simulation = createSimulation(initializedNodes, edges, config).stop();
 
   // Run simulation synchronously
   for (let i = 0; i < iterations; i++) {
@@ -91,7 +107,7 @@ export function calculateLayout(
 /**
  * Get node radius based on type (for collision detection)
  */
-function getNodeRadius(kind: string): number {
+export function getNodeRadius(kind: string): number {
   switch (kind) {
     case 'Group':
       return 50;
@@ -125,19 +141,13 @@ export function updateLayout(
   edges: GraphEdge[],
   config: Partial<LayoutConfig> & { alpha?: number }
 ): { nodes: GraphNode[]; edges: GraphEdge[] } {
-  const { alpha = 0.3 } = config;
-
-  const simulation = forceSimulation(nodes)
-    .force(
-      'link',
-      forceLink<GraphNode, GraphEdge>(edges)
-        .id((d) => d.id)
-        .distance(config.distance ?? 100)
-    )
-    .force('charge', forceManyBody().strength(config.strength ?? -300))
-    .force('collide', forceCollide<GraphNode>().radius((d) => getNodeRadius(d.kind)))
-    .alpha(alpha)
-    .stop();
+  // This can now just create a new simulation or be removed in favor of direct simulation control
+  // Keeping for backward compatibility but utilizing createSimulation
+  const simulation = createSimulation(nodes, edges, {
+    width: 800, // Default fallback
+    height: 600,
+    ...config
+  } as LayoutConfig).alpha(config.alpha ?? 0.3).stop();
 
   // Run for fewer iterations (smoother animation)
   for (let i = 0; i < 50; i++) {

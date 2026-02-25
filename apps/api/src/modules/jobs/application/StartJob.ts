@@ -20,6 +20,7 @@ import { JobRepository } from '../infrastructure/JobRepository';
 export interface StartJobCommand {
   jobId: string;
   accountId: string;
+  reqContext?: any; // For test validation (e.g. { testDbPath: ... })
 }
 
 export interface StartJobResult {
@@ -36,8 +37,12 @@ export class StartJob {
 
   async execute(command: StartJobCommand): Promise<StartJobResult> {
     try {
-      // 1. Load job
-      const job = await this.jobRepository.findById(command.jobId, command.accountId);
+      // 1. Load job (pass reqContext for test mode DB routing)
+      const job = await this.jobRepository.findById(
+        command.jobId,
+        command.accountId,
+        command.reqContext
+      );
 
       if (!job) {
         return {
@@ -66,7 +71,8 @@ export class StartJob {
         job.accountId,
         'queued', // fromStatus - must still be queued
         'running', // toStatus - transition to running
-        stateData
+        stateData,
+        command.reqContext // Pass context for DB routing
       );
 
       if (!claimed) {
@@ -82,7 +88,8 @@ export class StartJob {
       // We must explicitly save the event to maintain the event stream and sequence numbers.
       const startedEvent = job.events[job.events.length - 1];
       if (startedEvent.type === 'job.started') {
-        await this.jobRepository.appendEvent(startedEvent);
+        // Pass reqContext to appendEvent so it writes to the correct DB
+        await this.jobRepository.appendEvent(startedEvent, command.reqContext);
       } else {
         console.warn(
           `[StartJob] Expected last event to be job.started, found ${startedEvent.type}`

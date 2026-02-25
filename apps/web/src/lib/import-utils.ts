@@ -61,6 +61,7 @@ export function importResultToKeimenonData(result: ImportResult): {
         source: conv.id,
         target: msgId,
         type: 'contains',
+        kind: 'CONTAINS',
       });
     }
   });
@@ -94,6 +95,7 @@ export function importResultToKeimenonData(result: ImportResult): {
           source: source.source_id,
           target: prov.conversation_id,
           type: 'compiled',
+          kind: 'COMPILED_FROM',
           data: {
             messageRange: `${prov.message_idx_start}-${prov.message_idx_end}`,
           },
@@ -129,6 +131,7 @@ export function importResultToKeimenonData(result: ImportResult): {
       source: asset.id,
       target: asset.derived_from_message_id,
       type: 'derives',
+      kind: 'DERIVES_FROM',
     });
   });
 

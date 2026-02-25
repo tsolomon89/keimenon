@@ -157,6 +157,25 @@ class MockJobRepository implements JobRepository {
   getJob(id: string): Job | undefined {
     return this.jobs.get(id);
   }
+
+  // Mock state_data storage for checkpoint testing
+  private stateDataMap = new Map<string, any>();
+
+  async getRawStateData(jobId: string, accountId: string): Promise<any | null> {
+    const key = `${jobId}:${accountId}`;
+    return this.stateDataMap.get(key) || null;
+  }
+
+  async updateStateData(jobId: string, accountId: string, stateData: string): Promise<void> {
+    const key = `${jobId}:${accountId}`;
+    this.stateDataMap.set(key, JSON.parse(stateData));
+  }
+
+  // Helper for tests to set state_data directly
+  setStateData(jobId: string, accountId: string, data: any): void {
+    const key = `${jobId}:${accountId}`;
+    this.stateDataMap.set(key, data);
+  }
 }
 
 // Mock concurrency guard

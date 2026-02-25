@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { SQLiteClient } from '../sqlite/client';
 
 /**
@@ -60,12 +60,11 @@ export async function seedAdminAccount(client: SQLiteClient): Promise<void> {
       const adminUserId = randomUUID();
       db.prepare(
         `
-        INSERT INTO users (id, account_id, email, password_hash, google_id, name, permission_level, user_class, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO users (id, email, password_hash, google_id, name, permission_level, user_class, is_active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       ).run(
         adminUserId,
-        adminAccountId,
         'admin@admin.com',
         passwordHash, // Secure bcrypt hash of 'admin123'
         null, // No Google ID
@@ -78,6 +77,27 @@ export async function seedAdminAccount(client: SQLiteClient): Promise<void> {
       );
 
       console.log(`✅ Created admin user: ${adminUserId}`);
+
+      // 3. Link user to account via user_accounts junction table
+      const userAccountId = randomUUID();
+      db.prepare(
+        `
+        INSERT INTO user_accounts (id, user_id, account_id, permission_level, role_rank, status, joined_at, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+      ).run(
+        userAccountId,
+        adminUserId,
+        adminAccountId,
+        'admin',
+        1,
+        'active',
+        now,
+        now,
+        now
+      );
+      
+      console.log(`✅ Linked admin user to account: ${userAccountId}`);
 
       // 3. Migrate existing nodes to admin account
       const nodeCount = db.prepare('SELECT COUNT(*) as count FROM nodes').get() as any;
@@ -144,8 +164,8 @@ export async function seedAdminAccount(client: SQLiteClient): Promise<void> {
     transaction();
 
     console.log('✅ Migration 001 completed successfully');
-  } catch (error) {
-    console.error('❌ Migration 001 failed:', error);
+  } catch (error: any) {
+    console.error('❌ Migration 001 failed:', error.message, error.stack);
     throw error;
   }
 }

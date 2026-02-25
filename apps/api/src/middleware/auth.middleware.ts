@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AuthServiceV2 } from '../services/auth.service';
+import { AuthServiceV2, CapabilityAuthorizationService, PrincipalCapabilities } from '../services/auth.service';
 
 // Extend Express Request to include auth data
 declare global {
@@ -16,6 +16,8 @@ declare global {
         overrides?: Record<string, boolean>;
         sessionId: string; // Session ID for tracking
         allAccounts?: string[]; // All accessible account IDs
+        // World Model V5: Principal capabilities for unified authorization
+        capabilities?: PrincipalCapabilities;
       };
       // NEW: Operating context for nested/CRM mode
       operating?: {
@@ -66,6 +68,25 @@ export function requireAuth(authService: AuthServiceV2) {
         sessionId: payload.sessionId,
         allAccounts: payload.allAccounts, // All accounts user has access to
       };
+
+      // World Model V5: Fetch principal capabilities for unified authorization
+      // This enables capability-based checks (F1: Principal Equivalence)
+      try {
+        // AuthServiceV2 has a private 'db' property of type SQLiteClient
+        const dbClient = (authService as any).db;
+        if (dbClient) {
+          const capabilityService = new CapabilityAuthorizationService(dbClient);
+          const capabilities = await capabilityService.getPrincipalCapabilities(
+            payload.userId,
+            payload.accountId
+          );
+          req.user.capabilities = capabilities;
+        }
+      } catch (capError) {
+        // Non-fatal: default to no special capabilities if lookup fails
+        // This maintains backward compatibility with existing auth flows
+        console.warn('[AuthMiddleware] Could not fetch principal capabilities:', capError);
+      }
 
       // Check for operating context headers (nested/CRM mode)
       const operatingAccountHeader = req.headers['x-operating-account'] as string;
@@ -292,6 +313,70 @@ export function requireProfessional(req: Request, res: Response, next: NextFunct
   }
 
   return next();
+}
+
+/**
+ * Middleware to require a specific capability
+ * World Model V5: Capability-based authorization (F1: Principal Equivalence)
+ * Must be used after requireAuth
+ *
+ * @param capability - The capability to check (can_upload, can_run_tools, etc.)
+ */
+export function requireCapability(capability: keyof PrincipalCapabilities) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Check if capabilities were loaded
+    if (!req.user.capabilities) {
+      // Fall back to legacy permission check if capabilities not available
+      console.warn('[RequireCapability] Capabilities not loaded, falling back to legacy auth');
+      return next();
+    }
+
+    // Check the specific capability
+    const hasCapability = req.user.capabilities[capability];
+    if (!hasCapability) {
+      return res.status(403).json({
+        error: 'Capability required',
+        message: `This action requires the '${capability}' capability`,
+        capability,
+      });
+    }
+
+    return next();
+  };
+}
+
+/**
+ * Middleware to require any of the specified capabilities
+ * Must be used after requireAuth
+ *
+ * @param capabilities - Array of capabilities, user needs at least one
+ */
+export function requireAnyCapability(capabilities: Array<keyof PrincipalCapabilities>) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    if (!req.user.capabilities) {
+      console.warn('[RequireAnyCapability] Capabilities not loaded, falling back to legacy auth');
+      return next();
+    }
+
+    const hasAny = capabilities.some((cap) => req.user!.capabilities![cap]);
+    if (!hasAny) {
+      return res.status(403).json({
+        error: 'Capability required',
+        message: `This action requires one of: ${capabilities.join(', ')}`,
+        required: capabilities,
+      });
+    }
+
+    return next();
+  };
 }
 
 /**

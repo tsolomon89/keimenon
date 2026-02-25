@@ -219,7 +219,6 @@ export function getColorScheme(color: keyof typeof colorSchemes) {
 
 /**
  * Helper function to combine token classes
+ * Re-exported from shared UI for consistency
  */
-export function cn(...classes: (string | undefined | false)[]): string {
-  return classes.filter(Boolean).join(' ');
-}
+export { cn } from '@keimenon/ui';

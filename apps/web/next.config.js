@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // output: 'export', // Commented out to prevent dev server issues
+  // No assetPrefix needed for app:// protocol
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
+  },
   reactStrictMode: true,
   transpilePackages: ['@keimenon/types', '@keimenon/ui'],
   experimental: {
@@ -8,6 +13,16 @@ const nextConfig = {
   },
   webpack: (config, { isServer }) => {
     config.externals = [...(config.externals || []), { keimenon: 'keimenon' }];
+
+    // Externalize Node.js modules for client-side bundles
+    // policy-loader from @keimenon/types uses fs/path - only works server-side
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+      };
+    }
 
     // Fix case-sensitivity warnings on Windows
     // See: https://github.com/vercel/next.js/issues/36953

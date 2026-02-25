@@ -195,7 +195,9 @@ export function createImportDecisionsRoutes(db: SQLiteClient, authService: AuthS
           try {
             database.prepare(`ROLLBACK TO SAVEPOINT ${savepointId}`).run();
             database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
-          } catch {}
+          } catch {
+            // Ignore rollback error
+          }
           throw ErrorFactory.database(
             'Failed to apply duplicate decisions to database',
             'importDecisions.apply',

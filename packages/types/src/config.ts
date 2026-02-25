@@ -104,6 +104,32 @@ export const DuplicateConfigSchema = z.object({
 export type DuplicateConfig = z.infer<typeof DuplicateConfigSchema>;
 
 /**
+ * Spine extraction configuration (Vision V2)
+ * Controls extraction of Lexeme, Phrase, and Topic nodes from imported content
+ */
+export const SpineConfigSchema = z.object({
+  // Enable/disable spine extraction
+  enabled: z.boolean().default(false),
+
+  // Extract individual word tokens as Lexeme nodes
+  extractLexemes: z.boolean().default(true),
+
+  // Extract n-grams and named entities as Phrase nodes
+  extractPhrases: z.boolean().default(true),
+
+  // Cluster phrases into Topic nodes
+  clusterTopics: z.boolean().default(true),
+
+  // Minimum phrase frequency to create a node (filter noise)
+  minPhraseFrequency: z.number().min(1).default(2),
+
+  // Minimum number of phrases to form a topic
+  minPhrasesPerTopic: z.number().min(1).default(3),
+});
+
+export type SpineConfig = z.infer<typeof SpineConfigSchema>;
+
+/**
  * Privacy configuration
  */
 export const PrivacyConfigSchema = z.object({
@@ -123,6 +149,7 @@ export const ImportConfigurationSchema = z.object({
   code: CodeConfigSchema,
   duplicates: DuplicateConfigSchema,
   privacy: PrivacyConfigSchema,
+  spine: SpineConfigSchema.optional(), // V2: Spine extraction (optional for backwards compat)
 });
 
 export type ImportConfiguration = z.infer<typeof ImportConfigurationSchema>;

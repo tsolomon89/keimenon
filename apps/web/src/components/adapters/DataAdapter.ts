@@ -12,7 +12,7 @@
  * - Consistent interface across all data types
  */
 
-import { BoundObject } from '../primitives/Viewer';
+import { BoundObject } from '../primitives';
 
 /**
  * Core DataAdapter interface

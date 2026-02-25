@@ -35,6 +35,14 @@ export interface SSEJobUpdate {
     percent: number;
     message?: string;
   };
+  stats?: {
+    nodesCreated?: number;
+    nodesDeleted?: number;
+    edgesCreated?: number;
+    edgesDeleted?: number;
+    sourcesCreated?: number;
+    conversationsProcessed?: number;
+  };
   config?: {
     fileName?: string; // Extracted from config.files[0].fileName
     deleteScope?: string; // Extracted from config.deleteScope
@@ -197,6 +205,7 @@ export class SSEBroadcaster {
               type: job.type,
               status: job.status,
               progress: job.progress, // ✅ Use job.progress getter (not job.stateData)
+              stats: job.stats, // ✅ Include stats for real-time updates
               config: configMetadata,
               timestamp: Date.now(), // ✅ Timestamp of when update was sent
             };
@@ -270,6 +279,7 @@ export class SSEBroadcaster {
       type: job.type,
       status: job.status,
       progress: job.progress,
+      stats: job.stats, // ✅ Include stats for real-time updates
       config: configMetadata,
       timestamp: Date.now(),
     });

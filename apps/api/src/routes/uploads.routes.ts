@@ -32,7 +32,7 @@ import {
 import Database from 'better-sqlite3';
 import busboy from 'busboy';
 import { createWriteStream } from 'fs';
-import { mkdir } from 'fs/promises';
+import { mkdir, statfs } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
@@ -103,6 +103,7 @@ interface ChunkUploadResponse {
   progress: number; // 0-100 percentage
   status: string;
   isComplete: boolean;
+  jobId?: string; // Set when isComplete=true and job is created
 }
 
 // ============================================================================
@@ -272,7 +273,8 @@ export function createUploadRoutes(authService: AuthService): Router {
           });
         }
 
-        console.log(`📦 CHUNK UPLOAD: ${sessionId} / chunk ${chunkIdx}`);
+        console.log(`📦 CHUNK UPLOAD REQUEST: ${sessionId} / chunk ${chunkIdx}`);
+        console.log(`   Headers: content-type=${req.headers['content-type']}, length=${req.headers['content-length']}`);
 
         // Get database client
         const db = await getDbClient(req);
@@ -280,7 +282,7 @@ export function createUploadRoutes(authService: AuthService): Router {
         const uploadRepo: UploadSessionRepository = new SQLiteUploadSessionRepository(sqliteDb);
 
         // Load session with account isolation
-        const session = await uploadRepo.findById(sessionId, accountId);
+        let session = await uploadRepo.findById(sessionId, accountId);
 
         if (!session) {
           return res.status(404).json({
@@ -316,6 +318,23 @@ export function createUploadRoutes(authService: AuthService): Router {
           });
         }
 
+        // Check disk space before writing chunk
+        try {
+          const stats = await statfs(session.chunksPath);
+          const availableBytes = stats.bavail * stats.bsize;
+          const remainingFileSize = session.fileSize - (chunkIdx * session.chunkSize);
+
+          if (availableBytes < remainingFileSize * 1.1) {
+            const availableMB = Math.round(availableBytes / 1024 / 1024);
+            const neededMB = Math.round(remainingFileSize / 1024 / 1024);
+            throw new Error(`Insufficient disk space: ${availableMB}MB available, need ~${neededMB}MB`);
+          }
+        } catch (err: any) {
+          if (err.message.includes('Insufficient disk space')) throw err;
+          // statfs may fail on some systems (e.g., Windows), continue anyway
+          console.warn('[ChunkUpload] Could not check disk space:', err.message);
+        }
+
         // Write chunk to disk
         const chunkPath = join(session.chunksPath, `chunk_${chunkIdx}`);
         const writeStream = createWriteStream(chunkPath);
@@ -324,12 +343,31 @@ export function createUploadRoutes(authService: AuthService): Router {
         await new Promise<void>((resolve, reject) => {
           req.pipe(writeStream);
           writeStream.on('finish', () => resolve());
-          writeStream.on('error', (error) => reject(error));
+          writeStream.on('error', (error: NodeJS.ErrnoException) => {
+            console.error('[ChunkUpload] Stream write failed:', {
+              code: error.code,
+              syscall: error.syscall,
+              message: error.message,
+              sessionId,
+              chunkIndex: chunkIdx,
+              chunkPath,
+            });
+            reject(error);
+          });
         });
 
-        // Record chunk in session
-        session.recordChunk(chunkIdx);
-        await uploadRepo.save(session);
+        // Record chunk atomically (race-condition safe for concurrent uploads)
+        // This uses SQLite json_set() to merge the chunk into chunks_received
+        const updatedSession = await uploadRepo.recordChunkAtomic(sessionId, accountId, chunkIdx);
+        if (!updatedSession) {
+          return res.status(404).json({
+            success: false,
+            error: 'Session not found or no longer accepting uploads',
+          });
+        }
+
+        // Use the updated session from the atomic operation
+        session = updatedSession;
 
         console.log(`✅ Chunk ${chunkIdx} saved (${session.getProgress()}% complete)`);
 
@@ -432,46 +470,56 @@ export function createUploadRoutes(authService: AuthService): Router {
               throw error;
             }
           } else {
-            // Production mode: Trigger assembly service (async, don't block response)
+            // Production mode: Await assembly and job creation so we can return jobId
             const assemblyService = new ChunkAssemblyService(uploadRepo);
-            assemblyService
-              .triggerAssembly(sessionId, accountId)
-              .then(async (result) => {
-                if (result.success) {
-                  console.log(
-                    `✅ Assembly completed: ${result.filePath} (${result.fileSize} bytes)`
+            try {
+              const result = await assemblyService.triggerAssembly(sessionId, accountId);
+
+              if (result.success) {
+                console.log(
+                  `✅ Assembly completed: ${result.filePath} (${result.fileSize} bytes)`
+                );
+
+                // PHASE 4 IMPLEMENTATION: Trigger import job processing
+                try {
+                  await triggerImportJobFromAssembledFile(
+                    session,
+                    result.filePath!,
+                    result.fileSize!,
+                    accountId,
+                    sqliteDb,
+                    uploadRepo,
+                    req // ✅ Pass request for test isolation context
                   );
 
-                  // PHASE 4 IMPLEMENTATION: Trigger import job processing
-                  try {
-                    await triggerImportJobFromAssembledFile(
-                      session,
-                      result.filePath!,
-                      result.fileSize!,
-                      accountId,
-                      sqliteDb,
-                      uploadRepo,
-                      req // ✅ Pass request for test isolation context
-                    );
-                  } catch (importError: any) {
-                    console.error(`❌ Failed to trigger import job:`, importError);
-                    // Mark session as failed
-                    session.markFailed(
-                      `Assembly succeeded but import job creation failed: ${importError.message}`
-                    );
-                    await uploadRepo.save(session);
+                  // ✅ FIX: Reload session to get the jobId that was set by triggerImportJobFromAssembledFile
+                  const updatedSession = await uploadRepo.findById(sessionId, accountId);
+                  if (updatedSession) {
+                    session = updatedSession;
+                    console.log(`✅ Session reloaded with jobId: ${session.jobId}`);
                   }
-                } else {
-                  console.error(`❌ Assembly failed: ${result.errorMessage}`);
+                } catch (importError: any) {
+                  console.error(`❌ Failed to trigger import job:`, importError);
+                  // Mark session as failed
+                  session.markFailed(
+                    `Assembly succeeded but import job creation failed: ${importError.message}`
+                  );
+                  await uploadRepo.save(session);
                 }
-              })
-              .catch((error) => {
-                console.error(`❌ Assembly error:`, error);
-              });
+              } else {
+                console.error(`❌ Assembly failed: ${result.errorMessage}`);
+                session.markFailed(`Assembly failed: ${result.errorMessage}`);
+                await uploadRepo.save(session);
+              }
+            } catch (error: any) {
+              console.error(`❌ Assembly error:`, error);
+              session.markFailed(`Assembly error: ${error.message}`);
+              await uploadRepo.save(session);
+            }
           }
         }
 
-        // Return progress
+        // Return progress (including jobId when assembly is complete)
         const response: ChunkUploadResponse = {
           success: true,
           chunkIndex: chunkIdx,
@@ -482,6 +530,8 @@ export function createUploadRoutes(authService: AuthService): Router {
           progress: session.getProgress(),
           status: session.status,
           isComplete,
+          // ✅ FIX: Include jobId when assembly is complete
+          ...(isComplete && session.jobId ? { jobId: session.jobId } : {}),
         };
 
         return res.status(200).json(response);

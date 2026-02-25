@@ -73,13 +73,10 @@ export class ChunkAssemblyService {
 
       // Open output file for writing
       const writeStream = createWriteStream(outputPath, { flags: 'w' });
-      let bytesWritten = 0;
 
-      // Assemble chunks sequentially
+      // Assemble chunks sequentially using pipeline
       for (let i = 0; i < session.totalChunks; i++) {
         const chunkPath = join(session.chunksPath, `chunk_${i}`);
-
-        console.log(`  Assembling chunk ${i + 1}/${session.totalChunks}...`);
 
         // Check if chunk file exists
         try {
@@ -88,23 +85,19 @@ export class ChunkAssemblyService {
           throw new Error(`Chunk file missing: chunk_${i} (expected at ${chunkPath})`);
         }
 
-        // Stream chunk into output file
+        // Stream chunk into output file, keeping writeStream open
         const readStream = createReadStream(chunkPath);
-        const chunkBytes = await this.copyStream(readStream, writeStream);
-        bytesWritten += chunkBytes;
-
-        console.log(`    ✅ Chunk ${i}: ${chunkBytes} bytes`);
+        await pipeline(readStream, writeStream, { end: false });
       }
 
-      // Close output stream
+      // Explicitly close the write stream
+      writeStream.end();
       await new Promise<void>((resolve, reject) => {
-        writeStream.end((err: Error | null | undefined) => {
-          if (err) reject(err);
-          else resolve();
-        });
+        writeStream.on('finish', resolve);
+        writeStream.on('error', reject);
       });
 
-      console.log(`  ✅ Assembly complete: ${bytesWritten} bytes written`);
+      console.log(`  ✅ Assembly output stream closed`);
 
       // Validate file size
       const stats = await fs.stat(outputPath);
@@ -145,40 +138,6 @@ export class ChunkAssemblyService {
         errorMessage: error.message,
       };
     }
-  }
-
-  /**
-   * Copy stream from source to destination
-   * Returns number of bytes copied
-   */
-  private async copyStream(
-    readStream: NodeJS.ReadableStream,
-    writeStream: NodeJS.WritableStream
-  ): Promise<number> {
-    let bytesRead = 0;
-
-    return new Promise<number>((resolve, reject) => {
-      readStream.on('data', (chunk: Buffer) => {
-        bytesRead += chunk.length;
-        if (!writeStream.write(chunk)) {
-          // Back-pressure handling
-          readStream.pause();
-          writeStream.once('drain', () => readStream.resume());
-        }
-      });
-
-      readStream.on('end', () => {
-        resolve(bytesRead);
-      });
-
-      readStream.on('error', (err) => {
-        reject(err);
-      });
-
-      writeStream.on('error', (err) => {
-        reject(err);
-      });
-    });
   }
 
   /**

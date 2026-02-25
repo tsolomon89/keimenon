@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getAuthToken } from '../lib/api-client';
+import { API_BASE_URL } from '@/lib/env.config';
 
 /**
  * Import progress stages matching backend
@@ -96,19 +97,36 @@ export function useImportProgressStream(
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isPollingRef = useRef(false);
 
+  // PERFORMANCE FIX: Track in-flight request to prevent overlapping polls
+  const pollInFlightRef = useRef(false);
+
   /**
    * Fetch progress via HTTP polling (fallback)
+   * PERFORMANCE FIX: Added timeout and overlap prevention
    */
   const pollProgress = useCallback(async () => {
     if (!uploadId) return;
 
+    // Prevent overlapping requests
+    if (pollInFlightRef.current) {
+      console.log('[Import Progress] Skipping poll - previous request still in flight');
+      return;
+    }
+
+    pollInFlightRef.current = true;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
     try {
       const token = getAuthToken();
-      const response = await fetch(`/api/v1/import/progress/${uploadId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/import/progress/${uploadId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -136,9 +154,16 @@ export function useImportProgressStream(
         }
       }
     } catch (err: any) {
-      console.warn('[Import Progress] Polling error:', err.message);
-      setError(err.message);
-      setConnectionState('error');
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        console.warn('[Import Progress] Polling request timed out');
+      } else {
+        console.warn('[Import Progress] Polling error:', err.message);
+        setError(err.message);
+        setConnectionState('error');
+      }
+    } finally {
+      pollInFlightRef.current = false;
     }
   }, [uploadId, onComplete, onError]);
 
@@ -187,7 +212,7 @@ export function useImportProgressStream(
 
     try {
       const token = getAuthToken();
-      const url = `/api/v1/import/progress/stream/${uploadId}?token=${encodeURIComponent(token)}`;
+      const url = `${API_BASE_URL}/api/v1/import/progress/stream/${uploadId}?token=${encodeURIComponent(token)}`;
 
       console.log('[Import Progress] Connecting to SSE:', url);
       const eventSource = new EventSource(url);

@@ -239,7 +239,9 @@ export class WorkerPool {
 
     // Filter to only jobs database paths (exclude data database paths)
     // Jobs databases end with "-jobs.db", data databases end with ".db" (no "-jobs")
+    console.log(`[WorkerPool Debug] All Cached DBs:`, testDbPaths);
     const jobsDbPaths = testDbPaths.filter((path) => path.includes('-jobs.db'));
+    console.log(`[WorkerPool Debug] Filtered Jobs DBs:`, jobsDbPaths);
 
     if (jobsDbPaths.length > 0) {
       console.log(`[WorkerPool] Querying ${jobsDbPaths.length} active test jobs database(s)...`);
@@ -249,7 +251,11 @@ export class WorkerPool {
           // Convert jobs DB path back to data DB path for testDbPath
           // (JobRepository expects data DB path, then internally routes to jobs DB)
           // worker-0-jobs.db → worker-0.db
-          const dataDbPath = jobsDbPath.replace('-jobs.db', '.db');
+          // CRITICAL FIX: Use the jobs database path directly!
+          // Do NOT convert to .db (data DB) because jobs are in the -jobs.db file
+          // const dataDbPath = jobsDbPath.replace('-jobs.db', '.db');
+          const dataDbPath = jobsDbPath;
+          console.log(`[WorkerPool Debug] Using DB path: ${dataDbPath}`);
 
           // Create mock request with data DB path (repository will route to jobs DB internally)
           const mockReq = { testDbPath: dataDbPath } as any;
@@ -313,9 +319,15 @@ export class WorkerPool {
       }
 
       // Start the job (transition to running)
+      // Pass test context if available so StartJob can find the job in the correct DB
+      const reqContext = job.config.testContext?.dbPath 
+        ? { testDbPath: job.config.testContext.dbPath } 
+        : undefined;
+
       const startResult = await this.startJob.execute({
         jobId: job.id,
         accountId: job.accountId,
+        reqContext,
       });
 
       if (!startResult.success) {
@@ -369,7 +381,12 @@ export class WorkerPool {
       this.activeJobs.delete(job.id);
 
       // Reload job (it may have been updated during processing)
-      const updatedJob = await this.jobRepository.findById(job.id, job.accountId);
+      // Pass test context if available
+      const reqContext = job.config.testContext?.dbPath 
+        ? { testDbPath: job.config.testContext.dbPath } 
+        : undefined;
+        
+      const updatedJob = await this.jobRepository.findById(job.id, job.accountId, reqContext);
       if (!updatedJob) {
         console.error(`❌ Job ${job.id} disappeared during processing`);
         return;
@@ -408,7 +425,11 @@ export class WorkerPool {
 
       // Try to mark job as failed (only if not already in terminal state)
       try {
-        const failedJob = await this.jobRepository.findById(job.id, job.accountId);
+        const reqContext = job.config.testContext?.dbPath 
+          ? { testDbPath: job.config.testContext.dbPath } 
+          : undefined;
+          
+        const failedJob = await this.jobRepository.findById(job.id, job.accountId, reqContext);
         if (failedJob && !failedJob.isTerminal) {
           failedJob.fail({
             code: 'UNEXPECTED_ERROR',
@@ -462,7 +483,16 @@ export class WorkerPool {
 
     try {
       // 1. Load job from database
-      const job = await this.jobRepository.findById(jobId, accountId);
+      // We don't have the job object here to check config, but finding by ID usually checks prod DB.
+      // If we need to support cancelling test jobs from prod api (not likely if isolated), 
+      // we might need to search all DBs or cache the job config in activeJobs.
+      // ActiveJobs has execution.job!
+      const activeJob = execution.job;
+      const reqContext = activeJob.config.testContext?.dbPath 
+        ? { testDbPath: activeJob.config.testContext.dbPath } 
+        : undefined;
+
+      const job = await this.jobRepository.findById(jobId, accountId, reqContext);
       if (!job) {
         console.warn(`⚠️ Job ${jobId} not found in database during cancel`);
         return false;

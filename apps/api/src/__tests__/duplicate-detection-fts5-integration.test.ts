@@ -123,7 +123,7 @@ describe('FTS5 Duplicate Detection - Integration Tests', () => {
     baselineService = new DuplicateDetectionService();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     // Restore environment variables
     for (const [key, value] of Object.entries(originalEnv)) {
       if (value === undefined) {
@@ -139,7 +139,7 @@ describe('FTS5 Duplicate Detection - Integration Tests', () => {
     }
     if (testDbPath) {
       try {
-        fs.unlink(testDbPath);
+        await fs.unlink(testDbPath);
       } catch (error) {
         // Ignore cleanup errors
       }

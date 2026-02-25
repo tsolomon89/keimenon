@@ -7,10 +7,12 @@
  * Related: Chunked Upload System - Phase 7 (Testing)
  */
 
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, vi, type Mocked, type MockedFunction } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChunkedUpload } from '../useChunkedUpload';
 import { apiClient } from '../../lib/api-client';
+
+const jest = vi; // Alias for compatibility
 
 // ============================================================================
 // Mocks
@@ -48,8 +50,8 @@ const localStorageMock = (() => {
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 describe('useChunkedUpload Hook (E2E)', () => {
-  const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
-  const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
+  const mockApiClient = apiClient as Mocked<typeof apiClient>;
+  const mockFetch = global.fetch as MockedFunction<typeof fetch>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -362,7 +364,7 @@ describe('useChunkedUpload Hook (E2E)', () => {
       });
 
       // Should retry failed chunk up to 3 times
-      expect(mockFetch.mock.calls.filter((call) => String(call[0]).includes('chunks/1')).length).toBe(3);
+      expect(mockFetch.mock.calls.filter((call: any[]) => String(call[0]).includes('chunks/1')).length).toBe(3);
     });
 
     it('should retry failed chunks', async () => {

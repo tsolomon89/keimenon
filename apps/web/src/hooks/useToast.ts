@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { ToastType } from '@/components/ui/Toast';
+import { ToastType } from '@keimenon/ui';
 
 interface ToastData {
   id: string;

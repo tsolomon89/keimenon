@@ -3,12 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useShell } from '@/contexts/ShellContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bar } from './Bar';
-import { Viewer } from './Viewer';
-import { List } from './List';
-import { Card } from './Card';
-import { Tile } from './Tile';
-import { Text } from './Text';
+import { Bar, List, Tile, PrimitiveCard as Card, Text, Viewer } from '@keimenon/ui';
 import { UsersAdapter } from '../adapters/UsersAdapter';
 import { SETTINGS_SECTIONS } from '../specs/settings.spec';
 import { Settings, Users, Database, Building2 } from 'lucide-react';

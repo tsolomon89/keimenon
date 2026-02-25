@@ -174,7 +174,7 @@ export function IngestResults({ results }: IngestResultsProps) {
       {/* Next Steps */}
       <div className="flex items-center justify-center gap-4 pt-4">
         <Link
-          href="/board/default_board"
+          href="/board?id=default_board"
           className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors"
         >
           View on Keimenon

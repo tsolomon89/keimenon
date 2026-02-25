@@ -6,6 +6,9 @@
 
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useJobStream } from '../useJobStream';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+const jest = vi;
 
 // Mock EventSource
 class MockEventSource {

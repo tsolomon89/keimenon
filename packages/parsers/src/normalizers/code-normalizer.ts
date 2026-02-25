@@ -8,40 +8,40 @@ export interface CodeNormalizerConfig {
    * Strip comments from code
    * Default: false (preserve comments for semantic meaning)
    */
-  stripComments: boolean;
+  stripComments?: boolean;
 
   /**
    * Apply α-renaming to identifiers (x → VAR_1, foo → FUNC_1)
    * Useful for detecting functionally equivalent code with different names
    * Default: false (preserve original names)
    */
-  alphaRename: boolean;
+  alphaRename?: boolean;
 
   /**
    * Normalize string/number literals (STR_LIT_1, NUM_LIT_1)
    * Useful for detecting code that differs only in literal values
    * Default: false (preserve literal values)
    */
-  normalizeLiterals: boolean;
+  normalizeLiterals?: boolean;
 
   /**
    * Generate token sketch for lightweight AST comparison
    * Format: "op|op|ident|num|..." (sequence of token types)
    * Default: true
    */
-  generateTokenSketch: boolean;
+  generateTokenSketch?: boolean;
 
   /**
    * Normalize whitespace (consistent indentation, spacing)
    * Default: true
    */
-  normalizeWhitespace: boolean;
+  normalizeWhitespace?: boolean;
 
   /**
    * Indentation style (spaces per level)
    * Default: 2
    */
-  indentSize: number;
+  indentSize?: number;
 }
 
 /**
@@ -90,7 +90,16 @@ export interface CodeNormalizationResult {
  * Token type for lexing
  */
 interface Token {
-  type: 'keyword' | 'operator' | 'identifier' | 'number' | 'string' | 'comment' | 'whitespace' | 'punctuation' | 'unknown';
+  type:
+    | 'keyword'
+    | 'operator'
+    | 'identifier'
+    | 'number'
+    | 'string'
+    | 'comment'
+    | 'whitespace'
+    | 'punctuation'
+    | 'unknown';
   value: string;
   line: number;
   column: number;
@@ -172,9 +181,7 @@ export class CodeNormalizer {
     }
 
     // 6. Generate token sketch
-    const token_sketch = this.config.generateTokenSketch
-      ? this.generateSketch(filteredTokens)
-      : '';
+    const token_sketch = this.config.generateTokenSketch ? this.generateSketch(filteredTokens) : '';
 
     // 7. Compute content ID
     const content_id = generateContentId(result);
@@ -265,7 +272,9 @@ export class CodeNormalizer {
         }
 
         // Numbers (int, float, hex, binary)
-        const numberMatch = remaining.match(/^(0[xXbB][0-9a-fA-F]+|[0-9]+\.?[0-9]*([eE][+-]?[0-9]+)?)/);
+        const numberMatch = remaining.match(
+          /^(0[xXbB][0-9a-fA-F]+|[0-9]+\.?[0-9]*([eE][+-]?[0-9]+)?)/
+        );
         if (numberMatch) {
           tokens.push({
             type: 'number',
@@ -293,7 +302,9 @@ export class CodeNormalizer {
         }
 
         // Operators (multi-char first)
-        const opMatch = remaining.match(/^(===|!==|==|!=|<=|>=|&&|\|\||<<|>>|\+\+|--|->|=>|\*\*|\.\.\.)/);
+        const opMatch = remaining.match(
+          /^(===|!==|==|!=|<=|>=|&&|\|\||<<|>>|\+\+|--|->|=>|\*\*|\.\.\.)/
+        );
         if (opMatch) {
           tokens.push({
             type: 'operator',
@@ -309,7 +320,23 @@ export class CodeNormalizer {
         const singleCharMatch = remaining.match(/^([+\-*/%<>=!&|^~?:;,.(){}[\]])/);
         if (singleCharMatch) {
           const value = singleCharMatch[0];
-          const type = ['+', '-', '*', '/', '%', '<', '>', '=', '!', '&', '|', '^', '~', '?', ':'].includes(value)
+          const type = [
+            '+',
+            '-',
+            '*',
+            '/',
+            '%',
+            '<',
+            '>',
+            '=',
+            '!',
+            '&',
+            '|',
+            '^',
+            '~',
+            '?',
+            ':',
+          ].includes(value)
             ? 'operator'
             : 'punctuation';
           tokens.push({
@@ -351,12 +378,102 @@ export class CodeNormalizer {
    */
   private getKeywordsForLanguage(language: string): Set<string> {
     const keywordSets: Record<string, string[]> = {
-      javascript: ['const', 'let', 'var', 'function', 'if', 'else', 'for', 'while', 'return', 'class', 'import', 'export', 'async', 'await'],
-      typescript: ['const', 'let', 'var', 'function', 'if', 'else', 'for', 'while', 'return', 'class', 'import', 'export', 'async', 'await', 'interface', 'type'],
-      python: ['def', 'class', 'if', 'elif', 'else', 'for', 'while', 'return', 'import', 'from', 'as', 'with', 'try', 'except', 'finally'],
-      java: ['public', 'private', 'protected', 'class', 'interface', 'if', 'else', 'for', 'while', 'return', 'new', 'import', 'static', 'void'],
-      go: ['func', 'var', 'const', 'if', 'else', 'for', 'return', 'package', 'import', 'type', 'struct', 'interface'],
-      rust: ['fn', 'let', 'mut', 'if', 'else', 'for', 'while', 'return', 'struct', 'impl', 'trait', 'use', 'pub'],
+      javascript: [
+        'const',
+        'let',
+        'var',
+        'function',
+        'if',
+        'else',
+        'for',
+        'while',
+        'return',
+        'class',
+        'import',
+        'export',
+        'async',
+        'await',
+      ],
+      typescript: [
+        'const',
+        'let',
+        'var',
+        'function',
+        'if',
+        'else',
+        'for',
+        'while',
+        'return',
+        'class',
+        'import',
+        'export',
+        'async',
+        'await',
+        'interface',
+        'type',
+      ],
+      python: [
+        'def',
+        'class',
+        'if',
+        'elif',
+        'else',
+        'for',
+        'while',
+        'return',
+        'import',
+        'from',
+        'as',
+        'with',
+        'try',
+        'except',
+        'finally',
+      ],
+      java: [
+        'public',
+        'private',
+        'protected',
+        'class',
+        'interface',
+        'if',
+        'else',
+        'for',
+        'while',
+        'return',
+        'new',
+        'import',
+        'static',
+        'void',
+      ],
+      go: [
+        'func',
+        'var',
+        'const',
+        'if',
+        'else',
+        'for',
+        'return',
+        'package',
+        'import',
+        'type',
+        'struct',
+        'interface',
+      ],
+      rust: [
+        'fn',
+        'let',
+        'mut',
+        'if',
+        'else',
+        'for',
+        'while',
+        'return',
+        'struct',
+        'impl',
+        'trait',
+        'use',
+        'pub',
+      ],
     };
 
     return new Set(keywordSets[language] || []);
@@ -366,7 +483,7 @@ export class CodeNormalizer {
    * Strip comment tokens
    */
   private stripCommentsFromTokens(tokens: Token[]): Token[] {
-    return tokens.filter(t => t.type !== 'comment');
+    return tokens.filter((t) => t.type !== 'comment');
   }
 
   /**
@@ -380,7 +497,7 @@ export class CodeNormalizer {
 
     // Heuristic: identifiers followed by '(' are likely functions
     const isFunctionName = (index: number): boolean => {
-      const nextNonWhitespace = tokens.slice(index + 1).find(t => t.type !== 'whitespace');
+      const nextNonWhitespace = tokens.slice(index + 1).find((t) => t.type !== 'whitespace');
       return nextNonWhitespace?.value === '(';
     };
 
@@ -408,7 +525,7 @@ export class CodeNormalizer {
     let strCounter = 1;
     let numCounter = 1;
 
-    return tokens.map(token => {
+    return tokens.map((token) => {
       if (token.type === 'string') {
         return { ...token, value: `STR_LIT_${strCounter++}` };
       }
@@ -423,7 +540,7 @@ export class CodeNormalizer {
    * Reconstruct code from tokens (simple concatenation)
    */
   private reconstructCode(tokens: Token[]): string {
-    return tokens.map(t => t.value).join('');
+    return tokens.map((t) => t.value).join('');
   }
 
   /**
@@ -443,7 +560,7 @@ export class CodeNormalizer {
           // Next non-whitespace token gets proper indentation
           const nextToken = tokens[i + 1];
           if (nextToken && nextToken.type !== 'whitespace') {
-            result += ' '.repeat(indentLevel * this.config.indentSize);
+            result += ' '.repeat(indentLevel * (this.config.indentSize || 2));
           }
         } else {
           // Single space for inline whitespace
@@ -471,18 +588,26 @@ export class CodeNormalizer {
    */
   private generateSketch(tokens: Token[]): string {
     return tokens
-      .filter(t => t.type !== 'whitespace')
-      .map(t => {
+      .filter((t) => t.type !== 'whitespace')
+      .map((t) => {
         // Simplify type names
         switch (t.type) {
-          case 'identifier': return 'ident';
-          case 'operator': return 'op';
-          case 'number': return 'num';
-          case 'string': return 'str';
-          case 'keyword': return 'kw';
-          case 'punctuation': return 'punct';
-          case 'comment': return 'comment';
-          default: return 'unknown';
+          case 'identifier':
+            return 'ident';
+          case 'operator':
+            return 'op';
+          case 'number':
+            return 'num';
+          case 'string':
+            return 'str';
+          case 'keyword':
+            return 'kw';
+          case 'punctuation':
+            return 'punct';
+          case 'comment':
+            return 'comment';
+          default:
+            return 'unknown';
         }
       })
       .join('|');

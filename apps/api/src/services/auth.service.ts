@@ -9,7 +9,7 @@
  */
 
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import Database from 'better-sqlite3';
 import { SQLiteClient } from '@keimenon/db';
@@ -205,10 +205,24 @@ export class AuthServiceV2 {
       .get(email) as any;
 
     if (!userRow) {
+      // Diagnostic check
+      const anyUser = database.prepare('SELECT * FROM users WHERE email = ?').get(email);
+      const userCount = database.prepare('SELECT count(*) as c FROM users').get();
+      
+      const debugInfo = {
+        receivedEmail: email,
+        emailLen: email.length,
+        foundWithoutActiveCheck: !!anyUser,
+        userInDb: anyUser,
+        totalUsers: userCount
+      };
+      
+      console.error('[AUTH DEBUG]', debugInfo);
+
       // Record failed attempt - user not found
       recordLoginAttempt(database, email, ipAddress, false, userAgent, 'User not found');
       logLoginFailure(database, email, 'User not found', ipAddress, userAgent);
-      throw new Error('Invalid email or password');
+      throw new Error(`User not found debug: ${JSON.stringify(debugInfo)}`);
     }
 
     // Verify password hash for all users
@@ -216,7 +230,7 @@ export class AuthServiceV2 {
       // Record failed attempt - no password hash
       recordLoginAttempt(database, email, ipAddress, false, userAgent, 'No password hash');
       logLoginFailure(database, email, 'No password hash', ipAddress, userAgent);
-      throw new Error('Invalid email or password');
+      throw new Error('Password not set for this account');
     }
 
     const isValidPassword = await bcrypt.compare(password, userRow.password_hash);
@@ -224,7 +238,7 @@ export class AuthServiceV2 {
       // Record failed attempt - invalid password
       recordLoginAttempt(database, email, ipAddress, false, userAgent, 'Invalid password');
       logLoginFailure(database, email, 'Invalid password', ipAddress, userAgent);
-      throw new Error('Invalid email or password');
+      throw new Error('Invalid password');
     }
 
     // Password valid - record successful attempt and clear failures
@@ -999,6 +1013,401 @@ export class AuthServiceV2 {
       status: row.status,
       joined_at: row.joined_at,
     };
+  }
+}
+
+// ============================================================================
+// PHASE 5: CAPABILITY-BASED AUTHORIZATION (World Model Alignment)
+// ============================================================================
+//
+// The key principle: Authorization checks CAPABILITIES, not principal_kind.
+// This implements Falsification Test F1: Principal Equivalence
+// - Two principals with identical capabilities get identical permissions
+// - Regardless of whether they are human, agent, or contact
+//
+// ============================================================================
+
+/**
+ * Principal capabilities - mirrors PrincipalCapabilitiesSchema in nodes.ts
+ */
+export interface PrincipalCapabilities {
+  can_upload: boolean;       // Create sources from uploads
+  can_run_tools: boolean;    // Execute tool calls (agents)
+  can_import_web: boolean;   // Fetch external sources (agents)
+  can_own_account: boolean;  // Be account owner (humans)
+  can_approve_runs: boolean; // Approve agent outputs (humans)
+}
+
+/**
+ * Default capabilities by principal kind (for new principals)
+ */
+export const DEFAULT_CAPABILITIES: Record<'human' | 'agent' | 'contact', PrincipalCapabilities> = {
+  human: {
+    can_upload: true,
+    can_run_tools: false,
+    can_import_web: false,
+    can_own_account: true,
+    can_approve_runs: true,
+  },
+  agent: {
+    can_upload: true,
+    can_run_tools: true,
+    can_import_web: true,
+    can_own_account: false,
+    can_approve_runs: false,
+  },
+  contact: {
+    can_upload: false,
+    can_run_tools: false,
+    can_import_web: false,
+    can_own_account: false,
+    can_approve_runs: false,
+  },
+};
+
+/**
+ * Action types that can be authorized via capabilities
+ */
+export type CapabilityAction =
+  | 'upload'         // maps to can_upload
+  | 'run_tools'      // maps to can_run_tools
+  | 'import_web'     // maps to can_import_web
+  | 'own_account'    // maps to can_own_account
+  | 'approve_runs';  // maps to can_approve_runs
+
+/**
+ * Map action to capability field
+ */
+const ACTION_TO_CAPABILITY: Record<CapabilityAction, keyof PrincipalCapabilities> = {
+  upload: 'can_upload',
+  run_tools: 'can_run_tools',
+  import_web: 'can_import_web',
+  own_account: 'can_own_account',
+  approve_runs: 'can_approve_runs',
+};
+
+/**
+ * Authorization result with reason
+ */
+export interface AuthorizationResult {
+  allowed: boolean;
+  reason: string;
+  capability?: keyof PrincipalCapabilities;
+}
+
+/**
+ * Capability-based authorization service
+ *
+ * CRITICAL: This service implements the World Model invariant:
+ * "Authorization checks capabilities, not kind"
+ *
+ * Falsification Test F1: Principal Equivalence
+ * Given: Human principal H and Agent principal A with IDENTICAL capability flags
+ * When: Both attempt the same action
+ * Then: Permission engine makes IDENTICAL decision for both
+ * If: Outcomes differ because of principal_kind → model is broken
+ */
+export class CapabilityAuthorizationService {
+  constructor(private db: SQLiteClient) {}
+
+  /**
+   * Get capabilities for a principal
+   *
+   * Resolution order:
+   * 1. Principal node's `capabilities` field (if Principal node)
+   * 2. Policy profile (if policy_profile_id set)
+   * 3. Default capabilities for principal_kind
+   * 4. Default human capabilities (fallback)
+   */
+  async getPrincipalCapabilities(
+    principalId: string,
+    accountId: string
+  ): Promise<PrincipalCapabilities> {
+    const database = this.db.getDatabase();
+
+    // Try to find Principal node
+    const principalNode = database
+      .prepare(
+        `
+        SELECT kind, properties FROM nodes
+        WHERE id = ? AND account_id = ? AND kind IN ('Principal', 'UserNode', 'AgentNode')
+      `
+      )
+      .get(principalId, accountId) as { kind: string; properties: string } | undefined;
+
+    if (!principalNode) {
+      // Principal not found - return default human capabilities
+      console.warn(
+        `[AUTH] Principal not found: ${principalId} in account ${accountId}, using default capabilities`
+      );
+      return { ...DEFAULT_CAPABILITIES.human };
+    }
+
+    const properties = JSON.parse(principalNode.properties || '{}');
+
+    // For Principal nodes, use capabilities from properties
+    if (principalNode.kind === 'Principal') {
+      if (properties.capabilities) {
+        return {
+          can_upload: properties.capabilities.can_upload ?? true,
+          can_run_tools: properties.capabilities.can_run_tools ?? false,
+          can_import_web: properties.capabilities.can_import_web ?? false,
+          can_own_account: properties.capabilities.can_own_account ?? false,
+          can_approve_runs: properties.capabilities.can_approve_runs ?? false,
+        };
+      }
+
+      // Check policy profile
+      if (properties.policy_profile_id) {
+        const profile = database
+          .prepare(
+            `
+            SELECT can_upload, can_run_tools, can_import_web, can_own_account, can_approve_runs
+            FROM policy_profiles
+            WHERE id = ? AND account_id = ?
+          `
+          )
+          .get(properties.policy_profile_id, accountId) as any;
+
+        if (profile) {
+          return {
+            can_upload: profile.can_upload === 1,
+            can_run_tools: profile.can_run_tools === 1,
+            can_import_web: profile.can_import_web === 1,
+            can_own_account: profile.can_own_account === 1,
+            can_approve_runs: profile.can_approve_runs === 1,
+          };
+        }
+      }
+
+      // Use default for principal_kind
+      const principalKind = properties.principal_kind || 'human';
+      return { ...DEFAULT_CAPABILITIES[principalKind as keyof typeof DEFAULT_CAPABILITIES] };
+    }
+
+    // For legacy UserNode - use human defaults
+    if (principalNode.kind === 'UserNode') {
+      return { ...DEFAULT_CAPABILITIES.human };
+    }
+
+    // For legacy AgentNode - use agent defaults
+    if (principalNode.kind === 'AgentNode') {
+      return { ...DEFAULT_CAPABILITIES.agent };
+    }
+
+    // Fallback
+    return { ...DEFAULT_CAPABILITIES.human };
+  }
+
+  /**
+   * Check if a principal can perform an action
+   *
+   * CRITICAL: This checks CAPABILITIES, not principal_kind
+   * This is the core implementation of the World Model invariant
+   */
+  async canPerformAction(
+    principalId: string,
+    accountId: string,
+    action: CapabilityAction
+  ): Promise<AuthorizationResult> {
+    const capabilities = await this.getPrincipalCapabilities(principalId, accountId);
+    const capabilityField = ACTION_TO_CAPABILITY[action];
+    const allowed = capabilities[capabilityField];
+
+    return {
+      allowed,
+      reason: allowed
+        ? `Principal has ${capabilityField} capability`
+        : `Principal lacks ${capabilityField} capability`,
+      capability: capabilityField,
+    };
+  }
+
+  /**
+   * Check if a principal can upload sources
+   */
+  async canUpload(principalId: string, accountId: string): Promise<boolean> {
+    const result = await this.canPerformAction(principalId, accountId, 'upload');
+    return result.allowed;
+  }
+
+  /**
+   * Check if a principal can run tools (execute agent tasks)
+   */
+  async canRunTools(principalId: string, accountId: string): Promise<boolean> {
+    const result = await this.canPerformAction(principalId, accountId, 'run_tools');
+    return result.allowed;
+  }
+
+  /**
+   * Check if a principal can import from web (fetch external sources)
+   */
+  async canImportWeb(principalId: string, accountId: string): Promise<boolean> {
+    const result = await this.canPerformAction(principalId, accountId, 'import_web');
+    return result.allowed;
+  }
+
+  /**
+   * Check if a principal can own accounts
+   */
+  async canOwnAccount(principalId: string, accountId: string): Promise<boolean> {
+    const result = await this.canPerformAction(principalId, accountId, 'own_account');
+    return result.allowed;
+  }
+
+  /**
+   * Check if a principal can approve agent runs
+   */
+  async canApproveRuns(principalId: string, accountId: string): Promise<boolean> {
+    const result = await this.canPerformAction(principalId, accountId, 'approve_runs');
+    return result.allowed;
+  }
+
+  /**
+   * Verify account boundary integrity
+   *
+   * CRITICAL: This implements the World Model invariant:
+   * "Account is the hard boundary - every node/edge belongs to exactly ONE account"
+   *
+   * Returns false if the principal is trying to access resources outside their account
+   */
+  async verifyAccountBoundary(
+    principalId: string,
+    principalAccountId: string,
+    targetAccountId: string
+  ): Promise<AuthorizationResult> {
+    // Strict account boundary check
+    if (principalAccountId !== targetAccountId) {
+      return {
+        allowed: false,
+        reason: `Account boundary violation: principal in account ${principalAccountId} cannot access resources in account ${targetAccountId}`,
+      };
+    }
+
+    return {
+      allowed: true,
+      reason: 'Same account - access allowed',
+    };
+  }
+
+  /**
+   * Create a Principal node for a user
+   *
+   * This migrates a UserNode to a Principal node while preserving capabilities
+   */
+  async createPrincipalForUser(
+    userId: string,
+    accountId: string,
+    displayName: string,
+    email?: string
+  ): Promise<string> {
+    const database = this.db.getDatabase();
+    const now = Date.now();
+    const principalId = `principal_${userId}`;
+
+    const properties = JSON.stringify({
+      display_name: displayName,
+      email: email,
+      principal_kind: 'human',
+      capabilities: DEFAULT_CAPABILITIES.human,
+    });
+
+    database
+      .prepare(
+        `
+        INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
+        VALUES (?, 'Principal', ?, ?, ?, ?, ?)
+      `
+      )
+      .run(principalId, properties, accountId, userId, now, now);
+
+    return principalId;
+  }
+
+  /**
+   * Create a Principal node for an agent
+   */
+  async createPrincipalForAgent(
+    agentId: string,
+    accountId: string,
+    displayName: string,
+    createdBy: string,
+    agentConfig?: {
+      model_policy?: string;
+      system_prompt?: string;
+      max_tokens?: number;
+      tools_allowed?: string[];
+    }
+  ): Promise<string> {
+    const database = this.db.getDatabase();
+    const now = Date.now();
+    const principalId = `principal_agent_${agentId}`;
+
+    const properties = JSON.stringify({
+      display_name: displayName,
+      principal_kind: 'agent',
+      capabilities: DEFAULT_CAPABILITIES.agent,
+      agent_config: agentConfig,
+    });
+
+    database
+      .prepare(
+        `
+        INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
+        VALUES (?, 'Principal', ?, ?, ?, ?, ?)
+      `
+      )
+      .run(principalId, properties, accountId, createdBy, now, now);
+
+    return principalId;
+  }
+
+  /**
+   * Update principal capabilities
+   *
+   * This allows promoting/demoting principals by changing their capabilities
+   * regardless of their principal_kind
+   */
+  async updatePrincipalCapabilities(
+    principalId: string,
+    accountId: string,
+    capabilities: Partial<PrincipalCapabilities>
+  ): Promise<void> {
+    const database = this.db.getDatabase();
+
+    // Get current properties
+    const node = database
+      .prepare(
+        `
+        SELECT properties FROM nodes
+        WHERE id = ? AND account_id = ? AND kind = 'Principal'
+      `
+      )
+      .get(principalId, accountId) as { properties: string } | undefined;
+
+    if (!node) {
+      throw new Error(`Principal not found: ${principalId}`);
+    }
+
+    const properties = JSON.parse(node.properties);
+    const currentCapabilities = properties.capabilities || DEFAULT_CAPABILITIES.human;
+
+    // Merge new capabilities
+    properties.capabilities = {
+      ...currentCapabilities,
+      ...capabilities,
+    };
+
+    const now = Date.now();
+    database
+      .prepare(
+        `
+        UPDATE nodes
+        SET properties = ?, updated_at = ?
+        WHERE id = ? AND account_id = ? AND kind = 'Principal'
+      `
+      )
+      .run(JSON.stringify(properties), now, principalId, accountId);
   }
 }
 

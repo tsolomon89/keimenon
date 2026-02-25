@@ -106,6 +106,7 @@ function createWrappedApiContext(rawContext: any, dbPath: string) {
       'X-Test-DB-Path': dbPath, // Always include the test DB path header
       ...(requestOptions.headers || {}), // Merge with request-specific headers (e.g., Authorization)
     };
+    console.log(`[Wrapper] Merged headers for request:`, JSON.stringify(merged.headers));
     return merged;
   };
 
@@ -212,16 +213,26 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
 
       // Calculate worker DB path before restoration
       const testDbsDir = path.resolve(process.cwd(), '.test-dbs');
-      const workerDbPath = path.join(testDbsDir, `worker-${workerInfo.workerIndex}.db`);
+      const workerDbAbsolutePath = path.join(testDbsDir, `worker-${workerInfo.workerIndex}.db`);
+
+      // CRITICAL FIX: Use relative path for X-Test-DB-Path header
+      // Absolute paths break multipart/form-data requests in some environments (Windows)
+      // The middleware resolves relative paths correctly
+      // Server runs in project root (usually), so path should be relative to project root
+      // If server runs in apps/api, this might need adjustment, but standard dev/test flow is from root
+      const projectRoot = path.resolve(__dirname, '../../..');
+      // const apiRoot = path.join(projectRoot, 'apps/api'); <--- REMOVED
+      const relativeDbPath = path.relative(projectRoot, workerDbAbsolutePath);
 
       // CRITICAL FIX #8: Close cached API database connection before restoring snapshot
       // This releases Windows file locks that prevent file deletion
       try {
         const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4001';
+        // Use ABSOLUTE path for closing connection because utility uses absolute path as key
         const closeResponse = await fetch(`${API_BASE_URL}/api/v1/test/close-connection`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ testDbPath: workerDbPath }),
+          body: JSON.stringify({ testDbPath: workerDbAbsolutePath }),
         });
 
         if (closeResponse.ok) {
@@ -244,12 +255,12 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
       }
 
       // Restore pristine snapshot to worker DB
-      const dbPath = await snapshotManager.restoreToWorker(workerInfo.workerIndex);
+      await snapshotManager.restoreToWorker(workerInfo.workerIndex);
 
-      console.log(`[Worker ${workerInfo.workerIndex}] Restored from snapshot: ${dbPath}`);
+      console.log(`[Worker ${workerInfo.workerIndex}] Restored from snapshot: ${workerDbAbsolutePath}`);
 
-      // Provide DB path to tests
-      await use(dbPath);
+      // Provide RELATIVE DB path to tests (so header is relative)
+      await use(relativeDbPath);
 
       // Cleanup after all tests in this worker complete
       // (Optional - comment out to keep DBs for debugging)

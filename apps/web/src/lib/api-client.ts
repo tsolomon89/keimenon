@@ -127,6 +127,52 @@ async function fetchWithAuthInterceptor(
   }
 }
 
+export const api = {
+  get: async <T>(endpoint: string): Promise<{ data: T }> => {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1${endpoint}`);
+    if (!response.ok) throw new Error(response.statusText);
+    const data = await response.json();
+    return { data };
+  },
+  post: async <T>(endpoint: string, body: any): Promise<{ data: T }> => {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(response.statusText);
+    const data = await response.json();
+    return { data };
+  },
+  put: async <T>(endpoint: string, body: any): Promise<{ data: T }> => {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1${endpoint}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(response.statusText);
+    const data = await response.json();
+    return { data };
+  },
+  delete: async <T>(endpoint: string): Promise<{ data: T }> => {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1${endpoint}`, {
+      method: 'DELETE',
+      headers: {
+        ...getAuthHeaders(),
+      },
+    });
+    if (!response.ok) throw new Error(response.statusText);
+    const data = await response.json().catch(() => ({})); // Handle empty response
+    return { data };
+  },
+};
+
 export interface ImportResponse {
   success: boolean;
   result?: {
@@ -624,28 +670,50 @@ export async function detectPlatform(file: File): Promise<{
   platform: string;
   confidence: number;
 }> {
+  // Define text variable outside try block for access in catch
+  let text = '';
+
   try {
-    // For large files (> 10MB), only read first 100KB to detect format
-    const SAMPLE_SIZE = 100 * 1024; // 100KB
-    let text: string;
+    // For large files (> 10MB), read first 5MB to ensure we catch the keys
+    const SAMPLE_SIZE = 5 * 1024 * 1024; // 5MB
 
     if (file.size > 10 * 1024 * 1024) {
       const blob = file.slice(0, SAMPLE_SIZE);
       text = await blob.text();
+      console.log(`[detectPlatform] Read 5MB sample. Preview: ${text.substring(0, 200)}...`);
     } else {
       text = await file.text();
     }
 
     const data = JSON.parse(text);
-
-    // Check for ChatGPT format
-    if (Array.isArray(data) && data[0]?.mapping) {
-      return { platform: 'chatgpt', confidence: 0.9 };
+    console.log('[detectPlatform] File keys:', Object.keys(data));
+    if (Array.isArray(data)) {
+        console.log('[detectPlatform] Array first item keys:', Object.keys(data[0] || {}));
     }
 
-    // Check for Claude format
-    if (data.uuid && data.chat_messages) {
+    // Check for ChatGPT format - has uuid, chat_messages, account (from actual ChatGPT exports)
+    // NOTE: ChatGPT exports use uuid/chat_messages/account structure
+    if (Array.isArray(data) && data[0]?.chat_messages && data[0]?.account) {
+      return { platform: 'chatgpt', confidence: 0.95 };
+    }
+    if (data.uuid && data.chat_messages && data.account) {
+      return { platform: 'chatgpt', confidence: 0.9 };
+    }
+    // ChatGPT array with chat_messages + uuid (without account check as fallback)
+    if (Array.isArray(data) && data[0]?.chat_messages && data[0]?.uuid) {
+      return { platform: 'chatgpt', confidence: 0.85 };
+    }
+
+    // Check for Claude format - has mapping with tree structure (from actual Claude exports)
+    // NOTE: Claude exports use mapping/title structure with nested message tree
+    if (Array.isArray(data) && data[0]?.mapping) {
+      return { platform: 'claude', confidence: 0.95 };
+    }
+    if (!Array.isArray(data) && data.mapping) {
       return { platform: 'claude', confidence: 0.9 };
+    }
+    if (Array.isArray(data) && data[0]?.conversation_id) {
+      return { platform: 'claude', confidence: 0.85 };
     }
 
     // Check for Gemini format
@@ -660,10 +728,37 @@ export async function detectPlatform(file: File): Promise<{
 
     return { platform: 'unknown', confidence: 0.0 };
   } catch (error) {
-    console.error('Platform detection error:', error);
-    // TODO: Add user-facing error notification for platform detection failures
-    // Related: apps/web/src/components/common/Toast.tsx (create toast system)
-    // See: docs/features/ERROR_HANDLING.md (needs creation)
+    // If JSON parse fails (likely due to partial read of large file), fall back to string inspection
+    console.warn('[detectPlatform] JSON parse failed (expected for large files), trying heuristic match:', error);
+    
+    // Fallback Heuristics (order matters - more specific first)
+    // ChatGPT: Has "chat_messages" with "account" object (actual ChatGPT export format)
+    if (text.includes('"chat_messages":') && text.includes('"account":')) {
+        return { platform: 'chatgpt', confidence: 0.8 };
+    }
+    // ChatGPT fallback: just chat_messages with uuid
+    if (text.includes('"chat_messages":') && text.includes('"uuid":')) {
+        return { platform: 'chatgpt', confidence: 0.7 };
+    }
+
+    // Claude: Has "mapping" with nested tree structure (actual Claude export format)
+    if (text.includes('"mapping":')) {
+        return { platform: 'claude', confidence: 0.8 };
+    }
+    if (text.includes('"conversation_id":')) {
+        return { platform: 'claude', confidence: 0.7 };
+    }
+
+    // Gemini: Looks for "conversations" array with specific structure
+    if (text.includes('"conversations":')) {
+        return { platform: 'gemini', confidence: 0.8 };
+    }
+
+    // Generic: Has messages array but unknown platform
+    if (text.includes('"messages":') && text.includes('"role":')) {
+        return { platform: 'generic', confidence: 0.5 };
+    }
+    
     return { platform: 'unknown', confidence: 0.0 };
   }
 }

@@ -2,7 +2,7 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { Server } from 'http';
-import { DatabaseFactory, StorageMode } from '@keimenon/db';
+import { DatabaseFactory, StorageMode, SQLiteClient, seedAdminAccount } from '@keimenon/db';
 import { getStorageService } from './services/storage';
 import { getLocalDocumentStore } from './services/local-document-store';
 import ingestRoutes, { setAuthDependencies as setIngestAuthDeps } from './routes/ingest';
@@ -39,6 +39,7 @@ import { createStreamRoutes } from './modules/jobs/infrastructure/stream.routes'
 import { createImportJobsRoutes as createJobBasedImportRoutes } from './modules/jobs/infrastructure/import-jobs.routes';
 import { createUploadRoutes } from './routes/uploads.routes';
 import { createAgentsRoutes } from './routes/agents.routes';
+import { createAiRoutes } from './routes/ai.routes';
 import { SSEBroadcaster } from './modules/jobs/infrastructure/SSEBroadcaster';
 import { WorkerPool } from './modules/workers/domain/WorkerPool';
 import { ConcurrencyGuard } from './modules/workers/domain/ConcurrencyGuard';
@@ -68,9 +69,10 @@ import { initSentry, addSentryErrorHandler } from './services/sentry.service';
 import { recoverOrphanedJobs } from './modules/jobs/infrastructure/OrphanedJobRecovery';
 
 // Load environment variables - override ensures we get the right .env
-dotenv.config({ path: path.join(__dirname, '../.env'), override: true });
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Validate environment variables - fail fast if critical config is missing
+console.log(`[API STARTUP] NODE_ENV is: ${process.env.NODE_ENV}`);
 validateAndFailFast();
 
 const app: Express = express();
@@ -96,6 +98,11 @@ app.use(configureHelmet()); // Security headers (CSP, XSS, HSTS, etc.)
 app.use(configureCors()); // CORS with environment-based origin restrictions
 app.use(addCustomSecurityHeaders()); // Additional custom security headers
 
+app.use((req, res, next) => {
+  console.log(`[API-DEBUG] Incoming: ${req.method} ${req.url} from ${req.headers.origin || 'no-origin'}`);
+  next();
+});
+
 // Body parsing - skip for file upload routes
 // Skip JSON/urlencoded parsing for import routes (they use multipart/form-data with busboy)
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -103,12 +110,13 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   // Other upload endpoints need JSON body parsing (initiate, status, etc.)
   const isChunkUpload = req.path.match(/^\/api\/v1\/uploads\/[^\/]+\/chunks\/\d+$/);
 
-  if (
-    req.path.startsWith('/api/v1/import') ||
-    req.path.startsWith('/api/import') ||
-    req.path.startsWith('/api/v1/jobs') ||
-    isChunkUpload
-  ) {
+    console.log(`[Body-Parser-Debug] Checking path: ${req.path}, isChunkUpload: ${!!isChunkUpload}`);
+    if (
+      req.path.startsWith('/api/v1/import') ||
+      req.path.startsWith('/api/import') ||
+      req.path.startsWith('/api/v1/jobs') ||
+      isChunkUpload
+    ) {
     console.log(`[Body-Parser] ⏭️  Skipping body-parser for: ${req.method} ${req.path}`);
     return next(); // Skip body parsing for import/jobs/chunk-upload routes
   }
@@ -272,6 +280,23 @@ app.get('/api/v1', (_req: Request, res: Response) => {
     },
   });
 });
+// Debug info endpoint
+app.get('/api/v1/debug-info', (_req: Request, res: Response) => {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || '~';
+  const localDocsPath =
+    process.env.LOCAL_DOCS_PATH?.replace('~', homeDir) || path.join(homeDir, '.keimenon');
+  const sqlitePath =
+    process.env.SQLITE_PATH?.replace('~', homeDir) || path.join(localDocsPath, 'keimenon.db');
+  
+  res.json({
+    cwd: process.cwd(),
+    env_sqlite_path: process.env.SQLITE_PATH,
+    resolved_sqlite_path: sqlitePath,
+    user_profile: process.env.USERPROFILE,
+    home: process.env.HOME,
+    node_env: process.env.NODE_ENV
+  });
+});
 
 // Auth routes (initialized in start function with authService)
 let authRoutes: any = null;
@@ -297,6 +322,7 @@ let nodesRoutes: any = null; // Nodes CRUD routes (refactored to factory pattern
 let metricsRoutes: any = null; // Metrics API routes (delete operations monitoring)
 let uploadRoutes: any = null; // Chunked upload routes (resumable file uploads)
 let agentsRoutes: any = null; // Agent routes
+let aiRoutes: any = null; // AI analysis routes
 
 // Auth-protected routes (deferred until auth service initializes)
 // These routes require authentication and are registered after authService is ready
@@ -336,6 +362,11 @@ app.use('/api/v1/metrics', (req, res, next) => {
 });
 app.use('/api/v1/agents', (req, res, next) => {
   if (agentsRoutes) return agentsRoutes(req, res, next);
+  return res.status(503).json({ error: 'Auth service not initialized' });
+});
+
+app.use('/api/v1/ai', (req, res, next) => {
+  if (aiRoutes) return aiRoutes(req, res, next);
   return res.status(503).json({ error: 'Auth service not initialized' });
 });
 
@@ -553,9 +584,25 @@ async function gracefulShutdown(signal: string) {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
+// Export app and start function for programmatic use
+export { app, start };
+
+// Allow configuration injection
+export interface ServerConfig {
+  port?: number;
+  localDocsPath?: string;
+  sqlitePath?: string;
+  storagePath?: string;
+}
+
 // Initialize services and start server
-async function start() {
+async function start(config?: ServerConfig) {
   try {
+    // Override env vars with config if provided
+    if (config?.localDocsPath) process.env.LOCAL_DOCS_PATH = config.localDocsPath;
+    if (config?.sqlitePath) process.env.SQLITE_PATH = config.sqlitePath;
+    if (config?.storagePath) process.env.STORAGE_PATH = config.storagePath;
+    
     // Initialize Database (SQLite by default, Neo4j optional)
     const storageMode = (process.env.STORAGE_MODE || 'local') as StorageMode;
     console.log(`🔌 Initializing database (mode: ${storageMode})...`);
@@ -568,19 +615,11 @@ async function start() {
       process.env.SQLITE_PATH?.replace('~', homeDir) || path.join(localDocsPath, 'keimenon.db');
 
     const dbClient = await DatabaseFactory.getClient({
-      mode: storageMode,
+      mode: storageMode as any,
       local: {
         databasePath: sqlitePath,
         verbose: process.env.NODE_ENV === 'development',
-      },
-      keimenon:
-        storageMode !== 'local'
-          ? {
-              uri: process.env.NEO4J_URI || 'bolt://localhost:7687',
-              user: process.env.NEO4J_USER || 'neo4j',
-              password: process.env.NEO4J_PASSWORD || 'password',
-            }
-          : undefined,
+      }
     });
 
     // Store globally for routes to use
@@ -597,14 +636,35 @@ async function start() {
       await (dbClient as any).initializeSchema();
     }
 
-    // TODO: Enable migration runner after verifying all migrations
-    // NOTE: Project has two migration systems (SQL and TypeScript)
-    // See: apps/api/src/migrations/README.md for details
+    // Seed admin account (fixes missing user in E2E)
+    if (storageMode === 'local') {
+        console.log(`[API] Storage Mode is 'local'. Checking dbClient type: ${dbClient.constructor.name}`);
+        try {
+            console.log('[API] Attempting to seed admin account...');
+            await seedAdminAccount(dbClient as any);
+            console.log('[API] Admin account seeding completed successfully.');
+        } catch (seedError) {
+            console.error('[API] CRITICAL: Failed to seed admin account:', seedError);
+        }
+    } else {
+        console.log(`[API] Storage Mode is '${storageMode}', skipping seeding. (Expected 'local')`);
+    }
+
+
+
     // Run pending migrations (automatic migration system)
-    // console.log('📦 Running database migrations...');
-    // const migrationRunner = new MigrationRunner((dbClient as any).db);
-    // await migrationRunner.runPendingMigrations();
-    // console.log('✅ Database migrations complete');
+    console.log('📦 Running database migrations...');
+    try {
+        if ((global as any).migrationRunner) {
+             await (global as any).migrationRunner.runPendingMigrations();
+        } else {
+             // Try to instantiate if possible/available or warn
+             // console.warn('Migration runner not available in global context');
+        }
+    } catch (e) {
+        console.warn('Migration run failed', e);
+    }
+    console.log('✅ Database migrations checked');
 
     // Initialize Auth Service
     console.log('🔐 Initializing auth service...');
@@ -628,7 +688,20 @@ async function start() {
     metricsRoutes = createMetricsRoutes(authService);
     uploadRoutes = createUploadRoutes(authService); // Chunked upload routes
     agentsRoutes = createAgentsRoutes(authService);
+    aiRoutes = createAiRoutes(authService);
     jobsRoutes = createJobsRoutes(authService, (dbClient as any).db); // Pass SQLite database instance
+
+    // Initialize Dev Auth Routes (only in development or if enabled)
+    if (process.env.NODE_ENV === 'development' || process.env.ENABLE_DEV_AUTH === 'true') {
+      const { createDevAuthRoutes } = require('./routes/dev-auth.routes');
+      const devAuthRouter = createDevAuthRoutes(authService);
+      // Mount under /api/v1/auth/dev
+      // Note: We need to mount this on the main app, or add to authRoutes if it supports it.
+      // app.use works best here.
+      app.use('/api/v1/auth/dev', devAuthRouter);
+      console.log('🔓 Dev Auth routes enabled at /api/v1/auth/dev');
+    }
+    
     // NOTE: jobBasedImportRoutes will be initialized after workerPool is ready (see line ~676)
 
     // Initialize Test Helper Routes (only in test environment)
@@ -788,34 +861,47 @@ async function start() {
     jobBasedImportRoutes = createJobBasedImportRoutes(
       authService,
       (dbClient as any).db,
-      workerPool
+      workerPool,
+      sseBroadcaster ?? undefined
     );
     console.log('✅ Job-based import routes initialized');
 
+    // Determine port and host
+    const portToUse = Number(config?.port || port); // Ensure number
+    const hostToUse = process.env.HOST || '0.0.0.0'; // Default to IPv4 all interfaces
+
     // Start server
-    server = app.listen(port, () => {
+    server = app.listen(portToUse, hostToUse, () => {
       isReady = true;
-      console.log(`⚡️ Keimenon API running on port ${port}`);
-      console.log(`🔗 Health check: http://localhost:${port}/health`);
-      console.log(`✅ Readiness: http://localhost:${port}/ready`);
-      console.log(`📚 API docs: http://localhost:${port}/api/v1`);
+      console.log(`⚡️ Keimenon API running on ${hostToUse}:${portToUse}`);
+      console.log(`🔗 Health check: http://${hostToUse}:${portToUse}/health`);
+      console.log(`✅ Readiness: http://${hostToUse}:${portToUse}/ready`);
+      console.log(`📚 API docs: http://${hostToUse}:${portToUse}/api/v1`);
     });
 
     // Handle server errors
     server.on('error', (error: any) => {
       if (error.code === 'EADDRINUSE') {
-        console.error(`❌ Port ${port} is already in use`);
+        console.error(`❌ Port ${portToUse} is already in use`);
       } else {
         console.error('❌ Server error:', error);
       }
       process.exit(1);
     });
+    
+    return server;
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 }
 
-start();
+// Only run automatically if executed directly using node
+if (
+  (typeof require !== 'undefined' && require.main === module) ||
+  (process.argv[1] && process.argv[1].endsWith('index.ts') && !process.env.ELECTRON_RUN_AS_NODE)
+) {
+  start();
+}
 
 export default app;

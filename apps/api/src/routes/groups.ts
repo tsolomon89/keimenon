@@ -127,12 +127,15 @@ router.post('/recompute', async (req: Request, res: Response) => {
 
 /**
  * GET /api/v1/groups
- * List all groups
+ * List all groups with optional pagination
+ * Query params: limit (default 100), offset (default 0)
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
     // Get storage mode from query or config
     const mode = (req.query.mode as string) || 'local';
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
+    const offset = parseInt(req.query.offset as string) || 0;
 
     const db = await DatabaseFactory.getClient({
       mode: mode as any,
@@ -141,12 +144,18 @@ router.get('/', async (req: Request, res: Response) => {
       },
     });
 
-    const groups = await db.getNodesByKind?.('Group');
+    // Use pagination to avoid loading all groups at once
+    const groups = await db.getNodesByKind?.('Group', { limit, offset });
+    const total = await db.countNodesByKind?.('Group');
 
     return res.json({
       success: true,
       groups: groups || [],
       count: groups?.length || 0,
+      total: total || 0,
+      limit,
+      offset,
+      hasMore: offset + (groups?.length || 0) < (total || 0),
     });
   } catch (error: any) {
     console.error('List groups error:', error);

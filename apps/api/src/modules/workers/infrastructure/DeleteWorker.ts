@@ -38,6 +38,23 @@ export class DeleteWorker extends BaseWorker {
     super();
   }
 
+  /**
+   * Get database client for job (test DB if testContext, otherwise production DB)
+   */
+  private async getDbClientForJob(job: Job): Promise<DatabaseClient> {
+    const testDbPath = job.config.testContext?.dbPath;
+
+    if (testDbPath) {
+      const path = await import('path');
+      console.log(`[DeleteWorker] Using test database: ${path.basename(testDbPath)}`);
+      const { getDbClient } = await import('../../../utils/get-db-client');
+      const mockReq = { testDbPath } as any;
+      return await getDbClient(mockReq);
+    }
+
+    return this.db; // Production database
+  }
+
   validate(job: Job): boolean {
     // Check required config
     if (!job.config.deleteScope) {
@@ -54,9 +71,22 @@ export class DeleteWorker extends BaseWorker {
   }
 
   protected async execute(job: Job, context: WorkerContext): Promise<WorkerResult> {
-    const scope = job.config.deleteScope;
+    const scope = job.config.deleteScope!;
 
     console.log(`🗑️ Delete worker processing ${scope} for job ${job.id}`);
+    
+    // DEBUG: Log to file
+    try {
+      const debugLog = `
+Timestamp: ${new Date().toISOString()}
+Job ID: ${job.id}
+Scope: ${scope}
+Account ID: "${job.accountId}"
+DB Path: ${(this.db as any).databasePath}
+Node Count Check: Starting...
+`;
+      await fs.writeFile(path.join(process.cwd(), 'delete-worker-debug.log'), debugLog, { flag: 'a' });
+    } catch (e) { console.error('Failed to write debug log', e); }
 
     // ⏱️ Start performance timing for metrics
     const startTime = Date.now();
@@ -66,11 +96,18 @@ export class DeleteWorker extends BaseWorker {
     let changeTracker: ChangeTracker = createChangeTracker();
 
     try {
+      // Get correct database client
+      const dbClient = await this.getDbClientForJob(job);
+
       // Step 1: Count nodes to delete
       await this.reportProgress(job, 0, 100, 'Counting nodes...', context);
 
-      // @ts-ignore - TypeScript incorrectly infers accountId as potentially undefined despite Job class definition
-      const nodeCount = await this.countNodesToDelete(scope, job.accountId);
+      // @ts-ignore
+      const nodeCount = await this.countNodesToDelete(dbClient, scope, job.accountId);
+      
+      try {
+        await fs.appendFile(path.join(process.cwd(), 'delete-worker-debug.log'), `Node Count: ${nodeCount}\n`);
+      } catch (e) {}
 
       if (nodeCount === 0) {
         await this.reportProgress(job, 100, 100, 'No nodes to delete', context);
@@ -88,10 +125,11 @@ export class DeleteWorker extends BaseWorker {
       // Step 2: Delete nodes and edges (batched with progress reporting)
       await this.reportProgress(job, 10, 100, `Deleting ${nodeCount} nodes...`, context);
 
-      // @ts-ignore - TypeScript incorrectly infers accountId as potentially undefined
+      // @ts-ignore
       const deleteResult = await this.deleteNodes(
+        dbClient,
         scope,
-        job.accountId,
+        job.accountId!,
         changeTracker,
         job,
         context
@@ -107,7 +145,7 @@ export class DeleteWorker extends BaseWorker {
             message: 'Job was canceled during deletion',
           },
           metadata: {
-            changeTracker: serializeChangeTracker(changeTracker), // ✅ Include for potential rollback
+            changeTracker: serializeChangeTracker(changeTracker),
           },
         };
       }
@@ -115,16 +153,19 @@ export class DeleteWorker extends BaseWorker {
       // Step 3: Delete edges (cascade delete should handle most)
       await this.reportProgress(job, 80, 100, 'Cleaning up edges...', context);
 
-      // @ts-ignore - TypeScript incorrectly infers accountId as potentially undefined
-      const edgeResult = await this.deleteOrphanedEdges(job.accountId, changeTracker);
+      // @ts-ignore
+      const edgeResult = await this.deleteOrphanedEdges(dbClient, job.accountId, changeTracker);
       const deletedEdges = edgeResult.deletedCount;
       changeTracker = edgeResult.changeTracker;
+
+      // ✅ Update stats with edge count
+      job.updateStats({ edgesDeleted: deletedEdges });
 
       // Step 4: Clean up local files
       await this.reportProgress(job, 90, 100, 'Cleaning up files...', context);
 
-      // @ts-ignore - TypeScript incorrectly infers accountId as potentially undefined
-      await this.cleanupLocalFiles(scope, job.accountId);
+      // @ts-ignore
+      await this.cleanupLocalFiles(dbClient, scope, job.accountId);
 
       // Step 5: Complete
       await this.reportProgress(job, 100, 100, 'Deletion complete', context);
@@ -187,11 +228,11 @@ export class DeleteWorker extends BaseWorker {
    *
    * See also: getNodeIdBatch() for matching deletion logic
    */
-  private async countNodesToDelete(scope: string, accountId: string): Promise<number> {
+  private async countNodesToDelete(db: DatabaseClient, scope: string, accountId: string): Promise<number> {
     if (scope === 'keimenon') {
       // Only count keimenon data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
       // System nodes are excluded: UserNode, AccountNode, Board, Constellation
-      const result = await this.db.execute(
+      const result = await db.execute(
         `SELECT COUNT(*) as count FROM nodes
          WHERE account_id = ?
          AND kind IN (${getKeimenonDataInClause()})`,
@@ -200,7 +241,7 @@ export class DeleteWorker extends BaseWorker {
       return result.records[0]?.count || 0;
     } else if (scope === 'all-clients') {
       // Count all client data (exclude system nodes only)
-      const result = await this.db.execute(
+      const result = await db.execute(
         `SELECT COUNT(*) as count FROM nodes
          WHERE account_id = ?
          AND kind NOT IN (${getSystemNodeInClause()})`,
@@ -224,6 +265,7 @@ export class DeleteWorker extends BaseWorker {
    * This prevents blocking the Node.js event loop when deleting large datasets (10K+ nodes)
    */
   private async deleteNodes(
+    db: DatabaseClient,
     scope: string,
     accountId: string,
     changeTracker: ChangeTracker,
@@ -231,14 +273,15 @@ export class DeleteWorker extends BaseWorker {
     context?: WorkerContext
   ): Promise<{ deletedCount: number; changeTracker: ChangeTracker }> {
     console.log(`🗑️ Deleting nodes for scope: ${scope}, account: ${accountId}`);
-
+    console.log(`Checking database path (via db client): ${(db as any).databasePath || 'unknown'}`);
+    
     const BATCH_SIZE = 500;
     let totalDeleted = 0;
     let batchNumber = 0;
     let tracker = changeTracker;
 
     // Get total count for progress calculation
-    const totalNodes = await this.countNodesToDelete(scope, accountId);
+    const totalNodes = await this.countNodesToDelete(db, scope, accountId);
 
     if (totalNodes === 0) {
       return { deletedCount: 0, changeTracker: tracker };
@@ -259,7 +302,7 @@ export class DeleteWorker extends BaseWorker {
       }
 
       // Get batch of node IDs
-      const nodeIds = await this.getNodeIdBatch(scope, accountId, BATCH_SIZE);
+      const nodeIds = await this.getNodeIdBatch(db, scope, accountId, BATCH_SIZE);
 
       if (nodeIds.length === 0) {
         // No more nodes to delete
@@ -270,11 +313,11 @@ export class DeleteWorker extends BaseWorker {
       tracker = trackNodesDeleted(tracker, nodeIds);
 
       // Delete this batch (with CASCADE for edges)
-      const batchDeleted = await this.deleteBatch(nodeIds, accountId);
+      const batchDeleted = await this.deleteBatch(db, nodeIds, accountId);
       totalDeleted += batchDeleted;
 
       console.log(
-        `   Batch ${batchNumber}: Deleted ${batchDeleted} nodes (${totalDeleted}/${totalNodes} total, ${((totalDeleted / totalNodes) * 100).toFixed(1)}%)`
+        `   Batch ${batchNumber}: Requested deletion of ${nodeIds.length} IDs. Database reported ${batchDeleted} changes. (${totalDeleted}/${totalNodes} total, ${((totalDeleted / totalNodes) * 100).toFixed(1)}%)`
       );
 
       // Report progress to job system
@@ -283,6 +326,8 @@ export class DeleteWorker extends BaseWorker {
           Math.round((totalDeleted / totalNodes) * 70), // 10-80% range reserved for deletion
           70
         );
+        // ✅ Update stats for real-time SSE feedback
+        job.updateStats({ nodesDeleted: totalDeleted });
         await this.reportProgress(
           job,
           10 + progressPercent,
@@ -310,6 +355,7 @@ export class DeleteWorker extends BaseWorker {
    * See also: countNodesToDelete() for matching count logic
    */
   private async getNodeIdBatch(
+    db: DatabaseClient,
     scope: string,
     accountId: string,
     batchSize: number
@@ -336,7 +382,7 @@ export class DeleteWorker extends BaseWorker {
       return [];
     }
 
-    const result = await this.db.execute(query, params);
+    const result = await db.execute(query, params);
     return result.records.map((r: any) => r.id);
   }
 
@@ -345,7 +391,7 @@ export class DeleteWorker extends BaseWorker {
    * Uses IN clause for efficient deletion
    * CASCADE DELETE will automatically remove associated edges
    */
-  private async deleteBatch(nodeIds: string[], accountId: string): Promise<number> {
+  private async deleteBatch(db: DatabaseClient, nodeIds: string[], accountId: string): Promise<number> {
     if (nodeIds.length === 0) {
       return 0;
     }
@@ -355,7 +401,7 @@ export class DeleteWorker extends BaseWorker {
     const query = `DELETE FROM nodes WHERE account_id = ? AND id IN (${placeholders})`;
     const params = [accountId, ...nodeIds];
 
-    const result = await this.db.execute(query, params);
+    const result = await db.execute(query, params);
     return result.records[0]?.changes || nodeIds.length;
   }
 
@@ -372,11 +418,12 @@ export class DeleteWorker extends BaseWorker {
    * Delete orphaned edges (edges without valid from/to nodes)
    */
   private async deleteOrphanedEdges(
+    db: DatabaseClient,
     accountId: string,
     changeTracker: ChangeTracker
   ): Promise<{ deletedCount: number; changeTracker: ChangeTracker }> {
     // ✅ First, get the IDs of edges to be deleted (for tracking)
-    const edgeIdsResult = await this.db.execute(
+    const edgeIdsResult = await db.execute(
       `SELECT id FROM edges
        WHERE account_id = ?
        AND (
@@ -393,10 +440,10 @@ export class DeleteWorker extends BaseWorker {
     }
 
     // ✅ Track edge IDs BEFORE deletion
-    let tracker = trackEdgesDeleted(changeTracker, edgeIds);
+    const tracker = trackEdgesDeleted(changeTracker, edgeIds);
 
     // Now delete the edges
-    const result = await this.db.execute(
+    const result = await db.execute(
       `DELETE FROM edges
        WHERE account_id = ?
        AND (
@@ -418,7 +465,7 @@ export class DeleteWorker extends BaseWorker {
   /**
    * Clean up local files for deleted nodes
    */
-  private async cleanupLocalFiles(scope: string, accountId: string): Promise<void> {
+  private async cleanupLocalFiles(db: DatabaseClient, scope: string, accountId: string): Promise<void> {
     console.log(`🗑️ Cleaning up local files for account: ${accountId}`);
 
     const localStore = getLocalDocumentStore();
@@ -458,7 +505,7 @@ export class DeleteWorker extends BaseWorker {
         // Check if any node references this document
         // Documents are typically stored in conversation/message folders named by ID
         // or referenced in node properties as documentId
-        const result = await this.db.execute(
+        const result = await db.execute(
           `SELECT COUNT(*) as count FROM nodes
            WHERE account_id = ?
            AND (

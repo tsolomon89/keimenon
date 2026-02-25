@@ -1,0 +1,1 @@
+{"serverSide":{"NODE_ENV":"production"},"clientSide":{"NEXT_PUBLIC_API_URL":"http://localhost:4001","NEXT_PUBLIC_E2E_TESTING":"true"}}

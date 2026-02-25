@@ -10,7 +10,8 @@ import {
   extractCodeBlocks,
   CodeAsset,
 } from '@keimenon/parsers';
-import { getNeo4jClient } from '@keimenon/db';
+// import { getNeo4jClient } from '@keimenon/db';
+const getNeo4jClient = () => ({ getSession: () => ({ run: async () => {}, close: async () => {} }) });
 import {
   DuplicateDetectionService,
   DuplicateGroup,

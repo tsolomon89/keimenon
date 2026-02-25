@@ -7,7 +7,7 @@
  * Related: Chunked Upload System - Phase 7 (Testing)
  */
 
-import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach, expect } from 'vitest';
 import Database from 'better-sqlite3';
 import {
   SQLiteUploadSessionRepository,
@@ -50,7 +50,8 @@ describe('UploadSessionRepository', () => {
         expires_at INTEGER NOT NULL,
         completed_at INTEGER,
         is_local INTEGER NOT NULL DEFAULT 1,
-        data_tag TEXT NOT NULL DEFAULT 'real'
+        data_tag TEXT NOT NULL DEFAULT 'real',
+        metadata TEXT
       );
 
       CREATE INDEX IF NOT EXISTS idx_upload_sessions_account_id ON upload_sessions(account_id);

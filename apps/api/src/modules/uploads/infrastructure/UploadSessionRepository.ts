@@ -39,6 +39,11 @@ export interface UploadSessionRepository {
   findExpired(): Promise<UploadSession[]>;
   delete(id: string, accountId: string): Promise<void>;
   cancelAll(): Promise<void>;
+  /**
+   * Atomically record a chunk as received (race-condition safe)
+   * Returns the updated session
+   */
+  recordChunkAtomic(sessionId: string, accountId: string, chunkIndex: number): Promise<UploadSession | null>;
 }
 
 /**
@@ -325,6 +330,85 @@ export class SQLiteUploadSessionRepository implements UploadSessionRepository {
     } catch (error: any) {
       console.error(`[UploadSessionRepository] ❌ Failed to cancel uploads:`, error);
       // Don't throw - this is best-effort during shutdown
+    }
+  }
+
+  /**
+   * Atomically record a chunk as received (race-condition safe)
+   *
+   * Uses SQLite's json_set() to atomically merge the chunk into the existing
+   * chunks_received JSON object, avoiding race conditions with concurrent uploads.
+   *
+   * Also automatically transitions status to 'assembling' when all chunks received.
+   */
+  async recordChunkAtomic(
+    sessionId: string,
+    accountId: string,
+    chunkIndex: number
+  ): Promise<UploadSession | null> {
+    try {
+      const now = Date.now();
+
+      // Atomic update: merge chunk into existing chunks_received JSON
+      // json_set() creates the key if it doesn't exist, or updates it
+      const updateStmt = this.db.prepare(`
+        UPDATE upload_sessions
+        SET
+          chunks_received = json_set(
+            COALESCE(chunks_received, '{}'),
+            '$."' || ? || '"',
+            1
+          ),
+          updated_at = ?,
+          status = CASE
+            WHEN (
+              SELECT COUNT(*)
+              FROM json_each(
+                json_set(COALESCE(chunks_received, '{}'), '$."' || ? || '"', 1)
+              )
+            ) >= total_chunks
+            THEN 'assembling'
+            ELSE status
+          END
+        WHERE id = ? AND account_id = ? AND status = 'uploading'
+      `);
+
+      const result = updateStmt.run(
+        chunkIndex.toString(),
+        now,
+        chunkIndex.toString(),
+        sessionId,
+        accountId
+      );
+
+      if (result.changes === 0) {
+        console.warn(
+          `[UploadSessionRepository] ⚠️ recordChunkAtomic: No rows updated for session ${sessionId}, chunk ${chunkIndex}`
+        );
+        // Still try to load the session - it might exist but be in wrong status
+        return this.findById(sessionId, accountId);
+      }
+
+      // Load and return the updated session
+      const session = await this.findById(sessionId, accountId);
+
+      if (session) {
+        console.log(
+          `[UploadSessionRepository] ✅ Recorded chunk ${chunkIndex} atomically for ${sessionId} (${session.getProgress()}% complete, status: ${session.status})`
+        );
+      }
+
+      return session;
+    } catch (error: any) {
+      console.error(
+        `[UploadSessionRepository] ❌ Failed to record chunk ${chunkIndex} for session ${sessionId}:`,
+        error
+      );
+      throw ErrorFactory.database(
+        `Failed to record chunk: ${error.message}`,
+        'UploadSessionRepository.recordChunkAtomic',
+        { sessionId, accountId, chunkIndex, error: error.message }
+      );
     }
   }
 }

@@ -77,13 +77,13 @@ describe('DuplicateDetectionFTS5Service', () => {
     service = new DuplicateDetectionFTS5Service(db);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     if (db) {
       db.close();
     }
     if (testDbPath) {
       try {
-        fs.unlink(testDbPath);
+        await fs.unlink(testDbPath);
       } catch (error) {
         // Ignore cleanup errors
       }

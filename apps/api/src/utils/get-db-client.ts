@@ -24,6 +24,9 @@
 import { Request } from 'express';
 import path from 'path';
 
+const MODULE_INSTANCE_ID = Math.random().toString(36).substring(7);
+console.log(`[get-db-client] 🟢 Module loaded. Instance ID: ${MODULE_INSTANCE_ID}`);
+
 /**
  * Cache of worker-specific database clients by path
  * Key: absolute database path
@@ -83,7 +86,9 @@ export async function getDbClient(req?: Request): Promise<any> {
         const client = new SQLiteClient({
           databasePath: testDbPath,
           verbose: false,
+          ignoreGlobalContext: true, // CRITICAL: Use THIS specific DB, do not redirect to global Data DB
         });
+        console.log(`[getDbClient] 🔌 Created isolated client for: ${testDbPath}`);
 
         // Connect to the database
         await client.connect();
@@ -92,6 +97,7 @@ export async function getDbClient(req?: Request): Promise<any> {
         client.enableDirectWrites();
 
         // Cache the client for this database path
+        console.log(`[get-db-client] 💾 Caching DB client for: ${testDbPath}. Instance: ${MODULE_INSTANCE_ID}`);
         testClientCache.set(testDbPath, client);
 
         console.log(`[Get DB Client] ✅ Test client created and cached successfully`);
@@ -154,7 +160,16 @@ export async function getJobsDbClient(req?: Request): Promise<any> {
 
   // Test mode: jobs are in separate database file
   const testDbPath: string = req.testDbPath;
-  const jobsDbPath = testDbPath.replace('.db', '-jobs.db'); // worker-0.db → worker-0-jobs.db
+  
+  // CRITICAL FIX: Handle cases where testDbPath is already the jobs DB path
+  // (e.g. when called from WorkerPool which iterates over active test DBs)
+  let jobsDbPath = testDbPath;
+  if (!testDbPath.endsWith('-jobs.db')) {
+    const dir = path.dirname(testDbPath);
+    const ext = path.extname(testDbPath);
+    const name = path.basename(testDbPath, ext);
+    jobsDbPath = path.join(dir, `${name}-jobs${ext}`);
+  }
 
   // Check cache first
   if (testClientCache.has(jobsDbPath)) {
@@ -183,7 +198,8 @@ export async function getJobsDbClient(req?: Request): Promise<any> {
       // Create client instance for jobs database (separate file from data database)
       const client = new SQLiteClient({
         databasePath: jobsDbPath,
-        verbose: false,
+        verbose: true,
+        ignoreGlobalContext: true, // CRITICAL: Use THIS specific DB, do not redirect to global Data DB
       });
 
       await client.connect();
@@ -199,6 +215,7 @@ export async function getJobsDbClient(req?: Request): Promise<any> {
       );
 
       // Cache the client for this database path
+      console.log(`[get-db-client] 💾 Caching jobs DB client for: ${jobsDbPath}. Instance: ${MODULE_INSTANCE_ID}`);
       testClientCache.set(jobsDbPath, client);
 
       console.log(`[Get DB Client] ✅ Jobs database client created successfully`);
@@ -236,6 +253,7 @@ export function isTestIsolationActive(req: Request): boolean {
  * @returns Array of absolute paths to all active test databases
  */
 export function getActiveTestDatabases(): string[] {
+  console.log(`[get-db-client] 🔍 getActiveTestDatabases called. Instance: ${MODULE_INSTANCE_ID}. Cache size: ${testClientCache.size}`);
   return Array.from(testClientCache.keys());
 }
 
@@ -281,7 +299,10 @@ export async function closeDbConnection(testDbPath: string): Promise<boolean> {
   }
 
   // Close jobs database connection
-  const jobsDbPath = testDbPath.replace('.db', '-jobs.db');
+  const dir = path.dirname(testDbPath);
+  const ext = path.extname(testDbPath);
+  const name = path.basename(testDbPath, ext);
+  const jobsDbPath = path.join(dir, `${name}-jobs${ext}`);
 
   if (testClientCache.has(jobsDbPath)) {
     try {

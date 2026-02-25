@@ -81,7 +81,7 @@ export class SimilarityEngine {
     }
 
     let score: number;
-    let metadata: SimilarityResult['metadata'] = {
+    const metadata: SimilarityResult['metadata'] = {
       text1Length: text1.length,
       text2Length: text2.length,
       lengthRatio,
@@ -158,31 +158,33 @@ export class SimilarityEngine {
    * Calculate Levenshtein distance
    */
   private levenshteinDistance(str1: string, str2: string): number {
+    // Ensure str2 is the shorter string so we allocate less memory
+    if (str1.length < str2.length) {
+      [str1, str2] = [str2, str1];
+    }
     const len1 = str1.length;
     const len2 = str2.length;
 
-    // Create distance matrix
-    const matrix: number[][] = Array(len1 + 1)
-      .fill(null)
-      .map(() => Array(len2 + 1).fill(0));
+    // Two-row approach: O(min(m,n)) memory instead of O(m×n) full matrix
+    let prevRow = new Array(len2 + 1);
+    let currRow = new Array(len2 + 1);
 
-    // Initialize first column and row
-    for (let i = 0; i <= len1; i++) matrix[i][0] = i;
-    for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+    for (let j = 0; j <= len2; j++) prevRow[j] = j;
 
-    // Fill matrix
     for (let i = 1; i <= len1; i++) {
+      currRow[0] = i;
       for (let j = 1; j <= len2; j++) {
         const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1,      // deletion
-          matrix[i][j - 1] + 1,      // insertion
-          matrix[i - 1][j - 1] + cost // substitution
+        currRow[j] = Math.min(
+          prevRow[j] + 1,        // deletion
+          currRow[j - 1] + 1,    // insertion
+          prevRow[j - 1] + cost  // substitution
         );
       }
+      [prevRow, currRow] = [currRow, prevRow];
     }
 
-    return matrix[len1][len2];
+    return prevRow[len2];
   }
 
   /**
@@ -196,25 +198,18 @@ export class SimilarityEngine {
     const tokens1 = this.tokenize(text1, options.normalizeTokens);
     const tokens2 = this.tokenize(text2, options.normalizeTokens);
 
-    // Create term frequency vectors
+    // Build binary vectors using Set.has() — O(1) per lookup instead of O(V) filter scans
     const allTokens = new Set([...tokens1, ...tokens2]);
-    const vector1: number[] = [];
-    const vector2: number[] = [];
-
-    for (const token of allTokens) {
-      vector1.push([...tokens1].filter(t => t === token).length);
-      vector2.push([...tokens2].filter(t => t === token).length);
-    }
-
-    // Calculate dot product and magnitudes
     let dotProduct = 0;
     let magnitude1 = 0;
     let magnitude2 = 0;
 
-    for (let i = 0; i < vector1.length; i++) {
-      dotProduct += vector1[i] * vector2[i];
-      magnitude1 += vector1[i] * vector1[i];
-      magnitude2 += vector2[i] * vector2[i];
+    for (const token of allTokens) {
+      const v1 = tokens1.has(token) ? 1 : 0;
+      const v2 = tokens2.has(token) ? 1 : 0;
+      dotProduct += v1 * v2;
+      magnitude1 += v1;  // v1² === v1 for binary vectors
+      magnitude2 += v2;
     }
 
     magnitude1 = Math.sqrt(magnitude1);

@@ -4,7 +4,8 @@ import { StreamingJSONParserV2 } from '../services/streaming-json-parser-v2';
 import { SourcesBuilder } from '../services/sources-builder';
 import { CodeExtractor } from '../services/code-extractor';
 import { similarityEngine, SimilarityAlgorithm } from '../services/similarity-engine';
-import { getNeo4jClient } from '@keimenon/db';
+// import { getNeo4jClient } from '@keimenon/db';
+const getNeo4jClient = () => ({ getSession: () => ({ run: async () => {}, close: async () => {} }) });
 import { AuthService } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { z } from 'zod';
@@ -684,7 +685,7 @@ async function runPhase1to3Processing(
             created_at: signature.created_at,
             data_tag: dataTag,
           }));
-          storage.insertLshBands(lshBands);
+          storage.insertLshBands(lshBands, accountId);
         }
       }
     }

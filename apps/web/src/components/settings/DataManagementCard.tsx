@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,24 +37,38 @@ export function DataManagementCard() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // PERFORMANCE FIX: Use ref to prevent creating new timeouts on every sseJobs change (2Hz)
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasSetTimeoutRef = useRef(false);
+
   // Watch for deletion job completion via direct SSE subscription (no polling)
   // FIXED: Subscribe directly to useJobStream instead of polling BackgroundOperationsContext
   // This eliminates 1-3 second race conditions and reduces latency from 1s to ~500ms
   useEffect(() => {
-    if (!deletionJobId) return undefined;
+    if (!deletionJobId) {
+      // Reset refs when no deletion job
+      hasSetTimeoutRef.current = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      return undefined;
+    }
 
     const job = sseJobs.get(deletionJobId);
 
     // Job completed successfully
     if (job?.status === 'succeeded') {
+      // Clear timeout if set
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+
       console.log('[DataManagementCard] Deletion complete via SSE');
-      console.log('[DataManagementCard] Job details:', job);
 
       // CRITICAL: Refresh keimenon data immediately so stale nodes disappear
-      // Without this, keimenon shows old cached nodes until page refresh
-      console.log('[DataManagementCard] Calling loadGraphData() to refresh keimenon...');
       useKeimenonStore.getState().loadGraphData();
-      console.log('[DataManagementCard] loadGraphData() called successfully');
 
       setSuccess('Data cleared successfully! Keimenon is now empty.');
 
@@ -68,15 +82,22 @@ export function DataManagementCard() {
     }
     // Job failed
     else if (job?.status === 'failed') {
+      // Clear timeout if set
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+
       console.error('[DataManagementCard] Deletion failed via SSE:', job);
       setError('Deletion failed. Please check Background Operations for details.');
       setDeletionJobId(null);
       setIsClearing(false);
       return undefined;
     }
-    // Job not yet in SSE stream - add timeout for connection issues
-    else if (!job) {
-      const timeout = setTimeout(() => {
+    // Job not yet in SSE stream - set timeout ONCE for connection issues
+    else if (!job && !hasSetTimeoutRef.current) {
+      hasSetTimeoutRef.current = true;
+      timeoutRef.current = setTimeout(() => {
         // Only show error if job STILL not in SSE after 10 seconds (true disconnect)
         const latestJob = sseJobs.get(deletionJobId);
         if (!latestJob) {
@@ -85,12 +106,19 @@ export function DataManagementCard() {
           setIsClearing(false);
         }
       }, 10000); // 10 second timeout for SSE delivery
-
-      return () => clearTimeout(timeout);
     }
 
     return undefined;
   }, [sseJobs, deletionJobId]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const loadStats = async () => {
     try {

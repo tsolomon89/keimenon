@@ -39,6 +39,13 @@ import { createStreamRoutes } from './modules/jobs/infrastructure/stream.routes'
 import { createImportJobsRoutes as createJobBasedImportRoutes } from './modules/jobs/infrastructure/import-jobs.routes';
 import { createTestHelperRoutes } from './routes/test-helpers';
 import { createUploadRoutes } from './routes/uploads.routes';
+import { createSpineRoutes } from './routes/spine.routes';
+import { createVerificationRoutes } from './routes/verification.routes';
+import agentRoutesModule from './routes/agent.routes';
+// World Model V5: Principal, Workspace, Conversation routes
+import { createPrincipalsRoutes } from './routes/principals.routes';
+import { createWorkspaceRoutes } from './routes/workspace.routes';
+import { createConversationsRoutes } from './routes/conversations.routes';
 import { SSEBroadcaster } from './modules/jobs/infrastructure/SSEBroadcaster';
 import { WorkerPool } from './modules/workers/domain/WorkerPool';
 import { DatabaseWriteQueue } from './services/DatabaseWriteQueue';
@@ -89,7 +96,12 @@ export function createApp(): { app: Express; context: AppContext } {
   // IMPORTANT: Jobs routes and upload routes use busboy and must NOT have body-parser applied
   app.use((req: Request, res: Response, next: NextFunction) => {
     // Check if this is a jobs route or upload route that handles multipart/binary uploads
-    if (req.path.startsWith('/api/v1/jobs') || req.path.startsWith('/api/v1/uploads')) {
+    // CRITICAL FIX: Do NOT skip body-parser for /initiate (it sends JSON)
+    // Only skip for the actual chunk upload endpoints which receive binary streams
+    if (
+      req.path.startsWith('/api/v1/jobs') || 
+      (req.path.startsWith('/api/v1/uploads') && !req.path.endsWith('/initiate'))
+    ) {
       console.log(`[Body-Parser] ⏭️  Skipping body-parser for: ${req.method} ${req.path}`);
       return next(); // Skip body-parser for jobs and upload routes
     }
@@ -215,6 +227,12 @@ export function createApp(): { app: Express; context: AppContext } {
   let testHelperRoutes: any = null;
   let nodesRoutes: any = null;
   let uploadRoutes: any = null;
+  let spineRoutes: any = null;
+  let verificationRoutes: any = null;
+  // World Model V5 routes
+  let principalsRoutes: any = null;
+  let workspaceRoutes: any = null;
+  let conversationsRoutes: any = null;
 
   // Initialize routes with services
   const initializeRoutes = (
@@ -239,10 +257,16 @@ export function createApp(): { app: Express; context: AppContext } {
     duplicatesRoutes = createDuplicatesRoutes(dbClient, authService);
     jobsRoutes = createJobsRoutes(authService, dbClient.db, sseBroadcaster);
     streamRoutes = createStreamRoutes(authService, sseBroadcaster);
-    jobBasedImportRoutes = createJobBasedImportRoutes(authService, dbClient.db, workerPool);
+    jobBasedImportRoutes = createJobBasedImportRoutes(authService, dbClient.db, workerPool, sseBroadcaster);
     testHelperRoutes = createTestHelperRoutes(dbClient);
     nodesRoutes = createNodesRoutes(authService);
     uploadRoutes = createUploadRoutes(authService);
+    spineRoutes = createSpineRoutes(authService);
+    verificationRoutes = createVerificationRoutes(authService);
+    // World Model V5: Initialize principal, workspace, conversation routes
+    principalsRoutes = createPrincipalsRoutes(dbClient, authService);
+    workspaceRoutes = createWorkspaceRoutes(dbClient, authService);
+    conversationsRoutes = createConversationsRoutes(dbClient, authService);
 
     // Inject auth dependencies for legacy routes
     setEdgesAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
@@ -419,6 +443,39 @@ export function createApp(): { app: Express; context: AppContext } {
       return res.status(503).json({ error: 'Auth service not initialized' });
     return clusterRoutes(req, res, next);
   });
+
+  // Vision V2: Spine routes (Lexeme, Phrase, Topic extraction)
+  app.use('/api/v1/spine', (req, res, next) => {
+    if (spineRoutes) return spineRoutes(req, res, next);
+    return res.status(503).json({ error: 'Spine service not initialized' });
+  });
+
+  // Vision V2: Verification routes (VerifiedSource, VerifiedClaim)
+  app.use('/api/v1/verification', (req, res, next) => {
+    if (verificationRoutes) return verificationRoutes(req, res, next);
+    return res.status(503).json({ error: 'Verification service not initialized' });
+  });
+
+  // World Model V5: Principal routes (unified human/agent/contact)
+  app.use('/api/v1/principals', (req, res, next) => {
+    if (principalsRoutes) return principalsRoutes(req, res, next);
+    return res.status(503).json({ error: 'Principals service not initialized' });
+  });
+
+  // World Model V5: Workspace routes (working contexts with agents)
+  app.use('/api/v1/workspaces', (req, res, next) => {
+    if (workspaceRoutes) return workspaceRoutes(req, res, next);
+    return res.status(503).json({ error: 'Workspace service not initialized' });
+  });
+
+  // World Model V5: Conversation routes (formal joins)
+  app.use('/api/v1/conversations', (req, res, next) => {
+    if (conversationsRoutes) return conversationsRoutes(req, res, next);
+    return res.status(503).json({ error: 'Conversations service not initialized' });
+  });
+
+  // Agent services routes (task execution, BYOK)
+  app.use('/api/v1/agent', agentRoutesModule);
 
   // Test helper routes (savepoint API, cleanup, etc.)
   // Only enabled when NODE_ENV=test

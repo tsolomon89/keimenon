@@ -423,7 +423,10 @@ export class DatabaseSnapshotManager {
     await deleteFileWithRetry(`${workerDbPath}-shm`);
 
     // CRITICAL FIX: Also delete jobs database files
-    const jobsDbPath = workerDbPath.replace('.db', '-jobs.db');
+    const dir = path.dirname(workerDbPath);
+    const ext = path.extname(workerDbPath);
+    const name = path.basename(workerDbPath, ext);
+    const jobsDbPath = path.join(dir, `${name}-jobs${ext}`);
     await deleteFileWithRetry(jobsDbPath);
     await deleteFileWithRetry(`${jobsDbPath}-wal`);
     await deleteFileWithRetry(`${jobsDbPath}-shm`);

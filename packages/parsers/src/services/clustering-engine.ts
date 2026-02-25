@@ -132,15 +132,13 @@ export class ClusteringEngine {
    *
    * @param level - Granularity level (sentence, block, section)
    * @param modality - Content modality
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
+   * @param accountId - Account ID for multi-tenant isolation (required)
    * @param seed - Optional seed for deterministic clustering
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
    */
   async cluster(
     level: 'sentence' | 'block' | 'section',
     modality: string,
-    accountId?: string,
+    accountId: string,
     seed?: string
   ): Promise<ClusteringResult & { run_id: string }> {
     console.log(`Clustering ${level}/${modality}...`);
@@ -231,15 +229,13 @@ export class ClusteringEngine {
    * @param nodeId - Node ID to find candidates for
    * @param level - Granularity level
    * @param modality - Content modality
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
   private async findCandidates(
     nodeId: string,
     level: string,
     modality: string,
-    accountId?: string
+    accountId: string
   ): Promise<ClusterCandidate[]> {
     // Get node signature
     const signature = this.storage.getNodeSignature(nodeId, accountId);
@@ -529,28 +525,14 @@ export class ClusteringEngine {
    *
    * @param level - Granularity level
    * @param modality - Content modality
-   * @param accountId - Account ID for multi-tenant isolation (required for security)
-   *
-   * TODO: Make accountId required (non-optional) after migration 007 data backfill
+   * @param accountId - Account ID for multi-tenant isolation (required)
    */
-  private getNodesForSlice(level: string, modality: string, accountId?: string): string[] {
-    let stmt;
-    let rows;
-
-    if (accountId) {
-      stmt = this.db.prepare(`
-        SELECT DISTINCT node_id FROM node_spans
-        WHERE level = ? AND modality = ? AND account_id = ?
-      `);
-      rows = stmt.all(level, modality, accountId) as any[];
-    } else {
-      // Legacy behavior without account filtering (INSECURE - for migration only)
-      stmt = this.db.prepare(`
-        SELECT DISTINCT node_id FROM node_spans
-        WHERE level = ? AND modality = ?
-      `);
-      rows = stmt.all(level, modality) as any[];
-    }
+  private getNodesForSlice(level: string, modality: string, accountId: string): string[] {
+    const stmt = this.db.prepare(`
+      SELECT DISTINCT node_id FROM node_spans
+      WHERE level = ? AND modality = ? AND account_id = ?
+    `);
+    const rows = stmt.all(level, modality, accountId) as any[];
 
     return rows.map((r) => r.node_id);
   }

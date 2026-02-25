@@ -122,6 +122,22 @@ export class DuplicateDetectionFTS5Service {
     const startTime = Date.now();
     const candidates: DuplicateCandidate[] = [];
 
+    // OPTIMIZATION: Pre-build message lookup map for O(1) access
+    // Replaces O(n) find() calls with O(1) Map.get() lookups
+    const messageMap = new Map<string, MessageWithMetadata>();
+    for (const msg of messages) {
+      messageMap.set(msg.id, msg);
+    }
+
+    // OPTIMIZATION: Track seen pairs with O(1) Set lookup
+    // Replaces O(n) candidates.find() with O(1) Set.has()
+    const seenPairs = new Set<string>();
+
+    // Helper: Create canonical pair key (sorted IDs ensure A-B = B-A)
+    const createPairKey = (idA: string, idB: string): string => {
+      return idA < idB ? `${idA}||${idB}` : `${idB}||${idA}`;
+    };
+
     // Stage 1: Exact duplicates via content_hash (O(1) hash lookup)
     let exactDuplicatesFound = 0;
     if (fts5Config.useContentHash && config.exactMatch) {
@@ -155,8 +171,8 @@ export class DuplicateDetectionFTS5Service {
 
       // Compare msgA with each FTS5 candidate
       for (const fts5Candidate of fts5Candidates) {
-        // Find corresponding message object
-        const msgB = messages.find((m) => m.id === fts5Candidate.node_id);
+        // OPTIMIZATION: O(1) Map lookup instead of O(n) find()
+        const msgB = messageMap.get(fts5Candidate.node_id);
 
         if (!msgB) {
           // Candidate is from a different conversation or not in current batch
@@ -189,14 +205,12 @@ export class DuplicateDetectionFTS5Service {
         const result = this.checkDuplicate(msgA.content, msgB.content, config);
 
         if (result.isDuplicate) {
-          // Check if we already have this pair (avoid duplicates)
-          const existingPair = candidates.find(
-            (c) =>
-              (c.primary.id === msgA.id && c.duplicate.id === msgB.id) ||
-              (c.primary.id === msgB.id && c.duplicate.id === msgA.id)
-          );
+          // OPTIMIZATION: O(1) Set lookup instead of O(n) find()
+          const pairKey = createPairKey(msgA.id, msgB.id);
 
-          if (!existingPair) {
+          if (!seenPairs.has(pairKey)) {
+            seenPairs.add(pairKey);
+
             const candidate: DuplicateCandidate = {
               id: `dup_${msgA.id}_${msgB.id}`,
               primary: {

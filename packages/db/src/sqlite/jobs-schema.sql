@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS job_events (
   sequence_number INTEGER NOT NULL,
   timestamp INTEGER NOT NULL,
   account_id TEXT NOT NULL,
+  data_tag TEXT DEFAULT 'real',
   FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
 );
 
@@ -49,6 +50,7 @@ CREATE TABLE IF NOT EXISTS job_items (
   created_at INTEGER NOT NULL,
   processed_at INTEGER,
   error_message TEXT,
+  data_tag TEXT DEFAULT 'real',
   FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
 );
 

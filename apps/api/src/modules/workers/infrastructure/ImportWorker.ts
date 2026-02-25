@@ -18,10 +18,14 @@ import { Job } from '../../jobs/domain/Job';
 import { DatabaseClient } from '@keimenon/db';
 import { EnhancedImportServiceV2, ImportConversation } from '../../../services/import-enhanced-v2';
 import { DatabaseWriteQueue } from '../../../services/DatabaseWriteQueue';
-import { ImportConfiguration } from '@keimenon/types';
-import { ParserRegistry } from '@keimenon/parsers';
-import { ImportJobStage, IMPORT_STAGE_LABELS } from '@keimenon/types/src/import-job-stages';
+import {
+  ImportConfiguration,
+  ImportJobStage,
+  IMPORT_STAGE_LABELS,
+} from '@keimenon/types';
+import { ParserRegistry, NormalizedConversation, NormalizedMessage } from '@keimenon/parsers';
 import * as fs from 'fs/promises';
+import { nanoid } from 'nanoid';
 import {
   ChangeTracker,
   createChangeTracker,
@@ -29,6 +33,55 @@ import {
   trackEdgesCreated,
   serializeChangeTracker,
 } from '../../jobs/domain/ChangeTracker';
+import { JobRepository } from '../../jobs/infrastructure/JobRepository';
+
+/**
+ * Import Checkpoint State
+ *
+ * Saved periodically during import to enable pause/resume.
+ * Stored in job's state_data.checkpoint
+ */
+export interface ImportCheckpoint {
+  phase: 'parse' | 'materialize' | 'dedupe' | 'group' | 'complete';
+  fileIndex: number;           // Which file we're on (0-indexed)
+  conversationsProcessed: number; // Total conversations processed so far
+  messagesProcessed: number;   // Total messages processed so far
+  lastBatchIndex: number;      // Last batch processed within current file
+  lastSaveTime: number;        // Unix timestamp of last checkpoint save
+  uploadHash: string;          // Upload hash for this import job
+}
+
+// Checkpoint save interval: every 100 conversations or 30 seconds
+const CHECKPOINT_INTERVAL_CONVERSATIONS = 100;
+const CHECKPOINT_INTERVAL_MS = 30000;
+
+// Shared parser registry instance
+const parserRegistry = new ParserRegistry();
+
+/**
+ * Convert NormalizedConversation (from @keimenon/parsers) to ImportConversation
+ * Handles the type mapping between parser output and import service input
+ */
+function normalizedToImportConversation(
+  normalized: NormalizedConversation,
+  sourceFile: string
+): ImportConversation {
+  return {
+    id: normalized.conversation_id,
+    title: normalized.title,
+    platform: normalized.platform,
+    created_at: normalized.created_at,
+    messages: normalized.messages.map((msg: NormalizedMessage) => ({
+      id: msg.metadata?.id || `msg_${nanoid()}`,
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.timestamp,
+      conversationId: normalized.conversation_id,
+      index: msg.index,
+      hash: msg.hash,
+    })),
+  };
+}
 
 export class ImportWorker extends BaseWorker {
   readonly type = 'import' as const;
@@ -99,11 +152,20 @@ export class ImportWorker extends BaseWorker {
 
   /**
    * Execute import with checkpoint tracking for resume capability
+   * Uses Worker Thread to prevent main loop blocking
+   *
+   * Checkpoints are saved:
+   * - Every CHECKPOINT_INTERVAL_CONVERSATIONS (100) conversations
+   * - Every CHECKPOINT_INTERVAL_MS (30 seconds)
+   * - When job is paused
+   *
+   * Resume behavior:
+   * - If checkpoint exists in state_data, skip already-processed files/batches
+   * - Continue from last checkpoint position
    */
   private async executeWithCheckpoints(job: Job, context: WorkerContext): Promise<WorkerResult> {
     const files = job.config.files || [];
     const importOptions = job.config.importOptions || {};
-    let allConversations: ImportConversation[] = []; // Declare at function scope for error handling
 
     // ✅ Initialize change tracker for rollback support
     let changeTracker: ChangeTracker = createChangeTracker();
@@ -112,128 +174,277 @@ export class ImportWorker extends BaseWorker {
     console.log(`⏱️  Timeout: ${Math.round(this.timeoutMs / 1000)}s`);
 
     try {
-      // Step 1: Load and parse files (PARSE stage)
-      await this.reportProgress(job, 0, 100, IMPORT_STAGE_LABELS[ImportJobStage.PARSE], context);
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-        if (this.shouldCancel(context.signal)) {
-          return {
-            success: false,
-            error: {
-              code: 'CANCELED',
-              message: 'Job was canceled during file loading',
-            },
-          };
-        }
-
-        await this.reportProgress(
-          job,
-          Math.round((i / files.length) * 30),
-          100,
-          `${IMPORT_STAGE_LABELS[ImportJobStage.PARSE]} (${i + 1}/${files.length})`,
-          context
-        );
-
-        // Parse file based on mime type
-        console.log(
-          `[ImportWorker] Parsing file: ${file.fileName}, size: ${file.fileSize}, mime: ${file.mimeType}`
-        );
-        const conversations = await this.parseFile(file);
-        console.log(
-          `[ImportWorker] Parsed ${conversations.length} conversations from ${file.fileName}`
-        );
-        allConversations.push(...conversations);
-      }
-      console.log(
-        `[ImportWorker] Total conversations after parsing all files: ${allConversations.length}`
-      );
-
-      // Step 2: Build import configuration
-      const config: ImportConfiguration = this.buildImportConfig(importOptions);
-
-      // Step 3: Run import pipeline (MATERIALIZE stage)
-      await this.reportProgress(
-        job,
-        30,
-        100,
-        IMPORT_STAGE_LABELS[ImportJobStage.MATERIALIZE],
-        context
-      );
-
+      // Step 1: Initialize Import Service early (we need it for batch processing)
       // Get correct database client (test DB for E2E tests, production DB otherwise)
       const dbClient = await this.getDbClientForJob(job);
+    console.log(`[ImportWorker] 🔌 DB Client Path: ${(dbClient as any).name}`);
+    console.log(`[ImportWorker] 🔌 DB Connection: ${(dbClient as any).open ? 'OPEN' : 'CLOSED'}`);
+
 
       // In test mode, disable write queue to avoid database client mismatch
-      // (writeQueue uses production DB client, but job needs test DB client)
       const isTestMode = !!job.config.testContext?.dbPath;
       const writeQueue = isTestMode ? undefined : this.writeQueue;
 
       const importService = new EnhancedImportServiceV2(dbClient, writeQueue);
 
-      // Generate upload hash
-      const uploadHash = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      // Step 1b: Check for existing checkpoint (resume scenario)
+      let checkpoint: ImportCheckpoint | null = null;
+      let uploadHash: string;
+      let totalConversationsProcessed = 0;
+      let totalMessagesProcessed = 0;
+      let startFileIndex = 0;
+      let startBatchIndex = 0;
 
-      const result = await importService.import(allConversations, uploadHash, config, {
-        accountId: job.accountId,
-        userId: job.createdBy,
-      });
+      // Try to load existing checkpoint from job state_data
+      const stateData = await this.loadJobStateData(job, context);
+      if (stateData?.checkpoint && stateData.checkpoint.phase !== 'complete') {
+        checkpoint = stateData.checkpoint as ImportCheckpoint;
+        uploadHash = checkpoint.uploadHash;
+        totalConversationsProcessed = checkpoint.conversationsProcessed;
+        totalMessagesProcessed = checkpoint.messagesProcessed;
+        startFileIndex = checkpoint.fileIndex;
+        startBatchIndex = checkpoint.lastBatchIndex + 1; // Resume from next batch
 
-      if (this.shouldCancel(context.signal)) {
-        return {
-          success: false,
-          error: {
-            code: 'CANCELED',
-            message: 'Job was canceled during import',
-          },
-          metadata: {
-            changeTracker: serializeChangeTracker(changeTracker), // ✅ Include for potential rollback
-          },
-        };
+        console.log(`📥 Resuming import from checkpoint:`);
+        console.log(`   - File: ${startFileIndex + 1}/${files.length}`);
+        console.log(`   - Batch: ${startBatchIndex}`);
+        console.log(`   - Conversations: ${totalConversationsProcessed}`);
+        console.log(`   - Messages: ${totalMessagesProcessed}`);
+      } else {
+        // New import - generate fresh upload hash
+        uploadHash = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+        console.log(`📥 Starting fresh import with hash: ${uploadHash}`);
       }
 
-      // ✅ Step 3.5: Track created nodes/edges for rollback support
-      // Query nodes created by this import (identified by upload_hash in metadata)
-      try {
-        const createdNodesQuery = await dbClient.execute(
-          `SELECT id FROM nodes
-           WHERE account_id = ?
-           AND json_extract(properties, '$.metadata.uploadHash') = ?`,
-          [job.accountId, uploadHash]
+      // Build config
+      const config: ImportConfiguration = this.buildImportConfig(importOptions);
+
+      // Track last checkpoint save time
+      let lastCheckpointTime = Date.now();
+      let conversationsSinceCheckpoint = 0;
+
+      // Track parse errors for reporting (Gap 5 fix)
+      let parseErrorCount = 0;
+      const parseErrorSamples: Array<{ index: number; message: string }> = [];
+      const MAX_PARSE_ERROR_SAMPLES = 10; // Limit to prevent memory issues
+
+      const { Worker } = await import('worker_threads');
+      const path = await import('path');
+
+      // Step 2: Process Files Sequentially via Worker Thread
+      for (let fileIndex = startFileIndex; fileIndex < files.length; fileIndex++) {
+        const file = files[fileIndex];
+        let currentBatchIndex = 0;
+
+        // If resuming mid-file, skip to the correct batch
+        const skipBatches = (fileIndex === startFileIndex) ? startBatchIndex : 0;
+
+        if (this.shouldCancel(context.signal)) {
+          // Save checkpoint before canceling
+          await this.saveCheckpoint(job, context, {
+            phase: 'parse',
+            fileIndex,
+            conversationsProcessed: totalConversationsProcessed,
+            messagesProcessed: totalMessagesProcessed,
+            lastBatchIndex: currentBatchIndex,
+            lastSaveTime: Date.now(),
+            uploadHash,
+          }, changeTracker);
+          throw new Error('CANCELED');
+        }
+
+        await this.reportProgress(
+          job,
+          Math.round((fileIndex / files.length) * 10), // First 10% is "starting"
+          100,
+          `${IMPORT_STAGE_LABELS[ImportJobStage.PARSE]} (${fileIndex + 1}/${files.length})`,
+          context
         );
 
-        const createdNodeIds = createdNodesQuery.records.map((r: any) => r.id);
-        if (createdNodeIds.length > 0) {
-          changeTracker = trackNodesCreated(changeTracker, createdNodeIds);
-          console.log(`[ImportWorker] Tracked ${createdNodeIds.length} created nodes for rollback`);
-        }
+        // Calculate conversations to skip for resume optimization
+        // Worker will skip these internally to reduce IPC overhead
+        const batchSize = 50;
+        const skipConversations = skipBatches * batchSize;
 
-        // Query edges created by this import
-        // Edges are connected to nodes with this uploadHash, so find edges between those nodes
-        if (createdNodeIds.length > 0) {
-          const createdEdgesQuery = await dbClient.execute(
-            `SELECT DISTINCT e.id FROM edges e
-             WHERE e.account_id = ?
-             AND (e.from_id IN (${createdNodeIds.map(() => '?').join(',')})
-                  OR e.to_id IN (${createdNodeIds.map(() => '?').join(',')}))`,
-            [job.accountId, ...createdNodeIds, ...createdNodeIds]
-          );
+        console.log(`[ImportWorker] Spawning worker for: ${file.fileName}${skipConversations > 0 ? ` (resuming, skipping ~${skipConversations} conversations)` : ''}`);
 
-          const createdEdgeIds = createdEdgesQuery.records.map((r: any) => r.id);
-          if (createdEdgeIds.length > 0) {
-            changeTracker = trackEdgesCreated(changeTracker, createdEdgeIds);
-            console.log(
-              `[ImportWorker] Tracked ${createdEdgeIds.length} created edges for rollback`
-            );
-          }
-        }
-      } catch (trackingError: any) {
-        console.warn(`[ImportWorker] Failed to track created entities:`, trackingError.message);
-        // Non-fatal - continue with import success
+        // Spawn Worker
+        const actualWorkerPath = __filename.endsWith('.ts')
+            ? path.join(__dirname, 'import.worker.ts')
+            : path.join(__dirname, 'import.worker.js');
+
+        const worker = new Worker(actualWorkerPath, {
+            workerData: {
+                filePath: file.filePath,
+                fileSize: file.fileSize,
+                mimeType: file.mimeType,
+                batchSize,
+                skipConversations, // Resume optimization: worker skips these internally
+            },
+        });
+
+        // Worker Promise
+        await new Promise<void>((resolve, reject) => {
+            worker.on('message', async (message: any) => {
+                if (message.type === 'progress') {
+                     // Map worker progress (0-100 of file) to overall Job Progress (10-90)
+                     const fileProgress = message.data.percent;
+                     const overallProgress = 10 + Math.round((fileProgress * 0.8)); // Map 0-100 to 10-90
+
+                     await this.reportProgress(
+                        job,
+                        overallProgress,
+                        100,
+                        `Processing ${file.fileName}: ${message.data.message}`,
+                        context
+                     );
+                } else if (message.type === 'batch') {
+                    currentBatchIndex++;
+
+                    // Note: Batch skipping is now handled by the worker internally
+                    // via skipConversations parameter for better performance
+
+                    // Process Batch - parse raw data using ParserRegistry
+                    const rawBatch = message.data as Array<{ raw: unknown; index: number }>;
+                    if (rawBatch.length > 0) {
+                        try {
+                            // Parse raw conversations using proper parser
+                            const parsedConversations: ImportConversation[] = [];
+
+                            for (const item of rawBatch) {
+                              try {
+                                // ParserRegistry auto-detects format (ChatGPT/Claude/Gemini)
+                                const parseResult = await parserRegistry.parse(item.raw, file.fileName);
+
+                                // Convert each parsed conversation to ImportConversation format
+                                for (const normalized of parseResult.conversations) {
+                                  parsedConversations.push(
+                                    normalizedToImportConversation(normalized, file.fileName)
+                                  );
+                                }
+                              } catch (parseError: any) {
+                                parseErrorCount++;
+                                const errorMessage = parseError.message || 'Unknown parse error';
+                                console.warn(`[ImportWorker] Parse error for item ${item.index}: ${errorMessage}`);
+
+                                // Track sample errors for reporting (limit to prevent memory issues)
+                                if (parseErrorSamples.length < MAX_PARSE_ERROR_SAMPLES) {
+                                  parseErrorSamples.push({ index: item.index, message: errorMessage });
+                                }
+                                // Continue with next item - don't fail entire batch
+                              }
+                            }
+
+                            if (parsedConversations.length === 0) {
+                              // No conversations parsed - skip this batch
+                              return;
+                            }
+
+                            const result = await importService.import(parsedConversations, uploadHash, config, {
+                                accountId: job.accountId,
+                                userId: job.createdBy,
+                            });
+                            totalConversationsProcessed += result.conversations;
+                            totalMessagesProcessed += result.messages;
+                            totalMessagesProcessed += result.messages;
+                            conversationsSinceCheckpoint += result.conversations;
+
+                            console.log(`[ImportWorker] 📊 Batch Result: +${result.conversations} conversations, +${result.messages} messages`);
+                            console.log(`[ImportWorker] 📊 Created Nodes: ${result.createdNodeIds?.length || 0}, Edges: ${result.createdEdgeIds?.length || 0}`);
+                            
+                            if (isTestMode) {
+                                try {
+                                    // Verify DB write immediately
+                                    const nodeCount = (dbClient as any).prepare('SELECT COUNT(*) as count FROM nodes').get().count;
+                                    console.log(`[ImportWorker] 🔍 Immediate DB check (worker file): ${nodeCount} nodes total`);
+                                } catch (e: any) {
+                                    console.error(`[ImportWorker] ⚠️ Validation check failed: ${e.message}`);
+                                }
+                            }
+
+                            // Track created entities for rollback support
+                            if (result.createdNodeIds && result.createdNodeIds.length > 0) {
+                              trackNodesCreated(changeTracker, result.createdNodeIds);
+                            }
+                            if (result.createdEdgeIds && result.createdEdgeIds.length > 0) {
+                              trackEdgesCreated(changeTracker, result.createdEdgeIds);
+                            }
+
+                            // Check if we should save checkpoint
+                            const now = Date.now();
+                            const timeSinceCheckpoint = now - lastCheckpointTime;
+
+                            if (conversationsSinceCheckpoint >= CHECKPOINT_INTERVAL_CONVERSATIONS ||
+                                timeSinceCheckpoint >= CHECKPOINT_INTERVAL_MS) {
+
+                              await this.saveCheckpoint(job, context, {
+                                phase: 'materialize',
+                                fileIndex,
+                                conversationsProcessed: totalConversationsProcessed,
+                                messagesProcessed: totalMessagesProcessed,
+                                lastBatchIndex: currentBatchIndex,
+                                lastSaveTime: now,
+                                uploadHash,
+                              }, changeTracker);
+
+                              lastCheckpointTime = now;
+                              conversationsSinceCheckpoint = 0;
+                              console.log(`[ImportWorker] 💾 Checkpoint saved: ${totalConversationsProcessed} conversations`);
+                            }
+                        } catch (err) {
+                            console.error('Batch Import Error:', err);
+                            reject(err);
+                        }
+                    }
+                } else if (message.type === 'error') {
+                    reject(new Error(message.data));
+                } else if (message.type === 'done') {
+                    resolve();
+                }
+            });
+
+            worker.on('error', reject);
+            worker.on('exit', (code) => {
+                if (code !== 0) reject(new Error(`Worker stopped with exit code ${code}`));
+            });
+
+            // Handle Cancellation/Pause from Parent
+            // Use { once: true } to auto-cleanup listener after first trigger
+            const abortHandler = async () => {
+                // Save checkpoint before stopping
+                await this.saveCheckpoint(job, context, {
+                  phase: 'parse',
+                  fileIndex,
+                  conversationsProcessed: totalConversationsProcessed,
+                  messagesProcessed: totalMessagesProcessed,
+                  lastBatchIndex: currentBatchIndex,
+                  lastSaveTime: Date.now(),
+                  uploadHash,
+                }, changeTracker);
+
+                worker.postMessage('cancel');
+                reject(new Error('CANCELED'));
+            };
+            context.signal.addEventListener('abort', abortHandler, { once: true });
+        });
+
+        // Reset batch tracking for next file
+        startBatchIndex = 0;
       }
 
-      // Step 4: Complete (SUCCEEDED stage)
+      // Step 3: Complete - save final checkpoint
+      const finalCheckpoint: ImportCheckpoint = {
+        phase: 'complete',
+        fileIndex: files.length - 1,
+        conversationsProcessed: totalConversationsProcessed,
+        messagesProcessed: totalMessagesProcessed,
+        lastBatchIndex: 0,
+        lastSaveTime: Date.now(),
+        uploadHash,
+      };
+
+      await this.saveCheckpoint(job, context, finalCheckpoint, changeTracker);
+
       await this.reportProgress(
         job,
         100,
@@ -242,122 +453,94 @@ export class ImportWorker extends BaseWorker {
         context
       );
 
-      console.log(
-        `✅ Import worker completed job ${job.id}: ${result.messages} messages, ${result.conversations} conversations`
-      );
+      // Log parse error summary if any occurred
+      if (parseErrorCount > 0) {
+        console.warn(`[ImportWorker] Completed with ${parseErrorCount} parse error(s)`);
+      }
 
       return {
         success: true,
         metadata: {
-          uploadHash: result.uploadHash,
-          conversations: result.conversations,
-          messages: result.messages,
-          groups: result.groups.length,
-          sources: result.sources,
-          codeBlocks: result.codeBlocks,
-          duplicatesForReview: result.duplicatesForReview,
-          // Checkpoint data for resume capability
-          checkpoint: {
-            stage: 'SUCCEEDED',
-            filesProcessed: files.length,
-            totalFiles: files.length,
-            completedAt: new Date().toISOString(),
-          },
-          // ✅ Change tracker for rollback support
+          uploadHash,
+          conversations: totalConversationsProcessed,
+          messages: totalMessagesProcessed,
+          checkpoint: finalCheckpoint,
           changeTracker: serializeChangeTracker(changeTracker),
+          // Parse error reporting (Gap 5 fix)
+          parseErrors: {
+            count: parseErrorCount,
+            samples: parseErrorSamples,
+            hasMore: parseErrorCount > MAX_PARSE_ERROR_SAMPLES,
+          },
         },
       };
+
     } catch (error: any) {
+        if (error.message === 'CANCELED') {
+             return {
+                success: false,
+                error: { code: 'CANCELED', message: 'Job was canceled' },
+                metadata: { changeTracker: serializeChangeTracker(changeTracker) }
+             };
+        }
+
       console.error(`❌ Import worker failed for job ${job.id}:`, error);
-
-      // Determine if this is a timeout error
-      const isTimeout = error.message && error.message.includes('exceeded timeout');
-
-      // Build enhanced error message with diagnostics
-      let errorMessage = isTimeout
-        ? `Import timed out after ${Math.round(this.timeoutMs / 1000)}s. ` +
-          `Processed ${allConversations?.length || 0} conversations before timeout. ` +
-          `Try: (1) Split large files, (2) Increase IMPORT_WORKER_TIMEOUT_MS, or (3) Reduce file size.`
-        : error.message || 'Import failed';
-
-      // Append diagnostic info for timeout errors
-      if (isTimeout) {
-        errorMessage += ` [Files: ${files.length}, Conversations parsed: ${allConversations?.length || 0}, Timeout: ${this.timeoutMs}ms]`;
-      }
-
       return {
         success: false,
         error: {
-          code: isTimeout ? 'TIMEOUT' : error.code || 'IMPORT_FAILED',
-          message: errorMessage,
+          code: 'IMPORT_FAILED',
+          message: error.message || 'Import failed',
           stack: error.stack,
         },
         metadata: {
-          changeTracker: serializeChangeTracker(changeTracker), // ✅ Include for potential rollback
+          changeTracker: serializeChangeTracker(changeTracker),
         },
       };
     }
   }
 
   /**
-   * Parse file into conversations
+   * Load job state_data for checkpoint recovery
    */
-  private async parseFile(file: {
-    fileName: string;
-    fileSize: number;
-    mimeType: string;
-    filePath?: string;
-  }): Promise<ImportConversation[]> {
-    console.log(`📖 Parsing file: ${file.fileName}`);
-
-    if (!file.filePath) {
-      throw new Error('File path is required for parsing');
-    }
-
-    // Read file contents
-    const fileContent = await fs.readFile(file.filePath, 'utf-8');
-
-    // Parse JSON
-    let data: unknown;
+  private async loadJobStateData(job: Job, context: WorkerContext): Promise<any | null> {
     try {
-      data = JSON.parse(fileContent);
+      const jobRepository = context.jobRepository as JobRepository;
+      return await jobRepository.getRawStateData(job.id, job.accountId);
     } catch (error: any) {
-      throw new Error(`Failed to parse JSON: ${error.message}`);
+      console.warn(`[ImportWorker] Could not load state_data for checkpoint: ${error.message}`);
+      return null;
     }
-
-    // Use ParserRegistry to detect platform and parse
-    const registry = new ParserRegistry();
-    const parseResult = await registry.parse(data, file.fileName);
-
-    console.log(
-      `✅ Parsed ${parseResult.conversations.length} conversations from ${file.fileName}`
-    );
-    console.log(`   Platform: ${parseResult.platform}`);
-    console.log(`   Total messages: ${parseResult.stats.total_messages}`);
-
-    // Convert to ImportConversation format
-    const importConversations: ImportConversation[] = parseResult.conversations.map((conv) => {
-      const messages: ImportConversation['messages'] = conv.messages.map((msg) => ({
-        id: msg.metadata?.id || `${conv.conversation_id}_msg_${msg.index}`,
-        role: msg.role,
-        content: msg.content,
-        timestamp: msg.timestamp,
-        conversationId: conv.conversation_id,
-        index: msg.index,
-        hash: msg.hash,
-      }));
-
-      return {
-        id: conv.conversation_id,
-        title: conv.title,
-        platform: conv.platform,
-        messages: messages,
-        created_at: conv.created_at,
-      };
-    });
-
-    return importConversations;
   }
+
+  /**
+   * Save checkpoint to job state_data
+   * Enables resume after pause or crash
+   */
+  private async saveCheckpoint(
+    job: Job,
+    context: WorkerContext,
+    checkpoint: ImportCheckpoint,
+    changeTracker: ChangeTracker
+  ): Promise<void> {
+    try {
+      const jobRepository = context.jobRepository as JobRepository;
+
+      // Load current state_data and merge checkpoint
+      const currentStateData = await jobRepository.getRawStateData(job.id, job.accountId) || {};
+      const updatedStateData = {
+        ...currentStateData,
+        checkpoint,
+        changeTracker: serializeChangeTracker(changeTracker),
+      };
+
+      await jobRepository.updateStateData(job.id, job.accountId, JSON.stringify(updatedStateData));
+    } catch (error: any) {
+      console.error(`[ImportWorker] Failed to save checkpoint: ${error.message}`);
+      // Don't throw - checkpoint save failure shouldn't stop the import
+    }
+  }
+
+  // Removed parseFile as it is now handled by the worker
 
   /**
    * Build import configuration from job options

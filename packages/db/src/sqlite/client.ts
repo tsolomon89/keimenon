@@ -8,6 +8,7 @@ export interface SQLiteConfig {
   databasePath: string;
   readonly?: boolean;
   verbose?: boolean;
+  ignoreGlobalContext?: boolean; // If true, getDatabase() returns this.db even if global.dbClient is set
 }
 
 // Embedded SQL schema - Clean M:N architecture from day 1
@@ -92,7 +93,7 @@ CREATE TABLE IF NOT EXISTS account_links (
 CREATE INDEX IF NOT EXISTS idx_account_links_admin ON account_links(admin_account_id);
 CREATE INDEX IF NOT EXISTS idx_account_links_client ON account_links(client_account_id);
 
--- Sessions table
+-- Sessions table (CRITICAL: includes data_tag for test isolation)
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -106,6 +107,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   ip_address TEXT,
   user_agent TEXT,
   last_active INTEGER,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
@@ -118,7 +120,8 @@ CREATE TABLE IF NOT EXISTS login_attempts (
   success INTEGER NOT NULL DEFAULT 0,
   failure_reason TEXT,
   attempted_at INTEGER NOT NULL,
-  user_agent TEXT
+  user_agent TEXT,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual'))
 );
 
 -- Audit log table
@@ -141,6 +144,24 @@ CREATE TABLE IF NOT EXISTS audit_log (
   FOREIGN KEY (actor_account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
 
+-- Password reset tokens table (for secure password reset flow)
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  used_at INTEGER,
+  ip_address TEXT,
+  user_agent TEXT,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires ON password_reset_tokens(expires_at);
+
 -- Settings tables
 CREATE TABLE IF NOT EXISTS settings_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -149,6 +170,7 @@ CREATE TABLE IF NOT EXISTS settings_config (
   scope_id TEXT NOT NULL,
   value TEXT NOT NULL,
   updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
   UNIQUE(control_id, scope, scope_id)
 );
 
@@ -161,7 +183,8 @@ CREATE TABLE IF NOT EXISTS settings_changes (
   new_value TEXT,
   changed_by TEXT NOT NULL,
   changed_at INTEGER NOT NULL,
-  reason TEXT
+  reason TEXT,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual'))
 );
 
 -- =============================================================================
@@ -243,6 +266,7 @@ CREATE TABLE IF NOT EXISTS job_events (
   sequence_number INTEGER NOT NULL,
   timestamp INTEGER NOT NULL,
   account_id TEXT NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
   UNIQUE(job_id, sequence_number),
   FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
   FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
@@ -260,8 +284,45 @@ CREATE TABLE IF NOT EXISTS job_items (
   sequence_number INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
   FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
 );
+
+-- Upload sessions table (chunked file upload with resumability)
+CREATE TABLE IF NOT EXISTS upload_sessions (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  job_id TEXT,
+  file_name TEXT NOT NULL,
+  file_size INTEGER NOT NULL,
+  mime_type TEXT,
+  chunk_size INTEGER NOT NULL DEFAULT 10485760,
+  total_chunks INTEGER NOT NULL,
+  chunks_received TEXT NOT NULL DEFAULT '[]',
+  chunks_path TEXT NOT NULL,
+  assembled_path TEXT,
+  status TEXT NOT NULL DEFAULT 'uploading' CHECK(status IN ('uploading', 'assembling', 'completed', 'failed', 'expired', 'cancelled')),
+  error_message TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  is_local BOOLEAN DEFAULT 1,
+  data_tag TEXT DEFAULT 'real',
+  metadata TEXT,
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_upload_sessions_account ON upload_sessions(account_id);
+CREATE INDEX IF NOT EXISTS idx_upload_sessions_user ON upload_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_upload_sessions_job ON upload_sessions(job_id);
+CREATE INDEX IF NOT EXISTS idx_upload_sessions_status ON upload_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_upload_sessions_expires ON upload_sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_upload_sessions_data_tag ON upload_sessions(data_tag);
+CREATE INDEX IF NOT EXISTS idx_upload_sessions_cleanup ON upload_sessions(status, expires_at) WHERE status IN ('uploading', 'assembling');
 
 -- =============================================================================
 -- INDEXES
@@ -280,10 +341,12 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_data_tag ON sessions(data_tag);
 CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts(email);
 CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip_address);
 CREATE INDEX IF NOT EXISTS idx_login_attempts_time ON login_attempts(attempted_at);
 CREATE INDEX IF NOT EXISTS idx_login_attempts_email_ip ON login_attempts(email, ip_address);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_data_tag ON login_attempts(data_tag);
 
 -- Audit Indexes
 CREATE INDEX IF NOT EXISTS idx_audit_log_actor_user ON audit_log(actor_user_id);
@@ -296,8 +359,10 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_resource_type ON audit_log(resource_typ
 -- Settings Indexes
 CREATE INDEX IF NOT EXISTS idx_settings_config_control ON settings_config(control_id);
 CREATE INDEX IF NOT EXISTS idx_settings_config_scope ON settings_config(scope, scope_id);
+CREATE INDEX IF NOT EXISTS idx_settings_config_data_tag ON settings_config(data_tag);
 CREATE INDEX IF NOT EXISTS idx_settings_changes_control ON settings_changes(control_id);
 CREATE INDEX IF NOT EXISTS idx_settings_changes_time ON settings_changes(changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_settings_changes_data_tag ON settings_changes(data_tag);
 
 -- Graph Indexes
 CREATE INDEX IF NOT EXISTS idx_nodes_kind ON nodes(kind);
@@ -324,10 +389,13 @@ CREATE INDEX IF NOT EXISTS idx_jobs_account ON jobs(account_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
 CREATE INDEX IF NOT EXISTS idx_jobs_type ON jobs(type);
 CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at);
+CREATE INDEX IF NOT EXISTS idx_jobs_data_tag ON jobs(data_tag);
 CREATE INDEX IF NOT EXISTS idx_job_events_job ON job_events(job_id);
 CREATE INDEX IF NOT EXISTS idx_job_events_timestamp ON job_events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_job_events_data_tag ON job_events(data_tag);
 CREATE INDEX IF NOT EXISTS idx_job_items_job ON job_items(job_id);
 CREATE INDEX IF NOT EXISTS idx_job_items_status ON job_items(status);
+CREATE INDEX IF NOT EXISTS idx_job_items_data_tag ON job_items(data_tag);
 
 -- =============================================================================
 -- FULL-TEXT SEARCH
@@ -346,6 +414,52 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS nodes_fts_delete AFTER DELETE ON nodes BEGIN
   DELETE FROM nodes_fts WHERE id = old.id;
+END;
+
+-- FTS5 Duplicate Detection (Added in Migration 022)
+-- Purpose: Fast similarity search for near-duplicate message detection
+-- Strategy: Trigram tokenization for fuzzy matching (typo tolerance)
+-- Performance: O(log n) candidate search vs O(n²) brute force
+-- Usage: See apps/api/src/services/duplicate-detection-fts5.ts
+--
+-- Note: This table is automatically populated via triggers on nodes table.
+--       Only Message nodes with canonical_content are indexed.
+--       Trigrams enable fuzzy matching: "hello" → ["hel", "ell", "llo"]
+--
+-- See: Migration 022 for full implementation details and performance notes
+-- See: DUPLICATE_DETECTION_BASELINE_METRICS.md for performance benchmarks
+--
+CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts_duplicate USING fts5(
+  node_id UNINDEXED,          -- Message node reference (not FTS indexed)
+  content,                     -- Canonical message content (FTS indexed with trigrams)
+  account_id UNINDEXED,        -- Multi-tenant isolation (filter in application layer)
+  tokenize = 'trigram'         -- Trigram tokenizer for fuzzy/typo-tolerant matching
+);
+
+CREATE TRIGGER IF NOT EXISTS messages_fts_duplicate_insert
+AFTER INSERT ON nodes
+WHEN new.kind = 'Message' AND new.canonical_content IS NOT NULL
+BEGIN
+  INSERT INTO messages_fts_duplicate(node_id, content, account_id)
+  VALUES (new.id, new.canonical_content, new.account_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS messages_fts_duplicate_update
+AFTER UPDATE ON nodes
+WHEN new.kind = 'Message'
+  AND (old.canonical_content != new.canonical_content OR old.canonical_content IS NULL)
+  AND new.canonical_content IS NOT NULL
+BEGIN
+  DELETE FROM messages_fts_duplicate WHERE node_id = old.id;
+  INSERT INTO messages_fts_duplicate(node_id, content, account_id)
+  VALUES (new.id, new.canonical_content, new.account_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS messages_fts_duplicate_delete
+AFTER DELETE ON nodes
+WHEN old.kind = 'Message'
+BEGIN
+  DELETE FROM messages_fts_duplicate WHERE node_id = old.id;
 END;
 
 -- =============================================================================
@@ -429,8 +543,8 @@ export class SQLiteClient {
       // Reduce fsync frequency for better write performance (NORMAL is safe with WAL)
       this.db.pragma('synchronous = NORMAL');
 
-      // Set busy timeout to 5 seconds (prevents SQLITE_BUSY errors on concurrent access)
-      this.db.pragma('busy_timeout = 5000');
+      // Set busy timeout to 30 seconds (prevent SQLITE_BUSY on heavy 1GB+ ops)
+      this.db.pragma('busy_timeout = 30000');
 
       // Increase cache size to 64MB (default is ~2MB, this reduces disk I/O)
       this.db.pragma('cache_size = -64000'); // Negative value = KB
@@ -458,9 +572,22 @@ export class SQLiteClient {
 
     try {
       // Use embedded schema - no file I/O required!
-      this.db.exec(SQLITE_SCHEMA);
+      try {
+        this.db.exec(SQLITE_SCHEMA);
+      } catch (error: any) {
+        // Fix for missing columns in existing databases:
+        // If SQLITE_SCHEMA fails due to "no such column" (likely in an index creation),
+        // we try running migrations first to add the columns, then retry the schema.
+        if (error.message && error.message.includes('no such column')) {
+          console.warn('⚠️ Schema init failed due to missing column. Running migrations and retrying...');
+          await this.runMigrations();
+          this.db.exec(SQLITE_SCHEMA);
+        } else {
+          throw error;
+        }
+      }
 
-      // Run migrations for existing databases
+      // Run migrations for existing databases (idempotent)
       await this.runMigrations();
 
       console.log('✅ SQLite schema initialized');
@@ -507,6 +634,22 @@ export class SQLiteClient {
         // Don't throw - allow database to continue working without deduplication
       }
     }
+
+    // Migration 2: Add data_tag to nodes table
+    const tableInfo2 = this.db.prepare('PRAGMA table_info(nodes)').all() as any[];
+    const hasDataTagNodes = tableInfo2.some((col: any) => col.name === 'data_tag');
+
+    if (!hasDataTagNodes) {
+      console.log('🔄 Running migration: Adding data_tag to nodes table');
+      try {
+        this.db.exec("ALTER TABLE nodes ADD COLUMN data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual'));");
+        this.db.exec("CREATE INDEX IF NOT EXISTS idx_nodes_data_tag ON nodes(data_tag);");
+        this.db.exec("CREATE INDEX IF NOT EXISTS idx_nodes_account_tag ON nodes(account_id, data_tag);");
+        console.log('✅ Migration complete: data_tag added to nodes');
+      } catch (error) {
+        console.error('❌ Migration failed:', error);
+      }
+    }
   }
 
   /**
@@ -545,7 +688,8 @@ export class SQLiteClient {
   getDatabase(): Database.Database {
     // For test isolation: prefer global.dbClient if it's been swapped by middleware
     // This allows tests to use worker-specific databases without changing service code
-    if (global.dbClient && global.dbClient !== this && global.dbClient.db) {
+    // UNLESS the client was configured to ignore the global context (e.g. for Jobs DB)
+    if (!this.config.ignoreGlobalContext && global.dbClient && global.dbClient !== this && global.dbClient.db) {
       return global.dbClient.db;
     }
 
@@ -742,17 +886,72 @@ export class SQLiteClient {
   }
 
   /**
-   * Get nodes by kind
+   * Get nodes by kind with optional pagination
+   * @param kind - Node kind to filter by
+   * @param options - Pagination options (limit, offset, accountId for multi-tenant filtering)
    */
-  async getNodesByKind(kind: string): Promise<AnyNode[]> {
+  async getNodesByKind(
+    kind: string,
+    options?: { limit?: number; offset?: number; accountId?: string }
+  ): Promise<AnyNode[]> {
     if (!this.db) {
       throw new Error('Database not connected');
     }
 
-    const stmt = this.db.prepare('SELECT properties FROM nodes WHERE kind = ?');
-    const rows = stmt.all(kind) as any[];
+    const limit = options?.limit ?? 1000; // Default limit to prevent loading 100k+ nodes
+    const offset = options?.offset ?? 0;
+
+    let query: string;
+    let params: any[];
+
+    if (options?.accountId) {
+      // Multi-tenant filtered query with pagination
+      query = `
+        SELECT properties FROM nodes
+        WHERE kind = ? AND account_id = ?
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+      `;
+      params = [kind, options.accountId, limit, offset];
+    } else {
+      // Unfiltered query with pagination
+      query = `
+        SELECT properties FROM nodes
+        WHERE kind = ?
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+      `;
+      params = [kind, limit, offset];
+    }
+
+    const stmt = this.db.prepare(query);
+    const rows = stmt.all(...params) as any[];
 
     return rows.map((row) => JSON.parse(row.properties) as AnyNode);
+  }
+
+  /**
+   * Count nodes by kind (for pagination metadata)
+   */
+  async countNodesByKind(kind: string, accountId?: string): Promise<number> {
+    if (!this.db) {
+      throw new Error('Database not connected');
+    }
+
+    let query: string;
+    let params: any[];
+
+    if (accountId) {
+      query = 'SELECT COUNT(*) as count FROM nodes WHERE kind = ? AND account_id = ?';
+      params = [kind, accountId];
+    } else {
+      query = 'SELECT COUNT(*) as count FROM nodes WHERE kind = ?';
+      params = [kind];
+    }
+
+    const stmt = this.db.prepare(query);
+    const result = stmt.get(...params) as { count: number };
+    return result.count;
   }
 
   /**
@@ -1151,6 +1350,99 @@ export class SQLiteClient {
   }
 
   /**
+   * Find a spine node (Lexeme, Phrase, Topic) by kind and normalized text
+   *
+   * Uses JSON extraction to search within the properties column.
+   * For Lexeme: matches by lemma
+   * For Phrase: matches by normalized_text
+   * For Topic: matches by name
+   *
+   * @param accountId - Account ID for scoped lookup
+   * @param kind - Node kind ('Lexeme' | 'Phrase' | 'Topic')
+   * @param normalizedText - The text to search for (case-insensitive)
+   * @returns The first matching node or null
+   */
+  async findSpineNodeByText(
+    accountId: string,
+    kind: 'Lexeme' | 'Phrase' | 'Topic',
+    normalizedText: string
+  ): Promise<AnyNode | null> {
+    if (!this.db) {
+      throw new Error('Database not connected');
+    }
+
+    // Different JSON paths for different node kinds
+    const jsonPath = kind === 'Lexeme' ? '$.lemma' : kind === 'Topic' ? '$.name' : '$.normalized_text';
+
+    const stmt = this.db.prepare(`
+      SELECT properties FROM nodes
+      WHERE account_id = ?
+        AND kind = ?
+        AND LOWER(json_extract(properties, ?)) = LOWER(?)
+      ORDER BY created_at ASC
+      LIMIT 1
+    `);
+
+    const row = stmt.get(accountId, kind, jsonPath, normalizedText) as any;
+    return row ? JSON.parse(row.properties) : null;
+  }
+
+  /**
+   * Batch lookup for spine nodes by kind and normalized texts
+   *
+   * Efficiently finds existing spine nodes for multiple texts in a single query.
+   * Returns a Map of normalizedText -> existingNode for each found.
+   *
+   * Optimized for bulk import operations where we need to check many texts at once.
+   *
+   * @param accountId - Account ID for scoped lookup
+   * @param kind - Node kind ('Lexeme' | 'Phrase' | 'Topic')
+   * @param normalizedTexts - Array of texts to search for
+   * @returns Map of normalizedText -> existing node
+   */
+  async findSpineNodesByTexts(
+    accountId: string,
+    kind: 'Lexeme' | 'Phrase' | 'Topic',
+    normalizedTexts: string[]
+  ): Promise<Map<string, AnyNode>> {
+    if (!this.db) {
+      throw new Error('Database not connected');
+    }
+
+    if (normalizedTexts.length === 0) {
+      return new Map();
+    }
+
+    // Different JSON paths for different node kinds
+    const jsonPath = kind === 'Lexeme' ? '$.lemma' : kind === 'Topic' ? '$.name' : '$.normalized_text';
+
+    // Build IN clause with placeholders for the normalized texts
+    const placeholders = normalizedTexts.map(() => '?').join(',');
+    const lowercaseTexts = normalizedTexts.map((t) => t.toLowerCase());
+
+    const stmt = this.db.prepare(`
+      SELECT properties, LOWER(json_extract(properties, ?)) as lookup_key FROM nodes
+      WHERE account_id = ?
+        AND kind = ?
+        AND LOWER(json_extract(properties, ?)) IN (${placeholders})
+      ORDER BY created_at ASC
+    `);
+
+    const rows = stmt.all(jsonPath, accountId, kind, jsonPath, ...lowercaseTexts) as any[];
+
+    // Build map of normalizedText -> earliest node
+    const resultMap = new Map<string, AnyNode>();
+    for (const row of rows) {
+      const lookupKey = row.lookup_key as string;
+      if (!resultMap.has(lookupKey)) {
+        resultMap.set(lookupKey, JSON.parse(row.properties));
+      }
+    }
+
+    return resultMap;
+  }
+
+  /**
    * Find all duplicate groups in an account
    *
    * Returns content hashes that have multiple nodes (duplicates).
@@ -1465,6 +1757,152 @@ export class SQLiteClient {
       duplicate_count: stats.duplicate_count || 0,
       space_saved_bytes: spaceSaved,
     };
+  }
+
+  // =========================================================================
+  // BATCH SETTINGS QUERY
+  // Single query to fetch all settings with scope inheritance
+  // Replaces O(n*7) query pattern with O(1) query
+  // =========================================================================
+
+  /**
+   * Get all settings for a user with scope inheritance in a single query
+   *
+   * Instead of querying 7 scopes per setting (350+ queries), this method:
+   * 1. Fetches all settings for the user/account in ONE query
+   * 2. Returns them ordered by scope priority (most specific wins)
+   * 3. Caller processes in-memory to determine effective values
+   *
+   * Scope priority (1 = highest): component > view > user > role > workspace > org > defaults
+   *
+   * @param accountId - Account ID for workspace/role scopes
+   * @param userId - User ID for user/view/component scopes
+   * @returns Array of settings with scope info, ordered by control_id then priority
+   */
+  getAllSettingsForUser(
+    accountId: string,
+    userId: string
+  ): Array<{ control_id: string; value: string; scope: string; priority: number }> {
+    if (!this.db) {
+      throw new Error('Database not connected');
+    }
+
+    // Single query fetches all relevant settings with priority ordering
+    // scope_id can be: userId (for user/view/component), accountId (for workspace/role), or 'global' (for org/defaults)
+    const stmt = this.db.prepare(`
+      SELECT
+        control_id,
+        value,
+        scope,
+        CASE scope
+          WHEN 'component' THEN 1
+          WHEN 'view' THEN 2
+          WHEN 'user' THEN 3
+          WHEN 'role' THEN 4
+          WHEN 'workspace' THEN 5
+          WHEN 'org' THEN 6
+          WHEN 'defaults' THEN 7
+        END as priority
+      FROM settings_config
+      WHERE scope_id IN (?, ?, 'global')
+      ORDER BY control_id, priority ASC
+    `);
+
+    return stmt.all(userId, accountId) as Array<{
+      control_id: string;
+      value: string;
+      scope: string;
+      priority: number;
+    }>;
+  }
+
+  // =========================================================================
+  // BATCH DELETE METHODS
+  // Used by CompensateJob for rollback of failed imports
+  // =========================================================================
+
+  /**
+   * Delete multiple nodes by ID in a single transaction
+   *
+   * Used for rollback of failed imports. Deletes in batches to prevent
+   * memory issues with large IN clauses.
+   *
+   * @param nodeIds - Array of node IDs to delete
+   * @param accountId - Account ID for multi-tenant isolation
+   * @returns Number of nodes actually deleted
+   */
+  batchDeleteNodes(nodeIds: string[], accountId: string): number {
+    this.assertWriteAllowed('batchDeleteNodes');
+
+    if (!this.db) {
+      throw new Error('Database not connected');
+    }
+
+    if (nodeIds.length === 0) {
+      return 0;
+    }
+
+    const BATCH_SIZE = 500;
+    let totalDeleted = 0;
+
+    // Process in batches to avoid SQLite variable limit
+    const transaction = this.db.transaction(() => {
+      for (let i = 0; i < nodeIds.length; i += BATCH_SIZE) {
+        const batch = nodeIds.slice(i, i + BATCH_SIZE);
+        const placeholders = batch.map(() => '?').join(',');
+
+        const stmt = this.db!.prepare(
+          `DELETE FROM nodes WHERE id IN (${placeholders}) AND account_id = ?`
+        );
+        const result = stmt.run(...batch, accountId);
+        totalDeleted += result.changes;
+      }
+    });
+
+    transaction();
+    return totalDeleted;
+  }
+
+  /**
+   * Delete multiple edges by ID in a single transaction
+   *
+   * Used for rollback of failed imports. Must be called BEFORE batchDeleteNodes
+   * to avoid foreign key constraint violations.
+   *
+   * @param edgeIds - Array of edge IDs to delete
+   * @param accountId - Account ID for multi-tenant isolation
+   * @returns Number of edges actually deleted
+   */
+  batchDeleteEdges(edgeIds: string[], accountId: string): number {
+    this.assertWriteAllowed('batchDeleteEdges');
+
+    if (!this.db) {
+      throw new Error('Database not connected');
+    }
+
+    if (edgeIds.length === 0) {
+      return 0;
+    }
+
+    const BATCH_SIZE = 500;
+    let totalDeleted = 0;
+
+    // Process in batches to avoid SQLite variable limit
+    const transaction = this.db.transaction(() => {
+      for (let i = 0; i < edgeIds.length; i += BATCH_SIZE) {
+        const batch = edgeIds.slice(i, i + BATCH_SIZE);
+        const placeholders = batch.map(() => '?').join(',');
+
+        const stmt = this.db!.prepare(
+          `DELETE FROM edges WHERE id IN (${placeholders}) AND account_id = ?`
+        );
+        const result = stmt.run(...batch, accountId);
+        totalDeleted += result.changes;
+      }
+    });
+
+    transaction();
+    return totalDeleted;
   }
 
   /**

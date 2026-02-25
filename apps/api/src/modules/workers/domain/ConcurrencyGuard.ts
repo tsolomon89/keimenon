@@ -36,21 +36,30 @@ export class ConcurrencyGuard {
       return { canStart: true };
     }
 
+    // Extract test context if available
+    const reqContext = job.config.testContext?.dbPath
+      ? { testDbPath: job.config.testContext.dbPath }
+      : undefined;
+
     // Check for active jobs in same concurrency group
     const activeCount = await this.jobRepository.countActiveInGroup(
       job.concurrencyGroup,
-      job.accountId
+      job.accountId,
+      reqContext
     );
 
     // If there are active jobs in this group (excluding current job)
     // then this job must wait
     if (activeCount > 0) {
       // Find which jobs are blocking
-      const activeJobs = await this.jobRepository.find({
-        accountId: job.accountId,
-        status: ['queued', 'running'],
-        limit: 10,
-      });
+      const activeJobs = await this.jobRepository.find(
+        {
+          accountId: job.accountId,
+          status: ['queued', 'running'],
+          limit: 10,
+        },
+        reqContext
+      );
 
       const blockingJobs = activeJobs
         .filter((j) => j.concurrencyGroup === job.concurrencyGroup && j.id !== job.id)
@@ -82,12 +91,20 @@ export class ConcurrencyGuard {
       return [];
     }
 
+    // Extract test context if available from the completed job
+    const reqContext = completedJob.config.testContext?.dbPath
+      ? { testDbPath: completedJob.config.testContext.dbPath }
+      : undefined;
+
     // Find blocked jobs in the same concurrency group
-    const blockedJobs = await this.jobRepository.find({
-      accountId: completedJob.accountId,
-      status: ['blocked'],
-      limit: 100,
-    });
+    const blockedJobs = await this.jobRepository.find(
+      {
+        accountId: completedJob.accountId,
+        status: ['blocked'],
+        limit: 100,
+      },
+      reqContext
+    );
 
     const toUnblock = blockedJobs.filter(
       (j) => j.concurrencyGroup === completedJob.concurrencyGroup

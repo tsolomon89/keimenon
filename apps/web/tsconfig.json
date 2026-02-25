@@ -18,7 +18,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@keimenon/types": ["../../packages/types/src"],
-      "@keimenon/ui": ["../../packages/ui/src"]
+      "@keimenon/ui": ["../../packages/ui/src"],
+      "@keimenon/graph": ["../../packages/graph/src"]
     }
   },
   "include": [
@@ -28,7 +29,8 @@
     ".next/types/**/*.ts",
     "../../packages/types/src/**/*.ts",
     "../../packages/ui/src/**/*.ts",
-    "../../packages/ui/src/**/*.tsx"
+    "../../packages/ui/src/**/*.tsx",
+    "../../packages/graph/src/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

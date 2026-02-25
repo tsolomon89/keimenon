@@ -29,6 +29,7 @@ export class GathererAgent {
           retrieved_at: Date.now(),
           attested: false,
         },
+        source_role: 'imported',
       };
 
       sources_pending.push(newSource);
@@ -52,6 +53,7 @@ export class GathererAgent {
           retrieved_at: Date.now(),
           attested: false,
         },
+        source_role: 'imported',
       };
       sources_pending.push(expandedSource);
     }

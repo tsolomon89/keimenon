@@ -19,6 +19,7 @@
 
 import { Job, JobSpec, JobConfig } from '../domain/Job';
 import { JobRepository } from '../infrastructure/JobRepository';
+import { SSEBroadcaster } from '../infrastructure/SSEBroadcaster';
 
 export interface EnqueueJobCommand {
   type: 'import' | 'delete' | 'export' | 'analyze';
@@ -41,7 +42,10 @@ export interface EnqueueJobResult {
  * EnqueueJob Use Case
  */
 export class EnqueueJob {
-  constructor(private jobRepository: JobRepository) {}
+  constructor(
+    private jobRepository: JobRepository,
+    private broadcaster?: SSEBroadcaster
+  ) {}
 
   async execute(command: EnqueueJobCommand): Promise<EnqueueJobResult> {
     // 1. Validate command
@@ -78,7 +82,12 @@ export class EnqueueJob {
     // 4. Persist to repository
     await this.jobRepository.save(job);
 
-    // 5. Return result
+    // 5. Broadcast new job to SSE clients (so UI shows it immediately)
+    if (this.broadcaster) {
+      this.broadcaster.broadcastJobUpdate(job);
+    }
+
+    // 6. Return result
     return {
       jobId: job.id,
       status: 'created',

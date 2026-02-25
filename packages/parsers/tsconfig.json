@@ -7,7 +7,9 @@
     "noUnusedParameters": false,
     "noEmit": false,
     "downlevelIteration": true,
-    "target": "es2018"
+    "target": "es2018",
+    "module": "commonjs",
+    "moduleResolution": "node"
   },
   "include": ["src/**/*"],
   "exclude": ["**/*.test.ts", "**/__tests__/**", "node_modules"]

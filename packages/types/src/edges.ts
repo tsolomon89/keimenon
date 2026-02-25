@@ -117,6 +117,108 @@ export const ClusterMemberEdgeSchema = BaseEdgeSchema.extend({
 
 export type ClusterMemberEdge = z.infer<typeof ClusterMemberEdgeSchema>;
 
+// --- Vision V2: UGC Spine Edges ---
+
+// MENTIONS edge (UGCDoc → Lexeme/Phrase)
+export const MentionsEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('MENTIONS'),
+  count: z.number().default(1),           // Occurrence count in source
+  positions: z.array(z.number()).optional(), // Character positions
+});
+
+export type MentionsEdge = z.infer<typeof MentionsEdgeSchema>;
+
+// ABOUT edge (UGCDoc → Topic)
+export const AboutEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('ABOUT'),
+  relevance: z.number().min(0).max(1).default(0.5), // Topic relevance score
+});
+
+export type AboutEdge = z.infer<typeof AboutEdgeSchema>;
+
+// CO_OCCURS_WITH edge (Phrase ↔ Phrase)
+export const CoOccursWithEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('CO_OCCURS_WITH'),
+  count: z.number().default(1),           // Co-occurrence count
+  pmi: z.number().optional(),             // Pointwise Mutual Information
+});
+
+export type CoOccursWithEdge = z.infer<typeof CoOccursWithEdgeSchema>;
+
+// BELONGS_TO_TOPIC edge (Phrase → Topic)
+export const BelongsToTopicEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('BELONGS_TO_TOPIC'),
+  weight: z.number().min(0).max(1).default(0.5), // Phrase importance in topic
+});
+
+export type BelongsToTopicEdge = z.infer<typeof BelongsToTopicEdgeSchema>;
+
+// --- Vision V2: Verified Edges ---
+
+// SOURCED_FROM edge (VerifiedClaim → VerifiedSource)
+export const SourcedFromEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('SOURCED_FROM'),
+  excerpt_span: z.string().optional(),    // Location in source (e.g., "p3:s12-34")
+  extraction_confidence: z.number().min(0).max(1).default(0.8),
+});
+
+export type SourcedFromEdge = z.infer<typeof SourcedFromEdgeSchema>;
+
+// --- World Model V5: Principal & Workspace Edges ---
+
+// CREATED_BY edge (Source/Workspace → Principal who created it)
+export const CreatedByEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('CREATED_BY'),
+  // from: Source (especially workspace), to: Principal (creator)
+});
+
+export type CreatedByEdge = z.infer<typeof CreatedByEdgeSchema>;
+
+// ATTACHED_TO edge (Source/Workspace → Principal agent)
+export const AttachedToEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('ATTACHED_TO'),
+  // from: Source (workspace), to: Principal (agent)
+  role: z.enum(['primary', 'collaborator', 'observer']).default('primary'),
+});
+
+export type AttachedToEdge = z.infer<typeof AttachedToEdgeSchema>;
+
+// PINS_CONTEXT edge (Source/Workspace → Any Node as context root)
+export const PinsContextEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('PINS_CONTEXT'),
+  // from: Source (workspace), to: Any Node (context root)
+  pin_type: z.enum(['explicit', 'derived']).default('explicit'),
+});
+
+export type PinsContextEdge = z.infer<typeof PinsContextEdgeSchema>;
+
+// INITIATED_BY edge (ConversationThread → Principal who started it)
+export const InitiatedByEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('INITIATED_BY'),
+  // from: ConversationThread, to: Principal (human initiator)
+});
+
+export type InitiatedByEdge = z.infer<typeof InitiatedByEdgeSchema>;
+
+// PARTICIPATED_IN edge (Principal → ConversationThread)
+export const ParticipatedInEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('PARTICIPATED_IN'),
+  // from: Principal (agent), to: ConversationThread
+  role: z.enum(['agent', 'human', 'observer']).default('agent'),
+});
+
+export type ParticipatedInEdge = z.infer<typeof ParticipatedInEdgeSchema>;
+
+// PRODUCED_BY edge (Source/artifact → Run that created it)
+export const ProducedByEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('PRODUCED_BY'),
+  // from: Source (agent_output), to: Run ID (stored as node or reference)
+  run_id: z.string(),
+  task_type: z.string().optional(),
+});
+
+export type ProducedByEdge = z.infer<typeof ProducedByEdgeSchema>;
+
 // Union type for all edges
 export type AnyEdge =
   | ContainsEdge
@@ -129,4 +231,17 @@ export type AnyEdge =
   | ExactDupEdge
   | NearDupEdge
   | SpanContainsEdge
-  | ClusterMemberEdge;
+  | ClusterMemberEdge
+  // V2 Additions
+  | MentionsEdge
+  | AboutEdge
+  | CoOccursWithEdge
+  | BelongsToTopicEdge
+  | SourcedFromEdge
+  // World Model V5 Additions
+  | CreatedByEdge
+  | AttachedToEdge
+  | PinsContextEdge
+  | InitiatedByEdge
+  | ParticipatedInEdge
+  | ProducedByEdge;

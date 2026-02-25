@@ -99,6 +99,16 @@ export class Job {
     message?: string;
   } = { current: 0, total: 0 };
 
+  // Stats tracking (for real-time updates)
+  private _stats: {
+    nodesCreated?: number;
+    nodesDeleted?: number;
+    edgesCreated?: number;
+    edgesDeleted?: number;
+    sourcesCreated?: number;
+    conversationsProcessed?: number;
+  } = {};
+
   constructor(props: {
     id: string;
     type: JobType;
@@ -288,6 +298,21 @@ export class Job {
   }
 
   // ============================================================================
+  // Stats Tracking
+  // ============================================================================
+
+  /**
+   * Update job stats (for real-time progress feedback)
+   */
+  updateStats(stats: Partial<Job['_stats']>): void {
+    // Allow stats update in running state (primary) or terminal states (final update)
+    if (this._state.status !== 'running' && !this.isTerminal) {
+      throw new Error(`Cannot update stats for job in status: ${this._state.status}`);
+    }
+    this._stats = { ...this._stats, ...stats };
+  }
+
+  // ============================================================================
   // Getters
   // ============================================================================
 
@@ -315,6 +340,10 @@ export class Job {
       percent,
       message: this._progress.message,
     };
+  }
+
+  get stats(): Job['_stats'] {
+    return { ...this._stats }; // Return copy to prevent mutation
   }
 
   get isTerminal(): boolean {
@@ -348,6 +377,7 @@ export class Job {
     return {
       id: this.id,
       type: this.type,
+      status: this.status, // ✅ Expose status at top level for API consumers
       accountId: this.accountId,
       createdBy: this.createdBy,
       config: this.config,
@@ -364,8 +394,10 @@ export class Job {
         blockedReason: this._state.blockedReason,
         retryCount: this._state.retryCount,
         progress: this._progress, // ✅ Include progress in state_data for persistence
+        stats: this._stats, // ✅ Include stats in state_data for persistence
       },
       progress: this.progress, // Keep for API responses (includes calculated percent)
+      stats: this.stats, // Keep for API responses
       eventsCount: this._events.length,
     };
   }
@@ -423,6 +455,11 @@ export class Job {
       };
     }
 
+    // ✅ Restore stats from state_data (if present)
+    if (stateData.stats) {
+      (job as any)._stats = { ...stateData.stats };
+    }
+
     return job;
   }
 
@@ -457,6 +494,11 @@ export class Job {
     // Restore progress
     if (json.state.progress) {
       (job as any)._progress = { ...json.state.progress };
+    }
+
+    // Restore stats
+    if (json.state.stats) {
+      (job as any)._stats = { ...json.state.stats };
     }
 
     return job;

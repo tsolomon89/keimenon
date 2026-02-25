@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: Manifest
+metadata:
+  name: keimenon-oblio-corpus
+  version: 5.3.0
+  status: active
+  last_updated: "2026-02-03"
+index:
+  - id: entrypoint
+    path: ./README.md
+    description: "The root of the Homoiconic Fact Store."
+
+  - id: glossary
+    path: ./glossary.md
+    description: "Canonical definitions and ubiquitous language."
+
+  - id: arch-overview
+    path: ./architecture/overview.md
+    description: "System Architecture: One App, Many Domains."
+
+  - id: arch-runtime
+    path: ./architecture/runtime_systems.md
+    description: "Runtime enforcement: Entitlements, Metering, Tenancy."
+
+  - id: arch-security
+    path: ./architecture/security_model.md
+    description: "Security: AuthN, RBAC, and Multi-Tenant Isolation."
+
+  - id: domain-identity
+    path: ./domain_model/identity.md
+    description: "Identity Model: Users, Tenants, and Authentication."
+
+  - id: domain-inventory
+    path: ./domain_model/inventory_graph.md
+    description: "Inventory (Assets) vs Graph (Entities)."
+
+  - id: domain-attribution
+    path: ./domain_model/attribution.md
+    description: "Attribution: URL Identity and Provenance."
+
+  - id: feat-chat-import
+    path: ./domain_model/features/chat_import.md
+    description: "Logic for ingesting and stitching chat exports."
+
+  - id: feat-clustering
+    path: ./domain_model/features/clustering.md
+    description: "J+MD Surface and Evidence-based Clustering."
+
+  - id: feat-code-extraction
+    path: ./domain_model/features/code_extraction.md
+    description: "Automated extraction and deduplication of code blocks."
+
+  - id: core-record-struct
+    path: ./core_engine/record_struct.md
+    description: "The Dual-State Data Model: Record (Database) vs Struct (View)."
+
+  - id: core-schema
+    path: ./core_engine/schema_as_data.md
+    description: "Homoiconicity: Schema is stored as data records."
+
+  - id: core-query
+    path: ./core_engine/query_model.md
+    description: "The DatabaseClient abstraction and Universal Query."
+
+  - id: impl-ops
+    path: ./implementation/system_operations.md
+    description: "Operational/DevOps artifacts: Login, Billing, Provisioning."
+
+  - id: impl-migration
+    path: ./implementation/content_migration.md
+    description: "Strategy for migrating legacy content to Universal Schema."
+
+  - id: impl-spec-desktop
+    path: ./implementation/specs/desktop_app.md
+    description: "Spec: Local-First Desktop Architecture."
+
+  - id: impl-spec-upload
+    path: ./implementation/specs/chunked_upload.md
+    description: "Spec: Resumable Chunked Upload Protocol."
+
+  - id: gov-changelog
+    path: ./90_provenance/change_log.md
+    description: "Record of changes to the corpus."
+
+  - id: gov-questions
+    path: ./60_open_questions/README.md
+    description: "Quarantine zone for Open Questions."

@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import multer from 'multer';
 import { nanoid } from 'nanoid';
 import { getStorageService } from '../services/storage';
@@ -60,7 +61,7 @@ const upload = multer({
  * POST /api/v1/ingest/files
  * Upload files and create Source nodes (requires senior permission)
  */
-router.post('/files', upload.array('files', 10), async (req: Request, res: Response) => {
+router.post('/files', (upload.array('files', 10) as any), async (req: Request, res: Response) => {
   try {
     // Apply auth if available
     if (requireAuth && requirePermission) {
@@ -99,7 +100,7 @@ router.post('/files', upload.array('files', 10), async (req: Request, res: Respo
       // Store file
       const { relativePath } = await storage.storeFile(file, fingerprint);
 
-      // Create Source node
+      // Create Source node with full World Model provenance
       const sourceId = generateNodeId('src', fingerprint);
       const source = SourceNodeSchema.parse({
         id: sourceId,
@@ -112,9 +113,16 @@ router.post('/files', upload.array('files', 10), async (req: Request, res: Respo
         board_id: boardId,
         created_at: Date.now(),
         updated_at: Date.now(),
+        // World Model V5: Full provenance tracking (WHO/HOW/FROM/VERIFIED)
         provenance: {
-          origin: 'upload',
+          origin_principal_id: req.user?.userId || 'anonymous',   // WHO: User who uploaded
+          origin_type: 'user_upload',                              // HOW: Direct file upload
+          origin_ref: fingerprint,                                 // FROM: File fingerprint
+          trust_state: 'ugc',                                      // VERIFIED: User-generated content
+          original_url: undefined,                                 // N/A for file uploads
           retrieved_at: Date.now(),
+          // Legacy fields for backward compatibility
+          origin: 'upload',
           attested: false,
         },
       });

@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import { SQLiteClient } from '@keimenon/db';
 import { AuthService } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
@@ -11,7 +12,8 @@ import {
   getSettingById,
   canEditSetting,
   canViewSetting,
-} from '@keimenon/types/src/settings';
+} from '@keimenon/types';
+import { KeyManagementService, LLMProvider } from '../services/key-management.service';
 
 /**
  * Settings Routes - JSON-Driven Configuration Management
@@ -29,7 +31,6 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       // CRITICAL FIX: Get per-request database client for test isolation
       const { getDbClient } = await import('../utils/get-db-client');
       const dbClient = await getDbClient(req);
-      const database = dbClient.getDatabase();
 
       const user = (req as any).user;
       const accountId = user.accountId;
@@ -37,7 +38,22 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       const permissionLevel = user.permissionLevel;
       const accountType = user.accountType;
 
-      // Load settings from all scopes
+      // PERFORMANCE FIX: Single batch query instead of O(n*7) queries
+      // This reduces 350+ queries to 1 query for all settings
+      const allSettings = dbClient.getAllSettingsForUser(accountId, userId);
+
+      // Build a map of control_id -> {value, scope} (first match wins due to priority ordering)
+      const settingsMap = new Map<string, { value: any; source: ConfigScope }>();
+      for (const setting of allSettings) {
+        if (!settingsMap.has(setting.control_id)) {
+          settingsMap.set(setting.control_id, {
+            value: JSON.parse(setting.value),
+            source: setting.scope as ConfigScope,
+          });
+        }
+      }
+
+      // Build response by iterating registry (filters by permissions)
       const settingsData: Record<string, EffectiveSettingValue> = {};
 
       for (const category of SETTINGS_REGISTRY) {
@@ -57,15 +73,12 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
               continue;
             }
 
-            // Get effective value
-            const effectiveValue = await getEffectiveValue(
-              database,
-              control.id,
-              control.scope,
-              accountId,
-              userId,
-              control.defaultValue
-            );
+            // Get effective value from map, or use default
+            const stored = settingsMap.get(control.id);
+            const effectiveValue = stored || {
+              value: control.defaultValue,
+              source: 'defaults' as ConfigScope,
+            };
 
             // Check if user can edit
             const canEdit = canEditSetting(control, permissionLevel);
@@ -386,6 +399,249 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
     } catch (error: any) {
       console.error('Error fetching registry:', error);
       return res.status(500).json({ error: 'Failed to fetch settings registry' });
+    }
+  });
+
+  // ============================================================================
+  // BYOK / API Key Management Routes (World Model V5)
+  // ============================================================================
+
+  /**
+   * GET /api/v1/settings/api-keys - List stored API keys (hints only)
+   */
+  router.get('/api-keys', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+
+      const user = (req as any).user;
+      const accountId = user.accountId;
+
+      const keyService = new KeyManagementService(dbClient);
+      const keys = await keyService.listKeys(accountId);
+
+      return res.json({
+        success: true,
+        keys,
+      });
+    } catch (error: any) {
+      console.error('Error listing API keys:', error);
+      return res.status(500).json({ error: 'Failed to list API keys' });
+    }
+  });
+
+  /**
+   * POST /api/v1/settings/api-keys - Add or update API key
+   */
+  const AddApiKeySchema = z.object({
+    provider: z.enum(['openai', 'anthropic', 'groq', 'google', 'azure', 'ollama', 'custom']),
+    apiKey: z.string().min(1, 'API key required'),
+    skipValidation: z.boolean().optional().default(false),
+  });
+
+  router.post('/api-keys', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+
+      const user = (req as any).user;
+      const accountId = user.accountId;
+
+      // Validate request body
+      const body = AddApiKeySchema.parse(req.body);
+
+      const keyService = new KeyManagementService(dbClient);
+      const result = await keyService.storeKey(
+        accountId,
+        body.provider as LLMProvider,
+        body.apiKey,
+        body.skipValidation
+      );
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          error: result.error || 'Failed to store API key',
+        });
+      }
+
+      return res.status(201).json({
+        success: true,
+        provider: body.provider,
+        hint: result.hint,
+        message: 'API key stored successfully',
+      });
+    } catch (error: any) {
+      console.error('Error adding API key:', error);
+
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation failed',
+          details: error.errors,
+        });
+      }
+
+      return res.status(500).json({ error: 'Failed to add API key' });
+    }
+  });
+
+  /**
+   * DELETE /api/v1/settings/api-keys/:provider - Remove API key
+   */
+  router.delete('/api-keys/:provider', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+
+      const user = (req as any).user;
+      const accountId = user.accountId;
+      const provider = req.params.provider as LLMProvider;
+
+      const validProviders = ['openai', 'anthropic', 'groq', 'google', 'azure', 'ollama', 'custom'];
+      if (!validProviders.includes(provider)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid provider: ${provider}`,
+        });
+      }
+
+      const keyService = new KeyManagementService(dbClient);
+      const deleted = await keyService.deleteKey(accountId, provider);
+
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          error: 'API key not found',
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'API key deleted successfully',
+      });
+    } catch (error: any) {
+      console.error('Error deleting API key:', error);
+      return res.status(500).json({ error: 'Failed to delete API key' });
+    }
+  });
+
+  /**
+   * POST /api/v1/settings/api-keys/test - Test API key validity
+   */
+  const TestApiKeySchema = z.object({
+    provider: z.enum(['openai', 'anthropic', 'groq', 'google', 'azure', 'ollama', 'custom']),
+    apiKey: z.string().min(1, 'API key required'),
+  });
+
+  router.post('/api-keys/test', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+
+      // Validate request body
+      const body = TestApiKeySchema.parse(req.body);
+
+      const keyService = new KeyManagementService(dbClient);
+      const result = await keyService.validateKey(body.provider as LLMProvider, body.apiKey);
+
+      return res.json({
+        success: true,
+        valid: result.valid,
+        error: result.error,
+        models: result.models,
+      });
+    } catch (error: any) {
+      console.error('Error testing API key:', error);
+
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation failed',
+          details: error.errors,
+        });
+      }
+
+      return res.status(500).json({ error: 'Failed to test API key' });
+    }
+  });
+
+  /**
+   * GET /api/v1/settings/ai - Get AI settings for account
+   */
+  router.get('/ai', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+
+      const user = (req as any).user;
+      const accountId = user.accountId;
+
+      const keyService = new KeyManagementService(dbClient);
+      const settings = await keyService.getAISettings(accountId);
+
+      return res.json({
+        success: true,
+        settings: settings || {
+          preferredProvider: null,
+          preferredModel: null,
+          litellmUrl: null,
+          searxngUrl: null,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error getting AI settings:', error);
+      return res.status(500).json({ error: 'Failed to get AI settings' });
+    }
+  });
+
+  /**
+   * PATCH /api/v1/settings/ai - Update AI settings
+   */
+  const UpdateAISettingsSchema = z.object({
+    preferredProvider: z.enum(['openai', 'anthropic', 'groq', 'google', 'azure', 'ollama', 'custom']).optional(),
+    preferredModel: z.string().optional(),
+    litellmUrl: z.string().url().optional().nullable(),
+    searxngUrl: z.string().url().optional().nullable(),
+  });
+
+  router.patch('/ai', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+
+      const user = (req as any).user;
+      const accountId = user.accountId;
+
+      // Validate request body
+      const body = UpdateAISettingsSchema.parse(req.body);
+
+      const keyService = new KeyManagementService(dbClient);
+      await keyService.updateAISettings(accountId, {
+        preferredProvider: body.preferredProvider as LLMProvider | undefined,
+        preferredModel: body.preferredModel,
+        litellmUrl: body.litellmUrl || undefined,
+        searxngUrl: body.searxngUrl || undefined,
+      });
+
+      const settings = await keyService.getAISettings(accountId);
+
+      return res.json({
+        success: true,
+        settings,
+      });
+    } catch (error: any) {
+      console.error('Error updating AI settings:', error);
+
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation failed',
+          details: error.errors,
+        });
+      }
+
+      return res.status(500).json({ error: 'Failed to update AI settings' });
     }
   });
 

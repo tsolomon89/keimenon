@@ -21,7 +21,7 @@ import FormData from 'form-data';
 import bcrypt from 'bcrypt';
 import { unlockAccount } from '../utils/account-lockout';
 
-const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:4001';
+const getApiUrl = () => process.env.TEST_API_URL || 'http://127.0.0.1:4001';
 const DB_PATH =
   process.env.DB_PATH || path.join(require('os').homedir(), '.keimenon', 'keimenon.db');
 const SAMPLE_FILE = path.join(process.cwd(), '../../ai_context/chat_data/test-samples/small.json');
@@ -126,7 +126,7 @@ function ensureAccountAndUser(db: Database.Database, user: typeof ADMIN): string
 }
 
 async function login(email: string, password: string): Promise<LoginResult> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+  const res = await fetch(`${getApiUrl()}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -137,11 +137,36 @@ async function login(email: string, password: string): Promise<LoginResult> {
     throw new Error(`Login failed (${res.status}): ${body}`);
   }
 
-  const data = (await res.json()) as any;
+  let data = (await res.json()) as any;
+  console.log('[DEBUG] Login Response:', JSON.stringify(data, null, 2));
+
+  // Handle multi-account selection flow
+  if (data.requiresAccountSelection) {
+    const accountId = data.availableAccounts[0].accountId;
+    console.log(`[DEBUG] Selecting account: ${accountId}`);
+
+    const selectRes = await fetch(`${getApiUrl()}/api/v1/auth/select-account`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tempToken: data.tempToken,
+        accountId: accountId,
+      }),
+    });
+
+    if (!selectRes.ok) {
+      const body = await selectRes.text();
+      throw new Error(`Account selection failed (${selectRes.status}): ${body}`);
+    }
+
+    data = await selectRes.json();
+    console.log('[DEBUG] Account Selection Response:', JSON.stringify(data, null, 2));
+  }
+
   return {
     token: data.token,
-    accountId: data.user.accountId || data.user.account_id,
-    userId: data.user.id || data.user.userId,
+    accountId: data.account?.id || data.user?.accountId || data.user?.account_id,
+    userId: data.user?.id || data.user?.userId,
   };
 }
 
@@ -153,7 +178,7 @@ async function waitForJob(
 ): Promise<any> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    const res = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}`, {
+    const res = await fetch(`${getApiUrl()}/api/v1/jobs/${jobId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
@@ -179,6 +204,7 @@ test('import job succeeds then delete job clears data', async (_t: TestContext) 
   assert.ok(fs.existsSync(SAMPLE_FILE), 'Sample chat file is required for the test');
 
   const db = new Database(DB_PATH);
+  db.pragma('journal_mode = WAL');
   rebuildFts(db);
 
   const adminAccountId = ensureAccountAndUser(db, ADMIN);
@@ -195,7 +221,7 @@ test('import job succeeds then delete job clears data', async (_t: TestContext) 
   const form = new FormData();
   form.append('files', fs.createReadStream(SAMPLE_FILE));
 
-  const importRes = await fetch(`${API_BASE_URL}/api/v1/jobs/import`, {
+  const importRes = await fetch(`${getApiUrl()}/api/v1/jobs/import`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${adminToken}`, ...form.getHeaders() },
     body: form,
@@ -220,7 +246,7 @@ test('import job succeeds then delete job clears data', async (_t: TestContext) 
     `Expected node count to increase after import (was ${initialNodeCount}, now ${postImportNodes})`
   );
 
-  const deleteRes = await fetch(`${API_BASE_URL}/api/v1/jobs/delete`, {
+  const deleteRes = await fetch(`${getApiUrl()}/api/v1/jobs/delete`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${adminToken}`,

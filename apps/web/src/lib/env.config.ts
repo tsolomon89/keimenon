@@ -23,10 +23,25 @@ function getEnv(key: string, fallback: string = ''): string {
  * On the client, we use the public URL
  */
 const internalUrl = getEnv('INTERNAL_API_URL');
+
+// Helper to get query param without crashing in SSR/node
+function getQueryParam(key: string): string | null {
+  if (typeof window !== 'undefined' && window.location) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(key);
+  }
+  return null;
+}
+
+const dynamicPort = getQueryParam('apiPort');
+const dynamicBaseUrl = dynamicPort ? `http://127.0.0.1:${dynamicPort}` : null;
+
 export const API_BASE_URL =
   typeof window === 'undefined' && internalUrl
     ? internalUrl
-    : getEnv('NEXT_PUBLIC_API_URL', 'http://localhost:4001');
+    : dynamicBaseUrl || getEnv('NEXT_PUBLIC_API_URL', 'http://127.0.0.1:4001');
+
+console.log('[Config] API_BASE_URL resolved to:', API_BASE_URL);
 
 /**
  * Feature flags

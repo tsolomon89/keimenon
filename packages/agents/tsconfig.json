@@ -5,6 +5,8 @@
     "rootDir": "./src",
     "noEmit": false,
     "target": "es2018",
+    "module": "commonjs",
+    "moduleResolution": "node",
     "downlevelIteration": true
   },
   "include": ["src/**/*"],

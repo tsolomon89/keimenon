@@ -6,7 +6,7 @@
  */
 
 import { DataAdapter, bindObject } from './DataAdapter';
-import { BoundObject } from '../primitives/Viewer';
+import { BoundObject } from '../primitives';
 
 /**
  * Simplified User type for the PoC

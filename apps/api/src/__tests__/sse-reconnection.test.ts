@@ -131,7 +131,9 @@ describe('SSE Reconnection', () => {
           // EventSource error object often doesn't have message, try to inspect it
           try {
             console.error('Error details:', JSON.stringify(err));
-          } catch (e) {}
+          } catch (e) {
+            // Ignore
+          }
           // Don't reject immediately, wait for timeout or retries?
           // But for "establish initial connection", error is bad.
         };

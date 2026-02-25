@@ -12,6 +12,7 @@
     "dev:clean": "node scripts/dev.js --clean",
     "dev:stop": "node scripts/dev-stop.js",
     "cleanup:dev": "node scripts/cleanup-dev.js",
+    "dev:desktop": "node scripts/dev-desktop.js",
     "test": "turbo run test",
     "test:auth": "node tests/auth-suite.js",
     "e2e": "playwright test",
@@ -19,6 +20,7 @@
     "e2e:firefox": "playwright test --project=firefox",
     "e2e:webkit": "playwright test --project=webkit --workers=1",
     "e2e:smoke": "playwright test tests/e2e/smoke.spec.ts tests/e2e/keimenon-operations.spec.ts tests/e2e/flow-auth-keimenon.spec.ts tests/e2e/settings-navigation.spec.ts --project=chromium --workers=2",
+    "e2e:heavy": "cross-env SQLITE_PATH=./e2e_heavy.db playwright test tests/e2e/scenarios/huge-file-upload.spec.ts --project=chromium --timeout=600000",
     "e2e:smoke:ui": "playwright test tests/e2e/smoke.spec.ts tests/e2e/keimenon-operations.spec.ts tests/e2e/flow-auth-keimenon.spec.ts tests/e2e/settings-navigation.spec.ts --project=chromium --ui",
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
@@ -45,7 +47,8 @@
     "prepare": "husky install",
     "commitlint": "commitlint",
     "unlock:all": "node scripts/clear-lockouts.js",
-    "unlock": "node scripts/unlock-account.js"
+    "unlock": "node scripts/unlock-account.js",
+    "factory-reset": "tsx apps/api/src/scripts/factory-reset.ts"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
@@ -56,7 +59,7 @@
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
     "cross-env": "^10.1.0",
-    "esbuild": "^0.25.10",
+    "esbuild": "^0.27.2",
     "husky": "^8.0.3",
     "lint-staged": "^15.2.0",
     "pixelmatch": "^7.1.0",
@@ -65,13 +68,14 @@
     "sharp": "^0.34.4",
     "tsx": "^4.20.6",
     "turbo": "^1.13.4",
-    "typescript": "^5.3.3"
+    "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": "^20.0.0 || ^22.0.0",
     "npm": ">=9.0.0"
   },
   "dependencies": {
+    "@sentry-internal/replay-canvas": "^10.37.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
     "bcrypt": "^6.0.0",
@@ -81,6 +85,10 @@
     "fast-check": "^4.3.0",
     "jsonwebtoken": "^9.0.2",
     "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0"
+    "passport-google-oauth20": "^2.0.0",
+    "postcss": "^8.5.6"
+  },
+  "overrides": {
+    "nanoid": "^3.3.7"
   }
 }

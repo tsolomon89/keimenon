@@ -83,7 +83,7 @@ describe('IntegratedDuplicateDetectionService', () => {
     service = new IntegratedDuplicateDetectionService(db);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     // Restore environment variables
     for (const [key, value] of Object.entries(originalEnv)) {
       if (value === undefined) {
@@ -99,7 +99,7 @@ describe('IntegratedDuplicateDetectionService', () => {
     }
     if (testDbPath) {
       try {
-        fs.unlink(testDbPath);
+        await fs.unlink(testDbPath);
       } catch (error) {
         // Ignore cleanup errors
       }

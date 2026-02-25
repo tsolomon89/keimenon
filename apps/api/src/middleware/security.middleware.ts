@@ -11,6 +11,11 @@ import { RequestHandler } from 'express';
 /**
  * Get allowed origins based on environment
  */
+import { SECURITY_CONFIG } from '../config/security.config';
+
+/**
+ * Get allowed origins based on environment
+ */
 function getAllowedOrigins(): string[] {
   const nodeEnv = process.env.NODE_ENV || 'development';
 
@@ -22,23 +27,14 @@ function getAllowedOrigins(): string[] {
       console.warn(
         '⚠️  WARNING: No ALLOWED_ORIGINS configured in production. CORS will be very restrictive.'
       );
-      return ['https://yourdomain.com']; // Default placeholder
+      return SECURITY_CONFIG.cors.productionDefault;
     }
 
     return allowedOrigins;
   }
 
   // Development: allow localhost on common ports
-  return [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:5173', // Vite default
-    'http://localhost:5174',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174',
-  ];
+  return SECURITY_CONFIG.cors.developmentOrigins;
 }
 
 /**
@@ -69,9 +65,14 @@ export function configureCors(): RequestHandler {
         }
       }
 
-      // In test mode, allow any localhost/127.0.0.1 origin
-      if (isTestMode) {
-        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      // In test mode OR development, always allow localhost/127.0.0.1/app:// origin
+      // This ensures Electron (app://) and hybrid dev (localhost) works reliably
+      if (isTestMode || nodeEnv === 'development') {
+        if (
+          origin.includes('localhost') ||
+          origin.includes('127.0.0.1') ||
+          origin.startsWith('app://')
+        ) {
           return callback(null, true);
         }
       }
