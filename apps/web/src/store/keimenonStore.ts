@@ -48,9 +48,17 @@ export type SourceRole = 'imported' | 'workspace' | 'brief' | 'agent_output' | '
 export interface KeimenonNode {
   id: string;
   type:
-    | 'conversation' | 'message' | 'source' | 'code'  // Original types
-    | 'Lexeme' | 'Phrase' | 'Topic'                    // V2: UGC Spine
-    | 'VerifiedSource' | 'VerifiedClaim';              // V2: Verified Layer
+    | 'conversation'
+    | 'message'
+    | 'source'
+    | 'code' // Original types
+    | 'Lexeme'
+    | 'Phrase'
+    | 'Topic' // V2: UGC Spine
+    | 'VerifiedSource'
+    | 'VerifiedClaim' // V2: Verified Layer
+    | 'Principal'
+    | 'ConversationThread'; // V5: World Model principals
   kind?: string; // Original API kind
   sourceRole?: SourceRole; // World Model V5: role determines visibility and UI treatment
   position: { x: number; y: number };
@@ -151,27 +159,6 @@ interface KeimenonState {
 
   // Account isolation actions
   setCurrentAccountId: (accountId: string) => void;
-
-  // Import Process State
-  importProcess: {
-    id: string;
-    status: 'uploading' | 'analyzing' | 'review' | 'importing' | 'completed';
-    candidates: ImportCandidate[];
-  } | null;
-  setImportProcess: (process: KeimenonState['importProcess']) => void;
-  updateImportCandidate: (id: string, updates: Partial<ImportCandidate>) => void;
-}
-
-export interface ImportCandidate {
-  id: string;
-  title: string;
-  stats: {
-    segmentCount: number;
-    charCount: number;
-    dupPercent: number;
-  };
-  status: 'pending' | 'approved' | 'rejected' | 'merged';
-  metadata?: Record<string, any>;
 }
 
 const initialState = {
@@ -191,7 +178,6 @@ const initialState = {
     sourceRoleFilter: new Set<SourceRole>(),
   },
   currentAccountId: null,
-  importProcess: null,
 };
 
 export const useKeimenonStore = create<KeimenonState>()(
@@ -453,19 +439,6 @@ export const useKeimenonStore = create<KeimenonState>()(
       },
 
       setCurrentAccountId: (accountId) => set({ currentAccountId: accountId }),
-
-      // Import Process
-      setImportProcess: (process) => set({ importProcess: process }),
-      
-      updateImportCandidate: (id, updates) =>
-        set((state) => ({
-            importProcess: state.importProcess ? {
-                ...state.importProcess,
-                candidates: state.importProcess.candidates.map(c => 
-                    c.id === id ? { ...c, ...updates } : c
-                )
-            } : null
-        })),
 
       reset: () => set(initialState),
     }),

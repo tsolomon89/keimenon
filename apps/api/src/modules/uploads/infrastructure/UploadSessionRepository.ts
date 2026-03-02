@@ -43,7 +43,11 @@ export interface UploadSessionRepository {
    * Atomically record a chunk as received (race-condition safe)
    * Returns the updated session
    */
-  recordChunkAtomic(sessionId: string, accountId: string, chunkIndex: number): Promise<UploadSession | null>;
+  recordChunkAtomic(
+    sessionId: string,
+    accountId: string,
+    chunkIndex: number
+  ): Promise<UploadSession | null>;
 }
 
 /**
@@ -125,6 +129,7 @@ export class SQLiteUploadSessionRepository implements UploadSessionRepository {
           error_message = excluded.error_message,
           updated_at = excluded.updated_at,
           completed_at = excluded.completed_at,
+          data_tag = excluded.data_tag,
           metadata = excluded.metadata
       `);
 

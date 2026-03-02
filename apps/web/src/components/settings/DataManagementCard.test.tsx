@@ -13,6 +13,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
+import userEvent from '@testing-library/user-event';
 import { DataManagementCard, AdminDataManagementCard } from './DataManagementCard';
 
 // Mock the contexts
@@ -39,7 +40,13 @@ vi.mock('@/services/error-capture.service', () => ({
       userMessage: error.message,
       technicalMessage: error.message,
     })),
+    info: vi.fn(),
+    warn: vi.fn(),
   },
+}));
+
+vi.mock('@/lib/error-handler', () => ({
+  logJobEvent: vi.fn(),
 }));
 
 // Import mocked modules
@@ -111,10 +118,11 @@ describe('DataManagementCard', () => {
     });
 
     // Mock confirm
-    global.confirm = vi.fn(() => true);
+    vi.spyOn(window, 'confirm').mockImplementation(() => true);
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -122,15 +130,14 @@ describe('DataManagementCard', () => {
     it('should render data management card', () => {
       render(<DataManagementCard />);
 
-      expect(screen.getByText(/Clear Keimenon Data/i)).toBeInTheDocument();
+      // Use getAllByText because heading and button both contain 'Clear Keimenon Data'
+      expect(screen.getAllByText(/Clear Keimenon Data/i).length).toBeGreaterThan(0);
     });
 
     it('should show warning message', () => {
       render(<DataManagementCard />);
 
-      expect(
-        screen.getByText(/This action will delete all your nodes and edges/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Delete all imported conversations/i)).toBeInTheDocument();
     });
 
     it('should show "Clear Keimenon Data" button', () => {
@@ -177,10 +184,10 @@ describe('DataManagementCard', () => {
 
       await waitFor(() => {
         // Should show total nodes
-        expect(screen.getByText('115')).toBeInTheDocument(); // 100 + 10 + 5
+        expect(screen.getByText(/115/)).toBeInTheDocument(); // 100 + 10 + 5
 
         // Should show total edges
-        expect(screen.getByText('200')).toBeInTheDocument();
+        expect(screen.getByText(/200/)).toBeInTheDocument();
       });
     });
 
@@ -195,14 +202,14 @@ describe('DataManagementCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('Message')).toBeInTheDocument();
-        expect(screen.getByText('100')).toBeInTheDocument();
+        expect(screen.getByText(/Message/)).toBeInTheDocument();
+        expect(screen.getByText(/100/)).toBeInTheDocument();
 
-        expect(screen.getByText('Source')).toBeInTheDocument();
-        expect(screen.getByText('10')).toBeInTheDocument();
+        expect(screen.getByText(/Source/)).toBeInTheDocument();
+        expect(screen.getByText(/10/)).toBeInTheDocument();
 
-        expect(screen.getByText('ChatThread')).toBeInTheDocument();
-        expect(screen.getByText('5')).toBeInTheDocument();
+        expect(screen.getByText(/ChatThread/)).toBeInTheDocument();
+        expect(screen.getByText(/5/)).toBeInTheDocument();
       });
     });
 
@@ -226,8 +233,8 @@ describe('DataManagementCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
-        // Modal should still open even if stats fail
-        expect(screen.getByText(/Are you sure/i)).toBeInTheDocument();
+        // Modal should still open even if stats fail — check for modal title
+        expect(screen.getByText(/Clear All Keimenon Data/i)).toBeInTheDocument();
       });
     });
   });
@@ -255,15 +262,18 @@ describe('DataManagementCard', () => {
     });
 
     it('should create delete job when confirmed', async () => {
+      // Create user event instance for this test
+      const user = userEvent.setup();
       render(<DataManagementCard />);
 
       // Open modal
-      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
+      const clearButton = screen.getByRole('button', { name: /Clear Keimenon Data/i });
+      await user.click(clearButton);
 
       // Wait for stats to load
       try {
         await waitFor(() => {
-          expect(screen.getByText('115')).toBeInTheDocument();
+          expect(screen.getByText(/115/)).toBeInTheDocument();
         });
       } catch (e) {
         screen.debug();
@@ -271,8 +281,8 @@ describe('DataManagementCard', () => {
       }
 
       // Click confirm
-      const confirmButton = screen.getByRole('button', { name: /Confirm Delete/i });
-      fireEvent.click(confirmButton);
+      const confirmButton = screen.getByRole('button', { name: /Clear Data/i });
+      await user.click(confirmButton);
 
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
@@ -295,10 +305,10 @@ describe('DataManagementCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('115')).toBeInTheDocument();
+        expect(screen.getByText(/115/)).toBeInTheDocument();
       });
 
-      const confirmButton = screen.getByRole('button', { name: /Confirm Delete/i });
+      const confirmButton = screen.getByRole('button', { name: /Clear Data/i });
       fireEvent.click(confirmButton);
 
       await waitFor(() => {
@@ -323,10 +333,10 @@ describe('DataManagementCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('115')).toBeInTheDocument();
+        expect(screen.getByText(/115/)).toBeInTheDocument();
       });
 
-      const confirmButton = screen.getByRole('button', { name: /Confirm Delete/i });
+      const confirmButton = screen.getByRole('button', { name: /Clear Data/i });
       fireEvent.click(confirmButton);
 
       await waitFor(() => {
@@ -340,13 +350,14 @@ describe('DataManagementCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('115')).toBeInTheDocument();
+        expect(screen.getByText(/115/)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole('button', { name: /Confirm Delete/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Data/i }));
 
+      // Component auto-minimizes and closes modal, then shows success in the card
       await waitFor(() => {
-        expect(screen.getByText(/Delete job created! Monitor progress/i)).toBeInTheDocument();
+        expect(screen.getByText(/Delete job created/i)).toBeInTheDocument();
       });
     });
 
@@ -373,10 +384,10 @@ describe('DataManagementCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('115')).toBeInTheDocument();
+        expect(screen.getByText(/115/)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole('button', { name: /Confirm Delete/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Data/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/Server error/i)).toBeInTheDocument();
@@ -387,7 +398,7 @@ describe('DataManagementCard', () => {
     });
   });
 
-  describe('Minimize Functionality', () => {
+  describe('Auto-Minimize Functionality', () => {
     beforeEach(() => {
       (global.fetch as any).mockImplementation((url: string) => {
         if (url.includes('/api/v1/data/stats')) {
@@ -406,67 +417,60 @@ describe('DataManagementCard', () => {
       });
     });
 
-    it('should show minimize button after job started', async () => {
+    it('should auto-minimize and add to background operations after job created', async () => {
       render(<DataManagementCard />);
 
       fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('115')).toBeInTheDocument();
+        expect(screen.getByText(/115/)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole('button', { name: /Confirm Delete/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Data/i }));
 
+      // Component auto-minimizes: calls addOperation and closes modal
       await waitFor(() => {
-        expect(screen.getByText(/Minimize/i)).toBeInTheDocument();
+        expect(mockAddOperation).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: 'job_123',
+            type: 'deletion',
+            status: 'processing',
+          })
+        );
       });
     });
 
-    it('should add to background operations when minimized', async () => {
+    it('should close modal after auto-minimize', async () => {
       render(<DataManagementCard />);
 
       fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('115')).toBeInTheDocument();
+        expect(screen.getByText(/115/)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole('button', { name: /Confirm Delete/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Clear Data/i }));
 
-      await waitFor(() => {
-        expect(screen.getByText(/Minimize/i)).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByText(/Minimize/i));
-
-      expect(mockAddOperation).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: 'job_123',
-          type: 'deletion',
-          status: 'processing',
-        })
-      );
-    });
-
-    it('should close modal when minimized', async () => {
-      render(<DataManagementCard />);
-
-      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText('115')).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByRole('button', { name: /Confirm Delete/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText(/Minimize/i)).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByText(/Minimize/i));
-
+      // Modal should close automatically after job creation
       await waitFor(() => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should show success message after auto-minimize', async () => {
+      render(<DataManagementCard />);
+
+      fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/115/)).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Clear Data/i }));
+
+      // Success message should appear in the card after modal closes
+      await waitFor(() => {
+        expect(screen.getByText(/Delete job created/i)).toBeInTheDocument();
       });
     });
   });
@@ -485,7 +489,7 @@ describe('DataManagementCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('115')).toBeInTheDocument();
+        expect(screen.getByText(/115/)).toBeInTheDocument();
       });
 
       const cancelButton = screen.getByRole('button', { name: /Cancel/i });
@@ -502,7 +506,7 @@ describe('DataManagementCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('115')).toBeInTheDocument();
+        expect(screen.getByText(/115/)).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
@@ -527,11 +531,11 @@ describe('DataManagementCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /Clear Keimenon Data/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('0')).toBeInTheDocument();
+        expect(screen.getByText(/0/)).toBeInTheDocument();
       });
 
       // Should still allow deletion (edge case)
-      expect(screen.getByRole('button', { name: /Confirm Delete/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Clear Data/i })).toBeInTheDocument();
     });
 
     it('should handle missing token', async () => {
@@ -558,7 +562,7 @@ describe('DataManagementCard', () => {
       });
     });
 
-    it('should disable button while loading stats', async () => {
+    it('should open clear confirmation when Clear button clicked', async () => {
       (global.fetch as any).mockImplementation(
         () => new Promise(() => {}) // Never resolves
       );
@@ -568,9 +572,9 @@ describe('DataManagementCard', () => {
       const clearButton = screen.getByRole('button', { name: /Clear Keimenon Data/i });
       fireEvent.click(clearButton);
 
-      // Button should be disabled
+      // Clicking the button should open the confirmation modal
       await waitFor(() => {
-        expect(clearButton).toBeDisabled();
+        expect(screen.getByText(/permanently delete/i)).toBeInTheDocument();
       });
     });
   });
@@ -590,9 +594,23 @@ describe('AdminDataManagementCard', () => {
     (useAuth as any).mockReturnValue({ user: mockAdminUser });
     (useBackgroundOperations as any).mockReturnValue({
       addOperation: vi.fn(),
+      getOperation: vi.fn(),
+      updateOperation: vi.fn(),
     });
 
-    global.fetch = vi.fn();
+    // useJobStream must be mocked for AdminDataManagementCard
+    (useJobStream as any).mockReturnValue({
+      jobs: new Map(),
+      connected: true,
+      error: null,
+      removeJobs: vi.fn(),
+    });
+
+    // Fetch must return a valid response (not undefined)
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ stats: { nodes: [], edges: 0 } }),
+    });
 
     const localStorageMock = {
       getItem: vi.fn(() => 'admin-token'),
@@ -611,13 +629,13 @@ describe('AdminDataManagementCard', () => {
   it('should render admin data management card', () => {
     render(<AdminDataManagementCard />);
 
-    expect(screen.getByText(/Clear All Client Data/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Clear All Client Data/i).length).toBeGreaterThan(0);
   });
 
   it('should show admin-only warning', () => {
     render(<AdminDataManagementCard />);
 
-    expect(screen.getByText(/This is an admin-only operation/i)).toBeInTheDocument();
+    expect(screen.getByText(/Delete keimenon data for ALL client accounts/i)).toBeInTheDocument();
   });
 
   it('should use correct delete scope', async () => {
@@ -628,10 +646,10 @@ describe('AdminDataManagementCard', () => {
           json: async () => ({ stats: { nodes: [], edges: 0 } }),
         });
       }
-      if (url.includes('/api/v1/jobs/delete')) {
+      if (url.includes('/api/v1/data/all-clients')) {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ jobId: 'job_123' }),
+          json: async () => ({ jobId: 'job_123', cleared_accounts: 3 }),
         });
       }
       return Promise.reject(new Error('Unknown endpoint'));
@@ -642,15 +660,19 @@ describe('AdminDataManagementCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /Clear All Client Data/i }));
 
     await waitFor(() => {
-      const confirmButton = screen.getByRole('button', { name: /Confirm Delete/i });
+      // After clicking the main button, a modal opens with a confirm button.
+      // There are now TWO buttons with matching text — use getAllByRole and pick the modal's one.
+      const buttons = screen.getAllByRole('button', { name: /Clear All Client Data/i });
+      // The second button is the modal's confirm button
+      const confirmButton = buttons[buttons.length - 1];
       fireEvent.click(confirmButton);
     });
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/jobs/delete'),
+        expect.stringContaining('/api/v1/data/all-clients'),
         expect.objectContaining({
-          body: JSON.stringify({ scope: 'all-clients' }),
+          method: 'DELETE',
         })
       );
     });

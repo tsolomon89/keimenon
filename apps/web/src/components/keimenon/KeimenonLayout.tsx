@@ -57,9 +57,9 @@ export function KeimenonLayout({
   const [isMobile, setIsMobile] = useState(false);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-  const [keimenonSurface, setKeimenonSurface] = useState<'keimenon' | 'legacy' | 'processing' | 'boards'>(
-    'keimenon'
-  );
+  const [keimenonSurface, setKeimenonSurface] = useState<
+    'keimenon' | 'legacy' | 'processing' | 'boards'
+  >('keimenon');
   const [dashboardView, setDashboardView] = useState<'analytics' | 'storage'>('analytics');
   const [selectedSettingsSectionId, setSelectedSettingsSectionId] = useState<string | undefined>(
     undefined
@@ -152,7 +152,7 @@ export function KeimenonLayout({
 
   const processingAvailable = hasProcessingOperations || !!activeOperation;
   // Handler to open import flow in Inspector Bar
-  // NOTE(import-flow): ImportModule (panel variant) is rendered for this scope via KeimenonSidebar. Swap back to ImportOperationInspector there if the legacy server upload UI is required.
+  // NOTE(import-flow): ChatImportModal is the primary job-based import rail, rendered via KeimenonSidebar.
   const handleOpenImportFlow = () => {
     // Open import flow in Inspector Bar (no modals)
     setInspectorPanel('import-flow');
@@ -338,10 +338,6 @@ export function KeimenonLayout({
                 onZoomIn={() => keimenonViewportRef.current?.zoomIn()}
                 onZoomOut={() => keimenonViewportRef.current?.zoomOut()}
                 onCenterView={() => keimenonViewportRef.current?.centerView()}
-                onOpenImportReview={() => {
-                  setInspectorPanel('import-review');
-                  setRightSidebarOpen(true);
-                }}
               />
 
               {/* Viewport - conditional based on keimenon mode and operating context */}

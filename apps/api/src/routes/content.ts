@@ -71,14 +71,6 @@ router.get('/message/:id', async (req: Request, res: Response) => {
     const contentLocation = message.content_location;
 
     if (!contentLocation) {
-      // Fallback: content might be stored in Neo4j (old data)
-      if (message.content) {
-        return res.json({
-          id,
-          content: message.content,
-          source: 'neo4j',
-        });
-      }
       return res.status(404).json({ error: 'Content location not found' });
     }
 
@@ -233,15 +225,6 @@ router.get('/code/:id', async (req: Request, res: Response) => {
     const contentLocation = codeBlock.content_location;
 
     if (!contentLocation) {
-      // Fallback for old data
-      if (codeBlock.code) {
-        return res.json({
-          id,
-          code: codeBlock.code,
-          language: codeBlock.language,
-          source: 'neo4j',
-        });
-      }
       return res.status(404).json({ error: 'Content location not found' });
     }
 
@@ -394,8 +377,14 @@ router.get('/stats', async (req: Request, res: Response) => {
     const stats = await localStore.getStats();
     const db = await getDbClient(req);
 
-    // Get authenticated user's account_id for filtering
+    // Security fix (bug #9, #10): Require valid accountId for stats endpoint
     const accountId = req.user?.accountId;
+    if (!accountId) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'Account context required for stats endpoint',
+      });
+    }
 
     // Get database stats
     let dbStats = {};
@@ -403,59 +392,34 @@ router.get('/stats', async (req: Request, res: Response) => {
       dbStats = await db.getStats();
     } else {
       // Fallback: count by querying (with account_id filtering)
-      const storageMode = process.env.STORAGE_MODE || 'local';
+      const totalResult = await db.execute(
+        'SELECT COUNT(*) as count FROM nodes WHERE account_id = ?',
+        [accountId]
+      );
+      const messagesResult = await db.execute(
+        "SELECT COUNT(*) as count FROM nodes WHERE kind = 'Message' AND account_id = ?",
+        [accountId]
+      );
+      const sourcesResult = await db.execute(
+        "SELECT COUNT(*) as count FROM nodes WHERE kind = 'Source' AND account_id = ?",
+        [accountId]
+      );
+      const codeResult = await db.execute(
+        "SELECT COUNT(*) as count FROM nodes WHERE kind = 'CodeBlock' AND account_id = ?",
+        [accountId]
+      );
+      const edgesResult = await db.execute(
+        'SELECT COUNT(*) as count FROM edges WHERE account_id = ?',
+        [accountId]
+      );
 
-      if (storageMode === 'local') {
-        // SECURITY FIX: Filter by account_id to prevent cross-account data disclosure
-        const totalResult = await db.execute(
-          'SELECT COUNT(*) as count FROM nodes WHERE account_id = ?',
-          [accountId]
-        );
-        const messagesResult = await db.execute(
-          "SELECT COUNT(*) as count FROM nodes WHERE kind = 'Message' AND account_id = ?",
-          [accountId]
-        );
-        const sourcesResult = await db.execute(
-          "SELECT COUNT(*) as count FROM nodes WHERE kind = 'Source' AND account_id = ?",
-          [accountId]
-        );
-        const codeResult = await db.execute(
-          "SELECT COUNT(*) as count FROM nodes WHERE kind = 'CodeBlock' AND account_id = ?",
-          [accountId]
-        );
-        const edgesResult = await db.execute(
-          'SELECT COUNT(*) as count FROM edges WHERE account_id = ?',
-          [accountId]
-        );
-
-        dbStats = {
-          total_nodes: totalResult.records[0].count,
-          message_nodes: messagesResult.records[0].count,
-          source_nodes: sourcesResult.records[0].count,
-          code_block_nodes: codeResult.records[0].count,
-          total_edges: edgesResult.records[0].count,
-        };
-      } else {
-        // Neo4j fallback - SECURITY FIX: Filter by account_id
-        const nodeResult = await db.execute(
-          `
-          MATCH (n:Node {account_id: $accountId})
-          RETURN count(n) as total,
-                 count(CASE WHEN n:Message THEN 1 END) as messages,
-                 count(CASE WHEN n:Source THEN 1 END) as sources,
-                 count(CASE WHEN n:CodeBlock THEN 1 END) as code_blocks
-        `,
-          { accountId }
-        );
-
-        const nodeCounts = nodeResult.records[0];
-        dbStats = {
-          total_nodes: nodeCounts.get('total').toNumber(),
-          message_nodes: nodeCounts.get('messages').toNumber(),
-          source_nodes: nodeCounts.get('sources').toNumber(),
-          code_block_nodes: nodeCounts.get('code_blocks').toNumber(),
-        };
-      }
+      dbStats = {
+        total_nodes: totalResult.records[0].count,
+        message_nodes: messagesResult.records[0].count,
+        source_nodes: sourcesResult.records[0].count,
+        code_block_nodes: codeResult.records[0].count,
+        total_edges: edgesResult.records[0].count,
+      };
     }
 
     return res.json({
@@ -465,7 +429,7 @@ router.get('/stats', async (req: Request, res: Response) => {
       },
       database: dbStats,
       storage_model: 'local-first',
-      storage_mode: process.env.STORAGE_MODE || 'local',
+      storage_mode: 'local',
     });
   } catch (error: any) {
     console.error('Get stats error:', error);

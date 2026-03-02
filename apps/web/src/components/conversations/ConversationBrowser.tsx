@@ -1,6 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+  CSSProperties,
+  memo,
+} from 'react';
+import { List } from 'react-window';
+import { useContainerHeight } from '@/hooks/useContainerHeight';
 import {
   MessageSquare,
   Plus,
@@ -29,6 +39,49 @@ interface ConversationBrowserProps {
   className?: string;
 }
 
+// Row height for virtualized conversation list
+const CONVERSATION_ROW_HEIGHT = 100;
+
+// Props for virtualized conversation row
+interface ConversationRowProps {
+  conversations: ConversationThread[];
+  principals: Map<string, Principal>;
+  selectedConversationId: string | null;
+  handleConversationClick: (conversation: ConversationThread) => void;
+}
+
+// Virtualized conversation row component
+function ConversationRow({
+  index,
+  style,
+  conversations,
+  principals,
+  selectedConversationId,
+  handleConversationClick,
+}: {
+  index: number;
+  style: CSSProperties;
+  ariaAttributes: { 'aria-posinset': number; 'aria-setsize': number; role: 'listitem' };
+} & ConversationRowProps): React.ReactElement | null {
+  const conversation = conversations[index];
+
+  return (
+    <div style={style} className="px-2 py-0.5">
+      <ConversationCard
+        conversation={conversation}
+        humanPrincipal={principals.get(conversation.human_principal_id)}
+        agentPrincipal={
+          conversation.agent_principal_id
+            ? principals.get(conversation.agent_principal_id)
+            : undefined
+        }
+        selected={conversation.id === selectedConversationId}
+        onClick={() => handleConversationClick(conversation)}
+      />
+    </div>
+  );
+}
+
 export function ConversationBrowser({
   onConversationSelect,
   onCreateConversation,
@@ -41,6 +94,10 @@ export function ConversationBrowser({
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Virtualization refs
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const listHeight = useContainerHeight(listContainerRef, 300);
 
   useEffect(() => {
     loadData();
@@ -71,10 +128,13 @@ export function ConversationBrowser({
     }
   };
 
-  const handleConversationClick = (conversation: ConversationThread) => {
-    setSelectedConversationId(conversation.id);
-    onConversationSelect?.(conversation);
-  };
+  const handleConversationClick = useCallback(
+    (conversation: ConversationThread) => {
+      setSelectedConversationId(conversation.id);
+      onConversationSelect?.(conversation);
+    },
+    [onConversationSelect]
+  );
 
   const handleCreateClick = () => {
     if (onCreateConversation) {
@@ -87,6 +147,17 @@ export function ConversationBrowser({
   // Filter conversations by search query
   const filteredConversations = conversations.filter((c) =>
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Memoized row props for virtualized list
+  const conversationRowProps = useMemo(
+    (): ConversationRowProps => ({
+      conversations: filteredConversations,
+      principals,
+      selectedConversationId,
+      handleConversationClick,
+    }),
+    [filteredConversations, principals, selectedConversationId, handleConversationClick]
   );
 
   if (loading) {
@@ -168,21 +239,19 @@ export function ConversationBrowser({
             )}
           </div>
         ) : (
-          <div className="p-2 space-y-1">
-            {filteredConversations.map((conversation) => (
-              <ConversationCard
-                key={conversation.id}
-                conversation={conversation}
-                humanPrincipal={principals.get(conversation.human_principal_id)}
-                agentPrincipal={
-                  conversation.agent_principal_id
-                    ? principals.get(conversation.agent_principal_id)
-                    : undefined
-                }
-                selected={conversation.id === selectedConversationId}
-                onClick={() => handleConversationClick(conversation)}
-              />
-            ))}
+          <div ref={listContainerRef} className="flex-1">
+            <List<ConversationRowProps>
+              style={{
+                height: Math.min(
+                  filteredConversations.length * CONVERSATION_ROW_HEIGHT,
+                  listHeight
+                ),
+              }}
+              rowCount={filteredConversations.length}
+              rowHeight={CONVERSATION_ROW_HEIGHT}
+              rowComponent={ConversationRow}
+              rowProps={conversationRowProps}
+            />
           </div>
         )}
       </div>
@@ -199,8 +268,12 @@ export function ConversationBrowser({
               setShowCreateModal(false);
               setSelectedConversationId(newConversation.id);
               onConversationSelect?.(newConversation);
-            } catch (err) {
+            } catch (err: any) {
+              // Bug fix #16: Properly handle errors and show feedback
               console.error('Failed to create conversation:', err);
+              // Show error to user (toast would be ideal but alert as fallback)
+              alert(`Failed to create conversation: ${err?.message || 'Unknown error'}`);
+              // Don't close modal on error - let user retry
             }
           }}
         />
@@ -210,10 +283,7 @@ export function ConversationBrowser({
 }
 
 // Purpose Icons & Colors
-const purposeConfig: Record<
-  string,
-  { icon: React.ReactNode; color: string; label: string }
-> = {
+const purposeConfig: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
   summarize: {
     icon: <FileText className="w-3.5 h-3.5" />,
     color: 'text-green-400 bg-green-500/10',
@@ -260,7 +330,8 @@ interface ConversationCardProps {
   onClick?: () => void;
 }
 
-function ConversationCard({
+// Bug fix #34: Memoize ConversationCard to prevent unnecessary re-renders in virtualized list
+const ConversationCard = memo(function ConversationCard({
   conversation,
   humanPrincipal,
   agentPrincipal,
@@ -274,9 +345,11 @@ function ConversationCard({
       onClick={onClick}
       className={`
         p-3 rounded-lg border cursor-pointer transition-all
-        ${selected
-          ? 'bg-blue-600/20 border-blue-500/50 shadow-lg shadow-blue-500/10'
-          : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'}
+        ${
+          selected
+            ? 'bg-blue-600/20 border-blue-500/50 shadow-lg shadow-blue-500/10'
+            : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'
+        }
       `}
     >
       {/* Title row */}
@@ -292,9 +365,7 @@ function ConversationCard({
         {/* Human */}
         <div className="flex items-center gap-1.5 text-xs text-slate-400">
           <User className="w-3.5 h-3.5 text-slate-500" />
-          <span className="truncate max-w-[80px]">
-            {humanPrincipal?.display_name || 'You'}
-          </span>
+          <span className="truncate max-w-[80px]">{humanPrincipal?.display_name || 'You'}</span>
         </div>
 
         {/* Agent */}
@@ -312,9 +383,7 @@ function ConversationCard({
       {/* Footer row */}
       <div className="flex items-center justify-between text-xs">
         {/* Purpose badge */}
-        <span
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded ${purpose.color}`}
-        >
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded ${purpose.color}`}>
           {purpose.icon}
           {purpose.label}
         </span>
@@ -333,7 +402,7 @@ function ConversationCard({
       </div>
     </div>
   );
-}
+});
 
 // Create Conversation Modal
 interface CreateConversationModalProps {
@@ -342,11 +411,7 @@ interface CreateConversationModalProps {
   onCreate: (input: CreateConversationInput) => Promise<void>;
 }
 
-function CreateConversationModal({
-  principals,
-  onClose,
-  onCreate,
-}: CreateConversationModalProps) {
+function CreateConversationModal({ principals, onClose, onCreate }: CreateConversationModalProps) {
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState<ConversationThread['purpose']>('general');
   const [agentId, setAgentId] = useState<string>('');
@@ -400,9 +465,11 @@ function CreateConversationModal({
                   onClick={() => setPurpose(key as ConversationThread['purpose'])}
                   className={`
                     p-2 rounded border text-center transition-all
-                    ${purpose === key
-                      ? 'border-blue-500 bg-blue-500/20'
-                      : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'}
+                    ${
+                      purpose === key
+                        ? 'border-blue-500 bg-blue-500/20'
+                        : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                    }
                   `}
                 >
                   <div className={`flex justify-center mb-1 ${config.color.split(' ')[0]}`}>

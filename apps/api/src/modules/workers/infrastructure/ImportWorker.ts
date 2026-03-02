@@ -18,11 +18,7 @@ import { Job } from '../../jobs/domain/Job';
 import { DatabaseClient } from '@keimenon/db';
 import { EnhancedImportServiceV2, ImportConversation } from '../../../services/import-enhanced-v2';
 import { DatabaseWriteQueue } from '../../../services/DatabaseWriteQueue';
-import {
-  ImportConfiguration,
-  ImportJobStage,
-  IMPORT_STAGE_LABELS,
-} from '@keimenon/types';
+import { ImportConfiguration, ImportJobStage, IMPORT_STAGE_LABELS } from '@keimenon/types';
 import { ParserRegistry, NormalizedConversation, NormalizedMessage } from '@keimenon/parsers';
 import * as fs from 'fs/promises';
 import { nanoid } from 'nanoid';
@@ -43,12 +39,12 @@ import { JobRepository } from '../../jobs/infrastructure/JobRepository';
  */
 export interface ImportCheckpoint {
   phase: 'parse' | 'materialize' | 'dedupe' | 'group' | 'complete';
-  fileIndex: number;           // Which file we're on (0-indexed)
+  fileIndex: number; // Which file we're on (0-indexed)
   conversationsProcessed: number; // Total conversations processed so far
-  messagesProcessed: number;   // Total messages processed so far
-  lastBatchIndex: number;      // Last batch processed within current file
-  lastSaveTime: number;        // Unix timestamp of last checkpoint save
-  uploadHash: string;          // Upload hash for this import job
+  messagesProcessed: number; // Total messages processed so far
+  lastBatchIndex: number; // Last batch processed within current file
+  lastSaveTime: number; // Unix timestamp of last checkpoint save
+  uploadHash: string; // Upload hash for this import job
 }
 
 // Checkpoint save interval: every 100 conversations or 30 seconds
@@ -168,7 +164,7 @@ export class ImportWorker extends BaseWorker {
     const importOptions = job.config.importOptions || {};
 
     // ✅ Initialize change tracker for rollback support
-    let changeTracker: ChangeTracker = createChangeTracker();
+    const changeTracker: ChangeTracker = createChangeTracker();
 
     console.log(`📥 Import worker processing ${files.length} file(s) for job ${job.id}`);
     console.log(`⏱️  Timeout: ${Math.round(this.timeoutMs / 1000)}s`);
@@ -177,9 +173,8 @@ export class ImportWorker extends BaseWorker {
       // Step 1: Initialize Import Service early (we need it for batch processing)
       // Get correct database client (test DB for E2E tests, production DB otherwise)
       const dbClient = await this.getDbClientForJob(job);
-    console.log(`[ImportWorker] 🔌 DB Client Path: ${(dbClient as any).name}`);
-    console.log(`[ImportWorker] 🔌 DB Connection: ${(dbClient as any).open ? 'OPEN' : 'CLOSED'}`);
-
+      console.log(`[ImportWorker] 🔌 DB Client Path: ${(dbClient as any).name}`);
+      console.log(`[ImportWorker] 🔌 DB Connection: ${(dbClient as any).open ? 'OPEN' : 'CLOSED'}`);
 
       // In test mode, disable write queue to avoid database client mismatch
       const isTestMode = !!job.config.testContext?.dbPath;
@@ -237,19 +232,24 @@ export class ImportWorker extends BaseWorker {
         let currentBatchIndex = 0;
 
         // If resuming mid-file, skip to the correct batch
-        const skipBatches = (fileIndex === startFileIndex) ? startBatchIndex : 0;
+        const skipBatches = fileIndex === startFileIndex ? startBatchIndex : 0;
 
         if (this.shouldCancel(context.signal)) {
           // Save checkpoint before canceling
-          await this.saveCheckpoint(job, context, {
-            phase: 'parse',
-            fileIndex,
-            conversationsProcessed: totalConversationsProcessed,
-            messagesProcessed: totalMessagesProcessed,
-            lastBatchIndex: currentBatchIndex,
-            lastSaveTime: Date.now(),
-            uploadHash,
-          }, changeTracker);
+          await this.saveCheckpoint(
+            job,
+            context,
+            {
+              phase: 'parse',
+              fileIndex,
+              conversationsProcessed: totalConversationsProcessed,
+              messagesProcessed: totalMessagesProcessed,
+              lastBatchIndex: currentBatchIndex,
+              lastSaveTime: Date.now(),
+              uploadHash,
+            },
+            changeTracker
+          );
           throw new Error('CANCELED');
         }
 
@@ -266,166 +266,196 @@ export class ImportWorker extends BaseWorker {
         const batchSize = 50;
         const skipConversations = skipBatches * batchSize;
 
-        console.log(`[ImportWorker] Spawning worker for: ${file.fileName}${skipConversations > 0 ? ` (resuming, skipping ~${skipConversations} conversations)` : ''}`);
+        console.log(
+          `[ImportWorker] Spawning worker for: ${file.fileName}${skipConversations > 0 ? ` (resuming, skipping ~${skipConversations} conversations)` : ''}`
+        );
 
         // Spawn Worker
         const actualWorkerPath = __filename.endsWith('.ts')
-            ? path.join(__dirname, 'import.worker.ts')
-            : path.join(__dirname, 'import.worker.js');
+          ? path.join(__dirname, 'import.worker.ts')
+          : path.join(__dirname, 'import.worker.js');
 
         const worker = new Worker(actualWorkerPath, {
-            workerData: {
-                filePath: file.filePath,
-                fileSize: file.fileSize,
-                mimeType: file.mimeType,
-                batchSize,
-                skipConversations, // Resume optimization: worker skips these internally
-            },
+          workerData: {
+            filePath: file.filePath,
+            fileSize: file.fileSize,
+            mimeType: file.mimeType,
+            batchSize,
+            skipConversations, // Resume optimization: worker skips these internally
+          },
         });
 
         // Worker Promise
         await new Promise<void>((resolve, reject) => {
-            worker.on('message', async (message: any) => {
-                if (message.type === 'progress') {
-                     // Map worker progress (0-100 of file) to overall Job Progress (10-90)
-                     const fileProgress = message.data.percent;
-                     const overallProgress = 10 + Math.round((fileProgress * 0.8)); // Map 0-100 to 10-90
+          worker.on('message', async (message: any) => {
+            if (message.type === 'progress') {
+              // Map worker progress (0-100 of file) to overall Job Progress (10-90)
+              const fileProgress = message.data.percent;
+              const overallProgress = 10 + Math.round(fileProgress * 0.8); // Map 0-100 to 10-90
 
-                     await this.reportProgress(
-                        job,
-                        overallProgress,
-                        100,
-                        `Processing ${file.fileName}: ${message.data.message}`,
-                        context
-                     );
-                } else if (message.type === 'batch') {
-                    currentBatchIndex++;
+              await this.reportProgress(
+                job,
+                overallProgress,
+                100,
+                `Processing ${file.fileName}: ${message.data.message}`,
+                context
+              );
+            } else if (message.type === 'batch') {
+              currentBatchIndex++;
 
-                    // Note: Batch skipping is now handled by the worker internally
-                    // via skipConversations parameter for better performance
+              // Note: Batch skipping is now handled by the worker internally
+              // via skipConversations parameter for better performance
 
-                    // Process Batch - parse raw data using ParserRegistry
-                    const rawBatch = message.data as Array<{ raw: unknown; index: number }>;
-                    if (rawBatch.length > 0) {
-                        try {
-                            // Parse raw conversations using proper parser
-                            const parsedConversations: ImportConversation[] = [];
+              // Process Batch - parse raw data using ParserRegistry
+              const rawBatch = message.data as Array<{ raw: unknown; index: number }>;
+              if (rawBatch.length > 0) {
+                try {
+                  // Parse raw conversations using proper parser
+                  const parsedConversations: ImportConversation[] = [];
 
-                            for (const item of rawBatch) {
-                              try {
-                                // ParserRegistry auto-detects format (ChatGPT/Claude/Gemini)
-                                const parseResult = await parserRegistry.parse(item.raw, file.fileName);
+                  for (const item of rawBatch) {
+                    try {
+                      // ParserRegistry auto-detects format (ChatGPT/Claude/Gemini)
+                      const parseResult = await parserRegistry.parse(item.raw, file.fileName);
 
-                                // Convert each parsed conversation to ImportConversation format
-                                for (const normalized of parseResult.conversations) {
-                                  parsedConversations.push(
-                                    normalizedToImportConversation(normalized, file.fileName)
-                                  );
-                                }
-                              } catch (parseError: any) {
-                                parseErrorCount++;
-                                const errorMessage = parseError.message || 'Unknown parse error';
-                                console.warn(`[ImportWorker] Parse error for item ${item.index}: ${errorMessage}`);
+                      // Convert each parsed conversation to ImportConversation format
+                      for (const normalized of parseResult.conversations) {
+                        parsedConversations.push(
+                          normalizedToImportConversation(normalized, file.fileName)
+                        );
+                      }
+                    } catch (parseError: any) {
+                      parseErrorCount++;
+                      const errorMessage = parseError.message || 'Unknown parse error';
+                      console.warn(
+                        `[ImportWorker] Parse error for item ${item.index}: ${errorMessage}`
+                      );
 
-                                // Track sample errors for reporting (limit to prevent memory issues)
-                                if (parseErrorSamples.length < MAX_PARSE_ERROR_SAMPLES) {
-                                  parseErrorSamples.push({ index: item.index, message: errorMessage });
-                                }
-                                // Continue with next item - don't fail entire batch
-                              }
-                            }
-
-                            if (parsedConversations.length === 0) {
-                              // No conversations parsed - skip this batch
-                              return;
-                            }
-
-                            const result = await importService.import(parsedConversations, uploadHash, config, {
-                                accountId: job.accountId,
-                                userId: job.createdBy,
-                            });
-                            totalConversationsProcessed += result.conversations;
-                            totalMessagesProcessed += result.messages;
-                            totalMessagesProcessed += result.messages;
-                            conversationsSinceCheckpoint += result.conversations;
-
-                            console.log(`[ImportWorker] 📊 Batch Result: +${result.conversations} conversations, +${result.messages} messages`);
-                            console.log(`[ImportWorker] 📊 Created Nodes: ${result.createdNodeIds?.length || 0}, Edges: ${result.createdEdgeIds?.length || 0}`);
-                            
-                            if (isTestMode) {
-                                try {
-                                    // Verify DB write immediately
-                                    const nodeCount = (dbClient as any).prepare('SELECT COUNT(*) as count FROM nodes').get().count;
-                                    console.log(`[ImportWorker] 🔍 Immediate DB check (worker file): ${nodeCount} nodes total`);
-                                } catch (e: any) {
-                                    console.error(`[ImportWorker] ⚠️ Validation check failed: ${e.message}`);
-                                }
-                            }
-
-                            // Track created entities for rollback support
-                            if (result.createdNodeIds && result.createdNodeIds.length > 0) {
-                              trackNodesCreated(changeTracker, result.createdNodeIds);
-                            }
-                            if (result.createdEdgeIds && result.createdEdgeIds.length > 0) {
-                              trackEdgesCreated(changeTracker, result.createdEdgeIds);
-                            }
-
-                            // Check if we should save checkpoint
-                            const now = Date.now();
-                            const timeSinceCheckpoint = now - lastCheckpointTime;
-
-                            if (conversationsSinceCheckpoint >= CHECKPOINT_INTERVAL_CONVERSATIONS ||
-                                timeSinceCheckpoint >= CHECKPOINT_INTERVAL_MS) {
-
-                              await this.saveCheckpoint(job, context, {
-                                phase: 'materialize',
-                                fileIndex,
-                                conversationsProcessed: totalConversationsProcessed,
-                                messagesProcessed: totalMessagesProcessed,
-                                lastBatchIndex: currentBatchIndex,
-                                lastSaveTime: now,
-                                uploadHash,
-                              }, changeTracker);
-
-                              lastCheckpointTime = now;
-                              conversationsSinceCheckpoint = 0;
-                              console.log(`[ImportWorker] 💾 Checkpoint saved: ${totalConversationsProcessed} conversations`);
-                            }
-                        } catch (err) {
-                            console.error('Batch Import Error:', err);
-                            reject(err);
-                        }
+                      // Track sample errors for reporting (limit to prevent memory issues)
+                      if (parseErrorSamples.length < MAX_PARSE_ERROR_SAMPLES) {
+                        parseErrorSamples.push({ index: item.index, message: errorMessage });
+                      }
+                      // Continue with next item - don't fail entire batch
                     }
-                } else if (message.type === 'error') {
-                    reject(new Error(message.data));
-                } else if (message.type === 'done') {
-                    resolve();
+                  }
+
+                  if (parsedConversations.length === 0) {
+                    // No conversations parsed - skip this batch
+                    return;
+                  }
+
+                  const result = await importService.import(
+                    parsedConversations,
+                    uploadHash,
+                    config,
+                    {
+                      accountId: job.accountId,
+                      userId: job.createdBy,
+                    }
+                  );
+                  totalConversationsProcessed += result.conversations;
+                  totalMessagesProcessed += result.messages;
+                  totalMessagesProcessed += result.messages;
+                  conversationsSinceCheckpoint += result.conversations;
+
+                  console.log(
+                    `[ImportWorker] 📊 Batch Result: +${result.conversations} conversations, +${result.messages} messages`
+                  );
+                  console.log(
+                    `[ImportWorker] 📊 Created Nodes: ${result.createdNodeIds?.length || 0}, Edges: ${result.createdEdgeIds?.length || 0}`
+                  );
+
+                  if (isTestMode) {
+                    try {
+                      // Verify DB write immediately
+                      const nodeCount = (dbClient as any)
+                        .prepare('SELECT COUNT(*) as count FROM nodes')
+                        .get().count;
+                      console.log(
+                        `[ImportWorker] 🔍 Immediate DB check (worker file): ${nodeCount} nodes total`
+                      );
+                    } catch (e: any) {
+                      console.error(`[ImportWorker] ⚠️ Validation check failed: ${e.message}`);
+                    }
+                  }
+
+                  // Track created entities for rollback support
+                  if (result.createdNodeIds && result.createdNodeIds.length > 0) {
+                    trackNodesCreated(changeTracker, result.createdNodeIds);
+                  }
+                  if (result.createdEdgeIds && result.createdEdgeIds.length > 0) {
+                    trackEdgesCreated(changeTracker, result.createdEdgeIds);
+                  }
+
+                  // Check if we should save checkpoint
+                  const now = Date.now();
+                  const timeSinceCheckpoint = now - lastCheckpointTime;
+
+                  if (
+                    conversationsSinceCheckpoint >= CHECKPOINT_INTERVAL_CONVERSATIONS ||
+                    timeSinceCheckpoint >= CHECKPOINT_INTERVAL_MS
+                  ) {
+                    await this.saveCheckpoint(
+                      job,
+                      context,
+                      {
+                        phase: 'materialize',
+                        fileIndex,
+                        conversationsProcessed: totalConversationsProcessed,
+                        messagesProcessed: totalMessagesProcessed,
+                        lastBatchIndex: currentBatchIndex,
+                        lastSaveTime: now,
+                        uploadHash,
+                      },
+                      changeTracker
+                    );
+
+                    lastCheckpointTime = now;
+                    conversationsSinceCheckpoint = 0;
+                    console.log(
+                      `[ImportWorker] 💾 Checkpoint saved: ${totalConversationsProcessed} conversations`
+                    );
+                  }
+                } catch (err) {
+                  console.error('Batch Import Error:', err);
+                  reject(err);
                 }
-            });
+              }
+            } else if (message.type === 'error') {
+              reject(new Error(message.data));
+            } else if (message.type === 'done') {
+              resolve();
+            }
+          });
 
-            worker.on('error', reject);
-            worker.on('exit', (code) => {
-                if (code !== 0) reject(new Error(`Worker stopped with exit code ${code}`));
-            });
+          worker.on('error', reject);
+          worker.on('exit', (code) => {
+            if (code !== 0) reject(new Error(`Worker stopped with exit code ${code}`));
+          });
 
-            // Handle Cancellation/Pause from Parent
-            // Use { once: true } to auto-cleanup listener after first trigger
-            const abortHandler = async () => {
-                // Save checkpoint before stopping
-                await this.saveCheckpoint(job, context, {
-                  phase: 'parse',
-                  fileIndex,
-                  conversationsProcessed: totalConversationsProcessed,
-                  messagesProcessed: totalMessagesProcessed,
-                  lastBatchIndex: currentBatchIndex,
-                  lastSaveTime: Date.now(),
-                  uploadHash,
-                }, changeTracker);
+          // Handle Cancellation/Pause from Parent
+          // Use { once: true } to auto-cleanup listener after first trigger
+          const abortHandler = async () => {
+            // Save checkpoint before stopping
+            await this.saveCheckpoint(
+              job,
+              context,
+              {
+                phase: 'parse',
+                fileIndex,
+                conversationsProcessed: totalConversationsProcessed,
+                messagesProcessed: totalMessagesProcessed,
+                lastBatchIndex: currentBatchIndex,
+                lastSaveTime: Date.now(),
+                uploadHash,
+              },
+              changeTracker
+            );
 
-                worker.postMessage('cancel');
-                reject(new Error('CANCELED'));
-            };
-            context.signal.addEventListener('abort', abortHandler, { once: true });
+            worker.postMessage('cancel');
+            reject(new Error('CANCELED'));
+          };
+          context.signal.addEventListener('abort', abortHandler, { once: true });
         });
 
         // Reset batch tracking for next file
@@ -474,15 +504,14 @@ export class ImportWorker extends BaseWorker {
           },
         },
       };
-
     } catch (error: any) {
-        if (error.message === 'CANCELED') {
-             return {
-                success: false,
-                error: { code: 'CANCELED', message: 'Job was canceled' },
-                metadata: { changeTracker: serializeChangeTracker(changeTracker) }
-             };
-        }
+      if (error.message === 'CANCELED') {
+        return {
+          success: false,
+          error: { code: 'CANCELED', message: 'Job was canceled' },
+          metadata: { changeTracker: serializeChangeTracker(changeTracker) },
+        };
+      }
 
       console.error(`❌ Import worker failed for job ${job.id}:`, error);
       return {
@@ -526,7 +555,7 @@ export class ImportWorker extends BaseWorker {
       const jobRepository = context.jobRepository as JobRepository;
 
       // Load current state_data and merge checkpoint
-      const currentStateData = await jobRepository.getRawStateData(job.id, job.accountId) || {};
+      const currentStateData = (await jobRepository.getRawStateData(job.id, job.accountId)) || {};
       const updatedStateData = {
         ...currentStateData,
         checkpoint,

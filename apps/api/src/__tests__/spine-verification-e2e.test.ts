@@ -13,8 +13,7 @@
  * - apps/api/src/services/verification-service.ts
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { startTestServer, stopTestServer } from './utils/test-server';
+import { describe, it, expect, beforeAll } from 'vitest';
 
 const TEST_CONTENT = `
   Dr. Jane Smith from MIT published groundbreaking research on machine learning algorithms.
@@ -34,7 +33,6 @@ let baseUrl: string;
 
 describe('Vision V2: Spine Extraction & Verification E2E', () => {
   beforeAll(async () => {
-    await startTestServer();
     baseUrl = process.env.TEST_API_URL || 'http://127.0.0.1:4001';
 
     // Get auth token using dev auth
@@ -56,10 +54,6 @@ describe('Vision V2: Spine Extraction & Verification E2E', () => {
       authToken = '';
     }
   }, 60000);
-
-  afterAll(async () => {
-    await stopTestServer();
-  });
 
   describe('Spine Service Health', () => {
     it('should return health status for spine service', async () => {
@@ -132,7 +126,9 @@ describe('Vision V2: Spine Extraction & Verification E2E', () => {
         expect(phrase).toHaveProperty('frequency');
       }
 
-      console.log(`[Test] Extracted ${data.stats.lexemeCount} lexemes, ${data.stats.phraseCount} phrases`);
+      console.log(
+        `[Test] Extracted ${data.stats.lexemeCount} lexemes, ${data.stats.phraseCount} phrases`
+      );
     });
 
     it('should return 400 for missing content', async () => {
@@ -200,7 +196,9 @@ describe('Vision V2: Spine Extraction & Verification E2E', () => {
         expect(Array.isArray(topic.keywords)).toBe(true);
       }
 
-      console.log(`[Test] Created ${clusterData.stats.topicCount} topics from ${clusterData.stats.inputPhraseCount} phrases`);
+      console.log(
+        `[Test] Created ${clusterData.stats.topicCount} topics from ${clusterData.stats.inputPhraseCount} phrases`
+      );
     });
   });
 
@@ -227,7 +225,9 @@ describe('Vision V2: Spine Extraction & Verification E2E', () => {
       expect(Array.isArray(data.phrases)).toBe(true);
       expect(Array.isArray(data.topics)).toBe(true);
 
-      console.log(`[Test] Combined operation: ${data.stats.lexemeCount} lexemes, ${data.stats.phraseCount} phrases, ${data.stats.topicCount} topics`);
+      console.log(
+        `[Test] Combined operation: ${data.stats.lexemeCount} lexemes, ${data.stats.phraseCount} phrases, ${data.stats.topicCount} topics`
+      );
     });
   });
 
@@ -260,7 +260,9 @@ describe('Vision V2: Spine Extraction & Verification E2E', () => {
       expect(data.configuration).toHaveProperty('searchApiConfigured');
       expect(typeof data.configuration.searchApiConfigured).toBe('boolean');
 
-      console.log(`[Test] Search provider: ${data.searchProvider} (API configured: ${data.configuration.searchApiConfigured})`);
+      console.log(
+        `[Test] Search provider: ${data.searchProvider} (API configured: ${data.configuration.searchApiConfigured})`
+      );
     });
   });
 
@@ -321,7 +323,9 @@ describe('Vision V2: Spine Extraction & Verification E2E', () => {
         expect(source).toHaveProperty('trust_score');
       }
 
-      console.log(`[Test] Verification returned ${verifyData.stats.sourceCount} sources, ${verifyData.stats.claimCount} claims`);
+      console.log(
+        `[Test] Verification returned ${verifyData.stats.sourceCount} sources, ${verifyData.stats.claimCount} claims`
+      );
     });
 
     it('should return 400 for missing topic', async () => {
@@ -389,7 +393,9 @@ describe('Vision V2: Spine Extraction & Verification E2E', () => {
       expect(extractResponse.status).toBe(200);
       const extractData = await extractResponse.json();
 
-      console.log(`[V2 Workflow] Step 1: Extracted ${extractData.stats.lexemeCount} lexemes, ${extractData.stats.phraseCount} phrases, ${extractData.stats.topicCount} topics`);
+      console.log(
+        `[V2 Workflow] Step 1: Extracted ${extractData.stats.lexemeCount} lexemes, ${extractData.stats.phraseCount} phrases, ${extractData.stats.topicCount} topics`
+      );
 
       // Step 2: Verify each topic (or first few)
       const topicsToVerify = extractData.topics.slice(0, 2);

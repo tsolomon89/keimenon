@@ -1,41 +1,42 @@
 # Architecture: Runtime Systems
 
-> **Invariant**: Capabilities are not boolean flags; they are **Entitlements** that are provisioned, metered, and enforced.
+> Invariant: capabilities are enforced through account-aware policy checks.
 
-## 1. Tenancy & Provisioning
-### The Account Hierarchy
-- **System Admin**: Cross-tenant visibility (Support/Ops).
-- **Tenant Owner**: Owns the billing relationship.
-- **User**: A member of a Tenant (can belong to multiple).
+## 1. Tenancy And Provisioning
+
+### Account Hierarchy
+
+- System Admin: cross-account visibility for support/operations.
+- Account Owner: billing and account-level administration.
+- User: member of one or more accounts.
 
 ### Provisioning Flow
-When a deal is closed (Stripe Event):
-1.  **Tenant Record** created.
-2.  **Admin User** created.
-3.  **Entitlement Records** created linked to Tenant.
-4.  **Bootstrap Domain** (`tenant.oblio.com`) provisioned.
 
-## 2. Entitlements System
-Features are gated by `Entitlement` records.
-- **Kind**: `Entitlement`
-- **Fields**:
-    - `feature_key`: e.g., `ai_writer_access`
-    - `limit`: e.g., `5000` (credits/month)
-    - `reset_period`: `monthly` | `lifetime`
+1. Account record is created.
+2. Initial admin user is created.
+3. Entitlement records are attached to the account.
+4. Default workspace/settings are provisioned.
 
-### Enforcement Point
-Middleware `checkEntitlement(featureKey)` runs before protected routes.
-- Checks if valid `Entitlement` exists.
-- Checks if usage < limit.
+## 2. Entitlements
+
+Features are gated by entitlement records.
+
+- Kind: `Entitlement`
+- Fields:
+  - `feature_key`
+  - `limit`
+  - `reset_period`
+
+Enforcement point: middleware runs before protected routes and validates feature access + usage limits.
 
 ## 3. Metering
-Usage is tracked via `UsageEvent` records.
-- **Kind**: `UsageEvent`
-- **Fields**:
-    - `tenant_id`
-    - `entitlement_id`
-    - `amount`: number
-    - `timestamp`
 
-**Calculation**: `Current Usage = SUM(amount) WHERE timestamp > period_start`
-Cached in Redis/Memory for performance.
+Usage is tracked via `UsageEvent` records.
+
+- Fields:
+  - `account_id`
+  - `entitlement_id`
+  - `amount`
+  - `timestamp`
+
+Current usage is computed by time-windowed sums and optionally cached.

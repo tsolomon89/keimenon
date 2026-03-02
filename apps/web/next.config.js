@@ -31,6 +31,12 @@ const nextConfig = {
       managedPaths: [/^(.+?[\\/]node_modules[\\/])/i],
     };
 
+    // FIX: Use 'source-map' devtool instead of 'eval-source-map' for Electron compat
+    // eval-source-map wraps code in eval() which can cause SyntaxError in Electron
+    if (!isServer) {
+      config.devtool = 'source-map';
+    }
+
     // CRITICAL FIX: Add webpack alias for env.config module
     // Fixes E2E test error: "Failed to fetch dynamically imported module"
     // Ensures env.config.ts resolves correctly in test environment

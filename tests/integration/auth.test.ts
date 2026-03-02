@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 
-const API_BASE = 'http://localhost:4001';
+const API_BASE = process.env.API_BASE_URL || 'http://127.0.0.1:4001';
 
 // Helper for requests
 async function request(
@@ -184,6 +184,8 @@ describe('Authentication & Authorization Suite', () => {
           id: `grp_c1_${Date.now()}`,
           kind: 'Group',
           name: 'C1 Node',
+          created_at: Date.now(),
+          updated_at: Date.now(),
         },
         testData.client1.token
       );
@@ -196,6 +198,8 @@ describe('Authentication & Authorization Suite', () => {
           id: `grp_c2_${Date.now()}`,
           kind: 'Group',
           name: 'C2 Node',
+          created_at: Date.now(),
+          updated_at: Date.now(),
         },
         testData.client2.token
       );

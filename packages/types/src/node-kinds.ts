@@ -25,6 +25,7 @@
  * - User data queries
  */
 export const CANVAS_DATA_NODE_KINDS = [
+  'UploadItem',
   'ChatThread',
   'Message',
   'Source',
@@ -72,7 +73,12 @@ export const VERIFIED_NODE_KINDS = ['VerifiedSource', 'VerifiedClaim'] as const;
  * - DuplicateCluster: Proposed duplicate groupings
  * - Evidence: Verification evidence chains
  */
-export const AGENT_NODE_KINDS = ['AgentNode', 'CanonicalDoc', 'DuplicateCluster', 'Evidence'] as const;
+export const AGENT_NODE_KINDS = [
+  'AgentNode',
+  'CanonicalDoc',
+  'DuplicateCluster',
+  'Evidence',
+] as const;
 
 /**
  * Principal Node Kinds (World Model V5)
@@ -101,7 +107,14 @@ export const PRINCIPAL_NODE_KINDS = ['Principal', 'ConversationThread'] as const
  * - System integrity checks
  * - Multi-tenant boundary verification
  */
-export const SYSTEM_NODE_KINDS = ['UserNode', 'AccountNode', 'Board', 'Constellation', 'AgentNode', 'Principal'] as const;
+export const SYSTEM_NODE_KINDS = [
+  'UserNode',
+  'AccountNode',
+  'Board',
+  'Constellation',
+  'AgentNode',
+  'Principal',
+] as const;
 
 /**
  * All Node Kinds (Comprehensive)
@@ -126,7 +139,13 @@ export const ALL_NODE_KINDS = [
  * Node kinds that have content stored externally (content_location field).
  * Useful for cleanup operations and storage management.
  */
-export const CONTENT_NODE_KINDS = ['Source', 'SourceDoc', 'Message', 'CodeBlock', 'UnifiedDoc'] as const;
+export const CONTENT_NODE_KINDS = [
+  'Source',
+  'SourceDoc',
+  'Message',
+  'CodeBlock',
+  'UnifiedDoc',
+] as const;
 
 // TypeScript type exports for type safety
 export type KeimenonDataNodeKind = (typeof CANVAS_DATA_NODE_KINDS)[number];

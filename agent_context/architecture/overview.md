@@ -1,40 +1,41 @@
 # Architecture Overview
 
-## The "One App, Many Domains" Model
+## Runtime Model
 
-Keimenon/Oblio version 5 operates on a **Multi-Site Tenancy** architecture. A single deployment (the "App") serves multiple, distinct, customer-facing websites ("Domains").
+Keimenon operates as a single runtime with account-based tenancy.
 
 ### High-Level Invariants
-1.  **Single Runtime**: All tenants share the same executed code (Next.js/Node.js).
-2.  **Data Isolation**: Data is logically isolated by `tenant_id` at the database query level.
-3.  **Host-Based Routing**: The active Domain is resolved exclusively via the HTTP `Host` header.
+
+1. Single Runtime: all users run the same application code paths.
+2. Account Isolation: data access is scoped by `account_id`.
+3. Host/Client Routing: request routing is resolved by API/web runtime configuration.
 
 ## Layered Architecture
 
-### 1. The Core Engine (Physics)
-The foundation of the system.
-- **Data Model**: Everything is a `Record`.
-- **Query Model**: Universal `DatabaseClient` abstraction.
-- **Schema**: Stored as data, loaded at runtime.
+### 1. Core Engine
 
-### 2. The Domain Model (Business Logic)
-The rules that govern the entities.
-- **Inventory Graph**: Assets, Entities, and their relationships.
-- **Identity**: System-wide user and tenant management.
-- **Attribution**: URL-based provenance.
+- Data model: `Record` persistence + `Struct` projections.
+- Query model: `DatabaseClient` abstraction.
+- Schema: validated through shared type contracts.
 
-### 3. The Visual Engine (Presentation)
-The projection of data onto the screen.
-- **Record -> Struct Transformation**: Converting database rows to React props.
-- **Component Registry**: Dynamic loading of UI blocks.
-- **Theme System**: Domain-specific styling.
+### 2. Domain Model
 
-### 4. The Runtime (Enforcement)
-The guardrails of the system.
-- **Tenancy**: Account isolation.
-- **Entitlements**: Feature gating.
-- **Metering**: Usage tracking.
+- Identity and account lifecycle.
+- Knowledge graph entities and relationships.
+- Import, deduplication, and verification workflows.
+
+### 3. Presentation Layer
+
+- Web and desktop clients render account-scoped graph views.
+- UI state is derived from typed API responses.
+
+### 4. Runtime Enforcement
+
+- Authentication and permission checks.
+- Account-scoped middleware and query filtering.
+- Usage limits and operational guardrails.
 
 ## Deployment Topology
-- **Apps**: `api` (Backend), `web` (Frontend/Admin), `marketing` (Public sites).
-- **Storage**: SQLite (Local/Dev) or Neo4j (Production Graph).
+
+- Apps: `api`, `web`, `desktop`, `desktop-e2e`.
+- Storage: local SQLite + local document store.

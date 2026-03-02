@@ -21,8 +21,8 @@ const { killPorts } = require('../kill-port');
 // Configuration
 const WEB_PORT = 3000;
 const API_PORT = 4001;
-const WEB_URL = `http://localhost:${WEB_PORT}`;
-const API_URL = `http://localhost:${API_PORT}`;
+const WEB_URL = `http://127.0.0.1:${WEB_PORT}`;
+const API_URL = `http://127.0.0.1:${API_PORT}`;
 const MAX_STARTUP_TIME = 120000; // 2 minutes
 
 // ANSI color codes for pretty output

@@ -4,7 +4,7 @@
  * Integration Test: End-to-End Pipeline
  *
  * Tests the complete import pipeline with real chat data
- * Flow: File → Parse → Sources → Code → Neo4j
+ * Flow: File → Parse → Sources → Code → Local DB
  */
 
 const path = require('path');
@@ -35,8 +35,8 @@ async function run() {
   // Test 2: Import tiny.json via enhanced endpoint
   await testEnhancedImport();
 
-  // Test 3: Verify data in Neo4j (if available)
-  await testNeo4jData();
+  // Test 3: Verify data in local database (if available)
+  await testLocalData();
 
   console.log('\nAll e2e tests passed!');
 }
@@ -52,9 +52,8 @@ async function testAPIHealth() {
     const data = await response.json();
 
     assert(data.status === 'ok', 'API health check should return ok');
-    assert(data.dependencies.neo4j, 'Neo4j status should be present');
 
-    console.log(`    ✓ API is healthy (Neo4j: ${data.dependencies.neo4j})`);
+    console.log('    ✓ API is healthy');
   } catch (error) {
     throw new Error(`API health check failed: ${error.message}\nMake sure the API is running with: npm run dev`);
   }
@@ -136,10 +135,10 @@ async function testEnhancedImport() {
 }
 
 /**
- * Test: Neo4j Data Integrity
+ * Test: Local Data Integrity
  */
-async function testNeo4jData() {
-  console.log('  → Checking Neo4j data...');
+async function testLocalData() {
+  console.log('  → Checking local data...');
 
   try {
     // Query conversations
@@ -153,13 +152,13 @@ async function testNeo4jData() {
     const data = await response.json();
 
     if (data.nodes && data.nodes.length > 0) {
-      console.log(`    ✓ Found ${data.nodes.length} nodes in Neo4j`);
+      console.log(`    ✓ Found ${data.nodes.length} nodes in local DB`);
     } else {
       console.log('    ℹ No nodes found (database might be empty)');
     }
 
   } catch (error) {
-    console.log('    ⊘ Skipped (could not query Neo4j)');
+    console.log('    ⊘ Skipped (could not query local DB)');
   }
 }
 

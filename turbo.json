@@ -9,6 +9,9 @@
     "lint": {
       "dependsOn": ["^lint"]
     },
+    "type-check": {
+      "dependsOn": ["^type-check"]
+    },
     "test": {
       "dependsOn": ["build"],
       "inputs": ["src/**/*.tsx", "src/**/*.ts", "test/**/*.ts", "test/**/*.tsx"]

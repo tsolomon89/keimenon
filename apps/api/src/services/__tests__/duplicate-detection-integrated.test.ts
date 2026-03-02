@@ -38,6 +38,7 @@ describe('IntegratedDuplicateDetectionService', () => {
     // Save original environment variables
     const envKeys = [
       'ENABLE_FTS5_DUPLICATE_DETECTION',
+      'ENABLE_LSH_DUPLICATE_DETECTION',
       'DUPLICATE_DETECTION_STRATEGY',
       'DUPLICATE_DETECTION_LOGGING_ENABLED',
       'DUPLICATE_DETECTION_LOG_PERFORMANCE_METRICS',
@@ -110,6 +111,7 @@ describe('IntegratedDuplicateDetectionService', () => {
     it('should use FTS5 strategy when available and enabled (auto mode)', async () => {
       process.env.DUPLICATE_DETECTION_STRATEGY = 'auto';
       process.env.ENABLE_FTS5_DUPLICATE_DETECTION = 'true';
+      process.env.ENABLE_LSH_DUPLICATE_DETECTION = 'false';
 
       const service = new IntegratedDuplicateDetectionService(db);
       const accountId = `acc_${nanoid()}`;
@@ -152,6 +154,7 @@ describe('IntegratedDuplicateDetectionService', () => {
     it('should use baseline strategy when FTS5 disabled', async () => {
       process.env.DUPLICATE_DETECTION_STRATEGY = 'auto';
       process.env.ENABLE_FTS5_DUPLICATE_DETECTION = 'false';
+      process.env.ENABLE_LSH_DUPLICATE_DETECTION = 'false';
 
       const service = new IntegratedDuplicateDetectionService(db);
       const accountId = `acc_${nanoid()}`;

@@ -2,8 +2,7 @@
 
 /**
  * dev.js
- * Main development server orchestrator for Keimenon
- * Handles pre-flight checks, port management, service startup, and graceful shutdown
+ * Main development server orchestrator for Keimenon.
  */
 
 const { spawn } = require('child_process');
@@ -14,12 +13,9 @@ const { killPorts } = require('./kill-port');
 const { waitFor } = require('./wait-for');
 const { validateAll } = require('./validate-env');
 
-// Configuration
 const PORTS = {
-  API: parseInt(process.env.PORT) || 4001,
+  API: parseInt(process.env.PORT || '4001', 10),
   WEB: 3000,
-  NEO4J_HTTP: 7474,
-  NEO4J_BOLT: 7687,
 };
 
 const COLORS = {
@@ -33,214 +29,105 @@ const COLORS = {
   cyan: '\x1b[36m',
 };
 
-// Process tracking
 const processes = [];
 let isShuttingDown = false;
 
-/**
- * Load .env file from API directory
- */
 function loadEnv() {
   const envPath = path.join(__dirname, '../apps/api/.env');
-  if (fs.existsSync(envPath)) {
-    const content = fs.readFileSync(envPath, 'utf8');
-    for (const line of content.split('\n')) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
-      const match = trimmed.match(/^([^=]+)=(.*)$/);
-      if (match && !process.env[match[1]]) {
-        process.env[match[1]] = match[2].trim();
-      }
+  if (!fs.existsSync(envPath)) return;
+
+  const content = fs.readFileSync(envPath, 'utf8');
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const match = trimmed.match(/^([^=]+)=(.*)$/);
+    if (match && !process.env[match[1]]) {
+      process.env[match[1]] = match[2].trim();
     }
   }
 }
 
-/**
- * Main entry point
- */
-async function main() {
-  const args = process.argv.slice(2);
-  const clean = args.includes('--clean');
-  const skipValidation = args.includes('--skip-validation');
-
-  // Load environment variables
-  loadEnv();
-
-  printHeader();
-
-  try {
-    // Pre-flight checks
-    if (!skipValidation) {
-      await runPreflightChecks();
-    }
-
-    // Port management
-    await handlePorts(clean);
-
-    // Check Neo4j availability
-    await checkNeo4j();
-
-    // Start services
-    await startServices();
-
-    // Setup signal handlers
-    setupSignalHandlers();
-
-    // Keep process alive
-    await keepAlive();
-  } catch (error) {
-    console.error(`\n${COLORS.red}✗ Startup failed:${COLORS.reset}`, error.message);
-    await cleanup();
-    process.exit(1);
-  }
-}
-
-/**
- * Print header
- */
 function printHeader() {
   console.log(`${COLORS.bright}${COLORS.cyan}`);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('  🚀 Keimenon - Development Server');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('====================================================');
+  console.log('  Keimenon - Development Server');
+  console.log('====================================================');
   console.log(COLORS.reset);
 }
 
-/**
- * Run pre-flight checks
- */
 async function runPreflightChecks() {
-  console.log(`${COLORS.bright}━━━ Pre-flight Checks ━━━${COLORS.reset}\n`);
+  console.log(`${COLORS.bright}--- Pre-flight Checks ---${COLORS.reset}\n`);
 
   const result = await validateAll({ verbose: false });
 
-  // Show Node.js version
-  console.log(`${COLORS.green}✓${COLORS.reset} Node.js ${process.version}`);
+  console.log(`${COLORS.green}OK${COLORS.reset} Node.js ${process.version}`);
 
-  // Show npm version
   try {
     const { execSync } = require('child_process');
     const npmVersion = execSync('npm --version', { encoding: 'utf8' }).trim();
-    console.log(`${COLORS.green}✓${COLORS.reset} npm ${npmVersion}`);
-  } catch {}
-
-  // Show warnings
-  if (result.warnings.length > 0) {
-    result.warnings.forEach((warn) => {
-      console.log(`${COLORS.yellow}⚠${COLORS.reset} ${warn}`);
-    });
+    console.log(`${COLORS.green}OK${COLORS.reset} npm ${npmVersion}`);
+  } catch {
+    // no-op
   }
 
-  // Show errors
+  if (result.warnings.length > 0) {
+    for (const warning of result.warnings) {
+      console.log(`${COLORS.yellow}WARN${COLORS.reset} ${warning}`);
+    }
+  }
+
   if (!result.valid) {
-    console.log('');
-    result.errors.forEach((err) => {
-      console.log(`${COLORS.red}✗${COLORS.reset} ${err}`);
-    });
+    for (const error of result.errors) {
+      console.log(`${COLORS.red}FAIL${COLORS.reset} ${error}`);
+    }
     throw new Error('Pre-flight checks failed');
   }
 
   console.log('');
 }
 
-/**
- * Handle port conflicts
- */
 async function handlePorts(clean) {
-  console.log(`${COLORS.bright}━━━ Port Management ━━━${COLORS.reset}\n`);
+  console.log(`${COLORS.bright}--- Port Management ---${COLORS.reset}\n`);
 
   const portsToCheck = [PORTS.API, PORTS.WEB];
   const conflicts = await checkPorts(portsToCheck);
 
   if (conflicts.size === 0) {
-    console.log(`${COLORS.green}✓${COLORS.reset} All ports available\n`);
+    console.log(`${COLORS.green}OK${COLORS.reset} All ports available\n`);
     return;
   }
 
-  // Show conflicts
   for (const [port, info] of conflicts) {
     console.log(
-      `${COLORS.yellow}⚠${COLORS.reset} Port ${port} in use (PID: ${info.pid}, Command: ${info.command})`
+      `${COLORS.yellow}WARN${COLORS.reset} Port ${port} in use (PID: ${info.pid}, Command: ${info.command})`
     );
   }
 
-  if (clean) {
-    console.log(`${COLORS.blue}→${COLORS.reset} Killing conflicting processes...`);
-
-    const portsToKill = Array.from(conflicts.keys());
-    await killPorts(portsToKill, { force: false });
-
-    console.log(`${COLORS.green}✓${COLORS.reset} Ports freed\n`);
-  } else {
+  if (!clean) {
     console.log(
-      `${COLORS.yellow}⚠${COLORS.reset} Run with --clean to automatically kill processes\n`
+      `${COLORS.yellow}WARN${COLORS.reset} Run with --clean to kill conflicting processes\n`
     );
     throw new Error('Port conflicts detected');
   }
+
+  console.log(`${COLORS.blue}INFO${COLORS.reset} Killing conflicting processes...`);
+  await killPorts(Array.from(conflicts.keys()), { force: false });
+  console.log(`${COLORS.green}OK${COLORS.reset} Ports freed\n`);
 }
 
-/**
- * Check Neo4j availability
- */
-async function checkNeo4j() {
-  console.log(`${COLORS.bright}━━━ Database Check ━━━${COLORS.reset}\n`);
+function validateStorageMode() {
+  console.log(`${COLORS.bright}--- Database Check ---${COLORS.reset}\n`);
 
   const storageMode = process.env.STORAGE_MODE || 'local';
-
-  // Skip Neo4j check if in local mode
-  if (storageMode === 'local') {
-    console.log(`${COLORS.green}✓${COLORS.reset} Storage mode: local (SQLite only)`);
-    console.log(`${COLORS.blue}→${COLORS.reset} Skipping Neo4j check\n`);
-    return;
+  if (storageMode !== 'local') {
+    throw new Error(`Unsupported STORAGE_MODE='${storageMode}'. Only 'local' is allowed.`);
   }
 
-  const neo4jUri = process.env.NEO4J_URI || 'bolt://localhost:7687';
-
-  try {
-    console.log(`${COLORS.blue}⏳${COLORS.reset} Storage mode: ${storageMode}`);
-    console.log(`${COLORS.blue}⏳${COLORS.reset} Checking Neo4j at ${neo4jUri}...`);
-
-    await waitFor(neo4jUri, {
-      timeout: 10000,
-      interval: 1000,
-      verbose: false,
-    });
-
-    console.log(`${COLORS.green}✓${COLORS.reset} Neo4j is available\n`);
-  } catch (error) {
-    console.log(`${COLORS.red}✗${COLORS.reset} Neo4j not available\n`);
-    console.log(`${COLORS.yellow}Hint:${COLORS.reset} Start Neo4j with:`);
-    console.log(
-      `  docker run --name neo4j -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/testpassword neo4j:5.19\n`
-    );
-    throw new Error('Neo4j not available');
-  }
+  console.log(`${COLORS.green}OK${COLORS.reset} Storage mode: local\n`);
 }
 
-/**
- * Start all services
- */
-async function startServices() {
-  console.log(`${COLORS.bright}━━━ Starting Services ━━━${COLORS.reset}\n`);
-
-  // Start API
-  await startAPI();
-
-  // Wait for API readiness
-  await waitForAPIReady();
-
-  // Start Frontend
-  await startFrontend();
-
-  // Print success
-  printReady();
-}
-
-/**
- * Start API server
- */
 async function startAPI() {
-  console.log(`${COLORS.blue}⏳${COLORS.reset} Starting API server...`);
+  console.log(`${COLORS.blue}INFO${COLORS.reset} Starting API server...`);
 
   const apiProcess = spawn('npm', ['run', 'dev'], {
     cwd: path.join(__dirname, '../apps/api'),
@@ -251,62 +138,50 @@ async function startAPI() {
 
   processes.push({ name: 'API', process: apiProcess, port: PORTS.API });
 
-  // Forward output with prefix
   apiProcess.stdout.on('data', (data) => {
     const lines = data
       .toString()
       .split('\n')
-      .filter((l) => l.trim());
-    lines.forEach((line) => {
+      .filter((line) => line.trim());
+    for (const line of lines) {
       console.log(`${COLORS.magenta}[API]${COLORS.reset} ${line}`);
-    });
+    }
   });
 
   apiProcess.stderr.on('data', (data) => {
     const lines = data
       .toString()
       .split('\n')
-      .filter((l) => l.trim());
-    lines.forEach((line) => {
+      .filter((line) => line.trim());
+    for (const line of lines) {
       console.error(`${COLORS.red}[API]${COLORS.reset} ${line}`);
-    });
+    }
   });
 
   apiProcess.on('exit', (code) => {
     if (!isShuttingDown) {
-      console.error(`\n${COLORS.red}✗ API exited with code ${code}${COLORS.reset}`);
+      console.error(`\n${COLORS.red}FAIL${COLORS.reset} API exited with code ${code}`);
       cleanup().then(() => process.exit(1));
     }
   });
 
-  // Give it a moment to start
   await new Promise((resolve) => setTimeout(resolve, 2000));
 }
 
-/**
- * Wait for API to be ready
- */
 async function waitForAPIReady() {
-  console.log(`${COLORS.blue}⏳${COLORS.reset} Waiting for API to be ready...`);
+  console.log(`${COLORS.blue}INFO${COLORS.reset} Waiting for API readiness...`);
 
-  try {
-    await waitFor(`http://localhost:${PORTS.API}/health`, {
-      timeout: 30000,
-      interval: 1000,
-      verbose: false,
-    });
+  await waitFor(`http://127.0.0.1:${PORTS.API}/health`, {
+    timeout: 30000,
+    interval: 1000,
+    verbose: false,
+  });
 
-    console.log(`${COLORS.green}✓${COLORS.reset} API ready (http://localhost:${PORTS.API})\n`);
-  } catch (error) {
-    throw new Error('API failed to become ready');
-  }
+  console.log(`${COLORS.green}OK${COLORS.reset} API ready (http://127.0.0.1:${PORTS.API})\n`);
 }
 
-/**
- * Start Frontend server
- */
 async function startFrontend() {
-  console.log(`${COLORS.blue}⏳${COLORS.reset} Starting Frontend...`);
+  console.log(`${COLORS.blue}INFO${COLORS.reset} Starting web app...`);
 
   const webProcess = spawn('npm', ['run', 'dev'], {
     cwd: path.join(__dirname, '../apps/web'),
@@ -317,139 +192,138 @@ async function startFrontend() {
 
   processes.push({ name: 'Frontend', process: webProcess, port: PORTS.WEB });
 
-  // Forward output with prefix
   webProcess.stdout.on('data', (data) => {
     const lines = data
       .toString()
       .split('\n')
-      .filter((l) => l.trim());
-    lines.forEach((line) => {
+      .filter((line) => line.trim());
+    for (const line of lines) {
       console.log(`${COLORS.cyan}[WEB]${COLORS.reset} ${line}`);
-    });
+    }
   });
 
   webProcess.stderr.on('data', (data) => {
     const lines = data
       .toString()
       .split('\n')
-      .filter((l) => l.trim());
-    lines.forEach((line) => {
-      // Next.js logs some things to stderr that aren't errors
+      .filter((line) => line.trim());
+    for (const line of lines) {
       if (!line.includes('ready') && !line.includes('started')) {
         console.error(`${COLORS.red}[WEB]${COLORS.reset} ${line}`);
       } else {
         console.log(`${COLORS.cyan}[WEB]${COLORS.reset} ${line}`);
       }
-    });
+    }
   });
 
   webProcess.on('exit', (code) => {
     if (!isShuttingDown) {
-      console.error(`\n${COLORS.red}✗ Frontend exited with code ${code}${COLORS.reset}`);
+      console.error(`\n${COLORS.red}FAIL${COLORS.reset} Frontend exited with code ${code}`);
       cleanup().then(() => process.exit(1));
     }
   });
 
-  // Wait a moment for Next.js to compile
   await new Promise((resolve) => setTimeout(resolve, 3000));
 }
 
-/**
- * Print ready message
- */
 function printReady() {
-  const storageMode = process.env.STORAGE_MODE || 'local';
-
-  console.log(`\n${COLORS.bright}${COLORS.green}━━━ Application Ready ━━━${COLORS.reset}\n`);
-  console.log(`${COLORS.bright}🌐 Frontend:${COLORS.reset}  http://localhost:${PORTS.WEB}`);
-  console.log(`${COLORS.bright}🔌 API:${COLORS.reset}       http://localhost:${PORTS.API}/api/v1`);
-
-  // Only show Neo4j UI if not in local mode
-  if (storageMode !== 'local') {
-    console.log(
-      `${COLORS.bright}💾 Neo4j UI:${COLORS.reset}  http://localhost:${PORTS.NEO4J_HTTP}`
-    );
-  }
-
-  console.log(`${COLORS.bright}📊 Health:${COLORS.reset}    http://localhost:${PORTS.API}/health`);
-  console.log(`${COLORS.bright}💿 Storage:${COLORS.reset}   ${storageMode} mode`);
-  console.log('');
+  console.log(`\n${COLORS.bright}${COLORS.green}--- Application Ready ---${COLORS.reset}\n`);
+  console.log(`${COLORS.bright}Frontend:${COLORS.reset} http://127.0.0.1:${PORTS.WEB}`);
+  console.log(`${COLORS.bright}API:${COLORS.reset}      http://127.0.0.1:${PORTS.API}/api/v1`);
+  console.log(`${COLORS.bright}Health:${COLORS.reset}   http://127.0.0.1:${PORTS.API}/health`);
+  console.log(`${COLORS.bright}Storage:${COLORS.reset}  local mode\n`);
   console.log(`${COLORS.yellow}Press Ctrl+C to stop all services${COLORS.reset}\n`);
 }
 
-/**
- * Setup signal handlers for graceful shutdown
- */
+async function startServices() {
+  console.log(`${COLORS.bright}--- Starting Services ---${COLORS.reset}\n`);
+  await startAPI();
+  await waitForAPIReady();
+  await startFrontend();
+  printReady();
+}
+
 function setupSignalHandlers() {
   process.on('SIGINT', async () => {
-    console.log(`\n\n${COLORS.yellow}⚠ SIGINT received${COLORS.reset}`);
+    console.log(`\n\n${COLORS.yellow}WARN${COLORS.reset} SIGINT received`);
     await cleanup();
     process.exit(0);
   });
 
   process.on('SIGTERM', async () => {
-    console.log(`\n\n${COLORS.yellow}⚠ SIGTERM received${COLORS.reset}`);
+    console.log(`\n\n${COLORS.yellow}WARN${COLORS.reset} SIGTERM received`);
     await cleanup();
     process.exit(0);
   });
 
   process.on('uncaughtException', async (error) => {
-    console.error(`\n${COLORS.red}✗ Uncaught exception:${COLORS.reset}`, error);
+    console.error(`\n${COLORS.red}FAIL${COLORS.reset} Uncaught exception:`, error);
     await cleanup();
     process.exit(1);
   });
 }
 
-/**
- * Cleanup all processes
- */
 async function cleanup() {
-  if (isShuttingDown) {
-    return; // Already cleaning up
-  }
-
+  if (isShuttingDown) return;
   isShuttingDown = true;
 
-  console.log(`${COLORS.yellow}🛑 Shutting down gracefully...${COLORS.reset}`);
+  console.log(`${COLORS.yellow}Stopping services...${COLORS.reset}`);
 
   for (const { name, process: proc } of processes) {
     try {
-      console.log(`${COLORS.blue}→${COLORS.reset} Stopping ${name}...`);
+      console.log(`${COLORS.blue}INFO${COLORS.reset} Stopping ${name}...`);
 
-      // Send SIGTERM
       proc.kill('SIGTERM');
 
-      // Wait up to 5 seconds for graceful shutdown
       await Promise.race([
         new Promise((resolve) => proc.on('exit', resolve)),
         new Promise((resolve) => setTimeout(resolve, 5000)),
       ]);
 
-      // Force kill if still running
       if (!proc.killed) {
-        console.log(`${COLORS.yellow}⚠${COLORS.reset} Force killing ${name}...`);
         proc.kill('SIGKILL');
       }
 
-      console.log(`${COLORS.green}✓${COLORS.reset} ${name} stopped`);
+      console.log(`${COLORS.green}OK${COLORS.reset} ${name} stopped`);
     } catch (error) {
-      console.error(`${COLORS.red}✗${COLORS.reset} Error stopping ${name}:`, error.message);
+      console.error(`${COLORS.red}FAIL${COLORS.reset} Error stopping ${name}:`, error.message);
     }
   }
 
-  console.log(`${COLORS.green}✓${COLORS.reset} Cleanup complete\n`);
+  console.log(`${COLORS.green}OK${COLORS.reset} Cleanup complete\n`);
 }
 
-/**
- * Keep process alive
- */
 function keepAlive() {
   return new Promise(() => {
-    // Process will stay alive until SIGINT/SIGTERM
+    // Keep process alive until SIGINT/SIGTERM
   });
 }
 
-// Run
+async function main() {
+  const args = process.argv.slice(2);
+  const clean = args.includes('--clean');
+  const skipValidation = args.includes('--skip-validation');
+
+  loadEnv();
+  printHeader();
+
+  try {
+    if (!skipValidation) {
+      await runPreflightChecks();
+    }
+
+    await handlePorts(clean);
+    validateStorageMode();
+    await startServices();
+    setupSignalHandlers();
+    await keepAlive();
+  } catch (error) {
+    console.error(`\n${COLORS.red}FAIL${COLORS.reset} Startup failed:`, error.message);
+    await cleanup();
+    process.exit(1);
+  }
+}
+
 if (require.main === module) {
   main().catch((error) => {
     console.error(`${COLORS.red}Fatal error:${COLORS.reset}`, error);

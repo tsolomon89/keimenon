@@ -18,7 +18,7 @@ services:
       NODE_ENV: production
       PORT: 4001
 
-      # Storage Mode: local (SQLite only), keimenon (Neo4j only), or hybrid (both)
+      # Storage mode (local only)
       STORAGE_MODE: ${STORAGE_MODE:-local}
 
       # Local Storage (SQLite + Files)
@@ -30,11 +30,6 @@ services:
       # Authentication (REQUIRED in production)
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET environment variable must be set}
       BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
-
-      # Optional: Neo4j (only needed if STORAGE_MODE=keimenon or hybrid)
-      NEO4J_URI: ${NEO4J_URI:-}
-      NEO4J_USER: ${NEO4J_USER:-}
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
 
       # Optional: OAuth
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
@@ -108,46 +103,6 @@ services:
         max-size: '10m'
         max-file: '3'
 
-  # Neo4j Database (Optional - only needed for graph mode)
-  neo4j:
-    image: neo4j:5.19
-    container_name: keimenon-neo4j
-    restart: unless-stopped
-    ports:
-      - '7474:7474' # HTTP
-      - '7687:7687' # Bolt
-    environment:
-      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set if using Neo4j}
-      NEO4J_PLUGINS: '["apoc"]'
-      NEO4J_dbms_memory_heap_max__size: ${NEO4J_HEAP_SIZE:-2G}
-      NEO4J_dbms_memory_pagecache_size: ${NEO4J_PAGECACHE_SIZE:-1G}
-      NEO4J_dbms_security_procedures_unrestricted: apoc.*
-
-    volumes:
-      - neo4j-data:/data
-      - neo4j-logs:/logs
-
-    healthcheck:
-      test:
-        ['CMD', 'cypher-shell', '-u', '${NEO4J_USER:-neo4j}', '-p', '${NEO4J_PASSWORD}', 'RETURN 1']
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-
-    networks:
-      - keimenon-network
-
-    # Only start if STORAGE_MODE requires Neo4j
-    profiles:
-      - neo4j
-
-    logging:
-      driver: 'json-file'
-      options:
-        max-size: '50m'
-        max-file: '3'
-
   # Nginx Reverse Proxy (Optional - for SSL termination)
   nginx:
     image: nginx:alpine
@@ -187,12 +142,6 @@ volumes:
       o: bind
       device: ${DATA_PATH:-./data}
 
-  neo4j-data:
-    driver: local
-
-  neo4j-logs:
-    driver: local
-
   nginx-cache:
     driver: local
 
@@ -205,20 +154,17 @@ networks:
 # 1. Start in local mode (SQLite only):
 #    docker-compose -f docker-compose.prod.yml up -d api web
 #
-# 2. Start with Neo4j (graph mode):
-#    docker-compose -f docker-compose.prod.yml --profile neo4j up -d
-#
-# 3. Start with Nginx reverse proxy:
+# 2. Start with Nginx reverse proxy:
 #    docker-compose -f docker-compose.prod.yml --profile nginx up -d
 #
-# 4. View logs:
+# 3. View logs:
 #    docker-compose -f docker-compose.prod.yml logs -f api
 #
-# 5. Stop all services:
+# 4. Stop all services:
 #    docker-compose -f docker-compose.prod.yml down
 #
-# 6. Backup data:
+# 5. Backup data:
 #    docker cp keimenon-api:/data ./backup-$(date +%Y%m%d)
 #
-# 7. Restore data:
+# 6. Restore data:
 #    docker cp ./backup-20241012 keimenon-api:/data

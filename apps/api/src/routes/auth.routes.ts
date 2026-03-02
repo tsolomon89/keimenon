@@ -6,6 +6,21 @@ import { authRateLimiter, registrationRateLimiter } from '../middleware/rate-lim
 export function createAuthRoutes(authService: AuthServiceV2): Router {
   const router = Router();
 
+  const getLoginErrorStatus = (errorMessage: string): number => {
+    const normalized = errorMessage.toLowerCase();
+    if (
+      normalized.includes('invalid password') ||
+      normalized.includes('user not found') ||
+      normalized.includes('invalid credentials')
+    ) {
+      return 401;
+    }
+    if (normalized.includes('locked') || normalized.includes('too many failed attempts')) {
+      return 423;
+    }
+    return 500;
+  };
+
   /**
    * POST /api/v1/auth/login
    * Login with email and password
@@ -47,7 +62,9 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
       });
     } catch (error: any) {
       console.error('Login error:', error);
-      return res.status(500).json({ error: error.message || 'Login failed' });
+      const errorMessage = error?.message || 'Login failed';
+      const status = getLoginErrorStatus(errorMessage);
+      return res.status(status).json({ error: errorMessage });
     }
   });
 

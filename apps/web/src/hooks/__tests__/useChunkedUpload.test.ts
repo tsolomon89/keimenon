@@ -7,10 +7,19 @@
  * Related: Chunked Upload System - Phase 7 (Testing)
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi, type Mocked, type MockedFunction } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  vi,
+  type Mocked,
+  type MockedFunction,
+} from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChunkedUpload } from '../useChunkedUpload';
-import { apiClient } from '../../lib/api-client';
+import { apiClient } from '@/lib/api-client';
 
 const jest = vi; // Alias for compatibility
 
@@ -19,11 +28,11 @@ const jest = vi; // Alias for compatibility
 // ============================================================================
 
 // Mock apiClient
-jest.mock('../../lib/api-client', () => ({
+vi.mock('@/lib/api-client', () => ({
   apiClient: {
-    post: jest.fn(),
-    get: jest.fn(),
-    delete: jest.fn(),
+    post: vi.fn(),
+    get: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -364,7 +373,9 @@ describe('useChunkedUpload Hook (E2E)', () => {
       });
 
       // Should retry failed chunk up to 3 times
-      expect(mockFetch.mock.calls.filter((call: any[]) => String(call[0]).includes('chunks/1')).length).toBe(3);
+      expect(
+        mockFetch.mock.calls.filter((call: any[]) => String(call[0]).includes('chunks/1')).length
+      ).toBe(3);
     });
 
     it('should retry failed chunks', async () => {

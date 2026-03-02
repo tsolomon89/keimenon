@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const envPath = path.join(__dirname, '..', '.env.production');
 
 if (fs.existsSync(envPath)) {
-  console.log('⚠️  .env.production already exists. Skipping generation to prevent overwrite.');
+  console.log('WARNING: .env.production already exists. Skipping generation to prevent overwrite.');
   process.exit(0);
 }
 
@@ -24,12 +24,10 @@ const secrets = [
   `JWT_SECRET=${generateSecret()}`,
   `NEXTAUTH_SECRET=${generateSecret()}`,
   '',
-  '# Database (Neo4j - Optional)',
-  '# NEO4J_URI=bolt://neo4j:7687',
-  '# NEO4J_USER=neo4j',
-  `# NEO4J_PASSWORD=${generateSecret()}`,
-  '',
-  '# Storage',
+  '# Local storage',
+  'LOCAL_DOCS_PATH=/data/documents',
+  'SQLITE_PATH=/data/keimenon.db',
+  'STORAGE_PATH=/data/uploads',
   'MAX_FILE_SIZE_MB=50',
   '',
   '# Web Configuration',
@@ -41,7 +39,7 @@ const secrets = [
 
 fs.writeFileSync(envPath, secrets);
 
-console.log('✅ .env.production created with secure secrets.');
+console.log('OK: .env.production created with secure secrets.');
 console.log(
-  '👉 Review the file and fill in any missing external service keys (e.g., OpenAI, Google OAuth).'
+  'Review the file and fill in any missing external service keys (OpenAI, Google OAuth, etc).'
 );

@@ -22,9 +22,15 @@ import bcrypt from 'bcrypt';
 import { unlockAccount } from '../utils/account-lockout';
 
 const getApiUrl = () => process.env.TEST_API_URL || 'http://127.0.0.1:4001';
-const DB_PATH =
+const getDbPath = () =>
   process.env.DB_PATH || path.join(require('os').homedir(), '.keimenon', 'keimenon.db');
-const SAMPLE_FILE = path.join(process.cwd(), '../../ai_context/chat_data/test-samples/small.json');
+const SAMPLE_FILE_CANDIDATES = [
+  path.join(__dirname, 'fixtures', 'tiny.json'),
+  path.join(process.cwd(), 'src', '__tests__', 'fixtures', 'tiny.json'),
+  path.join(process.cwd(), '../../tests/test_data/chat_data/test-samples/small.json'),
+];
+const SAMPLE_FILE =
+  SAMPLE_FILE_CANDIDATES.find((filePath) => fs.existsSync(filePath)) ?? SAMPLE_FILE_CANDIDATES[0];
 
 const ADMIN = { email: 'admin@admin.com', password: 'admin123', name: 'Admin User' };
 
@@ -203,79 +209,107 @@ async function waitForJob(
 test('import job succeeds then delete job clears data', async (_t: TestContext) => {
   assert.ok(fs.existsSync(SAMPLE_FILE), 'Sample chat file is required for the test');
 
-  const db = new Database(DB_PATH);
+  const db = new Database(getDbPath());
   db.pragma('journal_mode = WAL');
   rebuildFts(db);
 
-  const adminAccountId = ensureAccountAndUser(db, ADMIN);
+  ensureAccountAndUser(db, ADMIN);
 
-  const { token: adminToken } = await login(ADMIN.email, ADMIN.password);
+  try {
+    const { token: adminToken, accountId: adminAccountId } = await login(
+      ADMIN.email,
+      ADMIN.password
+    );
+    assert.ok(adminAccountId, 'Admin account id missing from login response');
 
-  // Ensure account_id on users matches account
-  const initialNodeCount = (
-    db.prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?').get(adminAccountId) as {
-      count: number;
-    }
-  ).count;
+    const initialNodeCount = (
+      db
+        .prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?')
+        .get(adminAccountId) as {
+        count: number;
+      }
+    ).count;
+    const initialEdgeCount = (
+      db
+        .prepare('SELECT COUNT(*) as count FROM edges WHERE account_id = ?')
+        .get(adminAccountId) as {
+        count: number;
+      }
+    ).count;
 
-  const form = new FormData();
-  form.append('files', fs.createReadStream(SAMPLE_FILE));
+    const form = new FormData();
+    form.append('files', fs.createReadStream(SAMPLE_FILE));
 
-  const importRes = await fetch(`${getApiUrl()}/api/v1/jobs/import`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${adminToken}`, ...form.getHeaders() },
-    body: form,
-  });
+    const importRes = await fetch(`${getApiUrl()}/api/v1/jobs/import`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${adminToken}`, ...form.getHeaders() },
+      body: form,
+    });
 
-  assert.ok(importRes.ok, `Import job creation failed (${importRes.status})`);
-  const importData = (await importRes.json()) as any;
-  const importJobId = importData.jobId || importData.job?.id;
-  assert.ok(importJobId, 'Import job id missing');
+    assert.ok(importRes.ok, `Import job creation failed (${importRes.status})`);
+    const importData = (await importRes.json()) as any;
+    const importJobId = importData.jobId || importData.job?.id;
+    assert.ok(importJobId, 'Import job id missing');
 
-  const importJob = await waitForJob(importJobId, adminToken);
-  assert.equal(importJob.state.status || importJob.status, 'succeeded');
+    const importJob = await waitForJob(importJobId, adminToken);
+    assert.equal(importJob.state.status || importJob.status, 'succeeded');
 
-  const postImportNodes = (
-    db.prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?').get(adminAccountId) as {
-      count: number;
-    }
-  ).count;
+    const postImportNodes = (
+      db
+        .prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?')
+        .get(adminAccountId) as {
+        count: number;
+      }
+    ).count;
 
-  assert.ok(
-    postImportNodes > initialNodeCount,
-    `Expected node count to increase after import (was ${initialNodeCount}, now ${postImportNodes})`
-  );
+    assert.ok(
+      postImportNodes > initialNodeCount,
+      `Expected node count to increase after import (was ${initialNodeCount}, now ${postImportNodes})`
+    );
 
-  const deleteRes = await fetch(`${getApiUrl()}/api/v1/jobs/delete`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${adminToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ scope: 'keimenon' }),
-  });
+    const deleteRes = await fetch(`${getApiUrl()}/api/v1/jobs/delete`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ scope: 'keimenon' }),
+    });
 
-  assert.ok(deleteRes.ok, `Delete job creation failed (${deleteRes.status})`);
-  const deleteData = (await deleteRes.json()) as any;
-  const deleteJobId = deleteData.jobId || deleteData.job?.id;
-  assert.ok(deleteJobId, 'Delete job id missing');
+    assert.ok(deleteRes.ok, `Delete job creation failed (${deleteRes.status})`);
+    const deleteData = (await deleteRes.json()) as any;
+    const deleteJobId = deleteData.jobId || deleteData.job?.id;
+    assert.ok(deleteJobId, 'Delete job id missing');
 
-  const deleteJob = await waitForJob(deleteJobId, adminToken);
-  assert.equal(deleteJob.state.status || deleteJob.status, 'succeeded');
+    const deleteJob = await waitForJob(deleteJobId, adminToken);
+    assert.equal(deleteJob.state.status || deleteJob.status, 'succeeded');
 
-  const postDeleteNodes = (
-    db.prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?').get(adminAccountId) as {
-      count: number;
-    }
-  ).count;
-  const postDeleteEdges = (
-    db.prepare('SELECT COUNT(*) as count FROM edges WHERE account_id = ?').get(adminAccountId) as {
-      count: number;
-    }
-  ).count;
+    const postDeleteNodes = (
+      db
+        .prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?')
+        .get(adminAccountId) as {
+        count: number;
+      }
+    ).count;
+    const postDeleteEdges = (
+      db
+        .prepare('SELECT COUNT(*) as count FROM edges WHERE account_id = ?')
+        .get(adminAccountId) as {
+        count: number;
+      }
+    ).count;
 
-  assert.equal(postDeleteNodes, 0, 'Expected nodes to be cleared after delete job');
-  assert.equal(postDeleteEdges, 0, 'Expected edges to be cleared after delete job');
-
-  db.close();
+    assert.equal(
+      postDeleteNodes,
+      initialNodeCount,
+      `Expected nodes to return to baseline after delete (baseline ${initialNodeCount}, now ${postDeleteNodes})`
+    );
+    assert.equal(
+      postDeleteEdges,
+      initialEdgeCount,
+      `Expected edges to return to baseline after delete (baseline ${initialEdgeCount}, now ${postDeleteEdges})`
+    );
+  } finally {
+    db.close();
+  }
 });

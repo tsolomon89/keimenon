@@ -535,6 +535,23 @@ export const SETTINGS_REGISTRY: SettingCategory[] = [
           },
         ],
       },
+      {
+        id: 'api_keys',
+        label: 'API Keys (BYOK)',
+        description: 'Manage your own AI provider API keys',
+        order: 2,
+        controls: [
+          {
+            id: 'byok_management',
+            label: 'API Key Management',
+            description: 'Store and manage your AI provider API keys securely',
+            type: 'string',
+            defaultValue: '',
+            scope: 'workspace',
+            editableBy: ['admin'],
+          },
+        ],
+      },
     ],
   },
   {

@@ -107,24 +107,19 @@ async function fetchWithAuthInterceptor(
   url: string | URL | Request,
   init?: RequestInit
 ): Promise<Response> {
-  try {
-    const response = await fetch(url, init);
+  const response = await fetch(url, init);
 
-    // Check for authentication errors
-    if (response.status === 401 || response.status === 403) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error || 'Authentication failed';
+  // Check for authentication errors
+  if (response.status === 401 || response.status === 403) {
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage = errorData.error || 'Authentication failed';
 
-      // Handle token expiration
-      handleTokenExpiration(errorMessage);
-      throw new Error(errorMessage);
-    }
-
-    return response;
-  } catch (error) {
-    // Re-throw for upstream handling
-    throw error;
+    // Handle token expiration
+    handleTokenExpiration(errorMessage);
+    throw new Error(errorMessage);
   }
+
+  return response;
 }
 
 export const api = {
@@ -688,7 +683,7 @@ export async function detectPlatform(file: File): Promise<{
     const data = JSON.parse(text);
     console.log('[detectPlatform] File keys:', Object.keys(data));
     if (Array.isArray(data)) {
-        console.log('[detectPlatform] Array first item keys:', Object.keys(data[0] || {}));
+      console.log('[detectPlatform] Array first item keys:', Object.keys(data[0] || {}));
     }
 
     // Check for ChatGPT format - has uuid, chat_messages, account (from actual ChatGPT exports)
@@ -729,36 +724,39 @@ export async function detectPlatform(file: File): Promise<{
     return { platform: 'unknown', confidence: 0.0 };
   } catch (error) {
     // If JSON parse fails (likely due to partial read of large file), fall back to string inspection
-    console.warn('[detectPlatform] JSON parse failed (expected for large files), trying heuristic match:', error);
-    
+    console.warn(
+      '[detectPlatform] JSON parse failed (expected for large files), trying heuristic match:',
+      error
+    );
+
     // Fallback Heuristics (order matters - more specific first)
     // ChatGPT: Has "chat_messages" with "account" object (actual ChatGPT export format)
     if (text.includes('"chat_messages":') && text.includes('"account":')) {
-        return { platform: 'chatgpt', confidence: 0.8 };
+      return { platform: 'chatgpt', confidence: 0.8 };
     }
     // ChatGPT fallback: just chat_messages with uuid
     if (text.includes('"chat_messages":') && text.includes('"uuid":')) {
-        return { platform: 'chatgpt', confidence: 0.7 };
+      return { platform: 'chatgpt', confidence: 0.7 };
     }
 
     // Claude: Has "mapping" with nested tree structure (actual Claude export format)
     if (text.includes('"mapping":')) {
-        return { platform: 'claude', confidence: 0.8 };
+      return { platform: 'claude', confidence: 0.8 };
     }
     if (text.includes('"conversation_id":')) {
-        return { platform: 'claude', confidence: 0.7 };
+      return { platform: 'claude', confidence: 0.7 };
     }
 
     // Gemini: Looks for "conversations" array with specific structure
     if (text.includes('"conversations":')) {
-        return { platform: 'gemini', confidence: 0.8 };
+      return { platform: 'gemini', confidence: 0.8 };
     }
 
     // Generic: Has messages array but unknown platform
     if (text.includes('"messages":') && text.includes('"role":')) {
-        return { platform: 'generic', confidence: 0.5 };
+      return { platform: 'generic', confidence: 0.5 };
     }
-    
+
     return { platform: 'unknown', confidence: 0.0 };
   }
 }
@@ -840,7 +838,7 @@ export async function analyzeFiles(files: File[]): Promise<{
 export interface MessageContent {
   id: string;
   content: string;
-  source: 'local' | 'neo4j';
+  source: 'local' | 'database';
   role: string;
   timestamp: number;
   char_count?: number;
@@ -850,7 +848,7 @@ export interface SourceContent {
   id: string;
   title: string;
   content: string;
-  source: 'local' | 'neo4j';
+  source: 'local' | 'database';
   mime_type: string;
   size_bytes: number;
 }
@@ -859,14 +857,14 @@ export interface CodeContent {
   id: string;
   code: string;
   language: string;
-  source: 'local' | 'neo4j';
+  source: 'local' | 'database';
   line_count?: number;
   char_count?: number;
 }
 
 export interface ConversationContent {
   id: string;
-  source: 'local' | 'neo4j';
+  source: 'local' | 'database';
   conversation: {
     id: string;
     title: string;
@@ -878,6 +876,59 @@ export interface ConversationContent {
     }>;
     created_at: number;
   };
+}
+
+// ============================================================================
+// V2 Node Content Types (Vision V2: Lexeme, Phrase, Topic, Verified nodes)
+// ============================================================================
+
+export interface LexemeContent {
+  id: string;
+  lemma: string;
+  pos?: string;
+  frequency: number;
+  source: 'database';
+}
+
+export interface PhraseContent {
+  id: string;
+  text: string;
+  normalized_text: string;
+  type: 'n-gram' | 'entity' | 'concept';
+  entity_type?: string;
+  frequency: number;
+  source: 'database';
+}
+
+export interface TopicContent {
+  id: string;
+  name: string;
+  description?: string;
+  keywords: string[];
+  strength: number;
+  source: 'database';
+}
+
+export interface VerifiedSourceContent {
+  id: string;
+  url: string;
+  title: string;
+  publisher?: string;
+  author?: string;
+  published_at?: number;
+  accessed_at?: number;
+  trust_score: number;
+  source: 'database';
+}
+
+export interface VerifiedClaimContent {
+  id: string;
+  claim_text: string;
+  source_id: string;
+  evidence_excerpt?: string;
+  confidence: number;
+  status: 'proposed' | 'verified' | 'disputed' | 'refuted';
+  source: 'database';
 }
 
 type GraphStorageStats = {
@@ -896,7 +947,6 @@ export interface StorageStats {
     path: string;
   };
   database?: GraphStorageStats;
-  neo4j?: GraphStorageStats;
   storage_model: string;
   storage_mode?: string;
 }
@@ -984,6 +1034,149 @@ export async function getConversationContent(conversationId: string): Promise<Co
     }
 
     return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+// ============================================================================
+// V2 Node Content Fetchers (use existing /api/v1/nodes/:id endpoint)
+// ============================================================================
+
+/**
+ * Get Lexeme node content from database
+ */
+export async function getLexemeContent(id: string): Promise<LexemeContent> {
+  try {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/nodes/${id}`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    const node = await response.json();
+    return {
+      id: node.id,
+      lemma: node.lemma || node.properties?.lemma || '',
+      pos: node.pos || node.properties?.pos,
+      frequency: node.frequency || node.properties?.frequency || 0,
+      source: 'database',
+    };
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+/**
+ * Get Phrase node content from database
+ */
+export async function getPhraseContent(id: string): Promise<PhraseContent> {
+  try {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/nodes/${id}`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    const node = await response.json();
+    return {
+      id: node.id,
+      text: node.text || node.properties?.text || '',
+      normalized_text: node.normalized_text || node.properties?.normalized_text || '',
+      type: node.type || node.properties?.type || 'n-gram',
+      entity_type: node.entity_type || node.properties?.entity_type,
+      frequency: node.frequency || node.properties?.frequency || 0,
+      source: 'database',
+    };
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+/**
+ * Get Topic node content from database
+ */
+export async function getTopicContent(id: string): Promise<TopicContent> {
+  try {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/nodes/${id}`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    const node = await response.json();
+    return {
+      id: node.id,
+      name: node.name || node.properties?.name || '',
+      description: node.description || node.properties?.description,
+      keywords: node.keywords || node.properties?.keywords || [],
+      strength: node.strength || node.properties?.strength || 0,
+      source: 'database',
+    };
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+/**
+ * Get VerifiedSource node content from database
+ */
+export async function getVerifiedSourceContent(id: string): Promise<VerifiedSourceContent> {
+  try {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/nodes/${id}`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    const node = await response.json();
+    return {
+      id: node.id,
+      url: node.url || node.properties?.url || '',
+      title: node.title || node.properties?.title || '',
+      publisher: node.publisher || node.properties?.publisher,
+      author: node.author || node.properties?.author,
+      published_at: node.published_at || node.properties?.published_at,
+      accessed_at: node.accessed_at || node.properties?.accessed_at,
+      trust_score: node.trust_score || node.properties?.trust_score || 0,
+      source: 'database',
+    };
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+/**
+ * Get VerifiedClaim node content from database
+ */
+export async function getVerifiedClaimContent(id: string): Promise<VerifiedClaimContent> {
+  try {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/nodes/${id}`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    const node = await response.json();
+    return {
+      id: node.id,
+      claim_text: node.claim_text || node.properties?.claim_text || '',
+      source_id: node.source_id || node.properties?.source_id || '',
+      evidence_excerpt: node.evidence_excerpt || node.properties?.evidence_excerpt,
+      confidence: node.confidence || node.properties?.confidence || 0,
+      status: node.status || node.properties?.status || 'proposed',
+      source: 'database',
+    };
   } catch (error: any) {
     throw await handleApiError(error);
   }
@@ -1091,8 +1284,9 @@ export async function getGroupMembers(
   recursive = false
 ): Promise<{ node_ids: string[]; count: number }> {
   try {
+    // Bug fix #25: Use fetchWithAuthInterceptor for consistent auth handling
     const url = `${API_BASE_URL}/api/v1/groups/${id}/nodes${recursive ? '?recursive=true' : ''}`;
-    const response = await fetch(url, {
+    const response = await fetchWithAuthInterceptor(url, {
       headers: getAuthHeaders(),
     });
 
@@ -1241,7 +1435,8 @@ export async function suggestGroups(
   targetCount?: number
 ): Promise<{ suggestions: Array<{ name: string; count: number }> }> {
   try {
-    const response = await fetch(
+    // Bug fix #25: Use fetchWithAuthInterceptor for consistent auth handling
+    const response = await fetchWithAuthInterceptor(
       `${API_BASE_URL}/api/v1/groups/suggest?targetCount=${targetCount || 10}`,
       {
         method: 'GET',
@@ -1951,6 +2146,69 @@ export async function bulkUpdateSettings(updates: Array<{ id: string; value: any
     body: JSON.stringify({ updates }),
   });
   if (!response.ok) await handleApiError({ response });
+  return response.json();
+}
+
+// ============================================================================
+// URL Ingestion API
+// ============================================================================
+
+/**
+ * Response from URL ingestion endpoint
+ */
+export interface URLIngestResponse {
+  success: boolean;
+  duplicate: boolean;
+  duplicateOf?: string;
+  source?: any;
+  message?: string;
+  metadata?: {
+    url: string;
+    canonicalUrl: string;
+    finalUrl?: string;
+    title?: string;
+    author?: string;
+    publishedDate?: string;
+    siteName?: string;
+    fetchedAt: number;
+    contentSize: number;
+    fingerprint: string;
+    wordCount?: number;
+    charCount?: number;
+    codeBlockCount?: number;
+    imageCount?: number;
+  };
+}
+
+/**
+ * Ingest content from a URL
+ *
+ * Fetches the URL, extracts readable content using Mozilla Readability,
+ * generates a fingerprint, and creates a Source node in the database.
+ *
+ * Security: The backend has SSRF protection that blocks private/internal IPs.
+ *
+ * @param url - The URL to fetch and ingest
+ * @param boardId - Optional board to associate the source with
+ * @returns URL ingestion result including metadata and duplicate detection
+ */
+export async function ingestUrl(url: string, boardId?: string): Promise<URLIngestResponse> {
+  const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/ingest/url`, {
+    method: 'POST',
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ url, board_id: boardId }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.error || errorData.message || `Failed to ingest URL: ${response.statusText}`
+    );
+  }
+
   return response.json();
 }
 

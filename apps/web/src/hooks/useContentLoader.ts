@@ -4,14 +4,43 @@ import {
   getSourceContent,
   getCodeContent,
   getConversationContent,
+  getLexemeContent,
+  getPhraseContent,
+  getTopicContent,
+  getVerifiedSourceContent,
+  getVerifiedClaimContent,
   MessageContent,
   SourceContent,
   CodeContent,
   ConversationContent,
+  LexemeContent,
+  PhraseContent,
+  TopicContent,
+  VerifiedSourceContent,
+  VerifiedClaimContent,
 } from '@/lib/api-client';
 
-export type ContentType = 'message' | 'source' | 'code' | 'conversation';
-export type LoadedContent = MessageContent | SourceContent | CodeContent | ConversationContent;
+export type ContentType =
+  | 'message'
+  | 'source'
+  | 'code'
+  | 'conversation'
+  | 'lexeme'
+  | 'phrase'
+  | 'topic'
+  | 'verified-source'
+  | 'verified-claim';
+
+export type LoadedContent =
+  | MessageContent
+  | SourceContent
+  | CodeContent
+  | ConversationContent
+  | LexemeContent
+  | PhraseContent
+  | TopicContent
+  | VerifiedSourceContent
+  | VerifiedClaimContent;
 
 interface ContentCache {
   [key: string]: LoadedContent;
@@ -59,95 +88,120 @@ export function useContentLoader(): UseContentLoaderReturn {
   /**
    * Load content for a specific node
    */
-  const loadContent = useCallback(async (
-    id: string,
-    type: ContentType
-  ): Promise<LoadedContent | null> => {
-    // Return cached content if available
-    if (loadedContent[id]) {
-      return loadedContent[id];
-    }
-
-    // Return in-flight request if already loading
-    const existingRequest = inflightRequests.current[id];
-    if (existingRequest) {
-      return existingRequest;
-    }
-
-    // Start loading
-    setLoadingStates(prev => ({ ...prev, [id]: true }));
-    setErrors(prev => ({ ...prev, [id]: null }));
-
-    const loadPromise = (async () => {
-      try {
-        let content: LoadedContent;
-
-        switch (type) {
-          case 'message':
-            content = await getMessageContent(id);
-            break;
-          case 'source':
-            content = await getSourceContent(id);
-            break;
-          case 'code':
-            content = await getCodeContent(id);
-            break;
-          case 'conversation':
-            content = await getConversationContent(id);
-            break;
-          default:
-            throw new Error(`Unknown content type: ${type}`);
-        }
-
-        // Cache the content
-        setLoadedContent(prev => ({ ...prev, [id]: content }));
-
-        return content;
-      } catch (error: any) {
-        const errorMessage = error.message || 'Failed to load content';
-        setErrors(prev => ({ ...prev, [id]: errorMessage }));
-        console.error(`Error loading ${type} content for ${id}:`, error);
-        return null;
-      } finally {
-        setLoadingStates(prev => ({ ...prev, [id]: false }));
-        delete inflightRequests.current[id];
+  const loadContent = useCallback(
+    async (id: string, type: ContentType): Promise<LoadedContent | null> => {
+      // Return cached content if available
+      if (loadedContent[id]) {
+        return loadedContent[id];
       }
-    })();
 
-    inflightRequests.current[id] = loadPromise;
-    return loadPromise;
-  }, [loadedContent]);
+      // Return in-flight request if already loading
+      const existingRequest = inflightRequests.current[id];
+      if (existingRequest) {
+        return existingRequest;
+      }
+
+      // Start loading
+      setLoadingStates((prev) => ({ ...prev, [id]: true }));
+      setErrors((prev) => ({ ...prev, [id]: null }));
+
+      const loadPromise = (async () => {
+        try {
+          let content: LoadedContent;
+
+          switch (type) {
+            case 'message':
+              content = await getMessageContent(id);
+              break;
+            case 'source':
+              content = await getSourceContent(id);
+              break;
+            case 'code':
+              content = await getCodeContent(id);
+              break;
+            case 'conversation':
+              content = await getConversationContent(id);
+              break;
+            // V2 Node Types
+            case 'lexeme':
+              content = await getLexemeContent(id);
+              break;
+            case 'phrase':
+              content = await getPhraseContent(id);
+              break;
+            case 'topic':
+              content = await getTopicContent(id);
+              break;
+            case 'verified-source':
+              content = await getVerifiedSourceContent(id);
+              break;
+            case 'verified-claim':
+              content = await getVerifiedClaimContent(id);
+              break;
+            default:
+              throw new Error(`Unknown content type: ${type}`);
+          }
+
+          // Cache the content
+          setLoadedContent((prev) => ({ ...prev, [id]: content }));
+
+          return content;
+        } catch (error: any) {
+          const errorMessage = error.message || 'Failed to load content';
+          setErrors((prev) => ({ ...prev, [id]: errorMessage }));
+          console.error(`Error loading ${type} content for ${id}:`, error);
+          return null;
+        } finally {
+          setLoadingStates((prev) => ({ ...prev, [id]: false }));
+          delete inflightRequests.current[id];
+        }
+      })();
+
+      inflightRequests.current[id] = loadPromise;
+      return loadPromise;
+    },
+    [loadedContent]
+  );
 
   /**
    * Get cached content without triggering a load
    */
-  const getContent = useCallback((id: string): LoadedContent | null => {
-    return loadedContent[id] || null;
-  }, [loadedContent]);
+  const getContent = useCallback(
+    (id: string): LoadedContent | null => {
+      return loadedContent[id] || null;
+    },
+    [loadedContent]
+  );
 
   /**
    * Check if content is currently loading
    */
-  const isLoading = useCallback((id: string): boolean => {
-    return loadingStates[id] || false;
-  }, [loadingStates]);
+  const isLoading = useCallback(
+    (id: string): boolean => {
+      return loadingStates[id] || false;
+    },
+    [loadingStates]
+  );
 
   /**
    * Get error for a specific node
    */
-  const getError = useCallback((id: string): string | null => {
-    return errors[id] || null;
-  }, [errors]);
+  const getError = useCallback(
+    (id: string): string | null => {
+      return errors[id] || null;
+    },
+    [errors]
+  );
 
   /**
    * Clear cached content for a specific node
    */
   const clearContent = useCallback((id: string) => {
-    setLoadedContent(prev => {
+    setLoadedContent((prev) => {
       const { [id]: _, ...rest } = prev;
       return rest;
     });
-    setErrors(prev => {
+    setErrors((prev) => {
       const { [id]: _, ...rest } = prev;
       return rest;
     });

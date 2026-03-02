@@ -16,7 +16,6 @@ import {
   Settings,
   Database,
   Activity,
-  FileSearch,
   Filter,
 } from 'lucide-react';
 import { useShell } from '@/contexts/ShellContext';
@@ -39,7 +38,6 @@ interface KeimenonToolbarProps {
   dashboardView: 'analytics' | 'storage';
   onDashboardViewChange: (view: 'analytics' | 'storage') => void;
   processingAvailable?: boolean;
-  onOpenImportReview: () => void;
 }
 
 export function KeimenonToolbar({
@@ -58,7 +56,6 @@ export function KeimenonToolbar({
   dashboardView,
   onDashboardViewChange,
   processingAvailable = false,
-  onOpenImportReview,
 }: KeimenonToolbarProps) {
   const { keimenonMode, setKeimenonMode } = useShell();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -177,12 +174,12 @@ export function KeimenonToolbar({
               <Activity className="w-4 h-4" />
             </button>
             <button
-                onClick={() => onKeimenonSurfaceChange('boards')}
-                type="button"
-                className={surfaceButtonClass(keimenonSurface === 'boards')}
-                title="Boards View"
+              onClick={() => onKeimenonSurfaceChange('boards')}
+              type="button"
+              className={surfaceButtonClass(keimenonSurface === 'boards')}
+              title="Boards View"
             >
-                <LayoutDashboard className="w-4 h-4" />
+              <LayoutDashboard className="w-4 h-4" />
             </button>
           </div>
 
@@ -302,15 +299,6 @@ export function KeimenonToolbar({
         </div>
 
         <div className="w-px h-6 bg-slate-700" />
-        
-        <button
-          onClick={onOpenImportReview}
-          type="button"
-          className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
-          title="Review Imports (AI Analysis & Duplicates)"
-        >
-          <FileSearch className="w-4 h-4" />
-        </button>
 
         <button
           onClick={onUploadClick}

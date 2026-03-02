@@ -13,8 +13,8 @@
     "dev:stop": "node scripts/dev-stop.js",
     "cleanup:dev": "node scripts/cleanup-dev.js",
     "dev:desktop": "node scripts/dev-desktop.js",
-    "test": "turbo run test",
-    "test:auth": "node tests/auth-suite.js",
+    "test": "node scripts/run-with-node22.js \"turbo run test --no-daemon --concurrency=1\"",
+    "test:auth": "node scripts/run-with-node22.js \"node tests/auth-suite.js\"",
     "e2e": "playwright test",
     "e2e:chromium": "playwright test --project=chromium",
     "e2e:firefox": "playwright test --project=firefox",
@@ -31,24 +31,31 @@
     "e2e:clean": "node scripts/cleanup-test-data.js",
     "e2e:clean-cache": "node scripts/e2e/clean-cache.js",
     "diagnose-modules": "node scripts/diagnose-modules.js",
-    "build": "turbo run build",
-    "lint": "turbo run lint",
+    "build": "node scripts/run-with-node22.js \"turbo run build --no-daemon\"",
+    "lint": "node scripts/run-with-node22.js \"turbo run lint --no-daemon\"",
     "lint-staged": "lint-staged",
     "clean": "turbo run clean",
-    "type-check": "turbo run type-check",
+    "type-check": "node scripts/run-with-node22.js \"turbo run type-check --no-daemon\"",
     "validate": "node scripts/validate-env.js --verbose",
     "kill-ports": "node scripts/kill-port.js 3000 4001",
     "check-ports": "node scripts/check-port.js 3000 && node scripts/check-port.js 4001",
     "backup": "node scripts/backup-db.js",
     "backup:compress": "node scripts/backup-db.js --compress",
     "restore": "node scripts/restore-db.js",
-    "migrate:to-local": "npx tsx scripts/migrate-to-local-storage.ts",
-    "migrate:to-local:dry-run": "npx tsx scripts/migrate-to-local-storage.ts --dry-run",
+    "migrate:to-local": "node scripts/run-with-node22.js \"node node_modules/tsx/dist/cli.mjs scripts/migrate-to-local-storage.ts\"",
+    "migrate:to-local:dry-run": "node scripts/run-with-node22.js \"node node_modules/tsx/dist/cli.mjs scripts/migrate-to-local-storage.ts --dry-run\"",
     "prepare": "husky install",
     "commitlint": "commitlint",
     "unlock:all": "node scripts/clear-lockouts.js",
     "unlock": "node scripts/unlock-account.js",
-    "factory-reset": "tsx apps/api/src/scripts/factory-reset.ts"
+    "factory-reset": "tsx apps/api/src/scripts/factory-reset.ts",
+    "node:check": "node scripts/check-node-version.js",
+    "preinstall": "npm run -s node:check",
+    "predev": "npm run -s node:check",
+    "pretest": "npm run -s node:check",
+    "prebuild": "npm run -s node:check",
+    "prelint": "npm run -s node:check",
+    "pretype-check": "npm run -s node:check"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
@@ -68,10 +75,12 @@
     "sharp": "^0.34.4",
     "tsx": "^4.20.6",
     "turbo": "^1.13.4",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0"
   },
   "engines": {
-    "node": "^20.0.0 || ^22.0.0",
+    "node": "22.x",
     "npm": ">=9.0.0"
   },
   "dependencies": {
@@ -89,6 +98,7 @@
     "postcss": "^8.5.6"
   },
   "overrides": {
-    "nanoid": "^3.3.7"
+    "nanoid": "^3.3.7",
+    "@rolldown/pluginutils": "1.0.0-beta.27"
   }
 }

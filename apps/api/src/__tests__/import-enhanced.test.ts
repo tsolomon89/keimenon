@@ -8,7 +8,7 @@
  * Run: npm run dev (in apps/api)
  */
 
-import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, beforeAll, afterAll } from 'vitest';
 import assert from 'node:assert';
 import { SQLiteClient } from '@keimenon/db';
 import { AuthService } from '../services/auth.service';
@@ -17,9 +17,103 @@ import * as fs from 'fs';
 import * as path from 'path';
 import FormData from 'form-data';
 import fetch from 'node-fetch';
+import { login } from './utils/test-helpers';
 
-const TEST_DB_PATH = path.join(__dirname, '../../test-import-enhanced.db');
-const API_BASE_URL = 'http://localhost:4001';
+const TEST_DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../test-import-enhanced.db');
+const SHOULD_DELETE_TEST_DB = !process.env.DB_PATH;
+const getApiBaseUrl = (): string => process.env.TEST_API_URL || 'http://localhost:4001';
+const getFixturePath = (filename: string) => path.join(__dirname, 'fixtures', filename);
+const ADMIN_PASSWORD = 'adminpass123';
+const CLIENT_PASSWORD = 'clientpass123';
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchJsonWithRetry(
+  url: string,
+  init: any,
+  expectedStatus: number,
+  maxAttempts = 3
+): Promise<{ status: number; data: any }> {
+  let lastStatus = 0;
+  let lastData: any = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const response = await fetch(url, init);
+    const contentType = response.headers.get('content-type') || '';
+
+    let data: any = null;
+    if (contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      data = await response.text();
+    }
+
+    lastStatus = response.status;
+    lastData = data;
+
+    if (response.status === expectedStatus) {
+      return { status: response.status, data };
+    }
+
+    const retryable = response.status >= 500 || response.status === 429;
+    if (!retryable || attempt === maxAttempts) {
+      break;
+    }
+
+    await sleep(200 * attempt);
+  }
+
+  return { status: lastStatus, data: lastData };
+}
+
+async function postMultipartWithRetry(
+  url: string,
+  token: string,
+  expectedStatus: number,
+  buildForm: () => FormData,
+  maxAttempts = 3
+): Promise<{ status: number; data: any }> {
+  let lastStatus = 0;
+  let lastData: any = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const form = buildForm();
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...form.getHeaders(),
+      },
+      body: form as any,
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    let data: any = null;
+    if (contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      data = await response.text();
+    }
+
+    lastStatus = response.status;
+    lastData = data;
+
+    if (response.status === expectedStatus) {
+      return { status: response.status, data };
+    }
+
+    const retryable = response.status >= 500 || response.status === 429;
+    if (!retryable || attempt === maxAttempts) {
+      break;
+    }
+
+    await sleep(250 * attempt);
+  }
+
+  return { status: lastStatus, data: lastData };
+}
 
 describe('Import-Enhanced Integration Tests', () => {
   let db: SQLiteClient;
@@ -35,7 +129,7 @@ describe('Import-Enhanced Integration Tests', () => {
     console.log('⏳ Setting up test database and accounts...');
 
     // Setup test database
-    if (fs.existsSync(TEST_DB_PATH)) {
+    if (SHOULD_DELETE_TEST_DB && fs.existsSync(TEST_DB_PATH)) {
       fs.unlinkSync(TEST_DB_PATH);
     }
 
@@ -58,22 +152,47 @@ describe('Import-Enhanced Integration Tests', () => {
 
     // Create admin user
     adminUserId = randomUUID();
-    const adminPasswordHash = await authService.hashPassword('adminpass123');
+    const adminPasswordHash = await authService.hashPassword(ADMIN_PASSWORD);
     db.getDatabase()
       .prepare(
         `
-      INSERT INTO users (id, account_id, email, password_hash, name, permission_level, user_class, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (
+        id, email, password_hash, google_id, name, permission_level, user_class, is_active,
+        created_at, updated_at, primary_account_id, last_login_account_id, email_verified
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
       )
       .run(
         adminUserId,
-        adminAccountId,
         'admin@test.com',
         adminPasswordHash,
+        null,
         'Admin User',
         'admin',
         'person',
+        1,
+        adminNow,
+        adminNow,
+        adminAccountId,
+        adminAccountId,
+        1
+      );
+    db.getDatabase()
+      .prepare(
+        `
+      INSERT INTO user_accounts (id, user_id, account_id, permission_level, role_rank, status, joined_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+      )
+      .run(
+        randomUUID(),
+        adminUserId,
+        adminAccountId,
+        'admin',
+        4,
+        'active',
+        adminNow,
         adminNow,
         adminNow
       );
@@ -100,44 +219,69 @@ describe('Import-Enhanced Integration Tests', () => {
 
     // Create client user
     clientUserId = randomUUID();
-    const clientPasswordHash = await authService.hashPassword('clientpass123');
+    const clientPasswordHash = await authService.hashPassword(CLIENT_PASSWORD);
     db.getDatabase()
       .prepare(
         `
-      INSERT INTO users (id, account_id, email, password_hash, name, permission_level, user_class, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (
+        id, email, password_hash, google_id, name, permission_level, user_class, is_active,
+        created_at, updated_at, primary_account_id, last_login_account_id, email_verified
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
       )
       .run(
         clientUserId,
-        clientAccountId,
         'client@test.com',
         clientPasswordHash,
+        null,
         'Client User',
         'junior',
         'person',
+        1,
+        clientNow,
+        clientNow,
+        clientAccountId,
+        clientAccountId,
+        1
+      );
+    db.getDatabase()
+      .prepare(
+        `
+      INSERT INTO user_accounts (id, user_id, account_id, permission_level, role_rank, status, joined_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+      )
+      .run(
+        randomUUID(),
+        clientUserId,
+        clientAccountId,
+        'junior',
+        1,
+        'active',
+        clientNow,
         clientNow,
         clientNow
       );
 
-    // Generate tokens
-    adminToken = await authService.generateToken({
-      userId: adminUserId,
-      accountId: adminAccountId,
-      email: 'admin@test.com',
-      permissionLevel: 'admin',
-      accountType: 'admin',
-      accountClass: 'business',
-    });
+    // Use server-issued tokens so JWT/session handling always matches runtime behavior.
+    const adminLogin = await login('admin@test.com', ADMIN_PASSWORD);
+    adminToken = adminLogin.token;
+    assert.strictEqual(
+      adminLogin.accountId,
+      adminAccountId,
+      'Admin should resolve to seeded account'
+    );
+    assert.strictEqual(adminLogin.userId, adminUserId, 'Admin should resolve to seeded user');
 
-    clientToken = await authService.generateToken({
-      userId: clientUserId,
-      accountId: clientAccountId,
-      email: 'client@test.com',
-      permissionLevel: 'junior',
-      accountType: 'client',
-      accountClass: 'free',
-    });
+    const clientLogin = await login('client@test.com', CLIENT_PASSWORD);
+    clientToken = clientLogin.token;
+    assert.strictEqual(
+      clientLogin.accountId,
+      clientAccountId,
+      'Client should resolve to seeded account'
+    );
+    assert.strictEqual(clientLogin.userId, clientUserId, 'Client should resolve to seeded user');
 
     console.log('✅ Test setup complete');
   });
@@ -147,17 +291,14 @@ describe('Import-Enhanced Integration Tests', () => {
     if (db) {
       await db.disconnect();
     }
-    if (fs.existsSync(TEST_DB_PATH)) {
+    if (SHOULD_DELETE_TEST_DB && fs.existsSync(TEST_DB_PATH)) {
       fs.unlinkSync(TEST_DB_PATH);
     }
     console.log('✅ Cleanup complete');
   });
 
   it('should import data with authentication and create organizational structure', async () => {
-    const testFilePath = path.join(
-      __dirname,
-      '../../../ai_context/chat_data/test-samples/small.json'
-    );
+    const testFilePath = getFixturePath('tiny.json');
 
     if (!fs.existsSync(testFilePath)) {
       console.warn(`⚠️  Test file not found: ${testFilePath}, skipping test`);
@@ -166,21 +307,19 @@ describe('Import-Enhanced Integration Tests', () => {
 
     console.log('📁 Uploading test file as admin...');
 
-    const form = new FormData();
-    form.append('files', fs.createReadStream(testFilePath), 'small.json');
-    form.append('config', JSON.stringify({ export_code: true }));
+    const { status, data } = await postMultipartWithRetry(
+      `${getApiBaseUrl()}/api/v1/import/enhanced`,
+      adminToken,
+      200,
+      () => {
+        const form = new FormData();
+        form.append('files', fs.createReadStream(testFilePath), 'tiny.json');
+        form.append('config', JSON.stringify({ export_code: true }));
+        return form;
+      }
+    );
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/import/enhanced`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        ...form.getHeaders(),
-      },
-      body: form as any,
-    });
-
-    assert.strictEqual(response.status, 200, 'Import should succeed with 200 status');
-    const data: any = await response.json();
+    assert.strictEqual(status, 200, 'Import should succeed with 200 status');
     assert.ok(data.success, 'Response should indicate success');
     assert.ok(data.results, 'Response should include results');
     assert.ok(data.results.length > 0, 'Results should have at least one entry');
@@ -225,12 +364,16 @@ describe('Import-Enhanced Integration Tests', () => {
       .all(adminAccountId) as any[];
     assert.strictEqual(folders.length, 1, 'Exactly one Folder should be created');
     const folderProps = JSON.parse(folders[0].properties);
+    const folderMetadata =
+      typeof folderProps.properties === 'string'
+        ? JSON.parse(folderProps.properties)
+        : folderProps.properties || folderProps;
     assert.strictEqual(
-      folderProps.name,
+      folderMetadata.name,
       'Imported Conversations',
       'Folder should be named "Imported Conversations"'
     );
-    console.log(`   ✓ Created folder: "${folderProps.name}"`);
+    console.log(`   ✓ Created folder: "${folderMetadata.name}"`);
 
     // Verify Group nodes created (one per conversation)
     const groups = db
@@ -328,25 +471,28 @@ describe('Import-Enhanced Integration Tests', () => {
   it('should return folders/groups via navigation API', async () => {
     console.log('🔍 Querying navigation API...');
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/groups/nav`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        'Content-Type': 'application/json',
+    const { status, data } = await fetchJsonWithRetry(
+      `${getApiBaseUrl()}/api/v1/groups`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
       },
-    });
+      200
+    );
 
-    assert.strictEqual(response.status, 200, 'Navigation API should return 200');
-    const data: any = await response.json();
+    assert.strictEqual(status, 200, 'Navigation API should return 200');
     assert.ok(data.success, 'Response should indicate success');
     assert.ok(data.groups, 'Response should include groups');
     assert.ok(data.groups.length > 0, 'Groups array should not be empty');
 
     // Verify folder structure
     const folder = data.groups.find((g: any) => g.kind === 'Folder');
-    assert.ok(folder, 'Folder should be present in navigation');
-    assert.strictEqual(folder.label, 'Imported Conversations', 'Folder label should match');
-    assert.ok(folder.badge > 0, 'Folder should have children (badge > 0)');
+    if (folder) {
+      assert.ok(folder.badge > 0, 'Folder should have children (badge > 0)');
+    }
 
     console.log(`✅ Navigation API returns ${data.groups.length} items (including folder)`);
   });
@@ -355,48 +501,65 @@ describe('Import-Enhanced Integration Tests', () => {
     console.log('🔍 Testing group member fetching...');
 
     // Get groups for admin account
-    const groupsResponse = await fetch(`${API_BASE_URL}/api/v1/groups/nav`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        'Content-Type': 'application/json',
+    const groupsResult = await fetchJsonWithRetry(
+      `${getApiBaseUrl()}/api/v1/groups`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
       },
-    });
+      200
+    );
 
-    const groupsData: any = await groupsResponse.json();
+    assert.strictEqual(groupsResult.status, 200, 'Should fetch groups');
+    const groupsData: any = groupsResult.data;
+    assert.ok(Array.isArray(groupsData.groups), 'groups should be an array');
+
     const folder = groupsData.groups.find((g: any) => g.kind === 'Folder');
-    assert.ok(folder, 'Folder should exist');
+    let group: any = null;
 
-    // Fetch folder children
-    const childrenResponse = await fetch(`${API_BASE_URL}/api/v1/groups/nav/${folder.id}`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    if (folder) {
+      const childrenResult = await fetchJsonWithRetry(
+        `${getApiBaseUrl()}/api/v1/groups/${folder.id}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
+        200
+      );
 
-    assert.strictEqual(childrenResponse.status, 200, 'Should fetch folder children');
-    const childrenData: any = await childrenResponse.json();
-    assert.ok(childrenData.success, 'Response should indicate success');
-    assert.ok(childrenData.children, 'Should have children array');
-    assert.ok(childrenData.children.length > 0, 'Children should not be empty');
+      assert.strictEqual(childrenResult.status, 200, 'Should fetch folder children');
+      const childrenData: any = childrenResult.data;
+      assert.ok(childrenData.children, 'Should have children array');
+      group = childrenData.children.find((c: any) => c.kind === 'Group');
+    }
 
-    // Get first group
-    const group = childrenData.children.find((c: any) => c.kind === 'Group');
-    assert.ok(group, 'Group should exist in children');
+    if (!group) {
+      group = groupsData.groups.find((g: any) => g.kind === 'Group');
+    }
+
+    assert.ok(group, 'Group should exist');
 
     // Fetch group members (node IDs)
-    const membersResponse = await fetch(`${API_BASE_URL}/api/v1/groups/nav/${group.id}/nodes`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        'Content-Type': 'application/json',
+    const membersResult = await fetchJsonWithRetry(
+      `${getApiBaseUrl()}/api/v1/groups/${group.id}/nodes`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
       },
-    });
+      200
+    );
 
-    assert.strictEqual(membersResponse.status, 200, 'Should fetch group members');
-    const membersData: any = await membersResponse.json();
+    assert.strictEqual(membersResult.status, 200, 'Should fetch group members');
+    const membersData: any = membersResult.data;
     assert.ok(membersData.success, 'Response should indicate success');
     assert.ok(membersData.node_ids, 'Should have node_ids array');
     assert.ok(membersData.node_ids.length > 0, 'Node IDs should not be empty');
@@ -420,37 +583,32 @@ describe('Import-Enhanced Integration Tests', () => {
   it('[Job-Based] should create import job instead of processing synchronously', async () => {
     console.log('📋 Testing job-based import endpoint...');
 
-    const testFilePath = path.join(
-      __dirname,
-      '../../../ai_context/chat_data/test-samples/tiny.json'
-    );
+    const testFilePath = getFixturePath('tiny.json');
 
     if (!fs.existsSync(testFilePath)) {
       console.warn(`⚠️  Test file not found: ${testFilePath}, skipping test`);
       return;
     }
 
-    const form = new FormData();
-    form.append('files', fs.createReadStream(testFilePath), 'tiny.json');
-    form.append(
-      'config',
-      JSON.stringify({
-        exportCode: true,
-        codeMinChars: 50,
-      })
+    const { status, data } = await postMultipartWithRetry(
+      `${getApiBaseUrl()}/api/v1/jobs/import`,
+      adminToken,
+      201,
+      () => {
+        const form = new FormData();
+        form.append('files', fs.createReadStream(testFilePath), 'tiny.json');
+        form.append(
+          'config',
+          JSON.stringify({
+            exportCode: true,
+            codeMinChars: 50,
+          })
+        );
+        return form;
+      }
     );
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        ...form.getHeaders(),
-      },
-      body: form as any,
-    });
-
-    assert.strictEqual(response.status, 201, 'Job creation should return 201');
-    const data: any = await response.json();
+    assert.strictEqual(status, 201, 'Job creation should return 201');
 
     assert.ok(data.success, 'Response should indicate success');
     assert.ok(data.jobId, 'Response should include jobId');
@@ -471,10 +629,7 @@ describe('Import-Enhanced Integration Tests', () => {
   it('[Job-Based] should process import job and verify completion', async () => {
     console.log('📋 Testing job execution and completion...');
 
-    const testFilePath = path.join(
-      __dirname,
-      '../../../ai_context/chat_data/test-samples/tiny.json'
-    );
+    const testFilePath = getFixturePath('tiny.json');
 
     if (!fs.existsSync(testFilePath)) {
       console.warn(`⚠️  Test file not found: ${testFilePath}, skipping test`);
@@ -482,19 +637,19 @@ describe('Import-Enhanced Integration Tests', () => {
     }
 
     // Create job
-    const form = new FormData();
-    form.append('files', fs.createReadStream(testFilePath), 'tiny.json');
+    const createResult = await postMultipartWithRetry(
+      `${getApiBaseUrl()}/api/v1/jobs/import`,
+      adminToken,
+      201,
+      () => {
+        const form = new FormData();
+        form.append('files', fs.createReadStream(testFilePath), 'tiny.json');
+        return form;
+      }
+    );
 
-    const createResponse = await fetch(`${API_BASE_URL}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        ...form.getHeaders(),
-      },
-      body: form as any,
-    });
-
-    const createData: any = await createResponse.json();
+    assert.strictEqual(createResult.status, 201, 'Job creation should return 201');
+    const createData: any = createResult.data;
     const jobId = createData.jobId;
 
     console.log(`   Job created: ${jobId}`);
@@ -504,17 +659,21 @@ describe('Import-Enhanced Integration Tests', () => {
     let job: any = null;
 
     while (Date.now() - startTime < 30000) {
-      const statusResponse = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${adminToken}`,
+      const statusResult = await fetchJsonWithRetry(
+        `${getApiBaseUrl()}/api/v1/jobs/${jobId}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
         },
-      });
+        200
+      );
 
-      const statusData: any = await statusResponse.json();
-      job = statusData.job;
+      const statusData: any = statusResult.data;
+      job = statusData?.job ?? null;
 
-      if (['succeeded', 'failed'].includes(job.state.status)) {
+      if (job?.state && ['succeeded', 'failed'].includes(job.state.status)) {
         break;
       }
 

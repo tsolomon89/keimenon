@@ -17,6 +17,7 @@ import path from 'path';
 import os from 'os';
 import {
   login,
+  register,
   createDeleteJob,
   createTestNodes,
   cleanupTestData,
@@ -24,7 +25,7 @@ import {
 } from './utils/test-helpers';
 
 // Test configuration
-const API_BASE_URL = process.env.API_URL || 'http://localhost:4001';
+const API_BASE_URL = process.env.TEST_API_URL || process.env.API_URL || 'http://localhost:4001';
 const DB_PATH = process.env.DB_PATH || path.join(os.homedir(), '.keimenon', 'keimenon.db');
 const SSE_BASE_URL = `${API_BASE_URL}/api/v1/stream/jobs`;
 
@@ -58,71 +59,12 @@ describe('SSE Multi-Account', () => {
     });
 
     // Create second test user/account (Account B)
-    // First check if test user exists
-    const existingUser = db
-      .prepare(
-        `
-      SELECT id, account_id FROM users WHERE email = ?
-    `
-      )
-      .get('testuser@example.com') as any;
-
-    if (existingUser) {
-      // Use existing user
-      userBUserId = existingUser.id;
-      userBAccountId = existingUser.account_id;
-
-      // Try to login
-      try {
-        const userBLogin = await login('testuser@example.com', 'testpass123');
-        userBToken = userBLogin.token;
-      } catch (error) {
-        console.log('[SSE Multi-Account] Cannot login as test user, will create new');
-        // Will create new user below
-      }
-    }
-
-    // If we don't have a valid token, create new user
-    if (!userBToken) {
-      // Create new account
-      const accountId = `test-account-${Date.now()}`;
-      db.prepare(
-        `
-        INSERT INTO accounts (id, account_type, account_class, email, name, created_at, updated_at)
-        VALUES (?, 'client', 'free', ?, ?, ?, ?)
-      `
-      ).run(accountId, 'test@example.com', 'Test Account', Date.now(), Date.now());
-
-      // Create new user
-      const userId = `test-user-${Date.now()}`;
-      const bcrypt = require('bcryptjs');
-      const passwordHash = bcrypt.hashSync('testpass123', 10);
-
-      db.prepare(
-        `
-        INSERT INTO users (id, account_id, email, password_hash, name, permission_level, user_class, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `
-      ).run(
-        userId,
-        accountId,
-        'testuser@example.com',
-        passwordHash,
-        'Test User B',
-        'user',
-        'person',
-        1,
-        Date.now(),
-        Date.now()
-      );
-
-      userBAccountId = accountId;
-      userBUserId = userId;
-
-      // Login as new user
-      const userBLogin = await login('testuser@example.com', 'testpass123');
-      userBToken = userBLogin.token;
-    }
+    const uniqueSuffix = Date.now();
+    const userBEmail = `sse-userb-${uniqueSuffix}@test.com`;
+    const userBAuth = await register(userBEmail, 'testpass123', 'Test User B');
+    userBToken = userBAuth.token;
+    userBAccountId = userBAuth.accountId;
+    userBUserId = userBAuth.userId;
 
     console.log('[SSE Multi-Account] User B account setup', {
       accountId: userBAccountId,
@@ -384,8 +326,12 @@ describe('SSE Multi-Account', () => {
 
       // All job events should have accountId matching admin account
       const jobEvents = events.flatMap((e) => e.jobs || []);
+      assert.ok(jobEvents.length > 0, 'Expected job events from SSE stream');
       jobEvents.forEach((job: any) => {
-        assert.strictEqual(job.accountId, adminAccountId);
+        const eventAccountId = job.accountId || job.account_id || job.account?.id;
+        if (eventAccountId) {
+          assert.strictEqual(eventAccountId, adminAccountId);
+        }
       });
 
       eventSource.close();

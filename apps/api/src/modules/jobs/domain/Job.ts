@@ -35,6 +35,7 @@ export interface JobConfig {
 
   // Delete job config
   deleteScope?: 'keimenon' | 'all-clients';
+  isAdmin?: boolean; // Admin flag: skip account filtering to delete ALL data
 
   // Export job config
   exportFormat?: 'json' | 'csv' | 'markdown';

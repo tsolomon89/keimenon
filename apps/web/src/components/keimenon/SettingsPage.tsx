@@ -15,7 +15,15 @@ interface SettingCardProps {
   disabled?: boolean;
 }
 
-function SettingCard({ title, description, value, type, options, onChange, disabled }: SettingCardProps) {
+function SettingCard({
+  title,
+  description,
+  value,
+  type,
+  options,
+  onChange,
+  disabled,
+}: SettingCardProps) {
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-slate-600 transition-colors">
       <div className="flex items-start justify-between mb-4">
@@ -176,7 +184,7 @@ export function SettingsPage() {
           </div>
         );
 
-      case 'account-billing':
+      case 'account-billing': {
         const canEditAccount = checkPermission('edit_account_settings');
         return (
           <div className="space-y-4">
@@ -210,6 +218,7 @@ export function SettingsPage() {
             )}
           </div>
         );
+      }
 
       case 'account-members':
         return (
@@ -221,7 +230,7 @@ export function SettingsPage() {
           </div>
         );
 
-      case 'global-defaults':
+      case 'global-defaults': {
         const canEditGlobal = checkPermission('edit_global_settings');
         return (
           <div className="space-y-4">
@@ -260,6 +269,7 @@ export function SettingsPage() {
             )}
           </div>
         );
+      }
 
       case 'global-policies':
         return (

@@ -187,6 +187,22 @@ describe('Data Management API', () => {
     return result?.count || 0;
   };
 
+  // Helper: Create deterministic export test node
+  const createExportNode = (accountId: string, userId: string, nodeId: string, title: string) => {
+    const database = db.getDatabase();
+    const now = Date.now();
+
+    database
+      .prepare(
+        `
+      INSERT INTO nodes (
+        id, account_id, kind, properties, created_by, created_at, updated_at, data_tag
+      ) VALUES (?, ?, 'ChatThread', ?, ?, ?, ?, 'test')
+    `
+      )
+      .run(nodeId, accountId, JSON.stringify({ title }), userId, now, now);
+  };
+
   test('should create test data successfully', () => {
     // Verify we have required IDs
     assert.ok(adminAccountId, 'adminAccountId should be set');
@@ -272,5 +288,166 @@ describe('Data Management API', () => {
     assert.strictEqual(response.status, 401, 'Should return 401 without auth');
 
     console.log('✅ Authentication required');
+  });
+  test('should export JSON by default with backward-compatible payload shape', async () => {
+    const database = db.getDatabase();
+    database.prepare('DELETE FROM nodes WHERE account_id = ?').run(adminAccountId);
+
+    createExportNode(adminAccountId, adminUserId, `export_json_${Date.now()}`, 'JSON Export Node');
+
+    const response = await fetch(`${API_URL}/api/v1/data/export`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+      },
+    });
+
+    assert.strictEqual(response.status, 200, 'Export JSON should return 200');
+    assert.ok(
+      (response.headers.get('content-type') || '').includes('application/json'),
+      'Content-Type should be JSON'
+    );
+
+    const body = (await response.json()) as any;
+    assert.strictEqual(body.version, '1.0');
+    assert.ok(typeof body.timestamp === 'string');
+    assert.strictEqual(body.accountId, adminAccountId);
+    assert.ok(Array.isArray(body.graph?.nodes), 'graph.nodes should be an array');
+    assert.ok(Array.isArray(body.graph?.edges), 'graph.edges should be an array');
+  });
+
+  test('should export CSV when format=csv', async () => {
+    const database = db.getDatabase();
+    database.prepare('DELETE FROM nodes WHERE account_id = ?').run(adminAccountId);
+
+    createExportNode(adminAccountId, adminUserId, `export_csv_${Date.now()}`, 'CSV Export Node');
+
+    const response = await fetch(`${API_URL}/api/v1/data/export?format=csv`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+      },
+    });
+
+    assert.strictEqual(response.status, 200, 'Export CSV should return 200');
+    assert.ok(
+      (response.headers.get('content-type') || '').includes('text/csv'),
+      'Content-Type should be CSV'
+    );
+
+    const csv = await response.text();
+    assert.ok(csv.includes('record_type,id,kind,account_id'), 'CSV should include header row');
+    assert.ok(csv.includes('node,'), 'CSV should include node records');
+  });
+
+  test('should export GraphML when format=graphml', async () => {
+    const database = db.getDatabase();
+    database.prepare('DELETE FROM nodes WHERE account_id = ?').run(adminAccountId);
+
+    createExportNode(
+      adminAccountId,
+      adminUserId,
+      `export_graphml_${Date.now()}`,
+      'GraphML Export Node'
+    );
+
+    const response = await fetch(`${API_URL}/api/v1/data/export?format=graphml`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+      },
+    });
+
+    assert.strictEqual(response.status, 200, 'Export GraphML should return 200');
+    assert.ok(
+      (response.headers.get('content-type') || '').includes('application/graphml+xml'),
+      'Content-Type should be GraphML'
+    );
+
+    const graphml = await response.text();
+    assert.ok(graphml.includes('<graphml'), 'GraphML payload should include graphml root');
+    assert.ok(graphml.includes('<graph id="keimenon-export"'), 'GraphML should include graph id');
+  });
+
+  test('should return 400 for unsupported export format', async () => {
+    const response = await fetch(`${API_URL}/api/v1/data/export?format=xml`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+      },
+    });
+
+    assert.strictEqual(response.status, 400, 'Invalid format should return 400');
+    const body = (await response.json()) as any;
+    assert.strictEqual(body.error, 'Invalid export format');
+  });
+
+  test('should require authentication for export endpoint', async () => {
+    const response = await fetch(`${API_URL}/api/v1/data/export`, {
+      method: 'GET',
+    });
+
+    assert.strictEqual(response.status, 401, 'Export should return 401 without auth');
+  });
+
+  test('should export only current account data (account isolation)', async () => {
+    const database = db.getDatabase();
+    database.prepare('DELETE FROM nodes WHERE account_id = ?').run(adminAccountId);
+
+    const accountBEmail = `export-isolation-${Date.now()}@example.com`;
+    const accountBPassword = 'TestPass123!';
+
+    const registerResponse = await fetch(`${API_URL}/api/v1/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: accountBEmail,
+        password: accountBPassword,
+        name: 'Export Isolation Account',
+        account_type: 'client',
+      }),
+    });
+
+    assert.strictEqual(registerResponse.status, 201, 'Account B registration should succeed');
+    const registerData = (await registerResponse.json()) as any;
+    const accountBId = registerData?.account?.id;
+    assert.ok(accountBId, 'Account B ID should exist');
+
+    const accountBUserRow = database
+      .prepare('SELECT id FROM users WHERE email = ?')
+      .get(accountBEmail) as { id: string } | undefined;
+    assert.ok(accountBUserRow?.id, 'Account B user should exist');
+
+    const adminNodeId = `admin_export_${Date.now()}`;
+    const accountBNodeId = `account_b_export_${Date.now()}`;
+    createExportNode(adminAccountId, adminUserId, adminNodeId, 'Admin Export Node');
+    createExportNode(accountBId, accountBUserRow!.id, accountBNodeId, 'Account B Export Node');
+
+    const response = await fetch(`${API_URL}/api/v1/data/export`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+      },
+    });
+
+    assert.strictEqual(response.status, 200, 'Export should return 200');
+    const body = (await response.json()) as any;
+    const exportedNodeIds = new Set((body.graph?.nodes || []).map((node: any) => node.id));
+
+    assert.ok(exportedNodeIds.has(adminNodeId), 'Admin node should be exported');
+    assert.ok(!exportedNodeIds.has(accountBNodeId), 'Other account node must not be exported');
+    assert.ok(
+      (body.graph?.nodes || []).every((node: any) => node.account_id === adminAccountId),
+      'All exported nodes must belong to current account'
+    );
+    assert.ok(
+      (body.graph?.edges || []).every((edge: any) => edge.account_id === adminAccountId),
+      'All exported edges must belong to current account'
+    );
+
+    database.prepare('DELETE FROM nodes WHERE account_id = ?').run(accountBId);
+    database.prepare('DELETE FROM user_accounts WHERE account_id = ?').run(accountBId);
+    database.prepare('DELETE FROM users WHERE id = ?').run(accountBUserRow!.id);
+    database.prepare('DELETE FROM accounts WHERE id = ?').run(accountBId);
   });
 });

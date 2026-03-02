@@ -56,7 +56,8 @@ test.describe('Import Workflow', () => {
     // Step 1: Prepare test file path
     const testFile = path.join(
       process.cwd(),
-      'ai_context',
+      'tests',
+      'test_data',
       'chat_data',
       'test-samples',
       'tiny.json'
@@ -310,7 +311,8 @@ test.describe('Import Workflow', () => {
   test('should retrieve job status by ID', async ({ apiRequest }) => {
     const testFile = path.join(
       process.cwd(),
-      'ai_context',
+      'tests',
+      'test_data',
       'chat_data',
       'test-samples',
       'tiny.json'
@@ -361,7 +363,8 @@ test.describe('Import Workflow', () => {
     // Create multiple jobs
     const testFile = path.join(
       process.cwd(),
-      'ai_context',
+      'tests',
+      'test_data',
       'chat_data',
       'test-samples',
       'tiny.json'
@@ -531,7 +534,8 @@ test.describe('Import Workflow', () => {
   test('should require authentication for import', async ({ apiRequest }) => {
     const testFile = path.join(
       process.cwd(),
-      'ai_context',
+      'tests',
+      'test_data',
       'chat_data',
       'test-samples',
       'tiny.json'
@@ -650,7 +654,8 @@ test.describe('Import Workflow', () => {
   test('should handle multiple concurrent imports', async ({ apiRequest }) => {
     const testFile = path.join(
       process.cwd(),
-      'ai_context',
+      'tests',
+      'test_data',
       'chat_data',
       'test-samples',
       'tiny.json'

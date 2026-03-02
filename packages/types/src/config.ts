@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * Storage mode configuration
  */
-export const StorageModeSchema = z.enum(['local', 'keimenon', 'hybrid']);
+export const StorageModeSchema = z.literal('local');
 export type StorageMode = z.infer<typeof StorageModeSchema>;
 
 /**
@@ -166,12 +166,6 @@ export const AppConfigSchema = z.object({
       path: z.string(),
       autoBackup: z.boolean().default(true),
       verbose: z.boolean().default(false),
-    }),
-    cloud: z.object({
-      enabled: z.boolean().default(false),
-      neo4jUri: z.string().nullable().default(null),
-      neo4jUser: z.string().nullable().default(null),
-      neo4jPassword: z.string().nullable().default(null),
     }),
   }),
 

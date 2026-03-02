@@ -53,19 +53,19 @@ const ENV_VARS: EnvVarDefinition[] = [
   {
     name: 'STORAGE_MODE',
     required: true,
-    validator: (val) => ['local', 'keimenon', 'hybrid'].includes(val),
-    description: 'Storage backend mode',
+    validator: (val) => val === 'local',
+    description: 'Storage backend mode (local only)',
     example: 'local',
   },
   {
     name: 'LOCAL_DOCS_PATH',
-    required: false, // Required if STORAGE_MODE includes 'local'
+    required: true,
     description: 'Path to local document storage',
     example: '~/.keimenon',
   },
   {
     name: 'SQLITE_PATH',
-    required: false, // Required if STORAGE_MODE includes 'local'
+    required: true,
     description: 'Path to SQLite database file',
     example: '~/.keimenon/keimenon.db',
   },
@@ -121,26 +121,6 @@ const ENV_VARS: EnvVarDefinition[] = [
     example: 'https://yourdomain.com,https://app.yourdomain.com',
   },
 
-  // Neo4j (Optional)
-  {
-    name: 'NEO4J_URI',
-    required: false, // Required if STORAGE_MODE is 'keimenon' or 'hybrid'
-    description: 'Neo4j connection URI',
-    example: 'bolt://localhost:7687',
-  },
-  {
-    name: 'NEO4J_USER',
-    required: false,
-    description: 'Neo4j username',
-    example: 'neo4j',
-  },
-  {
-    name: 'NEO4J_PASSWORD',
-    required: false,
-    description: 'Neo4j password',
-    example: 'your-password',
-  },
-
   // Tier Limits (Optional)
   {
     name: 'FREE_MAX_SOURCES',
@@ -183,7 +163,7 @@ export function validateEnvironment(): EnvValidationResult {
   const errors: EnvValidationError[] = [];
   const warnings: EnvValidationError[] = [];
   const isProduction = process.env.NODE_ENV === 'production';
-  const storageMode = process.env.STORAGE_MODE || '';
+  const storageMode = process.env.STORAGE_MODE || 'local';
 
   for (const envVar of ENV_VARS) {
     const value = process.env[envVar.name];
@@ -200,26 +180,14 @@ export function validateEnvironment(): EnvValidationResult {
       continue;
     }
 
-    // Conditional requirements based on storage mode
-    if (envVar.name === 'LOCAL_DOCS_PATH' || envVar.name === 'SQLITE_PATH') {
-      if ((storageMode === 'local' || storageMode === 'hybrid') && !value) {
-        errors.push({
-          variable: envVar.name,
-          message: `${envVar.name} is required when STORAGE_MODE is '${storageMode}'. ${envVar.description}`,
-          severity: 'error',
-        });
-        continue;
-      }
-    }
-
-    if (envVar.name.startsWith('NEO4J_')) {
-      if ((storageMode === 'keimenon' || storageMode === 'hybrid') && !value) {
-        warnings.push({
-          variable: envVar.name,
-          message: `${envVar.name} is recommended when STORAGE_MODE is '${storageMode}'. ${envVar.description}`,
-          severity: 'warning',
-        });
-      }
+    // Local-only contract: reject unsupported storage modes explicitly.
+    if (envVar.name === 'STORAGE_MODE' && value && value !== 'local') {
+      errors.push({
+        variable: envVar.name,
+        message: `STORAGE_MODE='${value}' is not supported. Only 'local' is allowed.`,
+        severity: 'error',
+      });
+      continue;
     }
 
     // If value exists, validate it

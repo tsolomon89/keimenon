@@ -99,7 +99,7 @@ export function createApp(): { app: Express; context: AppContext } {
     // CRITICAL FIX: Do NOT skip body-parser for /initiate (it sends JSON)
     // Only skip for the actual chunk upload endpoints which receive binary streams
     if (
-      req.path.startsWith('/api/v1/jobs') || 
+      req.path.startsWith('/api/v1/jobs') ||
       (req.path.startsWith('/api/v1/uploads') && !req.path.endsWith('/initiate'))
     ) {
       console.log(`[Body-Parser] ⏭️  Skipping body-parser for: ${req.method} ${req.path}`);
@@ -125,18 +125,12 @@ export function createApp(): { app: Express; context: AppContext } {
 
   // Health check
   app.get('/health', async (_req: Request, res: Response) => {
-    const storageMode = process.env.STORAGE_MODE || 'local';
     let dbStatus = 'unknown';
 
     try {
       if (global.dbClient) {
-        if (storageMode === 'local') {
-          await global.dbClient.execute('SELECT 1');
-          dbStatus = 'connected';
-        } else {
-          await global.dbClient.execute('RETURN 1');
-          dbStatus = 'connected';
-        }
+        await global.dbClient.execute('SELECT 1');
+        dbStatus = 'connected';
       }
     } catch (error) {
       dbStatus = 'disconnected';
@@ -147,7 +141,7 @@ export function createApp(): { app: Express; context: AppContext } {
       timestamp: new Date().toISOString(),
       service: 'keimenon-api',
       version: '0.1.0',
-      storageMode,
+      storageMode: 'local',
       dependencies: {
         database: dbStatus,
       },
@@ -165,12 +159,7 @@ export function createApp(): { app: Express; context: AppContext } {
 
     try {
       if (global.dbClient) {
-        const storageMode = process.env.STORAGE_MODE || 'local';
-        if (storageMode === 'local') {
-          await global.dbClient.execute('SELECT 1');
-        } else {
-          await global.dbClient.execute('RETURN 1');
-        }
+        await global.dbClient.execute('SELECT 1');
         checks.database = true;
       }
     } catch (error) {
@@ -185,7 +174,7 @@ export function createApp(): { app: Express; context: AppContext } {
     return res.status(statusCode).json({
       ready,
       checks,
-      storageMode: process.env.STORAGE_MODE || 'local',
+      storageMode: 'local',
       timestamp: new Date().toISOString(),
     });
   });
@@ -257,7 +246,12 @@ export function createApp(): { app: Express; context: AppContext } {
     duplicatesRoutes = createDuplicatesRoutes(dbClient, authService);
     jobsRoutes = createJobsRoutes(authService, dbClient.db, sseBroadcaster);
     streamRoutes = createStreamRoutes(authService, sseBroadcaster);
-    jobBasedImportRoutes = createJobBasedImportRoutes(authService, dbClient.db, workerPool, sseBroadcaster);
+    jobBasedImportRoutes = createJobBasedImportRoutes(
+      authService,
+      dbClient.db,
+      workerPool,
+      sseBroadcaster
+    );
     testHelperRoutes = createTestHelperRoutes(dbClient);
     nodesRoutes = createNodesRoutes(authService);
     uploadRoutes = createUploadRoutes(authService);

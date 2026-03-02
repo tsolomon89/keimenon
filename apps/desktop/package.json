@@ -6,16 +6,18 @@
   "private": true,
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc && electron-builder",
+    "build": "npm run build:dist",
     "postinstall": "electron-builder install-app-deps",
     "dev": "tsc -w",
     "electron:dev": "tsc && electron .",
     "start": "electron .",
     "clean": "rimraf dist out",
     "type-check": "tsc --noEmit",
-    "make": "tsc && electron-builder --win",
+    "make": "npm run build:dist && npm run package -- --win",
     "lint": "eslint src --ext .ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:dist": "tsc",
+    "package": "electron-builder"
   },
   "dependencies": {
     "@keimenon/api": "*",

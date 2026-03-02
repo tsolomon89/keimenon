@@ -52,6 +52,13 @@ const connectionPromises = new Map<string, Promise<any>>();
  * @returns Database client (global or worker-specific)
  */
 export async function getDbClient(req?: Request): Promise<any> {
+  // Legacy/integration-test compatibility: allow request-scoped DB client injection.
+  // Some route tests provide (req as any).db directly instead of global.dbClient.
+  const requestDb = (req as any)?.db;
+  if (requestDb) {
+    return requestDb;
+  }
+
   // When test DB path is present (from E2E tests), use worker-specific database
   if (req?.testDbPath) {
     // Capture testDbPath in a const to help TypeScript understand it's non-undefined
@@ -97,7 +104,9 @@ export async function getDbClient(req?: Request): Promise<any> {
         client.enableDirectWrites();
 
         // Cache the client for this database path
-        console.log(`[get-db-client] 💾 Caching DB client for: ${testDbPath}. Instance: ${MODULE_INSTANCE_ID}`);
+        console.log(
+          `[get-db-client] 💾 Caching DB client for: ${testDbPath}. Instance: ${MODULE_INSTANCE_ID}`
+        );
         testClientCache.set(testDbPath, client);
 
         console.log(`[Get DB Client] ✅ Test client created and cached successfully`);
@@ -160,7 +169,7 @@ export async function getJobsDbClient(req?: Request): Promise<any> {
 
   // Test mode: jobs are in separate database file
   const testDbPath: string = req.testDbPath;
-  
+
   // CRITICAL FIX: Handle cases where testDbPath is already the jobs DB path
   // (e.g. when called from WorkerPool which iterates over active test DBs)
   let jobsDbPath = testDbPath;
@@ -215,7 +224,9 @@ export async function getJobsDbClient(req?: Request): Promise<any> {
       );
 
       // Cache the client for this database path
-      console.log(`[get-db-client] 💾 Caching jobs DB client for: ${jobsDbPath}. Instance: ${MODULE_INSTANCE_ID}`);
+      console.log(
+        `[get-db-client] 💾 Caching jobs DB client for: ${jobsDbPath}. Instance: ${MODULE_INSTANCE_ID}`
+      );
       testClientCache.set(jobsDbPath, client);
 
       console.log(`[Get DB Client] ✅ Jobs database client created successfully`);
@@ -253,7 +264,9 @@ export function isTestIsolationActive(req: Request): boolean {
  * @returns Array of absolute paths to all active test databases
  */
 export function getActiveTestDatabases(): string[] {
-  console.log(`[get-db-client] 🔍 getActiveTestDatabases called. Instance: ${MODULE_INSTANCE_ID}. Cache size: ${testClientCache.size}`);
+  console.log(
+    `[get-db-client] 🔍 getActiveTestDatabases called. Instance: ${MODULE_INSTANCE_ID}. Cache size: ${testClientCache.size}`
+  );
   return Array.from(testClientCache.keys());
 }
 

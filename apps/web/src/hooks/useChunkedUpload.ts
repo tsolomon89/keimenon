@@ -22,9 +22,9 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { apiClient } from '../lib/api-client';
-import { API_BASE_URL } from '../lib/env.config';
-import { getToken } from '../contexts/AuthContext';
+import { apiClient } from '@/lib/api-client';
+import { API_BASE_URL } from '@/lib/env.config';
+import { getToken } from '@/contexts/AuthContext';
 
 // ============================================================================
 // Types
@@ -103,6 +103,11 @@ export function useChunkedUpload() {
 
   const abortControllersRef = useRef<Map<number, AbortController>>(new Map());
 
+  // Bug fix #14: Use refs for pause/cancel flags to avoid circular dependencies in useCallback
+  // This prevents the upload loop from restarting when state changes
+  const isPausedRef = useRef(false);
+  const isCanceledRef = useRef(false);
+
   // ============================================================================
   // LocalStorage Persistence
   // ============================================================================
@@ -110,17 +115,20 @@ export function useChunkedUpload() {
   /**
    * Save session state to localStorage for resume capability
    */
-  const saveSessionToStorage = useCallback((sessionId: string, file: File, uploadedChunks: Set<number>) => {
-    const storageKey = `${STORAGE_KEY_PREFIX}${sessionId}`;
-    const sessionData = {
-      sessionId,
-      fileName: file.name,
-      fileSize: file.size,
-      uploadedChunks: Array.from(uploadedChunks),
-      timestamp: Date.now(),
-    };
-    localStorage.setItem(storageKey, JSON.stringify(sessionData));
-  }, []);
+  const saveSessionToStorage = useCallback(
+    (sessionId: string, file: File, uploadedChunks: Set<number>) => {
+      const storageKey = `${STORAGE_KEY_PREFIX}${sessionId}`;
+      const sessionData = {
+        sessionId,
+        fileName: file.name,
+        fileSize: file.size,
+        uploadedChunks: Array.from(uploadedChunks),
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(storageKey, JSON.stringify(sessionData));
+    },
+    []
+  );
 
   /**
    * Load session state from localStorage
@@ -169,8 +177,8 @@ export function useChunkedUpload() {
       retryCount = 0
     ): Promise<{ success: boolean; jobId?: string }> => {
       try {
-        // Check if canceled or paused
-        if (state.isCanceled || state.isPaused) {
+        // Bug fix #14: Use refs for stable flag checking (avoids stale closures)
+        if (isCanceledRef.current || isPausedRef.current) {
           return { success: false };
         }
 
@@ -226,16 +234,20 @@ export function useChunkedUpload() {
 
         // Retry logic
         if (retryCount < RETRY_ATTEMPTS) {
-          console.log(`Retrying chunk ${chunkIndex} (attempt ${retryCount + 1}/${RETRY_ATTEMPTS})...`);
+          console.log(
+            `Retrying chunk ${chunkIndex} (attempt ${retryCount + 1}/${RETRY_ATTEMPTS})...`
+          );
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * (retryCount + 1)));
           return uploadChunk(sessionId, file, chunkIndex, retryCount + 1);
         }
 
         // Max retries exceeded
-        throw new Error(`Failed to upload chunk ${chunkIndex} after ${RETRY_ATTEMPTS} attempts: ${error.message}`);
+        throw new Error(
+          `Failed to upload chunk ${chunkIndex} after ${RETRY_ATTEMPTS} attempts: ${error.message}`
+        );
       }
     },
-    [state.isCanceled, state.isPaused]
+    [] // Bug fix #14: No dependencies needed - uses refs for flags
   );
 
   /**
@@ -244,7 +256,12 @@ export function useChunkedUpload() {
    * Returns the jobId from the final chunk response
    */
   const uploadChunksInParallel = useCallback(
-    async (sessionId: string, file: File, missingChunks: number[], totalChunks: number): Promise<string | undefined> => {
+    async (
+      sessionId: string,
+      file: File,
+      missingChunks: number[],
+      totalChunks: number
+    ): Promise<string | undefined> => {
       const startTime = Date.now();
       const uploadedChunks = new Set(state.uploadedChunks);
       const chunks = [...missingChunks];
@@ -269,7 +286,8 @@ export function useChunkedUpload() {
         const elapsed = (now - startTime) / 1000;
         const uploadSpeed = elapsed > 0 ? bytesUploaded / elapsed : 0;
         const bytesRemaining = file.size - bytesUploaded;
-        const estimatedTimeRemaining = uploadSpeed > 0 ? Math.round(bytesRemaining / uploadSpeed) : 0;
+        const estimatedTimeRemaining =
+          uploadSpeed > 0 ? Math.round(bytesRemaining / uploadSpeed) : 0;
 
         setState((prev) => ({
           ...prev,
@@ -288,8 +306,8 @@ export function useChunkedUpload() {
       };
 
       while (chunks.length > 0 || activeUploads.size > 0) {
-        // Check if paused or canceled
-        if (state.isPaused || state.isCanceled) {
+        // Bug fix #14: Use refs for stable flag checking in loop
+        if (isPausedRef.current || isCanceledRef.current) {
           abortControllersRef.current.forEach((controller: AbortController) => controller.abort());
           abortControllersRef.current.clear();
           return finalJobId;
@@ -343,7 +361,7 @@ export function useChunkedUpload() {
       // Return the jobId captured from final chunk response
       return finalJobId;
     },
-    [state.isPaused, state.isCanceled, state.uploadedChunks, uploadChunk, saveSessionToStorage]
+    [uploadChunk, saveSessionToStorage] // Bug fix #14: Removed state dependencies - uses refs
   );
 
   /**
@@ -353,11 +371,18 @@ export function useChunkedUpload() {
    * @param importConfig - Optional import configuration (for chat imports)
    */
   const upload = useCallback(
-    async (file: File, importConfig?: any): Promise<{ success: boolean; jobId?: string; error?: string }> => {
+    async (
+      file: File,
+      importConfig?: any
+    ): Promise<{ success: boolean; jobId?: string; error?: string }> => {
       try {
-        console.log(`📤 Starting chunked upload: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+        console.log(
+          `📤 Starting chunked upload: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`
+        );
 
-        // Reset state
+        // Reset state and refs
+        isPausedRef.current = false;
+        isCanceledRef.current = false;
         setState({
           file,
           progress: {
@@ -402,7 +427,12 @@ export function useChunkedUpload() {
 
         // Step 2: Upload all chunks (jobId is returned from final chunk response)
         const missingChunks = Array.from({ length: session.totalChunks }, (_, i) => i);
-        const jobId = await uploadChunksInParallel(session.id, file, missingChunks, session.totalChunks);
+        const jobId = await uploadChunksInParallel(
+          session.id,
+          file,
+          missingChunks,
+          session.totalChunks
+        );
 
         // Check if canceled or paused
         if (state.isCanceled) {
@@ -457,6 +487,7 @@ export function useChunkedUpload() {
    */
   const pause = useCallback(() => {
     console.log('Pausing upload...');
+    isPausedRef.current = true; // Bug fix #14: Update ref for stable flag checking
     setState((prev) => ({ ...prev, isPaused: true }));
     abortControllersRef.current.forEach((controller) => controller.abort());
     abortControllersRef.current.clear();
@@ -481,8 +512,11 @@ export function useChunkedUpload() {
 
     const session: UploadSession = statusResponse.data.session;
 
-    console.log(`📋 Resume upload: ${session.chunksUploaded.length}/${session.totalChunks} chunks already uploaded`);
+    console.log(
+      `📋 Resume upload: ${session.chunksUploaded.length}/${session.totalChunks} chunks already uploaded`
+    );
 
+    isPausedRef.current = false; // Bug fix #14: Update ref for stable flag checking
     setState((prev) => ({
       ...prev,
       isPaused: false,
@@ -495,7 +529,12 @@ export function useChunkedUpload() {
     }));
 
     // Resume uploading missing chunks
-    await uploadChunksInParallel(state.sessionId, state.file, session.missingChunks, session.totalChunks);
+    await uploadChunksInParallel(
+      state.sessionId,
+      state.file,
+      session.missingChunks,
+      session.totalChunks
+    );
   }, [state.sessionId, state.file, uploadChunksInParallel]);
 
   /**
@@ -506,6 +545,7 @@ export function useChunkedUpload() {
 
     console.log('Canceling upload...');
 
+    isCanceledRef.current = true; // Bug fix #14: Update ref for stable flag checking
     setState((prev) => ({ ...prev, isCanceled: true }));
 
     // Abort all active uploads

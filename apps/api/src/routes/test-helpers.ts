@@ -14,7 +14,7 @@
  *   DELETE /api/v1/test/cleanup
  */
 
-import { Router, Request, Response } from 'express';
+import express, { Router, Request, Response } from 'express';
 import { SQLiteClient } from '@keimenon/db';
 import { closeDbConnection } from '../utils/get-db-client';
 
@@ -47,107 +47,146 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
    *   3. ROLLBACK TO SAVEPOINT undoes all changes since BEGIN
    *   4. RELEASE SAVEPOINT commits changes
    */
-  router.post('/savepoint', async (req: Request, res: Response) => {
-    const { action, savepointId } = req.body;
-    const dbPath = req.testDbPath || 'global';
+  router.post(
+    '/savepoint',
+    express.json({ limit: '10mb' }),
+    async (req: Request, res: Response) => {
+      let { action, savepointId } = req.body;
+      const dbPath = req.testDbPath || 'global';
 
-    if (!action || !savepointId) {
-      return res.status(400).json({
-        error: 'Missing required fields: action, savepointId',
-      });
-    }
-
-    if (!['begin', 'rollback', 'commit'].includes(action)) {
-      return res.status(400).json({
-        error: `Invalid action: ${action}. Must be begin|rollback|commit`,
-      });
-    }
-
-    try {
-      // CRITICAL FIX: Get per-request database client for test isolation
-      const { getDbClient } = await import('../utils/get-db-client');
-      const dbClient = await getDbClient(req);
-      const database = dbClient.getDatabase();
-
-      if (action === 'begin') {
-        // Create savepoint (transaction checkpoint)
-        database.prepare(`SAVEPOINT ${savepointId}`).run();
-
-        // Track active savepoint
-        if (!activeSavepoints.has(dbPath)) {
-          activeSavepoints.set(dbPath, new Set());
-        }
-        activeSavepoints.get(dbPath)!.add(savepointId);
-
-        console.log(`[Test Helpers] ✅ Savepoint created: ${savepointId} (DB: ${dbPath})`);
-        console.log(`[Test Helpers] Active savepoints: ${activeSavepoints.get(dbPath)?.size || 0}`);
-
-        return res.json({
-          success: true,
-          message: `Savepoint ${savepointId} created`,
-          activeSavepoints: Array.from(activeSavepoints.get(dbPath) || []),
-        });
-      } else if (action === 'rollback') {
-        // CRITICAL FIX: Robust savepoint rollback with error handling
-        // If savepoint doesn't exist, treat as success (desired state achieved)
+      // Fallback: manually parse raw stream if express.json() missed it due to missing Content-Type
+      if (!action || !savepointId) {
         try {
-          // Rollback to savepoint (undo all changes since BEGIN)
-          database.prepare(`ROLLBACK TO SAVEPOINT ${savepointId}`).run();
-
-          // Release savepoint (free resources)
-          database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
-
-          console.log(`[Test Helpers] ✅ Rolled back to savepoint: ${savepointId}`);
-        } catch (rollbackError: any) {
-          // Check if error is "no such savepoint"
-          if (rollbackError.message?.includes('no such savepoint')) {
-            console.log(
-              `[Test Helpers] ⚠️ Savepoint already released: ${savepointId} (treating as success)`
-            );
-            // Don't throw - this is actually fine, the savepoint is already gone
-          } else {
-            // Other error - this is a real problem
-            throw rollbackError;
+          const rawBody = await new Promise<string>((resolve, reject) => {
+            let data = '';
+            req.on('data', (chunk) => {
+              data += chunk;
+            });
+            req.on('end', () => resolve(data));
+            req.on('error', reject);
+          });
+          if (rawBody) {
+            const parsed = JSON.parse(rawBody);
+            action = parsed.action || action;
+            savepointId = parsed.savepointId || savepointId;
           }
+        } catch (e) {
+          // Ignore parsing errors, let the validation below catch missing fields
         }
+      }
 
-        // Untrack savepoint
-        activeSavepoints.get(dbPath)?.delete(savepointId);
+      console.error(
+        `[Test Helpers] /savepoint request received. Headers:`,
+        req.headers,
+        `Body:`,
+        req.body,
+        `Parsed values:`,
+        { action, savepointId }
+      );
 
-        console.log(
-          `[Test Helpers] Remaining savepoints: ${activeSavepoints.get(dbPath)?.size || 0}`
+      if (!action || !savepointId) {
+        console.error(
+          `[Test Helpers ERROR] Missing action or savepointId. Body: ${JSON.stringify(req.body)}`
         );
-
-        return res.json({
-          success: true,
-          message: `Rolled back to savepoint ${savepointId}`,
-          activeSavepoints: Array.from(activeSavepoints.get(dbPath) || []),
-        });
-      } else if (action === 'commit') {
-        // Release savepoint (commit changes)
-        database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
-
-        // Untrack savepoint
-        activeSavepoints.get(dbPath)?.delete(savepointId);
-
-        console.log(`[Test Helpers] ✅ Committed savepoint: ${savepointId}`);
-
-        return res.json({
-          success: true,
-          message: `Savepoint ${savepointId} committed`,
-          activeSavepoints: Array.from(activeSavepoints.get(dbPath) || []),
+        return res.status(400).json({
+          error: `Missing required fields: action, savepointId. Received body: ${JSON.stringify(req.body)}`,
         });
       }
 
-      // This should never be reached due to validation above, but TypeScript requires it
-      return res.status(400).json({ error: 'Invalid action' });
-    } catch (error: any) {
-      console.error(`[Test Helpers] ❌ Savepoint error:`, error.message);
-      return res.status(500).json({
-        error: `Savepoint ${action} failed: ${error.message}`,
-      });
+      if (!['begin', 'rollback', 'commit'].includes(action)) {
+        return res.status(400).json({
+          error: `Invalid action: ${action}. Must be begin|rollback|commit`,
+        });
+      }
+
+      try {
+        // CRITICAL FIX: Get per-request database client for test isolation
+        const { getDbClient } = await import('../utils/get-db-client');
+        const dbClient = await getDbClient(req);
+        const database = dbClient.getDatabase();
+
+        if (action === 'begin') {
+          // Create savepoint (transaction checkpoint)
+          database.prepare(`SAVEPOINT ${savepointId}`).run();
+
+          // Track active savepoint
+          if (!activeSavepoints.has(dbPath)) {
+            activeSavepoints.set(dbPath, new Set());
+          }
+          activeSavepoints.get(dbPath)!.add(savepointId);
+
+          console.log(`[Test Helpers] ✅ Savepoint created: ${savepointId} (DB: ${dbPath})`);
+          console.log(
+            `[Test Helpers] Active savepoints: ${activeSavepoints.get(dbPath)?.size || 0}`
+          );
+
+          return res.json({
+            success: true,
+            message: `Savepoint ${savepointId} created`,
+            activeSavepoints: Array.from(activeSavepoints.get(dbPath) || []),
+          });
+        } else if (action === 'rollback') {
+          // CRITICAL FIX: Robust savepoint rollback with error handling
+          // If savepoint doesn't exist, treat as success (desired state achieved)
+          try {
+            // Rollback to savepoint (undo all changes since BEGIN)
+            database.prepare(`ROLLBACK TO SAVEPOINT ${savepointId}`).run();
+
+            // Release savepoint (free resources)
+            database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
+
+            console.log(`[Test Helpers] ✅ Rolled back to savepoint: ${savepointId}`);
+          } catch (rollbackError: any) {
+            // Check if error is "no such savepoint"
+            if (rollbackError.message?.includes('no such savepoint')) {
+              console.log(
+                `[Test Helpers] ⚠️ Savepoint already released: ${savepointId} (treating as success)`
+              );
+              // Don't throw - this is actually fine, the savepoint is already gone
+            } else {
+              // Other error - this is a real problem
+              throw rollbackError;
+            }
+          }
+
+          // Untrack savepoint
+          activeSavepoints.get(dbPath)?.delete(savepointId);
+
+          console.log(
+            `[Test Helpers] Remaining savepoints: ${activeSavepoints.get(dbPath)?.size || 0}`
+          );
+
+          return res.json({
+            success: true,
+            message: `Rolled back to savepoint ${savepointId}`,
+            activeSavepoints: Array.from(activeSavepoints.get(dbPath) || []),
+          });
+        } else if (action === 'commit') {
+          // Release savepoint (commit changes)
+          database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
+
+          // Untrack savepoint
+          activeSavepoints.get(dbPath)?.delete(savepointId);
+
+          console.log(`[Test Helpers] ✅ Committed savepoint: ${savepointId}`);
+
+          return res.json({
+            success: true,
+            message: `Savepoint ${savepointId} committed`,
+            activeSavepoints: Array.from(activeSavepoints.get(dbPath) || []),
+          });
+        }
+
+        // This should never be reached due to validation above, but TypeScript requires it
+        return res.status(400).json({ error: 'Invalid action' });
+      } catch (error: any) {
+        console.error(`[Test Helpers] ❌ Savepoint error:`, error.message);
+        return res.status(500).json({
+          error: `Savepoint ${action} failed: ${error.message}`,
+        });
+      }
     }
-  });
+  );
 
   /**
    * DELETE /api/v1/test/cleanup

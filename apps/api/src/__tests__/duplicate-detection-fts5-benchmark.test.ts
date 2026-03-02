@@ -20,7 +20,7 @@
  * - Stage 3: Similarity scoring on candidates only (O(c²) where c << n)
  */
 
-import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, beforeAll, afterAll } from 'vitest';
 import * as assert from 'node:assert';
 import Database from 'better-sqlite3';
 import { nanoid } from 'nanoid';
@@ -188,8 +188,14 @@ describe('FTS5 Duplicate Detection Performance Benchmark', () => {
   let dbPath: string;
   let baseConfig: DuplicateDetectionConfig;
   const accountId = 'acc_benchmark_' + nanoid();
+  const originalLshEnv = process.env.ENABLE_LSH_DUPLICATE_DETECTION;
+  const originalStrategyEnv = process.env.DUPLICATE_DETECTION_STRATEGY;
 
   beforeAll(async () => {
+    // Force benchmark to exercise FTS5 path.
+    process.env.ENABLE_LSH_DUPLICATE_DETECTION = 'false';
+    process.env.DUPLICATE_DETECTION_STRATEGY = 'fts5';
+
     // Create temporary database
     dbPath = path.join(__dirname, `test-fts5-benchmark-${nanoid()}.db`);
     db = new Database(dbPath);
@@ -253,7 +259,7 @@ describe('FTS5 Duplicate Detection Performance Benchmark', () => {
     };
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     // Cleanup
     if (db) {
       db.close();
@@ -264,6 +270,18 @@ describe('FTS5 Duplicate Detection Performance Benchmark', () => {
       } catch (error) {
         // Ignore cleanup errors
       }
+    }
+
+    if (originalLshEnv === undefined) {
+      delete process.env.ENABLE_LSH_DUPLICATE_DETECTION;
+    } else {
+      process.env.ENABLE_LSH_DUPLICATE_DETECTION = originalLshEnv;
+    }
+
+    if (originalStrategyEnv === undefined) {
+      delete process.env.DUPLICATE_DETECTION_STRATEGY;
+    } else {
+      process.env.DUPLICATE_DETECTION_STRATEGY = originalStrategyEnv;
     }
   });
 

@@ -4,6 +4,19 @@ import path from 'path';
 import { AnyNode, AnyEdge } from '@keimenon/types';
 import { contentHashForNodeType, canonicalizeForNodeType } from '@keimenon/parsers';
 
+/**
+ * Safe JSON parse with error handling (bug fix #17)
+ * Returns null and logs error if parsing fails instead of throwing
+ */
+function safeJsonParse<T>(json: string, context?: string): T | null {
+  try {
+    return JSON.parse(json) as T;
+  } catch (error) {
+    console.error(`[SQLiteClient] Failed to parse JSON${context ? ` (${context})` : ''}:`, error);
+    return null;
+  }
+}
+
 export interface SQLiteConfig {
   databasePath: string;
   readonly?: boolean;
@@ -475,7 +488,7 @@ INSERT OR REPLACE INTO schema_metadata (key, value) VALUES ('features', 'clean_m
 
 /**
  * SQLite client for local-first graph storage
- * Provides same API as Neo4jClient for easy swapping
+ * Provides the canonical database client API for runtime operations
  *
  * SINGLE WRITER PATTERN:
  * - Direct writes are restricted to workers via DatabaseWriteQueue
@@ -579,7 +592,9 @@ export class SQLiteClient {
         // If SQLITE_SCHEMA fails due to "no such column" (likely in an index creation),
         // we try running migrations first to add the columns, then retry the schema.
         if (error.message && error.message.includes('no such column')) {
-          console.warn('⚠️ Schema init failed due to missing column. Running migrations and retrying...');
+          console.warn(
+            '⚠️ Schema init failed due to missing column. Running migrations and retrying...'
+          );
           await this.runMigrations();
           this.db.exec(SQLITE_SCHEMA);
         } else {
@@ -642,9 +657,13 @@ export class SQLiteClient {
     if (!hasDataTagNodes) {
       console.log('🔄 Running migration: Adding data_tag to nodes table');
       try {
-        this.db.exec("ALTER TABLE nodes ADD COLUMN data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual'));");
-        this.db.exec("CREATE INDEX IF NOT EXISTS idx_nodes_data_tag ON nodes(data_tag);");
-        this.db.exec("CREATE INDEX IF NOT EXISTS idx_nodes_account_tag ON nodes(account_id, data_tag);");
+        this.db.exec(
+          "ALTER TABLE nodes ADD COLUMN data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual'));"
+        );
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_nodes_data_tag ON nodes(data_tag);');
+        this.db.exec(
+          'CREATE INDEX IF NOT EXISTS idx_nodes_account_tag ON nodes(account_id, data_tag);'
+        );
         console.log('✅ Migration complete: data_tag added to nodes');
       } catch (error) {
         console.error('❌ Migration failed:', error);
@@ -689,7 +708,12 @@ export class SQLiteClient {
     // For test isolation: prefer global.dbClient if it's been swapped by middleware
     // This allows tests to use worker-specific databases without changing service code
     // UNLESS the client was configured to ignore the global context (e.g. for Jobs DB)
-    if (!this.config.ignoreGlobalContext && global.dbClient && global.dbClient !== this && global.dbClient.db) {
+    if (
+      !this.config.ignoreGlobalContext &&
+      global.dbClient &&
+      global.dbClient !== this &&
+      global.dbClient.db
+    ) {
       return global.dbClient.db;
     }
 
@@ -869,9 +893,15 @@ export class SQLiteClient {
 
     // Parse the entire node from properties JSON column
     // The database stores the complete node structure as JSON
-    const parsedNode = JSON.parse(row.properties);
+    const parsedNode = safeJsonParse<Record<string, unknown>>(row.properties, `node ${id}`);
+    if (!parsedNode) {
+      console.error(`[SQLiteClient] Corrupted node data for id ${id}`);
+      return null;
+    }
 
     // Return the parsed node with database-level fields overridden for consistency
+    // Type assertion via unknown is needed because parsedNode is Record<string, unknown>
+    // and we need to merge it with authoritative database values
     return {
       ...parsedNode,
       // Override with authoritative database values
@@ -882,7 +912,7 @@ export class SQLiteClient {
       created_at: row.created_at,
       updated_at: row.updated_at,
       data_tag: row.data_tag,
-    } as AnyNode;
+    } as unknown as AnyNode;
   }
 
   /**
@@ -927,7 +957,10 @@ export class SQLiteClient {
     const stmt = this.db.prepare(query);
     const rows = stmt.all(...params) as any[];
 
-    return rows.map((row) => JSON.parse(row.properties) as AnyNode);
+    // Safe parse with filtering of corrupted entries (bug fix #17)
+    return rows
+      .map((row) => safeJsonParse<AnyNode>(row.properties, `node in getNodesByKind(${kind})`))
+      .filter((node): node is AnyNode => node !== null);
   }
 
   /**
@@ -1086,7 +1119,10 @@ export class SQLiteClient {
     const rows =
       direction === 'both' ? (stmt.all(nodeId, nodeId) as any[]) : (stmt.all(nodeId) as any[]);
 
-    return rows.map((row) => JSON.parse(row.properties) as AnyEdge);
+    // Safe parse with filtering of corrupted entries (bug fix #17)
+    return rows
+      .map((row) => safeJsonParse<AnyEdge>(row.properties, `edge for node ${nodeId}`))
+      .filter((edge): edge is AnyEdge => edge !== null);
   }
 
   /**
@@ -1100,7 +1136,10 @@ export class SQLiteClient {
     const stmt = this.db.prepare('SELECT properties FROM edges WHERE kind = ?');
     const rows = stmt.all(kind) as any[];
 
-    return rows.map((row) => JSON.parse(row.properties) as AnyEdge);
+    // Safe parse with filtering of corrupted entries (bug fix #17)
+    return rows
+      .map((row) => safeJsonParse<AnyEdge>(row.properties, `edge of kind ${kind}`))
+      .filter((edge): edge is AnyEdge => edge !== null);
   }
 
   /**
@@ -1119,21 +1158,31 @@ export class SQLiteClient {
 
   /**
    * Execute raw SQL query
+   *
+   * @deprecated This method allows arbitrary SQL execution and should be avoided.
+   * Use specific methods like getNode(), getNodesByKind(), etc. instead.
+   * If you must use this, ensure queries are parameterized and include account_id filters.
+   *
+   * Security note: Only SELECT queries are allowed. Write operations will throw.
    */
   async execute(query: string, params: any = {}): Promise<any> {
     if (!this.db) {
       throw new Error('Database not connected');
     }
 
-    // Simple query execution (no Cypher translation for now)
-    const stmt = this.db.prepare(query);
+    const trimmedQuery = query.trim().toUpperCase();
 
-    // Check if query is SELECT
-    if (query.trim().toUpperCase().startsWith('SELECT')) {
-      return { records: stmt.all(params) };
-    } else {
-      return { records: [stmt.run(params)] };
+    // Security fix (bug #7): Restrict to SELECT queries only
+    // Write operations should use dedicated methods with proper validation
+    if (!trimmedQuery.startsWith('SELECT') && !trimmedQuery.startsWith('WITH')) {
+      throw new Error(
+        'execute() only allows SELECT queries for safety. ' +
+          'Use dedicated methods (createNode, updateNode, etc.) for write operations.'
+      );
     }
+
+    const stmt = this.db.prepare(query);
+    return { records: stmt.all(params) };
   }
 
   /**
@@ -1170,22 +1219,37 @@ export class SQLiteClient {
 
   /**
    * Full-text search on node properties
+   *
+   * Security: Now requires accountId for multi-tenant isolation (bug fix #8)
+   *
+   * @param query - FTS5 search query
+   * @param accountId - Required account ID for tenant isolation
+   * @param limit - Maximum results (default 50)
    */
-  async search(query: string, limit: number = 50): Promise<AnyNode[]> {
+  async search(query: string, accountId: string, limit: number = 50): Promise<AnyNode[]> {
     if (!this.db) {
       throw new Error('Database not connected');
     }
 
+    if (!accountId) {
+      throw new Error('accountId is required for search (multi-tenant isolation)');
+    }
+
+    // Security fix: Add account_id filter to prevent cross-tenant data leakage
     const stmt = this.db.prepare(`
       SELECT n.properties
       FROM nodes n
       JOIN nodes_fts fts ON n.rowid = fts.rowid
-      WHERE fts MATCH ?
+      WHERE fts MATCH ? AND n.account_id = ?
       LIMIT ?
     `);
 
-    const rows = stmt.all(query, limit) as any[];
-    return rows.map((row) => JSON.parse(row.properties) as AnyNode);
+    const rows = stmt.all(query, accountId, limit) as any[];
+
+    // Safe parse with filtering of corrupted entries (bug fix #17)
+    return rows
+      .map((row) => safeJsonParse<AnyNode>(row.properties, 'search result'))
+      .filter((node): node is AnyNode => node !== null);
   }
 
   /**
@@ -1299,7 +1363,9 @@ export class SQLiteClient {
     `);
 
     const row = stmt.get(contentHash, accountId) as any;
-    return row ? JSON.parse(row.properties) : null;
+    return row
+      ? safeJsonParse<AnyNode>(row.properties, `findNodeByContentHash(${contentHash})`)
+      : null;
   }
 
   /**
@@ -1372,7 +1438,8 @@ export class SQLiteClient {
     }
 
     // Different JSON paths for different node kinds
-    const jsonPath = kind === 'Lexeme' ? '$.lemma' : kind === 'Topic' ? '$.name' : '$.normalized_text';
+    const jsonPath =
+      kind === 'Lexeme' ? '$.lemma' : kind === 'Topic' ? '$.name' : '$.normalized_text';
 
     const stmt = this.db.prepare(`
       SELECT properties FROM nodes
@@ -1384,7 +1451,9 @@ export class SQLiteClient {
     `);
 
     const row = stmt.get(accountId, kind, jsonPath, normalizedText) as any;
-    return row ? JSON.parse(row.properties) : null;
+    return row
+      ? safeJsonParse<AnyNode>(row.properties, `findSpineNodeByText(${kind}, ${normalizedText})`)
+      : null;
   }
 
   /**
@@ -1414,7 +1483,8 @@ export class SQLiteClient {
     }
 
     // Different JSON paths for different node kinds
-    const jsonPath = kind === 'Lexeme' ? '$.lemma' : kind === 'Topic' ? '$.name' : '$.normalized_text';
+    const jsonPath =
+      kind === 'Lexeme' ? '$.lemma' : kind === 'Topic' ? '$.name' : '$.normalized_text';
 
     // Build IN clause with placeholders for the normalized texts
     const placeholders = normalizedTexts.map(() => '?').join(',');
@@ -1435,7 +1505,10 @@ export class SQLiteClient {
     for (const row of rows) {
       const lookupKey = row.lookup_key as string;
       if (!resultMap.has(lookupKey)) {
-        resultMap.set(lookupKey, JSON.parse(row.properties));
+        const parsed = safeJsonParse<AnyNode>(row.properties, `findSpineNodesByTexts(${kind})`);
+        if (parsed) {
+          resultMap.set(lookupKey, parsed);
+        }
       }
     }
 
@@ -1592,11 +1665,15 @@ export class SQLiteClient {
             JSON.stringify(duplicateIds),
             edgesRelinked,
             spaceSaved,
-            'system', // TODO(enhancement): Get actual user ID from context parameter
+            'system', // Bug #31: Consider passing userId as parameter for better audit trail
             Date.now()
           );
-        } catch {
-          // Log table may not exist, that's OK
+        } catch (error: any) {
+          // Bug fix #30: Log warning instead of silent failure
+          // Table may not exist in older schemas - that's expected
+          if (!error.message?.includes('no such table')) {
+            console.warn('[SQLiteClient] Failed to log deduplication merge:', error.message);
+          }
         }
 
         return { edgesRelinked, duplicatesRemoved: duplicateIds.length };
@@ -1614,18 +1691,31 @@ export class SQLiteClient {
         return 0;
       }
 
-      // Verify all nodes have same content_hash
-      const verifyStmt = this.db.prepare(
+      // Bug fix #29: Batch verification to avoid N+1 queries
+      // First, get canonical node
+      const verifyCanonicalStmt = this.db.prepare(
         `SELECT id, content_hash, account_id FROM nodes WHERE id = ?`
       );
-
-      const canonicalNode = verifyStmt.get(canonicalNodeId) as any;
+      const canonicalNode = verifyCanonicalStmt.get(canonicalNodeId) as any;
       if (!canonicalNode) {
         throw new Error(`Canonical node ${canonicalNodeId} not found`);
       }
 
+      // Then verify all duplicate nodes in a single batch query
+      const allIdsToVerify = [...duplicateNodeIds];
+      const placeholders = allIdsToVerify.map(() => '?').join(',');
+      const batchVerifyStmt = this.db.prepare(
+        `SELECT id, content_hash FROM nodes WHERE id IN (${placeholders})`
+      );
+      const foundNodes = batchVerifyStmt.all(...allIdsToVerify) as {
+        id: string;
+        content_hash: string;
+      }[];
+      const foundNodeMap = new Map(foundNodes.map((n) => [n.id, n]));
+
+      // Verify all duplicates exist and have matching content hash
       for (const dupId of duplicateNodeIds) {
-        const dupNode = verifyStmt.get(dupId) as any;
+        const dupNode = foundNodeMap.get(dupId);
         if (!dupNode) {
           throw new Error(`Duplicate node ${dupId} not found`);
         }
@@ -1686,11 +1776,15 @@ export class SQLiteClient {
             JSON.stringify(dupIds),
             edgeCount,
             spaceSaved,
-            'system', // TODO(enhancement): Get actual user ID from context parameter
+            'system', // Bug #31: Consider passing userId as parameter for better audit trail
             Date.now()
           );
-        } catch {
-          // Log table may not exist, that's OK
+        } catch (error: any) {
+          // Bug fix #30: Log warning instead of silent failure
+          // Table may not exist in older schemas - that's expected
+          if (!error.message?.includes('no such table')) {
+            console.warn('[SQLiteClient] Failed to log deduplication merge:', error.message);
+          }
         }
       });
 

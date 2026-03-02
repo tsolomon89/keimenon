@@ -14,10 +14,11 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest",
+    "test": "vitest run",
     "test:run": "vitest run",
     "lint": "eslint src --ext .ts",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@keimenon/types": "*",

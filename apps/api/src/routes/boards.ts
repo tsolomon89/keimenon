@@ -47,48 +47,27 @@ router.get('/', async (req: Request, res: Response) => {
 
     const { workspace_id = 'default_workspace' } = req.query;
     const db = await getDbClient(req);
-    const storageMode = process.env.STORAGE_MODE || 'local';
-
-    let boards: any[];
 
     // Build account filter
     const accountFilter = req.user && req.user.accountType !== 'admin' ? req.user.accountId : null;
 
-    if (storageMode === 'local') {
-      // SQLite query with account filtering
-      let query = `
-        SELECT * FROM nodes
-        WHERE kind = 'Board'
-        AND json_extract(properties, '$.workspace_id') = ?
-      `;
-      const params: any[] = [workspace_id];
+    // SQLite query with account filtering
+    let query = `
+      SELECT * FROM nodes
+      WHERE kind = 'Board'
+      AND json_extract(properties, '$.workspace_id') = ?
+    `;
+    const params: any[] = [workspace_id];
 
-      if (accountFilter) {
-        query += ' AND account_id = ?';
-        params.push(accountFilter);
-      }
-
-      query += ' ORDER BY created_at DESC';
-
-      const result = await db.execute(query, params);
-      boards = result.records.map((row: any) => JSON.parse(row.properties));
-    } else {
-      // Neo4j query with account filtering
-      let query = `
-        MATCH (b:Board {workspace_id: $workspace_id})
-      `;
-      const params: any = { workspace_id };
-
-      if (accountFilter) {
-        query += ' WHERE b.account_id = $accountId';
-        params.accountId = accountFilter;
-      }
-
-      query += ' RETURN b ORDER BY b.created_at DESC';
-
-      const result = await db.execute(query, params);
-      boards = result.records.map((r: any) => r.get('b').properties);
+    if (accountFilter) {
+      query += ' AND account_id = ?';
+      params.push(accountFilter);
     }
+
+    query += ' ORDER BY created_at DESC';
+
+    const result = await db.execute(query, params);
+    const boards = result.records.map((row: any) => JSON.parse(row.properties));
 
     return res.json({ boards, count: boards.length });
   } catch (error: any) {
@@ -177,7 +156,6 @@ router.get('/:id/graph', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { limit = 1000 } = req.query;
     const db = await getDbClient(req);
-    const storageMode = process.env.STORAGE_MODE || 'local';
 
     // Check if board exists and user has access
     const board = await db.getNode(id);
@@ -199,101 +177,56 @@ router.get('/:id/graph', async (req: Request, res: Response) => {
     }
 
     const limitNum = parseInt(limit as string, 10);
-    let nodes: any[];
     let edges: any[];
-
     // Build account filter
     const accountFilter = req.user && req.user.accountType !== 'admin' ? req.user.accountId : null;
 
-    if (storageMode === 'local') {
-      // SQLite query for nodes with account filtering
-      // Exclude the Board node itself by checking that board_id equals the requested board
-      // Note: board_id is stored in metadata, not properties
-      let nodesQuery = `
-        SELECT * FROM nodes
-        WHERE json_extract(properties, '$.metadata.board_id') = ?
-          AND kind != 'Board'
-      `;
-      const nodesParams: any[] = [id];
+    // SQLite query for nodes with account filtering
+    // Exclude the Board node itself by checking that board_id equals the requested board
+    // Note: board_id is stored in metadata, not properties
+    let nodesQuery = `
+      SELECT * FROM nodes
+      WHERE json_extract(properties, '$.metadata.board_id') = ?
+        AND kind != 'Board'
+    `;
+    const nodesParams: any[] = [id];
 
-      if (accountFilter) {
-        nodesQuery += ' AND account_id = ?';
-        nodesParams.push(accountFilter);
-      }
+    if (accountFilter) {
+      nodesQuery += ' AND account_id = ?';
+      nodesParams.push(accountFilter);
+    }
 
-      nodesQuery += ' ORDER BY created_at DESC LIMIT ?';
-      nodesParams.push(limitNum);
+    nodesQuery += ' ORDER BY created_at DESC LIMIT ?';
+    nodesParams.push(limitNum);
 
-      const nodesResult = await db.execute(nodesQuery, nodesParams);
-      nodes = nodesResult.records.map((row: any) => {
-        const props = JSON.parse(row.properties);
-        return props;
-      });
+    const nodesResult = await db.execute(nodesQuery, nodesParams);
+    const nodes = nodesResult.records.map((row: any) => {
+      const props = JSON.parse(row.properties);
+      return props;
+    });
 
-      // Get node IDs
-      const nodeIds = nodes.map((n: any) => n.id);
+    // Get node IDs
+    const nodeIds = nodes.map((n: any) => n.id);
 
-      // SQLite query for edges between these nodes
-      if (nodeIds.length > 0) {
-        const placeholders = nodeIds.map(() => '?').join(',');
-        const edgesQuery = `
-          SELECT * FROM edges
-          WHERE from_id IN (${placeholders})
-          AND to_id IN (${placeholders})
-          LIMIT ?
-        `;
-        const edgesResult = await db.execute(edgesQuery, [...nodeIds, ...nodeIds, limitNum]);
-        edges = edgesResult.records.map((row: any) => ({
-          id: row.id,
-          source: row.from_id,
-          target: row.to_id,
-          kind: row.kind,
-          ...(row.properties ? JSON.parse(row.properties) : {}),
-        }));
-      } else {
-        edges = [];
-      }
-    } else {
-      // Neo4j query for nodes with account filtering
-      // Exclude the Board node itself
-      let nodesQuery = `
-        MATCH (n:Node)
-        WHERE n.board_id = $board_id AND n.kind <> 'Board'
-      `;
-      const nodesParams: any = {
-        board_id: id,
-        limit: limitNum,
-      };
-
-      if (accountFilter) {
-        nodesQuery += ' AND n.account_id = $accountId';
-        nodesParams.accountId = accountFilter;
-      }
-
-      nodesQuery += ' RETURN n LIMIT $limit';
-
-      const nodesResult = await db.execute(nodesQuery, nodesParams);
-      nodes = nodesResult.records.map((r: any) => r.get('n').properties);
-
-      // Get edges between these nodes
-      const nodeIds = nodes.map((n: any) => n.id);
+    // SQLite query for edges between these nodes
+    if (nodeIds.length > 0) {
+      const placeholders = nodeIds.map(() => '?').join(',');
       const edgesQuery = `
-        MATCH (a:Node)-[r]->(b:Node)
-        WHERE a.id IN $nodeIds AND b.id IN $nodeIds
-        RETURN a.id as source, b.id as target, type(r) as kind, properties(r) as props, id(r) as edgeId
-        LIMIT $limit
+        SELECT * FROM edges
+        WHERE from_id IN (${placeholders})
+        AND to_id IN (${placeholders})
+        LIMIT ?
       `;
-      const edgesResult = await db.execute(edgesQuery, {
-        nodeIds,
-        limit: limitNum,
-      });
-      edges = edgesResult.records.map((r: any) => ({
-        id: `edge_${r.get('edgeId')}`,
-        source: r.get('source'),
-        target: r.get('target'),
-        kind: r.get('kind'),
-        ...r.get('props'),
+      const edgesResult = await db.execute(edgesQuery, [...nodeIds, ...nodeIds, limitNum]);
+      edges = edgesResult.records.map((row: any) => ({
+        id: row.id,
+        source: row.from_id,
+        target: row.to_id,
+        kind: row.kind,
+        ...(row.properties ? JSON.parse(row.properties) : {}),
       }));
+    } else {
+      edges = [];
     }
 
     return res.json({
@@ -404,7 +337,6 @@ router.put('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, description, settings } = req.body;
     const db = await getDbClient(req);
-    const storageMode = process.env.STORAGE_MODE || 'local';
 
     // Get existing board
     const board = await db.getNode(id);
@@ -432,35 +364,12 @@ router.put('/:id', async (req: Request, res: Response) => {
     board.updated_at = Date.now();
 
     // Save updated node
-    if (storageMode === 'local') {
-      const query = `
-        UPDATE nodes
-        SET properties = ?, updated_at = ?
-        WHERE id = ?
-      `;
-      await db.execute(query, [JSON.stringify(board), board.updated_at, id]);
-    } else {
-      // Neo4j update
-      const updates: string[] = [];
-      const params: any = { id, updated_at: board.updated_at };
-
-      if (name !== undefined) {
-        updates.push('b.name = $name');
-        params.name = name;
-      }
-      if (description !== undefined) {
-        updates.push('b.description = $description');
-        params.description = description;
-      }
-      updates.push('b.updated_at = $updated_at');
-
-      const query = `
-        MATCH (b:Board {id: $id})
-        SET ${updates.join(', ')}
-        RETURN b
-      `;
-      await db.execute(query, params);
-    }
+    const query = `
+      UPDATE nodes
+      SET properties = ?, updated_at = ?
+      WHERE id = ?
+    `;
+    await db.execute(query, [JSON.stringify(board), board.updated_at, id]);
 
     return res.json({ success: true, board });
   } catch (error: any) {
@@ -501,7 +410,6 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { delete_contents = false } = req.query;
     const db = await getDbClient(req);
-    const storageMode = process.env.STORAGE_MODE || 'local';
 
     // Check if board exists
     const board = await db.getNode(id);
@@ -524,63 +432,32 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     if (delete_contents === 'true') {
       // Delete board and all its nodes
-      if (storageMode === 'local') {
-        // Count nodes before deletion (check both metadata and properties)
-        const countQuery = `
-          SELECT COUNT(*) as count FROM nodes
-          WHERE json_extract(properties, '$.metadata.board_id') = ?
-        `;
-        const countResult = await db.execute(countQuery, [id]);
-        const nodesDeleted = countResult.records[0].count;
+      // Count nodes before deletion (check both metadata and properties)
+      const countQuery = `
+        SELECT COUNT(*) as count FROM nodes
+        WHERE json_extract(properties, '$.metadata.board_id') = ?
+      `;
+      const countResult = await db.execute(countQuery, [id]);
+      const nodesDeleted = countResult.records[0].count;
 
-        // Delete nodes with this board_id
-        const deleteNodesQuery = `
-          DELETE FROM nodes
-          WHERE json_extract(properties, '$.metadata.board_id') = ?
-        `;
-        await db.execute(deleteNodesQuery, [id]);
+      // Delete nodes with this board_id
+      const deleteNodesQuery = `
+        DELETE FROM nodes
+        WHERE json_extract(properties, '$.metadata.board_id') = ?
+      `;
+      await db.execute(deleteNodesQuery, [id]);
 
-        // Delete the board itself
-        await db.execute('DELETE FROM nodes WHERE id = ?', [id]);
+      // Delete the board itself
+      await db.execute('DELETE FROM nodes WHERE id = ?', [id]);
 
-        return res.json({
-          success: true,
-          deleted: { board: 1, nodes: nodesDeleted },
-        });
-      } else {
-        // Neo4j delete with contents
-        const query = `
-          MATCH (b:Board {id: $id})
-          OPTIONAL MATCH (n:Node {board_id: $id})
-          DETACH DELETE b, n
-          RETURN count(b) as boardDeleted, count(n) as nodesDeleted
-        `;
-        const result = await db.execute(query, { id });
-        const boardDeleted = result.records[0]?.get('boardDeleted')?.toNumber() || 0;
-        const nodesDeleted = result.records[0]?.get('nodesDeleted')?.toNumber() || 0;
-
-        return res.json({
-          success: true,
-          deleted: { board: boardDeleted, nodes: nodesDeleted },
-        });
-      }
+      return res.json({
+        success: true,
+        deleted: { board: 1, nodes: nodesDeleted },
+      });
     } else {
       // Just delete board, keep nodes
-      if (storageMode === 'local') {
-        await db.execute('DELETE FROM nodes WHERE id = ?', [id]);
-        return res.json({ success: true, deleted: 1 });
-      } else {
-        // Neo4j delete board only
-        const query = `
-          MATCH (b:Board {id: $id})
-          DELETE b
-          RETURN count(b) as deleted
-        `;
-        const result = await db.execute(query, { id });
-        const deleted = result.records[0]?.get('deleted')?.toNumber() || 0;
-
-        return res.json({ success: true, deleted });
-      }
+      await db.execute('DELETE FROM nodes WHERE id = ?', [id]);
+      return res.json({ success: true, deleted: 1 });
     }
   } catch (error: any) {
     console.error('Delete board error:', error);

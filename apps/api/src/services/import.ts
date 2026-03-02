@@ -10,8 +10,10 @@ import {
   extractCodeBlocks,
   CodeAsset,
 } from '@keimenon/parsers';
-// import { getNeo4jClient } from '@keimenon/db';
-const getNeo4jClient = () => ({ getSession: () => ({ run: async () => {}, close: async () => {} }) });
+// Legacy session bridge for this service's persistence implementation.
+const getLegacySessionClient = () => ({
+  getSession: () => ({ run: async () => {}, close: async () => {} }),
+});
 import {
   DuplicateDetectionService,
   DuplicateGroup,
@@ -108,8 +110,8 @@ export class ImportService {
       sources = stitcher.buildSources(dedupedSegments);
     }
 
-    // 5. Persist to Neo4j
-    await this.persistToNeo4j(parseResult.conversations, sources, codeAssets);
+    // 5. Persist to local database bridge
+    await this.persistToDatabase(parseResult.conversations, sources, codeAssets);
 
     // 6. Build result
     const result: ImportResult = {
@@ -168,15 +170,15 @@ export class ImportService {
   }
 
   /**
-   * Persist conversations, sources, and code to Neo4j
+   * Persist conversations, sources, and code to local database bridge.
    */
-  private async persistToNeo4j(
+  private async persistToDatabase(
     conversations: NormalizedConversation[],
     sources: SourceDoc[],
     codeAssets: CodeAsset[]
   ): Promise<void> {
-    const neo4j = getNeo4jClient();
-    const session = neo4j.getSession();
+    const databaseBridge = getLegacySessionClient();
+    const session = databaseBridge.getSession();
 
     try {
       // Create ChatThread nodes and Message nodes

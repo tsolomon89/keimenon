@@ -4,8 +4,6 @@ import { StreamingJSONParserV2 } from '../services/streaming-json-parser-v2';
 import { SourcesBuilder } from '../services/sources-builder';
 import { CodeExtractor } from '../services/code-extractor';
 import { similarityEngine, SimilarityAlgorithm } from '../services/similarity-engine';
-// import { getNeo4jClient } from '@keimenon/db';
-const getNeo4jClient = () => ({ getSession: () => ({ run: async () => {}, close: async () => {} }) });
 import { AuthService } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { z } from 'zod';
@@ -294,7 +292,7 @@ async function processEnhancedImport(
     },
   });
 
-  // Use global database client (supports both SQLite and Neo4j)
+  // Use global local database client
   const db = global.dbClient;
   if (!db) {
     throw new Error('Database not initialized');
@@ -353,12 +351,12 @@ async function processEnhancedImport(
   // IMPORTANT: Save conversations FIRST to create ChatThread and Message nodes
   // Other entities (sources, code blocks, duplicates) create edges pointing to these nodes
   console.log('💾 Saving conversations...');
-  await saveConversationsToNeo4j(db, conversations, accountId, userId);
+  await saveConversationsToDatabase(db, conversations, accountId, userId);
   console.log(`✅ Saved ${conversations.length} conversations`);
 
   // Now save sources (creates edges to conversations)
   console.log('💾 Saving sources...');
-  await saveSourcesToNeo4j(db, sources, accountId, userId);
+  await saveSourcesToDatabase(db, sources, accountId, userId);
   console.log(`✅ Saved ${sources.length} sources`);
 
   // Calculate nodes created so far (ChatThread + Messages + Sources)
@@ -406,7 +404,7 @@ async function processEnhancedImport(
     codeBlocks = await extractor.extractFromMessages(allMessages);
 
     // Save code blocks to database (creates edges to messages)
-    await saveCodeBlocksToNeo4j(db, codeBlocks, accountId, userId);
+    await saveCodeBlocksToDatabase(db, codeBlocks, accountId, userId);
   }
 
   // Step 4: Detect duplicates if enabled
@@ -437,7 +435,7 @@ async function processEnhancedImport(
     });
 
     // Save duplicate relationships to database (creates edges between messages)
-    await saveDuplicatesToNeo4j(db, duplicates, accountId, userId);
+    await saveDuplicatesToDatabase(db, duplicates, accountId, userId);
   }
 
   // Update stats with code blocks and duplicates
@@ -804,9 +802,9 @@ async function createDefaultOrganization(
 }
 
 /**
- * Save conversations to database (SQLite or Neo4j)
+ * Save conversations to local database.
  */
-async function saveConversationsToNeo4j(
+async function saveConversationsToDatabase(
   db: any,
   conversations: any[],
   accountId: string,
@@ -871,9 +869,9 @@ async function saveConversationsToNeo4j(
 }
 
 /**
- * Save source documents to database (SQLite or Neo4j)
+ * Save source documents to local database.
  */
-async function saveSourcesToNeo4j(db: any, sources: any[], accountId: string, userId: string) {
+async function saveSourcesToDatabase(db: any, sources: any[], accountId: string, userId: string) {
   for (const source of sources) {
     // Create Source node
     const sourceNode = {
@@ -929,9 +927,9 @@ async function saveSourcesToNeo4j(db: any, sources: any[], accountId: string, us
 }
 
 /**
- * Save code blocks to database (SQLite or Neo4j)
+ * Save code blocks to local database.
  */
-async function saveCodeBlocksToNeo4j(
+async function saveCodeBlocksToDatabase(
   db: any,
   codeBlocks: any[],
   accountId: string,
@@ -975,9 +973,9 @@ async function saveCodeBlocksToNeo4j(
 }
 
 /**
- * Save duplicate relationships to database (SQLite or Neo4j)
+ * Save duplicate relationships to local database.
  */
-async function saveDuplicatesToNeo4j(
+async function saveDuplicatesToDatabase(
   db: any,
   duplicates: any[],
   accountId: string,

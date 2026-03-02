@@ -16,9 +16,9 @@ export function StorageStatsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const graphStats = stats ? (stats.database ?? stats.neo4j ?? null) : null;
-  const graphLabel = stats?.storage_mode === 'neo4j' ? 'Neo4j' : 'Graph Database';
-  const graphStorageName = stats?.storage_mode === 'neo4j' ? 'Neo4j' : 'The graph database';
+  const graphStats = stats?.database ?? null;
+  const graphLabel = 'Database';
+  const graphStorageName = 'The database';
 
   useEffect(() => {
     loadStats();
@@ -38,7 +38,17 @@ export function StorageStatsDashboard() {
         const token = localStorage.getItem('keimenon_token');
         const userStr = localStorage.getItem('keimenon_user');
         if (token && userStr) {
-          const user = JSON.parse(userStr);
+          // Bug fix #26: Safe JSON parsing with null guard
+          let user: { accountId?: string } | null = null;
+          try {
+            user = JSON.parse(userStr);
+          } catch {
+            console.warn('Failed to parse user from localStorage');
+          }
+          if (!user?.accountId) {
+            console.log('No valid user found in localStorage');
+            return;
+          }
           const response = await fetch(
             `${API_BASE_URL}/api/v1/deduplication/stats?accountId=${user.accountId}`,
             {
@@ -145,7 +155,7 @@ export function StorageStatsDashboard() {
                 </span>
               </div>
               <p className="text-xs text-green-700 mt-1">
-                Documents stored locally, metadata in Neo4j
+                Documents and graph metadata are stored in local infrastructure.
               </p>
             </div>
 
@@ -270,8 +280,7 @@ export function StorageStatsDashboard() {
               <div className="bg-purple-50 border border-purple-200 rounded p-3">
                 <p className="text-xs text-purple-800">
                   <strong>Storage Efficiency:</strong> Full content stored locally for privacy and
-                  speed.
-                  {graphStorageName} stores only metadata and relationships (~90% storage
+                  speed. {graphStorageName} stores metadata and relationships (~90% storage
                   reduction).
                 </p>
               </div>

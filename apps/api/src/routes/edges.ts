@@ -46,99 +46,54 @@ router.get('/', async (req: Request, res: Response) => {
 
     const { from, to, kind, limit = '100' } = req.query;
     const db = await getDbClient(req);
-    const storageMode = process.env.STORAGE_MODE || 'local';
 
     const limitNum = parseInt(limit as string, 10);
-    let edges: any[];
 
     // Build account filter
     const accountFilter = req.user && req.user.accountType !== 'admin' ? req.user.accountId : null;
 
-    if (storageMode === 'local') {
-      // SQLite query with account filtering
-      let query = 'SELECT e.* FROM edges e';
-      const conditions: string[] = [];
-      const params: any[] = [];
+    // SQLite query with account filtering
+    let query = 'SELECT e.* FROM edges e';
+    const conditions: string[] = [];
+    const params: any[] = [];
 
-      // If client account, only show edges where both nodes belong to their account
-      if (accountFilter) {
-        query += ' INNER JOIN nodes n1 ON e.from_id = n1.id INNER JOIN nodes n2 ON e.to_id = n2.id';
-        conditions.push('n1.account_id = ?');
-        conditions.push('n2.account_id = ?');
-        params.push(accountFilter, accountFilter);
-      }
-
-      if (from) {
-        conditions.push('e.from_id = ?');
-        params.push(from);
-      }
-      if (to) {
-        conditions.push('e.to_id = ?');
-        params.push(to);
-      }
-      if (kind) {
-        conditions.push('e.kind = ?');
-        params.push(kind);
-      }
-
-      if (conditions.length > 0) {
-        query += ' WHERE ' + conditions.join(' AND ');
-      }
-
-      query += ' LIMIT ?';
-      params.push(limitNum);
-
-      const result = await db.execute(query, params);
-      edges = result.records.map((row: any) => ({
-        id: row.id,
-        from: row.from_id,
-        to: row.to_id,
-        kind: row.kind,
-        created_at: row.created_at,
-        ...(row.properties ? JSON.parse(row.properties) : {}),
-      }));
-    } else {
-      // Neo4j query with account filtering
-      let query = 'MATCH (a:Node)-[r]->(b:Node)';
-      const params: any = { limit: limitNum };
-      const conditions: string[] = [];
-
-      // If client account, filter by account ownership
-      if (accountFilter) {
-        conditions.push('a.account_id = $accountId');
-        conditions.push('b.account_id = $accountId');
-        params.accountId = accountFilter;
-      }
-
-      if (from) {
-        conditions.push('a.id = $from');
-        params.from = from;
-      }
-      if (to) {
-        conditions.push('b.id = $to');
-        params.to = to;
-      }
-      if (kind) {
-        conditions.push('type(r) = $kind');
-        params.kind = kind;
-      }
-
-      if (conditions.length > 0) {
-        query += ' WHERE ' + conditions.join(' AND ');
-      }
-
-      query +=
-        ' RETURN a.id as source, b.id as target, type(r) as kind, properties(r) as props, id(r) as edgeId LIMIT $limit';
-
-      const result = await db.execute(query, params);
-      edges = result.records.map((r: any) => ({
-        id: `edge_${r.get('edgeId')}`,
-        from: r.get('source'),
-        to: r.get('target'),
-        kind: r.get('kind'),
-        ...r.get('props'),
-      }));
+    // If client account, only show edges where both nodes belong to their account
+    if (accountFilter) {
+      query += ' INNER JOIN nodes n1 ON e.from_id = n1.id INNER JOIN nodes n2 ON e.to_id = n2.id';
+      conditions.push('n1.account_id = ?');
+      conditions.push('n2.account_id = ?');
+      params.push(accountFilter, accountFilter);
     }
+
+    if (from) {
+      conditions.push('e.from_id = ?');
+      params.push(from);
+    }
+    if (to) {
+      conditions.push('e.to_id = ?');
+      params.push(to);
+    }
+    if (kind) {
+      conditions.push('e.kind = ?');
+      params.push(kind);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' LIMIT ?';
+    params.push(limitNum);
+
+    const result = await db.execute(query, params);
+    const edges = result.records.map((row: any) => ({
+      id: row.id,
+      from: row.from_id,
+      to: row.to_id,
+      kind: row.kind,
+      created_at: row.created_at,
+      ...(row.properties ? JSON.parse(row.properties) : {}),
+    }));
 
     return res.json({ edges, count: edges.length });
   } catch (error: any) {
@@ -293,7 +248,6 @@ router.delete('/', async (req: Request, res: Response) => {
     }
 
     const db = await getDbClient(req);
-    const storageMode = process.env.STORAGE_MODE || 'local';
 
     // Verify nodes exist and check ownership
     const fromNode = await db.getNode(from as string);
@@ -322,20 +276,9 @@ router.delete('/', async (req: Request, res: Response) => {
     }
 
     let deleted = 0;
-
-    if (storageMode === 'local') {
-      const query = 'DELETE FROM edges WHERE from_id = ? AND to_id = ? AND kind = ?';
-      const result = await db.execute(query, [from, to, kind]);
-      deleted = (result as any).changes || 0;
-    } else {
-      const query = `
-        MATCH (a:Node {id: $from})-[r:${kind}]->(b:Node {id: $to})
-        DELETE r
-        RETURN count(r) as deleted
-      `;
-      const result = await db.execute(query, { from, to });
-      deleted = result.records[0]?.get('deleted')?.toNumber() || 0;
-    }
+    const query = 'DELETE FROM edges WHERE from_id = ? AND to_id = ? AND kind = ?';
+    const result = await db.execute(query, [from, to, kind]);
+    deleted = (result as any).changes || 0;
 
     if (deleted === 0) {
       return res.status(404).json({ error: 'Edge not found' });
@@ -409,82 +352,36 @@ router.get('/node/:nodeId', async (req: Request, res: Response) => {
     }
 
     // Fallback: manual query
-    const storageMode = process.env.STORAGE_MODE || 'local';
+    const outgoingQuery = 'SELECT * FROM edges WHERE from_id = ?';
+    const incomingQuery = 'SELECT * FROM edges WHERE to_id = ?';
 
-    if (storageMode === 'local') {
-      const outgoingQuery = 'SELECT * FROM edges WHERE from_id = ?';
-      const incomingQuery = 'SELECT * FROM edges WHERE to_id = ?';
+    const outgoingResult = await db.execute(outgoingQuery, [nodeId]);
+    const incomingResult = await db.execute(incomingQuery, [nodeId]);
 
-      const outgoingResult = await db.execute(outgoingQuery, [nodeId]);
-      const incomingResult = await db.execute(incomingQuery, [nodeId]);
+    const outgoing = outgoingResult.records.map((row: any) => ({
+      id: row.id,
+      from: row.from_id,
+      to: row.to_id,
+      kind: row.kind,
+      created_at: row.created_at,
+      ...(row.properties ? JSON.parse(row.properties) : {}),
+    }));
 
-      const outgoing = outgoingResult.records.map((row: any) => ({
-        id: row.id,
-        from: row.from_id,
-        to: row.to_id,
-        kind: row.kind,
-        created_at: row.created_at,
-        ...(row.properties ? JSON.parse(row.properties) : {}),
-      }));
+    const incoming = incomingResult.records.map((row: any) => ({
+      id: row.id,
+      from: row.from_id,
+      to: row.to_id,
+      kind: row.kind,
+      created_at: row.created_at,
+      ...(row.properties ? JSON.parse(row.properties) : {}),
+    }));
 
-      const incoming = incomingResult.records.map((row: any) => ({
-        id: row.id,
-        from: row.from_id,
-        to: row.to_id,
-        kind: row.kind,
-        created_at: row.created_at,
-        ...(row.properties ? JSON.parse(row.properties) : {}),
-      }));
-
-      return res.json({
-        nodeId,
-        outgoing,
-        incoming,
-        total: outgoing.length + incoming.length,
-      });
-    } else {
-      // Neo4j fallback
-      const query = `
-        MATCH (n:Node {id: $nodeId})
-        OPTIONAL MATCH (n)-[r1]->(other1:Node)
-        OPTIONAL MATCH (other2:Node)-[r2]->(n)
-        WITH n,
-             collect({source: n.id, target: other1.id, kind: type(r1), props: properties(r1), edgeId: id(r1)}) as outgoing,
-             collect({source: other2.id, target: n.id, kind: type(r2), props: properties(r2), edgeId: id(r2)}) as incoming
-        RETURN outgoing, incoming
-      `;
-
-      const result = await db.execute(query, { nodeId });
-
-      const outgoing = result.records[0]
-        .get('outgoing')
-        .filter((e: any) => e.target !== null)
-        .map((e: any) => ({
-          id: `edge_${e.edgeId}`,
-          from: e.source,
-          to: e.target,
-          kind: e.kind,
-          ...e.props,
-        }));
-
-      const incoming = result.records[0]
-        .get('incoming')
-        .filter((e: any) => e.source !== null)
-        .map((e: any) => ({
-          id: `edge_${e.edgeId}`,
-          from: e.source,
-          to: e.target,
-          kind: e.kind,
-          ...e.props,
-        }));
-
-      return res.json({
-        nodeId,
-        outgoing,
-        incoming,
-        total: outgoing.length + incoming.length,
-      });
-    }
+    return res.json({
+      nodeId,
+      outgoing,
+      incoming,
+      total: outgoing.length + incoming.length,
+    });
   } catch (error: any) {
     console.error('Get node edges error:', error);
     return res.status(500).json({

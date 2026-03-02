@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * Integration Test: Neo4j Data Integrity
- * Verifies data consistency in Neo4j after import
+ * Integration Test: Local Data Integrity
+ * Verifies data consistency in local storage after import
  */
 
 async function run() {
-  console.log('→ Testing Neo4j data integrity...');
+  console.log('→ Testing local data integrity...');
   console.log('  ⊘ Skipped (test not yet implemented)');
 }
 

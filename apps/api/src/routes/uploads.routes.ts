@@ -24,6 +24,8 @@ import {
   UploadSessionRepository,
 } from '../modules/uploads/infrastructure/UploadSessionRepository';
 import { UploadSession, UploadSessionSpec } from '../modules/uploads/domain/UploadSession';
+import { Job } from '../modules/jobs/domain/Job';
+import { SQLiteJobRepository } from '../modules/jobs/infrastructure/JobRepository';
 import { ChunkAssemblyService } from '../modules/uploads/application/ChunkAssemblyService';
 import {
   getProgressBroadcaster,
@@ -32,7 +34,7 @@ import {
 import Database from 'better-sqlite3';
 import busboy from 'busboy';
 import { createWriteStream } from 'fs';
-import { mkdir, statfs } from 'fs/promises';
+import { mkdir, statfs, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
@@ -274,7 +276,9 @@ export function createUploadRoutes(authService: AuthService): Router {
         }
 
         console.log(`📦 CHUNK UPLOAD REQUEST: ${sessionId} / chunk ${chunkIdx}`);
-        console.log(`   Headers: content-type=${req.headers['content-type']}, length=${req.headers['content-length']}`);
+        console.log(
+          `   Headers: content-type=${req.headers['content-type']}, length=${req.headers['content-length']}`
+        );
 
         // Get database client
         const db = await getDbClient(req);
@@ -322,12 +326,14 @@ export function createUploadRoutes(authService: AuthService): Router {
         try {
           const stats = await statfs(session.chunksPath);
           const availableBytes = stats.bavail * stats.bsize;
-          const remainingFileSize = session.fileSize - (chunkIdx * session.chunkSize);
+          const remainingFileSize = session.fileSize - chunkIdx * session.chunkSize;
 
           if (availableBytes < remainingFileSize * 1.1) {
             const availableMB = Math.round(availableBytes / 1024 / 1024);
             const neededMB = Math.round(remainingFileSize / 1024 / 1024);
-            throw new Error(`Insufficient disk space: ${availableMB}MB available, need ~${neededMB}MB`);
+            throw new Error(
+              `Insufficient disk space: ${availableMB}MB available, need ~${neededMB}MB`
+            );
           }
         } catch (err: any) {
           if (err.message.includes('Insufficient disk space')) throw err;
@@ -337,24 +343,29 @@ export function createUploadRoutes(authService: AuthService): Router {
 
         // Write chunk to disk
         const chunkPath = join(session.chunksPath, `chunk_${chunkIdx}`);
-        const writeStream = createWriteStream(chunkPath);
+        // In test and JSON-body middleware contexts, binary payload may already be buffered on req.body.
+        if (Buffer.isBuffer(req.body) || req.body instanceof Uint8Array) {
+          await writeFile(chunkPath, Buffer.from(req.body));
+        } else {
+          const writeStream = createWriteStream(chunkPath);
 
-        // Pipe request body to file
-        await new Promise<void>((resolve, reject) => {
-          req.pipe(writeStream);
-          writeStream.on('finish', () => resolve());
-          writeStream.on('error', (error: NodeJS.ErrnoException) => {
-            console.error('[ChunkUpload] Stream write failed:', {
-              code: error.code,
-              syscall: error.syscall,
-              message: error.message,
-              sessionId,
-              chunkIndex: chunkIdx,
-              chunkPath,
+          // Fallback for true streaming uploads
+          await new Promise<void>((resolve, reject) => {
+            req.pipe(writeStream);
+            writeStream.on('finish', () => resolve());
+            writeStream.on('error', (error: NodeJS.ErrnoException) => {
+              console.error('[ChunkUpload] Stream write failed:', {
+                code: error.code,
+                syscall: error.syscall,
+                message: error.message,
+                sessionId,
+                chunkIndex: chunkIdx,
+                chunkPath,
+              });
+              reject(error);
             });
-            reject(error);
           });
-        });
+        }
 
         // Record chunk atomically (race-condition safe for concurrent uploads)
         // This uses SQLite json_set() to merge the chunk into chunks_received
@@ -414,13 +425,6 @@ export function createUploadRoutes(authService: AuthService): Router {
 
             try {
               // Import Job domain model and repository
-              const { Job } = require('../modules/jobs/domain/Job');
-              const {
-                SQLiteJobRepository,
-              } = require('../modules/jobs/infrastructure/JobRepository');
-
-              // Get DB client for test database (using getDbClient with req)
-              const { getDbClient } = require('../utils/get-db-client');
               const dbClient = await getDbClient(req);
 
               // Access underlying SQLite database from wrapper
@@ -430,6 +434,7 @@ export function createUploadRoutes(authService: AuthService): Router {
               const jobRepo = new SQLiteJobRepository(testDb);
 
               // Create minimal job record (satisfies FK constraint)
+              const modeTestContext = testDbPath ? { dbPath: testDbPath } : undefined;
               const testJob = Job.create({
                 accountId,
                 createdBy: userId,
@@ -439,14 +444,11 @@ export function createUploadRoutes(authService: AuthService): Router {
                     {
                       fileName: session.fileName,
                       fileSize: session.fileSize,
-                      mimeType: session.mimeType,
+                      mimeType: session.mimeType ?? 'application/octet-stream',
                       filePath: `test-mode-${sessionId}`, // Placeholder path
                     },
                   ],
-                  testContext: {
-                    testDbPath: testDbPath,
-                    skipProcessing: true, // Don't let worker pool pick this up
-                  },
+                  ...(modeTestContext ? { testContext: modeTestContext } : {}),
                 },
               });
 
@@ -476,9 +478,7 @@ export function createUploadRoutes(authService: AuthService): Router {
               const result = await assemblyService.triggerAssembly(sessionId, accountId);
 
               if (result.success) {
-                console.log(
-                  `✅ Assembly completed: ${result.filePath} (${result.fileSize} bytes)`
-                );
+                console.log(`✅ Assembly completed: ${result.filePath} (${result.fileSize} bytes)`);
 
                 // PHASE 4 IMPLEMENTATION: Trigger import job processing
                 try {
@@ -832,11 +832,6 @@ async function triggerImportJobFromAssembledFile(
     throw new Error(`Session not found: ${session.id}`);
   }
 
-  // Import required modules
-  const { Job } = require('../modules/jobs/domain/Job');
-  const { JobRepository } = require('../modules/jobs/infrastructure/JobRepository');
-  const { SQLiteJobRepository } = require('../modules/jobs/infrastructure/JobRepository');
-
   // Create job repository
   const jobRepo = new SQLiteJobRepository(db);
 
@@ -914,18 +909,18 @@ async function triggerImportJobFromAssembledFile(
         {
           fileName: freshSession.fileName,
           fileSize: fileSize,
-          mimeType: freshSession.mimeType,
+          mimeType: freshSession.mimeType ?? 'application/octet-stream',
           filePath: assembledFilePath, // ✅ ImportWorker will read from this path
         },
       ],
       importOptions,
       testContext, // ✅ FIX: Worker pool will use this to access correct test database
-    },
-    metadata: {
-      source: 'chunked-upload',
-      uploadSessionId: freshSession.id,
-      chunkCount: freshSession.totalChunks,
-      uploadedAt: new Date().toISOString(),
+      metadata: {
+        source: 'chunked-upload',
+        uploadSessionId: freshSession.id,
+        chunkCount: freshSession.totalChunks,
+        uploadedAt: new Date().toISOString(),
+      },
     },
   });
 

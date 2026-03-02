@@ -1,20 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Upload, FileText, Loader2, CheckCircle } from 'lucide-react';
+import { X, Upload, FileText, Loader2, CheckCircle, Link } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/env.config';
+import { URLInputZone } from '@/components/ingest/URLInputZone';
+import { URLIngestResponse } from '@/lib/api-client';
 
 interface UploadModalProps {
   onClose: () => void;
 }
 
+type UploadMode = 'files' | 'url';
 type UploadStage = 'upload' | 'configuration' | 'processing' | 'confirm';
 
 export function UploadModal({ onClose }: UploadModalProps) {
+  const [mode, setMode] = useState<UploadMode>('files');
   const [files, setFiles] = useState<File[]>([]);
   const [currentStage, setCurrentStage] = useState<UploadStage>('upload');
   const [uploading, setUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
+  const [urlResult, setUrlResult] = useState<URLIngestResponse | null>(null);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -66,6 +71,48 @@ export function UploadModal({ onClose }: UploadModalProps) {
     }
   };
 
+  const handleURLSuccess = (response: URLIngestResponse) => {
+    setUrlResult(response);
+    setUploadComplete(true);
+    setCurrentStage('confirm');
+    setTimeout(() => {
+      onClose();
+      window.location.reload(); // Refresh to show new sources
+    }, 2000);
+  };
+
+  const handleModeChange = (newMode: UploadMode) => {
+    // Only allow mode change if not in the middle of processing
+    if (currentStage === 'upload' || currentStage === 'configuration') {
+      setMode(newMode);
+      // Reset state when switching modes
+      setFiles([]);
+      setCurrentStage('upload');
+      setUrlResult(null);
+    }
+  };
+
+  // Get stage indicator steps based on mode
+  const getStages = () => {
+    if (mode === 'url') {
+      return ['input', 'processing', 'confirm'];
+    }
+    return ['upload', 'configuration', 'processing', 'confirm'];
+  };
+
+  const stages = getStages();
+
+  // Map current stage to URL mode stages for indicator
+  const getDisplayStage = () => {
+    if (mode === 'url') {
+      if (currentStage === 'upload') return 'input';
+      return currentStage;
+    }
+    return currentStage;
+  };
+
+  const displayStage = getDisplayStage();
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div
@@ -81,7 +128,7 @@ export function UploadModal({ onClose }: UploadModalProps) {
             <div className="flex items-center gap-3">
               <Upload className="w-6 h-6 text-purple-500" />
               <h2 id="upload-modal-title" className="text-xl font-bold">
-                Upload Sources
+                Add Sources
               </h2>
             </div>
             <button
@@ -93,13 +140,43 @@ export function UploadModal({ onClose }: UploadModalProps) {
             </button>
           </div>
 
+          {/* Mode Tabs */}
+          {(currentStage === 'upload' || currentStage === 'configuration') && (
+            <div className="px-6 pt-4 border-b border-slate-800">
+              <div className="flex gap-1">
+                <button
+                  onClick={() => handleModeChange('files')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
+                    mode === 'files'
+                      ? 'bg-slate-800 text-white border-b-2 border-purple-500'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  Files
+                </button>
+                <button
+                  onClick={() => handleModeChange('url')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
+                    mode === 'url'
+                      ? 'bg-slate-800 text-white border-b-2 border-purple-500'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                  }`}
+                >
+                  <Link className="w-4 h-4" />
+                  URL
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Stage Indicator */}
           <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/30">
             <div className="flex items-center justify-between max-w-2xl mx-auto">
-              {['upload', 'configuration', 'processing', 'confirm'].map((stage, index, stages) => {
-                const isActive = currentStage === stage;
-                const isCompleted = stages.indexOf(currentStage) > index;
-                const isAccessible = stages.indexOf(currentStage) >= index;
+              {stages.map((stage, index) => {
+                const isActive = displayStage === stage;
+                const isCompleted = stages.indexOf(displayStage) > index;
+                const isAccessible = stages.indexOf(displayStage) >= index;
 
                 return (
                   <div key={stage} className="flex items-center flex-1">
@@ -135,8 +212,8 @@ export function UploadModal({ onClose }: UploadModalProps) {
           </div>
         </div>
 
-        {/* Config Panel - Only show in configuration stage */}
-        {currentStage === 'configuration' && (
+        {/* Config Panel - Only show in configuration stage for file mode */}
+        {mode === 'files' && currentStage === 'configuration' && (
           <div className="p-6 border-b border-slate-800 bg-slate-950/50 space-y-4 flex-shrink-0">
             <h3 className="text-sm font-semibold text-slate-300 mb-3">Import Options</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -173,15 +250,33 @@ export function UploadModal({ onClose }: UploadModalProps) {
           {currentStage === 'confirm' ? (
             <div className="flex flex-col items-center justify-center py-12">
               <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Upload Complete!</h3>
-              <p className="text-slate-400">Your sources are being processed...</p>
+              <h3 className="text-xl font-semibold mb-2">
+                {mode === 'url' ? 'URL Ingested!' : 'Upload Complete!'}
+              </h3>
+              <p className="text-slate-400">
+                {urlResult?.duplicate
+                  ? 'Duplicate content detected - linked to existing source.'
+                  : 'Your sources are being processed...'}
+              </p>
+              {urlResult?.metadata?.title && (
+                <p className="text-slate-300 mt-2 font-medium">{urlResult.metadata.title}</p>
+              )}
             </div>
           ) : currentStage === 'processing' ? (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="w-16 h-16 text-purple-500 animate-spin mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Processing Upload...</h3>
-              <p className="text-slate-400">Please wait while we upload your files...</p>
+              <h3 className="text-xl font-semibold mb-2">
+                {mode === 'url' ? 'Fetching Content...' : 'Processing Upload...'}
+              </h3>
+              <p className="text-slate-400">
+                {mode === 'url'
+                  ? 'Extracting content from URL...'
+                  : 'Please wait while we upload your files...'}
+              </p>
             </div>
+          ) : mode === 'url' ? (
+            // URL Input Mode
+            <URLInputZone onSuccess={handleURLSuccess} />
           ) : currentStage === 'configuration' ? (
             <div className="space-y-4">
               <div className="text-center py-8">
@@ -279,7 +374,9 @@ export function UploadModal({ onClose }: UploadModalProps) {
         {/* Footer */}
         <div className="p-6 border-t border-slate-800 flex items-center justify-between flex-shrink-0">
           <p className="text-sm text-slate-400">
-            {files.length} file{files.length !== 1 ? 's' : ''} selected
+            {mode === 'url'
+              ? 'Enter a URL to extract content'
+              : `${files.length} file${files.length !== 1 ? 's' : ''} selected`}
           </p>
           <div className="flex gap-3">
             <button
@@ -288,7 +385,7 @@ export function UploadModal({ onClose }: UploadModalProps) {
             >
               {uploadComplete ? 'Close' : 'Cancel'}
             </button>
-            {currentStage === 'upload' && (
+            {mode === 'files' && currentStage === 'upload' && (
               <button
                 onClick={handleContinueToConfig}
                 disabled={files.length === 0}
@@ -297,7 +394,7 @@ export function UploadModal({ onClose }: UploadModalProps) {
                 Continue to Configuration
               </button>
             )}
-            {currentStage === 'configuration' && (
+            {mode === 'files' && currentStage === 'configuration' && (
               <button
                 onClick={handleUpload}
                 disabled={files.length === 0 || uploading}

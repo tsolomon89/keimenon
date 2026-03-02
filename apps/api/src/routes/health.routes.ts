@@ -7,21 +7,13 @@ const router = Router();
  * Returns OK if the server is running, plus database connection status
  */
 router.get('/', async (req: Request, res: Response) => {
-  const storageMode = process.env.STORAGE_MODE || 'local';
   let dbStatus = 'unknown';
 
   try {
     if (global.dbClient) {
       // Try a simple query to verify database is responsive
-      if (storageMode === 'local') {
-        // SQLite test
-        await global.dbClient.execute('SELECT 1');
-        dbStatus = 'connected';
-      } else {
-        // Neo4j test
-        await global.dbClient.execute('RETURN 1');
-        dbStatus = 'connected';
-      }
+      await global.dbClient.execute('SELECT 1');
+      dbStatus = 'connected';
     }
   } catch (error) {
     dbStatus = 'disconnected';
@@ -32,7 +24,7 @@ router.get('/', async (req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     service: 'keimenon-api',
     version: '0.1.0',
-    storageMode,
+    storageMode: 'local',
     dependencies: {
       database: dbStatus,
     },
@@ -73,12 +65,7 @@ router.get('/modules', async (req: Request, res: Response) => {
   // Test database connectivity
   try {
     if (global.dbClient) {
-      const storageMode = process.env.STORAGE_MODE || 'local';
-      if (storageMode === 'local') {
-        await global.dbClient.execute('SELECT 1');
-      } else {
-        await global.dbClient.execute('RETURN 1');
-      }
+      await global.dbClient.execute('SELECT 1');
       modules.database.responsive = true;
     } else {
       modules.database.error = 'Database client not initialized';

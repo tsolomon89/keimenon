@@ -13,7 +13,7 @@
  * - Error handling
  */
 
-import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { Job } from '../domain/Job';
@@ -74,6 +74,11 @@ afterAll(async () => {
   if (db) {
     db.close();
   }
+});
+
+beforeEach(() => {
+  db.prepare('DELETE FROM job_events').run();
+  db.prepare('DELETE FROM jobs').run();
 });
 
 // Helper: Create test job

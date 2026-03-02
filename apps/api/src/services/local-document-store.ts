@@ -19,7 +19,7 @@ export interface LocalStoreConfig {
 
 /**
  * Local-first document storage service
- * Stores full content on local filesystem, returns pointers for Neo4j
+ * Stores full content on local filesystem and returns local storage pointers.
  */
 export class LocalDocumentStore {
   private basePath: string;
@@ -235,7 +235,7 @@ export class LocalDocumentStore {
   }
 
   /**
-   * Get storage location for Neo4j
+   * Get storage location identifier.
    */
   getStorageLocation(metadata: DocumentMetadata): string {
     return `local://${metadata.storagePath}`;

@@ -273,6 +273,10 @@ export class UploadSession {
     }
 
     // Check if expired
+    if (this._status === 'expired') {
+      throw new Error('Cannot record chunk: session has expired');
+    }
+
     if (this.isExpired()) {
       throw new Error('Cannot record chunk: session has expired');
     }

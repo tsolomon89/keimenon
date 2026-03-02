@@ -1,20 +1,21 @@
 # Spec: Chunked Upload Protocol
 
-> **Goal**: Reliable upload of large assets (>2GB) over unstable networks.
+> Goal: reliable upload of large assets over unstable networks.
 
-## Protocol Mechanics
-1.  **Initiate (`POST /initiate`)**: Allocates session. Returns `session_id` and `total_chunks`.
-2.  **Upload (`POST /chunks/:index`)**: Client sends binary chunks (Default: 10MB).
-    - **Concurrency**: Parallel uploads allowed (Client capped at ~6).
-    - **Idempotency**: Re-uploading the same chunk is safe (last write wins).
-3.  **Assembly**: Automatically triggered when `chunks_received == total_chunks`.
+## Protocol
 
-## Progress Tracking (SSE)
-- **Endpoint**: `GET /:sessionId/progress`
-- **Format**: Server-Sent Events (SSE).
-- **Events**: `progress`, `completed`, `failed`, `expired`.
+1. `POST /initiate`: allocate session and return `session_id` + `total_chunks`.
+2. `POST /chunks/:index`: upload binary chunk (default chunk size: 10MB).
+3. Assembly triggers when `chunks_received == total_chunks`.
 
-## Lifecycle & Cleanup
-- **Expiry**: Unfinished sessions expire after 4 hours.
-- **Garbage Collection**: Cron job deletes orphaned chunks and expired sessions.
-- **Isolation**: Strictly enforced by `tenant_id` (users cannot append chunks to another tenant's session).
+## Behavior
+
+- Parallel chunk uploads are allowed.
+- Re-uploading a chunk is idempotent (last write wins).
+- Server emits status events (`progress`, `completed`, `failed`, `expired`).
+
+## Lifecycle
+
+- Unfinished sessions expire after 4 hours.
+- Cleanup worker removes orphaned/expired chunks.
+- Isolation is enforced by `account_id`.

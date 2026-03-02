@@ -2,7 +2,14 @@ import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 import * as React from 'react';
-import { MockAuthContext, MockOperatingContext, MockShellContext } from './test-utils';
+import {
+  MockAuthContext,
+  MockOperatingContext,
+  MockShellContext,
+  mockAuthContext,
+  mockOperatingContext,
+  mockShellContext,
+} from './test-utils';
 
 // Cleanup after each test
 afterEach(() => {
@@ -13,30 +20,22 @@ afterEach(() => {
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => {
     const context = React.useContext(MockAuthContext);
-    if (!context) {
-      throw new Error('useAuth must be used within a ProvidersWrapper');
-    }
-    return context;
+    return context ?? mockAuthContext({ user: null, token: null });
   },
+  getToken: () => localStorage.getItem('auth_token') || 'mock-token',
 }));
 
 vi.mock('@/contexts/OperatingContext', () => ({
   useOperating: () => {
     const context = React.useContext(MockOperatingContext);
-    if (!context) {
-      throw new Error('useOperating must be used within a ProvidersWrapper');
-    }
-    return context;
+    return context ?? mockOperatingContext();
   },
 }));
 
 vi.mock('@/contexts/ShellContext', () => ({
   useShell: () => {
     const context = React.useContext(MockShellContext);
-    if (!context) {
-      throw new Error('useShell must be used within a ProvidersWrapper');
-    }
-    return context;
+    return context ?? mockShellContext();
   },
 }));
 
@@ -128,6 +127,28 @@ global.ResizeObserver = class ResizeObserver {
   observe() {}
   unobserve() {}
 } as any;
+
+// Mock react-window for virtualized list testing
+// This renders a simplified version that actually shows items
+vi.mock('react-window', () => ({
+  List: ({ rowCount, rowComponent: RowComponent, rowProps, style }: any) => {
+    // Render first 10 items (or all if fewer) for testing
+    const itemsToRender = Math.min(rowCount, 10);
+    const items = [];
+    for (let i = 0; i < itemsToRender; i++) {
+      items.push(
+        React.createElement(RowComponent, {
+          key: i,
+          index: i,
+          style: { height: 60 },
+          ariaAttributes: { 'aria-posinset': i + 1, 'aria-setsize': rowCount, role: 'listitem' },
+          ...rowProps,
+        })
+      );
+    }
+    return React.createElement('div', { 'data-testid': 'virtual-list', style }, items);
+  },
+}));
 
 // Suppress console errors in tests (optional - comment out if debugging)
 // global.console.error = vi.fn();

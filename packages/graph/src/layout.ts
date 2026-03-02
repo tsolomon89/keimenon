@@ -16,6 +16,16 @@ export interface GraphNode extends SimulationNodeDatum {
   y?: number;
   fx?: number | null;
   fy?: number | null;
+  // Optional label properties (spread from KeimenonNode.data.metadata)
+  label?: string;
+  title?: string;
+  name?: string;
+  role?: string;
+  language?: string;
+  text?: string;
+  lemma?: string;
+  claim_text?: string;
+  normalized_text?: string;
 }
 
 export interface GraphEdge extends SimulationLinkDatum<GraphNode> {
@@ -42,12 +52,7 @@ export function createSimulation(
   edges: GraphEdge[],
   config: LayoutConfig
 ): Simulation<GraphNode, GraphEdge> {
-  const {
-    width,
-    height,
-    strength = -300,
-    distance = 100,
-  } = config;
+  const { width, height, strength = -300, distance = 100 } = config;
 
   return forceSimulation(nodes)
     .force(
@@ -73,12 +78,7 @@ export function calculateLayout(
   edges: GraphEdge[],
   config: LayoutConfig
 ): { nodes: GraphNode[]; edges: GraphEdge[] } {
-  const {
-    width,
-    height,
-    seed = 42,
-    iterations = 300,
-  } = config;
+  const { width, height, seed = 42, iterations = 300 } = config;
 
   // Seed random for reproducibility
   const random = seededRandom(seed);
@@ -124,6 +124,11 @@ export function getNodeRadius(kind: string): number {
 
 /**
  * Seeded random number generator for reproducible layouts
+ *
+ * Note (Bug #37): Uses a simple Linear Congruential Generator (LCG).
+ * This is intentional - we need reproducibility, not cryptographic quality.
+ * For graph layout purposes, this provides sufficient randomness while
+ * ensuring the same seed always produces the same initial positions.
  */
 function seededRandom(seed: number): () => number {
   let s = seed;
@@ -146,8 +151,10 @@ export function updateLayout(
   const simulation = createSimulation(nodes, edges, {
     width: 800, // Default fallback
     height: 600,
-    ...config
-  } as LayoutConfig).alpha(config.alpha ?? 0.3).stop();
+    ...config,
+  } as LayoutConfig)
+    .alpha(config.alpha ?? 0.3)
+    .stop();
 
   // Run for fewer iterations (smoother animation)
   for (let i = 0; i < 50; i++) {

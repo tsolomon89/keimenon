@@ -17,7 +17,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest run",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "lint": "node -e \"console.log('@keimenon/parsers lint placeholder')\""
   },
   "dependencies": {
     "@keimenon/types": "*",

@@ -2,34 +2,39 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  build:
+  quality-gates:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x]
-    
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm install
-      
-    - name: Run Lint
-      run: npm run lint
-      
-    - name: Run Test
-      run: npm run test
+      - uses: actions/checkout@v4
 
-    - name: Run Build (Verification)
-      run: npm run build
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Lint
+        run: npm run lint
+
+      - name: Run Type Check
+        run: npm run type-check
+
+      - name: Run Test
+        run: npm run test
+
+      - name: Run Build
+        run: npm run build
+
+      - name: Run Auth Test Suite
+        run: npm run test:auth
+
+      - name: Run Local Migration Dry Run
+        run: npm run migrate:to-local:dry-run

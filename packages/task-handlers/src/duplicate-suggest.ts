@@ -60,9 +60,10 @@ interface SourcePair {
  *
  * Proposes duplicate clusters without auto-merging.
  */
-export class DuplicateSuggestHandler
-  implements TaskHandler<DuplicateSuggestInput, DuplicateSuggestOutput>
-{
+export class DuplicateSuggestHandler implements TaskHandler<
+  DuplicateSuggestInput,
+  DuplicateSuggestOutput
+> {
   readonly type = 'DUPLICATE_SUGGEST' as const;
   readonly name = 'Duplicate Suggester';
   readonly description = 'Propose duplicate clusters with similarity scores';
@@ -214,10 +215,7 @@ export class DuplicateSuggestHandler
 
       if (signal.aborted) throw new Error('Task cancelled');
 
-      const candidatePairs = this.findCandidatePairs(
-        sourceMap,
-        input.thresholdPolicy.algorithm
-      );
+      const candidatePairs = this.findCandidatePairs(sourceMap, input.thresholdPolicy.algorithm);
 
       if (candidatePairs.length === 0) {
         // No candidates found, return empty result
@@ -283,19 +281,10 @@ export class DuplicateSuggestHandler
 
       // Optionally create DuplicateCluster nodes
       if (input.createNodes !== false && clusters.length > 0) {
-        await this.createClusterNodes(
-          clusters,
-          input,
-          graph,
-          task
-        );
+        await this.createClusterNodes(clusters, input, graph, task);
 
         // Create CANDIDATE_DUP edges
-        await this.createCandidateEdges(
-          classifiedPairs,
-          graph,
-          task
-        );
+        await this.createCandidateEdges(classifiedPairs, graph, task);
       }
 
       this.emitProgress(events, task.id, 100, 'Duplicate analysis complete!');
@@ -336,7 +325,7 @@ export class DuplicateSuggestHandler
       case 'group':
         return graph.listSources(scopeId, accountId, { limit: 1000 });
 
-      case 'board':
+      case 'board': {
         // Get all groups in the board, then get all sources
         const groups = await graph.listGroups(scopeId, accountId);
         const allSources: any[] = [];
@@ -345,6 +334,7 @@ export class DuplicateSuggestHandler
           allSources.push(...sources);
         }
         return allSources;
+      }
 
       case 'import_batch':
         // Get sources from import batch
@@ -366,7 +356,7 @@ export class DuplicateSuggestHandler
     let hash = 0;
     for (let i = 0; i < normalized.length; i++) {
       const char = normalized.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32bit integer
     }
     return hash.toString(16);
@@ -405,8 +395,9 @@ export class DuplicateSuggestHandler
           isCandidate = similarity > 0.3; // Low threshold for candidates
         } else {
           // Default: length similarity as quick filter
-          const lenRatio = Math.min(a.content.length, b.content.length) /
-                          Math.max(a.content.length, b.content.length);
+          const lenRatio =
+            Math.min(a.content.length, b.content.length) /
+            Math.max(a.content.length, b.content.length);
           isCandidate = lenRatio > 0.5;
         }
 
@@ -431,7 +422,7 @@ export class DuplicateSuggestHandler
     const tokensA = new Set(textA.toLowerCase().split(/\s+/));
     const tokensB = new Set(textB.toLowerCase().split(/\s+/));
 
-    const intersection = new Set([...tokensA].filter(x => tokensB.has(x)));
+    const intersection = new Set([...tokensA].filter((x) => tokensB.has(x)));
     const union = new Set([...tokensA, ...tokensB]);
 
     return intersection.size / union.size;
@@ -449,7 +440,7 @@ export class DuplicateSuggestHandler
 
     if (llm && llm.isAvailable()) {
       // Use LLM for classification
-      const textPairs = pairs.map(p => [p.contentA, p.contentB] as [string, string]);
+      const textPairs = pairs.map((p) => [p.contentA, p.contentB] as [string, string]);
       const results = await llm.classifyDupes(textPairs);
 
       return pairs.map((pair, i) => ({
@@ -459,7 +450,7 @@ export class DuplicateSuggestHandler
       }));
     } else {
       // Fallback to Jaccard similarity
-      return pairs.map(pair => ({
+      return pairs.map((pair) => ({
         idA: pair.idA,
         idB: pair.idB,
         similarity: this.jaccardSimilarity(pair.contentA, pair.contentB),
@@ -475,7 +466,7 @@ export class DuplicateSuggestHandler
     threshold: number
   ): DuplicateCluster[] {
     // Filter by threshold
-    const validPairs = pairs.filter(p => p.similarity >= threshold);
+    const validPairs = pairs.filter((p) => p.similarity >= threshold);
 
     if (validPairs.length === 0) return [];
 
@@ -509,8 +500,9 @@ export class DuplicateSuggestHandler
         let maxSim = 1.0;
         for (const member of component) {
           const edge = validPairs.find(
-            p => (p.idA === current && p.idB === member.id) ||
-                 (p.idB === current && p.idA === member.id)
+            (p) =>
+              (p.idA === current && p.idB === member.id) ||
+              (p.idB === current && p.idA === member.id)
           );
           if (edge) maxSim = Math.max(maxSim, edge.similarity);
         }
@@ -540,13 +532,12 @@ export class DuplicateSuggestHandler
           similarities.set(member.id, count > 0 ? totalSim / count : 0);
         }
 
-        const canonicalId = [...similarities.entries()]
-          .sort((a, b) => b[1] - a[1])[0][0];
+        const canonicalId = [...similarities.entries()].sort((a, b) => b[1] - a[1])[0][0];
 
         clusters.push({
           id: uuidv4(),
           canonical_id: canonicalId,
-          members: component.map(m => ({
+          members: component.map((m) => ({
             id: m.id,
             similarity: m.id === canonicalId ? 1.0 : m.similarity,
           })),
@@ -569,8 +560,8 @@ export class DuplicateSuggestHandler
     const now = Date.now();
 
     for (const cluster of clusters) {
-      const avgSimilarity = cluster.members.reduce((sum, m) => sum + m.similarity, 0) /
-                           cluster.members.length;
+      const avgSimilarity =
+        cluster.members.reduce((sum, m) => sum + m.similarity, 0) / cluster.members.length;
 
       const node: DuplicateClusterNode = {
         id: cluster.id,
@@ -604,8 +595,8 @@ export class DuplicateSuggestHandler
     task: any
   ): Promise<void> {
     const edges = pairs
-      .filter(p => p.similarity >= 0.5) // Only create edges for significant similarity
-      .map(pair => ({
+      .filter((p) => p.similarity >= 0.5) // Only create edges for significant similarity
+      .map((pair) => ({
         source_id: pair.idA,
         target_id: pair.idB,
         kind: 'CANDIDATE_DUP' as const,
@@ -626,12 +617,7 @@ export class DuplicateSuggestHandler
   /**
    * Emit progress event
    */
-  private emitProgress(
-    events: any,
-    taskId: string,
-    percent: number,
-    message: string
-  ): void {
+  private emitProgress(events: any, taskId: string, percent: number, message: string): void {
     events.emit({
       type: 'task:progress',
       taskId,

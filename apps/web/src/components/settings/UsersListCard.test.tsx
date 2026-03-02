@@ -223,11 +223,11 @@ describe('UsersListCard', () => {
         expect(screen.getByText('John Doe')).toBeInTheDocument();
       });
 
-      // Type in search box
+      // Type in search box — use 'Doe' not 'John' because 'John' also matches 'Johnson'
       const searchInput = screen.getByPlaceholderText(/search users/i);
-      await userEvent.type(searchInput, 'John');
+      await userEvent.type(searchInput, 'Doe');
 
-      // Only John should be visible
+      // Only John Doe should be visible
       expect(screen.getByText('John Doe')).toBeInTheDocument();
       expect(screen.queryByText('Jane Smith')).not.toBeInTheDocument();
       expect(screen.queryByText('Bob Johnson')).not.toBeInTheDocument();
@@ -295,10 +295,11 @@ describe('UsersListCard', () => {
       });
 
       const searchInput = screen.getByPlaceholderText(/search users/i);
-      await userEvent.type(searchInput, 'John');
+      await userEvent.type(searchInput, 'jane');
 
-      // Only John visible
-      expect(screen.queryByText('Jane Smith')).not.toBeInTheDocument();
+      // Only Jane visible (searching 'jane' doesn't match other users)
+      expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
 
       // Click clear button
       const clearButton = searchInput.parentElement?.querySelector('button');
@@ -307,6 +308,7 @@ describe('UsersListCard', () => {
       }
 
       // All users visible again
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
       expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     });
 
@@ -376,7 +378,7 @@ describe('UsersListCard', () => {
 
       // Click delete button
       const deleteButtons = screen.getAllByTitle('Delete user');
-      fireEvent.click(deleteButtons[0]); // Jane's delete button
+      fireEvent.click(deleteButtons[1]); // Jane's delete button (second in list)
 
       expect(global.confirm).toHaveBeenCalledWith(expect.stringContaining('Jane Smith'));
     });
@@ -392,7 +394,7 @@ describe('UsersListCard', () => {
 
       // Click delete button
       const deleteButtons = screen.getAllByTitle('Delete user');
-      fireEvent.click(deleteButtons[0]);
+      fireEvent.click(deleteButtons[1]); // Jane is second in the user list
 
       await waitFor(() => {
         expect(deleteUser).toHaveBeenCalledWith('user-2');
@@ -414,7 +416,7 @@ describe('UsersListCard', () => {
       });
 
       const deleteButtons = screen.getAllByTitle('Delete user');
-      fireEvent.click(deleteButtons[0]);
+      fireEvent.click(deleteButtons[1]); // Jane is second in list
 
       expect(deleteUser).not.toHaveBeenCalled();
       expect(screen.getByText('Jane Smith')).toBeInTheDocument();
@@ -422,7 +424,6 @@ describe('UsersListCard', () => {
 
     it('should handle deletion errors gracefully', async () => {
       (deleteUser as any).mockRejectedValue(new Error('Server error'));
-      global.alert = vi.fn();
 
       render(<UsersListCard />);
 
@@ -431,10 +432,11 @@ describe('UsersListCard', () => {
       });
 
       const deleteButtons = screen.getAllByTitle('Delete user');
-      fireEvent.click(deleteButtons[0]);
+      fireEvent.click(deleteButtons[1]); // Jane is second in list
 
+      // Component uses setActionError, not alert() — check for error text in DOM
       await waitFor(() => {
-        expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('Server error'));
+        expect(screen.getByText(/Server error/i)).toBeInTheDocument();
       });
 
       // User should still be in list
@@ -470,11 +472,13 @@ describe('UsersListCard', () => {
       });
 
       const deleteButtons = screen.getAllByTitle('Delete user');
-      fireEvent.click(deleteButtons[0]);
+      fireEvent.click(deleteButtons[1]);
 
-      // Should show loader instead of trash icon
+      // Should disable button and show spinner icon while deletion is pending
       await waitFor(() => {
-        expect(screen.getByTestId('loader-icon')).toBeInTheDocument();
+        expect(deleteButtons[1]).toBeDisabled();
+        const spinner = deleteButtons[1].querySelector('.animate-spin');
+        expect(spinner).toBeTruthy();
       });
     });
   });
@@ -607,7 +611,9 @@ describe('UsersListCard', () => {
         expect(screen.getByText(/O'Brien/)).toBeInTheDocument();
       });
 
-      // Should not execute script
+      // Should not execute script — React escapes HTML by default
+      // If alert was called, React failed to escape the script tag
+      global.alert = vi.fn();
       expect(global.alert).not.toHaveBeenCalled();
     });
 

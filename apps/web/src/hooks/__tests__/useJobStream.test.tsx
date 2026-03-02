@@ -13,7 +13,7 @@ const jest = vi;
 // Mock EventSource
 class MockEventSource {
   url: string;
-  listeners: Record<string, Function[]> = {};
+  listeners: Record<string, Array<(event: any) => void>> = {};
   readyState: number = 0; // 0: CONNECTING, 1: OPEN, 2: CLOSED
   static instances: MockEventSource[] = [];
 
@@ -31,12 +31,12 @@ class MockEventSource {
     }, 0);
   }
 
-  addEventListener(event: string, callback: Function) {
+  addEventListener(event: string, callback: (event: any) => void) {
     if (!this.listeners[event]) this.listeners[event] = [];
     this.listeners[event].push(callback);
   }
 
-  removeEventListener(event: string, callback: Function) {
+  removeEventListener(event: string, callback: (event: any) => void) {
     if (!this.listeners[event]) return;
     this.listeners[event] = this.listeners[event].filter((cb) => cb !== callback);
   }
@@ -104,7 +104,7 @@ describe('useJobStream', () => {
     });
 
     expect((global as any).lastEventSource).toBeDefined();
-    expect((global as any).lastEventSource.url).toContain('/api/v1/jobs/stream');
+    expect((global as any).lastEventSource.url).toContain('/api/v1/stream/jobs');
     expect(result.current.connected).toBe(false); // Not connected until heartbeat
   });
 

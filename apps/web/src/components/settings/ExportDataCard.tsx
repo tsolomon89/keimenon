@@ -5,9 +5,36 @@ import { Download, Loader2 } from 'lucide-react';
 import { errorCapture } from '@/services/error-capture.service';
 import { API_BASE_URL } from '@/lib/env.config';
 
-export function ExportDataCard() {
+type ExportFormat = 'json' | 'csv' | 'graphml';
+
+interface ExportDataCardProps {
+  exportFormat?: string;
+}
+
+function normalizeExportFormat(format: string | undefined): ExportFormat {
+  if (format === 'csv' || format === 'graphml') {
+    return format;
+  }
+  return 'json';
+}
+
+function getFallbackFilename(format: ExportFormat): string {
+  return `keimenon-export.${format}`;
+}
+
+function parseFilenameFromHeader(contentDisposition: string | null): string | null {
+  if (!contentDisposition) {
+    return null;
+  }
+
+  const match = contentDisposition.match(/filename="?([^"]+)"?/i);
+  return match?.[1] || null;
+}
+
+export function ExportDataCard({ exportFormat }: ExportDataCardProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const resolvedFormat = normalizeExportFormat(exportFormat);
 
   const handleExport = async () => {
     try {
@@ -19,12 +46,15 @@ export function ExportDataCard() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/data/export`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/data/export?format=${encodeURIComponent(resolvedFormat)}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -37,6 +67,7 @@ export function ExportDataCard() {
             metadata: {
               component: 'ExportDataCard',
               endpoint: '/api/v1/data/export',
+              format: resolvedFormat,
               statusCode: response.status,
               errorDetails: errorData,
             },
@@ -51,8 +82,11 @@ export function ExportDataCard() {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
+      const filename =
+        parseFilenameFromHeader(response.headers.get('Content-Disposition')) ||
+        getFallbackFilename(resolvedFormat);
       a.href = url;
-      a.download = 'keimenon-export.json';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
 
@@ -86,8 +120,9 @@ export function ExportDataCard() {
         <div className="flex-1">
           <h3 className="text-sm font-semibold text-slate-200 mb-1">Export Keimenon Data</h3>
           <p className="text-xs text-slate-400">
-            Download a backup of all your Keimenon graph data (nodes and edges) as a JSON file. This
-            export format can be used for your own local backups or transferring data.
+            Download a backup of all your Keimenon graph data (nodes and edges) as a{' '}
+            {resolvedFormat.toUpperCase()} file. This export format can be used for your own local
+            backups or transferring data.
           </p>
         </div>
       </div>
@@ -106,7 +141,7 @@ export function ExportDataCard() {
         className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {isExporting && <Loader2 className="w-4 h-4 animate-spin" />}
-        {isExporting ? 'Exporting Data...' : 'Export Data (JSON)'}
+        {isExporting ? 'Exporting Data...' : `Export Data (${resolvedFormat.toUpperCase()})`}
       </button>
     </div>
   );

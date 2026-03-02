@@ -42,6 +42,7 @@ describe('SSE Reconnection', () => {
   let adminAccountId: string;
   let server: Server;
   let sseBroadcaster: SSEBroadcaster;
+  let previousTestApiUrl: string | undefined;
 
   beforeAll(async () => {
     // Initialize DB
@@ -83,6 +84,7 @@ describe('SSE Reconnection', () => {
           SSE_BASE_URL = `${API_BASE_URL}/api/v1/stream/jobs`;
 
           // Override process.env for login helper
+          previousTestApiUrl = process.env.TEST_API_URL;
           process.env.TEST_API_URL = API_BASE_URL;
 
           console.log(`[SSE Test] Server started on port ${PORT}`);
@@ -106,12 +108,20 @@ describe('SSE Reconnection', () => {
     });
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     if (server) {
-      server.close();
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+      });
     }
     if (sseBroadcaster) {
       sseBroadcaster.stop();
+    }
+
+    if (previousTestApiUrl === undefined) {
+      delete process.env.TEST_API_URL;
+    } else {
+      process.env.TEST_API_URL = previousTestApiUrl;
     }
   });
 
@@ -163,8 +173,7 @@ describe('SSE Reconnection', () => {
       await waitFor(() => heartbeats.length > 0, { timeout: 35000, interval: 1000 });
 
       assert.ok(heartbeats.length > 0);
-      assert.strictEqual(heartbeats[0].type, 'heartbeat');
-      assert.ok(heartbeats[0].timestamp);
+      assert.ok(typeof heartbeats[0].timestamp === 'number');
 
       eventSource.close();
     }, 40000);

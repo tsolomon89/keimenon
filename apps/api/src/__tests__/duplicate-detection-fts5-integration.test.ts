@@ -5,7 +5,7 @@
  * Verifies FTS5 triggers, accuracy vs baseline, and multi-tenant isolation.
  */
 
-import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import * as assert from 'node:assert';
 import Database from 'better-sqlite3';
 import { promises as fs } from 'fs';
@@ -66,7 +66,7 @@ describe('FTS5 Duplicate Detection - Integration Tests', () => {
   // Store original env
   const originalEnv: Record<string, string | undefined> = {};
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     // Create fresh test database
     testDbPath = path.join(__dirname, `test-fts5-integration-${Date.now()}.db`);
     db = new Database(testDbPath);
@@ -74,6 +74,7 @@ describe('FTS5 Duplicate Detection - Integration Tests', () => {
     // Save original environment variables
     const envKeys = [
       'ENABLE_FTS5_DUPLICATE_DETECTION',
+      'ENABLE_LSH_DUPLICATE_DETECTION',
       'DUPLICATE_DETECTION_STRATEGY',
       'DUPLICATE_DETECTION_LOGGING_ENABLED',
     ];
@@ -84,6 +85,7 @@ describe('FTS5 Duplicate Detection - Integration Tests', () => {
 
     // Enable FTS5 and use auto strategy
     process.env.ENABLE_FTS5_DUPLICATE_DETECTION = 'true';
+    process.env.ENABLE_LSH_DUPLICATE_DETECTION = 'false';
     process.env.DUPLICATE_DETECTION_STRATEGY = 'auto';
     process.env.DUPLICATE_DETECTION_LOGGING_ENABLED = 'false'; // Reduce test noise
 
@@ -409,19 +411,33 @@ describe('FTS5 Duplicate Detection - Integration Tests', () => {
         accountId
       );
 
-      // Compare results - PRIMARY GOAL: 100% recall (FTS5 finds all duplicates baseline finds)
-      assert.strictEqual(
-        fts5Result.groups.length,
-        baselineResult.groups.length,
-        'FTS5 and baseline should find same number of duplicate groups'
-      );
+      // Compare results - PRIMARY GOAL: 100% recall (FTS5 finds all duplicate pairs baseline finds)
+      const toPairSet = (
+        groups: Array<{ candidates: Array<{ primary: { id: string }; duplicate: { id: string } }> }>
+      ): Set<string> => {
+        const pairs = new Set<string>();
+        for (const group of groups) {
+          for (const candidate of group.candidates) {
+            const pair = [candidate.primary.id, candidate.duplicate.id].sort().join('::');
+            pairs.add(pair);
+          }
+        }
+        return pairs;
+      };
 
-      // Verify both found duplicates (exact count depends on grouping algorithm)
-      // With current grouping logic, baseline creates 1 group containing both duplicate pairs
-      assert.strictEqual(
-        fts5Result.groups.length,
-        baselineResult.groups.length,
-        '100% recall achieved: FTS5 matches baseline exactly'
+      const fts5Pairs = toPairSet(fts5Result.groups);
+      const baselinePairs = toPairSet(baselineResult.groups);
+
+      for (const baselinePair of baselinePairs) {
+        assert.ok(
+          fts5Pairs.has(baselinePair),
+          `FTS5 missed baseline duplicate pair: ${baselinePair}`
+        );
+      }
+
+      assert.ok(
+        fts5Pairs.size >= baselinePairs.size,
+        'FTS5 should find at least as many duplicate pairs as baseline'
       );
 
       // Verify at least some duplicates were found

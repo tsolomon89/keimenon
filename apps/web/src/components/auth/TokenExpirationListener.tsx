@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@keimenon/ui';
 
@@ -23,6 +23,11 @@ import { ToastContainer } from '@keimenon/ui';
 export function TokenExpirationListener() {
   const { toasts, error, removeToast } = useToast();
 
+  // Bug fix #27: Use ref to avoid dependency array issues with error function
+  // This prevents event listener thrashing when error function reference changes
+  const errorRef = useRef(error);
+  errorRef.current = error;
+
   useEffect(() => {
     function handleTokenExpired(event: Event) {
       const customEvent = event as CustomEvent<{ reason: string }>;
@@ -31,7 +36,7 @@ export function TokenExpirationListener() {
       console.log('🔔 Token expiration detected, showing notification:', reason);
 
       // Show error toast with longer duration to give user time to see it
-      error(
+      errorRef.current(
         'Session Expired',
         'You will be redirected to the login page. Please log in again.',
         3000 // 3 seconds before redirect
@@ -44,7 +49,7 @@ export function TokenExpirationListener() {
     return () => {
       window.removeEventListener('auth:token-expired', handleTokenExpired);
     };
-  }, [error]);
+  }, []); // Bug fix #27: Empty dependency array - uses ref for stable callback
 
   // Only render ToastContainer if there are toasts
   if (toasts.length === 0) {

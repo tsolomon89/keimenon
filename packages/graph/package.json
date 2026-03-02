@@ -7,7 +7,9 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "lint": "node -e \"console.log('@keimenon/graph lint placeholder')\"",
+    "test": "node -e \"console.log('@keimenon/graph has no tests yet')\""
   },
   "dependencies": {
     "d3-force": "^3.0.0",

@@ -51,9 +51,10 @@ interface CanonicalDocNode {
  *
  * Generates canonical summaries from group sources without modifying originals.
  */
-export class GroupSummaryBuildHandler
-  implements TaskHandler<GroupSummaryInput, GroupSummaryOutput>
-{
+export class GroupSummaryBuildHandler implements TaskHandler<
+  GroupSummaryInput,
+  GroupSummaryOutput
+> {
   readonly type = 'GROUP_SUMMARY_BUILD' as const;
   readonly name = 'Group Summary Builder';
   readonly description = 'Generate a canonical summary document from group sources';
@@ -76,7 +77,10 @@ export class GroupSummaryBuildHandler
       errors.push('maxSources is required for top_n selection policy');
     }
 
-    if (input.selectionPolicy === 'keyword_filter' && (!input.filterKeywords || input.filterKeywords.length === 0)) {
+    if (
+      input.selectionPolicy === 'keyword_filter' &&
+      (!input.filterKeywords || input.filterKeywords.length === 0)
+    ) {
       errors.push('filterKeywords is required for keyword_filter selection policy');
     }
 
@@ -94,10 +98,7 @@ export class GroupSummaryBuildHandler
   /**
    * Plan execution steps
    */
-  async plan(
-    input: GroupSummaryInput,
-    ctx: TaskContext<GroupSummaryInput>
-  ): Promise<TaskStep[]> {
+  async plan(input: GroupSummaryInput, ctx: TaskContext<GroupSummaryInput>): Promise<TaskStep[]> {
     return [
       {
         id: 'fetch_sources',
@@ -159,11 +160,7 @@ export class GroupSummaryBuildHandler
 
       if (signal.aborted) throw new Error('Task cancelled');
 
-      const sources = await graph.listSources(
-        input.groupId,
-        task.account_id,
-        { limit: 1000 }
-      );
+      const sources = await graph.listSources(input.groupId, task.account_id, { limit: 1000 });
 
       if (sources.length === 0) {
         return {
@@ -329,7 +326,7 @@ export class GroupSummaryBuildHandler
           .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
           .slice(0, input.maxSources || 10);
 
-      case 'keyword_filter':
+      case 'keyword_filter': {
         // Filter sources containing any of the keywords
         const keywords = input.filterKeywords || [];
         const filtered: any[] = [];
@@ -345,6 +342,7 @@ export class GroupSummaryBuildHandler
         }
 
         return filtered;
+      }
 
       default:
         return sources;
@@ -362,12 +360,7 @@ export class GroupSummaryBuildHandler
   /**
    * Emit progress event
    */
-  private emitProgress(
-    events: any,
-    taskId: string,
-    percent: number,
-    message: string
-  ): void {
+  private emitProgress(events: any, taskId: string, percent: number, message: string): void {
     events.emit({
       type: 'task:progress',
       taskId,

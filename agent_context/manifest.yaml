@@ -1,87 +1,95 @@
 apiVersion: v1
 kind: Manifest
 metadata:
-  name: keimenon-oblio-corpus
-  version: 5.3.0
+  name: keimenon-agent-context
+  version: 5.4.0
   status: active
-  last_updated: "2026-02-03"
+  last_updated: '2026-02-26'
 index:
   - id: entrypoint
     path: ./README.md
-    description: "The root of the Homoiconic Fact Store."
+    description: 'Root of the agent context corpus.'
 
   - id: glossary
     path: ./glossary.md
-    description: "Canonical definitions and ubiquitous language."
+    description: 'Canonical definitions and terminology.'
 
   - id: arch-overview
     path: ./architecture/overview.md
-    description: "System Architecture: One App, Many Domains."
+    description: 'System architecture and core invariants.'
 
   - id: arch-runtime
     path: ./architecture/runtime_systems.md
-    description: "Runtime enforcement: Entitlements, Metering, Tenancy."
+    description: 'Runtime enforcement and account-scoped policy.'
 
   - id: arch-security
     path: ./architecture/security_model.md
-    description: "Security: AuthN, RBAC, and Multi-Tenant Isolation."
+    description: 'Authentication, authorization, and data isolation.'
 
   - id: domain-identity
     path: ./domain_model/identity.md
-    description: "Identity Model: Users, Tenants, and Authentication."
+    description: 'Identity model: users, accounts, and auth.'
 
   - id: domain-inventory
     path: ./domain_model/inventory_graph.md
-    description: "Inventory (Assets) vs Graph (Entities)."
+    description: 'Inventory and graph modeling.'
 
   - id: domain-attribution
     path: ./domain_model/attribution.md
-    description: "Attribution: URL Identity and Provenance."
+    description: 'Attribution and provenance rules.'
 
   - id: feat-chat-import
     path: ./domain_model/features/chat_import.md
-    description: "Logic for ingesting and stitching chat exports."
+    description: 'Chat export ingestion and stitching behavior.'
 
   - id: feat-clustering
     path: ./domain_model/features/clustering.md
-    description: "J+MD Surface and Evidence-based Clustering."
+    description: 'Evidence-based clustering behavior.'
 
   - id: feat-code-extraction
     path: ./domain_model/features/code_extraction.md
-    description: "Automated extraction and deduplication of code blocks."
+    description: 'Code extraction and deduplication behavior.'
 
   - id: core-record-struct
     path: ./core_engine/record_struct.md
-    description: "The Dual-State Data Model: Record (Database) vs Struct (View)."
+    description: 'Record persistence vs struct projection model.'
 
   - id: core-schema
     path: ./core_engine/schema_as_data.md
-    description: "Homoiconicity: Schema is stored as data records."
+    description: 'Schema-as-data architecture.'
 
   - id: core-query
     path: ./core_engine/query_model.md
-    description: "The DatabaseClient abstraction and Universal Query."
+    description: 'DatabaseClient query abstraction and rules.'
 
   - id: impl-ops
     path: ./implementation/system_operations.md
-    description: "Operational/DevOps artifacts: Login, Billing, Provisioning."
+    description: 'Operational system contracts and checks.'
 
   - id: impl-migration
     path: ./implementation/content_migration.md
-    description: "Strategy for migrating legacy content to Universal Schema."
+    description: 'Content migration strategy.'
 
   - id: impl-spec-desktop
     path: ./implementation/specs/desktop_app.md
-    description: "Spec: Local-First Desktop Architecture."
+    description: 'Local-first desktop architecture.'
 
   - id: impl-spec-upload
     path: ./implementation/specs/chunked_upload.md
-    description: "Spec: Resumable Chunked Upload Protocol."
+    description: 'Chunked upload protocol specification.'
 
   - id: gov-changelog
     path: ./90_provenance/change_log.md
-    description: "Record of changes to the corpus."
+    description: 'Change history for this corpus.'
 
   - id: gov-questions
     path: ./60_open_questions/README.md
-    description: "Quarantine zone for Open Questions."
+    description: 'Open questions and unresolved decisions.'
+
+  - id: workflow-agent
+    path: ./workflows/agent-workflow.md
+    description: 'Execution constraints and rules for AI agents.'
+
+  - id: core-worker-agent
+    path: ./core_engine/worker_agent_architecture.md
+    description: 'Dual-layer background execution: Workers/Jobs vs Agents/Tasks.'

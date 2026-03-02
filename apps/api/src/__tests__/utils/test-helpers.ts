@@ -232,6 +232,10 @@ export async function login(
  * Create multipart form data with file
  */
 export function createFormData(filePath: string, config?: any): FormData {
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Test file not found: ${filePath}`);
+  }
+
   const form = new FormData();
   form.append('files', fs.createReadStream(filePath));
 
@@ -352,9 +356,7 @@ export function countNodes(db: Database.Database, accountId: string): number {
  */
 export function countEdges(db: Database.Database, accountId: string): number {
   const result = db
-    .prepare(
-      'SELECT COUNT(*) as count FROM edges WHERE from_id IN (SELECT id FROM nodes WHERE account_id = ?)'
-    )
+    .prepare('SELECT COUNT(*) as count FROM edges WHERE account_id = ?')
     .get(accountId) as CountResult;
   return result.count;
 }
@@ -382,21 +384,30 @@ export function createTestNodes(
 ): string[] {
   const nodeIds: string[] = [];
   const now = Date.now();
+  const createdByRow = db
+    .prepare(
+      `SELECT user_id
+       FROM user_accounts
+       WHERE account_id = ?
+       ORDER BY role_rank ASC
+       LIMIT 1`
+    )
+    .get(accountId) as { user_id?: string } | undefined;
+  const createdBy = createdByRow?.user_id || accountId;
 
   const stmt = db.prepare(`
-    INSERT INTO nodes (id, account_id, kind, label, properties, created_by, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at, data_tag)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'test')
   `);
 
   for (let i = 0; i < count; i++) {
     const nodeId = `test_${kind}_${Date.now()}_${i}`;
     stmt.run(
       nodeId,
-      accountId,
       kind,
-      `Test ${kind} ${i + 1}`,
-      JSON.stringify({ index: i }),
+      JSON.stringify({ index: i, label: `Test ${kind} ${i + 1}` }),
       accountId,
+      createdBy,
       now,
       now
     );
@@ -655,7 +666,14 @@ export function assertJobProgress(job: any, expectedPercent: number): void {
  * Get test file path
  */
 export function getTestFilePath(filename: string): string {
-  return `${__dirname}/../../../../../ai_context/chat_data/test-samples/${filename}`;
+  const candidates = [
+    path.join(__dirname, '..', 'fixtures', filename),
+    path.join(process.cwd(), 'src', '__tests__', 'fixtures', filename),
+    path.join(process.cwd(), 'apps', 'api', 'src', '__tests__', 'fixtures', filename),
+    path.join(process.cwd(), 'tests', 'test_data', 'chat_data', 'test-samples', filename),
+  ];
+
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? candidates[0];
 }
 
 export default {

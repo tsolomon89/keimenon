@@ -16,7 +16,9 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, memo, CSSProperties } from 'react';
+import { List } from 'react-window';
+import { useContainerHeight } from '@/hooks/useContainerHeight';
 import {
   Upload,
   FileText,
@@ -85,6 +87,184 @@ interface ImportsTableCardProps {
   onJobsMultiSelect?: (jobIds: string[], jobs: ImportJob[]) => void;
 }
 
+// Row height for virtualized list
+const JOB_ROW_HEIGHT = 68;
+
+// Row component props for react-window v2 (excluding forbidden keys: index, style, ariaAttributes)
+interface JobRowProps {
+  jobs: ImportJob[];
+  selectedJobIds: Set<string>;
+  handleRowClick: (job: ImportJob, event: React.MouseEvent) => void;
+  formatTimeElapsed: (startedAt: number, completedAt?: number) => string;
+  getOperationType: (job: ImportJob) => OperationType;
+}
+
+// Virtualized row component for react-window v2
+// Note: index, style, and ariaAttributes are injected by react-window
+function JobRow({
+  index,
+  style,
+  jobs,
+  selectedJobIds,
+  handleRowClick,
+  formatTimeElapsed,
+  getOperationType,
+}: {
+  index: number;
+  style: CSSProperties;
+  ariaAttributes: { 'aria-posinset': number; 'aria-setsize': number; role: 'listitem' };
+} & JobRowProps): React.ReactElement | null {
+  const job = jobs[index];
+  const jobStatus = job.status as ImportStatus;
+
+  const StatusIcon = statusIcons[jobStatus];
+  const isSelected = selectedJobIds.has(job.id);
+  const isProcessing = [
+    'reading',
+    'parsing',
+    'normalizing',
+    'indexing',
+    'linking',
+    'processing',
+  ].includes(job.status);
+  const operationType = getOperationType(job);
+  const OperationIcon = operationType === 'deletion' ? Trash2 : FileText;
+
+  return (
+    <div
+      style={style}
+      onClick={(e) => handleRowClick(job, e)}
+      className={`flex items-center border-b border-slate-700/50 hover:bg-slate-700/30 cursor-pointer transition-colors ${
+        isSelected ? 'bg-purple-600/10' : ''
+      }`}
+    >
+      {/* Operation */}
+      <div className="flex-[2] p-3">
+        <div className="flex items-center gap-3">
+          <OperationIcon
+            className={`w-4 h-4 flex-shrink-0 ${
+              operationType === 'deletion' ? 'text-red-400' : 'text-slate-400'
+            }`}
+          />
+          <div>
+            <p className="text-sm font-medium text-slate-200 truncate max-w-xs">{job.fileName}</p>
+            <p className="text-xs text-slate-500 capitalize">
+              {operationType === 'deletion' ? 'Data deletion' : job.platform || job.fileType}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Status */}
+      <div className="flex-[1] p-3">
+        <div
+          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium ${statusColors[jobStatus]}`}
+        >
+          <StatusIcon className="w-3 h-3" />
+          {statusLabels[jobStatus]}
+        </div>
+      </div>
+
+      {/* Progress */}
+      <div className="flex-[1.5] p-3">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-slate-900 rounded-full h-1.5 max-w-24">
+              <div
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  job.status === 'error'
+                    ? 'bg-red-500'
+                    : job.status === 'done'
+                      ? 'bg-green-500'
+                      : 'bg-purple-500'
+                }`}
+                style={{ width: `${Math.min(job.progress, 100)}%` }}
+              />
+            </div>
+            <span className="text-xs text-slate-400 w-10 text-right">{job.progress}%</span>
+          </div>
+          {/* Pipeline stage message */}
+          {job.progressMessage && job.status === 'processing' && (
+            <span
+              className="text-[10px] text-slate-500 truncate max-w-32"
+              title={job.progressMessage}
+            >
+              {job.progressMessage}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="flex-[1] p-3">
+        <div className="text-xs text-slate-400 space-y-0.5">
+          {job.status === 'done' ? (
+            operationType === 'deletion' ? (
+              <>
+                <div className="flex items-center gap-1">
+                  <span className="text-red-400">✕</span>
+                  <span>{job.stats.nodesDeleted?.toLocaleString() ?? 0} nodes deleted</span>
+                </div>
+                {job.stats.edgesDeleted && job.stats.edgesDeleted > 0 && (
+                  <div>{job.stats.edgesDeleted.toLocaleString()} edges deleted</div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-1">
+                  <span className="text-green-400">✓</span>
+                  <span>{job.stats.nodesCreated.toLocaleString()} nodes</span>
+                </div>
+                {job.stats.edgesCreated > 0 && (
+                  <div>{job.stats.edgesCreated.toLocaleString()} edges</div>
+                )}
+                <div>{job.stats.sourcesCreated} sources</div>
+                {job.stats.conversationsProcessed > 0 && (
+                  <div className="text-slate-500">{job.stats.conversationsProcessed} convos</div>
+                )}
+              </>
+            )
+          ) : job.status === 'error' ? (
+            <div className="text-red-400 truncate max-w-24" title={job.error}>
+              {job.error || 'Failed'}
+            </div>
+          ) : operationType === 'deletion' ? (
+            <div>{job.stats.nodesDeleted?.toLocaleString() ?? 0} nodes deleted</div>
+          ) : (
+            <>
+              <div>{job.stats.nodesCreated.toLocaleString()} nodes</div>
+              <div>{job.stats.sourcesCreated} sources</div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Time */}
+      <div className="flex-[0.8] p-3">
+        <div className="flex items-center gap-1 text-xs text-slate-400">
+          {isProcessing && <Loader2 className="w-3 h-3 animate-spin" />}
+          <Clock className="w-3 h-3" />
+          <span>{formatTimeElapsed(job.startedAt, job.completedAt)}</span>
+        </div>
+      </div>
+
+      {/* Action */}
+      <div className="w-10 p-3">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleRowClick(job, e);
+          }}
+          className="p-1.5 hover:bg-slate-600 rounded transition-colors"
+          title="View details"
+        >
+          <Eye className="w-4 h-4 text-slate-400" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Status badge colors
 const statusColors: Record<ImportStatus, string> = {
   queued: 'bg-slate-600/20 border-slate-500/30 text-slate-300',
@@ -140,7 +320,9 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
   const { getAllOperations, getOperation, restoreOperation, removeOperationsByJobIds } =
     useBackgroundOperations();
   const abortControllerRef = useRef<AbortController | null>(null);
-  
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const listHeight = useContainerHeight(listContainerRef, 400);
+
   // Track locally deleted jobs to prevent "zombie" resurrections from API race conditions
   const deletedJobIdsRef = useRef<Set<string>>(new Set());
 
@@ -559,7 +741,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
               const convertedJobs = data.jobs
                 .map(convertAPIJobToImportJob)
                 .filter((j: ImportJob) => !deletedJobIdsRef.current.has(j.id)); // Filter zombies
-              
+
               setJobs((prev) => {
                 if (JSON.stringify(prev) === JSON.stringify(convertedJobs)) {
                   return prev;
@@ -643,13 +825,13 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
     // REPLACED window.confirm with custom dialog
     setShowDeleteConfirm(true);
   };
-  
+
   const executeDelete = async () => {
     setShowDeleteConfirm(false);
     const jobIdsToDelete = new Set(selectedJobIds); // Capture current selection
 
     console.log('[DELETE] User confirmed deletion via dialog, proceeding...');
-    
+
     // Mark jobs as being operated on
     setIsDeleting(true);
     // setJobsBeingOperated((prev) => new Set([...prev, ...jobIdsToDelete])); // No longer needed for delete
@@ -877,27 +1059,27 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       // - removeOperationsByJobIds: removes from BackgroundOperationsContext
       // - removeJobsFromStream: removes from useJobStream state (prevents SSE sync race condition)
       setJobs((prev) => prev.filter((j) => !successfulJobIds.has(j.id)));
-      
+
       // Update zombie blacklist
-      successfulJobIds.forEach(id => deletedJobIdsRef.current.add(id));
-      
+      successfulJobIds.forEach((id) => deletedJobIdsRef.current.add(id));
+
       // Persist to session storage
       try {
         sessionStorage.setItem(
-          'keimenon_deleted_jobs', 
+          'keimenon_deleted_jobs',
           JSON.stringify(Array.from(deletedJobIdsRef.current))
         );
       } catch (e) {
         console.error('[ImportsTable] Failed to save deleted jobs to session storage', e);
       }
-      
+
       // FORCE CLEANUP of any stuck operational state
       setJobsBeingOperated((prev) => {
         const next = new Set(prev);
-        successfulJobIds.forEach(id => next.delete(id));
+        successfulJobIds.forEach((id) => next.delete(id));
         return next;
       });
-      
+
       removeOperationsByJobIds(Array.from(successfulJobIds));
       removeJobsFromStream(Array.from(successfulJobIds));
 
@@ -926,7 +1108,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       });
       setBulkActionLoading(false);
       */
-     setIsDeleting(false);
+      setIsDeleting(false);
 
       console.log('[DELETE] Finally block complete - state should be reset');
     }
@@ -1081,36 +1263,42 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
     }
   };
 
-  // Handle row click
-  const handleRowClick = (job: ImportJob, event: React.MouseEvent) => {
-    const jobId = job.id;
+  // Handle row click (memoized for virtualized list)
+  const handleRowClick = useCallback(
+    (job: ImportJob, event: React.MouseEvent) => {
+      const jobId = job.id;
 
-    // Multi-select with Ctrl/Cmd
-    if (event.ctrlKey || event.metaKey) {
-      const newSelection = new Set(selectedJobIds);
-      if (newSelection.has(jobId)) {
-        newSelection.delete(jobId);
+      // Multi-select with Ctrl/Cmd
+      if (event.ctrlKey || event.metaKey) {
+        setSelectedJobIds((prev) => {
+          const newSelection = new Set(prev);
+          if (newSelection.has(jobId)) {
+            newSelection.delete(jobId);
+          } else {
+            newSelection.add(jobId);
+          }
+
+          // Notify parent (inside the callback to use latest jobs)
+          if (onJobsMultiSelect) {
+            const selectedJobs = jobs.filter((j) => newSelection.has(j.id));
+            onJobsMultiSelect(Array.from(newSelection), selectedJobs);
+          }
+
+          return newSelection;
+        });
       } else {
-        newSelection.add(jobId);
+        // Single select
+        setSelectedJobIds(new Set([jobId]));
+        if (onJobSelect) {
+          onJobSelect(jobId, job);
+        }
       }
-      setSelectedJobIds(newSelection);
+    },
+    [jobs, onJobSelect, onJobsMultiSelect]
+  );
 
-      // Notify parent
-      if (onJobsMultiSelect) {
-        const selectedJobs = jobs.filter((j) => newSelection.has(j.id));
-        onJobsMultiSelect(Array.from(newSelection), selectedJobs);
-      }
-    } else {
-      // Single select
-      setSelectedJobIds(new Set([jobId]));
-      if (onJobSelect) {
-        onJobSelect(jobId, job);
-      }
-    }
-  };
-
-  // Format time elapsed
-  const formatTimeElapsed = (startedAt: number, completedAt?: number): string => {
+  // Format time elapsed (memoized for virtualized list)
+  const formatTimeElapsed = useCallback((startedAt: number, completedAt?: number): string => {
     // Handle undefined/null/NaN timestamps
     if (!startedAt || isNaN(startedAt)) {
       return '—';
@@ -1125,10 +1313,29 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
     if (elapsed < 60) return `${elapsed}s`;
     if (elapsed < 3600) return `${Math.floor(elapsed / 60)}m`;
     return `${Math.floor(elapsed / 3600)}h ${Math.floor((elapsed % 3600) / 60)}m`;
-  };
+  }, []);
 
   // Get merged jobs (backend + background operations)
   const mergedJobs = getMergedJobs();
+
+  // Helper to get operation type from job (memoized for virtualized list)
+  const getOperationType = useCallback((job: ImportJob): OperationType => {
+    // Check if it's a deletion operation (job ID starts with 'del_' OR type is 'delete')
+    if (job.id.startsWith('del_') || job.type === 'delete') return 'deletion';
+    return 'import';
+  }, []);
+
+  // Memoized row props for virtualized list (prevents unnecessary re-renders)
+  const jobRowProps = useMemo(
+    (): JobRowProps => ({
+      jobs: mergedJobs,
+      selectedJobIds,
+      handleRowClick,
+      formatTimeElapsed,
+      getOperationType,
+    }),
+    [mergedJobs, selectedJobIds, handleRowClick, formatTimeElapsed, getOperationType]
+  );
 
   // Force re-render every second for active jobs to update elapsed time
   useEffect(() => {
@@ -1146,13 +1353,6 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
 
     return () => clearInterval(interval);
   }, [mergedJobs]);
-
-  // Helper to get operation type from job
-  const getOperationType = (job: ImportJob): OperationType => {
-    // Check if it's a deletion operation (job ID starts with 'del_' OR type is 'delete')
-    if (job.id.startsWith('del_') || job.type === 'delete') return 'deletion';
-    return 'import';
-  };
 
   if (loading && mergedJobs.length === 0) {
     return (
@@ -1199,7 +1399,11 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
                 onClick={handleRetrySelected}
                 disabled={bulkActionLoading || selectedJobsIncludeSucceeded}
                 className="flex items-center gap-1 px-2 py-1 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title={selectedJobsIncludeSucceeded ? 'Cannot retry succeeded jobs' : 'Retry selected jobs'}
+                title={
+                  selectedJobsIncludeSucceeded
+                    ? 'Cannot retry succeeded jobs'
+                    : 'Retry selected jobs'
+                }
               >
                 {bulkActionLoading ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -1249,21 +1453,22 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
               <AlertTriangle className="w-6 h-6" />
               <h3 className="text-lg font-semibold text-slate-100">Confirm Deletion</h3>
             </div>
-            
+
             <p className="text-slate-300">
-              Are you sure you want to delete <span className="font-semibold text-white">{selectedJobIds.size}</span> job(s)?
-              This action cannot be undone.
+              Are you sure you want to delete{' '}
+              <span className="font-semibold text-white">{selectedJobIds.size}</span> job(s)? This
+              action cannot be undone.
             </p>
-            
+
             <div className="flex justify-end gap-3 pt-2">
-              <button 
+              <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="px-4 py-2 rounded hover:bg-slate-700 text-slate-300 transition-colors"
                 disabled={isDeleting}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={executeDelete}
                 className="px-4 py-2 rounded bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center gap-2"
                 disabled={isDeleting}
@@ -1275,186 +1480,34 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
           </div>
         </div>
       )}
-      
-      {/* Table */}
+
+      {/* Virtualized Job List */}
       {mergedJobs.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-900/50 text-xs text-slate-400 border-b border-slate-700">
-                <th className="text-left p-3 font-medium">Operation</th>
-                <th className="text-left p-3 font-medium">Status</th>
-                <th className="text-left p-3 font-medium">Progress</th>
-                <th className="text-left p-3 font-medium">Stats</th>
-                <th className="text-left p-3 font-medium">Time</th>
-                <th className="w-10 p-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {mergedJobs.map((job) => {
-                const StatusIcon = statusIcons[job.status];
-                const isSelected = selectedJobIds.has(job.id);
-                const isProcessing = [
-                  'reading',
-                  'parsing',
-                  'normalizing',
-                  'indexing',
-                  'linking',
-                  'processing',
-                ].includes(job.status);
-                const operationType = getOperationType(job);
-                const OperationIcon = operationType === 'deletion' ? Trash2 : FileText;
+        <div className="flex flex-col">
+          {/* Fixed Header */}
+          <div className="flex bg-slate-900/50 text-xs text-slate-400 border-b border-slate-700">
+            <div className="flex-[2] p-3 font-medium">Operation</div>
+            <div className="flex-[1] p-3 font-medium">Status</div>
+            <div className="flex-[1.5] p-3 font-medium">Progress</div>
+            <div className="flex-[1] p-3 font-medium">Stats</div>
+            <div className="flex-[0.8] p-3 font-medium">Time</div>
+            <div className="w-10 p-3"></div>
+          </div>
 
-                return (
-                  <tr
-                    key={job.id}
-                    onClick={(e) => handleRowClick(job, e)}
-                    className={`border-b border-slate-700/50 hover:bg-slate-700/30 cursor-pointer transition-colors ${
-                      isSelected ? 'bg-purple-600/10' : ''
-                    }`}
-                  >
-                    {/* Operation */}
-                    <td className="p-3">
-                      <div className="flex items-center gap-3">
-                        <OperationIcon
-                          className={`w-4 h-4 flex-shrink-0 ${
-                            operationType === 'deletion' ? 'text-red-400' : 'text-slate-400'
-                          }`}
-                        />
-                        <div>
-                          <p className="text-sm font-medium text-slate-200 truncate max-w-xs">
-                            {job.fileName}
-                          </p>
-                          <p className="text-xs text-slate-500 capitalize">
-                            {operationType === 'deletion'
-                              ? 'Data deletion'
-                              : job.platform || job.fileType}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Status */}
-                    <td className="p-3">
-                      <div
-                        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium ${statusColors[job.status]}`}
-                      >
-                        <StatusIcon className="w-3 h-3" />
-                        {statusLabels[job.status]}
-                      </div>
-                    </td>
-
-                    {/* Progress */}
-                    <td className="p-3">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-slate-900 rounded-full h-1.5 max-w-24">
-                            <div
-                              className={`h-1.5 rounded-full transition-all duration-300 ${
-                                job.status === 'error'
-                                  ? 'bg-red-500'
-                                  : job.status === 'done'
-                                    ? 'bg-green-500'
-                                    : 'bg-purple-500'
-                              }`}
-                              style={{ width: `${Math.min(job.progress, 100)}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-slate-400 w-10 text-right">
-                            {job.progress}%
-                          </span>
-                        </div>
-                        {/* Pipeline stage message */}
-                        {job.progressMessage && job.status === 'processing' && (
-                          <span className="text-[10px] text-slate-500 truncate max-w-32" title={job.progressMessage}>
-                            {job.progressMessage}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Stats */}
-                    <td className="p-3">
-                      <div className="text-xs text-slate-400 space-y-0.5">
-                        {job.status === 'done' ? (
-                          // Full summary for completed jobs
-                          operationType === 'deletion' ? (
-                            // Delete job stats
-                            <>
-                              <div className="flex items-center gap-1">
-                                <span className="text-red-400">✕</span>
-                                <span>{job.stats.nodesDeleted?.toLocaleString() ?? 0} nodes deleted</span>
-                              </div>
-                              {job.stats.edgesDeleted && job.stats.edgesDeleted > 0 && (
-                                <div>{job.stats.edgesDeleted.toLocaleString()} edges deleted</div>
-                              )}
-                            </>
-                          ) : (
-                            // Import job stats
-                            <>
-                              <div className="flex items-center gap-1">
-                                <span className="text-green-400">✓</span>
-                                <span>{job.stats.nodesCreated.toLocaleString()} nodes</span>
-                              </div>
-                              {job.stats.edgesCreated > 0 && (
-                                <div>{job.stats.edgesCreated.toLocaleString()} edges</div>
-                              )}
-                              <div>{job.stats.sourcesCreated} sources</div>
-                              {job.stats.conversationsProcessed > 0 && (
-                                <div className="text-slate-500">
-                                  {job.stats.conversationsProcessed} convos
-                                </div>
-                              )}
-                            </>
-                          )
-                        ) : job.status === 'error' ? (
-                          // Error summary
-                          <div className="text-red-400 truncate max-w-24" title={job.error}>
-                            {job.error || 'Failed'}
-                          </div>
-                        ) : (
-                          // In-progress stats
-                          operationType === 'deletion' ? (
-                            // Delete job in progress
-                            <div>{job.stats.nodesDeleted?.toLocaleString() ?? 0} nodes deleted</div>
-                          ) : (
-                            // Import job in progress
-                            <>
-                              <div>{job.stats.nodesCreated.toLocaleString()} nodes</div>
-                              <div>{job.stats.sourcesCreated} sources</div>
-                            </>
-                          )
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Time */}
-                    <td className="p-3">
-                      <div className="flex items-center gap-1 text-xs text-slate-400">
-                        {isProcessing && <Loader2 className="w-3 h-3 animate-spin" />}
-                        <Clock className="w-3 h-3" />
-                        <span>{formatTimeElapsed(job.startedAt, job.completedAt)}</span>
-                      </div>
-                    </td>
-
-                    {/* Action */}
-                    <td className="p-3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRowClick(job, e);
-                        }}
-                        className="p-1.5 hover:bg-slate-600 rounded transition-colors"
-                        title="View details"
-                      >
-                        <Eye className="w-4 h-4 text-slate-400" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          {/* Virtualized Rows */}
+          <div
+            ref={listContainerRef}
+            className="flex-1"
+            style={{ height: Math.min(mergedJobs.length * JOB_ROW_HEIGHT, 400) }}
+          >
+            <List<JobRowProps>
+              style={{ height: Math.min(mergedJobs.length * JOB_ROW_HEIGHT, listHeight) }}
+              rowCount={mergedJobs.length}
+              rowHeight={JOB_ROW_HEIGHT}
+              rowComponent={JobRow}
+              rowProps={jobRowProps}
+            />
+          </div>
         </div>
       ) : (
         <div className="p-8 text-center">

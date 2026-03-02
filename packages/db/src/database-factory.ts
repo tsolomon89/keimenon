@@ -9,7 +9,7 @@ export type StorageMode = 'local';
 
 /**
  * Unified database interface
- * Both SQLite and Neo4j clients implement this
+ * Implemented by the local SQLite client in the current runtime
  */
 export interface DatabaseClient {
   connect(): Promise<void>;
@@ -19,7 +19,10 @@ export interface DatabaseClient {
   createNode(node: AnyNode): Promise<void>;
   createNodes?(nodes: AnyNode[]): Promise<void>;
   getNode(id: string): Promise<AnyNode | null>;
-  getNodesByKind?(kind: string, options?: { limit?: number; offset?: number; accountId?: string }): Promise<AnyNode[]>;
+  getNodesByKind?(
+    kind: string,
+    options?: { limit?: number; offset?: number; accountId?: string }
+  ): Promise<AnyNode[]>;
   countNodesByKind?(kind: string, accountId?: string): Promise<number>;
   updateNode?(id: string, node: Partial<AnyNode>): Promise<void>;
   deleteNode?(id: string): Promise<void>;
@@ -32,7 +35,8 @@ export interface DatabaseClient {
 
   execute(query: string, params?: any): Promise<any>;
   getStats?(): Promise<any>;
-  search?(query: string, limit?: number): Promise<AnyNode[]>;
+  // Security: accountId is required for multi-tenant isolation (bug fix #8)
+  search?(query: string, accountId: string, limit?: number): Promise<AnyNode[]>;
 }
 
 /**

@@ -1,71 +1,108 @@
 /**
- * Test Server Utilities
- *
- * Manages server lifecycle for integration tests.
- * Starts the production server on port 4001 for testing.
+ * Test server lifecycle helpers for API integration suites.
  */
 
-import { spawn, ChildProcess } from 'child_process';
+import { ChildProcess, execFile, spawn } from 'child_process';
+import { existsSync, mkdirSync, unlinkSync } from 'fs';
+import { createServer } from 'net';
 import path from 'path';
-import { existsSync } from 'fs';
 import fetch from 'node-fetch';
 
-import { createServer } from 'net';
-
-// Singleton state
 let serverProcess: ChildProcess | null = null;
 let isInitialized = false;
+let isShuttingDown = false;
 let currentPort = 4001;
+let testDatabasePath: string | null = null;
 
-/**
- * Find a free port
- */
+function sanitizeEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const cleanEnv: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (typeof value === 'string') {
+      cleanEnv[key] = value;
+    }
+  }
+  return cleanEnv;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function removeFileIfExists(filePath: string): void {
+  if (existsSync(filePath)) {
+    try {
+      unlinkSync(filePath);
+    } catch {
+      // Best-effort cleanup for test artifacts
+    }
+  }
+}
+
+function getOrCreateTestDatabasePath(projectRoot: string): string {
+  if (testDatabasePath) {
+    return testDatabasePath;
+  }
+
+  const testDbDir = path.join(projectRoot, '.tmp', 'api-test-db');
+  mkdirSync(testDbDir, { recursive: true });
+  testDatabasePath = path.join(testDbDir, `api-${Date.now()}-${process.pid}.db`);
+  return testDatabasePath;
+}
+
 function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = createServer();
     server.listen(0, () => {
-      const port = (server.address() as any).port;
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        server.close();
+        reject(new Error('Failed to resolve free port'));
+        return;
+      }
+      const port = address.port;
       server.close(() => resolve(port));
     });
     server.on('error', reject);
   });
 }
 
-/**
- * Wait for server to be ready by polling health endpoint
- */
-async function waitForServer(maxAttempts = 30): Promise<void> {
-  const url = `http://127.0.0.1:${currentPort}/health`;
+async function isEndpointReady(url: string, timeoutMs = 1000): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) {
-        console.log('✅ Server health check passed');
-        return;
-      }
-    } catch (error) {
-      // Server not ready yet
-    }
-
-    // Wait 1 second before next attempt
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  try {
+    const response = await fetch(url, { signal: controller.signal as any });
+    return response.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  throw new Error('Server failed to start within timeout period');
 }
 
-/**
- * Start test server on port 4001
- */
+async function waitForServer(maxAttempts = 90): Promise<void> {
+  const readyUrl = `http://127.0.0.1:${currentPort}/ready`;
+  const healthUrl = `http://127.0.0.1:${currentPort}/health`;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if ((await isEndpointReady(readyUrl)) || (await isEndpointReady(healthUrl))) {
+      console.log(`[test-server] Server readiness confirmed on attempt ${attempt}`);
+      return;
+    }
+    await sleep(1000);
+  }
+
+  throw new Error(
+    `Server failed to become ready after ${maxAttempts} seconds (checked ${readyUrl} and ${healthUrl})`
+  );
+}
+
 export async function startTestServer(): Promise<void> {
-  // Return if already started
   if (serverProcess && isInitialized) {
-    console.log('⚡ Test server already running on port 4001');
+    console.log(`[test-server] Reusing running server on port ${currentPort}`);
     return;
   }
 
-  // Prevent concurrent initialization
   if (isInitialized) {
     throw new Error('Test server initialization already in progress');
   }
@@ -73,53 +110,68 @@ export async function startTestServer(): Promise<void> {
   isInitialized = true;
 
   try {
-    // Find a free port
     currentPort = await getFreePort();
-    console.log(`\n🧪 Starting test server on port ${currentPort}...`);
+    console.log(`[test-server] Starting API server on port ${currentPort}`);
 
-    // Set environment variables for test mode
-    const env: NodeJS.ProcessEnv = {
-      ...process.env,
-      PORT: currentPort.toString(),
-      HOST: '127.0.0.1', // Force IPv4 loopback
-      NODE_ENV: 'test',
-      DISABLE_RATE_LIMIT: '1',
-      MAX_CONCURRENT_JOBS: '2',
-      WORKER_POLL_INTERVAL_MS: '1000',
-    };
-
-    // Start server as child process
-    const serverPath = path.join(__dirname, '../../index.ts');
-    const projectRoot = path.resolve(__dirname, '../../../../../');
+    const apiSrcRoot = path.resolve(__dirname, '../../');
+    const serverPath = path.join(apiSrcRoot, 'index.ts');
+    const projectRoot = path.resolve(apiSrcRoot, '../../');
+    const dbPath = getOrCreateTestDatabasePath(projectRoot);
     const tsxModulePath = (() => {
       const candidate = path.join(projectRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
       return existsSync(candidate) ? candidate : null;
     })();
 
-    // Ensure the spawned process can resolve local binaries (e.g., tsx)
+    const env = sanitizeEnv({
+      ...process.env,
+      PORT: currentPort.toString(),
+      HOST: '127.0.0.1',
+      NODE_ENV: 'test',
+      DISABLE_RATE_LIMIT: '1',
+      MAX_CONCURRENT_JOBS: '2',
+      WORKER_POLL_INTERVAL_MS: '1000',
+      DB_PATH: dbPath,
+      SQLITE_PATH: dbPath,
+    });
+
     const nodeModulesBin = path.join(projectRoot, 'node_modules', '.bin');
     env.PATH = env.PATH ? `${nodeModulesBin}${path.delimiter}${env.PATH}` : nodeModulesBin;
 
-    // If we resolved the module path, run it with node. Otherwise fallback to tsx/cmd
-    const executable = tsxModulePath ? process.execPath : (process.platform === 'win32' ? 'tsx.cmd' : 'tsx');
+    const executable = tsxModulePath
+      ? process.execPath
+      : process.platform === 'win32'
+        ? 'tsx.cmd'
+        : 'tsx';
     const args = tsxModulePath ? [tsxModulePath, serverPath] : [serverPath];
 
-    console.log(`[test-server] Spawning: ${executable} ${args.join(' ')}`);
-    console.log(`[test-server] Cwd: ${process.cwd()}`);
-    console.log(`[test-server] Env PATH length: ${env.PATH?.length}`);
-
-    serverProcess = spawn(executable, args, {
+    const spawnOptions = {
+      cwd: path.resolve(__dirname, '../../../'),
       env,
-      stdio: ['ignore', 'pipe', 'pipe'], // Capture stdout/stderr
+      stdio: ['ignore', 'pipe', 'pipe'] as const,
       detached: false,
-      shell: false, // We are invoking node directly or distinct cmd, shell not needed if full path
-    });
+      shell: false,
+    };
 
-    // Log server output (useful for debugging)
+    try {
+      serverProcess = spawn(executable, args, spawnOptions);
+    } catch (error: any) {
+      // Windows can throw EINVAL for command-line/env edge-cases.
+      if (process.platform !== 'win32' || error?.code !== 'EINVAL') {
+        throw error;
+      }
+
+      const fallbackExecutable = 'tsx.cmd';
+      const fallbackArgs = [serverPath];
+      serverProcess = spawn(fallbackExecutable, fallbackArgs, {
+        ...spawnOptions,
+        shell: true,
+      });
+    }
+
     if (serverProcess.stdout) {
       serverProcess.stdout.on('data', (data) => {
         const output = data.toString().trim();
-        if (output && !output.includes('GET /health')) {
+        if (output && !output.includes('GET /health') && !output.includes('GET /ready')) {
           console.log(`[server] ${output}`);
         }
       });
@@ -134,28 +186,26 @@ export async function startTestServer(): Promise<void> {
       });
     }
 
-    // Handle server exit
     serverProcess.on('exit', (code) => {
-      if (code !== 0 && code !== null) {
-        console.error(`❌ Server process exited with code ${code}`);
+      if (!isShuttingDown && code !== 0 && code !== null) {
+        console.error(`[test-server] Server process exited with code ${code}`);
       }
       serverProcess = null;
       isInitialized = false;
+      isShuttingDown = false;
     });
 
-    // Wait for server to be ready
-    console.log('⏳ Waiting for server to be ready...');
     await waitForServer();
 
-    // Update global env for tests to know where to connect
     process.env.TEST_API_URL = `http://127.0.0.1:${currentPort}`;
-    console.log(`✅ Test server running on port ${currentPort}`);
-    console.log(`   TEST_API_URL=${process.env.TEST_API_URL}\n`);
+    process.env.DB_PATH = dbPath;
+    process.env.SQLITE_PATH = dbPath;
+    console.log(`[test-server] Ready at ${process.env.TEST_API_URL}`);
+    console.log(`[test-server] Using test database ${dbPath}`);
   } catch (error) {
     isInitialized = false;
-    console.error('❌ Failed to start test server:', error);
+    console.error('[test-server] Failed to start test server:', error);
 
-    // Cleanup if failed
     if (serverProcess) {
       serverProcess.kill();
       serverProcess = null;
@@ -165,56 +215,73 @@ export async function startTestServer(): Promise<void> {
   }
 }
 
-/**
- * Stop test server and cleanup resources
- */
 export async function stopTestServer(): Promise<void> {
   if (!serverProcess) {
-    console.log('⚠️  Test server not running, nothing to stop');
     return;
   }
 
-  console.log('\n🛑 Stopping test server...');
+  const activeProcess = serverProcess;
+  console.log('[test-server] Stopping API test server');
+  isShuttingDown = true;
 
   try {
-    // Send SIGTERM for graceful shutdown
-    serverProcess.kill('SIGTERM');
-
-    // Wait for process to exit
-    await new Promise<void>((resolve) => {
-      if (!serverProcess) {
-        resolve();
-        return;
-      }
-
-      const timeout = setTimeout(() => {
-        // Force kill if doesn't exit gracefully
-        if (serverProcess) {
-          console.log('⚠️  Forcing server shutdown...');
-          serverProcess.kill('SIGKILL');
-        }
-        resolve();
-      }, 5000);
-
-      serverProcess.on('exit', () => {
-        clearTimeout(timeout);
-        resolve();
-      });
+    const waitForExit = new Promise<void>((resolve) => {
+      activeProcess.once('exit', () => resolve());
     });
 
+    if (process.platform === 'win32' && activeProcess.pid) {
+      await new Promise<void>((resolve) => {
+        execFile('taskkill', ['/pid', String(activeProcess.pid), '/T', '/F'], () => resolve());
+      });
+    } else {
+      try {
+        activeProcess.kill('SIGTERM');
+      } catch {
+        // Best-effort shutdown
+      }
+    }
+
+    await Promise.race([waitForExit, sleep(5000)]);
+
+    if (activeProcess.exitCode === null && activeProcess.pid) {
+      if (process.platform === 'win32') {
+        await new Promise<void>((resolve) => {
+          execFile('taskkill', ['/pid', String(activeProcess.pid), '/T', '/F'], () => resolve());
+        });
+      } else {
+        try {
+          activeProcess.kill('SIGKILL');
+        } catch {
+          // Best-effort shutdown
+        }
+      }
+
+      await Promise.race([waitForExit, sleep(2000)]);
+    }
+
+    activeProcess.stdout?.removeAllListeners();
+    activeProcess.stderr?.removeAllListeners();
+    activeProcess.stdout?.destroy();
+    activeProcess.stderr?.destroy();
+    activeProcess.removeAllListeners();
+  } finally {
     serverProcess = null;
     isInitialized = false;
+    isShuttingDown = false;
 
-    console.log('✅ Test server stopped successfully\n');
-  } catch (error) {
-    console.error('❌ Error stopping test server:', error);
-    throw error;
+    if (testDatabasePath) {
+      removeFileIfExists(testDatabasePath);
+      removeFileIfExists(`${testDatabasePath}-wal`);
+      removeFileIfExists(`${testDatabasePath}-shm`);
+      testDatabasePath = null;
+    }
   }
 }
 
-/**
- * Check if test server is running
- */
 export function isTestServerRunning(): boolean {
   return serverProcess !== null && isInitialized;
+}
+
+export function getTestServerUrl(): string {
+  return `http://127.0.0.1:${currentPort}`;
 }

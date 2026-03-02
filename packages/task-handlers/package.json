@@ -14,10 +14,11 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest --passWithNoTests",
+    "test": "vitest run --passWithNoTests",
     "test:run": "vitest run --passWithNoTests",
     "lint": "eslint src --ext .ts",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@keimenon/agent-core": "*",

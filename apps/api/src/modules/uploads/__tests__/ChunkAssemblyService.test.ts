@@ -609,8 +609,8 @@ describe('ChunkAssemblyService', () => {
       await fs.writeFile(join(chunksPath, 'chunk_2'), Buffer.alloc(1024, 'chunk2'));
 
       // Reset session status to assembling for retry
-      (session as any).status = 'assembling';
-      (session as any).errorMessage = null;
+      (session as any)._status = 'assembling';
+      (session as any)._errorMessage = null;
 
       const secondResult = await service.assembleChunks(session);
       expect(secondResult.success).toBe(true);

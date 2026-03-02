@@ -534,7 +534,7 @@ Another paragraph here with more content.
    */
 
   if (!RUN_FULL_SUITE) {
-    describe.todo('Neo4j + Local Storage Integration');
+    describe.todo('Local Storage Integration');
     describe.todo('Medium File Tests (135MB)');
     describe.todo('Ultimate Test: Claude 1.1GB');
   }

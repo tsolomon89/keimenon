@@ -96,10 +96,7 @@ export class MockWebAdapter implements WebAdapter {
     return 'mock';
   }
 
-  async search(
-    query: string,
-    options?: { limit?: number }
-  ): Promise<SearchResult[]> {
+  async search(query: string, options?: { limit?: number }): Promise<SearchResult[]> {
     await this.simulateLatency();
 
     if (!this.isAvailable()) {
@@ -117,8 +114,7 @@ export class MockWebAdapter implements WebAdapter {
     });
 
     // Return filtered results or all results if no matches
-    const finalResults =
-      filteredResults.length > 0 ? filteredResults : results;
+    const finalResults = filteredResults.length > 0 ? filteredResults : results;
 
     return finalResults.slice(0, limit);
   }
@@ -139,7 +135,7 @@ export class MockWebAdapter implements WebAdapter {
 
   async extractMainText(html: string): Promise<string> {
     // Simple extraction for mock
-    let text = html
+    const text = html
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
       .replace(/<[^>]+>/g, ' ')

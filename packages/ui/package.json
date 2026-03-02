@@ -7,7 +7,9 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "lint": "node -e \"console.log('@keimenon/ui lint placeholder')\"",
+    "test": "node -e \"console.log('@keimenon/ui has no tests yet')\""
   },
   "dependencies": {
     "react": "^18.3.1",

@@ -16,7 +16,8 @@ import {
 } from './duplicate-detection-integrated';
 import { SourcesStitcher } from '@keimenon/parsers';
 import { GraphSpineBuilder } from './graph-spine-builder';
-import type { LexemeNode, PhraseNode, TopicNode, SourceDoc } from '@keimenon/types';
+import { PrincipalService, AgentPlatform } from './principal-service';
+import type { LexemeNode, PhraseNode, TopicNode, SourceDoc, PrincipalNode } from '@keimenon/types';
 
 export interface ImportMessage {
   id: string;
@@ -77,17 +78,23 @@ export class EnhancedImportServiceV2 {
   private localStore: ReturnType<typeof getLocalDocumentStore>;
   private autogroupService: EnhancedAutogroupService;
   private duplicateService: IntegratedDuplicateDetectionService;
+  private principalService: PrincipalService;
   private context: { accountId: string; userId: string } | null = null;
 
   // Track created entities for ChangeTracker rollback support
   private createdNodeIds: string[] = [];
   private createdEdgeIds: string[] = [];
 
+  // World Model V5: Track resolved principals for this import batch
+  private humanPrincipal: PrincipalNode | null = null;
+  private agentPrincipal: PrincipalNode | null = null;
+
   constructor(db: DatabaseClient, writeQueue?: DatabaseWriteQueue) {
     this.db = db;
     this.writeQueue = writeQueue || null;
     this.localStore = getLocalDocumentStore();
     this.autogroupService = new EnhancedAutogroupService();
+    this.principalService = new PrincipalService(db);
 
     // CRITICAL FIX: FTS5 service needs the underlying better-sqlite3 Database instance
     // DatabaseClient is an interface, but IntegratedDuplicateDetectionService expects Database.Database
@@ -241,7 +248,9 @@ export class EnhancedImportServiceV2 {
       if (config.spine?.enabled) {
         console.log('[Import] Step 9: Spine extraction ENABLED');
         spineStats = await this.extractSpine(allMessages, config);
-        console.log(`[Import] Spine extraction complete: ${spineStats.lexemes} lexemes, ${spineStats.phrases} phrases, ${spineStats.topics} topics`);
+        console.log(
+          `[Import] Spine extraction complete: ${spineStats.lexemes} lexemes, ${spineStats.phrases} phrases, ${spineStats.topics} topics`
+        );
       }
 
       // Flush all pending writes before completing
@@ -285,6 +294,9 @@ export class EnhancedImportServiceV2 {
       throw error; // Re-throw to let caller handle
     } finally {
       this.context = null;
+      // Reset Principal references for next import batch
+      this.humanPrincipal = null;
+      this.agentPrincipal = null;
     }
   }
 
@@ -297,7 +309,9 @@ export class EnhancedImportServiceV2 {
       return;
     }
 
-    console.log(`[Import] Rolling back ${this.createdEdgeIds.length} edges and ${this.createdNodeIds.length} nodes`);
+    console.log(
+      `[Import] Rolling back ${this.createdEdgeIds.length} edges and ${this.createdNodeIds.length} nodes`
+    );
 
     try {
       // Flush any pending writes first
@@ -305,13 +319,20 @@ export class EnhancedImportServiceV2 {
 
       const sqliteDb = (this.db as SQLiteClient).getDatabase();
 
+      // Bug fix #13: Validate accountId before rollback to prevent accidental empty string matching
+      const accountId = this.context?.accountId;
+      if (!accountId) {
+        console.error('[Import] Cannot rollback: no accountId in context');
+        return;
+      }
+
       // Delete edges first (foreign key constraints)
       if (this.createdEdgeIds.length > 0) {
         const edgePlaceholders = this.createdEdgeIds.map(() => '?').join(',');
         const deleteEdgesStmt = sqliteDb.prepare(
           `DELETE FROM edges WHERE id IN (${edgePlaceholders}) AND account_id = ?`
         );
-        deleteEdgesStmt.run(...this.createdEdgeIds, this.context?.accountId || '');
+        deleteEdgesStmt.run(...this.createdEdgeIds, accountId);
         console.log(`[Import] Rolled back ${this.createdEdgeIds.length} edges`);
       }
 
@@ -321,7 +342,7 @@ export class EnhancedImportServiceV2 {
         const deleteNodesStmt = sqliteDb.prepare(
           `DELETE FROM nodes WHERE id IN (${nodePlaceholders}) AND account_id = ?`
         );
-        deleteNodesStmt.run(...this.createdNodeIds, this.context?.accountId || '');
+        deleteNodesStmt.run(...this.createdNodeIds, accountId);
         console.log(`[Import] Rolled back ${this.createdNodeIds.length} nodes`);
       }
 
@@ -400,18 +421,39 @@ export class EnhancedImportServiceV2 {
 
   /**
    * Save conversations, messages, and groups to database
+   * World Model V5: Creates Principal nodes and ConversationThread with relationship edges
    */
   private async saveToDatabase(
     conversations: ImportConversation[],
     groups: Group[],
     uploadHash: string
   ): Promise<void> {
-    // Save conversations as ChatThread nodes
+    // World Model V5: Resolve Principals before creating conversations
+    // This ensures idempotent creation - same import = same Principals
+    await this.resolvePrincipals(conversations);
+
+    // Save conversations as ConversationThread nodes (World Model V5)
     for (const conv of conversations) {
+      // Detect platform for this conversation
+      const platform = PrincipalService.detectPlatform(conv.platform);
+
+      // Get source IDs for context_spec (will be populated after source creation)
+      // For now, we track the conversation ID and update context later
+      const conversationSourceIds: string[] = [];
+
+      // Create ConversationThread node (World Model V5)
       await this.writeNode({
         id: conv.id,
-        kind: 'ChatThread',
+        kind: 'ConversationThread',
         title: conv.title,
+        human_principal_id: this.humanPrincipal?.id,
+        agent_principal_id: this.agentPrincipal?.id,
+        purpose: 'general', // Default for imports
+        context_spec: {
+          source_ids: conversationSourceIds,
+          group_ids: [],
+          expansion_rule: 'none',
+        },
         created_at: conv.created_at,
         updated_at: Date.now(),
         metadata: {
@@ -420,6 +462,31 @@ export class EnhancedImportServiceV2 {
           uploadHash,
         },
       });
+
+      // Create INITIATED_BY edge (ConversationThread -> Human Principal)
+      if (this.humanPrincipal) {
+        await this.writeEdge({
+          id: `edge_${nanoid()}`,
+          kind: 'INITIATED_BY',
+          from: conv.id,
+          to: this.humanPrincipal.id,
+          created_at: Date.now(),
+        });
+      }
+
+      // Create PARTICIPATED_IN edge (Agent Principal -> ConversationThread)
+      if (this.agentPrincipal) {
+        await this.writeEdge({
+          id: `edge_${nanoid()}`,
+          kind: 'PARTICIPATED_IN',
+          from: this.agentPrincipal.id,
+          to: conv.id,
+          created_at: Date.now(),
+          metadata: {
+            role: 'agent',
+          },
+        });
+      }
 
       // Save messages (content to local store)
       for (const msg of conv.messages) {
@@ -488,6 +555,50 @@ export class EnhancedImportServiceV2 {
   }
 
   /**
+   * World Model V5: Resolve or create Principal nodes for this import batch
+   * - Human Principal: The user who is importing
+   * - Agent Principal: The AI assistant in the conversations (by platform)
+   */
+  private async resolvePrincipals(conversations: ImportConversation[]): Promise<void> {
+    if (!this.context) {
+      console.warn('[Import] No context available for Principal resolution');
+      return;
+    }
+
+    const { accountId, userId } = this.context;
+
+    // Resolve human Principal for the uploader
+    // Bug fix #11: Re-throw errors instead of swallowing them
+    // Principal resolution is critical - failing silently creates incomplete graph data
+    try {
+      this.humanPrincipal = await this.principalService.resolveHumanPrincipal(accountId, userId);
+      console.log(`[Import] Resolved human Principal: ${this.humanPrincipal.id}`);
+    } catch (error: any) {
+      console.error('[Import] Failed to resolve human Principal:', error.message);
+      throw new Error(`Principal resolution failed: ${error.message}`);
+    }
+
+    // Detect platform from conversations (use the first conversation's platform)
+    const platform = conversations[0]?.platform || 'unknown';
+    const agentPlatform = PrincipalService.detectPlatform(platform);
+
+    // Resolve agent Principal for the platform
+    try {
+      this.agentPrincipal = await this.principalService.resolveAgentPrincipal(
+        accountId,
+        agentPlatform,
+        userId
+      );
+      console.log(
+        `[Import] Resolved agent Principal: ${this.agentPrincipal.id} (${agentPlatform})`
+      );
+    } catch (error: any) {
+      console.error('[Import] Failed to resolve agent Principal:', error.message);
+      throw new Error(`Agent Principal resolution failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Create source documents from messages
    */
   private async createSources(
@@ -538,11 +649,11 @@ export class EnhancedImportServiceV2 {
         updated_at: Date.now(),
         // World Model V5: Full provenance tracking (WHO/HOW/FROM/VERIFIED)
         provenance: {
-          origin_principal_id: this.context!.userId,   // WHO: User who imported
-          origin_type: 'chat_import',                   // HOW: Chat import mechanism
-          origin_ref: msg.conversationId,               // FROM: Source conversation ID
-          trust_state: 'ugc',                           // VERIFIED: User-generated content
-          original_url: undefined,                      // N/A for chat imports
+          origin_principal_id: this.humanPrincipal?.id || this.context?.userId || 'unknown', // WHO: Principal who imported
+          origin_type: 'chat_import', // HOW: Chat import mechanism
+          origin_ref: msg.conversationId, // FROM: Source conversation ID
+          trust_state: 'ugc', // VERIFIED: User-generated content
+          original_url: undefined, // N/A for chat imports
           retrieved_at: Date.now(),
         },
         metadata: {
@@ -575,6 +686,17 @@ export class EnhancedImportServiceV2 {
           kind: 'IN_GROUP',
           from: sourceId,
           to: groupId,
+          created_at: Date.now(),
+        });
+      }
+
+      // World Model V5: Create CREATED_BY edge from Source to Human Principal
+      if (this.humanPrincipal) {
+        await this.writeEdge({
+          id: `edge_${nanoid()}`,
+          kind: 'CREATED_BY',
+          from: sourceId,
+          to: this.humanPrincipal.id,
           created_at: Date.now(),
         });
       }
@@ -805,9 +927,17 @@ export class EnhancedImportServiceV2 {
 
     let totalLexemes = 0;
     let totalPhrases = 0;
-    let linkedLexemes = 0;  // Existing nodes we linked to
+    let linkedLexemes = 0; // Existing nodes we linked to
     let linkedPhrases = 0;
     const allPhrases: PhraseNode[] = [];
+
+    // Bug fix #12: Validate context before spine extraction
+    if (!this.context?.accountId || !this.context?.userId) {
+      console.error('[Import] Cannot extract spine: no context available');
+      return { lexemes: 0, phrases: 0, topics: 0 };
+    }
+
+    const { accountId, userId } = this.context;
 
     // Process each message to extract lexemes and phrases with deduplication
     for (const msg of messages) {
@@ -815,9 +945,9 @@ export class EnhancedImportServiceV2 {
       // Cast to SQLiteClient since extractSpineWithDedup needs access to findSpineNodesByTexts
       const result = await spineBuilder.extractSpineWithDedup(
         this.db as SQLiteClient,
-        this.context!.accountId,
-        msg.id,  // sourceDocId = message ID for MENTIONS edges
-        this.context!.userId,
+        accountId,
+        msg.id, // sourceDocId = message ID for MENTIONS edges
+        userId,
         msg.content
       );
 
@@ -894,7 +1024,9 @@ export class EnhancedImportServiceV2 {
 
     // Log cross-conversation linking stats
     if (linkedLexemes > 0 || linkedPhrases > 0) {
-      console.log(`[Import] Cross-conversation links created: ${linkedLexemes} lexemes, ${linkedPhrases} phrases linked to existing nodes`);
+      console.log(
+        `[Import] Cross-conversation links created: ${linkedLexemes} lexemes, ${linkedPhrases} phrases linked to existing nodes`
+      );
     }
 
     // Cluster phrases into topics (if enabled)

@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "playwright test"
+    "test": "playwright test",
+    "build": "npm --workspace keimenon-desktop run build:dist",
+    "lint": "node -e \"console.log('desktop-e2e lint placeholder')\"",
+    "type-check": "node -e \"console.log('desktop-e2e type-check placeholder')\""
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",

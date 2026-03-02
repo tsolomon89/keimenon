@@ -1,15 +1,5 @@
 /**
- * Neo4j schema initialization and management
- *
- * Node labels:
- * - Node (base label for all nodes)
- * - Source, Group, Folder, ObjectiveClaim, UnifiedDoc, Constellation
- * - UserNode, ChatThread, Message
- * - Workspace, Board
- *
- * Relationship types:
- * - CONTAINS, SEQUESTERS, DERIVES_FROM, IN_SCOPE_FOR
- * - EQUIVALENT_TO, DUP_OF, SUPPORTS, REFUTES, VERIFIED_BY
+ * Canonical node/edge label constants used across the graph domain model.
  */
 
 export const NODE_LABELS = [
@@ -43,5 +33,5 @@ export const EDGE_TYPES = [
   'COMPILED_FROM',
 ] as const;
 
-export type NodeLabel = typeof NODE_LABELS[number];
-export type EdgeType = typeof EDGE_TYPES[number];
+export type NodeLabel = (typeof NODE_LABELS)[number];
+export type EdgeType = (typeof EDGE_TYPES)[number];

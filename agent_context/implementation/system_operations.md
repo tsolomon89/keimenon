@@ -1,30 +1,36 @@
 # System Operations
 
-## Authentication & Authorization
-### The JWT Contract
-- **Issuer**: Oblio Auth Service
-- **Claims**:
-    - `sub`: User ID
-    - `tid`: Tenant ID (Critical for isolation)
-    - `roles`: `['admin', 'editor']`
-- **Storage**: `httpOnly` Cookie (Web) or Bearer Header (API).
+## Authentication And Authorization
+
+### JWT Contract
+
+- `sub`: user id
+- `account_id`: active account scope
+- `roles`: permission roles
+
+Storage:
+
+- Web: secure/httpOnly cookie or token storage policy
+- API: bearer token header
 
 ### Security Model
-1.  **TLS**: Mandatory in production.
-2.  **Isolation**: Queries are scoped by `tid` explicitly.
-3.  **Secrets**: Managed via `.env` (Infisical/Dotenv), never committed.
 
-## Operations
-### Deployment
-- **Model**: Dockerized Containers (Node.js 20-alpine).
-- **Orchestration**: Kubernetes / ECS / Coolify.
-- **Region Constraints**: Data residency requirements may dictate distinct clusters.
+1. TLS required in production.
+2. Data access scoped by `account_id`.
+3. Secrets managed in environment configuration only.
 
-### Database Operations
-- **Backup**: SQLite `.db` file copy (WAL safe) or Neo4j Dump.
-- **Migration**: `npm run migrate` executes Schema Record insertions.
+## Deployment
 
-### Monitoring
-- **Health Check**: `/health` (Deep check of DB + Redis).
-- **Ready Check**: `/ready` (Traffic acceptance).
-- **Metrics**: Prometheus scraper endpoint at `/metrics`.
+- Runtime: Node.js services (API + web + desktop integrations).
+- Orchestration: container or process-manager based.
+
+## Database Operations
+
+- Backup: SQLite `.db` file copy (WAL-safe process).
+- Migration: run managed migration scripts from repository commands.
+
+## Monitoring
+
+- Health check: `/health`
+- Readiness check: `/ready`
+- Metrics endpoint: `/metrics`

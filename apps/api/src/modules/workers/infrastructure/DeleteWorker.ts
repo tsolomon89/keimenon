@@ -74,10 +74,12 @@ export class DeleteWorker extends BaseWorker {
     const scope = job.config.deleteScope!;
 
     console.log(`🗑️ Delete worker processing ${scope} for job ${job.id}`);
-    
-    // DEBUG: Log to file
-    try {
-      const debugLog = `
+
+    // Bug fix #23: Only write debug log in development mode with explicit env var
+    const debugLogPath = process.env.DELETE_WORKER_DEBUG_LOG;
+    if (debugLogPath && process.env.NODE_ENV !== 'production') {
+      try {
+        const debugLog = `
 Timestamp: ${new Date().toISOString()}
 Job ID: ${job.id}
 Scope: ${scope}
@@ -85,8 +87,11 @@ Account ID: "${job.accountId}"
 DB Path: ${(this.db as any).databasePath}
 Node Count Check: Starting...
 `;
-      await fs.writeFile(path.join(process.cwd(), 'delete-worker-debug.log'), debugLog, { flag: 'a' });
-    } catch (e) { console.error('Failed to write debug log', e); }
+        await fs.writeFile(debugLogPath, debugLog, { flag: 'a' });
+      } catch (e) {
+        console.error('Failed to write debug log', e);
+      }
+    }
 
     // ⏱️ Start performance timing for metrics
     const startTime = Date.now();
@@ -102,12 +107,18 @@ Node Count Check: Starting...
       // Step 1: Count nodes to delete
       await this.reportProgress(job, 0, 100, 'Counting nodes...', context);
 
+      const isAdmin = !!job.config.isAdmin;
       // @ts-ignore
-      const nodeCount = await this.countNodesToDelete(dbClient, scope, job.accountId);
-      
-      try {
-        await fs.appendFile(path.join(process.cwd(), 'delete-worker-debug.log'), `Node Count: ${nodeCount}\n`);
-      } catch (e) {}
+      const nodeCount = await this.countNodesToDelete(dbClient, scope, job.accountId, isAdmin);
+
+      // Bug fix #23: Only write debug log in development mode
+      if (debugLogPath && process.env.NODE_ENV !== 'production') {
+        try {
+          await fs.appendFile(debugLogPath, `Node Count: ${nodeCount}\n`);
+        } catch (e) {
+          void e;
+        }
+      }
 
       if (nodeCount === 0) {
         await this.reportProgress(job, 100, 100, 'No nodes to delete', context);
@@ -132,7 +143,8 @@ Node Count Check: Starting...
         job.accountId!,
         changeTracker,
         job,
-        context
+        context,
+        isAdmin
       );
       const deletedNodes = deleteResult.deletedCount;
       changeTracker = deleteResult.changeTracker;
@@ -154,7 +166,12 @@ Node Count Check: Starting...
       await this.reportProgress(job, 80, 100, 'Cleaning up edges...', context);
 
       // @ts-ignore
-      const edgeResult = await this.deleteOrphanedEdges(dbClient, job.accountId, changeTracker);
+      const edgeResult = await this.deleteOrphanedEdges(
+        dbClient,
+        job.accountId,
+        changeTracker,
+        isAdmin
+      );
       const deletedEdges = edgeResult.deletedCount;
       changeTracker = edgeResult.changeTracker;
 
@@ -228,25 +245,29 @@ Node Count Check: Starting...
    *
    * See also: getNodeIdBatch() for matching deletion logic
    */
-  private async countNodesToDelete(db: DatabaseClient, scope: string, accountId: string): Promise<number> {
+  private async countNodesToDelete(
+    db: DatabaseClient,
+    scope: string,
+    accountId: string,
+    isAdmin = false
+  ): Promise<number> {
     if (scope === 'keimenon') {
       // Only count keimenon data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
       // System nodes are excluded: UserNode, AccountNode, Board, Constellation
-      const result = await db.execute(
-        `SELECT COUNT(*) as count FROM nodes
-         WHERE account_id = ?
-         AND kind IN (${getKeimenonDataInClause()})`,
-        [accountId]
-      );
+      // Admin users: count ALL keimenon data across all accounts
+      const query = isAdmin
+        ? `SELECT COUNT(*) as count FROM nodes WHERE kind IN (${getKeimenonDataInClause()})`
+        : `SELECT COUNT(*) as count FROM nodes WHERE account_id = ? AND kind IN (${getKeimenonDataInClause()})`;
+      const params = isAdmin ? [] : [accountId];
+      const result = await db.execute(query, params);
       return result.records[0]?.count || 0;
     } else if (scope === 'all-clients') {
       // Count all client data (exclude system nodes only)
-      const result = await db.execute(
-        `SELECT COUNT(*) as count FROM nodes
-         WHERE account_id = ?
-         AND kind NOT IN (${getSystemNodeInClause()})`,
-        [accountId]
-      );
+      const query = isAdmin
+        ? `SELECT COUNT(*) as count FROM nodes WHERE kind NOT IN (${getSystemNodeInClause()})`
+        : `SELECT COUNT(*) as count FROM nodes WHERE account_id = ? AND kind NOT IN (${getSystemNodeInClause()})`;
+      const params = isAdmin ? [] : [accountId];
+      const result = await db.execute(query, params);
       return result.records[0]?.count || 0;
     }
 
@@ -270,18 +291,19 @@ Node Count Check: Starting...
     accountId: string,
     changeTracker: ChangeTracker,
     job?: Job,
-    context?: WorkerContext
+    context?: WorkerContext,
+    isAdmin = false
   ): Promise<{ deletedCount: number; changeTracker: ChangeTracker }> {
     console.log(`🗑️ Deleting nodes for scope: ${scope}, account: ${accountId}`);
     console.log(`Checking database path (via db client): ${(db as any).databasePath || 'unknown'}`);
-    
+
     const BATCH_SIZE = 500;
     let totalDeleted = 0;
     let batchNumber = 0;
     let tracker = changeTracker;
 
     // Get total count for progress calculation
-    const totalNodes = await this.countNodesToDelete(db, scope, accountId);
+    const totalNodes = await this.countNodesToDelete(db, scope, accountId, isAdmin);
 
     if (totalNodes === 0) {
       return { deletedCount: 0, changeTracker: tracker };
@@ -302,7 +324,7 @@ Node Count Check: Starting...
       }
 
       // Get batch of node IDs
-      const nodeIds = await this.getNodeIdBatch(db, scope, accountId, BATCH_SIZE);
+      const nodeIds = await this.getNodeIdBatch(db, scope, accountId, BATCH_SIZE, isAdmin);
 
       if (nodeIds.length === 0) {
         // No more nodes to delete
@@ -313,7 +335,7 @@ Node Count Check: Starting...
       tracker = trackNodesDeleted(tracker, nodeIds);
 
       // Delete this batch (with CASCADE for edges)
-      const batchDeleted = await this.deleteBatch(db, nodeIds, accountId);
+      const batchDeleted = await this.deleteBatch(db, nodeIds, accountId, isAdmin);
       totalDeleted += batchDeleted;
 
       console.log(
@@ -358,7 +380,8 @@ Node Count Check: Starting...
     db: DatabaseClient,
     scope: string,
     accountId: string,
-    batchSize: number
+    batchSize: number,
+    isAdmin = false
   ): Promise<string[]> {
     let query: string;
     let params: any[];
@@ -366,18 +389,33 @@ Node Count Check: Starting...
     if (scope === 'keimenon') {
       // Only delete keimenon data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
       // System nodes are preserved: UserNode, AccountNode, Board, Constellation
-      query = `SELECT id FROM nodes
-               WHERE account_id = ?
-               AND kind IN (${getKeimenonDataInClause()})
-               LIMIT ?`;
-      params = [accountId, batchSize];
+      // Admin users: select from ALL accounts
+      if (isAdmin) {
+        query = `SELECT id FROM nodes
+                 WHERE kind IN (${getKeimenonDataInClause()})
+                 LIMIT ?`;
+        params = [batchSize];
+      } else {
+        query = `SELECT id FROM nodes
+                 WHERE account_id = ?
+                 AND kind IN (${getKeimenonDataInClause()})
+                 LIMIT ?`;
+        params = [accountId, batchSize];
+      }
     } else if (scope === 'all-clients') {
       // Get client data nodes (exclude system nodes only)
-      query = `SELECT id FROM nodes
-               WHERE account_id = ?
-               AND kind NOT IN (${getSystemNodeInClause()})
-               LIMIT ?`;
-      params = [accountId, batchSize];
+      if (isAdmin) {
+        query = `SELECT id FROM nodes
+                 WHERE kind NOT IN (${getSystemNodeInClause()})
+                 LIMIT ?`;
+        params = [batchSize];
+      } else {
+        query = `SELECT id FROM nodes
+                 WHERE account_id = ?
+                 AND kind NOT IN (${getSystemNodeInClause()})
+                 LIMIT ?`;
+        params = [accountId, batchSize];
+      }
     } else {
       return [];
     }
@@ -391,15 +429,23 @@ Node Count Check: Starting...
    * Uses IN clause for efficient deletion
    * CASCADE DELETE will automatically remove associated edges
    */
-  private async deleteBatch(db: DatabaseClient, nodeIds: string[], accountId: string): Promise<number> {
+  private async deleteBatch(
+    db: DatabaseClient,
+    nodeIds: string[],
+    accountId: string,
+    isAdmin = false
+  ): Promise<number> {
     if (nodeIds.length === 0) {
       return 0;
     }
 
     // Build parameterized query with placeholders
     const placeholders = nodeIds.map(() => '?').join(',');
-    const query = `DELETE FROM nodes WHERE account_id = ? AND id IN (${placeholders})`;
-    const params = [accountId, ...nodeIds];
+    // Admin users: skip account_id filter (nodes already filtered by kind in getNodeIdBatch)
+    const query = isAdmin
+      ? `DELETE FROM nodes WHERE id IN (${placeholders})`
+      : `DELETE FROM nodes WHERE account_id = ? AND id IN (${placeholders})`;
+    const params = isAdmin ? [...nodeIds] : [accountId, ...nodeIds];
 
     const result = await db.execute(query, params);
     return result.records[0]?.changes || nodeIds.length;
@@ -420,17 +466,23 @@ Node Count Check: Starting...
   private async deleteOrphanedEdges(
     db: DatabaseClient,
     accountId: string,
-    changeTracker: ChangeTracker
+    changeTracker: ChangeTracker,
+    isAdmin = false
   ): Promise<{ deletedCount: number; changeTracker: ChangeTracker }> {
+    // Admin users: check ALL edges for orphans (not just current account)
+    const accountFilter = isAdmin ? '' : 'AND account_id = ?';
+    const params = isAdmin ? [] : [accountId];
+
     // ✅ First, get the IDs of edges to be deleted (for tracking)
     const edgeIdsResult = await db.execute(
       `SELECT id FROM edges
-       WHERE account_id = ?
+       WHERE 1=1
+       ${accountFilter}
        AND (
          from_id NOT IN (SELECT id FROM nodes)
          OR to_id NOT IN (SELECT id FROM nodes)
        )`,
-      [accountId]
+      params
     );
 
     const edgeIds = edgeIdsResult.records.map((r: any) => r.id);
@@ -445,12 +497,13 @@ Node Count Check: Starting...
     // Now delete the edges
     const result = await db.execute(
       `DELETE FROM edges
-       WHERE account_id = ?
+       WHERE 1=1
+       ${accountFilter}
        AND (
          from_id NOT IN (SELECT id FROM nodes)
          OR to_id NOT IN (SELECT id FROM nodes)
        )`,
-      [accountId]
+      params
     );
 
     const deletedCount = result.records[0]?.changes || 0;
@@ -465,7 +518,11 @@ Node Count Check: Starting...
   /**
    * Clean up local files for deleted nodes
    */
-  private async cleanupLocalFiles(db: DatabaseClient, scope: string, accountId: string): Promise<void> {
+  private async cleanupLocalFiles(
+    db: DatabaseClient,
+    scope: string,
+    accountId: string
+  ): Promise<void> {
     console.log(`🗑️ Cleaning up local files for account: ${accountId}`);
 
     const localStore = getLocalDocumentStore();

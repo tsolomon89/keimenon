@@ -301,12 +301,13 @@ export function createImportJobsRoutes(
         },
         // Test isolation context (E2E testing only)
         // Propagates test database path from API request to background worker
-        testContext: ((req as any).testDbPath || req.headers['x-test-db-path'])
-          ? {
-              dbPath: (req as any).testDbPath || (req.headers['x-test-db-path'] as string),
-              testId: (req as any).testId,
-            }
-          : undefined,
+        testContext:
+          (req as any).testDbPath || req.headers['x-test-db-path']
+            ? {
+                dbPath: (req as any).testDbPath || (req.headers['x-test-db-path'] as string),
+                testId: (req as any).testId,
+              }
+            : undefined,
       };
 
       // DEBUG: Verify testContext is set correctly
@@ -425,12 +426,16 @@ export function createImportJobsRoutes(
       }
 
       // Create delete job with exclusive lock and tenancy metadata
+      const accountType = (req as any).user?.accountType;
       const command: EnqueueJobCommand = {
         type: 'delete',
         accountId: targetAccountId,
         createdBy: userId,
         config: {
           deleteScope: scope,
+          // Admin flag: allows DeleteWorker to skip account filtering
+          // so admins can delete ALL keimenon data (matching graph view behavior)
+          isAdmin: accountType === 'admin',
           // Include tenancy for audit purposes
           tenancy: {
             actorId,

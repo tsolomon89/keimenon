@@ -106,7 +106,6 @@ function createWrappedApiContext(rawContext: any, dbPath: string) {
       'X-Test-DB-Path': dbPath, // Always include the test DB path header
       ...(requestOptions.headers || {}), // Merge with request-specific headers (e.g., Authorization)
     };
-    console.log(`[Wrapper] Merged headers for request:`, JSON.stringify(merged.headers));
     return merged;
   };
 
@@ -164,7 +163,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
 
     try {
       // BEGIN SAVEPOINT before test
-      // NOTE: No need to manually add X-Test-DB-Path header - wrapper handles it automatically
+      // Use object payload so Playwright automatically sets Content-Type to application/json
       const beginResponse = await apiContext.post(`${API_BASE_URL}/api/v1/test/savepoint`, {
         data: { action: 'begin', savepointId: testId },
       });
@@ -181,7 +180,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
     } finally {
       // ROLLBACK TO SAVEPOINT after test (even if test failed)
       try {
-        // NOTE: No need to manually add X-Test-DB-Path header - wrapper handles it automatically
+        // Use object payload so Playwright automatically sets Content-Type to application/json
         const rollbackResponse = await apiContext.post(`${API_BASE_URL}/api/v1/test/savepoint`, {
           data: { action: 'rollback', savepointId: testId },
         });
@@ -257,7 +256,9 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
       // Restore pristine snapshot to worker DB
       await snapshotManager.restoreToWorker(workerInfo.workerIndex);
 
-      console.log(`[Worker ${workerInfo.workerIndex}] Restored from snapshot: ${workerDbAbsolutePath}`);
+      console.log(
+        `[Worker ${workerInfo.workerIndex}] Restored from snapshot: ${workerDbAbsolutePath}`
+      );
 
       // Provide RELATIVE DB path to tests (so header is relative)
       await use(relativeDbPath);
@@ -320,7 +321,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
     try {
       // BEGIN SAVEPOINT before test
       const beginResponse = await page.request.post(`${API_BASE_URL}/api/v1/test/savepoint`, {
-        headers: { 'X-Test-DB-Path': dbPath },
+        headers: { 'X-Test-DB-Path': dbPath, 'Content-Type': 'application/json' },
         data: { action: 'begin', savepointId: testId },
       });
 
@@ -352,7 +353,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
       // This undoes all database changes made during the test
       try {
         const rollbackResponse = await page.request.post(`${API_BASE_URL}/api/v1/test/savepoint`, {
-          headers: { 'X-Test-DB-Path': dbPath },
+          headers: { 'X-Test-DB-Path': dbPath, 'Content-Type': 'application/json' },
           data: { action: 'rollback', savepointId: testId },
         });
 

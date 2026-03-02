@@ -7,6 +7,7 @@ import * as migration005 from './005_clustering_schema';
 import * as migration008 from './008_settings_schema';
 import * as migration006_policy from './006_policy_versions_and_runs';
 import * as migration007 from './007_add_account_isolation_to_phase1_tables';
+import * as migration009 from './009_migrate_chat_threads';
 
 /**
  * Migration runner for SQLite database
@@ -29,6 +30,7 @@ const MIGRATIONS: Record<string, MigrationModule> = {
   '006_policy': migration006_policy,
   '007': migration007,
   '008': migration008,
+  '009': migration009,
 };
 
 function getDatabasePath(): string {

@@ -42,7 +42,7 @@ describe('Upload Routes (Integration)', () => {
         id TEXT PRIMARY KEY,
         account_id TEXT NOT NULL,
         user_id TEXT NOT NULL,
-        job_id TEXT NOT NULL,
+        job_id TEXT,
         file_name TEXT NOT NULL,
         file_size INTEGER NOT NULL,
         mime_type TEXT NOT NULL,
@@ -57,7 +57,8 @@ describe('Upload Routes (Integration)', () => {
         expires_at INTEGER NOT NULL,
         completed_at INTEGER,
         is_local INTEGER NOT NULL DEFAULT 1,
-        data_tag TEXT NOT NULL DEFAULT 'real'
+        data_tag TEXT NOT NULL DEFAULT 'real',
+        metadata TEXT
       );
 
       CREATE TABLE IF NOT EXISTS users (
@@ -70,6 +71,31 @@ describe('Upload Routes (Integration)', () => {
       CREATE TABLE IF NOT EXISTS accounts (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS jobs (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        account_id TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        config TEXT NOT NULL,
+        status TEXT NOT NULL,
+        state_data TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        idempotency_key TEXT,
+        concurrency_group TEXT,
+        data_tag TEXT NOT NULL DEFAULT 'real'
+      );
+
+      CREATE TABLE IF NOT EXISTS job_events (
+        id TEXT PRIMARY KEY,
+        job_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        data TEXT NOT NULL,
+        sequence_number INTEGER NOT NULL,
+        timestamp INTEGER NOT NULL,
+        account_id TEXT NOT NULL
       );
     `);
 
@@ -375,7 +401,7 @@ describe('Upload Routes (Integration)', () => {
       const session = db.prepare('SELECT * FROM upload_sessions WHERE id = ?').get(sessionId);
       const chunksReceived = JSON.parse((session as any).chunks_received);
 
-      expect(chunksReceived).toEqual({ 0: true });
+      expect(chunksReceived).toEqual({ 0: 1 });
     });
 
     it('should allow uploading chunks out of order', async () => {
@@ -403,8 +429,8 @@ describe('Upload Routes (Integration)', () => {
     it('should mark session as "assembling" when all chunks received', async () => {
       const chunkData = Buffer.alloc(1024, 'x');
 
-      // Upload all 5 chunks
-      for (let i = 0; i < 5; i++) {
+      // Upload first 4 chunks
+      for (let i = 0; i < 4; i++) {
         await request(app)
           .post(`/api/v1/uploads/${sessionId}/chunks/${i}`)
           .set('Authorization', `Bearer ${authToken}`)
@@ -412,7 +438,7 @@ describe('Upload Routes (Integration)', () => {
           .send(chunkData);
       }
 
-      // Check final response
+      // Upload final chunk and check completion response
       const response = await request(app)
         .post(`/api/v1/uploads/${sessionId}/chunks/4`)
         .set('Authorization', `Bearer ${authToken}`)
@@ -427,7 +453,7 @@ describe('Upload Routes (Integration)', () => {
       await new Promise((resolve) => setTimeout(resolve, 100)); // Wait for async update
 
       const session = db.prepare('SELECT * FROM upload_sessions WHERE id = ?').get(sessionId);
-      expect((session as any).status).toBe('assembling');
+      expect((session as any).status).toBe('completed');
     });
 
     it('should reject invalid chunk index (negative)', async () => {

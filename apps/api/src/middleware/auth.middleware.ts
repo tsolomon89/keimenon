@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { AuthServiceV2, CapabilityAuthorizationService, PrincipalCapabilities } from '../services/auth.service';
+import {
+  AuthServiceV2,
+  CapabilityAuthorizationService,
+  PrincipalCapabilities,
+} from '../services/auth.service';
 
 // Extend Express Request to include auth data
 declare global {
@@ -269,7 +273,6 @@ export function isolateByAccount(req: Request, res: Response, next: NextFunction
     // Allow admin to optionally filter by account_id via query param
     // If not provided, they see all data
     return next();
-    return;
   }
 
   // Client accounts: force account_id filter
@@ -330,9 +333,13 @@ export function requireCapability(capability: keyof PrincipalCapabilities) {
 
     // Check if capabilities were loaded
     if (!req.user.capabilities) {
-      // Fall back to legacy permission check if capabilities not available
-      console.warn('[RequireCapability] Capabilities not loaded, falling back to legacy auth');
-      return next();
+      // Security fix: Do NOT fall back to next() - this creates auth bypass
+      // If capabilities are required but not loaded, deny access
+      console.error('[RequireCapability] Capabilities not loaded - denying access');
+      return res.status(403).json({
+        error: 'Authorization failed',
+        message: 'Could not verify capabilities. Please try again.',
+      });
     }
 
     // Check the specific capability
@@ -362,8 +369,12 @@ export function requireAnyCapability(capabilities: Array<keyof PrincipalCapabili
     }
 
     if (!req.user.capabilities) {
-      console.warn('[RequireAnyCapability] Capabilities not loaded, falling back to legacy auth');
-      return next();
+      // Security fix: Do NOT fall back to next() - this creates auth bypass
+      console.error('[RequireAnyCapability] Capabilities not loaded - denying access');
+      return res.status(403).json({
+        error: 'Authorization failed',
+        message: 'Could not verify capabilities. Please try again.',
+      });
     }
 
     const hasAny = capabilities.some((cap) => req.user!.capabilities![cap]);
@@ -391,7 +402,6 @@ export function optionalAuth(authService: AuthServiceV2) {
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         // No token provided - continue without auth
         return next();
-        return;
       }
 
       const token = authHeader.substring(7);

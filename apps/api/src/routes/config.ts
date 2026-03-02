@@ -67,15 +67,9 @@ function getDefaultConfig(): AppConfig {
     storageMode: 'local',
     database: {
       local: {
-        path: path.join(basePath, 'graph.db'),
+        path: path.join(basePath, 'keimenon.db'),
         autoBackup: true,
         verbose: false,
-      },
-      cloud: {
-        enabled: false,
-        neo4jUri: null,
-        neo4jUser: null,
-        neo4jPassword: null,
       },
     },
     documentStore: {
@@ -94,21 +88,9 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const config = await loadConfig();
 
-    // Sanitize sensitive data
-    const sanitized = {
-      ...config,
-      database: {
-        ...config.database,
-        cloud: {
-          ...config.database.cloud,
-          neo4jPassword: config.database.cloud.neo4jPassword ? '***' : null,
-        },
-      },
-    };
-
     return res.json({
       success: true,
-      config: sanitized,
+      config,
       configPath: getConfigPath(),
     });
   } catch (error: any) {
@@ -278,10 +260,6 @@ router.get('/storage-mode', async (req: Request, res: Response) => {
           enabled: true,
           path: config.database.local.path,
         },
-        cloud: {
-          enabled: config.database.cloud.enabled,
-          uri: config.database.cloud.neo4jUri,
-        },
       },
     });
   } catch (error: any) {
@@ -301,9 +279,9 @@ router.put('/storage-mode', async (req: Request, res: Response) => {
   try {
     const { mode } = req.body;
 
-    if (!mode || !['local', 'keimenon', 'hybrid'].includes(mode)) {
+    if (mode !== 'local') {
       return res.status(400).json({
-        error: 'Invalid storage mode. Must be: local, keimenon, or hybrid',
+        error: 'Invalid storage mode. Only local mode is supported.',
       });
     }
 
@@ -323,7 +301,7 @@ router.put('/storage-mode', async (req: Request, res: Response) => {
       success: true,
       message: `Storage mode changed to: ${mode}`,
       storageMode: mode,
-      requiresRestart: mode === 'keimenon', // Keimenon mode may need Neo4j setup
+      requiresRestart: false,
     });
   } catch (error: any) {
     console.error('Update storage mode error:', error);

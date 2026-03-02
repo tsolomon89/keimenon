@@ -9,7 +9,7 @@ import { SelectionStack } from './SelectionStack';
 import { AccountInspector } from '../inspector/AccountInspector';
 import { ChatImportModal } from './ChatImportModal';
 import { ImportMethodSelector } from './ImportMethodSelector';
-import { ImportReviewDrawer } from '../import/ImportReviewDrawer';
+
 import { UserDetailInspector } from '../inspector/UserDetailInspector';
 import { InspectorData } from '@/types/keimenon';
 import { KeimenonNode } from '@/store/keimenonStore';
@@ -37,7 +37,6 @@ export type InspectorPanel =
   | 'settings-control' // Settings inspector
   | 'import-flow' // Unified import panel
   | 'import-detail' // Import job detail (Manager mode)
-  | 'import-review' // Import review panel (duplicates/AI)
   | 'user-detail'; // User detail inspector (Settings > Users)
 
 interface KeimenonSidebarProps {
@@ -361,7 +360,7 @@ export function KeimenonSidebar({
   const deselectNode = useKeimenonStore((state) => state.deselectNode);
   const clearSelection = useKeimenonStore((state) => state.clearSelection);
   const openDetailPanel = useKeimenonStore((state) => state.openDetailPanel);
-  const importCandidates = useKeimenonStore((state) => state.importProcess?.candidates || []);
+
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
 
   // Inspector panel state management
@@ -519,6 +518,7 @@ export function KeimenonSidebar({
                 // Clear panel and history
                 setInternalInspectorPanel(null);
                 setPanelHistory([]);
+                onInspectorPanelChange?.(undefined);
               }}
               onUpdate={onUserUpdate}
             />
@@ -532,6 +532,7 @@ export function KeimenonSidebar({
                   onClose={() => {
                     setInternalInspectorPanel(null);
                     setPanelHistory([]);
+                    onInspectorPanelChange?.(undefined);
                   }}
                   onSuccess={() => {
                     onViewProcessing?.();
@@ -542,23 +543,11 @@ export function KeimenonSidebar({
                   onDismiss={() => {
                     setInternalInspectorPanel(null);
                     setPanelHistory([]);
+                    onInspectorPanelChange?.(undefined);
                   }}
                 />
               )}
             </>
-          ) : currentPanel === 'import-review' ? (
-            <ImportReviewDrawer
-              candidates={importCandidates}
-              onReviewAction={(id, action) => {
-                  useKeimenonStore.getState().updateImportCandidate(id, { status: action === 'merge' ? 'merged' : action === 'reject' ? 'rejected' : 'approved' });
-                  console.log('Review action:', id, action);
-              }}
-              onClose={() => {
-                setInternalInspectorPanel(null);
-                setPanelHistory([]);
-                onInspectorPanelChange?.(undefined);
-              }}
-            />
           ) : rightKeimenonMode === 'settings' ? (
             // Settings Inspector
             <SettingsInspector selectedControlId={selectedSettingsControlId || null} />
