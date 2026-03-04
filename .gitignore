@@ -93,6 +93,7 @@ yarn-error.log*
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+.claude/settings.local.json
 .idea/
 *.sublime-project
 *.sublime-workspace
@@ -121,6 +122,11 @@ $RECYCLE.BIN/
 # Logs
 logs/
 *.log
+*_log.txt
+*-log.txt
+*startup*.txt
+*output*.txt
+data_*debug*.txt
 pids
 *.pid
 *.seed

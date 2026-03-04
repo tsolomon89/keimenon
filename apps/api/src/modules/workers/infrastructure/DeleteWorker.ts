@@ -121,6 +121,7 @@ Node Count Check: Starting...
       }
 
       if (nodeCount === 0) {
+        job.updateStats({ nodesDeleted: 0, edgesDeleted: 0 });
         await this.reportProgress(job, 100, 100, 'No nodes to delete', context);
         return {
           success: true,
@@ -260,7 +261,12 @@ Node Count Check: Starting...
         : `SELECT COUNT(*) as count FROM nodes WHERE account_id = ? AND kind IN (${getKeimenonDataInClause()})`;
       const params = isAdmin ? [] : [accountId];
       const result = await db.execute(query, params);
-      return result.records[0]?.count || 0;
+      if (!result?.records?.length) {
+        console.warn(
+          `[DeleteWorker] Count query returned no records: scope=${scope}, accountId=${accountId}, isAdmin=${isAdmin}`
+        );
+      }
+      return result.records[0]?.count ?? 0;
     } else if (scope === 'all-clients') {
       // Count all client data (exclude system nodes only)
       const query = isAdmin
@@ -268,7 +274,12 @@ Node Count Check: Starting...
         : `SELECT COUNT(*) as count FROM nodes WHERE account_id = ? AND kind NOT IN (${getSystemNodeInClause()})`;
       const params = isAdmin ? [] : [accountId];
       const result = await db.execute(query, params);
-      return result.records[0]?.count || 0;
+      if (!result?.records?.length) {
+        console.warn(
+          `[DeleteWorker] Count query returned no records: scope=${scope}, accountId=${accountId}, isAdmin=${isAdmin}`
+        );
+      }
+      return result.records[0]?.count ?? 0;
     }
 
     return 0;

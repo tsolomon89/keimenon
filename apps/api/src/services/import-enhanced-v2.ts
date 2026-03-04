@@ -17,6 +17,7 @@ import {
 import { SourcesStitcher } from '@keimenon/parsers';
 import { GraphSpineBuilder } from './graph-spine-builder';
 import { PrincipalService, AgentPlatform } from './principal-service';
+import { WORKER_CONFIG } from '../modules/jobs/jobs.config';
 import type { LexemeNode, PhraseNode, TopicNode, SourceDoc, PrincipalNode } from '@keimenon/types';
 
 export interface ImportMessage {
@@ -180,18 +181,6 @@ export class EnhancedImportServiceV2 {
     this.createdNodeIds = [];
     this.createdEdgeIds = [];
 
-    // DIAGNOSTIC: Log conversations at start
-    const fs = require('fs');
-    const path = require('path');
-    const debugPath = path.join(process.cwd(), 'duplicate-detection-debug.txt');
-    fs.writeFileSync(
-      debugPath,
-      `[${new Date().toISOString()}] import() called\n` +
-        `- conversations at START: ${conversations.length}\n` +
-        `- total messages at START: ${conversations.reduce((sum, c) => sum + c.messages.length, 0)}\n`,
-      { flag: 'a' }
-    );
-
     try {
       // Step 1: Save upload metadata
       await this.saveUploadMetadata(uploadHash, conversations, config);
@@ -219,22 +208,8 @@ export class EnhancedImportServiceV2 {
 
       // Step 7: Detect duplicates (if enabled)
       let duplicatesForReview = 0;
-      console.log(
-        `[Import] Step 7: Duplicate detection ${config.duplicates.enabled ? 'ENABLED' : 'DISABLED'}`
-      );
-      console.log(`[Import] Conversations to check: ${conversations.length}`);
-      console.log(
-        `[Import] Total messages: ${conversations.reduce((sum, c) => sum + c.messages.length, 0)}`
-      );
       if (config.duplicates.enabled) {
-        console.log(
-          `[Import] Calling detectDuplicates() with config:`,
-          JSON.stringify(config.duplicates, null, 2)
-        );
         duplicatesForReview = await this.detectDuplicates(conversations, config);
-        console.log(
-          `[Import] detectDuplicates() returned: ${duplicatesForReview} duplicates for review`
-        );
       }
 
       // Step 8: Create bundles (if enabled)
@@ -910,9 +885,13 @@ export class EnhancedImportServiceV2 {
    * This implements "Step 2" of the Vision workflow: building the UGC wiki spine
    *
    * CROSS-CONVERSATION DEDUPLICATION:
-   * Uses extractSpineWithDedup to check for existing Lexeme/Phrase nodes before creating new ones.
+   * Uses extractSpineBatch to check for existing Lexeme/Phrase nodes before creating new ones.
    * This enables cross-conversation linking where "Dark Matter" mentioned in multiple chats
    * becomes a single hub node with multiple MENTIONS edges.
+   *
+   * BATCH PROCESSING (Performance Fix):
+   * Instead of O(n) DB queries (one per message), we process in batches of SPINE_BATCH_SIZE,
+   * reducing DB round-trips from O(n) to O(n/batchSize) = effectively O(1) for typical imports.
    */
   private async extractSpine(
     messages: ImportMessage[],
@@ -925,12 +904,6 @@ export class EnhancedImportServiceV2 {
       return { lexemes: 0, phrases: 0, topics: 0 };
     }
 
-    let totalLexemes = 0;
-    let totalPhrases = 0;
-    let linkedLexemes = 0; // Existing nodes we linked to
-    let linkedPhrases = 0;
-    const allPhrases: PhraseNode[] = [];
-
     // Bug fix #12: Validate context before spine extraction
     if (!this.context?.accountId || !this.context?.userId) {
       console.error('[Import] Cannot extract spine: no context available');
@@ -938,20 +911,27 @@ export class EnhancedImportServiceV2 {
     }
 
     const { accountId, userId } = this.context;
+    const spineBatchSize = WORKER_CONFIG.import.spineBatchSize;
 
-    // Process each message to extract lexemes and phrases with deduplication
-    for (const msg of messages) {
-      // Use the new deduplication-aware extraction
-      // Cast to SQLiteClient since extractSpineWithDedup needs access to findSpineNodesByTexts
-      const result = await spineBuilder.extractSpineWithDedup(
+    let totalLexemes = 0;
+    let totalPhrases = 0;
+    let linkedLexemes = 0;
+    let linkedPhrases = 0;
+    const allPhrases: PhraseNode[] = [];
+
+    // Process messages in batches to reduce DB round-trips
+    for (let i = 0; i < messages.length; i += spineBatchSize) {
+      const batch = messages.slice(i, i + spineBatchSize);
+
+      // Single batch call replaces N sequential calls
+      const result = await spineBuilder.extractSpineBatch(
         this.db as SQLiteClient,
         accountId,
-        msg.id, // sourceDocId = message ID for MENTIONS edges
-        userId,
-        msg.content
+        batch.map((m) => ({ id: m.id, content: m.content })),
+        userId
       );
 
-      // Save NEW Lexeme nodes only (existing ones are already in DB)
+      // Save NEW Lexeme nodes (if enabled)
       if (spineConfig.extractLexemes) {
         for (const lexeme of result.newLexemes) {
           await this.writeNode({
@@ -962,17 +942,14 @@ export class EnhancedImportServiceV2 {
             frequency: lexeme.frequency,
             created_at: lexeme.created_at,
             updated_at: lexeme.updated_at,
-            metadata: {
-              ...lexeme.metadata,
-              source_message_id: msg.id,
-            },
+            metadata: lexeme.metadata,
           });
           totalLexemes++;
         }
         linkedLexemes += result.existingLexemes.length;
       }
 
-      // Save NEW Phrase nodes only (existing ones are already in DB)
+      // Save NEW Phrase nodes (if enabled)
       if (spineConfig.extractPhrases) {
         // Filter new phrases by minimum frequency
         const filteredNewPhrases = result.newPhrases.filter(
@@ -990,23 +967,18 @@ export class EnhancedImportServiceV2 {
             frequency: phrase.frequency,
             created_at: phrase.created_at,
             updated_at: phrase.updated_at,
-            metadata: {
-              ...phrase.metadata,
-              source_message_id: msg.id,
-            },
+            metadata: phrase.metadata,
           });
           allPhrases.push(phrase);
           totalPhrases++;
         }
 
-        // Existing phrases are already in DB, just count them for linking
         linkedPhrases += result.existingPhrases.length;
         // Add existing phrases to allPhrases for topic clustering
         allPhrases.push(...result.existingPhrases);
       }
 
-      // Save ALL MENTIONS edges (both to new and existing nodes)
-      // This creates cross-conversation links!
+      // Save ALL MENTIONS edges (creates cross-conversation links)
       for (const edge of result.edges) {
         await this.writeEdge({
           id: edge.id,
@@ -1025,7 +997,7 @@ export class EnhancedImportServiceV2 {
     // Log cross-conversation linking stats
     if (linkedLexemes > 0 || linkedPhrases > 0) {
       console.log(
-        `[Import] Cross-conversation links created: ${linkedLexemes} lexemes, ${linkedPhrases} phrases linked to existing nodes`
+        `[Import] Cross-conversation links: ${linkedLexemes} lexemes, ${linkedPhrases} phrases linked to existing nodes`
       );
     }
 
@@ -1033,6 +1005,12 @@ export class EnhancedImportServiceV2 {
     let totalTopics = 0;
     if (spineConfig.clusterTopics && allPhrases.length >= (spineConfig.minPhrasesPerTopic || 3)) {
       const topics = spineBuilder.clusterTopics(allPhrases);
+
+      // Build phrase lookup map for O(1) keyword matching
+      const phraseByText = new Map<string, PhraseNode>();
+      for (const phrase of allPhrases) {
+        phraseByText.set(phrase.text, phrase);
+      }
 
       for (const topic of topics) {
         await this.writeNode({
@@ -1047,10 +1025,9 @@ export class EnhancedImportServiceV2 {
           metadata: topic.metadata,
         });
 
-        // Create BELONGS_TO_TOPIC edges from phrases to topic
+        // Create BELONGS_TO_TOPIC edges from phrases to topic (O(1) lookup)
         for (const keyword of topic.keywords) {
-          // Find phrase that matches this keyword
-          const matchingPhrase = allPhrases.find((p) => p.text === keyword);
+          const matchingPhrase = phraseByText.get(keyword);
           if (matchingPhrase) {
             await this.writeEdge({
               id: `edge_belongs_${nanoid()}`,
@@ -1059,7 +1036,7 @@ export class EnhancedImportServiceV2 {
               to: topic.id,
               created_at: Date.now(),
               metadata: {
-                weight: 1.0 / topic.keywords.length, // Equal weight for now
+                weight: 1.0 / topic.keywords.length,
               },
             });
           }

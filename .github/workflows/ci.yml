@@ -21,6 +21,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run Runtime Doctor
+        run: npm run doctor:runtime
+
       - name: Run Lint
         run: npm run lint
 
@@ -38,3 +41,23 @@ jobs:
 
       - name: Run Local Migration Dry Run
         run: npm run migrate:to-local:dry-run
+
+  windows-runtime-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Runtime Doctor
+        run: npm run doctor:runtime
+
+      - name: Run Auth Launcher Smoke
+        run: npm run test:auth

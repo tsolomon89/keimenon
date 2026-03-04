@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const { createServer } = require('net');
+const { spawnNode22, spawnNode22Sync } = require('../scripts/project-node-runtime');
 
 const repoRoot = path.resolve(__dirname, '..');
 
@@ -136,11 +137,10 @@ async function main() {
     DISABLE_RATE_LIMIT: '1',
   };
 
-  const serverProcess = spawn(process.execPath, [tsxCli, 'apps/api/src/index.ts'], {
+  const serverProcess = spawnNode22([tsxCli, 'apps/api/src/index.ts'], {
     cwd: repoRoot,
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
-    shell: false,
   });
 
   serverProcess.stdout?.on('data', (data) => {
@@ -164,8 +164,7 @@ async function main() {
     throw error;
   }
 
-  const result = spawnSync(
-    process.execPath,
+  const result = spawnNode22Sync(
     [
       vitestCli,
       'run',
@@ -180,7 +179,6 @@ async function main() {
         API_BASE_URL: apiBaseUrl,
       },
       stdio: 'inherit',
-      shell: false,
     }
   );
 

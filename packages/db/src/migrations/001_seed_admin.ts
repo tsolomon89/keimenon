@@ -28,7 +28,7 @@ export async function seedAdminAccount(client: SQLiteClient): Promise<void> {
       .get('admin') as any;
 
     if (existingAccount) {
-      console.log('⏭️  Admin account already exists, skipping migration');
+      console.log('⏭️  Admin account already exists, skipping admin migration');
       return;
     }
 
@@ -85,18 +85,8 @@ export async function seedAdminAccount(client: SQLiteClient): Promise<void> {
         INSERT INTO user_accounts (id, user_id, account_id, permission_level, role_rank, status, joined_at, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
-      ).run(
-        userAccountId,
-        adminUserId,
-        adminAccountId,
-        'admin',
-        1,
-        'active',
-        now,
-        now,
-        now
-      );
-      
+      ).run(userAccountId, adminUserId, adminAccountId, 'admin', 1, 'active', now, now, now);
+
       console.log(`✅ Linked admin user to account: ${userAccountId}`);
 
       // 3. Migrate existing nodes to admin account

@@ -3,11 +3,13 @@
  * Run with: node test-job-control.js
  */
 
-import { spawn } from 'child_process';
+import { createRequire } from 'module';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const { spawnNode22 } = require(path.resolve(__dirname, '../../scripts/project-node-runtime.js'));
 
 const testFiles = [
   'src/modules/jobs/__tests__/Job.test.ts',
@@ -17,10 +19,9 @@ const testFiles = [
 console.log('🧪 Running Job Control Tests\n');
 console.log('='.repeat(60));
 
-const proc = spawn('node', ['--import', 'tsx', '--test', ...testFiles], {
+const proc = spawnNode22(['--import', 'tsx', '--test', ...testFiles], {
   cwd: __dirname,
   stdio: 'inherit',
-  shell: true,
 });
 
 proc.on('exit', (code) => {

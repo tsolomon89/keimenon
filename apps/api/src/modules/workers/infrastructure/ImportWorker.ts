@@ -30,6 +30,7 @@ import {
   serializeChangeTracker,
 } from '../../jobs/domain/ChangeTracker';
 import { JobRepository } from '../../jobs/infrastructure/JobRepository';
+import { WORKER_CONFIG } from '../../jobs/jobs.config';
 
 /**
  * Import Checkpoint State
@@ -89,8 +90,7 @@ export class ImportWorker extends BaseWorker {
     timeoutMs?: number
   ) {
     super();
-    // Default 10 minutes, configurable via env var
-    this.timeoutMs = timeoutMs || parseInt(process.env.IMPORT_WORKER_TIMEOUT_MS || '600000');
+    this.timeoutMs = timeoutMs ?? WORKER_CONFIG.import.timeoutMs;
   }
 
   /**
@@ -123,26 +123,64 @@ export class ImportWorker extends BaseWorker {
   }
 
   protected async execute(job: Job, context: WorkerContext): Promise<WorkerResult> {
+    // Calculate adaptive timeout based on import size
+    const adaptiveTimeout = this.calculateAdaptiveTimeout(job);
+    console.log(`⏱️  Adaptive timeout: ${Math.round(adaptiveTimeout / 1000)}s`);
+
     // Wrap execution in timeout promise race
     return Promise.race([
       this.executeWithCheckpoints(job, context),
-      this.createTimeoutPromise(job),
+      this.createTimeoutPromise(job, adaptiveTimeout),
     ]);
   }
 
   /**
-   * Create timeout promise that rejects after configured duration
+   * Calculate timeout based on import size
+   *
+   * Formula:
+   * - Base: 2 minutes
+   * - Per 100 messages (estimated from file size): +1 minute
+   * - Spine extraction enabled: +50% multiplier
+   * - Max: 60 minutes
    */
-  private createTimeoutPromise(job: Job): Promise<WorkerResult> {
+  private calculateAdaptiveTimeout(job: Job): number {
+    const files = job.config.files || [];
+
+    // Estimate message count from file size (~1KB per message average)
+    const estimatedMessages = files.reduce((sum, f) => {
+      return sum + Math.ceil((f.fileSize || 0) / 1024);
+    }, 0);
+
+    const { baseMs, perHundredMsgsMs, spineMultiplier, maxMs } =
+      WORKER_CONFIG.import.adaptiveTimeout;
+
+    const importOptions = job.config.importOptions as Record<string, unknown> | undefined;
+    const metadata = job.config.metadata as Record<string, unknown> | undefined;
+    const spineEnabled =
+      metadata?.spineEnabled === true ||
+      ((importOptions?.spine as Record<string, unknown> | undefined)?.enabled ?? false) === true;
+
+    const calculated =
+      (baseMs + Math.ceil(estimatedMessages / 100) * perHundredMsgsMs) *
+      (spineEnabled ? spineMultiplier : 1);
+
+    return Math.min(Math.max(this.timeoutMs, calculated), maxMs);
+  }
+
+  /**
+   * Create timeout promise that rejects after specified duration
+   */
+  private createTimeoutPromise(job: Job, timeoutMs?: number): Promise<WorkerResult> {
+    const timeout = timeoutMs ?? this.timeoutMs;
     return new Promise((_, reject) => {
       setTimeout(() => {
         reject(
           new Error(
-            `Import job ${job.id} exceeded timeout of ${this.timeoutMs}ms (${Math.round(this.timeoutMs / 1000)}s). ` +
-              `Consider increasing IMPORT_WORKER_TIMEOUT_MS for large imports.`
+            `Import job ${job.id} exceeded timeout of ${timeout}ms (${Math.round(timeout / 1000)}s). ` +
+              `Estimated size may have been too optimistic. Consider disabling spine extraction for very large imports.`
           )
         );
-      }, this.timeoutMs);
+      }, timeout);
     });
   }
 

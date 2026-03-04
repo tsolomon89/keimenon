@@ -57,72 +57,38 @@ export class SQLiteJobRepository implements JobRepository {
 
   /**
    * Get the correct database for a job (test DB if job has testContext, otherwise production)
-   * CRITICAL FIX: Uses separate jobs database for job saves in test mode
-   *
-   * Why separate database:
-   * - In test mode, data DB has SAVEPOINT transactions for test isolation
-   * - Jobs DB is separate file with NO savepoints, avoiding database locking
-   * - SQLite doesn't allow second connection to DB with active SAVEPOINT
-   * - Separate database files = no lock contention, jobs globally visible
-   *
-   * Architecture:
-   * - Test mode: Uses getJobsDbClient (separate database file: worker-0-jobs.db)
-   * - Production: Uses global database (single file: keimenon.db with all data)
    */
   private async getDbForJob(job: Job): Promise<Database.Database> {
     const testDbPath = job.config.testContext?.dbPath;
-
-    // SAFETY CHECK: Only use test databases when NODE_ENV=test
-    // This prevents trying to load non-existent test DBs for orphaned jobs from old test runs
     const isTestMode = process.env.NODE_ENV === 'test';
 
-    console.log(`[JobRepository.getDbForJob] Job ID: ${job.id}`);
-    console.log(`  - testDbPath from job.config.testContext: ${testDbPath || 'NONE'}`);
-    console.log(`  - NODE_ENV: ${process.env.NODE_ENV}`);
-    console.log(`  - isTestMode: ${isTestMode}`);
-    console.log(`  - Will use separate jobs DB: ${!!(testDbPath && isTestMode)}`);
-
     if (testDbPath && isTestMode) {
-      // CRITICAL FIX: Use separate jobs database connection
-      // Jobs are saved to worker-0-jobs.db (not worker-0.db)
-      console.log(`[JobRepository.getDbForJob] ✅ Using separate jobs database for test mode`);
       const { getJobsDbClient } = await import('../../../utils/get-db-client');
       const mockReq = { testDbPath } as any;
       const jobsClient = await getJobsDbClient(mockReq);
-      // Cast to SQLiteClient to access getDatabase()
       const { SQLiteClient } = await import('@keimenon/db');
       return (jobsClient as InstanceType<typeof SQLiteClient>).getDatabase();
     }
 
-    // Production job OR test job in production mode - use production database
-    console.log(`[JobRepository.getDbForJob] ℹ️ Using production database`);
     return this.db;
   }
 
   /**
    * Get the correct database for a request (test DB if request has testDbPath, otherwise production)
-   * CRITICAL FIX: Enables query methods to route to correct database based on request context
-   *
-   * CRITICAL FIX #9: Use jobs database (worker-0-jobs.db) for job queries in test mode
-   * This matches the save behavior which saves to jobs database, ensuring queries find the jobs.
    */
   private async getDbForRequest(req?: any): Promise<Database.Database> {
-    // If request has testDbPath (from test isolation middleware), use jobs database (not data database)
     if (req?.testDbPath) {
-      console.log(
-        `[JobRepository.getDbForRequest] Using jobs database for test: ${req.testDbPath}`
-      );
       const { getJobsDbClient } = await import('../../../utils/get-db-client');
       const jobsClient = await getJobsDbClient(req);
       const { SQLiteClient } = await import('@keimenon/db');
-      const db = (jobsClient as InstanceType<typeof SQLiteClient>).getDatabase();
-      console.log(`[JobRepository.getDbForRequest] ✅ Got database connection`);
-      return db;
+      return (jobsClient as InstanceType<typeof SQLiteClient>).getDatabase();
     }
 
-    // Otherwise use production database
-    console.log(`[JobRepository.getDbForRequest] Using production database`);
     return this.db;
+  }
+
+  private serializeStateData(job: Job): string {
+    return JSON.stringify({ ...job.state, progress: job.progress, stats: job.stats });
   }
 
   /**
@@ -131,14 +97,8 @@ export class SQLiteJobRepository implements JobRepository {
   async save(job: Job): Promise<void> {
     try {
       const now = Date.now();
-
-      // DEBUG: Log saving context
-      console.log(`[JobRepository Save] Saving job ${job.id}`);
-      console.log(`[JobRepository Save] Job Test Context: ${JSON.stringify(job.config.testContext)}`);
-
-      // CRITICAL FIX: Use correct database (test or production)
       const db = await this.getDbForJob(job);
-      console.log(`[JobRepository Save] DB File: ${db.name}`);
+
       const stmt = db.prepare(`
         INSERT INTO jobs (
           id, type, account_id, created_by, config, status,
@@ -158,7 +118,7 @@ export class SQLiteJobRepository implements JobRepository {
         job.createdBy,
         JSON.stringify(job.config),
         job.status,
-        JSON.stringify({ ...job.state, progress: job.progress }),
+        this.serializeStateData(job),
         now,
         now,
         job.idempotencyKey || null,
@@ -166,32 +126,15 @@ export class SQLiteJobRepository implements JobRepository {
         'real'
       );
 
-      console.log(`[JobRepository Save Result] Changes: ${result.changes}, ID: ${job.id}`);
-
-      console.log(`[JobRepository Save Result] Changes: ${result.changes}, ID: ${job.id}`);
-
-      console.log(
-        `[JobRepository] ✅ Saved job ${job.id} (status: ${job.status}, type: ${job.type}, changes: ${result.changes})`
-      );
-
-      // DEBUG: Verify job exists immediately after save
-      const verify = db
-        .prepare('SELECT COUNT(*) as count FROM jobs WHERE id = ?')
-        .get(job.id) as any;
-      console.log(
-        `[JobRepository] 🔍 Post-save verification: ${verify.count} job(s) found with ID ${job.id}`
-      );
-
-      // CRITICAL FIX: Force WAL checkpoint to make job immediately visible to other connections
-      // Without this, jobs may remain in WAL buffer and not be visible to WorkerPool queries
+      // Opportunistically checkpoint for cross-connection visibility in the test jobs database.
       try {
         db.pragma('wal_checkpoint(PASSIVE)');
-        console.log(`[JobRepository] 📝 WAL checkpoint executed for job ${job.id}`);
       } catch (walError: any) {
-        console.warn(`[JobRepository] ⚠️ WAL checkpoint failed (non-fatal): ${walError.message}`);
+        console.warn(
+          `[JobRepository] WAL checkpoint failed after saving ${job.id}: ${walError.message}`
+        );
       }
 
-      // Save events (append-only) - use same database as job
       for (const event of job.events) {
         await this.appendEvent(event, db);
       }
@@ -217,18 +160,9 @@ export class SQLiteJobRepository implements JobRepository {
 
   /**
    * Load job by ID with full event history
-   * CRITICAL FIX: Routes to correct database (test or production) based on request context
    */
   async findById(id: string, accountId: string, req?: any): Promise<Job | null> {
-    // CRITICAL FIX: Use request-scoped database if available
     const db = await this.getDbForRequest(req);
-    console.log(`[JobRepository.findById] DB File: ${db.name}`);
-
-    // DEBUG: Log query details
-    console.log(`[JobRepository.findById] Querying for job ${id}`);
-    console.log(`  - Account ID: ${accountId}`);
-    console.log(`  - Has testDbPath: ${!!(req as any)?.testDbPath}`);
-    console.log(`  - testDbPath value: ${(req as any)?.testDbPath}`);
 
     const stmt = db.prepare(`
       SELECT * FROM jobs
@@ -237,20 +171,12 @@ export class SQLiteJobRepository implements JobRepository {
 
     const record = stmt.get(id, accountId) as any;
 
-    // DEBUG: Log query result
-    console.log(`  - Query result: ${record ? 'FOUND' : 'NOT FOUND'}`);
-    if (record) {
-      console.log(`  - Job status: ${record.status}`);
-    }
-
     if (!record) {
       return null;
     }
 
-    // Load events using same database
     const events = await this.loadEvents(id, accountId, req);
 
-    // Reconstruct job from database
     return Job.fromDatabase(
       {
         ...record,
@@ -262,23 +188,14 @@ export class SQLiteJobRepository implements JobRepository {
 
   /**
    * Find jobs by filters
-   * CRITICAL FIX: Routes to correct database (test or production) based on request context
    */
   async find(filters: JobFilters, req?: any): Promise<Job[]> {
     const { accountId, status, type, limit = 100, offset = 0 } = filters;
+    const db = await this.getDbForRequest(req);
 
-    // CRITICAL FIX: Use request-scoped database if available
-    const db = await this.getDbForRequest(req); // Logs internally in getDbForRequest? No, getDbForRequest calls getJobsDbClient which logs.
-
-    console.log(`[JobRepo Find] 🔍 Finding jobs. Filters:`, JSON.stringify(filters));
-    console.log(`[JobRepo Find] 📂  DB Context:`, (db as any).name);
-    if (req?.testDbPath) console.log(`[JobRepo Find] 🧪 Test DB Path:`, req.testDbPath);
-
-    // Build query dynamically based on which filters are provided
     let query = 'SELECT * FROM jobs WHERE 1=1';
     const params: any[] = [];
 
-    // Add account filter if provided (multi-tenant isolation)
     if (accountId) {
       query += ' AND account_id = ?';
       params.push(accountId);
@@ -302,16 +219,9 @@ export class SQLiteJobRepository implements JobRepository {
     query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
-    console.log(`[JobRepo Find] 📝 Query: ${query}`);
-    console.log(`[JobRepo Find] 🔢 Params:`, params);
-
     const stmt = db.prepare(query);
     const records = stmt.all(...params) as any[];
 
-    console.log(`[JobRepository] Query returned ${records.length} records`);
-
-    // Load jobs without events for performance
-    // Events can be loaded separately if needed
     const jobs: Job[] = [];
     for (const record of records) {
       try {
@@ -322,17 +232,9 @@ export class SQLiteJobRepository implements JobRepository {
         jobs.push(job);
       } catch (error: any) {
         console.error(`[JobRepository] Failed to load job ${record.id}:`, error.message);
-        console.error('[JobRepository] Record data:', {
-          id: record.id,
-          type: record.type,
-          status: record.status,
-          config: record.config,
-          state_data: record.state_data,
-        });
       }
     }
 
-    console.log(`[JobRepository] Successfully loaded ${jobs.length} jobs`);
     return jobs;
   }
 
@@ -340,16 +242,12 @@ export class SQLiteJobRepository implements JobRepository {
    * Append event to event log
    */
   async appendEvent(event: JobEvent, dbOrReq?: any): Promise<void> {
-    // If dbOrReq has a prepare method, it's a DB connection
-    // If it has testDbPath or similar, it's a request object
-    // If undefined, use this.db
     let database = this.db;
-    
+
     if (dbOrReq) {
       if (typeof (dbOrReq as any).prepare === 'function') {
         database = dbOrReq;
       } else {
-        // Assume req object, resolve DB
         database = await this.getDbForRequest(dbOrReq);
       }
     }
@@ -429,7 +327,11 @@ export class SQLiteJobRepository implements JobRepository {
    * Count active jobs in concurrency group
    * Only counts RUNNING jobs (queued jobs haven't started yet)
    */
-  async countActiveInGroup(concurrencyGroup: string, accountId: string, req?: any): Promise<number> {
+  async countActiveInGroup(
+    concurrencyGroup: string,
+    accountId: string,
+    req?: any
+  ): Promise<number> {
     const db = await this.getDbForRequest(req);
     const stmt = db.prepare(`
       SELECT COUNT(*) as count
@@ -542,11 +444,14 @@ export class SQLiteJobRepository implements JobRepository {
    * Find active jobs (queued or running)
    */
   async findActive(accountId: string, limit = 100, req?: any): Promise<Job[]> {
-    return this.find({
-      accountId,
-      status: ['queued', 'running'],
-      limit,
-    }, req);
+    return this.find(
+      {
+        accountId,
+        status: ['queued', 'running'],
+        limit,
+      },
+      req
+    );
   }
 
   /**
@@ -597,12 +502,6 @@ export class SQLiteJobRepository implements JobRepository {
 
     const result = stmt.run(toStatus, stateData, Date.now(), jobId, accountId, fromStatus);
     const succeeded = result.changes > 0;
-
-    if (succeeded) {
-      console.log(`[JobRepository] ✅ Atomic transition ${jobId}: ${fromStatus} → ${toStatus}`);
-    } else {
-      console.log(`[JobRepository] ⚠️ Atomic transition failed for ${jobId}: job already claimed`);
-    }
 
     return succeeded;
   }

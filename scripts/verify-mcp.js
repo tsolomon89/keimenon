@@ -8,11 +8,14 @@
  */
 
 import { spawn } from 'child_process';
+import { createRequire } from 'module';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
+const { spawnNode22 } = require('./project-node-runtime.js');
 
 const PROJECT_ROOT = resolve(__dirname, '..');
 
@@ -38,7 +41,7 @@ async function testMCPServer(name, scriptPath) {
     log(`\n🧪 Testing ${name}...`, 'cyan');
 
     const serverPath = `${PROJECT_ROOT}/.mcp/servers/${scriptPath}/index.js`;
-    const server = spawn('node', [serverPath], {
+    const server = spawnNode22([serverPath], {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: {
         ...process.env,

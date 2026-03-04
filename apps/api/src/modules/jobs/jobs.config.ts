@@ -38,7 +38,7 @@ export const WORKER_POOL_CONFIG = {
  */
 export const WORKER_CONFIG = {
   import: {
-    /** Timeout for import jobs (10 minutes default) */
+    /** Minimum timeout for import jobs before adaptive scaling applies */
     timeoutMs: parseInt(process.env.IMPORT_WORKER_TIMEOUT_MS || '600000'),
 
     /** Batch size for import operations */
@@ -46,6 +46,25 @@ export const WORKER_CONFIG = {
 
     /** Save checkpoint every N batches */
     checkpointInterval: parseInt(process.env.JOB_CHECKPOINT_BATCH_INTERVAL || '10'),
+
+    /**
+     * Adaptive timeout configuration
+     * Timeout = (baseMs + perHundredMsgsMs * (msgs/100)) * spineMultiplier
+     * Capped at maxMs
+     */
+    adaptiveTimeout: {
+      /** Base timeout in milliseconds (2 minutes) */
+      baseMs: parseInt(process.env.IMPORT_TIMEOUT_BASE_MS || String(2 * 60 * 1000)),
+      /** Additional timeout per 100 messages (1 minute) */
+      perHundredMsgsMs: parseInt(process.env.IMPORT_TIMEOUT_PER_100_MS || String(60 * 1000)),
+      /** Multiplier when spine extraction is enabled */
+      spineMultiplier: parseFloat(process.env.IMPORT_TIMEOUT_SPINE_MULTIPLIER || '1.5'),
+      /** Maximum timeout in milliseconds (60 minutes) */
+      maxMs: parseInt(process.env.IMPORT_TIMEOUT_MAX_MS || String(60 * 60 * 1000)),
+    },
+
+    /** Spine extraction batch size (messages per DB query batch) */
+    spineBatchSize: parseInt(process.env.IMPORT_SPINE_BATCH_SIZE || '50'),
   },
 
   delete: {
@@ -177,6 +196,9 @@ export function validateJobConfig(): void {
   if (WORKER_CONFIG.import.batchSize < 10 || WORKER_CONFIG.import.batchSize > 10000) {
     errors.push('Import batch size must be between 10 and 10000');
   }
+  if (WORKER_CONFIG.import.spineBatchSize < 1 || WORKER_CONFIG.import.spineBatchSize > 1000) {
+    errors.push('Import spine batch size must be between 1 and 1000');
+  }
   if (WORKER_CONFIG.delete.batchSize < 10 || WORKER_CONFIG.delete.batchSize > 10000) {
     errors.push('Delete batch size must be between 10 and 10000');
   }
@@ -196,9 +218,3 @@ export function validateJobConfig(): void {
 
 // Validate configuration on module load
 validateJobConfig();
-
-console.log('✅ Job system configuration validated successfully');
-console.log(`   Worker pool: ${WORKER_POOL_CONFIG.maxConcurrentJobs} concurrent jobs`);
-console.log(`   Import timeout: ${WORKER_CONFIG.import.timeoutMs / 1000}s`);
-console.log(`   Delete timeout: ${WORKER_CONFIG.delete.timeoutMs / 1000}s`);
-console.log(`   Checkpoint interval: every ${WORKER_CONFIG.import.checkpointInterval} batches`);

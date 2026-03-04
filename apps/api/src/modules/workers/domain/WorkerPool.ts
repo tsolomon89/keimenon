@@ -212,7 +212,7 @@ export class WorkerPool {
    *
    * Queries:
    * 1. Production database (for any production jobs)
-   * 2. All active test databases (for E2E test jobs)
+   * 2. All active test jobs databases (for E2E test jobs)
    *
    * Then combines, deduplicates, and returns up to limit jobs.
    */
@@ -231,34 +231,16 @@ export class WorkerPool {
       console.error('[WorkerPool] Error querying production DB:', error.message);
     }
 
-    // 2. Query all active test databases
-    // CRITICAL FIX: In test mode with separate jobs database architecture,
-    // we need to query jobs databases (worker-0-jobs.db) not data databases (worker-0.db)
-    const { getActiveTestDatabases } = await import('../../../utils/get-db-client');
-    const testDbPaths = getActiveTestDatabases();
-
-    // Filter to only jobs database paths (exclude data database paths)
-    // Jobs databases end with "-jobs.db", data databases end with ".db" (no "-jobs")
-    console.log(`[WorkerPool Debug] All Cached DBs:`, testDbPaths);
-    const jobsDbPaths = testDbPaths.filter((path) => path.includes('-jobs.db'));
-    console.log(`[WorkerPool Debug] Filtered Jobs DBs:`, jobsDbPaths);
+    // 2. Query active test jobs databases only.
+    const { getActiveJobsDatabases } = await import('../../../utils/get-db-client');
+    const jobsDbPaths = getActiveJobsDatabases();
 
     if (jobsDbPaths.length > 0) {
       console.log(`[WorkerPool] Querying ${jobsDbPaths.length} active test jobs database(s)...`);
 
       for (const jobsDbPath of jobsDbPaths) {
         try {
-          // Convert jobs DB path back to data DB path for testDbPath
-          // (JobRepository expects data DB path, then internally routes to jobs DB)
-          // worker-0-jobs.db → worker-0.db
-          // CRITICAL FIX: Use the jobs database path directly!
-          // Do NOT convert to .db (data DB) because jobs are in the -jobs.db file
-          // const dataDbPath = jobsDbPath.replace('-jobs.db', '.db');
-          const dataDbPath = jobsDbPath;
-          console.log(`[WorkerPool Debug] Using DB path: ${dataDbPath}`);
-
-          // Create mock request with data DB path (repository will route to jobs DB internally)
-          const mockReq = { testDbPath: dataDbPath } as any;
+          const mockReq = { testDbPath: jobsDbPath } as any;
 
           const testJobs = await this.jobRepository.find(
             {
@@ -267,8 +249,7 @@ export class WorkerPool {
             },
             mockReq
           );
-
-          const dbName = jobsDbPath.split(/[/\\]/).pop(); // Extract filename
+          const dbName = jobsDbPath.split(/[/\\]/).pop();
           console.log(`[WorkerPool] Found ${testJobs.length} queued jobs in ${dbName}`);
           allJobs.push(...testJobs);
         } catch (error: any) {
@@ -320,8 +301,8 @@ export class WorkerPool {
 
       // Start the job (transition to running)
       // Pass test context if available so StartJob can find the job in the correct DB
-      const reqContext = job.config.testContext?.dbPath 
-        ? { testDbPath: job.config.testContext.dbPath } 
+      const reqContext = job.config.testContext?.dbPath
+        ? { testDbPath: job.config.testContext.dbPath }
         : undefined;
 
       const startResult = await this.startJob.execute({
@@ -362,9 +343,6 @@ export class WorkerPool {
     }
   }
 
-  /**
-   * Execute job (async, non-blocking)
-   */
   private async executeJob(job: Job, worker: IWorker, signal: AbortSignal): Promise<void> {
     try {
       // Create worker context
@@ -382,11 +360,11 @@ export class WorkerPool {
 
       // Reload job (it may have been updated during processing)
       // Pass test context if available
-      const reqContext = job.config.testContext?.dbPath 
-        ? { testDbPath: job.config.testContext.dbPath } 
+      const reqContext = job.config.testContext?.dbPath
+        ? { testDbPath: job.config.testContext.dbPath }
         : undefined;
-        
       const updatedJob = await this.jobRepository.findById(job.id, job.accountId, reqContext);
+
       if (!updatedJob) {
         console.error(`❌ Job ${job.id} disappeared during processing`);
         return;
@@ -425,10 +403,10 @@ export class WorkerPool {
 
       // Try to mark job as failed (only if not already in terminal state)
       try {
-        const reqContext = job.config.testContext?.dbPath 
-          ? { testDbPath: job.config.testContext.dbPath } 
+        const reqContext = job.config.testContext?.dbPath
+          ? { testDbPath: job.config.testContext.dbPath }
           : undefined;
-          
+
         const failedJob = await this.jobRepository.findById(job.id, job.accountId, reqContext);
         if (failedJob && !failedJob.isTerminal) {
           failedJob.fail({
@@ -446,12 +424,12 @@ export class WorkerPool {
           console.log(
             `⏭️  Job ${job.id} already in terminal state (${failedJob.status}), skipping error update`
           );
+        } else {
+          console.error(`❌ Job ${job.id} could not be loaded to persist failure state`);
         }
       } catch (saveError: any) {
         console.error(`❌ Failed to save error state for job ${job.id}:`, saveError);
 
-        // This is a critical error - log with ErrorFactory but don't throw
-        // (would stop the worker pool)
         const apiError = ErrorFactory.internal(
           `Failed to save job error state: ${saveError.message}`,
           'WorkerPool.executeJob',
@@ -484,12 +462,12 @@ export class WorkerPool {
     try {
       // 1. Load job from database
       // We don't have the job object here to check config, but finding by ID usually checks prod DB.
-      // If we need to support cancelling test jobs from prod api (not likely if isolated), 
+      // If we need to support cancelling test jobs from prod api (not likely if isolated),
       // we might need to search all DBs or cache the job config in activeJobs.
       // ActiveJobs has execution.job!
       const activeJob = execution.job;
-      const reqContext = activeJob.config.testContext?.dbPath 
-        ? { testDbPath: activeJob.config.testContext.dbPath } 
+      const reqContext = activeJob.config.testContext?.dbPath
+        ? { testDbPath: activeJob.config.testContext.dbPath }
         : undefined;
 
       const job = await this.jobRepository.findById(jobId, accountId, reqContext);
@@ -537,14 +515,11 @@ export class WorkerPool {
     try {
       console.log('🔍 Checking for orphaned jobs from previous server instance...');
 
-      // Threshold: jobs running for more than 2 minutes are considered orphaned
-      // This handles server restarts, crashes, and user logouts quickly
-      const ORPHAN_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
-
-      // Find all running jobs
+      // On server restart, ALL running jobs are orphaned by definition.
+      // No worker survives a restart, so every 'running' job must be failed.
       const runningJobs = await this.jobRepository.find({
         status: 'running',
-        limit: 1000, // Check up to 1000 jobs
+        limit: 1000,
       });
 
       if (runningJobs.length === 0) {
@@ -552,65 +527,32 @@ export class WorkerPool {
         return;
       }
 
-      console.log(
-        `📋 Found ${runningJobs.length} jobs in 'running' status, checking for orphans...`
-      );
+      console.log(`📋 Found ${runningJobs.length} orphaned job(s), marking as failed...`);
 
       let orphanedCount = 0;
-      const now = Date.now();
 
       for (const job of runningJobs) {
-        // Check if job was started long ago
-        const startedAt = job.state.startedAt?.getTime();
-        if (!startedAt) {
-          // Job in 'running' without startedAt is invalid, mark as orphaned
-          console.log(`⚠️ Job ${job.id} is running without startedAt, marking as orphaned`);
+        try {
           job.fail({
             code: 'ORPHANED',
-            message:
-              'Job orphaned: Server restarted while job was running (no startedAt timestamp)',
-          });
-          await this.jobRepository.save(job);
-          orphanedCount++;
-          continue;
-        }
-
-        const runningTimeMs = now - startedAt;
-        if (runningTimeMs > ORPHAN_THRESHOLD_MS) {
-          // Job has been running too long, likely orphaned
-          const runningMinutes = Math.round(runningTimeMs / 1000 / 60);
-          console.log(
-            `⚠️ Job ${job.id} has been running for ${runningMinutes} minutes, marking as orphaned`
-          );
-          job.fail({
-            code: 'ORPHANED',
-            message: `Job orphaned: Server restarted while job was running (${runningMinutes} minutes ago)`,
+            message: 'Job orphaned: Server restarted while job was in progress',
           });
           await this.jobRepository.save(job);
 
-          // Broadcast failure
           if (this.broadcaster) {
             this.broadcaster.broadcastJobUpdate(job);
           }
 
           orphanedCount++;
-        } else {
-          // Job was recently started, might still be valid
-          // This can happen if server restarts very quickly
-          console.log(
-            `ℹ️ Job ${job.id} started ${Math.round(runningTimeMs / 1000)}s ago, keeping as running`
-          );
+          console.log(`  ⚠️ Orphaned: ${job.id} (type=${job.type})`);
+        } catch (jobError: any) {
+          console.error(`  ❌ Failed to recover ${job.id}: ${jobError.message}`);
         }
       }
 
-      if (orphanedCount > 0) {
-        console.log(`✅ Recovered ${orphanedCount} orphaned job(s)`);
-      } else {
-        console.log('✅ No orphaned jobs found (all running jobs are recent)');
-      }
+      console.log(`✅ Recovered ${orphanedCount} orphaned job(s)`);
     } catch (error: any) {
       console.error('❌ Error recovering orphaned jobs:', error);
-      // Don't throw - recovery failure shouldn't prevent worker pool from starting
     }
   }
 }

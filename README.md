@@ -11,6 +11,7 @@ Local-first knowledge graph platform with account-isolated data and a monorepo w
 
 ```bash
 npm install
+npm run doctor:runtime
 npm run dev
 ```
 
@@ -25,12 +26,14 @@ Default endpoints:
 All root commands are authoritative and runnable from repository root:
 
 ```bash
+npm run doctor:runtime
 npm run lint
 npm run type-check
 npm run test
 npm run build
 npm run test:auth
 npm run migrate:to-local:dry-run
+npm run sqlite:check
 ```
 
 ## Workspace Commands
@@ -39,6 +42,9 @@ npm run migrate:to-local:dry-run
 npm run dev              # Orchestrated API + web startup
 npm run dev:clean        # Same as dev, with port cleanup
 npm run validate         # Environment validation
+npm run doctor:runtime   # Verify Node 22 + better-sqlite3 runtime health
+npm run sqlite:check     # Run PRAGMA integrity_check on the configured DB
+npm run sqlite:backup    # Create an online SQLite backup
 npm run check-ports      # Detect port conflicts
 npm run kill-ports       # Stop port conflicts
 ```
@@ -50,6 +56,8 @@ The maintained runtime contract is local-only:
 - `STORAGE_MODE=local`
 - `LOCAL_DOCS_PATH` is required
 - `SQLITE_PATH` is required
+- Production support is limited to a single API instance on local disk-backed storage
+- Shared network filesystems, horizontal API scaling, and serverless API deployment are unsupported with the current SQLite contract
 
 Environment template:
 
@@ -80,8 +88,11 @@ Environment template:
 Use Node 22 and re-run:
 
 ```bash
+npm run doctor:runtime
 npm run node:check
 ```
+
+`npm install` fails on the wrong Node major by design because `.npmrc` enforces `engine-strict=true`.
 
 ### Stuck dev/test processes
 
@@ -97,7 +108,20 @@ Back up your local SQLite file before deleting it:
 - Default docs path: `~/.keimenon`
 - Default DB file: `~/.keimenon/keimenon.db`
 
+### Backup and restore
+
+Use the SQLite-aware backup path instead of copying the live database file directly:
+
+```bash
+npm run sqlite:backup
+npm run sqlite:backup -- --compress
+npm run restore -- --file "<backup-file>"
+```
+
+Production backups should come from the mounted SQLite volume via SQLite's online backup path, not from ad hoc file copies while the API is live.
+
 ## Notes
 
 - `TESTING_MANUAL.md` is intentionally out of scope for this refinement pass.
 - Generated artifacts and historical logs are excluded from maintained source/doc cleanup.
+- Desktop/Electron uses its own native module ABI and keeps its Electron-specific rebuild/install path.

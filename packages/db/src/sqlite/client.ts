@@ -17,6 +17,8 @@ function safeJsonParse<T>(json: string, context?: string): T | null {
   }
 }
 
+let hasLoggedRuntimePolicy = false;
+
 export interface SQLiteConfig {
   databasePath: string;
   readonly?: boolean;
@@ -562,8 +564,19 @@ export class SQLiteClient {
       // Increase cache size to 64MB (default is ~2MB, this reduces disk I/O)
       this.db.pragma('cache_size = -64000'); // Negative value = KB
 
-      // Enable foreign keys
+      // Enable foreign key enforcement for multi-tenant integrity.
       this.db.pragma('foreign_keys = ON');
+
+      if (!hasLoggedRuntimePolicy) {
+        hasLoggedRuntimePolicy = true;
+        const journalMode = this.db.pragma('journal_mode', { simple: true });
+        const synchronous = this.db.pragma('synchronous', { simple: true });
+        const busyTimeout = this.db.pragma('busy_timeout', { simple: true });
+        const foreignKeys = this.db.pragma('foreign_keys', { simple: true });
+        console.log(
+          `[SQLiteClient] Runtime policy: journal_mode=${journalMode}, synchronous=${synchronous}, busy_timeout=${busyTimeout}, foreign_keys=${foreignKeys}`
+        );
+      }
 
       // Initialize schema
       await this.initializeSchema();

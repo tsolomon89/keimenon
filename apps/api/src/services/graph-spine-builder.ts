@@ -17,23 +17,178 @@ export interface SpineExtractionResult {
   edges: MentionsEdge[];
 }
 
+/**
+ * Result of batch spine extraction (multiple messages at once)
+ */
+export interface BatchSpineResult extends SpineExtractionResult {
+  /** Statistics for logging/debugging */
+  stats: {
+    messagesProcessed: number;
+    totalLexemeCandidates: number;
+    totalPhraseCandidates: number;
+    newLexemesCreated: number;
+    newPhrasesCreated: number;
+    existingLexemesLinked: number;
+    existingPhrasesLinked: number;
+    edgesCreated: number;
+  };
+}
+
 // Extended stopword list
 const STOPWORDS = new Set([
-  'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
-  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does',
-  'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall',
-  'this', 'that', 'these', 'those', 'it', 'its', 'i', 'you', 'he', 'she', 'we', 'they',
-  'my', 'your', 'his', 'her', 'our', 'their', 'what', 'which', 'who', 'whom', 'when',
-  'where', 'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other',
-  'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
-  'just', 'can', 'now', 'also', 'then', 'there', 'here', 'from', 'into', 'over', 'under',
-  'again', 'further', 'once', 'about', 'above', 'below', 'between', 'through', 'during',
-  'before', 'after', 'while', 'because', 'if', 'unless', 'until', 'although', 'though',
-  'even', 'still', 'already', 'yet', 'ever', 'never', 'always', 'often', 'sometimes',
-  'usually', 'really', 'actually', 'basically', 'generally', 'specifically', 'simply',
-  'like', 'get', 'got', 'getting', 'make', 'made', 'making', 'say', 'said', 'saying',
-  'know', 'knew', 'known', 'think', 'thought', 'thinking', 'want', 'wanted', 'wanting',
-  'use', 'used', 'using', 'try', 'tried', 'trying', 'need', 'needed', 'needing',
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'but',
+  'in',
+  'on',
+  'at',
+  'to',
+  'for',
+  'of',
+  'with',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'been',
+  'being',
+  'have',
+  'has',
+  'had',
+  'do',
+  'does',
+  'did',
+  'will',
+  'would',
+  'could',
+  'should',
+  'may',
+  'might',
+  'must',
+  'shall',
+  'this',
+  'that',
+  'these',
+  'those',
+  'it',
+  'its',
+  'i',
+  'you',
+  'he',
+  'she',
+  'we',
+  'they',
+  'my',
+  'your',
+  'his',
+  'her',
+  'our',
+  'their',
+  'what',
+  'which',
+  'who',
+  'whom',
+  'when',
+  'where',
+  'why',
+  'how',
+  'all',
+  'each',
+  'every',
+  'both',
+  'few',
+  'more',
+  'most',
+  'other',
+  'some',
+  'such',
+  'no',
+  'nor',
+  'not',
+  'only',
+  'own',
+  'same',
+  'so',
+  'than',
+  'too',
+  'very',
+  'just',
+  'can',
+  'now',
+  'also',
+  'then',
+  'there',
+  'here',
+  'from',
+  'into',
+  'over',
+  'under',
+  'again',
+  'further',
+  'once',
+  'about',
+  'above',
+  'below',
+  'between',
+  'through',
+  'during',
+  'before',
+  'after',
+  'while',
+  'because',
+  'if',
+  'unless',
+  'until',
+  'although',
+  'though',
+  'even',
+  'still',
+  'already',
+  'yet',
+  'ever',
+  'never',
+  'always',
+  'often',
+  'sometimes',
+  'usually',
+  'really',
+  'actually',
+  'basically',
+  'generally',
+  'specifically',
+  'simply',
+  'like',
+  'get',
+  'got',
+  'getting',
+  'make',
+  'made',
+  'making',
+  'say',
+  'said',
+  'saying',
+  'know',
+  'knew',
+  'known',
+  'think',
+  'thought',
+  'thinking',
+  'want',
+  'wanted',
+  'wanting',
+  'use',
+  'used',
+  'using',
+  'try',
+  'tried',
+  'trying',
+  'need',
+  'needed',
+  'needing',
 ]);
 
 // POS tag mapping for Lexeme nodes
@@ -126,7 +281,9 @@ export class GraphSpineBuilder {
 
     // Process lexemes
     for (const candidate of lexemeCandidates) {
-      const existing = existingLexemeMap.get(candidate.lemma.toLowerCase()) as LexemeNode | undefined;
+      const existing = existingLexemeMap.get(candidate.lemma.toLowerCase()) as
+        | LexemeNode
+        | undefined;
 
       if (existing) {
         // Found existing - reuse it for edge, update frequency in metadata
@@ -169,7 +326,9 @@ export class GraphSpineBuilder {
 
     // Process phrases
     for (const candidate of phraseCandidates) {
-      const existing = existingPhraseMap.get(candidate.normalized_text.toLowerCase()) as PhraseNode | undefined;
+      const existing = existingPhraseMap.get(candidate.normalized_text.toLowerCase()) as
+        | PhraseNode
+        | undefined;
 
       if (existing) {
         // Found existing - reuse it for edge
@@ -218,6 +377,237 @@ export class GraphSpineBuilder {
       existingLexemes,
       existingPhrases,
       edges,
+    };
+  }
+
+  /**
+   * extractSpineBatch
+   * Process multiple messages in a single batch for better performance.
+   * Pre-computes all lexeme/phrase candidates, then does a single bulk DB lookup.
+   *
+   * Performance: Reduces O(n) DB queries to O(1) per batch.
+   *
+   * @param db - Database client for deduplication lookups
+   * @param accountId - Account ID for multi-tenant isolation
+   * @param messages - Array of messages to process (id + content)
+   * @param createdBy - User ID who created this
+   * @returns BatchSpineResult with aggregated new nodes and per-message edges
+   */
+  public async extractSpineBatch(
+    db: SQLiteClient,
+    accountId: string,
+    messages: Array<{ id: string; content: string }>,
+    createdBy: string
+  ): Promise<BatchSpineResult> {
+    const now = Date.now();
+
+    // Aggregate candidates across ALL messages
+    // Key: lemma|pos or normalized_text, Value: {candidate, sourceMessageIds}
+    const lexemeAggregates = new Map<
+      string,
+      { lemma: string; pos: POSTag; frequency: number; sourceMessageIds: string[] }
+    >();
+    const phraseAggregates = new Map<
+      string,
+      {
+        text: string;
+        normalized_text: string;
+        type: 'n-gram' | 'entity' | 'concept';
+        entity_type?: string;
+        frequency: number;
+        sourceMessageIds: string[];
+      }
+    >();
+
+    // Per-message tracking for edge creation
+    const messageLexemes = new Map<string, Array<{ key: string; count: number }>>();
+    const messagePhrases = new Map<string, Array<{ key: string; count: number }>>();
+
+    // 1. Extract candidates from ALL messages (NO DB calls)
+    for (const msg of messages) {
+      const doc = nlp(msg.content);
+      const lexemeCandidates = this.extractLexemeCandidates(doc);
+      const phraseCandidates = this.extractPhraseCandidates(doc, msg.content);
+
+      // Track per-message lexemes
+      const msgLexemes: Array<{ key: string; count: number }> = [];
+      for (const candidate of lexemeCandidates) {
+        const key = `${candidate.lemma.toLowerCase()}|${candidate.pos}`;
+        msgLexemes.push({ key, count: candidate.frequency });
+
+        const existing = lexemeAggregates.get(key);
+        if (existing) {
+          existing.frequency += candidate.frequency;
+          if (!existing.sourceMessageIds.includes(msg.id)) {
+            existing.sourceMessageIds.push(msg.id);
+          }
+        } else {
+          lexemeAggregates.set(key, {
+            lemma: candidate.lemma,
+            pos: candidate.pos,
+            frequency: candidate.frequency,
+            sourceMessageIds: [msg.id],
+          });
+        }
+      }
+      messageLexemes.set(msg.id, msgLexemes);
+
+      // Track per-message phrases
+      const msgPhrases: Array<{ key: string; count: number }> = [];
+      for (const candidate of phraseCandidates) {
+        const key = candidate.normalized_text.toLowerCase();
+        msgPhrases.push({ key, count: candidate.frequency });
+
+        const existing = phraseAggregates.get(key);
+        if (existing) {
+          existing.frequency += candidate.frequency;
+          if (!existing.sourceMessageIds.includes(msg.id)) {
+            existing.sourceMessageIds.push(msg.id);
+          }
+        } else {
+          phraseAggregates.set(key, {
+            text: candidate.text,
+            normalized_text: candidate.normalized_text,
+            type: candidate.type,
+            entity_type: candidate.entity_type,
+            frequency: candidate.frequency,
+            sourceMessageIds: [msg.id],
+          });
+        }
+      }
+      messagePhrases.set(msg.id, msgPhrases);
+    }
+
+    // 2. SINGLE bulk DB lookup for existing lexemes
+    const lexemeLemmas = [...lexemeAggregates.values()].map((l) => l.lemma);
+    const existingLexemeMap =
+      lexemeLemmas.length > 0
+        ? await db.findSpineNodesByTexts(accountId, 'Lexeme', lexemeLemmas)
+        : new Map();
+
+    // 3. SINGLE bulk DB lookup for existing phrases
+    const phraseTexts = [...phraseAggregates.values()].map((p) => p.normalized_text);
+    const existingPhraseMap =
+      phraseTexts.length > 0
+        ? await db.findSpineNodesByTexts(accountId, 'Phrase', phraseTexts)
+        : new Map();
+
+    // 4. Create new nodes and build node ID map
+    const newLexemes: LexemeNode[] = [];
+    const existingLexemes: LexemeNode[] = [];
+    const lexemeIdMap = new Map<string, string>(); // key -> node ID
+
+    for (const [key, aggregate] of lexemeAggregates) {
+      const existing = existingLexemeMap.get(aggregate.lemma.toLowerCase()) as
+        | LexemeNode
+        | undefined;
+      if (existing) {
+        existingLexemes.push(existing);
+        lexemeIdMap.set(key, existing.id);
+      } else {
+        const newLexeme: LexemeNode = {
+          id: uuidv4(),
+          kind: 'Lexeme',
+          lemma: aggregate.lemma,
+          pos: aggregate.pos,
+          frequency: aggregate.frequency,
+          created_at: now,
+          updated_at: now,
+          metadata: { batch_source_count: aggregate.sourceMessageIds.length },
+        };
+        newLexemes.push(newLexeme);
+        lexemeIdMap.set(key, newLexeme.id);
+        // Add to existing map for subsequent lookups within batch
+        existingLexemeMap.set(aggregate.lemma.toLowerCase(), newLexeme);
+      }
+    }
+
+    const newPhrases: PhraseNode[] = [];
+    const existingPhrases: PhraseNode[] = [];
+    const phraseIdMap = new Map<string, string>(); // key -> node ID
+
+    for (const [key, aggregate] of phraseAggregates) {
+      const existing = existingPhraseMap.get(aggregate.normalized_text.toLowerCase()) as
+        | PhraseNode
+        | undefined;
+      if (existing) {
+        existingPhrases.push(existing);
+        phraseIdMap.set(key, existing.id);
+      } else {
+        const newPhrase: PhraseNode = {
+          id: uuidv4(),
+          kind: 'Phrase',
+          text: aggregate.text,
+          normalized_text: aggregate.normalized_text,
+          type: aggregate.type,
+          entity_type: aggregate.entity_type,
+          frequency: aggregate.frequency,
+          created_at: now,
+          updated_at: now,
+          metadata: { batch_source_count: aggregate.sourceMessageIds.length },
+        };
+        newPhrases.push(newPhrase);
+        phraseIdMap.set(key, newPhrase.id);
+        // Add to existing map for subsequent lookups within batch
+        existingPhraseMap.set(aggregate.normalized_text.toLowerCase(), newPhrase);
+      }
+    }
+
+    // 5. Create MENTIONS edges for each message
+    const edges: MentionsEdge[] = [];
+
+    for (const msg of messages) {
+      // Lexeme edges
+      const msgLexemeRefs = messageLexemes.get(msg.id) || [];
+      for (const ref of msgLexemeRefs) {
+        const nodeId = lexemeIdMap.get(ref.key);
+        if (nodeId) {
+          edges.push({
+            id: uuidv4(),
+            kind: 'MENTIONS',
+            from: msg.id,
+            to: nodeId,
+            created_at: now,
+            count: ref.count,
+            metadata: { source_doc_id: msg.id },
+          });
+        }
+      }
+
+      // Phrase edges
+      const msgPhraseRefs = messagePhrases.get(msg.id) || [];
+      for (const ref of msgPhraseRefs) {
+        const nodeId = phraseIdMap.get(ref.key);
+        if (nodeId) {
+          edges.push({
+            id: uuidv4(),
+            kind: 'MENTIONS',
+            from: msg.id,
+            to: nodeId,
+            created_at: now,
+            count: ref.count,
+            metadata: { source_doc_id: msg.id },
+          });
+        }
+      }
+    }
+
+    return {
+      newLexemes,
+      newPhrases,
+      existingLexemes,
+      existingPhrases,
+      edges,
+      stats: {
+        messagesProcessed: messages.length,
+        totalLexemeCandidates: lexemeAggregates.size,
+        totalPhraseCandidates: phraseAggregates.size,
+        newLexemesCreated: newLexemes.length,
+        newPhrasesCreated: newPhrases.length,
+        existingLexemesLinked: existingLexemes.length,
+        existingPhrasesLinked: existingPhrases.length,
+        edgesCreated: edges.length,
+      },
     };
   }
 

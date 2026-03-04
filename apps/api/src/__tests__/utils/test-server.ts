@@ -2,11 +2,19 @@
  * Test server lifecycle helpers for API integration suites.
  */
 
-import { ChildProcess, execFile, spawn } from 'child_process';
+import { ChildProcess, execFile } from 'child_process';
 import { existsSync, mkdirSync, unlinkSync } from 'fs';
 import { createServer } from 'net';
 import path from 'path';
 import fetch from 'node-fetch';
+
+// Use the repo's Node 22 runtime for API child processes even when the parent shell differs.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { spawnNode22 } = require(
+  path.resolve(__dirname, '../../../../../scripts/project-node-runtime.js')
+) as {
+  spawnNode22: (nodeArgs: string[], options?: Record<string, unknown>) => ChildProcess;
+};
 
 let serverProcess: ChildProcess | null = null;
 let isInitialized = false;
@@ -117,10 +125,10 @@ export async function startTestServer(): Promise<void> {
     const serverPath = path.join(apiSrcRoot, 'index.ts');
     const projectRoot = path.resolve(apiSrcRoot, '../../');
     const dbPath = getOrCreateTestDatabasePath(projectRoot);
-    const tsxModulePath = (() => {
-      const candidate = path.join(projectRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
-      return existsSync(candidate) ? candidate : null;
-    })();
+    const tsxModulePath = path.join(projectRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
+    if (!existsSync(tsxModulePath)) {
+      throw new Error(`Required CLI not found: ${tsxModulePath}`);
+    }
 
     const env = sanitizeEnv({
       ...process.env,
@@ -137,36 +145,14 @@ export async function startTestServer(): Promise<void> {
     const nodeModulesBin = path.join(projectRoot, 'node_modules', '.bin');
     env.PATH = env.PATH ? `${nodeModulesBin}${path.delimiter}${env.PATH}` : nodeModulesBin;
 
-    const executable = tsxModulePath
-      ? process.execPath
-      : process.platform === 'win32'
-        ? 'tsx.cmd'
-        : 'tsx';
-    const args = tsxModulePath ? [tsxModulePath, serverPath] : [serverPath];
-
     const spawnOptions = {
       cwd: path.resolve(__dirname, '../../../'),
       env,
       stdio: ['ignore', 'pipe', 'pipe'] as const,
       detached: false,
-      shell: false,
     };
 
-    try {
-      serverProcess = spawn(executable, args, spawnOptions);
-    } catch (error: any) {
-      // Windows can throw EINVAL for command-line/env edge-cases.
-      if (process.platform !== 'win32' || error?.code !== 'EINVAL') {
-        throw error;
-      }
-
-      const fallbackExecutable = 'tsx.cmd';
-      const fallbackArgs = [serverPath];
-      serverProcess = spawn(fallbackExecutable, fallbackArgs, {
-        ...spawnOptions,
-        shell: true,
-      });
-    }
+    serverProcess = spawnNode22([tsxModulePath, serverPath], spawnOptions);
 
     if (serverProcess.stdout) {
       serverProcess.stdout.on('data', (data) => {

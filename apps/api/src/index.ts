@@ -825,9 +825,9 @@ async function start(config?: ServerConfig) {
     const concurrencyGuard = new ConcurrencyGuard(jobRepository);
     const startJobUseCase = new StartJob(jobRepository);
 
-    // Recover orphaned jobs from previous server instance
-    // This marks any jobs left in 'queued' or 'running' state as 'failed'
-    // Must run BEFORE worker pool starts to prevent race conditions
+    // Recover orphaned running jobs from previous server instance.
+    // Queued jobs remain eligible for normal dispatch after restart.
+    // Must run BEFORE worker pool starts to prevent race conditions.
     await recoverOrphanedJobs(jobRepository);
 
     // Connect SSE broadcaster to job repository for initial state sync

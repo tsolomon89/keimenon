@@ -24,9 +24,6 @@
 import { Request } from 'express';
 import path from 'path';
 
-const MODULE_INSTANCE_ID = Math.random().toString(36).substring(7);
-console.log(`[get-db-client] 🟢 Module loaded. Instance ID: ${MODULE_INSTANCE_ID}`);
-
 /**
  * Cache of worker-specific database clients by path
  * Key: absolute database path
@@ -66,22 +63,13 @@ export async function getDbClient(req?: Request): Promise<any> {
 
     // Check cache first to ensure same client instance is used across requests
     if (testClientCache.has(testDbPath)) {
-      const cachedClient = testClientCache.get(testDbPath);
-      console.log(`[Get DB Client] Using cached test client for ${path.basename(testDbPath)}`);
-      return cachedClient;
+      return testClientCache.get(testDbPath);
     }
 
     // Check if connection is already in progress for this path
     if (connectionPromises.has(testDbPath)) {
-      console.log(
-        `[Get DB Client] Connection already in progress, waiting for ${path.basename(testDbPath)}`
-      );
       return await connectionPromises.get(testDbPath);
     }
-
-    console.log(`[Get DB Client] Creating test-specific client:`);
-    console.log(`  - Worker DB: ${path.basename(testDbPath)}`);
-    console.log(`  - Full path: ${testDbPath}`);
 
     // Create connection promise and cache it immediately
     const connectionPromise = (async () => {
@@ -93,9 +81,8 @@ export async function getDbClient(req?: Request): Promise<any> {
         const client = new SQLiteClient({
           databasePath: testDbPath,
           verbose: false,
-          ignoreGlobalContext: true, // CRITICAL: Use THIS specific DB, do not redirect to global Data DB
+          ignoreGlobalContext: true,
         });
-        console.log(`[getDbClient] 🔌 Created isolated client for: ${testDbPath}`);
 
         // Connect to the database
         await client.connect();
@@ -104,18 +91,12 @@ export async function getDbClient(req?: Request): Promise<any> {
         client.enableDirectWrites();
 
         // Cache the client for this database path
-        console.log(
-          `[get-db-client] 💾 Caching DB client for: ${testDbPath}. Instance: ${MODULE_INSTANCE_ID}`
-        );
         testClientCache.set(testDbPath, client);
-
-        console.log(`[Get DB Client] ✅ Test client created and cached successfully`);
         return client;
-      } catch (error) {
-        console.log(`[Get DB Client] ❌ Failed to create test client:`);
-        console.log(`  - Error: ${error}`);
+      } catch (error: any) {
         // Remove failed promise from cache so next request can retry
         connectionPromises.delete(testDbPath);
+        console.error(`[get-db-client] Failed to create test database client: ${error.message}`);
         throw error;
       } finally {
         // Remove connection promise after it resolves (success or failure)
@@ -141,20 +122,9 @@ export async function getDbClient(req?: Request): Promise<any> {
 /**
  * Get jobs database client (separate database file in test mode)
  *
- * CRITICAL FIX: In test mode, jobs are saved to a completely separate database file
- * to avoid SQLite locking conflicts when creating jobs inside SAVEPOINT transactions.
- *
- * Architecture:
- *   Test Mode:
- *     - Data database: worker-0.db (has SAVEPOINT transactions for test isolation)
- *     - Jobs database: worker-0-jobs.db (NO savepoints, jobs globally visible)
- *   Production Mode:
- *     - Single database: keimenon.db (contains all data including jobs)
- *
- * Why separate database:
- * - SQLite does not allow creating a second connection to a database with active SAVEPOINT
- * - Separate database files = no lock contention
- * - Jobs remain visible to WorkerPool while data remains isolated
+ * Test suites may use a separate jobs database so job polling is not coupled to
+ * route-level SAVEPOINT isolation in the worker data database. Production always
+ * uses the main database.
  *
  * @param req Express request object (optional)
  * @returns Database client for jobs operations
@@ -167,11 +137,8 @@ export async function getJobsDbClient(req?: Request): Promise<any> {
     return global.dbClient;
   }
 
-  // Test mode: jobs are in separate database file
   const testDbPath: string = req.testDbPath;
 
-  // CRITICAL FIX: Handle cases where testDbPath is already the jobs DB path
-  // (e.g. when called from WorkerPool which iterates over active test DBs)
   let jobsDbPath = testDbPath;
   if (!testDbPath.endsWith('-jobs.db')) {
     const dir = path.dirname(testDbPath);
@@ -180,61 +147,32 @@ export async function getJobsDbClient(req?: Request): Promise<any> {
     jobsDbPath = path.join(dir, `${name}-jobs${ext}`);
   }
 
-  // Check cache first
   if (testClientCache.has(jobsDbPath)) {
-    const cachedClient = testClientCache.get(jobsDbPath);
-    console.log(`[Get DB Client] Using cached jobs DB client for ${path.basename(jobsDbPath)}`);
-    return cachedClient;
+    return testClientCache.get(jobsDbPath);
   }
 
-  // Check if connection is already in progress
   if (connectionPromises.has(jobsDbPath)) {
-    console.log(
-      `[Get DB Client] Jobs DB connection in progress, waiting for ${path.basename(jobsDbPath)}`
-    );
     return await connectionPromises.get(jobsDbPath);
   }
 
-  console.log(`[Get DB Client] Creating jobs database client:`);
-  console.log(`  - Jobs DB: ${path.basename(jobsDbPath)}`);
-  console.log(`  - Purpose: Separate database for jobs (avoids SAVEPOINT locking)`);
-
-  // Create connection promise
   const connectionPromise = (async () => {
     try {
       const { SQLiteClient } = await import('@keimenon/db');
 
-      // Create client instance for jobs database (separate file from data database)
       const client = new SQLiteClient({
         databasePath: jobsDbPath,
-        verbose: true,
-        ignoreGlobalContext: true, // CRITICAL: Use THIS specific DB, do not redirect to global Data DB
+        verbose: false,
+        ignoreGlobalContext: true,
       });
 
       await client.connect();
       client.enableDirectWrites();
 
-      // CRITICAL FIX: Disable WAL mode for jobs database to ensure immediate visibility
-      // WAL checkpoint fails when SAVEPOINT transactions are active, leaving jobs invisible
-      // DELETE mode ensures writes are immediately visible to all connections
-      const db = client.getDatabase();
-      db.pragma('journal_mode = DELETE');
-      console.log(
-        `[Get DB Client] 📝 Disabled WAL mode for jobs database (using DELETE journal mode)`
-      );
-
-      // Cache the client for this database path
-      console.log(
-        `[get-db-client] 💾 Caching jobs DB client for: ${jobsDbPath}. Instance: ${MODULE_INSTANCE_ID}`
-      );
       testClientCache.set(jobsDbPath, client);
-
-      console.log(`[Get DB Client] ✅ Jobs database client created successfully`);
       return client;
-    } catch (error) {
-      console.log(`[Get DB Client] ❌ Failed to create jobs database client:`);
-      console.log(`  - Error: ${error}`);
+    } catch (error: any) {
       connectionPromises.delete(jobsDbPath);
+      console.error(`[get-db-client] Failed to create jobs database client: ${error.message}`);
       throw error;
     } finally {
       connectionPromises.delete(jobsDbPath);
@@ -256,18 +194,19 @@ export function isTestIsolationActive(req: Request): boolean {
 }
 
 /**
- * Get all active test database paths
- *
- * CRITICAL FIX: Enables WorkerPool to query all test databases when polling for jobs
- * This solves the issue where test jobs are saved to test DBs but worker pool only queries production
+ * Get all active test database paths.
  *
  * @returns Array of absolute paths to all active test databases
  */
 export function getActiveTestDatabases(): string[] {
-  console.log(
-    `[get-db-client] 🔍 getActiveTestDatabases called. Instance: ${MODULE_INSTANCE_ID}. Cache size: ${testClientCache.size}`
-  );
   return Array.from(testClientCache.keys());
+}
+
+/**
+ * Get active test jobs databases only.
+ */
+export function getActiveJobsDatabases(): string[] {
+  return getActiveTestDatabases().filter((dbPath) => dbPath.endsWith('-jobs.db'));
 }
 
 /**
@@ -295,16 +234,14 @@ export async function closeDbConnection(testDbPath: string): Promise<boolean> {
       // Close the database connection (releases file lock)
       if (client && typeof client.close === 'function') {
         await client.close();
-        console.log(`[Get DB Client] ✅ Closed data DB connection: ${path.basename(testDbPath)}`);
       }
 
       // Remove from both caches
       testClientCache.delete(testDbPath);
       connectionPromises.delete(testDbPath);
-      console.log(`[Get DB Client] ✅ Removed data DB from cache: ${path.basename(testDbPath)}`);
       closedAny = true;
     } catch (error) {
-      console.error(`[Get DB Client] ❌ Error closing data DB connection:`, error);
+      console.error(`[get-db-client] Error closing data DB connection:`, error);
       // Still remove from caches even if close failed
       testClientCache.delete(testDbPath);
       connectionPromises.delete(testDbPath);
@@ -324,24 +261,18 @@ export async function closeDbConnection(testDbPath: string): Promise<boolean> {
       // Close the jobs database connection (releases file lock)
       if (jobsClient && typeof jobsClient.close === 'function') {
         await jobsClient.close();
-        console.log(`[Get DB Client] ✅ Closed jobs DB connection: ${path.basename(jobsDbPath)}`);
       }
 
       // Remove from both caches
       testClientCache.delete(jobsDbPath);
       connectionPromises.delete(jobsDbPath);
-      console.log(`[Get DB Client] ✅ Removed jobs DB from cache: ${path.basename(jobsDbPath)}`);
       closedAny = true;
     } catch (error) {
-      console.error(`[Get DB Client] ❌ Error closing jobs DB connection:`, error);
+      console.error(`[get-db-client] Error closing jobs DB connection:`, error);
       // Still remove from caches even if close failed
       testClientCache.delete(jobsDbPath);
       connectionPromises.delete(jobsDbPath);
     }
-  }
-
-  if (!closedAny) {
-    console.log(`[Get DB Client] No cached connections for ${path.basename(testDbPath)}`);
   }
 
   return closedAny;
