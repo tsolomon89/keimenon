@@ -21,6 +21,11 @@
 
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { useJobStream, type JobUpdate } from '@/hooks/useJobStream';
+import {
+  deriveImportProgress,
+  normalizeImportProgressPercent,
+  type ImportUiStatus,
+} from '@/lib/import-job-progress';
 
 // Operation types
 export type OperationType = 'import' | 'deletion' | 'export' | 'migration';
@@ -34,6 +39,7 @@ export type OperationStatus =
   | 'indexing'
   | 'linking'
   | 'processing' // Generic status for deletions/exports
+  | 'blocked'
   | 'done'
   | 'error';
 
@@ -102,16 +108,6 @@ const BackgroundOperationsContext = createContext<BackgroundOperationsContextVal
   undefined
 );
 
-const JOB_STATUS_TO_OPERATION_STATUS: Record<JobUpdate['status'], OperationStatus> = {
-  queued: 'queued',
-  running: 'processing',
-  blocked: 'queued',
-  succeeded: 'done',
-  failed: 'error',
-  canceled: 'error',
-  deleted: 'done',
-};
-
 function jobTypeToOperationType(jobType: JobUpdate['type']): OperationType {
   switch (jobType) {
     case 'import':
@@ -155,6 +151,9 @@ function deriveDescription(job: JobUpdate, existing?: Operation): string | undef
 }
 
 function operationsEqual(a: Operation, b: Operation): boolean {
+  const statsA = JSON.stringify(a.stats ?? {});
+  const statsB = JSON.stringify(b.stats ?? {});
+
   return (
     a.status === b.status &&
     a.progress === b.progress &&
@@ -163,15 +162,47 @@ function operationsEqual(a: Operation, b: Operation): boolean {
     a.title === b.title &&
     a.description === b.description &&
     a.fileName === b.fileName &&
-    a.startedAt === b.startedAt
+    a.startedAt === b.startedAt &&
+    statsA === statsB
   );
 }
 
-function mergeJobIntoOperation(job: JobUpdate, existing?: Operation): Operation {
-  const status = JOB_STATUS_TO_OPERATION_STATUS[job.status] ?? 'processing';
-  const progressPercent = Number.isFinite(job.progress?.percent)
-    ? Math.max(0, Math.min(100, Math.round(job.progress.percent)))
-    : (existing?.progress ?? 0);
+export function mergeJobIntoOperation(job: JobUpdate, existing?: Operation): Operation {
+  if (job.status === 'deleted') {
+    return {
+      id: job.jobId,
+      type: existing?.type ?? jobTypeToOperationType(job.type),
+      title: deriveTitle(job, existing),
+      description: deriveDescription(job, existing),
+      fileName: existing?.fileName ?? job.config?.fileName,
+      fileType: existing?.fileType,
+      platform: existing?.platform,
+      status: 'done',
+      progress: 100,
+      startedAt: existing?.startedAt ?? Date.now(),
+      completedAt: existing?.completedAt ?? Date.now(),
+      stats: { ...(existing?.stats ?? {}), ...(job.stats ?? {}) },
+      error: undefined,
+      state: existing?.state,
+    };
+  }
+
+  const previousStatus = existing?.status as ImportUiStatus | undefined;
+  const derived = deriveImportProgress({
+    backendStatus: job.status,
+    jobType: job.type,
+    progress: { message: job.progress?.message, stage: job.progress?.stage },
+    previousStatus,
+  });
+  const status = derived.status as OperationStatus;
+  const progressPercent = normalizeImportProgressPercent({
+    backendStatus: job.status,
+    status: derived.status,
+    rawPercent: job.progress?.percent,
+    previousPercent: existing?.progress,
+    stage: job.progress?.stage,
+    metadata: job.progress?.metadata,
+  });
 
   const completedAt =
     status === 'done' || status === 'error'
@@ -180,10 +211,33 @@ function mergeJobIntoOperation(job: JobUpdate, existing?: Operation): Operation 
 
   const errorMessage =
     status === 'error'
-      ? job.progress?.message ||
-        existing?.error ||
-        (job.status === 'canceled' ? 'Job canceled' : 'Job failed')
+      ? (() => {
+          if (job.error?.code || job.error?.message) {
+            const stageLabel = job.progress?.stage ? String(job.progress.stage) : 'UNKNOWN_STAGE';
+            const percentValue =
+              typeof job.progress?.percent === 'number'
+                ? job.progress.percent
+                : (existing?.progress ?? 0);
+            const code = job.error.code || (job.status === 'canceled' ? 'CANCELED' : 'FAILED');
+            const message =
+              job.error.message ||
+              job.progress?.message ||
+              (job.status === 'canceled' ? 'Job canceled' : 'Job failed');
+            return `${code} at ${stageLabel} (${percentValue}%): ${message}`;
+          }
+
+          return (
+            job.progress?.message ||
+            existing?.error ||
+            (job.status === 'canceled' ? 'Job canceled' : 'Job failed')
+          );
+        })()
       : undefined;
+
+  const mergedStats = {
+    ...(existing?.stats ?? {}),
+    ...(job.stats ?? {}),
+  };
 
   return {
     id: job.jobId,
@@ -197,7 +251,7 @@ function mergeJobIntoOperation(job: JobUpdate, existing?: Operation): Operation 
     progress: progressPercent,
     startedAt: existing?.startedAt ?? Date.now(),
     completedAt,
-    stats: existing?.stats ?? {},
+    stats: mergedStats,
     error: errorMessage,
     state: existing?.state,
   };

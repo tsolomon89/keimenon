@@ -7,8 +7,6 @@
  * - Partial success handling (save what works, quarantine what fails)
  * - Dead letter queue for failed items
  * - Metrics and logging
- *
- * Prevents infinite error loops and data loss during imports.
  */
 
 import { DatabaseClient } from '@keimenon/db';
@@ -17,29 +15,49 @@ import { AnyNode, AnyEdge } from '@keimenon/types';
 export interface WriteQueueMetrics {
   totalAttempts: number;
   successfulWrites: number;
+  successfulNodeWrites: number;
+  successfulEdgeWrites: number;
   failedWrites: number;
+  failedNodeWrites: number;
+  failedEdgeWrites: number;
+  fkConstraintFailures: number;
   retriedWrites: number;
   circuitBreakerOpens: number;
   partialSuccesses: number;
   deadLetterItems: number;
+  deadLetterEnqueues: number;
+}
+
+export interface FlushResult {
+  totalWritten: number;
+  nodesWritten: number;
+  edgesWritten: number;
+  circuitOpen: boolean;
+  deadLetterCount: number;
 }
 
 export interface DeadLetterItem {
   type: 'node' | 'edge';
   data: AnyNode | AnyEdge;
   error: Error;
+  normalizedReason?: string;
   timestamp: number;
   attemptCount: number;
 }
 
 export interface WriteQueueErrorHandlerOptions {
-  maxConsecutiveFailures?: number; // Circuit breaker threshold (default: 3)
-  maxRetries?: number; // Max retries per item (default: 2)
-  retryDelayMs?: number; // Initial retry delay (default: 1000)
-  useExponentialBackoff?: boolean; // Use exponential backoff (default: true)
-  enableCircuitBreaker?: boolean; // Enable circuit breaker (default: true)
-  deadLetterQueueSize?: number; // Max dead letter queue size (default: 1000)
-  circuitBreakerResetMs?: number; // Auto-reset timeout for circuit breaker (default: 30000)
+  maxConsecutiveFailures?: number;
+  maxRetries?: number;
+  retryDelayMs?: number;
+  useExponentialBackoff?: boolean;
+  enableCircuitBreaker?: boolean;
+  deadLetterQueueSize?: number;
+  circuitBreakerResetMs?: number;
+}
+
+interface EdgeWriteResult {
+  success: boolean;
+  deferredForeignKey?: boolean;
 }
 
 export class WriteQueueErrorHandler {
@@ -50,11 +68,17 @@ export class WriteQueueErrorHandler {
   private metrics: WriteQueueMetrics = {
     totalAttempts: 0,
     successfulWrites: 0,
+    successfulNodeWrites: 0,
+    successfulEdgeWrites: 0,
     failedWrites: 0,
+    failedNodeWrites: 0,
+    failedEdgeWrites: 0,
+    fkConstraintFailures: 0,
     retriedWrites: 0,
     circuitBreakerOpens: 0,
     partialSuccesses: 0,
     deadLetterItems: 0,
+    deadLetterEnqueues: 0,
   };
 
   private options: Required<WriteQueueErrorHandlerOptions>;
@@ -76,35 +100,31 @@ export class WriteQueueErrorHandler {
   }
 
   /**
-   * Handle flush operation with error recovery
-   * Returns number of items successfully written
+   * Handle flush operation with error recovery.
    */
-  async handleFlush(nodes: AnyNode[], edges: AnyEdge[]): Promise<number> {
+  async handleFlush(nodes: AnyNode[], edges: AnyEdge[]): Promise<FlushResult> {
     this.metrics.totalAttempts++;
 
-    // Check circuit breaker
     if (this.circuitOpen && this.options.enableCircuitBreaker) {
-      // Try to auto-close circuit after configured timeout
       const resetTimeout = this.options.circuitBreakerResetMs;
       if (this.circuitOpenedAt && Date.now() - this.circuitOpenedAt > resetTimeout) {
-        console.log(`🔄 Circuit breaker auto-closing after ${resetTimeout / 1000}s timeout`);
+        console.log(
+          `[WriteQueueErrorHandler] Circuit breaker auto-closing after ${resetTimeout}ms`
+        );
         this.closeCircuit();
       } else {
         const remainingSeconds = Math.ceil(
           (resetTimeout - (Date.now() - (this.circuitOpenedAt || 0))) / 1000
         );
-        const error = new CircuitBreakerOpenError(
+        throw new CircuitBreakerOpenError(
           `Circuit breaker is open after ${this.consecutiveFailures} consecutive failures. ` +
             `Will auto-reset in ${remainingSeconds}s. ` +
             `Manual reset: POST /api/v1/debug/queue/reset-circuit`
         );
-        console.error('🚫', error.message);
-        throw error;
       }
     }
 
     try {
-      // Try batch write first (most efficient)
       if (nodes.length > 0 && this.db.createNodes) {
         await this.db.createNodes(nodes);
       }
@@ -112,21 +132,25 @@ export class WriteQueueErrorHandler {
         await this.db.createEdges(edges);
       }
 
-      // Success - reset failure counter
       this.consecutiveFailures = 0;
       this.metrics.successfulWrites += nodes.length + edges.length;
+      this.metrics.successfulNodeWrites += nodes.length;
+      this.metrics.successfulEdgeWrites += edges.length;
 
-      return nodes.length + edges.length;
+      return {
+        totalWritten: nodes.length + edges.length,
+        nodesWritten: nodes.length,
+        edgesWritten: edges.length,
+        circuitOpen: this.circuitOpen,
+        deadLetterCount: this.deadLetterQueue.length,
+      };
     } catch (error: any) {
       this.consecutiveFailures++;
-      this.metrics.failedWrites += nodes.length + edges.length;
-
       console.error(
-        `❌ Batch write failed (attempt ${this.consecutiveFailures}/${this.options.maxConsecutiveFailures}):`,
-        error.message
+        `[WriteQueueErrorHandler] Batch write failed (${this.consecutiveFailures}/${this.options.maxConsecutiveFailures}):`,
+        error?.message || error
       );
 
-      // Open circuit breaker if threshold reached
       if (
         this.options.enableCircuitBreaker &&
         this.consecutiveFailures >= this.options.maxConsecutiveFailures
@@ -134,56 +158,71 @@ export class WriteQueueErrorHandler {
         this.openCircuit();
       }
 
-      // Try individual writes (partial success)
-      return await this.tryIndividualWrites(nodes, edges);
+      return this.tryIndividualWrites(nodes, edges);
     }
   }
 
   /**
-   * Try writing items individually for partial success
+   * Try writing items individually for partial success.
    */
-  private async tryIndividualWrites(nodes: AnyNode[], edges: AnyEdge[]): Promise<number> {
-    let successCount = 0;
+  private async tryIndividualWrites(nodes: AnyNode[], edges: AnyEdge[]): Promise<FlushResult> {
+    let nodesWritten = 0;
+    let edgesWritten = 0;
+    const deferredForeignKeyEdges: AnyEdge[] = [];
 
-    console.log(
-      `🔄 Attempting individual writes for ${nodes.length} nodes and ${edges.length} edges`
-    );
-
-    // Try nodes individually
     for (const node of nodes) {
       const success = await this.tryWriteNode(node);
       if (success) {
-        successCount++;
+        nodesWritten++;
         this.metrics.successfulWrites++;
+        this.metrics.successfulNodeWrites++;
       } else {
         this.metrics.failedWrites++;
+        this.metrics.failedNodeWrites++;
       }
     }
 
-    // Try edges individually
     for (const edge of edges) {
-      const success = await this.tryWriteEdge(edge);
-      if (success) {
-        successCount++;
+      const result = await this.tryWriteEdge(edge, 0, true);
+      if (result.success) {
+        edgesWritten++;
         this.metrics.successfulWrites++;
+        this.metrics.successfulEdgeWrites++;
+      } else if (result.deferredForeignKey) {
+        deferredForeignKeyEdges.push(edge);
       } else {
         this.metrics.failedWrites++;
+        this.metrics.failedEdgeWrites++;
       }
     }
 
+    // Single deferred retry pass after node writes complete in this flush cycle.
+    for (const edge of deferredForeignKeyEdges) {
+      const retryResult = await this.tryWriteEdge(edge, 0, false);
+      if (retryResult.success) {
+        edgesWritten++;
+        this.metrics.successfulWrites++;
+        this.metrics.successfulEdgeWrites++;
+      } else {
+        this.metrics.failedWrites++;
+        this.metrics.failedEdgeWrites++;
+      }
+    }
+
+    const successCount = nodesWritten + edgesWritten;
     if (successCount > 0) {
       this.metrics.partialSuccesses++;
-      console.log(
-        `✅ Partial success: ${successCount}/${nodes.length + edges.length} items written`
-      );
     }
 
-    return successCount;
+    return {
+      totalWritten: successCount,
+      nodesWritten,
+      edgesWritten,
+      circuitOpen: this.circuitOpen,
+      deadLetterCount: this.deadLetterQueue.length,
+    };
   }
 
-  /**
-   * Try writing a single node with retries
-   */
   private async tryWriteNode(node: AnyNode, attemptCount: number = 0): Promise<boolean> {
     try {
       if (this.db.createNode) {
@@ -194,31 +233,22 @@ export class WriteQueueErrorHandler {
       }
       return true;
     } catch (error: any) {
-      // Retry with exponential backoff
       if (attemptCount < this.options.maxRetries) {
         const delayMs = this.calculateRetryDelay(attemptCount);
-        console.log(
-          `🔄 Retrying node ${node.id} after ${delayMs}ms (attempt ${attemptCount + 1}/${this.options.maxRetries})`
-        );
-
         await this.sleep(delayMs);
-        return await this.tryWriteNode(node, attemptCount + 1);
+        return this.tryWriteNode(node, attemptCount + 1);
       }
 
-      // Max retries exceeded - add to dead letter queue
-      console.error(
-        `❌ Failed to write node ${node.id} after ${attemptCount + 1} attempts:`,
-        error.message
-      );
-      this.addToDeadLetterQueue('node', node, error, attemptCount + 1);
+      this.addToDeadLetterQueue('node', node, this.ensureError(error), attemptCount + 1);
       return false;
     }
   }
 
-  /**
-   * Try writing a single edge with retries
-   */
-  private async tryWriteEdge(edge: AnyEdge, attemptCount: number = 0): Promise<boolean> {
+  private async tryWriteEdge(
+    edge: AnyEdge,
+    attemptCount: number = 0,
+    deferForeignKeyDeadLetter: boolean = false
+  ): Promise<EdgeWriteResult> {
     try {
       if (this.db.createEdge) {
         await this.db.createEdge(edge);
@@ -226,161 +256,142 @@ export class WriteQueueErrorHandler {
       if (attemptCount > 0) {
         this.metrics.retriedWrites++;
       }
-      return true;
+      return { success: true };
     } catch (error: any) {
-      // Retry with exponential backoff
       if (attemptCount < this.options.maxRetries) {
         const delayMs = this.calculateRetryDelay(attemptCount);
-        console.log(
-          `🔄 Retrying edge ${edge.id} after ${delayMs}ms (attempt ${attemptCount + 1}/${this.options.maxRetries})`
-        );
-
         await this.sleep(delayMs);
-        return await this.tryWriteEdge(edge, attemptCount + 1);
+        return this.tryWriteEdge(edge, attemptCount + 1, deferForeignKeyDeadLetter);
       }
 
-      // Max retries exceeded - add to dead letter queue
-      console.error(
-        `❌ Failed to write edge ${edge.id} after ${attemptCount + 1} attempts:`,
-        error.message
+      const normalizedError = this.ensureError(error);
+      const isForeignKeyFailure = this.isForeignKeyConstraintError(normalizedError);
+      if (isForeignKeyFailure) {
+        this.metrics.fkConstraintFailures++;
+      }
+
+      if (isForeignKeyFailure && deferForeignKeyDeadLetter) {
+        return { success: false, deferredForeignKey: true };
+      }
+
+      this.addToDeadLetterQueue(
+        'edge',
+        edge,
+        normalizedError,
+        attemptCount + 1,
+        isForeignKeyFailure ? 'FK_MISSING_ENDPOINT' : undefined
       );
-      this.addToDeadLetterQueue('edge', edge, error, attemptCount + 1);
-      return false;
+      return { success: false };
     }
   }
 
-  /**
-   * Calculate retry delay with exponential backoff
-   */
   private calculateRetryDelay(attemptCount: number): number {
     if (!this.options.useExponentialBackoff) {
       return this.options.retryDelayMs;
     }
 
-    // Exponential backoff: 1s, 2s, 4s, 8s, ...
     return this.options.retryDelayMs * Math.pow(2, attemptCount);
   }
 
-  /**
-   * Sleep for specified milliseconds
-   */
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  /**
-   * Add item to dead letter queue
-   */
   private addToDeadLetterQueue(
     type: 'node' | 'edge',
     data: AnyNode | AnyEdge,
     error: Error,
-    attemptCount: number
+    attemptCount: number,
+    normalizedReason?: string
   ): void {
-    // Check queue size limit
     if (this.deadLetterQueue.length >= this.options.deadLetterQueueSize) {
-      console.warn(
-        `⚠️ Dead letter queue full (${this.options.deadLetterQueueSize}), dropping oldest item`
-      );
-      this.deadLetterQueue.shift(); // Remove oldest
+      this.deadLetterQueue.shift();
     }
 
     this.deadLetterQueue.push({
       type,
       data,
       error,
+      normalizedReason,
       timestamp: Date.now(),
       attemptCount,
     });
 
     this.metrics.deadLetterItems++;
+    this.metrics.deadLetterEnqueues++;
   }
 
-  /**
-   * Open circuit breaker
-   */
   private openCircuit(): void {
     this.circuitOpen = true;
     this.circuitOpenedAt = Date.now();
     this.metrics.circuitBreakerOpens++;
-
     const resetTimeSeconds = this.options.circuitBreakerResetMs / 1000;
 
     console.error(
-      `🚫 CIRCUIT BREAKER OPENED after ${this.consecutiveFailures} consecutive failures.`
+      `[WriteQueueErrorHandler] CIRCUIT_BREAKER_OPEN after ${this.consecutiveFailures} failures`
     );
-    console.error(`   Write operations paused. Will auto-reset in ${resetTimeSeconds}s.`);
-    console.error(`   Manual reset: POST /api/v1/debug/queue/reset-circuit`);
-    console.error(`   Dead letter queue size: ${this.deadLetterQueue.length} items`);
-    console.error(`   Troubleshooting:`);
-    console.error(`   1. Check database connection and disk space`);
-    console.error(`   2. Review dead letter queue for error patterns`);
-    console.error(`   3. Consider increasing CIRCUIT_BREAKER_RESET_MS if transient failures`);
-
-    // TODO: Send alert to monitoring system
-    // this.sendAlert('Write queue circuit breaker opened');
+    console.error(`   write operations paused, auto-reset in ${resetTimeSeconds}s`);
+    console.error(`   dead letter queue size: ${this.deadLetterQueue.length}`);
   }
 
-  /**
-   * Close circuit breaker (manual reset or auto after timeout)
-   */
   closeCircuit(): void {
-    console.log('✅ Circuit breaker closed, resuming operations');
     this.circuitOpen = false;
     this.circuitOpenedAt = null;
     this.consecutiveFailures = 0;
   }
 
-  /**
-   * Get current metrics
-   */
   getMetrics(): WriteQueueMetrics {
     return { ...this.metrics };
   }
 
-  /**
-   * Get dead letter queue items
-   */
   getDeadLetterQueue(): DeadLetterItem[] {
     return [...this.deadLetterQueue];
   }
 
-  /**
-   * Clear dead letter queue
-   */
   clearDeadLetterQueue(): number {
     const count = this.deadLetterQueue.length;
     this.deadLetterQueue = [];
     return count;
   }
 
-  /**
-   * Check if circuit breaker is open
-   */
   isCircuitOpen(): boolean {
     return this.circuitOpen;
   }
 
-  /**
-   * Reset metrics (for testing)
-   */
   resetMetrics(): void {
     this.metrics = {
       totalAttempts: 0,
       successfulWrites: 0,
+      successfulNodeWrites: 0,
+      successfulEdgeWrites: 0,
       failedWrites: 0,
+      failedNodeWrites: 0,
+      failedEdgeWrites: 0,
+      fkConstraintFailures: 0,
       retriedWrites: 0,
       circuitBreakerOpens: 0,
       partialSuccesses: 0,
       deadLetterItems: 0,
+      deadLetterEnqueues: 0,
     };
+  }
+
+  private isForeignKeyConstraintError(error: Error): boolean {
+    const message = String(error?.message || '').toUpperCase();
+    return (
+      message.includes('SQLITE_CONSTRAINT_FOREIGNKEY') ||
+      message.includes('FOREIGN KEY CONSTRAINT FAILED')
+    );
+  }
+
+  private ensureError(value: unknown): Error {
+    if (value instanceof Error) {
+      return value;
+    }
+    return new Error(String(value));
   }
 }
 
-/**
- * Circuit Breaker Open Error
- * Thrown when circuit breaker is open (too many consecutive failures)
- */
 export class CircuitBreakerOpenError extends Error {
   constructor(message: string) {
     super(message);

@@ -1,212 +1,249 @@
 /**
  * Agent API Routes
  *
- * REST API for agent task management:
- * - POST /api/v1/agent/tasks - Create and execute a task
- * - GET /api/v1/agent/tasks - List task history
- * - GET /api/v1/agent/tasks/:id - Get task details
- * - DELETE /api/v1/agent/tasks/:id - Cancel a running task
- * - GET /api/v1/agent/types - List available task types
- * - GET /api/v1/agent/health - Health check
+ * /api/v1/agent/*
+ * - POST /tasks
+ * - POST /tasks/:id/retry
+ * - GET /tasks
+ * - GET /tasks/:id
+ * - DELETE /tasks/:id
+ * - GET /types
+ * - GET /health
+ * - GET /events (SSE)
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { getAgentService, CreateTaskRequest } from '../services/agent-service.js';
-import type { TaskType } from '@keimenon/agent-core';
+import type { AuthServiceV2 } from '../services/auth.service';
+import { requireAuth } from '../middleware/auth.middleware';
+import { getAgentService, type CreateTaskRequest } from '../services/agent-service';
 
-const router = Router();
+export function createAgentRoutes(authService?: AuthServiceV2): Router {
+  const router = Router();
 
-/**
- * Health check
- * GET /api/v1/agent/health
- */
-router.get('/health', (_req: Request, res: Response) => {
-  const agentService = getAgentService();
-  res.json({
-    status: 'ok',
-    availableTypes: agentService.getAvailableTaskTypes(),
-    runningTasks: agentService.getRunningTasks().length,
+  if (authService) {
+    router.use(requireAuth(authService));
+  }
+
+  router.get('/health', (_req: Request, res: Response) => {
+    const agentService = getAgentService();
+    res.json({
+      status: 'ok',
+      availableTypes: agentService.getAvailableTaskTypes(),
+      runningTasks: agentService.getRunningTasks().length,
+    });
   });
-});
 
-/**
- * List available task types
- * GET /api/v1/agent/types
- */
-router.get('/types', (_req: Request, res: Response) => {
-  const agentService = getAgentService();
-  const types = agentService.getAvailableTaskTypes();
+  router.get('/types', (_req: Request, res: Response) => {
+    const agentService = getAgentService();
+    const types = agentService.getAvailableTaskTypes();
 
-  res.json({
-    types: types.map(type => ({
-      type,
-      description: getTaskTypeDescription(type),
-    })),
+    res.json({
+      types: types.map((type) => ({
+        type,
+        description: getTaskTypeDescription(type),
+      })),
+    });
   });
-});
 
-/**
- * Create and execute a task
- * POST /api/v1/agent/tasks
- *
- * Body:
- * {
- *   type: 'GROUP_SUMMARY_BUILD' | 'DUPLICATE_SUGGEST' | 'VERIFY_SOURCE_CHAIN',
- *   input: { ... task-specific input ... },
- *   config?: { model_policy?: string, max_tokens?: number }
- * }
- */
-router.post('/tasks', async (req: Request, res: Response, next: NextFunction) => {
-  try {
+  router.get('/events', (req: Request, res: Response) => {
     const accountId = getAccountId(req);
     if (!accountId) {
       res.status(401).json({ error: 'Unauthorized: account_id required' });
       return;
     }
 
-    const { type, input, config } = req.body;
-
-    if (!type || !input) {
-      res.status(400).json({ error: 'type and input are required' });
-      return;
-    }
-
+    const taskIdFilter = typeof req.query.taskId === 'string' ? req.query.taskId : undefined;
     const agentService = getAgentService();
 
-    if (!agentService.isTaskTypeAvailable(type)) {
-      res.status(400).json({
-        error: `Unknown task type: ${type}`,
-        availableTypes: agentService.getAvailableTaskTypes(),
-      });
-      return;
-    }
-
-    const request: CreateTaskRequest = {
-      type: type as TaskType,
-      accountId,
-      input,
-      config,
-    };
-
-    // Execute task (synchronous for now - could be made async with SSE)
-    const result = await agentService.executeTask(request);
-
-    res.status(result.result.success ? 200 : 500).json({
-      task: {
-        id: result.task.id,
-        type: result.task.type,
-        status: result.task.status,
-        created_at: result.task.created_at,
-        completed_at: result.task.completed_at,
-        error: result.task.error,
-      },
-      run: {
-        id: result.run.id,
-        attempt: result.run.attempt,
-        status: result.run.status,
-        metrics: result.run.metrics,
-      },
-      output: result.result.output,
-      artifacts: result.result.artifacts,
-      error: result.result.error,
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
     });
-  } catch (error) {
-    next(error);
-  }
-});
 
-/**
- * List task history
- * GET /api/v1/agent/tasks
- */
-router.get('/tasks', (req: Request, res: Response) => {
-  const accountId = getAccountId(req);
-  if (!accountId) {
-    res.status(401).json({ error: 'Unauthorized: account_id required' });
-    return;
-  }
+    res.write(`event: connected\n`);
+    res.write(
+      `data: ${JSON.stringify({ type: 'connected', accountId, timestamp: Date.now() })}\n\n`
+    );
 
-  const agentService = getAgentService();
-  const tasks = agentService.getTaskHistory(accountId);
+    const unsubscribe = agentService.subscribe((event) => {
+      if ('taskId' in event && taskIdFilter && event.taskId !== taskIdFilter) {
+        return;
+      }
 
-  res.json({
-    tasks: tasks.map(task => ({
-      id: task.id,
-      type: task.type,
-      status: task.status,
-      created_at: task.created_at,
-      completed_at: task.completed_at,
-      error: task.error,
-    })),
-    total: tasks.length,
+      res.write(`event: ${event.type}\n`);
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    });
+
+    req.on('close', () => {
+      unsubscribe();
+      res.end();
+    });
   });
-});
 
-/**
- * Get task details
- * GET /api/v1/agent/tasks/:id
- */
-router.get('/tasks/:id', (req: Request, res: Response) => {
-  const accountId = getAccountId(req);
-  if (!accountId) {
-    res.status(401).json({ error: 'Unauthorized: account_id required' });
-    return;
-  }
+  router.post('/tasks', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const accountId = getAccountId(req);
+      if (!accountId) {
+        res.status(401).json({ error: 'Unauthorized: account_id required' });
+        return;
+      }
 
-  const { id } = req.params;
-  const agentService = getAgentService();
-  const tasks = agentService.getTaskHistory(accountId);
-  const task = tasks.find(t => t.id === id);
+      const { type, input, config } = req.body;
+      if (!type || !input) {
+        res.status(400).json({ error: 'type and input are required' });
+        return;
+      }
 
-  if (!task) {
-    res.status(404).json({ error: 'Task not found' });
-    return;
-  }
+      const request: CreateTaskRequest = {
+        type,
+        accountId,
+        input,
+        config,
+      };
 
-  res.json({ task });
-});
+      const agentService = getAgentService();
+      const result = await agentService.executeTask(request);
 
-/**
- * Cancel a running task
- * DELETE /api/v1/agent/tasks/:id
- */
-router.delete('/tasks/:id', (req: Request, res: Response) => {
-  const accountId = getAccountId(req);
-  if (!accountId) {
-    res.status(401).json({ error: 'Unauthorized: account_id required' });
-    return;
-  }
+      res.status(202).json({
+        task: {
+          id: result.task.id,
+          type: result.task.type,
+          status: result.task.status,
+          created_at: result.task.created_at,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
 
-  const { id } = req.params;
-  const agentService = getAgentService();
+  router.post('/tasks/:id/retry', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const accountId = getAccountId(req);
+      if (!accountId) {
+        res.status(401).json({ error: 'Unauthorized: account_id required' });
+        return;
+      }
 
-  const cancelled = agentService.cancelTask(id);
+      const { id } = req.params;
+      const agentService = getAgentService();
+      const result = await agentService.retryTask(id, accountId);
 
-  if (cancelled) {
-    res.json({ success: true, message: 'Task cancellation requested' });
-  } else {
-    res.status(404).json({ error: 'Task not found or not running' });
-  }
-});
+      res.status(202).json({
+        task: {
+          id: result.task.id,
+          type: result.task.type,
+          status: result.task.status,
+          created_at: result.task.created_at,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
 
-/**
- * Get account ID from request
- * In production, this would come from JWT or session
- */
-function getAccountId(req: Request): string | null {
-  // Try various sources for account ID
-  const accountId =
-    req.headers['x-account-id'] as string ||
-    (req as any).user?.accountId ||
-    (req as any).account?.id ||
-    req.query.account_id as string;
+  router.get('/tasks', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const accountId = getAccountId(req);
+      if (!accountId) {
+        res.status(401).json({ error: 'Unauthorized: account_id required' });
+        return;
+      }
 
-  return accountId || null;
+      const agentService = getAgentService();
+      const tasks = await agentService.getTaskHistory(accountId);
+
+      res.json({
+        tasks: tasks.map((task) => ({
+          id: task.id,
+          type: task.type,
+          status: task.status,
+          created_at: task.created_at,
+          started_at: task.started_at,
+          completed_at: task.completed_at,
+          error: task.error,
+        })),
+        total: tasks.length,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/tasks/:id', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const accountId = getAccountId(req);
+      if (!accountId) {
+        res.status(401).json({ error: 'Unauthorized: account_id required' });
+        return;
+      }
+
+      const { id } = req.params;
+      const agentService = getAgentService();
+      const details = await agentService.getTaskDetails(id);
+
+      if (!details) {
+        res.status(404).json({ error: 'Task not found' });
+        return;
+      }
+
+      if (details.task.account_id !== accountId) {
+        res.status(403).json({ error: 'Access denied' });
+        return;
+      }
+
+      res.json({
+        task: details.task,
+        runs: details.runs,
+        artifacts: details.artifacts,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.delete('/tasks/:id', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const accountId = getAccountId(req);
+      if (!accountId) {
+        res.status(401).json({ error: 'Unauthorized: account_id required' });
+        return;
+      }
+
+      const { id } = req.params;
+      const agentService = getAgentService();
+      const task = await agentService.getTask(id);
+
+      if (!task || task.account_id !== accountId) {
+        res.status(404).json({ error: 'Task not found' });
+        return;
+      }
+
+      const cancelled = await agentService.cancelTask(id);
+      if (!cancelled) {
+        res.status(409).json({ error: 'Task is not running' });
+        return;
+      }
+
+      res.json({ success: true, message: 'Task cancellation requested' });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  return router;
 }
 
-/**
- * Get task type description
- */
+function getAccountId(req: Request): string | null {
+  return (
+    req.user?.accountId ||
+    (req.headers['x-account-id'] as string) ||
+    (req.query.account_id as string) ||
+    null
+  );
+}
+
 function getTaskTypeDescription(type: string): string {
   const descriptions: Record<string, string> = {
     GROUP_SUMMARY_BUILD: 'Generate a canonical summary document from group sources',
@@ -216,4 +253,4 @@ function getTaskTypeDescription(type: string): string {
   return descriptions[type] || 'Unknown task type';
 }
 
-export default router;
+export default createAgentRoutes();

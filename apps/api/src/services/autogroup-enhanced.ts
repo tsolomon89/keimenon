@@ -47,9 +47,12 @@ export class EnhancedAutogroupService {
    */
   async autoGroupMessages(messages: Message[], config: GroupingConfig): Promise<AutoGroupResult> {
     const groups: Group[] = [];
+    const mode: GroupingConfig['mode'] =
+      config.mode === 'manual' || config.mode === 'hybrid' ? config.mode : 'auto';
+    const useManualFirstPass = mode === 'manual' || mode === 'hybrid';
 
-    // Step 1: Create manual groups first (they take priority)
-    if (config.manual && config.manual.length > 0) {
+    // Step 1 (manual/hybrid only): Create manual groups first (manual-priority behavior)
+    if (useManualFirstPass && config.manual && config.manual.length > 0) {
       for (const manual of config.manual) {
         const matchingMessages = findMessagesByKeywords(messages, manual.keywords);
 
@@ -77,7 +80,18 @@ export class EnhancedAutogroupService {
 
     if (topKeywords.length === 0) {
       // No keywords found, return manual groups only
-      return this.buildResult(groups, messages);
+      const result = this.buildResult(groups, messages);
+      console.log(
+        '[AutoGroup] batch summary',
+        JSON.stringify({
+          mode,
+          totalMessages: messages.length,
+          manualGroups: result.stats.manualGroups,
+          autoGroups: result.stats.autoGroups,
+          unmatchedSources: result.stats.unmatchedSources,
+        })
+      );
+      return result;
     }
 
     // Step 3: Build keyword co-occurrence matrix
@@ -134,7 +148,18 @@ export class EnhancedAutogroupService {
       }
     }
 
-    return this.buildResult(groups, messages);
+    const result = this.buildResult(groups, messages);
+    console.log(
+      '[AutoGroup] batch summary',
+      JSON.stringify({
+        mode,
+        totalMessages: messages.length,
+        manualGroups: result.stats.manualGroups,
+        autoGroups: result.stats.autoGroups,
+        unmatchedSources: result.stats.unmatchedSources,
+      })
+    );
+    return result;
   }
 
   /**

@@ -12,6 +12,7 @@
  *   - WORKER_POOL_MAX_CONCURRENT: Override maxConcurrentJobs (default: 5)
  *   - WORKER_POOL_POLL_INTERVAL_MS: Override pollIntervalMs (default: 1000)
  *   - IMPORT_WORKER_TIMEOUT_MS: Override import worker timeout (default: 600000)
+ *   - IMPORT_WORKER_STALL_TIMEOUT_MS: Fail import when no progress/activity for too long (default: 1200000)
  *   - DELETE_WORKER_TIMEOUT_MS: Override delete worker timeout (default: 300000)
  *   - JOB_CHECKPOINT_BATCH_INTERVAL: Override checkpoint frequency (default: 10)
  *   - JOB_ORPHAN_THRESHOLD_MS: Override orphan detection threshold (default: 120000)
@@ -41,6 +42,12 @@ export const WORKER_CONFIG = {
     /** Minimum timeout for import jobs before adaptive scaling applies */
     timeoutMs: parseInt(process.env.IMPORT_WORKER_TIMEOUT_MS || '600000'),
 
+    /**
+     * Maximum allowed inactivity before import is considered stalled.
+     * This is independent from wall-clock timeout and protects against hanging workers.
+     */
+    stallTimeoutMs: parseInt(process.env.IMPORT_WORKER_STALL_TIMEOUT_MS || String(20 * 60 * 1000)),
+
     /** Batch size for import operations */
     batchSize: 500,
 
@@ -59,8 +66,13 @@ export const WORKER_CONFIG = {
       perHundredMsgsMs: parseInt(process.env.IMPORT_TIMEOUT_PER_100_MS || String(60 * 1000)),
       /** Multiplier when spine extraction is enabled */
       spineMultiplier: parseFloat(process.env.IMPORT_TIMEOUT_SPINE_MULTIPLIER || '1.5'),
-      /** Maximum timeout in milliseconds (60 minutes) */
-      maxMs: parseInt(process.env.IMPORT_TIMEOUT_MAX_MS || String(60 * 60 * 1000)),
+      /**
+       * Additional multiplier when automatic v2 processing is enabled.
+       * This accounts for span/atomic/packet/mass phases that are absent from classic imports.
+       */
+      proImportMultiplier: parseFloat(process.env.IMPORT_TIMEOUT_PRO_IMPORT_MULTIPLIER || '2.0'),
+      /** Maximum timeout in milliseconds (24 hours) */
+      maxMs: parseInt(process.env.IMPORT_TIMEOUT_MAX_MS || String(24 * 60 * 60 * 1000)),
     },
 
     /** Spine extraction batch size (messages per DB query batch) */
@@ -187,6 +199,9 @@ export function validateJobConfig(): void {
   // Validate worker timeouts
   if (WORKER_CONFIG.import.timeoutMs < 60000) {
     errors.push('Import worker timeout must be >= 60000ms (1 minute)');
+  }
+  if (WORKER_CONFIG.import.stallTimeoutMs < 60000) {
+    errors.push('Import worker stall timeout must be >= 60000ms (1 minute)');
   }
   if (WORKER_CONFIG.delete.timeoutMs < 30000) {
     errors.push('Delete worker timeout must be >= 30000ms (30 seconds)');

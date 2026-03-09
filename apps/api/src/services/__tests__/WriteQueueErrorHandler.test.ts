@@ -273,7 +273,10 @@ class MockFailingDatabase {
 // Helper: Create test nodes
 // Note: Returns DBNode[] but can be cast to AnyNode[] for test purposes
 // The MockFailingDatabase internally uses DBNode to insert directly into SQLite
-function createTestNodes(count: number, prefix = 'node'): DBNode[] {
+function createTestNodes(
+  count: number,
+  prefix = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+): DBNode[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `${prefix}_${i}`,
     kind: 'source',
@@ -288,8 +291,9 @@ function createTestNodes(count: number, prefix = 'node'): DBNode[] {
 // Note: Returns DBEdge[] but can be cast to AnyEdge[] for test purposes
 // The MockFailingDatabase internally uses DBEdge to insert directly into SQLite
 function createTestEdges(count: number, fromId: string, toId: string): DBEdge[] {
+  const prefix = `edge_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   return Array.from({ length: count }, (_, i) => ({
-    id: `edge_${i}`,
+    id: `${prefix}_${i}`,
     from_id: fromId,
     to_id: toId,
     kind: 'contains',
@@ -400,7 +404,7 @@ describe('WriteQueueErrorHandler', () => {
       mockDb.setFailureMode('none');
       const newNodes = createTestNodes(1, 'after_close'); // Use different ID to avoid constraint error
       const result = await handler.handleFlush(asAnyNodes(newNodes), asAnyEdges([]));
-      assert.strictEqual(result, 1, 'Should write 1 node after circuit closes');
+      assert.strictEqual(result.totalWritten, 1, 'Should write 1 node after circuit closes');
     });
 
     it('should reset consecutive failure counter on success', async () => {
@@ -456,7 +460,7 @@ describe('WriteQueueErrorHandler', () => {
       const duration = Date.now() - startTime;
 
       // Should succeed after retries
-      assert.strictEqual(result, 1, 'Should eventually succeed');
+      assert.strictEqual(result.totalWritten, 1, 'Should eventually succeed');
 
       // Should have taken at least 10ms (first retry)
       // Note: Timing can be flaky in CI, so we just verify it completed
@@ -529,7 +533,7 @@ describe('WriteQueueErrorHandler', () => {
       const result = await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
 
       // All 3 should succeed via individual writes
-      assert.strictEqual(result, 3, 'Should write all 3 nodes individually');
+      assert.strictEqual(result.totalWritten, 3, 'Should write all 3 nodes individually');
 
       const metrics = handler.getMetrics();
       assert.strictEqual(metrics.partialSuccesses, 1, 'Should record 1 partial success');
@@ -564,7 +568,7 @@ describe('WriteQueueErrorHandler', () => {
       const result = await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
 
       // 2 should succeed, 1 should fail (first one fails)
-      assert.strictEqual(result, 2, 'Should write 2 nodes');
+      assert.strictEqual(result.totalWritten, 2, 'Should write 2 nodes');
 
       const deadLetterQueue = handler.getDeadLetterQueue();
       assert.strictEqual(
@@ -573,6 +577,73 @@ describe('WriteQueueErrorHandler', () => {
         'Should have 1 failed node in dead letter queue'
       );
       assert.strictEqual(deadLetterQueue[0].type, 'node', 'Failed item should be a node');
+    });
+
+    it('should defer FK edge failure once and retry before dead-lettering', async () => {
+      const mockDb = new MockFailingDatabase(db);
+      mockDb.setFailureMode('none');
+
+      // Force batch path to fail so handler exercises individual edge writes.
+      mockDb.createEdges = () => {
+        throw new Error('Batch edge write failed');
+      };
+
+      const fromNodeId = 'fk_retry_from';
+      const toNodeId = 'fk_retry_to';
+      const insertNodeStmt = db.prepare(`
+        INSERT OR IGNORE INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at, data_tag)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      insertNodeStmt.run(
+        fromNodeId,
+        'source',
+        JSON.stringify({ title: 'From' }),
+        'test_account',
+        'test_user',
+        Date.now(),
+        Date.now(),
+        'test'
+      );
+      insertNodeStmt.run(
+        toNodeId,
+        'source',
+        JSON.stringify({ title: 'To' }),
+        'test_account',
+        'test_user',
+        Date.now(),
+        Date.now(),
+        'test'
+      );
+
+      let firstEdgeAttempt = true;
+      const originalCreateEdge = mockDb.createEdge.bind(mockDb);
+      mockDb.createEdge = (edge: DBEdge) => {
+        if (firstEdgeAttempt) {
+          firstEdgeAttempt = false;
+          throw new Error('SQLITE_CONSTRAINT_FOREIGNKEY: FOREIGN KEY constraint failed');
+        }
+        return originalCreateEdge(edge);
+      };
+
+      const handler = new WriteQueueErrorHandler(mockDb as any, {
+        maxRetries: 0,
+        retryDelayMs: 10,
+        enableCircuitBreaker: false,
+      });
+
+      const edge = createTestEdges(1, fromNodeId, toNodeId);
+      const result = await handler.handleFlush(asAnyNodes([]), asAnyEdges(edge));
+
+      assert.strictEqual(result.totalWritten, 1, 'Edge should succeed on deferred FK retry pass');
+      assert.strictEqual(
+        handler.getDeadLetterQueue().length,
+        0,
+        'Deferred FK edge should not be dead-lettered if retry succeeds'
+      );
+      assert.ok(
+        handler.getMetrics().fkConstraintFailures >= 1,
+        'FK failures should be tracked in metrics'
+      );
     });
   });
 
@@ -681,11 +752,9 @@ describe('WriteQueueErrorHandler', () => {
         enableCircuitBreaker: false,
       });
 
-      const nodes = createTestNodes(1);
-
-      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
-      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
-      await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
+      await handler.handleFlush(asAnyNodes(createTestNodes(1, 'metrics_ops_a')), asAnyEdges([]));
+      await handler.handleFlush(asAnyNodes(createTestNodes(1, 'metrics_ops_b')), asAnyEdges([]));
+      await handler.handleFlush(asAnyNodes(createTestNodes(1, 'metrics_ops_c')), asAnyEdges([]));
 
       const metrics = handler.getMetrics();
       assert.strictEqual(metrics.totalAttempts, 3, 'Should have 3 total attempts');
@@ -701,7 +770,7 @@ describe('WriteQueueErrorHandler', () => {
       });
 
       const result = await handler.handleFlush(asAnyNodes([]), asAnyEdges([]));
-      assert.strictEqual(result, 0, 'Should return 0 for empty batch');
+      assert.strictEqual(result.totalWritten, 0, 'Should return 0 for empty batch');
     });
 
     it('should handle mixed nodes and edges', async () => {
@@ -720,7 +789,7 @@ describe('WriteQueueErrorHandler', () => {
       const edges = createTestEdges(2, nodes[0].id, nodes[1].id);
       const result = await handler.handleFlush(asAnyNodes([]), asAnyEdges(edges));
 
-      assert.strictEqual(result, 2, 'Should write 2 edges');
+      assert.strictEqual(result.totalWritten, 2, 'Should write 2 edges');
     });
 
     it('should handle database constraint errors', async () => {

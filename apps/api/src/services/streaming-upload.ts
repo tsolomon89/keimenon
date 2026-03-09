@@ -5,6 +5,8 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { EventEmitter } from 'events';
+import { sanitizeUploadFilename } from '../utils/upload-filename';
+import { appLogger } from '../utils/logger';
 
 export interface UploadProgress {
   uploadId: string;
@@ -31,6 +33,7 @@ export interface UploadProgress {
 export interface UploadedFile {
   uploadId: string;
   fileName: string;
+  originalFileName?: string;
   filePath: string;
   size: number;
   mimeType: string;
@@ -77,11 +80,10 @@ export class StreamingUploadService extends EventEmitter {
       const uploadedFiles: UploadedFile[] = [];
       const fields: Record<string, string> = {};
 
-      console.log('[StreamingUpload] Starting upload handler');
-      console.log('[StreamingUpload] Headers:', JSON.stringify(req.headers, null, 2));
-      console.log(
-        `[StreamingUpload] Timeout configured: ${Math.round(this.uploadTimeoutMs / 1000)}s`
-      );
+      appLogger.info('upload.streaming.start', {
+        path: req.path,
+        timeoutSeconds: Math.round(this.uploadTimeoutMs / 1000),
+      });
 
       // Add timeout to prevent hanging requests (configurable via env)
       const timeout = setTimeout(() => {
@@ -89,7 +91,11 @@ export class StreamingUploadService extends EventEmitter {
           `Upload timed out after ${Math.round(this.uploadTimeoutMs / 1000)} seconds. ` +
             `Consider increasing UPLOAD_TIMEOUT_MS for large files or slow connections.`
         );
-        console.error('[StreamingUpload] Timeout reached:', error);
+        appLogger.error('upload.streaming.timeout', {
+          path: req.path,
+          timeoutMs: this.uploadTimeoutMs,
+          error: error.message,
+        });
         reject(error);
       }, this.uploadTimeoutMs);
 
@@ -104,13 +110,25 @@ export class StreamingUploadService extends EventEmitter {
       bb.on('file', (fieldname, fileStream, info) => {
         const { filename, mimeType } = info;
         const uploadId = randomUUID();
-        const tempFilePath = join(this.tempDir, `${uploadId}-${filename}`);
+        const sanitized = sanitizeUploadFilename(filename);
+        const safeFileName = sanitized.sanitized;
+        const tempFilePath = join(this.tempDir, `${uploadId}-${safeFileName}`);
 
-        console.log(`[StreamingUpload] Receiving file: ${filename} (${mimeType})`);
+        appLogger.debug('upload.streaming.file.receiving', {
+          uploadId,
+          field: fieldname,
+          mimeType,
+          fileName: safeFileName,
+          originalFileName: sanitized.original,
+        });
 
         // Validate file type
-        if (!filename.match(/\.(json|jsonl)$/i)) {
-          console.warn(`[StreamingUpload] Invalid file type: ${filename}`);
+        if (!safeFileName.match(/\.(json|jsonl)$/i)) {
+          appLogger.warn('upload.streaming.file.invalid_type', {
+            uploadId,
+            fileName: safeFileName,
+            originalFileName: sanitized.original,
+          });
           fileStream.resume(); // Drain stream
           return;
         }
@@ -147,7 +165,8 @@ export class StreamingUploadService extends EventEmitter {
         fileStream.on('end', () => {
           const file: UploadedFile = {
             uploadId,
-            fileName: filename,
+            fileName: safeFileName,
+            originalFileName: sanitized.original,
             filePath: tempFilePath,
             size: bytesReceived,
             mimeType,
@@ -166,21 +185,31 @@ export class StreamingUploadService extends EventEmitter {
       });
 
       bb.on('field', (fieldname, value) => {
-        console.log(`[StreamingUpload] Received field: ${fieldname} (${value.length} chars)`);
+        appLogger.debug('upload.streaming.field', {
+          field: fieldname,
+          length: value.length,
+        });
         fields[fieldname] = value;
       });
 
-      bb.on('error', (error) => {
+      bb.on('error', (error: unknown) => {
         clearTimeout(timeout);
-        console.error('[StreamingUpload] Busboy error:', error);
-        reject(error);
+        const message = error instanceof Error ? error.message : String(error);
+        appLogger.error('upload.streaming.busboy_error', {
+          error: message,
+        });
+        reject(error instanceof Error ? error : new Error(message));
       });
 
       bb.on('finish', () => {
         clearTimeout(timeout);
-        console.log(`[StreamingUpload] Upload complete: ${uploadedFiles.length} file(s) received`);
-        uploadedFiles.forEach((f) => {
-          console.log(`  - ${f.fileName}: ${(f.size / 1024).toFixed(2)} KB`);
+        appLogger.info('upload.streaming.complete', {
+          fileCount: uploadedFiles.length,
+          files: uploadedFiles.map((f) => ({
+            fileName: f.fileName,
+            originalFileName: f.originalFileName,
+            size: f.size,
+          })),
         });
         resolve({ files: uploadedFiles, fields });
       });

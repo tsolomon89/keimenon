@@ -7,6 +7,23 @@ import { AuthService } from '../services/auth.service';
 // Create routes with auth service (will be called from app.ts)
 export function createNodesRoutes(authService: AuthService): Router {
   const router = Router();
+  const mapNodeRecord = (row: any) => {
+    let parsedProperties: any = {};
+    try {
+      parsedProperties =
+        typeof row.properties === 'string' ? JSON.parse(row.properties) : row.properties || {};
+    } catch (error) {
+      console.error('Failed to parse properties for node:', row?.id, error);
+    }
+
+    return {
+      ...parsedProperties,
+      id: row.id,
+      kind: row.kind,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    };
+  };
 
   /**
    * POST /api/v1/nodes/source
@@ -53,6 +70,76 @@ export function createNodesRoutes(authService: AuthService): Router {
 
         return res.status(500).json({
           error: 'Failed to create source node',
+          message: error.message,
+        });
+      }
+    }
+  );
+
+  /**
+   * GET /api/v1/nodes/search
+   * Search node content/metadata in serialized properties JSON.
+   */
+  router.get(
+    '/search',
+    requireAuth(authService),
+    isolateByAccount,
+    async (req: Request, res: Response) => {
+      try {
+        const db = await getDbClient(req);
+        const q = String(req.query.q || '').trim();
+        const kind = typeof req.query.kind === 'string' ? req.query.kind : undefined;
+        const limitNum = Math.min(
+          Math.max(parseInt(String(req.query.limit || '100'), 10) || 100, 1),
+          1000
+        );
+        const skipNum = Math.max(parseInt(String(req.query.skip || '0'), 10) || 0, 0);
+        const accountFilter =
+          req.user && req.user.accountType !== 'admin' ? req.user.accountId : null;
+
+        if (!q) {
+          return res.status(400).json({
+            error: 'Missing search query',
+            message: 'Query parameter q is required',
+          });
+        }
+
+        const whereClauses: string[] = [];
+        const whereParams: any[] = [];
+
+        if (accountFilter) {
+          whereClauses.push('account_id = ?');
+          whereParams.push(accountFilter);
+        }
+
+        if (kind) {
+          whereClauses.push('LOWER(kind) = LOWER(?)');
+          whereParams.push(kind);
+        }
+
+        whereClauses.push('LOWER(properties) LIKE ?');
+        whereParams.push(`%${q.toLowerCase()}%`);
+
+        const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+        const listSql = `SELECT id, kind, properties, created_at, updated_at FROM nodes ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        const countSql = `SELECT COUNT(*) as count FROM nodes ${whereSql}`;
+
+        const result = await db.execute(listSql, [...whereParams, limitNum, skipNum]);
+        const countResult = await db.execute(countSql, whereParams);
+        const total = Number(countResult.records?.[0]?.count || 0);
+        const nodes = (result.records || []).map(mapNodeRecord);
+
+        return res.json({
+          nodes,
+          data: nodes,
+          count: nodes.length,
+          total,
+          metadata: { total },
+        });
+      } catch (error: any) {
+        console.error('Search nodes error:', error);
+        return res.status(500).json({
+          error: 'Failed to search nodes',
           message: error.message,
         });
       }
@@ -130,176 +217,78 @@ export function createNodesRoutes(authService: AuthService): Router {
     isolateByAccount,
     async (req: Request, res: Response) => {
       try {
-        const { kind, limit = '100', skip = '0' } = req.query;
         const db = await getDbClient(req);
+        const kind = typeof req.query.kind === 'string' ? req.query.kind : undefined;
+        const sort = req.query.sort === 'updated_at' ? 'updated_at' : 'created_at';
+        const order = String(req.query.order || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+        const limitNum = Math.min(
+          Math.max(parseInt(String(req.query.limit || '100'), 10) || 100, 1),
+          1000
+        );
+        const skipFallback = Math.max(parseInt(String(req.query.skip || '0'), 10) || 0, 0);
+        const cursorOffset = Math.max(parseInt(String(req.query.cursor || ''), 10) || 0, 0);
+        const offset = req.query.cursor ? cursorOffset : skipFallback;
+        const createdAfter = Number.isFinite(Number(req.query.created_after))
+          ? Number(req.query.created_after)
+          : null;
+        const createdBefore = Number.isFinite(Number(req.query.created_before))
+          ? Number(req.query.created_before)
+          : null;
 
-        const limitNum = parseInt(limit as string, 10);
-        const skipNum = parseInt(skip as string, 10);
-
-        let nodes;
-        let total = 0;
-
-        // Build account filter
         const accountFilter =
           req.user && req.user.accountType !== 'admin' ? req.user.accountId : null;
 
-        // Log user info for debugging
-        if (req.user) {
-          console.log(
-            `👤 Request from: ${req.user.email} (${req.user.accountType}) | account_id=${req.user.accountId}`
-          );
-        } else {
-          console.log('👤 Request from: unauthenticated user');
-        }
+        const whereClauses: string[] = [];
+        const whereParams: any[] = [];
 
-        // SQLite queries with account filtering
         if (accountFilter) {
-          // Client account - filter by account_id
-          if (kind) {
-            const query =
-              'SELECT id, kind, properties, created_at, updated_at FROM nodes WHERE kind = ? AND account_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
-            const result = await db.execute(query, [kind, accountFilter, limitNum, skipNum]);
-            console.log(
-              `📊 Query returned ${result.records?.length || 0} records for kind=${kind}, account=${accountFilter}`
-            );
-
-            nodes = result.records.map((row: any) => {
-              let parsedProperties;
-              try {
-                parsedProperties =
-                  typeof row.properties === 'string' ? JSON.parse(row.properties) : row.properties;
-              } catch (e) {
-                console.error('Failed to parse properties for node:', row.id, e);
-                parsedProperties = {};
-              }
-
-              // Spread the parsed node and override with authoritative database values
-              return {
-                ...parsedProperties,
-                id: row.id,
-                kind: row.kind,
-                created_at: row.created_at,
-                updated_at: row.updated_at,
-              };
-            });
-
-            const countResult = await db.execute(
-              'SELECT COUNT(*) as count FROM nodes WHERE kind = ? AND account_id = ?',
-              [kind, accountFilter]
-            );
-            total = countResult.records[0].count;
-          } else {
-            const query =
-              'SELECT id, kind, properties, created_at, updated_at FROM nodes WHERE account_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
-            const result = await db.execute(query, [accountFilter, limitNum, skipNum]);
-            console.log(
-              `📊 Query returned ${result.records?.length || 0} records for account=${accountFilter}`
-            );
-
-            nodes = result.records.map((row: any) => {
-              let parsedProperties;
-              try {
-                parsedProperties =
-                  typeof row.properties === 'string' ? JSON.parse(row.properties) : row.properties;
-              } catch (e) {
-                console.error('Failed to parse properties for node:', row.id, e);
-                parsedProperties = {};
-              }
-
-              // Spread the parsed node and override with authoritative database values
-              return {
-                ...parsedProperties,
-                id: row.id,
-                kind: row.kind,
-                created_at: row.created_at,
-                updated_at: row.updated_at,
-              };
-            });
-
-            const countResult = await db.execute(
-              'SELECT COUNT(*) as count FROM nodes WHERE account_id = ?',
-              [accountFilter]
-            );
-            total = countResult.records[0].count;
-          }
-        } else {
-          // Admin account - see all data
-          if (kind) {
-            const query =
-              'SELECT id, kind, properties, created_at, updated_at FROM nodes WHERE kind = ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
-            const result = await db.execute(query, [kind, limitNum, skipNum]);
-            console.log(
-              `📊 Query returned ${result.records?.length || 0} records (admin mode, kind=${kind})`
-            );
-
-            nodes = result.records.map((row: any) => {
-              let parsedProperties;
-              try {
-                parsedProperties =
-                  typeof row.properties === 'string' ? JSON.parse(row.properties) : row.properties;
-              } catch (e) {
-                console.error('Failed to parse properties for node:', row.id, e);
-                parsedProperties = {};
-              }
-
-              // Spread the parsed node and override with authoritative database values
-              return {
-                ...parsedProperties,
-                id: row.id,
-                kind: row.kind,
-                created_at: row.created_at,
-                updated_at: row.updated_at,
-              };
-            });
-
-            const countResult = await db.execute(
-              'SELECT COUNT(*) as count FROM nodes WHERE kind = ?',
-              [kind]
-            );
-            total = countResult.records[0].count;
-          } else {
-            const query =
-              'SELECT id, kind, properties, created_at, updated_at FROM nodes ORDER BY created_at DESC LIMIT ? OFFSET ?';
-            const result = await db.execute(query, [limitNum, skipNum]);
-            console.log(
-              `📊 Query returned ${result.records?.length || 0} records (admin mode, all nodes)`
-            );
-
-            nodes = result.records.map((row: any) => {
-              let parsedProperties;
-              try {
-                parsedProperties =
-                  typeof row.properties === 'string' ? JSON.parse(row.properties) : row.properties;
-              } catch (e) {
-                console.error('Failed to parse properties for node:', row.id, e);
-                parsedProperties = {};
-              }
-
-              // Spread the parsed node and override with authoritative database values
-              return {
-                ...parsedProperties,
-                id: row.id,
-                kind: row.kind,
-                created_at: row.created_at,
-                updated_at: row.updated_at,
-              };
-            });
-
-            const countResult = await db.execute('SELECT COUNT(*) as count FROM nodes');
-            total = countResult.records[0].count;
-          }
+          whereClauses.push('account_id = ?');
+          whereParams.push(accountFilter);
         }
 
-        console.log(`📤 Returning ${nodes?.length || 0} nodes, total: ${total}`);
-        if (nodes && nodes.length > 0) {
-          console.log('Sample node:', {
-            id: nodes[0].id,
-            kind: nodes[0].kind,
-            hasProperties: !!nodes[0].properties,
-          });
+        if (kind) {
+          whereClauses.push('LOWER(kind) = LOWER(?)');
+          whereParams.push(kind);
         }
 
-        return res.json({ nodes, count: nodes?.length || 0, total });
+        if (createdAfter !== null) {
+          whereClauses.push("datetime(created_at) >= datetime(? / 1000, 'unixepoch')");
+          whereParams.push(createdAfter);
+        }
+
+        if (createdBefore !== null) {
+          whereClauses.push("datetime(created_at) <= datetime(? / 1000, 'unixepoch')");
+          whereParams.push(createdBefore);
+        }
+
+        const whereSql = whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : '';
+        const listSql =
+          'SELECT id, kind, properties, created_at, updated_at FROM nodes ' +
+          whereSql +
+          ' ORDER BY ' +
+          sort +
+          ' ' +
+          order +
+          ' LIMIT ? OFFSET ?';
+        const countSql = 'SELECT COUNT(*) as count FROM nodes ' + whereSql;
+
+        const result = await db.execute(listSql, [...whereParams, limitNum, offset]);
+        const countResult = await db.execute(countSql, whereParams);
+        const total = Number(countResult.records?.[0]?.count || 0);
+        const nodes = (result.records || []).map(mapNodeRecord);
+        const nextCursor =
+          offset + nodes.length < total ? String(offset + nodes.length) : undefined;
+
+        return res.json({
+          nodes,
+          data: nodes,
+          count: nodes.length,
+          total,
+          metadata: {
+            total,
+            next_cursor: nextCursor,
+          },
+        });
       } catch (error: any) {
         console.error('List nodes error:', error);
         return res.status(500).json({

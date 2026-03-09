@@ -167,7 +167,7 @@ async function testLocalData() {
  */
 function uploadFile(form) {
   return new Promise((resolve, reject) => {
-    const url = new URL(`${API_URL}/api/v1/import/enhanced`);
+    const url = new URL(`${API_URL}/api/v1/jobs/import`);
 
     const options = {
       method: 'POST',
@@ -278,3 +278,4 @@ if (require.main === module) {
       process.exit(1);
     });
 }
+

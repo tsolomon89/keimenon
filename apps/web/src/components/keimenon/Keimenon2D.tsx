@@ -1,14 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState, useImperativeHandle, forwardRef, memo, useMemo } from 'react';
 import {
-  GraphNode,
-  GraphEdge as BaseGraphEdge,
-  createSimulation,
-  getNodeRadius,
-} from '@keimenon/graph';
+  useEffect,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+  memo,
+  useMemo,
+  useCallback,
+} from 'react';
+import { GraphNode, GraphEdge as BaseGraphEdge, getNodeRadius } from '@keimenon/graph';
 import { getNodeLabel, LabelableNode } from '@/lib/node-labels';
-import { getEdgeStyle, getEdgeThickness, getEdgeOpacity, applyOpacity } from './edge-styles';
+import { buildEdgeStyleCache, ComputedEdgeStyle } from './edge-styles';
 
 // Extended GraphEdge with metadata for styling
 interface GraphEdge extends BaseGraphEdge {
@@ -33,504 +36,77 @@ export interface Keimenon2DHandle {
   resetView: () => void;
 }
 
-export const Keimenon2D = memo(
-  forwardRef<Keimenon2DHandle, Keimenon2DProps>(
-    (
-      {
-        nodes,
-        edges,
-        width,
-        height,
-        onNodeClick,
-        onNodeDoubleClick,
-        onSelectionChange,
-        onEdgeHover,
-      },
-      ref
-    ) => {
-      const keimenonRef = useRef<HTMLCanvasElement>(null);
-      const simulationRef = useRef<ReturnType<typeof createSimulation> | null>(null);
-      const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
-
-      // Interaction State
-      const [isPanning, setIsPanning] = useState(false);
-      const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-      const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
-      const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-      const [hoveredEdge, setHoveredEdge] = useState<GraphEdge | null>(null);
-      const [draggedNode, setDraggedNode] = useState<GraphNode | null>(null);
-      const [isSelecting, setIsSelecting] = useState(false);
-      const [selectionBox, setSelectionBox] = useState<{
-        startX: number;
-        startY: number;
-        endX: number;
-        endY: number;
-      } | null>(null);
-
-      // Cache human-readable labels for nodes (computed once per nodes change)
-      const labelCache = useMemo(() => {
-        const cache = new Map<string, string>();
-        nodes.forEach((node) => {
-          cache.set(node.id, getNodeLabel(node as LabelableNode));
-        });
-        return cache;
-      }, [nodes]);
-
-      // Expose camera control methods
-      useImperativeHandle(
-        ref,
-        () => ({
-          zoomIn: () => setTransform((prev) => ({ ...prev, scale: Math.min(prev.scale * 1.2, 5) })),
-          zoomOut: () =>
-            setTransform((prev) => ({ ...prev, scale: Math.max(prev.scale / 1.2, 0.1) })),
-          centerView: () => {
-            if (nodes.length === 0) return;
-            const padding = 100;
-            const minX = Math.min(...nodes.map((n) => n.x ?? 0)) - padding;
-            const minY = Math.min(...nodes.map((n) => n.y ?? 0)) - padding;
-            const maxX = Math.max(...nodes.map((n) => n.x ?? 0)) + padding;
-            const maxY = Math.max(...nodes.map((n) => n.y ?? 0)) + padding;
-            const graphWidth = maxX - minX;
-            const graphHeight = maxY - minY;
-            const scale = Math.min(width / graphWidth, height / graphHeight, 1);
-            setTransform({
-              x: width / 2 - ((minX + maxX) / 2) * scale,
-              y: height / 2 - ((minY + maxY) / 2) * scale,
-              scale,
-            });
-          },
-          resetView: () => setTransform({ x: 0, y: 0, scale: 1 }),
-        }),
-        [nodes, width, height]
-      );
-
-      // Initialize/Update Simulation
-      useEffect(() => {
-        if (!nodes.length) return;
-
-        // Stop existing simulation
-        if (simulationRef.current) simulationRef.current.stop();
-
-        // Create new simulation
-        const simulation = createSimulation(nodes, edges, { width, height });
-        simulationRef.current = simulation;
-
-        // Tick handler
-        simulation.on('tick', () => {
-          drawFrame();
-        });
-
-        // Restart alpha
-        simulation.alpha(1).restart();
-
-        return () => {
-          simulation.stop();
-        };
-      }, [nodes, edges, width, height]);
-
-      // Re-draw when transform or selection changes (independent of tick)
-      useEffect(() => {
-        if (simulationRef.current) drawFrame();
-      }, [transform, selectedNodes, hoveredNode, hoveredEdge, selectionBox]);
-
-      const drawFrame = () => {
-        const canvas = keimenonRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        ctx.clearRect(0, 0, width, height);
-        ctx.save();
-        ctx.translate(transform.x, transform.y);
-        ctx.scale(transform.scale, transform.scale);
-
-        // Edges - draw with type-specific styling
-        // Group edges by kind for efficient batch rendering
-        const edgesByKind = new Map<string, GraphEdge[]>();
-        edges.forEach((edge) => {
-          const kind = edge.kind || 'UNKNOWN';
-          if (!edgesByKind.has(kind)) edgesByKind.set(kind, []);
-          edgesByKind.get(kind)!.push(edge);
-        });
-
-        // Draw edges grouped by kind
-        edgesByKind.forEach((kindEdges, kind) => {
-          const style = getEdgeStyle(kind);
-
-          kindEdges.forEach((edge) => {
-            const source = edge.source as GraphNode;
-            const target = edge.target as GraphNode;
-            if (
-              source.x === undefined ||
-              source.y === undefined ||
-              target.x === undefined ||
-              target.y === undefined
-            )
-              return;
-
-            const isHovered = hoveredEdge?.id === edge.id;
-            const baseThickness = getEdgeThickness(kind, edge.data, 2) / transform.scale;
-            const thickness = isHovered ? baseThickness + 2 / transform.scale : baseThickness;
-            const opacityMod = getEdgeOpacity(kind, edge.data);
-
-            ctx.beginPath();
-            ctx.moveTo(source.x, source.y);
-            ctx.lineTo(target.x, target.y);
-
-            // Apply style - use highlight color when hovered
-            if (isHovered) {
-              ctx.strokeStyle = style.highlightColor;
-            } else {
-              ctx.strokeStyle = applyOpacity(style.color, opacityMod);
-            }
-            ctx.lineWidth = thickness;
-
-            // Apply dash pattern if defined
-            if (style.dashArray) {
-              ctx.setLineDash(style.dashArray.map((v) => v / transform.scale));
-            } else {
-              ctx.setLineDash([]);
-            }
-
-            ctx.stroke();
-          });
-        });
-
-        // Reset dash pattern for nodes
-        ctx.setLineDash([]);
-
-        // Nodes
-        nodes.forEach((node) => {
-          if (node.x === undefined || node.y === undefined) return;
-
-          const isSelected = selectedNodes.has(node.id);
-          const isHovered = hoveredNode === node.id;
-          const radius = getNodeRadius(node.kind);
-
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
-          ctx.fillStyle = getNodeColor(node, isSelected, isHovered);
-          ctx.fill();
-
-          ctx.strokeStyle = isSelected
-            ? 'rgba(168, 85, 247, 1)'
-            : isHovered
-              ? 'rgba(100, 116, 139, 0.8)'
-              : 'rgba(100, 116, 139, 0.3)';
-          ctx.lineWidth = (isSelected ? 3 : 1) / transform.scale;
-          ctx.stroke();
-
-          // Label - human-readable with adaptive truncation
-          if (transform.scale > 0.3) {
-            const label = labelCache.get(node.id) || node.id.slice(0, 8);
-
-            // Adaptive truncation based on zoom level
-            const maxLen = transform.scale > 1.5 ? 32 : transform.scale > 0.8 ? 20 : 12;
-            const displayLabel =
-              label.length > maxLen ? label.slice(0, maxLen - 1) + '\u2026' : label;
-
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.font = `${12 / transform.scale}px Inter, system-ui, sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-            ctx.fillText(displayLabel, node.x, node.y + radius + 8 / transform.scale);
-          }
-        });
-
-        ctx.restore();
-
-        // Selection Box
-        if (selectionBox) {
-          const { startX, startY, endX, endY } = selectionBox;
-          const x = Math.min(startX, endX);
-          const y = Math.min(startY, endY);
-          const w = Math.abs(endX - startX);
-          const h = Math.abs(endY - startY);
-
-          ctx.save();
-          ctx.setLineDash([5, 5]);
-          ctx.strokeStyle = 'rgba(168, 85, 247, 0.8)';
-          ctx.strokeRect(x, y, w, h);
-          ctx.fillStyle = 'rgba(168, 85, 247, 0.1)';
-          ctx.fillRect(x, y, w, h);
-          ctx.restore();
-        }
-      };
-
-      // --- Interaction Handlers ---
-
-      const getEventCoordinates = (e: React.MouseEvent) => {
-        const rect = keimenonRef.current!.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const graphX = (x - transform.x) / transform.scale;
-        const graphY = (y - transform.y) / transform.scale;
-        return { x, y, graphX, graphY };
-      };
-
-      const findNodeAt = (graphX: number, graphY: number) => {
-        // Reverse search to pick top node
-        for (let i = nodes.length - 1; i >= 0; i--) {
-          const node = nodes[i];
-          if (node.x === undefined || node.y === undefined) continue;
-          const dx = node.x - graphX;
-          const dy = node.y - graphY;
-          if (Math.sqrt(dx * dx + dy * dy) < getNodeRadius(node.kind)) {
-            return node;
-          }
-        }
-        return null;
-      };
-
-      // Point-to-line-segment distance for edge hover detection
-      const pointToLineDistance = (
-        px: number,
-        py: number,
-        x1: number,
-        y1: number,
-        x2: number,
-        y2: number
-      ): number => {
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const lengthSq = dx * dx + dy * dy;
-
-        if (lengthSq === 0) {
-          // Line is a point
-          return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
-        }
-
-        // Clamp t to [0, 1] to stay within segment
-        const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lengthSq));
-        const projX = x1 + t * dx;
-        const projY = y1 + t * dy;
-
-        return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
-      };
-
-      const findEdgeAt = (graphX: number, graphY: number): GraphEdge | null => {
-        const hitDistance = 8 / transform.scale; // Pixel tolerance in graph space
-
-        for (const edge of edges) {
-          const source = edge.source as GraphNode;
-          const target = edge.target as GraphNode;
-          if (
-            source.x === undefined ||
-            source.y === undefined ||
-            target.x === undefined ||
-            target.y === undefined
-          )
-            continue;
-
-          const dist = pointToLineDistance(graphX, graphY, source.x, source.y, target.x, target.y);
-
-          if (dist < hitDistance) {
-            return edge;
-          }
-        }
-        return null;
-      };
-
-      const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (!keimenonRef.current) return;
-        const { x, y, graphX, graphY } = getEventCoordinates(e);
-        const node = findNodeAt(graphX, graphY);
-
-        if (node) {
-          if (e.shiftKey) {
-            // Multi-select toggle
-            const newSet = new Set(selectedNodes);
-            if (newSet.has(node.id)) newSet.delete(node.id);
-            else newSet.add(node.id);
-            setSelectedNodes(newSet);
-            onSelectionChange?.(Array.from(newSet));
-          } else {
-            // Drag start
-            if (!selectedNodes.has(node.id)) {
-              setSelectedNodes(new Set([node.id]));
-              onSelectionChange?.([node.id]);
-            }
-            setDraggedNode(node);
-            // Fix node position
-            node.fx = node.x;
-            node.fy = node.y;
-            simulationRef.current?.alphaTarget(0.3).restart();
-          }
-          onNodeClick?.(node);
-        } else {
-          // Background click
-          if (e.shiftKey) {
-            setIsSelecting(true);
-            setSelectionBox({ startX: x, startY: y, endX: x, endY: y });
-          } else {
-            setIsPanning(true);
-            setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
-            setSelectedNodes(new Set());
-            onSelectionChange?.([]);
-          }
-        }
-      };
-
-      const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (!keimenonRef.current) return;
-        const { x, y, graphX, graphY } = getEventCoordinates(e);
-
-        if (draggedNode) {
-          draggedNode.fx = graphX;
-          draggedNode.fy = graphY;
-          return; // Simulation tick will handle redraw
-        }
-
-        if (isPanning) {
-          setTransform((prev) => ({
-            ...prev,
-            x: e.clientX - panStart.x,
-            y: e.clientY - panStart.y,
-          }));
-          return;
-        }
-
-        if (isSelecting && selectionBox) {
-          setSelectionBox((prev) => (prev ? { ...prev, endX: x, endY: y } : null));
-          return;
-        }
-
-        // Hover effect - check nodes first, then edges
-        const node = findNodeAt(graphX, graphY);
-        if (node) {
-          setHoveredNode(node.id);
-          if (hoveredEdge) {
-            setHoveredEdge(null);
-            onEdgeHover?.(null, { x: 0, y: 0 });
-          }
-        } else {
-          setHoveredNode(null);
-          // Check for edge hover
-          const edge = findEdgeAt(graphX, graphY);
-          if (edge !== hoveredEdge) {
-            setHoveredEdge(edge);
-            if (edge) {
-              onEdgeHover?.(edge, { x: e.clientX, y: e.clientY });
-            } else {
-              onEdgeHover?.(null, { x: 0, y: 0 });
-            }
-          } else if (edge && hoveredEdge) {
-            // Update position for moving mouse over same edge
-            onEdgeHover?.(edge, { x: e.clientX, y: e.clientY });
-          }
-        }
-      };
-
-      const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (draggedNode) {
-          // Be careful: if we clear fx/fy, it snaps back to force layout.
-          // Often "drag to fix" implies it STAYS fixed.
-          // If we want it to float again, we'd set null.
-          // Let's keep it fixed for now, or maybe release if not moved much?
-          // Standard D3 drag behavior usually releases unless specifically pinned.
-          // Let's hold it fixed for this "Whiteboard" feel.
-
-          // To release: draggedNode.fx = null; draggedNode.fy = null;
-
-          setDraggedNode(null);
-          simulationRef.current?.alphaTarget(0);
-        }
-
-        if (isSelecting && selectionBox) {
-          const { startX, startY, endX, endY } = selectionBox;
-          const minX = Math.min(startX, endX);
-          const maxX = Math.max(startX, endX);
-          const minY = Math.min(startY, endY);
-          const maxY = Math.max(startY, endY);
-
-          // Transform rect to graph space
-          const gMinX = (minX - transform.x) / transform.scale;
-          const gMaxX = (maxX - transform.x) / transform.scale;
-          const gMinY = (minY - transform.y) / transform.scale;
-          const gMaxY = (maxY - transform.y) / transform.scale;
-
-          const newSelection = new Set<string>();
-          nodes.forEach((n) => {
-            if (
-              n.x !== undefined &&
-              n.y !== undefined &&
-              n.x >= gMinX &&
-              n.x <= gMaxX &&
-              n.y >= gMinY &&
-              n.y <= gMaxY
-            ) {
-              newSelection.add(n.id);
-            }
-          });
-          setSelectedNodes(newSelection);
-          onSelectionChange?.(Array.from(newSelection));
-          setSelectionBox(null);
-          setIsSelecting(false);
-        }
-
-        setIsPanning(false);
-      };
-
-      useEffect(() => {
-        const canvas = keimenonRef.current;
-        if (!canvas) return;
-
-        const onWheel = (e: WheelEvent) => {
-          e.preventDefault();
-
-          // Native WheelEvent coordinates
-          const rect = canvas.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
-
-          const delta = e.deltaY > 0 ? 0.9 : 1.1;
-
-          setTransform((currentTransform) => {
-            const newScale = Math.max(0.1, Math.min(5, currentTransform.scale * delta));
-            // Zoom towards pointer
-            const newX = x - (x - currentTransform.x) * (newScale / currentTransform.scale);
-            const newY = y - (y - currentTransform.y) * (newScale / currentTransform.scale);
-
-            return { x: newX, y: newY, scale: newScale };
-          });
-        };
-
-        canvas.addEventListener('wheel', onWheel, { passive: false });
-        return () => {
-          canvas.removeEventListener('wheel', onWheel);
-        };
-      }, []);
-
-      const getCursorClass = () => {
-        if (isPanning) return 'cursor-grabbing';
-        if (isSelecting) return 'cursor-crosshair';
-        if (draggedNode) return 'cursor-grabbing';
-        if (hoveredNode) return 'cursor-pointer';
-        return 'cursor-grab';
-      };
-
-      return (
-        <canvas
-          ref={keimenonRef}
-          width={width}
-          height={height}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onDoubleClick={(e) => {
-            const { graphX, graphY } = getEventCoordinates(e);
-            const node = findNodeAt(graphX, graphY);
-            if (node) onNodeDoubleClick?.(node);
-          }}
-          className={`bg-slate-950 ${getCursorClass()}`}
-        />
-      );
+// ==================== Perf: Mutable state kept in refs, not React state ====================
+
+interface CanvasTransform {
+  x: number;
+  y: number;
+  scale: number;
+}
+
+interface InteractionState {
+  isPanning: boolean;
+  panStartX: number;
+  panStartY: number;
+  selectedNodes: Set<string>;
+  hoveredNodeId: string | null;
+  hoveredEdge: GraphEdge | null;
+  draggedNode: GraphNode | null;
+  isSelecting: boolean;
+  selectionBox: { startX: number; startY: number; endX: number; endY: number } | null;
+}
+
+// ==================== Simple spatial grid for fast node hit-testing ====================
+
+class SpatialGrid {
+  private cellSize: number;
+  private cells = new Map<string, GraphNode[]>();
+
+  constructor(cellSize: number = 80) {
+    this.cellSize = cellSize;
+  }
+
+  clear() {
+    this.cells.clear();
+  }
+
+  insert(node: GraphNode) {
+    if (node.x === undefined || node.y === undefined) return;
+    const key = this.key(node.x, node.y);
+    let cell = this.cells.get(key);
+    if (!cell) {
+      cell = [];
+      this.cells.set(key, cell);
     }
-  )
-);
+    cell.push(node);
+  }
 
-Keimenon2D.displayName = 'Keimenon2D';
+  private key(x: number, y: number): string {
+    return `${Math.floor(x / this.cellSize)},${Math.floor(y / this.cellSize)}`;
+  }
+
+  query(x: number, y: number, radius: number): GraphNode[] {
+    const results: GraphNode[] = [];
+    const minCellX = Math.floor((x - radius) / this.cellSize);
+    const maxCellX = Math.floor((x + radius) / this.cellSize);
+    const minCellY = Math.floor((y - radius) / this.cellSize);
+    const maxCellY = Math.floor((y + radius) / this.cellSize);
+
+    for (let cx = minCellX; cx <= maxCellX; cx++) {
+      for (let cy = minCellY; cy <= maxCellY; cy++) {
+        const cell = this.cells.get(`${cx},${cy}`);
+        if (cell) {
+          for (const node of cell) {
+            results.push(node);
+          }
+        }
+      }
+    }
+    return results;
+  }
+}
+
+// ==================== Node color (pure function, no side effects) ====================
 
 function getNodeColor(node: GraphNode, isSelected: boolean, isHovered: boolean): string {
   const colors: Record<string, string> = {
@@ -541,29 +117,26 @@ function getNodeColor(node: GraphNode, isSelected: boolean, isHovered: boolean):
     ObjectiveClaim: 'rgba(34, 197, 94, 0.6)',
     Constellation: 'rgba(249, 115, 22, 0.6)',
     UserNode: 'rgba(236, 72, 153, 0.6)',
-    // V2 Nodes
-    Lexeme: 'rgba(148, 163, 184, 0.4)', // Slate (subtle)
-    Phrase: 'rgba(251, 146, 60, 0.7)', // Orange
-    Topic: 'rgba(239, 68, 68, 0.7)', // Red
-    VerifiedSource: 'rgba(16, 185, 129, 0.8)', // Emerald (trusted)
-    VerifiedClaim: 'rgba(59, 130, 246, 0.8)', // Blue (fact)
-    // World Model V5: Principal nodes
-    ConversationThread: 'rgba(147, 51, 234, 0.6)', // Purple
+    Lexeme: 'rgba(148, 163, 184, 0.4)',
+    Phrase: 'rgba(251, 146, 60, 0.7)',
+    Topic: 'rgba(239, 68, 68, 0.7)',
+    VerifiedSource: 'rgba(16, 185, 129, 0.8)',
+    VerifiedClaim: 'rgba(59, 130, 246, 0.8)',
+    ConversationThread: 'rgba(147, 51, 234, 0.6)',
   };
 
-  // Handle Principal nodes based on principal_kind
   let color: string;
   if (node.kind === 'Principal') {
     const nodeWithData = node as GraphNode & { principal_kind?: string };
     const principalKind = nodeWithData.principal_kind;
     if (principalKind === 'human') {
-      color = 'rgba(236, 72, 153, 0.7)'; // Pink for humans
+      color = 'rgba(236, 72, 153, 0.7)';
     } else if (principalKind === 'agent') {
-      color = 'rgba(139, 92, 246, 0.7)'; // Violet for AI agents
+      color = 'rgba(139, 92, 246, 0.7)';
     } else if (principalKind === 'contact') {
-      color = 'rgba(107, 114, 128, 0.6)'; // Gray for contacts
+      color = 'rgba(107, 114, 128, 0.6)';
     } else {
-      color = 'rgba(168, 85, 247, 0.6)'; // Default purple for unknown Principal
+      color = 'rgba(168, 85, 247, 0.6)';
     }
   } else {
     color = colors[node.kind] || 'rgba(100, 116, 139, 0.6)';
@@ -586,3 +159,716 @@ function getNodeColor(node: GraphNode, isSelected: boolean, isHovered: boolean):
 
   return color;
 }
+
+// ==================== Component ====================
+
+export const Keimenon2D = memo(
+  forwardRef<Keimenon2DHandle, Keimenon2DProps>(
+    (
+      {
+        nodes,
+        edges,
+        width,
+        height,
+        onNodeClick,
+        onNodeDoubleClick,
+        onSelectionChange,
+        onEdgeHover,
+      },
+      ref
+    ) => {
+      const canvasRef = useRef<HTMLCanvasElement>(null);
+      const workerRef = useRef<Worker | null>(null);
+      const offscreenRef = useRef<HTMLCanvasElement | null>(null);
+      const rafRef = useRef<number>(0);
+
+      // ---- Mutable refs for hot-path state (no React re-renders) ----
+      const transformRef = useRef<CanvasTransform>({ x: 0, y: 0, scale: 1 });
+      const interactionRef = useRef<InteractionState>({
+        isPanning: false,
+        panStartX: 0,
+        panStartY: 0,
+        selectedNodes: new Set(),
+        hoveredNodeId: null,
+        hoveredEdge: null,
+        draggedNode: null,
+        isSelecting: false,
+        selectionBox: null,
+      });
+
+      // Spatial grid for fast node hit-testing
+      const gridRef = useRef(new SpatialGrid(80));
+      const needsRedrawRef = useRef(true);
+
+      // Keep callback refs fresh without causing re-renders
+      const callbacksRef = useRef({
+        onNodeClick,
+        onNodeDoubleClick,
+        onSelectionChange,
+        onEdgeHover,
+      });
+      callbacksRef.current = { onNodeClick, onNodeDoubleClick, onSelectionChange, onEdgeHover };
+
+      // ---- Pre-computed caches (recomputed only when data changes) ----
+
+      const labelCache = useMemo(() => {
+        const cache = new Map<string, string>();
+        nodes.forEach((node) => {
+          cache.set(node.id, getNodeLabel(node as LabelableNode));
+        });
+        return cache;
+      }, [nodes]);
+
+      const edgeStyleCache = useMemo(() => buildEdgeStyleCache(edges as GraphEdge[]), [edges]);
+
+      // Rebuild spatial grid when nodes change position (after simulation tick)
+      const rebuildGrid = useCallback(() => {
+        const grid = gridRef.current;
+        grid.clear();
+        for (const node of nodes) {
+          grid.insert(node);
+        }
+      }, [nodes]);
+
+      // ---- Request a redraw on next animation frame ----
+      const requestRedraw = useCallback(() => {
+        needsRedrawRef.current = true;
+      }, []);
+
+      // ---- Camera controls exposed via ref ----
+      useImperativeHandle(
+        ref,
+        () => ({
+          zoomIn: () => {
+            const t = transformRef.current;
+            t.scale = Math.min(t.scale * 1.2, 5);
+            requestRedraw();
+          },
+          zoomOut: () => {
+            const t = transformRef.current;
+            t.scale = Math.max(t.scale / 1.2, 0.1);
+            requestRedraw();
+          },
+          centerView: () => {
+            if (nodes.length === 0) return;
+            const padding = 100;
+            let minX = Infinity,
+              minY = Infinity,
+              maxX = -Infinity,
+              maxY = -Infinity;
+            for (const n of nodes) {
+              const nx = n.x ?? 0;
+              const ny = n.y ?? 0;
+              if (nx < minX) minX = nx;
+              if (ny < minY) minY = ny;
+              if (nx > maxX) maxX = nx;
+              if (ny > maxY) maxY = ny;
+            }
+            minX -= padding;
+            minY -= padding;
+            maxX += padding;
+            maxY += padding;
+            const graphWidth = maxX - minX;
+            const graphHeight = maxY - minY;
+            const scale = Math.min(width / graphWidth, height / graphHeight, 1);
+            const t = transformRef.current;
+            t.x = width / 2 - ((minX + maxX) / 2) * scale;
+            t.y = height / 2 - ((minY + maxY) / 2) * scale;
+            t.scale = scale;
+            requestRedraw();
+          },
+          resetView: () => {
+            const t = transformRef.current;
+            t.x = 0;
+            t.y = 0;
+            t.scale = 1;
+            requestRedraw();
+          },
+        }),
+        [nodes, width, height, requestRedraw]
+      );
+
+      // ---- Core draw function with LOD (#9) and OffscreenCanvas (#10) ----
+      const drawFrame = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        // #10: OffscreenCanvas double-buffering - draw to offscreen, blit to visible
+        if (!offscreenRef.current) {
+          offscreenRef.current = document.createElement('canvas');
+        }
+        const offscreen = offscreenRef.current;
+        offscreen.width = width;
+        offscreen.height = height;
+        const ctx = offscreen.getContext('2d');
+        if (!ctx) return;
+
+        const t = transformRef.current;
+        const inter = interactionRef.current;
+
+        ctx.clearRect(0, 0, width, height);
+        ctx.save();
+        ctx.translate(t.x, t.y);
+        ctx.scale(t.scale, t.scale);
+
+        // ---- Viewport culling bounds (graph-space) ----
+        const viewMinX = -t.x / t.scale - 100;
+        const viewMinY = -t.y / t.scale - 100;
+        const viewMaxX = (width - t.x) / t.scale + 100;
+        const viewMaxY = (height - t.y) / t.scale + 100;
+
+        // #9 LOD: Skip edge rendering at very low zoom
+        const showEdges = t.scale > 0.15;
+
+        if (showEdges) {
+          // ---- EDGES: batch by computed style for fewer state changes ----
+          const edgeBatches = new Map<
+            string,
+            Array<{ edge: GraphEdge; style: ComputedEdgeStyle }>
+          >();
+
+          for (const edge of edges) {
+            const source = edge.source as GraphNode;
+            const target = edge.target as GraphNode;
+            if (
+              source.x === undefined ||
+              source.y === undefined ||
+              target.x === undefined ||
+              target.y === undefined
+            )
+              continue;
+
+            // Viewport culling for edges: skip if both endpoints are off-screen
+            const sx = source.x,
+              sy = source.y,
+              tx = target.x,
+              ty = target.y;
+            if (
+              (sx < viewMinX && tx < viewMinX) ||
+              (sx > viewMaxX && tx > viewMaxX) ||
+              (sy < viewMinY && ty < viewMinY) ||
+              (sy > viewMaxY && ty > viewMaxY)
+            )
+              continue;
+
+            const isHovered = inter.hoveredEdge?.id === edge.id;
+            const cached = edgeStyleCache.get(edge.id);
+            if (!cached) continue;
+
+            const effectiveColor = isHovered ? cached.highlightColor : cached.color;
+            const effectiveWidth = isHovered
+              ? cached.lineWidth + 2 / t.scale
+              : cached.lineWidth / t.scale;
+            const dashKey = cached.dashArray ? cached.dashArray.join(',') : '';
+            const batchKey = `${effectiveColor}|${effectiveWidth.toFixed(2)}|${dashKey}`;
+
+            let batch = edgeBatches.get(batchKey);
+            if (!batch) {
+              batch = [];
+              edgeBatches.set(batchKey, batch);
+            }
+            batch.push({
+              edge,
+              style: { ...cached, color: effectiveColor, lineWidth: effectiveWidth },
+            });
+          }
+
+          // Draw all batched edges with minimal state changes
+          for (const [, batch] of edgeBatches) {
+            const first = batch[0].style;
+            ctx.strokeStyle = first.color;
+            ctx.lineWidth = first.lineWidth;
+            if (first.dashArray) {
+              ctx.setLineDash(first.dashArray.map((v) => v / t.scale));
+            } else {
+              ctx.setLineDash([]);
+            }
+
+            ctx.beginPath();
+            for (const { edge } of batch) {
+              const source = edge.source as GraphNode;
+              const target = edge.target as GraphNode;
+              ctx.moveTo(source.x!, source.y!);
+              ctx.lineTo(target.x!, target.y!);
+            }
+            ctx.stroke();
+          }
+        }
+
+        // Reset dash pattern for nodes
+        ctx.setLineDash([]);
+
+        // ---- NODES: LOD-aware rendering ----
+        const showLabels = t.scale > 0.3;
+        const showDetailedNodes = t.scale > 0.08; // At very low zoom, skip arc and just draw rects
+
+        if (showLabels) {
+          ctx.font = `${12 / t.scale}px Inter, system-ui, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+        }
+
+        for (const node of nodes) {
+          if (node.x === undefined || node.y === undefined) continue;
+
+          // Viewport culling
+          if (node.x < viewMinX || node.x > viewMaxX || node.y < viewMinY || node.y > viewMaxY)
+            continue;
+
+          const isSelected = inter.selectedNodes.has(node.id);
+          const isHovered = inter.hoveredNodeId === node.id;
+          const radius = getNodeRadius(node.kind);
+
+          if (showDetailedNodes) {
+            // Normal arc rendering
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = getNodeColor(node, isSelected, isHovered);
+            ctx.fill();
+
+            ctx.strokeStyle = isSelected
+              ? 'rgba(168, 85, 247, 1)'
+              : isHovered
+                ? 'rgba(100, 116, 139, 0.8)'
+                : 'rgba(100, 116, 139, 0.3)';
+            ctx.lineWidth = (isSelected ? 3 : 1) / t.scale;
+            ctx.stroke();
+          } else {
+            // #9 LOD: At very low zoom, draw simple 2px squares instead of arcs
+            ctx.fillStyle = getNodeColor(node, isSelected, isHovered);
+            const pixelSize = Math.max(2 / t.scale, radius * 0.5);
+            ctx.fillRect(node.x - pixelSize / 2, node.y - pixelSize / 2, pixelSize, pixelSize);
+          }
+
+          // Label (font already set once above)
+          if (showLabels) {
+            const label = labelCache.get(node.id) || node.id.slice(0, 8);
+            const maxLen = t.scale > 1.5 ? 32 : t.scale > 0.8 ? 20 : 12;
+            const displayLabel =
+              label.length > maxLen ? label.slice(0, maxLen - 1) + '\u2026' : label;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fillText(displayLabel, node.x, node.y + radius + 8 / t.scale);
+          }
+        }
+
+        ctx.restore();
+
+        // ---- Selection box (screen-space, drawn after ctx.restore) ----
+        if (inter.selectionBox) {
+          const { startX, startY, endX, endY } = inter.selectionBox;
+          const x = Math.min(startX, endX);
+          const y = Math.min(startY, endY);
+          const w = Math.abs(endX - startX);
+          const h = Math.abs(endY - startY);
+
+          ctx.save();
+          ctx.setLineDash([5, 5]);
+          ctx.strokeStyle = 'rgba(168, 85, 247, 0.8)';
+          ctx.strokeRect(x, y, w, h);
+          ctx.fillStyle = 'rgba(168, 85, 247, 0.1)';
+          ctx.fillRect(x, y, w, h);
+          ctx.restore();
+        }
+
+        // #10: Blit offscreen canvas to visible canvas
+        const visibleCtx = canvas.getContext('2d');
+        if (visibleCtx) {
+          visibleCtx.clearRect(0, 0, width, height);
+          visibleCtx.drawImage(offscreen, 0, 0);
+        }
+      }, [nodes, edges, width, height, labelCache, edgeStyleCache]);
+
+      // ---- Animation loop: only redraws when flagged ----
+      useEffect(() => {
+        const loop = () => {
+          if (needsRedrawRef.current) {
+            needsRedrawRef.current = false;
+            drawFrame();
+          }
+          rafRef.current = requestAnimationFrame(loop);
+        };
+        rafRef.current = requestAnimationFrame(loop);
+        return () => cancelAnimationFrame(rafRef.current);
+      }, [drawFrame]);
+
+      // ---- #8: Web Worker D3 Force Simulation ----
+      useEffect(() => {
+        if (!nodes.length) return;
+
+        // Terminate previous worker
+        if (workerRef.current) workerRef.current.terminate();
+
+        // Create worker — Next.js compatible dynamic import
+        const worker = new Worker(new URL('../../workers/simulation.worker.ts', import.meta.url));
+        workerRef.current = worker;
+
+        // Build a position index for fast updates
+        const nodeIndex = new Map<string, GraphNode>();
+        for (const node of nodes) {
+          nodeIndex.set(node.id, node);
+        }
+
+        // Handle position updates from worker
+        worker.onmessage = (e: MessageEvent) => {
+          const { type } = e.data;
+          if (type === 'tick') {
+            const positions = e.data.nodes as Array<{ id: string; x: number; y: number }>;
+            for (const pos of positions) {
+              const node = nodeIndex.get(pos.id);
+              if (node) {
+                node.x = pos.x;
+                node.y = pos.y;
+              }
+            }
+            rebuildGrid();
+            requestRedraw();
+          }
+        };
+
+        // Send serializable data to worker
+        worker.postMessage({
+          type: 'init',
+          nodes: nodes.map((n) => ({
+            id: n.id,
+            kind: n.kind,
+            x: n.x,
+            y: n.y,
+            fx: n.fx,
+            fy: n.fy,
+          })),
+          edges: edges.map((e) => ({
+            id: e.id,
+            source: typeof e.source === 'string' ? e.source : (e.source as GraphNode).id,
+            target: typeof e.target === 'string' ? e.target : (e.target as GraphNode).id,
+            kind: e.kind,
+          })),
+          config: { width, height },
+        });
+
+        return () => {
+          worker.terminate();
+        };
+      }, [nodes, edges, width, height, rebuildGrid, requestRedraw]);
+
+      // ---- Interaction helpers ----
+
+      const getEventCoordinates = useCallback((e: React.MouseEvent) => {
+        const rect = canvasRef.current!.getBoundingClientRect();
+        const t = transformRef.current;
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const graphX = (x - t.x) / t.scale;
+        const graphY = (y - t.y) / t.scale;
+        return { x, y, graphX, graphY };
+      }, []);
+
+      // Use spatial grid for node hit-testing instead of O(n) linear scan
+      const findNodeAt = useCallback((graphX: number, graphY: number) => {
+        const maxRadius = 50; // Largest node radius
+        const candidates = gridRef.current.query(graphX, graphY, maxRadius);
+        // Reverse for top-node priority
+        for (let i = candidates.length - 1; i >= 0; i--) {
+          const node = candidates[i];
+          if (node.x === undefined || node.y === undefined) continue;
+          const dx = node.x - graphX;
+          const dy = node.y - graphY;
+          if (dx * dx + dy * dy < getNodeRadius(node.kind) ** 2) {
+            return node;
+          }
+        }
+        return null;
+      }, []);
+
+      const pointToLineDistanceSq = useCallback(
+        (px: number, py: number, x1: number, y1: number, x2: number, y2: number): number => {
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const lengthSq = dx * dx + dy * dy;
+          if (lengthSq === 0) return (px - x1) ** 2 + (py - y1) ** 2;
+          const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lengthSq));
+          const projX = x1 + t * dx;
+          const projY = y1 + t * dy;
+          return (px - projX) ** 2 + (py - projY) ** 2;
+        },
+        []
+      );
+
+      const findEdgeAt = useCallback(
+        (graphX: number, graphY: number): GraphEdge | null => {
+          const t = transformRef.current;
+          const hitDistSq = (8 / t.scale) ** 2;
+
+          for (const edge of edges) {
+            const source = edge.source as GraphNode;
+            const target = edge.target as GraphNode;
+            if (
+              source.x === undefined ||
+              source.y === undefined ||
+              target.x === undefined ||
+              target.y === undefined
+            )
+              continue;
+
+            // Quick bounding-box pre-filter
+            const minX = Math.min(source.x, target.x) - 8 / t.scale;
+            const maxX = Math.max(source.x, target.x) + 8 / t.scale;
+            const minY = Math.min(source.y, target.y) - 8 / t.scale;
+            const maxY = Math.max(source.y, target.y) + 8 / t.scale;
+            if (graphX < minX || graphX > maxX || graphY < minY || graphY > maxY) continue;
+
+            const distSq = pointToLineDistanceSq(
+              graphX,
+              graphY,
+              source.x,
+              source.y,
+              target.x,
+              target.y
+            );
+            if (distSq < hitDistSq) return edge;
+          }
+          return null;
+        },
+        [edges, pointToLineDistanceSq]
+      );
+
+      // ---- Mouse handlers (update refs, not state) ----
+
+      const handleMouseDown = useCallback(
+        (e: React.MouseEvent<HTMLCanvasElement>) => {
+          if (!canvasRef.current) return;
+          const { x, y, graphX, graphY } = getEventCoordinates(e);
+          const inter = interactionRef.current;
+          const t = transformRef.current;
+          const node = findNodeAt(graphX, graphY);
+
+          if (node) {
+            if (e.shiftKey) {
+              const newSet = new Set(inter.selectedNodes);
+              if (newSet.has(node.id)) newSet.delete(node.id);
+              else newSet.add(node.id);
+              inter.selectedNodes = newSet;
+              callbacksRef.current.onSelectionChange?.(Array.from(newSet));
+            } else {
+              if (!inter.selectedNodes.has(node.id)) {
+                inter.selectedNodes = new Set([node.id]);
+                callbacksRef.current.onSelectionChange?.([node.id]);
+              }
+              inter.draggedNode = node;
+              node.fx = node.x;
+              node.fy = node.y;
+              workerRef.current?.postMessage({
+                type: 'pin',
+                nodeId: node.id,
+                x: node.x,
+                y: node.y,
+              });
+            }
+            callbacksRef.current.onNodeClick?.(node);
+          } else {
+            if (e.shiftKey) {
+              inter.isSelecting = true;
+              inter.selectionBox = { startX: x, startY: y, endX: x, endY: y };
+            } else {
+              inter.isPanning = true;
+              inter.panStartX = e.clientX - t.x;
+              inter.panStartY = e.clientY - t.y;
+              inter.selectedNodes = new Set();
+              callbacksRef.current.onSelectionChange?.([]);
+            }
+          }
+          requestRedraw();
+        },
+        [getEventCoordinates, findNodeAt, requestRedraw]
+      );
+
+      // Throttle mouse-move to rAF (coalesce multiple move events per frame)
+      const pendingMoveRef = useRef<React.MouseEvent<HTMLCanvasElement> | null>(null);
+      const moveRafRef = useRef<number>(0);
+
+      const processMouseMove = useCallback(() => {
+        const e = pendingMoveRef.current;
+        if (!e || !canvasRef.current) return;
+        pendingMoveRef.current = null;
+
+        const { x, y, graphX, graphY } = getEventCoordinates(e);
+        const inter = interactionRef.current;
+        const t = transformRef.current;
+
+        if (inter.draggedNode) {
+          inter.draggedNode.fx = graphX;
+          inter.draggedNode.fy = graphY;
+          return; // Simulation tick handles redraw
+        }
+
+        if (inter.isPanning) {
+          t.x = e.clientX - inter.panStartX;
+          t.y = e.clientY - inter.panStartY;
+          requestRedraw();
+          return;
+        }
+
+        if (inter.isSelecting && inter.selectionBox) {
+          inter.selectionBox.endX = x;
+          inter.selectionBox.endY = y;
+          requestRedraw();
+          return;
+        }
+
+        // Hover detection (spatial grid for nodes, bounding-box pre-filter for edges)
+        const node = findNodeAt(graphX, graphY);
+        let changed = false;
+
+        if (node) {
+          if (inter.hoveredNodeId !== node.id) {
+            inter.hoveredNodeId = node.id;
+            changed = true;
+          }
+          if (inter.hoveredEdge) {
+            inter.hoveredEdge = null;
+            callbacksRef.current.onEdgeHover?.(null, { x: 0, y: 0 });
+            changed = true;
+          }
+        } else {
+          if (inter.hoveredNodeId !== null) {
+            inter.hoveredNodeId = null;
+            changed = true;
+          }
+          const edge = findEdgeAt(graphX, graphY);
+          if (edge !== inter.hoveredEdge) {
+            inter.hoveredEdge = edge;
+            if (edge) {
+              callbacksRef.current.onEdgeHover?.(edge, { x: e.clientX, y: e.clientY });
+            } else {
+              callbacksRef.current.onEdgeHover?.(null, { x: 0, y: 0 });
+            }
+            changed = true;
+          } else if (edge && inter.hoveredEdge) {
+            callbacksRef.current.onEdgeHover?.(edge, { x: e.clientX, y: e.clientY });
+          }
+        }
+
+        if (changed) requestRedraw();
+      }, [getEventCoordinates, findNodeAt, findEdgeAt, requestRedraw]);
+
+      const handleMouseMove = useCallback(
+        (e: React.MouseEvent<HTMLCanvasElement>) => {
+          // Store the event and coalesce via rAF
+          pendingMoveRef.current = e;
+          if (!moveRafRef.current) {
+            moveRafRef.current = requestAnimationFrame(() => {
+              moveRafRef.current = 0;
+              processMouseMove();
+            });
+          }
+        },
+        [processMouseMove]
+      );
+
+      const handleMouseUp = useCallback(
+        (e: React.MouseEvent<HTMLCanvasElement>) => {
+          const inter = interactionRef.current;
+          const t = transformRef.current;
+
+          if (inter.draggedNode) {
+            workerRef.current?.postMessage({ type: 'unpin', nodeId: inter.draggedNode.id });
+            inter.draggedNode = null;
+          }
+
+          if (inter.isSelecting && inter.selectionBox) {
+            const { startX, startY, endX, endY } = inter.selectionBox;
+            const minX = Math.min(startX, endX);
+            const maxX = Math.max(startX, endX);
+            const minY = Math.min(startY, endY);
+            const maxY = Math.max(startY, endY);
+
+            const gMinX = (minX - t.x) / t.scale;
+            const gMaxX = (maxX - t.x) / t.scale;
+            const gMinY = (minY - t.y) / t.scale;
+            const gMaxY = (maxY - t.y) / t.scale;
+
+            const newSelection = new Set<string>();
+            for (const n of nodes) {
+              if (
+                n.x !== undefined &&
+                n.y !== undefined &&
+                n.x >= gMinX &&
+                n.x <= gMaxX &&
+                n.y >= gMinY &&
+                n.y <= gMaxY
+              ) {
+                newSelection.add(n.id);
+              }
+            }
+            inter.selectedNodes = newSelection;
+            callbacksRef.current.onSelectionChange?.(Array.from(newSelection));
+            inter.selectionBox = null;
+            inter.isSelecting = false;
+          }
+
+          inter.isPanning = false;
+          requestRedraw();
+        },
+        [nodes, requestRedraw]
+      );
+
+      const handleDoubleClick = useCallback(
+        (e: React.MouseEvent<HTMLCanvasElement>) => {
+          const { graphX, graphY } = getEventCoordinates(e);
+          const node = findNodeAt(graphX, graphY);
+          if (node) callbacksRef.current.onNodeDoubleClick?.(node);
+        },
+        [getEventCoordinates, findNodeAt]
+      );
+
+      // ---- Wheel zoom ----
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const onWheel = (e: WheelEvent) => {
+          e.preventDefault();
+          const rect = canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          const delta = e.deltaY > 0 ? 0.9 : 1.1;
+          const t = transformRef.current;
+          const newScale = Math.max(0.1, Math.min(5, t.scale * delta));
+          t.x = x - (x - t.x) * (newScale / t.scale);
+          t.y = y - (y - t.y) * (newScale / t.scale);
+          t.scale = newScale;
+          requestRedraw();
+        };
+
+        canvas.addEventListener('wheel', onWheel, { passive: false });
+        return () => canvas.removeEventListener('wheel', onWheel);
+      }, [requestRedraw]);
+
+      // ---- Cursor style (read from ref) ----
+      const getCursorClass = useCallback(() => {
+        const inter = interactionRef.current;
+        if (inter.isPanning) return 'cursor-grabbing';
+        if (inter.isSelecting) return 'cursor-crosshair';
+        if (inter.draggedNode) return 'cursor-grabbing';
+        if (inter.hoveredNodeId) return 'cursor-pointer';
+        return 'cursor-grab';
+      }, []);
+
+      return (
+        <canvas
+          ref={canvasRef}
+          width={width}
+          height={height}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onDoubleClick={handleDoubleClick}
+          className={`bg-slate-950 ${getCursorClass()}`}
+        />
+      );
+    }
+  )
+);
+
+Keimenon2D.displayName = 'Keimenon2D';

@@ -13,7 +13,8 @@
     "type-check": "tsc --noEmit",
     "test": "node ../../scripts/check-node-version.js && vitest run",
     "test:watch": "vitest",
-    "test:coverage": "node ../../scripts/check-node-version.js && vitest run --coverage"
+    "test:coverage": "node ../../scripts/check-node-version.js && vitest run --coverage",
+    "diagnostics:import": "tsx src/scripts/import-diagnostics.ts"
   },
   "dependencies": {
     "@keimenon/agent-core": "*",

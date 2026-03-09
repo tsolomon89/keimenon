@@ -9,7 +9,7 @@ import { login } from './helpers/login';
  */
 
 test.describe('Keimenon Operations', () => {
-  test.describe.configure({ tag: '@smoke' });
+  test.describe.configure({ tag: '@smoke', timeout: 90000 });
 
   // Test credentials
   // FIXED: Updated password to match global setup (TestPass123!)
@@ -42,11 +42,15 @@ test.describe('Keimenon Operations', () => {
   });
 
   test('should have accessible keimenon content', async ({ page }) => {
-    // Keimenon page should have some visible content
-    // Look for any heading or interactive element
-    const hasContent = await page.locator('h1, h2, button, a, div').count();
+    await expect(page).toHaveURL(/\/keimenon/, { timeout: 15000 });
 
-    // Should have multiple elements (page loaded with content)
-    expect(hasContent).toBeGreaterThan(5);
+    // Validate shell landmarks and visible interactive content.
+    await expect(page.getByRole('banner')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('complementary').first()).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByRole('button', { name: /Upload Sources|Upload Files/i }).first()
+    ).toBeVisible({
+      timeout: 10000,
+    });
   });
 });

@@ -30,6 +30,13 @@ export class SecureStorageService {
   }
 
   /**
+   * Clear active account ID
+   */
+  async clearActiveAccountId(): Promise<boolean> {
+    return keytar.deletePassword(SERVICE_NAME, ACTIVE_ACCOUNT_KEY);
+  }
+
+  /**
    * Get list of all stored account IDs
    */
   async getStoredAccountIds(): Promise<string[]> {
@@ -103,6 +110,21 @@ export class SecureStorageService {
   async clearAccountTokens(accountId: string): Promise<void> {
     await this.deleteAccountToken(accountId, 'access_token');
     await this.deleteAccountToken(accountId, 'refresh_token');
+  }
+
+  /**
+   * Clear all stored auth data (account-scoped and legacy tokens)
+   */
+  async clearAllAuthData(): Promise<void> {
+    const accountIds = await this.getStoredAccountIds();
+    for (const accountId of accountIds) {
+      await this.clearAccountTokens(accountId);
+    }
+
+    await keytar.deletePassword(SERVICE_NAME, ACCOUNTS_LIST_KEY);
+    await this.clearActiveAccountId();
+    await this.deleteToken('access_token');
+    await this.deleteToken('refresh_token');
   }
 
   // ==========================================================================

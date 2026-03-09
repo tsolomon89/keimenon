@@ -70,7 +70,8 @@ interface Provenance {
  * - Escape key to close
  */
 export function NodeDetailPanel() {
-  const { detailPanelNode, closeDetailPanel } = useKeimenonStore();
+  const detailPanelNode = useKeimenonStore((s) => s.detailPanelNode);
+  const closeDetailPanel = useKeimenonStore((s) => s.closeDetailPanel);
   const { loadContent, getContent, isLoading, getError } = useContentLoader();
   const [autoLoaded, setAutoLoaded] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);

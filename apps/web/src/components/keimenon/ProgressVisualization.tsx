@@ -192,7 +192,10 @@ export function ProgressVisualization({ width, height, jobId }: ProgressVisualiz
   };
 
   // Animation loop - game dev pattern (requestAnimationFrame)
+  // Only runs when actively importing; no rAF when idle
   useEffect(() => {
+    if (!isActive) return; // Guard: no rAF when idle
+
     const keimenon = keimenonRef.current;
     if (!keimenon) return;
 
@@ -217,7 +220,7 @@ export function ProgressVisualization({ width, height, jobId }: ProgressVisualiz
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [width, height, isActive, progress, stats]);
+  }, [width, height, isActive]);
 
   // Only render when active
   if (!isActive) return null;

@@ -84,7 +84,9 @@ export function useNodeGroupLookup(nodeIds: string[]): NodeGroupLookupResult {
       }
     };
 
-    fetchGroups();
+    // Debounce: wait 300ms for selection to stabilize before firing API call
+    const timer = setTimeout(fetchGroups, 300);
+    return () => clearTimeout(timer);
   }, [sortedNodeIds]); // Use memoized stable dependency
 
   return { groupIds, groups, loading, error };

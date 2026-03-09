@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/test-isolation';
 import path from 'path';
 import fs from 'fs';
+import { createTestSourceNode } from './helpers/create-test-node';
 
 /**
  * Data Retrieval Workflow E2E Tests
@@ -39,14 +40,87 @@ test.describe('Data Retrieval Workflow', () => {
 
   let authToken: string;
 
-  test.beforeEach(async ({ apiRequest }) => {
-    // Login and get auth token
-    const response = await apiRequest.post('/api/v1/auth/login', {
-      data: TEST_USER,
-    });
+  async function loginWithRetry(
+    apiRequest: any,
+    credentials: { email: string; password: string },
+    maxAttempts = 3
+  ): Promise<string> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const response = await apiRequest.post('/api/v1/auth/login', { data: credentials });
 
-    const auth = await response.json();
-    authToken = auth.token;
+      if (response.ok()) {
+        const auth = await response.json();
+        if (auth?.token) return auth.token;
+      }
+
+      const body = await response.json().catch(() => ({}));
+      const error = body?.error || body?.message || `status ${response.status()}`;
+
+      if (attempt < maxAttempts && String(error).includes('No active accounts')) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 100));
+        continue;
+      }
+
+      throw new Error(`Login failed: ${error}`);
+    }
+
+    throw new Error(`Login failed after ${maxAttempts} attempts`);
+  }
+
+  function normalizeNodeListResponse(payload: any): {
+    data: any[];
+    metadata: { total: number; next_cursor?: string };
+  } {
+    const data = Array.isArray(payload?.data)
+      ? payload.data
+      : Array.isArray(payload?.nodes)
+        ? payload.nodes
+        : Array.isArray(payload)
+          ? payload
+          : [];
+
+    const metadata =
+      payload?.metadata && typeof payload.metadata === 'object' ? payload.metadata : {};
+    const totalCandidate = metadata.total ?? payload?.total ?? payload?.count ?? data.length;
+    const total = Number.isFinite(Number(totalCandidate)) ? Number(totalCandidate) : data.length;
+    const nextCursor = metadata.next_cursor ?? payload?.next_cursor;
+
+    return {
+      data,
+      metadata: {
+        ...metadata,
+        total,
+        next_cursor: nextCursor,
+      },
+    };
+  }
+
+  function normalizeSearchResponse(payload: any): { data: any[] } {
+    const data = Array.isArray(payload?.data)
+      ? payload.data
+      : Array.isArray(payload?.results)
+        ? payload.results
+        : Array.isArray(payload?.nodes)
+          ? payload.nodes
+          : [];
+
+    return { data };
+  }
+
+  function getNodesCreatedFromJob(job: any): number {
+    const raw =
+      job?.result?.nodesCreated ??
+      job?.state?.result?.nodesCreated ??
+      job?.state?.stats?.nodesCreated ??
+      job?.stats?.nodesCreated ??
+      job?.progress?.metadata?.nodesCreated ??
+      0;
+
+    return Number.isFinite(Number(raw)) ? Number(raw) : 0;
+  }
+
+  test.beforeEach(async ({ apiRequest }) => {
+    authToken = await loginWithRetry(apiRequest, TEST_USER);
   });
 
   test.afterEach(async ({ apiRequest }) => {
@@ -67,7 +141,14 @@ test.describe('Data Retrieval Workflow', () => {
     token: string,
     filename: string = 'tiny.json'
   ): Promise<{ jobId: string; nodeCount: number }> {
-    const testFile = path.join(process.cwd(), 'ai_context', 'chat_data', 'test-samples', filename);
+    const testFile = path.join(
+      process.cwd(),
+      'tests',
+      'test_data',
+      'chat_data',
+      'test-samples',
+      filename
+    );
     const fileContent = fs.readFileSync(testFile);
 
     const uploadResponse = await apiRequest.post('/api/v1/jobs/import', {
@@ -101,13 +182,15 @@ test.describe('Data Retrieval Workflow', () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const job = await jobResponse.json();
+      const payload = await jobResponse.json();
+      const job = payload?.job ?? payload;
+      const status = job?.status;
 
-      if (job.status === 'completed') {
+      if (status === 'succeeded' || status === 'completed') {
         jobComplete = true;
-        return { jobId, nodeCount: job.result?.nodesCreated || 0 };
-      } else if (job.status === 'failed') {
-        throw new Error(`Import job failed: ${job.error}`);
+        return { jobId, nodeCount: getNodesCreatedFromJob(job) };
+      } else if (status === 'failed' || status === 'canceled' || status === 'cancelled') {
+        throw new Error(`Import job failed: ${job?.error || status}`);
       }
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -130,7 +213,7 @@ test.describe('Data Retrieval Workflow', () => {
     });
 
     expect(nodesResponse.status()).toBe(200);
-    const nodes = await nodesResponse.json();
+    const nodes = normalizeNodeListResponse(await nodesResponse.json());
 
     // 3. Verify expected nodes exist
     expect(nodes.data).toBeDefined();
@@ -144,8 +227,21 @@ test.describe('Data Retrieval Workflow', () => {
   });
 
   test('should filter nodes by kind', async ({ apiRequest }) => {
-    // Upload data → filter by kind=Source → verify only Sources returned
+    // Upload data and ensure a known Source node exists for stable filter assertions.
     await uploadAndProcess(apiRequest, authToken, 'tiny.json');
+
+    const sourceFixture = createTestSourceNode({
+      title: 'Data Retrieval Source Filter Fixture',
+      content: 'Fixture content for Source-kind filtering',
+      platform: 'test',
+    });
+    sourceFixture.metadata = { ...sourceFixture.metadata, data_tag: 'test' };
+
+    const createSourceResponse = await apiRequest.post('/api/v1/nodes/source', {
+      headers: { Authorization: `Bearer ${authToken}` },
+      data: sourceFixture,
+    });
+    expect(createSourceResponse.status()).toBe(201);
 
     const response = await apiRequest.get('/api/v1/nodes', {
       headers: { Authorization: `Bearer ${authToken}` },
@@ -153,7 +249,7 @@ test.describe('Data Retrieval Workflow', () => {
     });
 
     expect(response.status()).toBe(200);
-    const nodes = await response.json();
+    const nodes = normalizeNodeListResponse(await response.json());
 
     expect(nodes.data.every((n: any) => n.kind === 'Source')).toBe(true);
     expect(nodes.data.length).toBeGreaterThan(0);
@@ -169,7 +265,7 @@ test.describe('Data Retrieval Workflow', () => {
     });
 
     expect(response.status()).toBe(200);
-    const nodes = await response.json();
+    const nodes = normalizeNodeListResponse(await response.json());
 
     // All Source nodes should have platform metadata
     const sourceNodes = nodes.data.filter((n: any) => n.kind === 'Source');
@@ -188,16 +284,28 @@ test.describe('Data Retrieval Workflow', () => {
     });
 
     expect(response.status()).toBe(200);
-    const results = await response.json();
+    const results = normalizeSearchResponse(await response.json());
 
     expect(results.data).toBeDefined();
     expect(Array.isArray(results.data)).toBe(true);
 
     // If there are results, verify they contain the search term
     if (results.data.length > 0) {
-      const hasSearchTerm = results.data.some((n: any) =>
-        (n.content || '').toLowerCase().includes('conversation')
-      );
+      const hasSearchTerm = results.data.some((n: any) => {
+        const candidates = [
+          n.content,
+          n.title,
+          n.name,
+          n.metadata?.content,
+          n.metadata?.title,
+          n.metadata?.name,
+          n.metadata ? JSON.stringify(n.metadata) : '',
+        ]
+          .filter(Boolean)
+          .map((value) => String(value).toLowerCase());
+
+        return candidates.some((value) => value.includes('conversation'));
+      });
       expect(hasSearchTerm).toBe(true);
     }
   });
@@ -213,7 +321,7 @@ test.describe('Data Retrieval Workflow', () => {
     });
 
     expect(page1.status()).toBe(200);
-    const page1Data = await page1.json();
+    const page1Data = normalizeNodeListResponse(await page1.json());
 
     expect(page1Data.data).toBeDefined();
     expect(page1Data.data.length).toBeLessThanOrEqual(10);
@@ -229,7 +337,7 @@ test.describe('Data Retrieval Workflow', () => {
         params: { limit: 10, cursor: page1Data.metadata.next_cursor },
       });
 
-      const page2Data = await page2.json();
+      const page2Data = normalizeNodeListResponse(await page2.json());
       expect(page2Data.data.length).toBeGreaterThan(0);
 
       // Verify different nodes (no overlap)
@@ -254,7 +362,7 @@ test.describe('Data Retrieval Workflow', () => {
     });
 
     expect(response.status()).toBe(200);
-    const nodes = await response.json();
+    const nodes = normalizeNodeListResponse(await response.json());
 
     // All nodes should be created after the timestamp (just uploaded)
     expect(nodes.data.every((n: any) => new Date(n.created_at).getTime() >= oneHourAgo)).toBe(true);
@@ -275,7 +383,7 @@ test.describe('Data Retrieval Workflow', () => {
     });
 
     expect(response.status()).toBe(200);
-    const nodes = await response.json();
+    const nodes = normalizeNodeListResponse(await response.json());
 
     // Verify all nodes match both conditions
     expect(
@@ -295,7 +403,7 @@ test.describe('Data Retrieval Workflow', () => {
     });
 
     expect(response.status()).toBe(200);
-    const nodes = await response.json();
+    const nodes = normalizeNodeListResponse(await response.json());
 
     // Verify descending order (newest first)
     for (let i = 0; i < nodes.data.length - 1; i++) {
@@ -309,13 +417,26 @@ test.describe('Data Retrieval Workflow', () => {
     // Upload conversation → get Source node → export with edges
     await uploadAndProcess(apiRequest, authToken, 'tiny.json');
 
+    const sourceFixture = createTestSourceNode({
+      title: 'Data Retrieval Export Fixture',
+      content: 'Fixture content for Source export',
+      platform: 'test',
+    });
+    sourceFixture.metadata = { ...sourceFixture.metadata, data_tag: 'test' };
+
+    const createSourceResponse = await apiRequest.post('/api/v1/nodes/source', {
+      headers: { Authorization: `Bearer ${authToken}` },
+      data: sourceFixture,
+    });
+    expect(createSourceResponse.status()).toBe(201);
+
     // Get a Source node
     const nodesResponse = await apiRequest.get('/api/v1/nodes', {
       headers: { Authorization: `Bearer ${authToken}` },
       params: { kind: 'Source', limit: 1 },
     });
 
-    const nodesData = await nodesResponse.json();
+    const nodesData = normalizeNodeListResponse(await nodesResponse.json());
     expect(nodesData.data.length).toBeGreaterThan(0);
     const sourceNode = nodesData.data[0];
 
@@ -347,7 +468,7 @@ test.describe('Data Retrieval Workflow', () => {
       params: { limit: 1 },
     });
 
-    const accountAData = await accountANodes.json();
+    const accountAData = normalizeNodeListResponse(await accountANodes.json());
     expect(accountAData.data.length).toBeGreaterThan(0);
     const accountANodeId = accountAData.data[0].id;
 
@@ -389,7 +510,7 @@ test.describe('Data Retrieval Workflow', () => {
     });
 
     expect(response.status()).toBe(200);
-    const nodes = await response.json();
+    const nodes = normalizeNodeListResponse(await response.json());
 
     expect(nodes.data).toEqual([]);
     expect(nodes.metadata?.total).toBe(0);
@@ -408,7 +529,7 @@ test.describe('Data Retrieval Workflow', () => {
       expect(error.message || error.error).toBeDefined();
     } else {
       expect(response.status()).toBe(200);
-      const nodes = await response.json();
+      const nodes = normalizeNodeListResponse(await response.json());
       expect(nodes.data.length).toBeLessThanOrEqual(1000); // Reasonable max limit
     }
   });
@@ -423,7 +544,7 @@ test.describe('Data Retrieval Workflow', () => {
     });
 
     expect(response.status()).toBe(200);
-    const results = await response.json();
+    const results = normalizeSearchResponse(await response.json());
 
     expect(results.data).toEqual([]);
   });
@@ -449,7 +570,7 @@ test.describe('Data Retrieval Workflow', () => {
 
       // Should not error (either 200 with results or 200 with empty)
       expect(response.status()).toBe(200);
-      const results = await response.json();
+      const results = normalizeSearchResponse(await response.json());
       expect(results.data).toBeDefined();
       expect(Array.isArray(results.data)).toBe(true);
     }

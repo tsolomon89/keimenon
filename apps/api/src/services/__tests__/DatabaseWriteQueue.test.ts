@@ -225,4 +225,20 @@ describe('DatabaseWriteQueue Integration', () => {
     const sizes = queue.getQueueSizes();
     assert.strictEqual(sizes.nodes, 0, 'Queue should be empty after flush');
   });
+
+  it('should serialize overlapping flush requests', async () => {
+    for (let i = 0; i < 120; i++) {
+      queue.enqueueNode(createTestNode(`serialized_${i}`));
+    }
+
+    await Promise.all([queue.forceFlush(), queue.forceFlush(), queue.forceFlush()]);
+
+    const stats = queue.getStats();
+    assert.strictEqual(stats.flushInFlight, 0, 'No flush should remain in flight after drains');
+    assert.ok(stats.serializedFlushLoops >= 1, 'Serialized flush loop counter should increment');
+    assert.ok(
+      stats.flushRequestedWhileBusy >= 1,
+      'Overlapping flush requests should be tracked while busy'
+    );
+  });
 });

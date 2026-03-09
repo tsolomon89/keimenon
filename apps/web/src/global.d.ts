@@ -67,6 +67,8 @@ declare global {
         ) => Promise<{ success: boolean }>;
         /** Migrate legacy tokens to per-account storage */
         migrateLegacy: (accountId: string) => Promise<boolean>;
+        /** Clear all local desktop auth state */
+        clearAll: () => Promise<{ success: boolean }>;
         /** Subscribe to account change events */
         onAccountChanged: (callback: (accountId: string | null) => void) => () => void;
       };

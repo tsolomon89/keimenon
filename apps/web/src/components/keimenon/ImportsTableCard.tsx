@@ -45,6 +45,11 @@ import { errorCapture } from '@/services/error-capture.service';
 import { cancelJob, pauseJob, resumeJob } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/env.config';
 import { useKeimenonStore } from '@/store/keimenonStore';
+import {
+  deriveImportProgress,
+  normalizeImportProgressPercent,
+  type ImportUiStatus,
+} from '@/lib/import-job-progress';
 
 // Import job status
 export type ImportStatus =
@@ -76,6 +81,11 @@ export interface ImportJob {
     edgesCreated: number;
     sourcesCreated: number;
     conversationsProcessed: number;
+    messagesProcessed?: number;
+    spansCreated?: number;
+    packetsCreated?: number;
+    atomicUnitsCreated?: number;
+    packetMassLinksCreated?: number;
     nodesDeleted?: number;
     edgesDeleted?: number;
   };
@@ -133,6 +143,9 @@ function JobRow({
   return (
     <div
       style={style}
+      data-testid="background-operation-row"
+      data-job-id={job.id}
+      data-selected={isSelected ? 'true' : 'false'}
       onClick={(e) => handleRowClick(job, e)}
       className={`flex items-center border-b border-slate-700/50 hover:bg-slate-700/30 cursor-pointer transition-colors ${
         isSelected ? 'bg-purple-600/10' : ''
@@ -184,14 +197,17 @@ function JobRow({
             <span className="text-xs text-slate-400 w-10 text-right">{job.progress}%</span>
           </div>
           {/* Pipeline stage message */}
-          {job.progressMessage && job.status === 'processing' && (
-            <span
-              className="text-[10px] text-slate-500 truncate max-w-32"
-              title={job.progressMessage}
-            >
-              {job.progressMessage}
-            </span>
-          )}
+          {job.progressMessage &&
+            ['reading', 'parsing', 'normalizing', 'indexing', 'linking', 'processing'].includes(
+              job.status
+            ) && (
+              <span
+                className="text-[10px] text-slate-500 truncate max-w-32"
+                title={job.progressMessage}
+              >
+                {job.progressMessage}
+              </span>
+            )}
         </div>
       </div>
 
@@ -413,15 +429,14 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
 
   // Convert unified Job API format to ImportJob format
   const convertAPIJobToImportJob = useCallback((apiJob: any): ImportJob => {
-    // Map unified job status to ImportStatus
-    const statusMap: Record<string, ImportStatus> = {
-      queued: 'queued',
-      running: 'processing',
-      succeeded: 'done',
-      failed: 'error',
-      canceled: 'error',
-      blocked: 'blocked',
-    };
+    const derived = deriveImportProgress({
+      backendStatus: apiJob.status,
+      jobType: apiJob.type,
+      progress: {
+        message: apiJob.state_data?.progress?.message,
+        stage: apiJob.state_data?.progress?.stage,
+      },
+    });
 
     // Extract filename from job config
     const fileName = apiJob.config?.files?.[0]?.fileName || `Job ${apiJob.id.substring(0, 8)}`;
@@ -433,8 +448,14 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       fileName,
       fileType: apiJob.type === 'import' ? 'chat' : 'unknown',
       platform,
-      status: statusMap[apiJob.status] || 'processing',
-      progress: Math.round(apiJob.state_data?.progress?.percent || 0), // Backend already sends 0-100
+      status: derived.status as ImportStatus,
+      progress: normalizeImportProgressPercent({
+        backendStatus: apiJob.status,
+        status: derived.status,
+        rawPercent: apiJob.state_data?.progress?.percent,
+        stage: apiJob.state_data?.progress?.stage,
+        metadata: apiJob.state_data?.progress?.metadata,
+      }),
       progressMessage: apiJob.state_data?.progress?.message, // Pipeline stage
       startedAt: apiJob.created_at,
       completedAt: apiJob.state_data?.completedAt,
@@ -443,6 +464,11 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
         edgesCreated: apiJob.state_data?.stats?.edgesCreated || 0,
         sourcesCreated: apiJob.state_data?.stats?.sourcesCreated || 0,
         conversationsProcessed: apiJob.state_data?.stats?.conversationsProcessed || 0,
+        messagesProcessed: apiJob.state_data?.stats?.messagesProcessed || 0,
+        spansCreated: apiJob.state_data?.stats?.spansCreated || 0,
+        packetsCreated: apiJob.state_data?.stats?.packetsCreated || 0,
+        atomicUnitsCreated: apiJob.state_data?.stats?.atomicUnitsCreated || 0,
+        packetMassLinksCreated: apiJob.state_data?.stats?.packetMassLinksCreated || 0,
         nodesDeleted: apiJob.state_data?.stats?.nodesDeleted || 0,
         edgesDeleted: apiJob.state_data?.stats?.edgesDeleted || 0,
       },
@@ -451,61 +477,100 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
   }, []);
 
   // Convert SSE JobUpdate to ImportJob format
-  const convertSSEJobToImportJob = useCallback((sseJob: JobUpdate): ImportJob => {
-    // Map unified job status to ImportStatus (same as convertAPIJobToImportJob)
-    const statusMap: Record<string, ImportStatus> = {
-      queued: 'queued',
-      running: 'processing',
-      succeeded: 'done',
-      failed: 'error',
-      canceled: 'error',
-      blocked: 'blocked',
-    };
+  const convertSSEJobToImportJob = useCallback(
+    (sseJob: JobUpdate, existing?: ImportJob): ImportJob => {
+      const derived = deriveImportProgress({
+        backendStatus: sseJob.status,
+        jobType: sseJob.type,
+        progress: { message: sseJob.progress.message, stage: sseJob.progress.stage },
+        previousStatus: existing?.status as ImportUiStatus | undefined,
+      });
 
-    // Extract filename from config or generate label based on job type
-    let fileName: string;
-    if (sseJob.config?.fileName) {
-      fileName = sseJob.config.fileName;
-    } else if (sseJob.type === 'delete') {
-      const scope = sseJob.config?.deleteScope || 'keimenon';
-      fileName = scope === 'keimenon' ? 'Delete Keimenon Data' : 'Delete All Client Data';
-    } else {
-      fileName = `${sseJob.type.charAt(0).toUpperCase() + sseJob.type.slice(1)} Job`;
-    }
+      const existingStats = existing?.stats ?? {
+        nodesCreated: 0,
+        edgesCreated: 0,
+        sourcesCreated: 0,
+        conversationsProcessed: 0,
+        messagesProcessed: 0,
+        spansCreated: 0,
+        packetsCreated: 0,
+        atomicUnitsCreated: 0,
+        packetMassLinksCreated: 0,
+        nodesDeleted: 0,
+        edgesDeleted: 0,
+      };
 
-    return {
-      id: sseJob.jobId,
-      type: sseJob.type, // Map type from SSE
-      fileName,
-      fileType: 'unknown' as const,
-      platform: undefined,
-      status: statusMap[sseJob.status] || 'processing',
-      progress: Math.round(sseJob.progress.percent), // Backend already sends 0-100
-      progressMessage: sseJob.progress.message, // Pipeline stage (e.g., "Parsing: 45/100 conversations")
-      startedAt: sseJob.timestamp,
-      completedAt:
-        sseJob.status === 'succeeded' || sseJob.status === 'failed' ? sseJob.timestamp : undefined,
-      stats: {
-        nodesCreated: sseJob.stats?.nodesCreated ?? 0,
-        edgesCreated: sseJob.stats?.edgesCreated ?? 0,
-        sourcesCreated: sseJob.stats?.sourcesCreated ?? 0,
-        conversationsProcessed: sseJob.stats?.conversationsProcessed ?? 0,
-        nodesDeleted: sseJob.stats?.nodesDeleted ?? 0,
-        edgesDeleted: sseJob.stats?.edgesDeleted ?? 0,
-      },
-      error: sseJob.status === 'failed' ? 'Job failed' : undefined,
-    };
-  }, []);
+      // Extract filename from config or generate label based on job type
+      let fileName: string;
+      if (sseJob.config?.fileName) {
+        fileName = sseJob.config.fileName;
+      } else if (sseJob.type === 'delete') {
+        const scope = sseJob.config?.deleteScope || 'keimenon';
+        fileName = scope === 'keimenon' ? 'Delete Keimenon Data' : 'Delete All Client Data';
+      } else {
+        fileName = `${sseJob.type.charAt(0).toUpperCase() + sseJob.type.slice(1)} Job`;
+      }
+
+      return {
+        id: sseJob.jobId,
+        type: sseJob.type, // Map type from SSE
+        fileName,
+        fileType: existing?.fileType ?? ('unknown' as const),
+        platform: existing?.platform,
+        status: derived.status as ImportStatus,
+        progress: normalizeImportProgressPercent({
+          backendStatus: sseJob.status,
+          status: derived.status,
+          rawPercent: sseJob.progress.percent,
+          previousPercent: existing?.progress,
+          stage: sseJob.progress.stage,
+          metadata: sseJob.progress.metadata,
+        }),
+        progressMessage: sseJob.progress.message, // Pipeline stage (e.g., "Parsing: 45/100 conversations")
+        startedAt: existing?.startedAt ?? sseJob.timestamp,
+        completedAt:
+          derived.status === 'done' || derived.status === 'error'
+            ? (existing?.completedAt ?? sseJob.timestamp)
+            : existing?.completedAt,
+        stats: {
+          nodesCreated: sseJob.stats?.nodesCreated ?? existingStats.nodesCreated ?? 0,
+          edgesCreated: sseJob.stats?.edgesCreated ?? existingStats.edgesCreated ?? 0,
+          sourcesCreated: sseJob.stats?.sourcesCreated ?? existingStats.sourcesCreated ?? 0,
+          conversationsProcessed:
+            sseJob.stats?.conversationsProcessed ?? existingStats.conversationsProcessed ?? 0,
+          messagesProcessed:
+            sseJob.stats?.messagesProcessed ?? existingStats.messagesProcessed ?? 0,
+          spansCreated: sseJob.stats?.spansCreated ?? existingStats.spansCreated ?? 0,
+          packetsCreated: sseJob.stats?.packetsCreated ?? existingStats.packetsCreated ?? 0,
+          atomicUnitsCreated:
+            sseJob.stats?.atomicUnitsCreated ?? existingStats.atomicUnitsCreated ?? 0,
+          packetMassLinksCreated:
+            sseJob.stats?.packetMassLinksCreated ?? existingStats.packetMassLinksCreated ?? 0,
+          nodesDeleted: sseJob.stats?.nodesDeleted ?? existingStats.nodesDeleted ?? 0,
+          edgesDeleted: sseJob.stats?.edgesDeleted ?? existingStats.edgesDeleted ?? 0,
+        },
+        error:
+          derived.status === 'error'
+            ? sseJob.progress.message ||
+              existing?.error ||
+              (sseJob.status === 'canceled' ? 'Job canceled' : 'Job failed')
+            : undefined,
+      };
+    },
+    []
+  );
 
   // Sync jobs list with SSE (SSE is source of truth for real-time updates)
   // Sync jobs list with SSE (SSE is source of truth for real-time updates)
   useEffect(() => {
     if (sseJobs.size > 0) {
-      setJobs(() => {
+      setJobs((previousJobs) => {
+        const existingById = new Map(previousJobs.map((job) => [job.id, job]));
+
         // Convert all SSE jobs to ImportJob format
         // This replaces local state completely, ensuring deleted jobs are removed
         const sseJobsArray = Array.from(sseJobs.values()).map((sseJob) => {
-          return convertSSEJobToImportJob(sseJob);
+          return convertSSEJobToImportJob(sseJob, existingById.get(sseJob.jobId));
         });
 
         return sseJobsArray.sort((a, b) => b.startedAt - a.startedAt);
@@ -534,6 +599,10 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
               edgesCreated: 0,
               sourcesCreated: 0,
               conversationsProcessed: 0,
+              spansCreated: 0,
+              packetsCreated: 0,
+              atomicUnitsCreated: 0,
+              packetMassLinksCreated: 0,
             },
           },
         ];
@@ -581,6 +650,10 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
             edgesCreated: op.stats.edgesCreated || 0,
             sourcesCreated: op.stats.sourcesCreated || 0,
             conversationsProcessed: op.stats.conversationsProcessed || 0,
+            spansCreated: op.stats.spansCreated || 0,
+            packetsCreated: op.stats.packetsCreated || 0,
+            atomicUnitsCreated: op.stats.atomicUnitsCreated || 0,
+            packetMassLinksCreated: op.stats.packetMassLinksCreated || 0,
           },
           error: op.error,
         });
@@ -1365,7 +1438,10 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
   }
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+    <div
+      className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden"
+      data-testid="background-operations-card"
+    >
       {/* Header */}
       <div className="p-4 border-b border-slate-700 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -1485,7 +1561,10 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       {mergedJobs.length > 0 ? (
         <div className="flex flex-col">
           {/* Fixed Header */}
-          <div className="flex bg-slate-900/50 text-xs text-slate-400 border-b border-slate-700">
+          <div
+            className="flex bg-slate-900/50 text-xs text-slate-400 border-b border-slate-700"
+            data-testid="background-operations-header-row"
+          >
             <div className="flex-[2] p-3 font-medium">Operation</div>
             <div className="flex-[1] p-3 font-medium">Status</div>
             <div className="flex-[1.5] p-3 font-medium">Progress</div>
@@ -1510,7 +1589,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
           </div>
         </div>
       ) : (
-        <div className="p-8 text-center">
+        <div className="p-8 text-center" data-testid="background-operations-empty-state">
           <Upload className="w-12 h-12 text-slate-600 mx-auto mb-3" />
           <p className="text-sm text-slate-400 mb-1">No active imports</p>
           <p className="text-xs text-slate-500">

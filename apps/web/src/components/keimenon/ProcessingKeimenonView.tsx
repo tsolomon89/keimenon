@@ -32,9 +32,27 @@ import type { Operation } from '@/contexts/BackgroundOperationsContext';
 import { cancelJob, pauseJob, resumeJob } from '@/lib/api-client';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@keimenon/ui';
+import {
+  deriveImportProgress,
+  normalizeImportProgressPercent,
+  type ImportUiStatus,
+} from '@/lib/import-job-progress';
 
 interface ProcessingKeimenonViewProps {
   operation: Operation | null;
+}
+
+function formatPipelineError(jobUpdate: any, fallback?: string): string | undefined {
+  if (jobUpdate?.error?.code || jobUpdate?.error?.message) {
+    const code = jobUpdate.error.code || 'FAILED';
+    const stage = jobUpdate.progress?.stage ? String(jobUpdate.progress.stage) : 'UNKNOWN_STAGE';
+    const percent =
+      typeof jobUpdate.progress?.percent === 'number' ? jobUpdate.progress.percent : 0;
+    const message = jobUpdate.error.message || fallback || 'Import failed';
+    return `${code} at ${stage} (${percent}%): ${message}`;
+  }
+
+  return fallback;
 }
 
 export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProps) {
@@ -44,9 +62,42 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
   const [isPausing, setIsPausing] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
   const toast = useToast();
+  const lifecycleStatus =
+    jobUpdate?.status ??
+    (operation?.status === 'blocked'
+      ? 'blocked'
+      : operation?.status === 'done'
+        ? 'succeeded'
+        : operation?.status === 'error'
+          ? 'failed'
+          : operation?.status === 'queued'
+            ? 'queued'
+            : 'running');
 
-  const progress = Math.round(jobUpdate?.progress?.percent ?? operation?.progress ?? 0);
-  const status = jobUpdate?.status ?? operation?.status ?? 'queued';
+  const derivedProgress = useMemo(
+    () =>
+      deriveImportProgress({
+        backendStatus: lifecycleStatus,
+        jobType: 'import',
+        progress: { message: jobUpdate?.progress?.message, stage: jobUpdate?.progress?.stage },
+        previousStatus: operation?.status as ImportUiStatus | undefined,
+      }),
+    [lifecycleStatus, jobUpdate?.progress?.message, jobUpdate?.progress?.stage, operation?.status]
+  );
+
+  const progress = normalizeImportProgressPercent({
+    backendStatus: lifecycleStatus,
+    status: derivedProgress.status,
+    rawPercent: jobUpdate?.progress?.percent ?? operation?.progress,
+    previousPercent: operation?.progress,
+    stage: jobUpdate?.progress?.stage,
+    metadata: jobUpdate?.progress?.metadata,
+  });
+  const status = derivedProgress.status;
+  const pipelineError =
+    derivedProgress.status === 'error'
+      ? formatPipelineError(jobUpdate, operation?.error)
+      : undefined;
 
   // Handle cancel button click
   const handleCancel = async () => {
@@ -78,7 +129,7 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
     if (!operation?.id) return;
 
     const confirmed = window.confirm(
-      'Pause this import?\n\nThe job will pause at the next checkpoint. When resumed, it will restart from the beginning.'
+      'Pause this import?\n\nThe job will pause at the next checkpoint. When resumed, it will continue from the latest checkpoint.'
     );
 
     if (!confirmed) return;
@@ -86,7 +137,7 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
     setIsPausing(true);
     try {
       await pauseJob(operation.id);
-      toast.success('Job paused successfully', 'Resume to continue from scratch.');
+      toast.success('Job paused successfully', 'Resume to continue from the latest checkpoint.');
     } catch (error: any) {
       console.error('Failed to pause job:', error);
       toast.error('Failed to pause job', error.message || 'An unexpected error occurred.');
@@ -102,7 +153,7 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
     setIsResuming(true);
     try {
       await resumeJob(operation.id);
-      toast.success('Job resumed successfully', 'The import will restart from the beginning.');
+      toast.success('Job resumed successfully', 'Continuing from the latest checkpoint.');
     } catch (error: any) {
       console.error('Failed to resume job:', error);
       toast.error('Failed to resume job', error.message || 'An unexpected error occurred.');
@@ -115,26 +166,11 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
   const recentNodes = latestGraph?.recentNodes ?? [];
 
   // Map operation status to pipeline stage
-  const pipelineStage: ImportPipelineStage = useMemo(() => {
-    if (operation?.status === 'done') return 'done';
-    if (operation?.status === 'error') return 'done'; // Show as done with error
-
-    const statusMap: Record<string, ImportPipelineStage> = {
-      queued: 'queued',
-      reading: 'reading',
-      parsing: 'parsing',
-      normalizing: 'normalizing',
-      indexing: 'indexing',
-      linking: 'linking',
-      processing: 'indexing', // Map generic "processing" to indexing
-    };
-
-    return statusMap[status] || 'queued';
-  }, [operation?.status, status]);
+  const pipelineStage: ImportPipelineStage = derivedProgress.stage;
 
   // Aggregate stats from graph updates (real-time SSE data)
   const stats = useMemo(() => {
-    const base = operation?.stats ?? {};
+    const base = { ...(operation?.stats ?? {}), ...(jobUpdate?.stats ?? {}) };
 
     // Sum up nodes and edges from all graph updates for this session
     const graphStats = graphUpdates.reduce(
@@ -146,18 +182,17 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
     );
 
     // Use graph update stats if available, otherwise fall back to operation stats
-    const nodesCreated =
-      graphStats.nodesAdded > 0 ? graphStats.nodesAdded : (base.nodesCreated ?? 0);
-    const edgesCreated =
-      graphStats.edgesAdded > 0 ? graphStats.edgesAdded : (base.edgesCreated ?? 0);
+    const nodesCreated = Math.max(base.nodesCreated ?? 0, graphStats.nodesAdded);
+    const edgesCreated = Math.max(base.edgesCreated ?? 0, graphStats.edgesAdded);
 
     return [
       { label: 'Nodes Created', value: nodesCreated },
       { label: 'Sources Created', value: base.sourcesCreated ?? 0 },
       { label: 'Edges Created', value: edgesCreated },
       { label: 'Conversations Processed', value: base.conversationsProcessed ?? 0 },
+      { label: 'Messages Processed', value: base.messagesProcessed ?? 0 },
     ];
-  }, [operation, graphUpdates]);
+  }, [operation, jobUpdate?.stats, graphUpdates]);
 
   if (!operation) {
     return (
@@ -198,7 +233,7 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
                 />
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-400">
-                {['succeeded', 'failed', 'canceled'].includes(status) ? (
+                {['succeeded', 'failed', 'canceled', 'blocked'].includes(lifecycleStatus) ? (
                   <PauseCircle className="w-4 h-4" />
                 ) : (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -209,7 +244,7 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
               {/* Job control buttons */}
               <div className="flex items-center gap-2">
                 {/* Resume button - only for paused (blocked) jobs */}
-                {status === 'blocked' && (
+                {lifecycleStatus === 'blocked' && (
                   <button
                     onClick={handleResume}
                     disabled={isResuming}
@@ -217,7 +252,7 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
                            text-green-400 hover:bg-green-500/20 hover:border-green-500/50
                            disabled:opacity-50 disabled:cursor-not-allowed
                            transition-colors text-xs font-medium flex items-center gap-1.5"
-                    title="Resume job (restarts from beginning)"
+                    title="Resume job from latest checkpoint"
                   >
                     <PlayCircle className="w-3.5 h-3.5" />
                     {isResuming ? 'Resuming...' : 'Resume'}
@@ -225,7 +260,7 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
                 )}
 
                 {/* Pause button - only for running jobs */}
-                {status === 'running' && (
+                {lifecycleStatus === 'running' && (
                   <button
                     onClick={handlePause}
                     disabled={isPausing}
@@ -241,7 +276,7 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
                 )}
 
                 {/* Cancel button - only for queued or running jobs */}
-                {(status === 'queued' || status === 'running') && (
+                {(lifecycleStatus === 'queued' || lifecycleStatus === 'running') && (
                   <button
                     onClick={handleCancel}
                     disabled={isCanceling}
@@ -266,7 +301,7 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
             <ImportPipelineProgress
               currentStage={pipelineStage}
               progress={progress}
-              error={operation?.status === 'error' ? operation.error : undefined}
+              error={pipelineError}
             />
           </section>
 

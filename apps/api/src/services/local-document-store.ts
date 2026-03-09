@@ -24,9 +24,15 @@ export interface LocalStoreConfig {
 export class LocalDocumentStore {
   private basePath: string;
   private enableDedup: boolean;
+  private hashIndex = new Map<string, DocumentMetadata>();
+  private hashIndexLoaded = false;
 
   constructor(config: LocalStoreConfig = {}) {
-    this.basePath = config.basePath || path.join(os.homedir(), '.keimenon');
+    const configuredBasePath = config.basePath || process.env.LOCAL_DOCS_PATH;
+    const resolvedBasePath = configuredBasePath
+      ? configuredBasePath.replace('~', os.homedir())
+      : path.join(os.homedir(), '.keimenon');
+    this.basePath = resolvedBasePath;
     this.enableDedup = config.enableDeduplication ?? true;
   }
 
@@ -46,6 +52,9 @@ export class LocalDocumentStore {
     for (const dir of dirs) {
       await fs.mkdir(path.join(this.basePath, dir), { recursive: true });
     }
+
+    // Warm dedup index once at startup to avoid O(n) metadata scans per write.
+    await this.ensureHashIndexLoaded();
 
     console.log(`✅ Local document store initialized at: ${this.basePath}`);
   }
@@ -227,6 +236,7 @@ export class LocalDocumentStore {
       const fullPath = this.getFullPath(metadata.storagePath);
       await fs.unlink(fullPath);
       await this.deleteMetadata(id);
+      this.hashIndex.delete(this.hashIndexKey(metadata.hash, metadata.type));
       return true;
     } catch (error) {
       console.error(`Failed to delete content for ${id}:`, error);
@@ -308,6 +318,7 @@ export class LocalDocumentStore {
   private async saveMetadata(metadata: DocumentMetadata): Promise<void> {
     const metadataPath = path.join(this.basePath, 'metadata', `${metadata.id}.meta.json`);
     await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8');
+    this.hashIndex.set(this.hashIndexKey(metadata.hash, metadata.type), metadata);
   }
 
   private async getMetadata(id: string): Promise<DocumentMetadata | null> {
@@ -329,25 +340,37 @@ export class LocalDocumentStore {
     hash: string,
     type: DocumentMetadata['type']
   ): Promise<DocumentMetadata | null> {
-    try {
-      const metadataDir = path.join(this.basePath, 'metadata');
-      const files = await fs.readdir(metadataDir);
+    await this.ensureHashIndexLoaded();
+    return this.hashIndex.get(this.hashIndexKey(hash, type)) || null;
+  }
 
-      for (const file of files) {
-        if (!file.endsWith('.meta.json')) continue;
+  private hashIndexKey(hash: string, type: DocumentMetadata['type']): string {
+    return `${type}:${hash}`;
+  }
 
-        const content = await fs.readFile(path.join(metadataDir, file), 'utf-8');
-        const metadata: DocumentMetadata = JSON.parse(content);
-
-        if (metadata.hash === hash && metadata.type === type) {
-          return metadata;
-        }
-      }
-    } catch (error) {
-      // Ignore errors
+  private async ensureHashIndexLoaded(): Promise<void> {
+    if (this.hashIndexLoaded) {
+      return;
     }
 
-    return null;
+    const metadataDir = path.join(this.basePath, 'metadata');
+    try {
+      const files = await fs.readdir(metadataDir);
+      for (const file of files) {
+        if (!file.endsWith('.meta.json')) continue;
+        try {
+          const content = await fs.readFile(path.join(metadataDir, file), 'utf-8');
+          const metadata: DocumentMetadata = JSON.parse(content);
+          this.hashIndex.set(this.hashIndexKey(metadata.hash, metadata.type), metadata);
+        } catch {
+          // Ignore malformed metadata files while indexing.
+        }
+      }
+    } catch {
+      // Metadata directory may not exist yet on fresh installs.
+    } finally {
+      this.hashIndexLoaded = true;
+    }
   }
 
   private getExtensionForLanguage(language: string): string {

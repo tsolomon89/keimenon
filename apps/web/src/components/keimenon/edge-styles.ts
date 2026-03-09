@@ -9,47 +9,47 @@
  */
 
 export interface EdgeStyle {
-  color: string;           // Base color (rgba format)
-  highlightColor: string;  // Hover/selected color
-  dashArray?: number[];    // Optional dash pattern [dash, gap]
-  label: string;           // Human-readable label for tooltips
+  color: string; // Base color (rgba format)
+  highlightColor: string; // Hover/selected color
+  dashArray?: number[]; // Optional dash pattern [dash, gap]
+  label: string; // Human-readable label for tooltips
   category: 'structural' | 'similarity' | 'semantic' | 'verification';
 }
 
 export const EDGE_STYLES: Record<string, EdgeStyle> = {
   // Structural edges
   CONTAINS: {
-    color: 'rgba(59, 130, 246, 0.4)',      // Blue
+    color: 'rgba(59, 130, 246, 0.4)', // Blue
     highlightColor: 'rgba(59, 130, 246, 0.8)',
     label: 'Contains',
     category: 'structural',
   },
   HAS_MESSAGE: {
-    color: 'rgba(59, 130, 246, 0.4)',      // Blue (same as CONTAINS)
+    color: 'rgba(59, 130, 246, 0.4)', // Blue (same as CONTAINS)
     highlightColor: 'rgba(59, 130, 246, 0.8)',
     label: 'Has Message',
     category: 'structural',
   },
   DERIVES_FROM: {
-    color: 'rgba(168, 85, 247, 0.4)',      // Purple
+    color: 'rgba(168, 85, 247, 0.4)', // Purple
     highlightColor: 'rgba(168, 85, 247, 0.8)',
     label: 'Derives From',
     category: 'structural',
   },
   EXTRACTED_FROM: {
-    color: 'rgba(168, 85, 247, 0.4)',      // Purple
+    color: 'rgba(168, 85, 247, 0.4)', // Purple
     highlightColor: 'rgba(168, 85, 247, 0.8)',
     label: 'Extracted From',
     category: 'structural',
   },
   COMPILED_FROM: {
-    color: 'rgba(139, 92, 246, 0.4)',      // Violet
+    color: 'rgba(139, 92, 246, 0.4)', // Violet
     highlightColor: 'rgba(139, 92, 246, 0.8)',
     label: 'Compiled From',
     category: 'structural',
   },
   STITCHED_FROM: {
-    color: 'rgba(139, 92, 246, 0.4)',      // Violet
+    color: 'rgba(139, 92, 246, 0.4)', // Violet
     highlightColor: 'rgba(139, 92, 246, 0.8)',
     label: 'Stitched From',
     category: 'structural',
@@ -57,39 +57,39 @@ export const EDGE_STYLES: Record<string, EdgeStyle> = {
 
   // Similarity edges
   NEAR_DUP: {
-    color: 'rgba(251, 146, 60, 0.5)',      // Orange
+    color: 'rgba(251, 146, 60, 0.5)', // Orange
     highlightColor: 'rgba(251, 146, 60, 0.9)',
     label: 'Near Duplicate',
     category: 'similarity',
     dashArray: [4, 4],
   },
   EXACT_DUP: {
-    color: 'rgba(239, 68, 68, 0.5)',       // Red
+    color: 'rgba(239, 68, 68, 0.5)', // Red
     highlightColor: 'rgba(239, 68, 68, 0.9)',
     label: 'Exact Duplicate',
     category: 'similarity',
   },
   EQUIVALENT_TO: {
-    color: 'rgba(234, 179, 8, 0.5)',       // Yellow
+    color: 'rgba(234, 179, 8, 0.5)', // Yellow
     highlightColor: 'rgba(234, 179, 8, 0.9)',
     label: 'Equivalent To',
     category: 'similarity',
   },
   DUP_OF: {
-    color: 'rgba(251, 146, 60, 0.5)',      // Orange
+    color: 'rgba(251, 146, 60, 0.5)', // Orange
     highlightColor: 'rgba(251, 146, 60, 0.9)',
     label: 'Duplicate Of',
     category: 'similarity',
   },
   SIMILAR_TO: {
-    color: 'rgba(251, 191, 36, 0.5)',      // Amber
+    color: 'rgba(251, 191, 36, 0.5)', // Amber
     highlightColor: 'rgba(251, 191, 36, 0.9)',
     label: 'Similar To',
     category: 'similarity',
     dashArray: [6, 3],
   },
   CLUSTER_MEMBER: {
-    color: 'rgba(245, 158, 11, 0.4)',      // Amber
+    color: 'rgba(245, 158, 11, 0.4)', // Amber
     highlightColor: 'rgba(245, 158, 11, 0.8)',
     label: 'Cluster Member',
     category: 'similarity',
@@ -98,31 +98,31 @@ export const EDGE_STYLES: Record<string, EdgeStyle> = {
 
   // Semantic edges (V2 Spine)
   MENTIONS: {
-    color: 'rgba(148, 163, 184, 0.35)',    // Slate (subtle)
+    color: 'rgba(148, 163, 184, 0.35)', // Slate (subtle)
     highlightColor: 'rgba(148, 163, 184, 0.75)',
     label: 'Mentions',
     category: 'semantic',
   },
   CO_OCCURS_WITH: {
-    color: 'rgba(16, 185, 129, 0.45)',     // Emerald
+    color: 'rgba(16, 185, 129, 0.45)', // Emerald
     highlightColor: 'rgba(16, 185, 129, 0.85)',
     label: 'Co-occurs With',
     category: 'semantic',
   },
   BELONGS_TO_TOPIC: {
-    color: 'rgba(236, 72, 153, 0.45)',     // Pink
+    color: 'rgba(236, 72, 153, 0.45)', // Pink
     highlightColor: 'rgba(236, 72, 153, 0.85)',
     label: 'Belongs To Topic',
     category: 'semantic',
   },
   ABOUT: {
-    color: 'rgba(139, 92, 246, 0.45)',     // Violet
+    color: 'rgba(139, 92, 246, 0.45)', // Violet
     highlightColor: 'rgba(139, 92, 246, 0.85)',
     label: 'About',
     category: 'semantic',
   },
   IN_SCOPE_FOR: {
-    color: 'rgba(6, 182, 212, 0.4)',       // Cyan
+    color: 'rgba(6, 182, 212, 0.4)', // Cyan
     highlightColor: 'rgba(6, 182, 212, 0.8)',
     label: 'In Scope For',
     category: 'semantic',
@@ -130,25 +130,25 @@ export const EDGE_STYLES: Record<string, EdgeStyle> = {
 
   // Verification edges
   SUPPORTS: {
-    color: 'rgba(34, 197, 94, 0.55)',      // Green
+    color: 'rgba(34, 197, 94, 0.55)', // Green
     highlightColor: 'rgba(34, 197, 94, 0.95)',
     label: 'Supports',
     category: 'verification',
   },
   REFUTES: {
-    color: 'rgba(239, 68, 68, 0.55)',      // Red
+    color: 'rgba(239, 68, 68, 0.55)', // Red
     highlightColor: 'rgba(239, 68, 68, 0.95)',
     label: 'Refutes',
     category: 'verification',
   },
   VERIFIED_BY: {
-    color: 'rgba(6, 182, 212, 0.45)',      // Cyan
+    color: 'rgba(6, 182, 212, 0.45)', // Cyan
     highlightColor: 'rgba(6, 182, 212, 0.85)',
     label: 'Verified By',
     category: 'verification',
   },
   SOURCED_FROM: {
-    color: 'rgba(20, 184, 166, 0.45)',     // Teal
+    color: 'rgba(20, 184, 166, 0.45)', // Teal
     highlightColor: 'rgba(20, 184, 166, 0.85)',
     label: 'Sourced From',
     category: 'verification',
@@ -183,7 +183,7 @@ export function getEdgeThickness(
 
   // NEAR_DUP: thickness based on score (0-1)
   if (kind === 'NEAR_DUP' && typeof metadata.score === 'number') {
-    return baseThickness + (metadata.score * 4); // 2-6 range
+    return baseThickness + metadata.score * 4; // 2-6 range
   }
 
   // MENTIONS: thickness based on count
@@ -203,15 +203,15 @@ export function getEdgeThickness(
 
   // BELONGS_TO_TOPIC / SUPPORTS / REFUTES: thickness based on weight/strength
   if (typeof metadata.weight === 'number') {
-    return baseThickness + (metadata.weight * 4);
+    return baseThickness + metadata.weight * 4;
   }
   if (typeof metadata.strength === 'number') {
-    return baseThickness + (metadata.strength * 4);
+    return baseThickness + metadata.strength * 4;
   }
 
   // CLUSTER_MEMBER: thickness based on similarity_score
   if (typeof metadata.similarity_score === 'number') {
-    return baseThickness + (metadata.similarity_score * 4);
+    return baseThickness + metadata.similarity_score * 4;
   }
 
   return baseThickness;
@@ -221,35 +221,32 @@ export function getEdgeThickness(
  * Get opacity modifier based on edge metadata
  * Returns multiplier to apply to base color opacity
  */
-export function getEdgeOpacity(
-  kind: string,
-  metadata?: Record<string, unknown>
-): number {
+export function getEdgeOpacity(kind: string, metadata?: Record<string, unknown>): number {
   if (!metadata) return 1.0;
 
   // Score-based edges (NEAR_DUP, CLUSTER_MEMBER)
   if (typeof metadata.score === 'number') {
-    return 0.4 + (metadata.score * 0.6); // 0.4-1.0 range
+    return 0.4 + metadata.score * 0.6; // 0.4-1.0 range
   }
 
   // Weight-based edges (BELONGS_TO_TOPIC)
   if (typeof metadata.weight === 'number') {
-    return 0.4 + (metadata.weight * 0.6);
+    return 0.4 + metadata.weight * 0.6;
   }
 
   // Strength-based edges (SUPPORTS, REFUTES)
   if (typeof metadata.strength === 'number') {
-    return 0.4 + (metadata.strength * 0.6);
+    return 0.4 + metadata.strength * 0.6;
   }
 
   // Similarity score (CLUSTER_MEMBER)
   if (typeof metadata.similarity_score === 'number') {
-    return 0.4 + (metadata.similarity_score * 0.6);
+    return 0.4 + metadata.similarity_score * 0.6;
   }
 
   // Confidence (DERIVES_FROM)
   if (typeof metadata.confidence === 'number') {
-    return 0.4 + (metadata.confidence * 0.6);
+    return 0.4 + metadata.confidence * 0.6;
   }
 
   return 1.0;
@@ -280,4 +277,65 @@ export function getEdgeKindsSorted(kinds: string[]): string[] {
     if (catDiff !== 0) return catDiff;
     return styleA.label.localeCompare(styleB.label);
   });
+}
+
+// ==================== Performance: Pre-computed Edge Style Cache ====================
+
+/**
+ * Pre-computed visual properties for a single edge.
+ * Built once per edges change, consumed directly by the canvas draw loop.
+ */
+export interface ComputedEdgeStyle {
+  color: string; // Pre-computed rgba with opacity applied
+  highlightColor: string; // Pre-computed highlight rgba
+  lineWidth: number; // Base thickness (graph-space, before zoom scaling)
+  dashArray: number[] | null; // null = solid
+}
+
+// Cache for parsed RGBA components to avoid per-frame regex
+const rgbaCache = new Map<string, { r: string; g: string; b: string; a: number }>();
+
+function parseRGBA(rgba: string): { r: string; g: string; b: string; a: number } | null {
+  const cached = rgbaCache.get(rgba);
+  if (cached) return cached;
+  const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+  if (!match) return null;
+  const result = { r: match[1], g: match[2], b: match[3], a: parseFloat(match[4] ?? '1') };
+  rgbaCache.set(rgba, result);
+  return result;
+}
+
+/** Fast opacity application using cached parse results */
+export function applyOpacityFast(rgba: string, multiplier: number): string {
+  const parsed = parseRGBA(rgba);
+  if (!parsed) return rgba;
+  const newAlpha = Math.min(1, parsed.a * multiplier);
+  return `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, ${newAlpha.toFixed(3)})`;
+}
+
+/**
+ * Build a pre-computed style cache for all edges.
+ * Call once when edges change, then use the returned Map in the draw loop.
+ * Eliminates per-frame regex, metadata lookups, and style resolution.
+ */
+export function buildEdgeStyleCache(
+  edges: Array<{ id: string; kind: string; data?: Record<string, unknown> }>
+): Map<string, ComputedEdgeStyle> {
+  const cache = new Map<string, ComputedEdgeStyle>();
+
+  for (const edge of edges) {
+    const style = getEdgeStyle(edge.kind);
+    const thickness = getEdgeThickness(edge.kind, edge.data, 2);
+    const opacityMod = getEdgeOpacity(edge.kind, edge.data);
+    const color = applyOpacityFast(style.color, opacityMod);
+
+    cache.set(edge.id, {
+      color,
+      highlightColor: style.highlightColor,
+      lineWidth: thickness,
+      dashArray: style.dashArray ?? null,
+    });
+  }
+
+  return cache;
 }

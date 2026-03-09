@@ -103,6 +103,7 @@ export function DataManagementCard() {
         if (!latestJob) {
           console.error('[DataManagementCard] Job not received via SSE after 10s');
           setError('Lost connection to server. Please refresh the page.');
+          setDeletionJobId(null);
           setIsClearing(false);
         }
       }, 10000); // 10 second timeout for SSE delivery
@@ -380,6 +381,13 @@ export function DataManagementCard() {
     return `You have ${nodeCount} nodes (${details}) and ${stats.edges} edges that will be deleted.`;
   };
 
+  const hasActiveDeletion = isClearing || !!deletionJobId;
+  const clearButtonLabel = isClearing
+    ? 'Clearing Data...'
+    : deletionJobId
+      ? 'Deletion in progress...'
+      : 'Clear Keimenon Data';
+
   return (
     <>
       <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-slate-600 transition-colors">
@@ -415,14 +423,12 @@ export function DataManagementCard() {
         {/* Action button */}
         <button
           onClick={handleClearClick}
-          disabled={isClearing && !!deletionJobId}
+          disabled={hasActiveDeletion}
           className="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          title={
-            isClearing && deletionJobId ? 'Deletion in progress, check Background Operations' : ''
-          }
+          title={hasActiveDeletion ? 'Deletion in progress, check Background Operations' : ''}
         >
-          {isClearing && <Loader2 className="w-4 h-4 animate-spin" />}
-          {isClearing ? 'Clearing Data...' : 'Clear Keimenon Data'}
+          {hasActiveDeletion && <Loader2 className="w-4 h-4 animate-spin" />}
+          {clearButtonLabel}
         </button>
 
         {/* Warning footer */}

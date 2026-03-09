@@ -2,12 +2,13 @@
 
 import { Pause, Play } from 'lucide-react';
 import { PlatformDetection, UploadProgress } from '@/types/chat-import';
-import { PlatformDetectionBadge } from './PlatformDetectionBadge';
+import { PlatformDetectionBadge, RuntimeProcessingStats } from './PlatformDetectionBadge';
 import { ProgressBar } from './ProgressBar';
 
 interface ImportStageProcessingProps {
   platformDetection: PlatformDetection | null;
   progress: UploadProgress;
+  runtimeStats?: RuntimeProcessingStats | null;
   onPause?: () => void;
   onResume?: () => void;
   isPaused?: boolean;
@@ -16,6 +17,7 @@ interface ImportStageProcessingProps {
 export function ImportStageProcessing({
   platformDetection,
   progress,
+  runtimeStats,
   onPause,
   onResume,
   isPaused,
@@ -24,9 +26,11 @@ export function ImportStageProcessing({
 
   return (
     <div className="space-y-4">
-      {platformDetection && <PlatformDetectionBadge detection={platformDetection} />}
+      {platformDetection && (
+        <PlatformDetectionBadge detection={platformDetection} runtimeStats={runtimeStats} />
+      )}
       <ProgressBar progress={progress} />
-      
+
       {showControls && (
         <div className="flex justify-center gap-2 mt-2">
           {!isPaused ? (
@@ -39,7 +43,7 @@ export function ImportStageProcessing({
               Pause Upload
             </button>
           ) : (
-             <button
+            <button
               onClick={onResume}
               disabled={!onResume}
               className="flex items-center gap-2 px-3 py-1.5 text-sm bg-green-600/20 text-green-400 hover:bg-green-600/30 rounded-md transition-colors"

@@ -43,9 +43,11 @@ export interface JobState {
     code: string;
     message: string;
     stack?: string;
+    details?: Record<string, unknown>;
   };
   blockedReason?: string;
   retryCount?: number;
+  metadata?: Record<string, unknown>;
 }
 
 /**

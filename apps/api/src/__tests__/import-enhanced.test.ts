@@ -1,7 +1,7 @@
 /**
  * Integration Tests for Import-Enhanced Endpoint
  *
- * Tests the /api/v1/import/enhanced endpoint with authentication,
+ * Tests the /api/v1/jobs/import endpoint with authentication,
  * organizational structure creation, and multi-tenant isolation.
  *
  * NOTE: This test requires the API server to be running on port 4001.
@@ -308,7 +308,7 @@ describe('Import-Enhanced Integration Tests', () => {
     console.log('📁 Uploading test file as admin...');
 
     const { status, data } = await postMultipartWithRetry(
-      `${getApiBaseUrl()}/api/v1/import/enhanced`,
+      `${getApiBaseUrl()}/api/v1/jobs/import`,
       adminToken,
       200,
       () => {

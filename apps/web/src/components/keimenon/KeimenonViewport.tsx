@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo, useImperativeHandle, forwardRef, useCallback } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useImperativeHandle,
+  forwardRef,
+  useCallback,
+} from 'react';
 import { FileText, FolderPlus, Upload } from 'lucide-react';
 import { useKeimenonStore } from '@/store/keimenonStore';
 import { Keimenon2D, Keimenon2DHandle } from './Keimenon2D';
@@ -38,10 +46,15 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
     const loadGraphData = useKeimenonStore((state) => state.loadGraphData);
 
     // Auto-refresh graph when import job completes
-    const handleImportComplete = useCallback((jobId: string) => {
-      logDataEvent('Import job completed, refreshing graph', 'keimenon.import.complete', { jobId });
-      loadGraphData();
-    }, [loadGraphData]);
+    const handleImportComplete = useCallback(
+      (jobId: string) => {
+        logDataEvent('Import job completed, refreshing graph', 'keimenon.import.complete', {
+          jobId,
+        });
+        loadGraphData();
+      },
+      [loadGraphData]
+    );
 
     // Track active import job for progress visualization
     const { jobs } = useJobStream({ onImportComplete: handleImportComplete });
@@ -106,7 +119,7 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
 
     const hasContent = displayNodes.length > 0;
 
-    // Update dimensions on mount and resize
+    // Update dimensions on mount and resize (debounced)
     useEffect(() => {
       if (!containerRef.current) return;
 
@@ -119,49 +132,78 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
         }
       };
 
+      let resizeTimer: ReturnType<typeof setTimeout>;
+      const debouncedResize = () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(updateDimensions, 150);
+      };
+
       updateDimensions();
-      window.addEventListener('resize', updateDimensions);
-      return () => window.removeEventListener('resize', updateDimensions);
+      window.addEventListener('resize', debouncedResize);
+      return () => {
+        clearTimeout(resizeTimer);
+        window.removeEventListener('resize', debouncedResize);
+      };
     }, []);
 
     // Transform filtered nodes to GraphNode format
-    const graphNodes: GraphNode[] = useMemo(() => displayNodes.map((node) => ({
-      id: node.id,
-      kind: node.type,
-      x: node.position.x,
-      y: node.position.y,
-      ...node.data.metadata,
-    })), [displayNodes]);
+    const graphNodes: GraphNode[] = useMemo(
+      () =>
+        displayNodes.map((node) => ({
+          id: node.id,
+          kind: node.type,
+          x: node.position.x,
+          y: node.position.y,
+          ...node.data.metadata,
+        })),
+      [displayNodes]
+    );
 
     // Create a Set of node IDs for fast lookup
     const nodeIds = useMemo(() => new Set(graphNodes.map((n) => n.id)), [graphNodes]);
 
-    // Transform edges to GraphEdge format, filtering out edges that reference missing nodes
-    const graphEdges: GraphEdge[] = useMemo(() => edges
-      .filter((edge) => {
-        // Only include edges where both source and target nodes exist
-        return nodeIds.has(edge.source) && nodeIds.has(edge.target);
-      })
-      .map((edge) => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        kind: edge.kind, // Use original API kind for edge visualization styling
-        data: edge.data, // Pass metadata for thickness/opacity calculations
-    })), [edges, nodeIds]);
-
-    const handleNodeClick = useCallback((node: GraphNode) => {
-      logDataEvent('Keimenon node clicked', 'keimenon.node.click', {
-        nodeId: node.id,
-        nodeKind: node.kind,
-      });
-
-      // Find the corresponding KeimenonNode and set it as selected
-      const keimenonNode = displayNodes.find((n) => n.id === node.id);
-      if (keimenonNode) {
-        setSelectedNode(keimenonNode);
+    // O(1) node lookup map for click/selection callbacks
+    const nodeMap = useMemo(() => {
+      const map = new Map<string, (typeof displayNodes)[number]>();
+      for (const node of displayNodes) {
+        map.set(node.id, node);
       }
-    }, [displayNodes, setSelectedNode]);
+      return map;
+    }, [displayNodes]);
+
+    // Transform edges to GraphEdge format, filtering out edges that reference missing nodes
+    const graphEdges: GraphEdge[] = useMemo(
+      () =>
+        edges
+          .filter((edge) => {
+            // Only include edges where both source and target nodes exist
+            return nodeIds.has(edge.source) && nodeIds.has(edge.target);
+          })
+          .map((edge) => ({
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            kind: edge.kind, // Use original API kind for edge visualization styling
+            data: edge.data, // Pass metadata for thickness/opacity calculations
+          })),
+      [edges, nodeIds]
+    );
+
+    const handleNodeClick = useCallback(
+      (node: GraphNode) => {
+        logDataEvent('Keimenon node clicked', 'keimenon.node.click', {
+          nodeId: node.id,
+          nodeKind: node.kind,
+        });
+
+        // O(1) lookup via precomputed Map
+        const keimenonNode = nodeMap.get(node.id);
+        if (keimenonNode) {
+          setSelectedNode(keimenonNode);
+        }
+      },
+      [nodeMap, setSelectedNode]
+    );
 
     const handleNodeDoubleClick = useCallback((node: GraphNode) => {
       logDataEvent('Keimenon node double-clicked', 'keimenon.node.doubleClick', {
@@ -173,40 +215,46 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
       // See: docs/features/CANVAS_NAVIGATION.md (needs creation)
     }, []);
 
-    const handleSelectionChange = useCallback((selectedIds: string[]) => {
-      logDataEvent('Keimenon selection changed', 'keimenon.selection.change', {
-        selectionCount: selectedIds.length,
-      });
+    const handleSelectionChange = useCallback(
+      (selectedIds: string[]) => {
+        logDataEvent('Keimenon selection changed', 'keimenon.selection.change', {
+          selectionCount: selectedIds.length,
+        });
 
-      if (selectedIds.length === 0) {
-        clearSelection();
-      } else if (selectedIds.length === 1) {
-        const keimenonNode = displayNodes.find((n) => n.id === selectedIds[0]);
-        if (keimenonNode) {
-          setSelectedNode(keimenonNode);
+        if (selectedIds.length === 0) {
+          clearSelection();
+        } else if (selectedIds.length === 1) {
+          const keimenonNode = nodeMap.get(selectedIds[0]);
+          if (keimenonNode) {
+            setSelectedNode(keimenonNode);
+          }
+        } else {
+          // Multi-select: update store with all selected IDs
+          clearSelection();
+          selectedIds.forEach((id) => selectNode(id, true));
         }
-      } else {
-        // Multi-select: update store with all selected IDs
-        clearSelection();
-        selectedIds.forEach((id) => selectNode(id, true));
-      }
-    }, [displayNodes, setSelectedNode, clearSelection, selectNode]);
+      },
+      [nodeMap, setSelectedNode, clearSelection, selectNode]
+    );
 
     // Handle edge hover for tooltip
-    const handleEdgeHover = useCallback((edge: GraphEdge | null, position: { x: number; y: number }) => {
-      if (edge) {
-        setEdgeTooltip({
-          edge: {
-            id: edge.id,
-            kind: edge.kind,
-            data: (edge as GraphEdge & { data?: Record<string, unknown> }).data,
-          },
-          position,
-        });
-      } else {
-        setEdgeTooltip(null);
-      }
-    }, []);
+    const handleEdgeHover = useCallback(
+      (edge: GraphEdge | null, position: { x: number; y: number }) => {
+        if (edge) {
+          setEdgeTooltip({
+            edge: {
+              id: edge.id,
+              kind: edge.kind,
+              data: (edge as GraphEdge & { data?: Record<string, unknown> }).data,
+            },
+            position,
+          });
+        } else {
+          setEdgeTooltip(null);
+        }
+      },
+      []
+    );
 
     return (
       <div ref={containerRef} className="flex-1 bg-slate-950 relative overflow-hidden">

@@ -172,16 +172,8 @@ export class GenericParser implements ChatParser {
     const contentKeys = ['content', 'text', 'message', 'body', 'value'];
     for (const key of contentKeys) {
       if (obj[key]) {
-        if (typeof obj[key] === 'string') {
-          content = obj[key];
-          break;
-        } else if (Array.isArray(obj[key])) {
-          content = obj[key].join('\n');
-          break;
-        } else if (typeof obj[key] === 'object' && obj[key].text) {
-          content = obj[key].text;
-          break;
-        }
+        content = this.extractTextContent(obj[key]);
+        if (content) break;
       }
     }
 
@@ -189,7 +181,7 @@ export class GenericParser implements ChatParser {
 
     // Look for timestamp
     let timestamp = Date.now() / 1000;
-    const timestampKeys = ['timestamp', 'created_at', 'time', 'date', 'created'];
+    const timestampKeys = ['timestamp', 'created_at', 'create_time', 'time', 'date', 'created'];
     for (const key of timestampKeys) {
       if (obj[key]) {
         const parsed = this.parseTimestamp(obj[key]);
@@ -211,10 +203,27 @@ export class GenericParser implements ChatParser {
     };
   }
 
-  private normalizeRole(role: string): 'user' | 'assistant' | 'system' {
+  private normalizeRole(role: unknown): 'user' | 'assistant' | 'system' {
     if (!role) return 'user';
 
-    const normalized = role.toLowerCase();
+    let normalized = '';
+    if (typeof role === 'string') {
+      normalized = role;
+    } else if (typeof role === 'number' || typeof role === 'boolean' || typeof role === 'bigint') {
+      normalized = String(role);
+    } else if (typeof role === 'object') {
+      const roleObj = role as Record<string, unknown>;
+      const nestedRole =
+        roleObj.role ?? roleObj.author ?? roleObj.sender ?? roleObj.type ?? roleObj.name;
+      if (nestedRole != null) {
+        return this.normalizeRole(nestedRole);
+      }
+      return 'user';
+    } else {
+      return 'user';
+    }
+
+    normalized = normalized.toLowerCase();
 
     if (normalized.includes('user') || normalized.includes('human') || normalized === 'you') {
       return 'user';
@@ -235,6 +244,38 @@ export class GenericParser implements ChatParser {
 
     // Default to user if unknown
     return 'user';
+  }
+
+  private extractTextContent(value: unknown): string {
+    if (value == null) return '';
+
+    if (typeof value === 'string') {
+      return value.trim();
+    }
+
+    if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+      return String(value);
+    }
+
+    if (Array.isArray(value)) {
+      const parts = value
+        .map((item) => this.extractTextContent(item))
+        .filter((item) => item.length > 0);
+      return parts.join('\n').trim();
+    }
+
+    if (typeof value === 'object') {
+      const obj = value as Record<string, unknown>;
+      const candidateKeys = ['text', 'content', 'parts', 'message', 'body', 'value'];
+      for (const key of candidateKeys) {
+        if (obj[key] != null) {
+          const extracted = this.extractTextContent(obj[key]);
+          if (extracted) return extracted;
+        }
+      }
+    }
+
+    return '';
   }
 
   private parseTimestamp(ts: any): number | null {

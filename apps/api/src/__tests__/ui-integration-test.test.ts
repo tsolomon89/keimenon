@@ -215,7 +215,7 @@ async function uploadFile(filePath: string, token: string, config: any = {}) {
   form.append('files', fs.createReadStream(filePath));
   form.append('config', JSON.stringify(config));
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/import/enhanced`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/import`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -308,7 +308,7 @@ describe('API Upload Endpoint', () => {
     const form = new FormData();
     form.append('files', fs.createReadStream(testFile));
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/import/enhanced`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/import`, {
       method: 'POST',
       body: form,
     });
@@ -584,7 +584,7 @@ describe('Error Handling', () => {
     const form = new FormData();
     form.append('files', Buffer.from('invalid json'), { filename: 'test.txt' });
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/import/enhanced`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/import`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${adminToken}`,
@@ -619,7 +619,7 @@ describe('Error Handling', () => {
     form.append('files', fs.createReadStream(testFile));
     // Intentionally omit config field
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/import/enhanced`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/import`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${adminToken}`,

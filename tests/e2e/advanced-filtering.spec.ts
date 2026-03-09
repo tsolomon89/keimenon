@@ -35,14 +35,35 @@ test.describe('Advanced Filtering', () => {
 
   let authToken: string;
 
-  test.beforeEach(async ({ apiRequest }) => {
-    // Login and get auth token
-    const response = await apiRequest.post('/api/v1/auth/login', {
-      data: TEST_USER,
-    });
+  async function loginWithRetry(
+    apiRequest: any,
+    credentials: { email: string; password: string },
+    maxAttempts = 3
+  ): Promise<string> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const response = await apiRequest.post('/api/v1/auth/login', { data: credentials });
 
-    const auth = await response.json();
-    authToken = auth.token;
+      if (response.ok()) {
+        const auth = await response.json();
+        if (auth?.token) return auth.token;
+      }
+
+      const body = await response.json().catch(() => ({}));
+      const error = body?.error || body?.message || `status ${response.status()}`;
+
+      if (attempt < maxAttempts && String(error).includes('No active accounts')) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 100));
+        continue;
+      }
+
+      throw new Error(`Login failed: ${error}`);
+    }
+
+    throw new Error(`Login failed after ${maxAttempts} attempts`);
+  }
+
+  test.beforeEach(async ({ apiRequest }) => {
+    authToken = await loginWithRetry(apiRequest, TEST_USER);
   });
 
   test.afterEach(async ({ apiRequest }) => {
@@ -63,7 +84,14 @@ test.describe('Advanced Filtering', () => {
     token: string,
     filename: string = 'tiny.json'
   ): Promise<{ jobId: string; nodeCount: number }> {
-    const testFile = path.join(process.cwd(), 'ai_context', 'chat_data', 'test-samples', filename);
+    const testFile = path.join(
+      process.cwd(),
+      'tests',
+      'test_data',
+      'chat_data',
+      'test-samples',
+      filename
+    );
     const fileContent = fs.readFileSync(testFile);
 
     const uploadResponse = await apiRequest.post('/api/v1/jobs/import', {
@@ -97,13 +125,15 @@ test.describe('Advanced Filtering', () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const job = await jobResponse.json();
+      const payload = await jobResponse.json();
+      const job = payload?.job ?? payload;
+      const status = job?.status;
 
-      if (job.status === 'completed') {
+      if (status === 'succeeded' || status === 'completed') {
         jobComplete = true;
-        return { jobId, nodeCount: job.result?.nodesCreated || 0 };
-      } else if (job.status === 'failed') {
-        throw new Error(`Import job failed: ${job.error}`);
+        return { jobId, nodeCount: job?.result?.nodesCreated || 0 };
+      } else if (status === 'failed' || status === 'canceled' || status === 'cancelled') {
+        throw new Error(`Import job failed: ${job?.error || status}`);
       }
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -111,6 +141,40 @@ test.describe('Advanced Filtering', () => {
     }
 
     throw new Error(`Import job did not complete within ${maxAttempts} seconds`);
+  }
+
+  function getNodes(payload: any): any[] {
+    if (Array.isArray(payload?.nodes)) return payload.nodes;
+    if (Array.isArray(payload?.data)) return payload.data;
+    return [];
+  }
+
+  async function createGroupNode(
+    apiRequest: any,
+    token: string,
+    name: string,
+    metadata: Record<string, unknown>
+  ): Promise<void> {
+    const now = Date.now();
+    const id = `grp_test_${now}_${Math.random().toString(36).slice(2, 9)}`;
+
+    const response = await apiRequest.post('/api/v1/nodes/group', {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        id,
+        kind: 'Group',
+        name,
+        member_count: 0,
+        created_at: now,
+        updated_at: now,
+        metadata: {
+          data_tag: 'test',
+          ...metadata,
+        },
+      },
+    });
+
+    expect(response.status()).toBe(201);
   }
 
   // ==================== ADVANCED FILTERING TESTS ====================
@@ -131,10 +195,11 @@ test.describe('Advanced Filtering', () => {
 
     expect(response.status()).toBe(200);
     const nodes = await response.json();
+    const nodeItems = getNodes(nodes);
 
     // All nodes must match BOTH conditions
     expect(
-      nodes.data.every(
+      nodeItems.every(
         (n: any) => n.kind === 'Source' && new Date(n.created_at).getTime() >= oneHourAgo
       )
     ).toBe(true);
@@ -157,9 +222,10 @@ test.describe('Advanced Filtering', () => {
 
     expect(response.status()).toBe(200);
     const nodes = await response.json();
+    const nodeItems = getNodes(nodes);
 
     // Verify all three conditions
-    for (const node of nodes.data) {
+    for (const node of nodeItems) {
       expect(node.kind).toBe('Source');
       expect(new Date(node.created_at).getTime()).toBeGreaterThanOrEqual(oneHourAgo);
 
@@ -175,26 +241,16 @@ test.describe('Advanced Filtering', () => {
     await uploadAndProcess(apiRequest, authToken, 'tiny.json');
 
     // Create a node with nested metadata manually
-    const createResponse = await apiRequest.post('/api/v1/nodes', {
-      headers: { Authorization: `Bearer ${authToken}` },
-      data: {
-        kind: 'Group',
-        name: 'Test Group with Nested Metadata',
-        metadata: {
-          data_tag: 'test',
-          author: {
-            name: 'Test Author',
-            email: 'test@example.com',
-          },
-          settings: {
-            priority: 'high',
-            score: 0.95,
-          },
-        },
+    await createGroupNode(apiRequest, authToken, 'Test Group with Nested Metadata', {
+      author: {
+        name: 'Test Author',
+        email: 'test@example.com',
+      },
+      settings: {
+        priority: 'high',
+        score: 0.95,
       },
     });
-
-    expect(createResponse.status()).toBe(201);
 
     // Filter by nested field (if API supports it)
     const response = await apiRequest.get('/api/v1/nodes', {
@@ -208,9 +264,10 @@ test.describe('Advanced Filtering', () => {
     // If supported, verify filtering works
     if (response.status() === 200) {
       const nodes = await response.json();
+      const nodeItems = getNodes(nodes);
 
-      if (nodes.data.length > 0) {
-        const matchingNode = nodes.data.find((n: any) => n.metadata?.author?.email);
+      if (nodeItems.length > 0) {
+        const matchingNode = nodeItems.find((n: any) => n.metadata?.author?.email);
         if (matchingNode) {
           expect(matchingNode.metadata.author.email).toBe('test@example.com');
         }
@@ -230,17 +287,7 @@ test.describe('Advanced Filtering', () => {
     ];
 
     for (const nodeData of taggedNodes) {
-      await apiRequest.post('/api/v1/nodes', {
-        headers: { Authorization: `Bearer ${authToken}` },
-        data: {
-          kind: 'Group',
-          name: nodeData.name,
-          metadata: {
-            data_tag: 'test',
-            tags: nodeData.tags,
-          },
-        },
-      });
+      await createGroupNode(apiRequest, authToken, nodeData.name, { tags: nodeData.tags });
     }
 
     // Filter by tag='important' (if API supports array contains)
@@ -255,9 +302,10 @@ test.describe('Advanced Filtering', () => {
     // If array filtering is supported, verify results
     if (response.status() === 200) {
       const nodes = await response.json();
+      const nodeItems = getNodes(nodes);
 
       // Should return 2 nodes (Important Note and Critical Issue)
-      const matchingNodes = nodes.data.filter((n: any) => n.metadata?.tags?.includes('important'));
+      const matchingNodes = nodeItems.filter((n: any) => n.metadata?.tags?.includes('important'));
 
       if (matchingNodes.length > 0) {
         expect(matchingNodes.length).toBeGreaterThanOrEqual(2);
@@ -277,17 +325,7 @@ test.describe('Advanced Filtering', () => {
     ];
 
     for (const nodeData of scoredNodes) {
-      await apiRequest.post('/api/v1/nodes', {
-        headers: { Authorization: `Bearer ${authToken}` },
-        data: {
-          kind: 'Group',
-          name: nodeData.name,
-          metadata: {
-            data_tag: 'test',
-            score: nodeData.score,
-          },
-        },
-      });
+      await createGroupNode(apiRequest, authToken, nodeData.name, { score: nodeData.score });
     }
 
     // Filter by score > 0.7 (if API supports numeric comparisons)
@@ -302,9 +340,10 @@ test.describe('Advanced Filtering', () => {
     // If numeric filtering is supported, verify results
     if (response.status() === 200) {
       const nodes = await response.json();
+      const nodeItems = getNodes(nodes);
 
       // Should return High Score (0.95) and Medium Score (0.75)
-      const highScoreNodes = nodes.data.filter((n: any) => n.metadata?.score >= 0.7);
+      const highScoreNodes = nodeItems.filter((n: any) => n.metadata?.score >= 0.7);
 
       if (highScoreNodes.length > 0) {
         expect(highScoreNodes.every((n: any) => n.metadata.score >= 0.7)).toBe(true);
@@ -332,9 +371,10 @@ test.describe('Advanced Filtering', () => {
     // Should return 200 with empty results (not 500 error)
     expect(response.status()).toBe(200);
     const nodes = await response.json();
+    const nodeItems = getNodes(nodes);
 
     // Results should be empty or contain no nodes matching impossible condition
-    expect(nodes.data).toBeDefined();
+    expect(nodeItems).toBeDefined();
   });
 
   test('should respect filter complexity limits', async ({ apiRequest }) => {
@@ -371,40 +411,14 @@ test.describe('Advanced Filtering', () => {
     await uploadAndProcess(apiRequest, authToken, 'tiny.json');
 
     // Create nodes with various metadata states
-    await apiRequest.post('/api/v1/nodes', {
-      headers: { Authorization: `Bearer ${authToken}` },
-      data: {
-        kind: 'Group',
-        name: 'Node with null metadata',
-        metadata: {
-          data_tag: 'test',
-          platform: null,
-        },
-      },
+    await createGroupNode(apiRequest, authToken, 'Node with null metadata', {
+      platform: null,
     });
 
-    await apiRequest.post('/api/v1/nodes', {
-      headers: { Authorization: `Bearer ${authToken}` },
-      data: {
-        kind: 'Group',
-        name: 'Node with missing field',
-        metadata: {
-          data_tag: 'test',
-          // No platform field
-        },
-      },
-    });
+    await createGroupNode(apiRequest, authToken, 'Node with missing field', {});
 
-    await apiRequest.post('/api/v1/nodes', {
-      headers: { Authorization: `Bearer ${authToken}` },
-      data: {
-        kind: 'Group',
-        name: 'Node with value',
-        metadata: {
-          data_tag: 'test',
-          platform: 'chatgpt',
-        },
-      },
+    await createGroupNode(apiRequest, authToken, 'Node with value', {
+      platform: 'chatgpt',
     });
 
     // Filter by platform=chatgpt
@@ -418,9 +432,10 @@ test.describe('Advanced Filtering', () => {
 
     expect(response.status()).toBe(200);
     const nodes = await response.json();
+    const nodeItems = getNodes(nodes);
 
     // Should only return the node with platform='chatgpt' (not null or missing)
-    const groupNodes = nodes.data.filter((n: any) => n.kind === 'Group');
+    const groupNodes = nodeItems.filter((n: any) => n.kind === 'Group');
     const matchingNodes = groupNodes.filter((n: any) => n.metadata?.platform === 'chatgpt');
 
     // At least one node should match
@@ -458,10 +473,11 @@ test.describe('Advanced Filtering', () => {
 
     // Verify query still returns correct results (not just fast but wrong)
     const nodes = await response.json();
-    expect(nodes.data).toBeDefined();
+    const nodeItems = getNodes(nodes);
+    expect(nodeItems).toBeDefined();
 
     // All results should match filters
-    for (const node of nodes.data) {
+    for (const node of nodeItems) {
       expect(node.kind).toBe('Source');
     }
   });

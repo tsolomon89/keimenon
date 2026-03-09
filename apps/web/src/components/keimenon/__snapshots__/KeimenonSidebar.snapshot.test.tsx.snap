@@ -1,0 +1,13 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`KeimenonSidebar snapshots > matches left sidebar snapshot when open 1`] = `
+<div
+  class="lg:hidden fixed inset-0 bg-black/50 z-40"
+/>
+`;
+
+exports[`KeimenonSidebar snapshots > matches right sidebar snapshot when open 1`] = `
+<div
+  class="lg:hidden fixed inset-0 bg-black/50 z-40"
+/>
+`;

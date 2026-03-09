@@ -47,9 +47,6 @@ export function testIsolationMiddleware(req: Request, res: Response, next: NextF
   console.log(`  - X-Test-DB-Path header: ${testDbPath || '(not present)'}`);
 
   if (testDbPath) {
-    // Security: Validate path is safe
-    const normalizedPath = path.resolve(path.normalize(testDbPath));
-
     // Find project root - either current dir or up two levels from apps/api
     let projectRoot = process.cwd();
 
@@ -57,6 +54,14 @@ export function testIsolationMiddleware(req: Request, res: Response, next: NextF
     if (projectRoot.endsWith(path.join('apps', 'api'))) {
       projectRoot = path.resolve(projectRoot, '../..');
     }
+
+    // Security: Resolve relative paths against project root (not process cwd),
+    // so worker headers like ".test-dbs/worker-0.db" are valid regardless of server cwd.
+    const normalizedInputPath = path.normalize(testDbPath);
+    const normalizedPath = path.isAbsolute(normalizedInputPath)
+      ? path.resolve(normalizedInputPath)
+      : path.resolve(projectRoot, normalizedInputPath);
+
     const testDbsDir = path.resolve(projectRoot, '.test-dbs');
 
     // Ensure path is within .test-dbs directory (case-insensitive on Windows)

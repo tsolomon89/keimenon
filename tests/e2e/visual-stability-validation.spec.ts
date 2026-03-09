@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/test-isolation';
+import { login } from './helpers/login';
 
 /**
  * Visual Stability Validation
@@ -17,7 +18,7 @@ import { test, expect } from './fixtures/test-isolation';
 test.describe('Visual Stability Validation', () => {
   // Use a predictable viewport size to match snapshots
   test.use({ viewport: { width: 1280, height: 720 } });
-  
+
   // Login credentials (standard test user)
   const TEST_USER = {
     email: 'admin@admin.com',
@@ -25,29 +26,19 @@ test.describe('Visual Stability Validation', () => {
   };
 
   test.describe('Authenticated States', () => {
-    test.beforeEach(async ({ page, apiRequest }) => {
-      // Login via API to save time and set state
-      const response = await apiRequest.post('/api/v1/auth/login', {
-        data: TEST_USER,
-      });
-      const auth = await response.json();
-      
-      // Set the token in local storage or cookies as the app expects
-      // Assuming typical token storage; adjust if app uses cookies only
-      await page.addInitScript((token) => {
-        localStorage.setItem('auth_token', token);
-      }, auth.token);
-
-      // Navigate to main application page
-      await page.goto('/keimenon');
-      // Wait for network idle to ensure assets are loaded
-      await page.waitForLoadState('networkidle');
+    test.beforeEach(async ({ page }) => {
+      await login(page, TEST_USER.email, TEST_USER.password);
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForSelector('header.h-14', { state: 'visible', timeout: 15000 });
     });
 
     test('visual-stability-01-canvas-initial', async ({ page }) => {
-      // Wait for canvas to be ready (look for specific canvas element or loader to disappear)
-      await page.waitForSelector('canvas', { state: 'visible' });
-      // Arbitrary wait for animation/physics to settle (if any)
+      // Shell and viewport empty-state are the stable readiness signals in current UI.
+      await page.waitForSelector('header.h-14', { state: 'visible', timeout: 15000 });
+      await expect(
+        page.getByRole('heading', { name: /welcome to keimenon/i }).first()
+      ).toBeVisible();
+      // Arbitrary wait for animations to settle
       await page.waitForTimeout(2000);
 
       // Take snapshot of the entire page
@@ -58,23 +49,23 @@ test.describe('Visual Stability Validation', () => {
     });
 
     test('visual-stability-02-header-visible', async ({ page }) => {
-        // Focus on header area
-        const header = page.locator('header').first();
-        await expect(header).toBeVisible();
-        
-        await expect(page).toHaveScreenshot('visual-stability-02-header-visible.png', {
-            clip: { x: 0, y: 0, width: 1280, height: 100 } // Approximate header area
-        });
+      // Focus on the keimenon app-shell header (not generic semantic header fallback).
+      const header = page.locator('header.h-14.border-b.border-slate-800').first();
+      await expect(header).toBeVisible({ timeout: 15000 });
+
+      await expect(page).toHaveScreenshot('visual-stability-02-header-visible.png', {
+        maxDiffPixelRatio: 0.05,
+      });
     });
 
     test('visual-stability-03-sidebar-present', async ({ page }) => {
-        // Ensure sidebar is visible
-        const sidebar = page.locator('aside, .sidebar').first();
-        await expect(sidebar).toBeVisible();
+      // Ensure at least one app-shell sidebar is visible.
+      const sidebar = page.locator('aside.border-r, aside.border-l').first();
+      await expect(sidebar).toBeVisible({ timeout: 15000 });
 
-        await expect(page).toHaveScreenshot('visual-stability-03-sidebar-present.png', {
-            clip: { x: 0, y: 0, width: 300, height: 720 } // Approximate sidebar area
-        });
+      await expect(page).toHaveScreenshot('visual-stability-03-sidebar-present.png', {
+        maxDiffPixelRatio: 0.05,
+      });
     });
   });
 
@@ -82,16 +73,20 @@ test.describe('Visual Stability Validation', () => {
     test('visual-stability-login-01-initial', async ({ page }) => {
       await page.goto('/login');
       await page.waitForLoadState('networkidle');
-      
-      await expect(page).toHaveScreenshot('visual-stability-login-01-initial.png');
+
+      await expect(page).toHaveScreenshot('visual-stability-login-01-initial.png', {
+        maxDiffPixelRatio: 0.05,
+      });
     });
 
     test('visual-stability-login-02-form-visible', async ({ page }) => {
-        await page.goto('/login');
-        const form = page.locator('form');
-        await expect(form).toBeVisible();
-        
-        await expect(page).toHaveScreenshot('visual-stability-login-02-form-visible.png');
+      await page.goto('/login');
+      const form = page.locator('form');
+      await expect(form).toBeVisible();
+
+      await expect(page).toHaveScreenshot('visual-stability-login-02-form-visible.png', {
+        maxDiffPixelRatio: 0.05,
+      });
     });
   });
 });

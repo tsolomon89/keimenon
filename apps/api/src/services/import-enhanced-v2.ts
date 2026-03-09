@@ -8,7 +8,7 @@ import { DatabaseClient, SQLiteClient } from '@keimenon/db';
 import { EnhancedAutogroupService, type Group } from './autogroup-enhanced';
 import { getLocalDocumentStore } from './local-document-store';
 import { DatabaseWriteQueue } from './DatabaseWriteQueue';
-import type { ImportConfiguration } from '@keimenon/types';
+import type { ImportConfiguration, ImportJobStage } from '@keimenon/types';
 import { DuplicateDetectionConfig, DuplicateGroup } from './duplicate-detection';
 import {
   IntegratedDuplicateDetectionService,
@@ -18,7 +18,10 @@ import { SourcesStitcher } from '@keimenon/parsers';
 import { GraphSpineBuilder } from './graph-spine-builder';
 import { PrincipalService, AgentPlatform } from './principal-service';
 import { WORKER_CONFIG } from '../modules/jobs/jobs.config';
+import { getImportMetrics } from './metrics/ImportMetrics';
 import type { LexemeNode, PhraseNode, TopicNode, SourceDoc, PrincipalNode } from '@keimenon/types';
+import type { ImportPipelineStage } from '../modules/import-pipeline/stages';
+import { createHash } from 'crypto';
 
 export interface ImportMessage {
   id: string;
@@ -64,10 +67,60 @@ export interface ImportResult {
       phrases: number;
       topics: number;
     };
+    proImport?: {
+      spans: number;
+      packets: number;
+      atomicUnits: number;
+      packetMassLinks: number;
+    };
   };
   // For ChangeTracker rollback support
   createdNodeIds: string[];
   createdEdgeIds: string[];
+}
+
+interface MaterializedSource {
+  id: string;
+  messageId: string;
+  conversationId: string;
+  role: 'user' | 'assistant' | 'system';
+  timestamp: number;
+  content: string;
+}
+
+interface MaterializedSpan {
+  id: string;
+  sourceId: string;
+  messageId: string;
+  conversationId: string;
+  text: string;
+  normalizedText: string;
+  startChar: number;
+  endChar: number;
+  boundaryKind: 'line' | 'sentence' | 'paragraph' | 'token_window';
+}
+
+interface PacketOccurrence {
+  spanId: string;
+  sourceId: string;
+  tokenStart: number;
+  tokenEnd: number;
+}
+
+interface PacketCandidate {
+  normalizedText: string;
+  displayText: string;
+  occurrences: PacketOccurrence[];
+  sourceCounts: Map<string, number>;
+}
+
+interface ImportPipelineHooks {
+  onStage?: (stage: ImportJobStage, message: string) => Promise<void> | void;
+  onPipelineStage?: (stage: ImportPipelineStage, message: string) => Promise<void> | void;
+}
+
+interface ImportExecutionOptions {
+  rollbackOnError?: boolean;
 }
 
 /**
@@ -80,7 +133,11 @@ export class EnhancedImportServiceV2 {
   private autogroupService: EnhancedAutogroupService;
   private duplicateService: IntegratedDuplicateDetectionService;
   private principalService: PrincipalService;
+  private sqliteDb: ReturnType<SQLiteClient['getDatabase']>;
   private context: { accountId: string; userId: string } | null = null;
+  private importMode: string = 'unknown';
+  private knownNodeIds: Set<string> = new Set();
+  private knownEdgeIds: Set<string> = new Set();
 
   // Track created entities for ChangeTracker rollback support
   private createdNodeIds: string[] = [];
@@ -101,8 +158,8 @@ export class EnhancedImportServiceV2 {
     // DatabaseClient is an interface, but IntegratedDuplicateDetectionService expects Database.Database
     // Cast to SQLiteClient to access getDatabase() method
     // See: apps/api/src/services/duplicate-detection-fts5.ts:78 (requires db.prepare method)
-    const sqliteDb = (db as SQLiteClient).getDatabase();
-    this.duplicateService = new IntegratedDuplicateDetectionService(sqliteDb);
+    this.sqliteDb = (db as SQLiteClient).getDatabase();
+    this.duplicateService = new IntegratedDuplicateDetectionService(this.sqliteDb);
   }
 
   /**
@@ -165,6 +222,122 @@ export class EnhancedImportServiceV2 {
     }
   }
 
+  private async flushWritesStrict(stage: string): Promise<void> {
+    await this.flushWrites();
+    this.assertWriteQueueHealthy(stage);
+  }
+
+  private assertWriteQueueHealthy(stage: string): void {
+    if (!this.writeQueue) {
+      return;
+    }
+
+    const deadLetters = this.writeQueue.getDeadLetterQueue();
+    const circuitOpen = this.writeQueue.isCircuitOpen();
+
+    if (deadLetters.length === 0 && !circuitOpen) {
+      return;
+    }
+
+    const error: Error & { code?: string; details?: Record<string, unknown> } = new Error(
+      `[Import] Write queue integrity failure at stage "${stage}" (deadLetters=${deadLetters.length}, circuitOpen=${circuitOpen})`
+    );
+    error.code = 'WRITE_QUEUE_FAILURE';
+    error.details = {
+      stage,
+      deadLetterCount: deadLetters.length,
+      circuitOpen,
+      sampleErrors: deadLetters.slice(0, 3).map((item) => ({
+        type: item.type,
+        reason: item.normalizedReason || 'UNKNOWN',
+        message: item.error?.message,
+      })),
+    };
+    getImportMetrics().recordWriteQueueIntegrityFailure({
+      mode: this.importMode,
+      stage,
+      deadLetterCount: deadLetters.length,
+      circuitOpen,
+    });
+    throw error;
+  }
+
+  private async emitStage(
+    hooks: ImportPipelineHooks | undefined,
+    stage: ImportJobStage,
+    message: string
+  ): Promise<void> {
+    if (!hooks?.onStage) {
+      return;
+    }
+    await hooks.onStage(stage, message);
+  }
+
+  private async emitPipelineStage(
+    hooks: ImportPipelineHooks | undefined,
+    stage: ImportPipelineStage,
+    message: string
+  ): Promise<void> {
+    if (!hooks?.onPipelineStage) {
+      return;
+    }
+    await hooks.onPipelineStage(stage, message);
+  }
+
+  private stableHash(value: string, length: number = 24): string {
+    return createHash('sha256').update(value).digest('hex').slice(0, length);
+  }
+
+  private normalizeText(value: string): string {
+    return value
+      .normalize('NFKC')
+      .toLowerCase()
+      .replace(/\r\n/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  private nodeKey(nodeId: string, accountId: string): string {
+    return `${accountId}:${nodeId}`;
+  }
+
+  private edgeKey(edgeId: string, accountId: string): string {
+    return `${accountId}:${edgeId}`;
+  }
+
+  private async writeNodeIfAbsent(node: any): Promise<boolean> {
+    if (!this.context?.accountId) {
+      await this.writeNode(node);
+      return true;
+    }
+
+    const key = this.nodeKey(node.id, this.context.accountId);
+    if (this.knownNodeIds.has(key)) {
+      return false;
+    }
+
+    await this.writeNode(node);
+    this.knownNodeIds.add(key);
+    return true;
+  }
+
+  private async writeEdgeIfAbsent(edge: any): Promise<boolean> {
+    if (!this.context?.accountId) {
+      await this.writeEdge(edge);
+      return true;
+    }
+
+    const key = this.edgeKey(edge.id, this.context.accountId);
+    if (this.knownEdgeIds.has(key)) {
+      return false;
+    }
+
+    await this.writeEdge(edge);
+    this.knownEdgeIds.add(key);
+    return true;
+  }
+
   /**
    * Import conversations with full processing pipeline
    */
@@ -172,9 +345,19 @@ export class EnhancedImportServiceV2 {
     conversations: ImportConversation[],
     uploadHash: string,
     config: ImportConfiguration,
-    context: { accountId: string; userId: string }
+    context: { accountId: string; userId: string },
+    hooks?: ImportPipelineHooks,
+    options?: ImportExecutionOptions
   ): Promise<ImportResult> {
     this.context = context;
+    this.importMode =
+      config.grouping?.mode === 'manual'
+        ? 'manual'
+        : config.grouping?.mode === 'hybrid'
+          ? 'hybrid'
+          : 'automatic';
+    this.knownNodeIds.clear();
+    this.knownEdgeIds.clear();
     const startTime = Date.now();
 
     // Reset entity tracking for this import batch
@@ -182,7 +365,15 @@ export class EnhancedImportServiceV2 {
     this.createdEdgeIds = [];
 
     try {
+      await this.emitPipelineStage(hooks, 'canonicalize', 'Canonicalizing conversations');
+      await this.emitStage(
+        hooks,
+        'CANONICALIZE' as ImportJobStage,
+        'Reconstructing canonical conversation graph'
+      );
+
       // Step 1: Save upload metadata
+      await this.emitPipelineStage(hooks, 'save', 'Persisting upload metadata');
       await this.saveUploadMetadata(uploadHash, conversations, config);
 
       // Step 2: Extract messages for grouping
@@ -196,20 +387,67 @@ export class EnhancedImportServiceV2 {
 
       // Step 4: Save conversations, messages, and groups to database
       await this.saveToDatabase(conversations, groupResult.groups, uploadHash);
+      await this.flushWritesStrict('canonicalize.save_to_database');
 
       // Step 5: Create sources from messages
+      await this.emitPipelineStage(hooks, 'source', 'Materializing source nodes');
       const sources = await this.createSources(allMessages, groupResult.groups, config);
+      await this.flushWritesStrict('canonicalize.create_sources');
 
-      // Step 6: Extract code blocks (if enabled)
-      let codeBlocks = 0;
-      if (config.code.extract) {
-        codeBlocks = await this.extractCodeBlocks(conversations, config);
-      }
+      await this.emitPipelineStage(hooks, 'span', 'Extracting immutable source spans');
+      await this.emitStage(
+        hooks,
+        'SPAN_EXTRACT' as ImportJobStage,
+        'Extracting immutable source spans'
+      );
+      const spanResult = await this.extractSourceSpans(sources);
+      await this.flushWritesStrict('span_extract');
 
-      // Step 7: Detect duplicates (if enabled)
+      await this.emitPipelineStage(hooks, 'atomic', 'Building atomic substrate');
+      await this.emitStage(
+        hooks,
+        'ATOMIC_EXTRACT' as ImportJobStage,
+        'Building char+trigram atomic substrate'
+      );
+      const atomicResult = await this.materializeAtomicUnits(spanResult.spans);
+      await this.flushWritesStrict('atomic_extract');
+
+      await this.emitPipelineStage(hooks, 'packet', 'Deriving and linking packet layer');
+      await this.emitStage(
+        hooks,
+        'PACKET_DERIVE' as ImportJobStage,
+        'Deriving repeated packet fragments'
+      );
+      const packetCandidates = this.derivePacketCandidates(spanResult.spans);
+
+      await this.emitStage(
+        hooks,
+        'MASS_SCORE' as ImportJobStage,
+        'Scoring deterministic packet mass'
+      );
+      const scoredPackets = this.scorePacketCandidates(packetCandidates, sources);
+
+      await this.emitStage(
+        hooks,
+        'LAYER_LINK' as ImportJobStage,
+        'Linking packet, span, and atomic layers'
+      );
+      const packetResult = await this.materializePackets(scoredPackets, atomicResult.atomicIdByKey);
+      await this.flushWritesStrict('layer_link');
+
+      // Step 6: Detect duplicates (if enabled)
+      await this.emitPipelineStage(hooks, 'dedupe', 'Detecting duplicates');
+      await this.emitStage(hooks, 'DEDUPE' as ImportJobStage, 'Detecting duplicates');
       let duplicatesForReview = 0;
       if (config.duplicates.enabled) {
         duplicatesForReview = await this.detectDuplicates(conversations, config);
+      }
+
+      // Step 7: Extract code blocks (if enabled)
+      await this.emitPipelineStage(hooks, 'code', 'Extracting code blocks');
+      let codeBlocks = 0;
+      if (config.code.extract) {
+        codeBlocks = await this.extractCodeBlocks(conversations, config);
       }
 
       // Step 8: Create bundles (if enabled)
@@ -219,6 +457,7 @@ export class EnhancedImportServiceV2 {
       }
 
       // Step 9: Extract spine (V2 - if enabled)
+      await this.emitPipelineStage(hooks, 'spine', 'Building graph spine');
       let spineStats = { lexemes: 0, phrases: 0, topics: 0 };
       if (config.spine?.enabled) {
         console.log('[Import] Step 9: Spine extraction ENABLED');
@@ -229,7 +468,9 @@ export class EnhancedImportServiceV2 {
       }
 
       // Flush all pending writes before completing
-      await this.flushWrites();
+      await this.emitPipelineStage(hooks, 'finalize', 'Finalizing import writes');
+      await this.emitStage(hooks, 'MATERIALIZE' as ImportJobStage, 'Finalizing import writes');
+      await this.flushWritesStrict('finalization');
 
       const endTime = Date.now();
       const durationMs = endTime - startTime;
@@ -256,16 +497,36 @@ export class EnhancedImportServiceV2 {
             messagesPerSecond: Math.round((totalMessages / durationMs) * 1000),
           },
           spine: config.spine?.enabled ? spineStats : undefined,
+          proImport: {
+            spans: spanResult.spansCreated,
+            packets: packetResult.packetsCreated,
+            atomicUnits: atomicResult.atomicUnitsCreated,
+            packetMassLinks: packetResult.packetMassLinksCreated,
+          },
         },
         // For ChangeTracker rollback support
         createdNodeIds: this.createdNodeIds,
         createdEdgeIds: this.createdEdgeIds,
       };
     } catch (error: any) {
-      // Rollback: Delete any entities created during this batch on failure
-      // This prevents orphaned data from partial imports
-      console.error('[Import] Error during import, rolling back created entities:', error.message);
-      await this.rollbackCreatedEntities();
+      // Attach tracked entities so runner-level compensation can roll back deterministically.
+      error.createdNodeIds = [...this.createdNodeIds];
+      error.createdEdgeIds = [...this.createdEdgeIds];
+
+      if (options?.rollbackOnError !== false) {
+        // Rollback: Delete any entities created during this batch on failure
+        // This prevents orphaned data from partial imports
+        console.error(
+          '[Import] Error during import, rolling back created entities:',
+          error.message
+        );
+        await this.rollbackCreatedEntities();
+      } else {
+        console.error(
+          '[Import] Error during import; rollback deferred to runner compensation service:',
+          error.message
+        );
+      }
       throw error; // Re-throw to let caller handle
     } finally {
       this.context = null;
@@ -580,8 +841,8 @@ export class EnhancedImportServiceV2 {
     messages: ImportMessage[],
     groups: Group[],
     config: ImportConfiguration
-  ): Promise<string[]> {
-    const sourceIds: string[] = [];
+  ): Promise<MaterializedSource[]> {
+    const sources: MaterializedSource[] = [];
 
     // OPTIMIZATION: Pre-build message-to-groups lookup map
     // Converts O(m * g * s) to O(g * s + m) where m=messages, g=groups, s=sources per group
@@ -599,7 +860,8 @@ export class EnhancedImportServiceV2 {
     // In future: stitch messages together, create bundles, etc.
 
     for (const msg of messages) {
-      const sourceId = `src_${nanoid()}`;
+      const sourceSeed = `${this.context?.accountId || 'unknown'}:${msg.conversationId}:${msg.id}:${msg.role}`;
+      const sourceId = `src_${this.stableHash(sourceSeed, 32)}`;
 
       // Save content to local store
       const contentMeta = await this.localStore.saveSource(sourceId, msg.content);
@@ -643,8 +905,9 @@ export class EnhancedImportServiceV2 {
       });
 
       // Create COMPILED_FROM edge from Source to Message
+      const compiledFromEdgeId = `edge_compiled_${this.stableHash(`${sourceId}:${msg.id}`, 32)}`;
       await this.writeEdge({
-        id: `edge_${nanoid()}`,
+        id: compiledFromEdgeId,
         kind: 'COMPILED_FROM',
         from: sourceId,
         to: msg.id,
@@ -656,8 +919,9 @@ export class EnhancedImportServiceV2 {
 
       // Create edges to groups if needed
       for (const groupId of sourceGroups) {
+        const inGroupEdgeId = `edge_in_group_${this.stableHash(`${sourceId}:${groupId}`, 32)}`;
         await this.writeEdge({
-          id: `edge_${nanoid()}`,
+          id: inGroupEdgeId,
           kind: 'IN_GROUP',
           from: sourceId,
           to: groupId,
@@ -667,8 +931,9 @@ export class EnhancedImportServiceV2 {
 
       // World Model V5: Create CREATED_BY edge from Source to Human Principal
       if (this.humanPrincipal) {
+        const createdByEdgeId = `edge_created_by_${this.stableHash(`${sourceId}:${this.humanPrincipal.id}`, 32)}`;
         await this.writeEdge({
-          id: `edge_${nanoid()}`,
+          id: createdByEdgeId,
           kind: 'CREATED_BY',
           from: sourceId,
           to: this.humanPrincipal.id,
@@ -676,10 +941,495 @@ export class EnhancedImportServiceV2 {
         });
       }
 
-      sourceIds.push(sourceId);
+      sources.push({
+        id: sourceId,
+        messageId: msg.id,
+        conversationId: msg.conversationId,
+        role: msg.role,
+        timestamp: msg.timestamp,
+        content: msg.content,
+      });
     }
 
-    return sourceIds;
+    return sources;
+  }
+
+  private splitIntoSpans(content: string): Array<{
+    text: string;
+    start: number;
+    end: number;
+    boundaryKind: 'line' | 'sentence' | 'paragraph' | 'token_window';
+  }> {
+    const spans: Array<{
+      text: string;
+      start: number;
+      end: number;
+      boundaryKind: 'line' | 'sentence' | 'paragraph' | 'token_window';
+    }> = [];
+
+    const regex = /[^\n.!?]+(?:[.!?]+)?|\n+/g;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(content)) !== null) {
+      const raw = match[0];
+      if (/^\n+$/.test(raw)) {
+        continue;
+      }
+
+      const firstNonWhitespace = raw.search(/\S/);
+      if (firstNonWhitespace === -1) {
+        continue;
+      }
+
+      const text = raw.trim();
+      if (text.length === 0) {
+        continue;
+      }
+
+      const start = match.index + firstNonWhitespace;
+      const end = start + text.length;
+      const boundaryKind = raw.includes('\n') ? 'line' : 'sentence';
+
+      spans.push({ text, start, end, boundaryKind });
+    }
+
+    if (spans.length === 0) {
+      const trimmed = content.trim();
+      if (trimmed.length > 0) {
+        const start = content.indexOf(trimmed);
+        spans.push({
+          text: trimmed,
+          start: Math.max(0, start),
+          end: Math.max(0, start) + trimmed.length,
+          boundaryKind: 'paragraph',
+        });
+      }
+    }
+
+    return spans;
+  }
+
+  private async extractSourceSpans(
+    sources: MaterializedSource[]
+  ): Promise<{ spans: MaterializedSpan[]; spansCreated: number; spanEdgesCreated: number }> {
+    if (!this.context?.accountId) {
+      throw new Error('No import context available for span extraction');
+    }
+
+    const spans: MaterializedSpan[] = [];
+    let spansCreated = 0;
+    let spanEdgesCreated = 0;
+    const now = Date.now();
+
+    for (const source of sources) {
+      const segments = this.splitIntoSpans(source.content);
+      for (const segment of segments) {
+        const normalizedText = this.normalizeText(segment.text);
+        if (!normalizedText) {
+          continue;
+        }
+
+        const spanId = `span_${this.stableHash(
+          `${this.context.accountId}:${source.id}:${segment.start}:${segment.end}:${normalizedText}`,
+          32
+        )}`;
+        const spanHash = this.stableHash(
+          `${source.id}:${segment.start}:${segment.end}:${normalizedText}`,
+          32
+        );
+
+        const createdSpan = await this.writeNodeIfAbsent({
+          id: spanId,
+          kind: 'SourceSpan',
+          source_id: source.id,
+          message_id: source.messageId,
+          conversation_id: source.conversationId,
+          text: segment.text,
+          normalized_text: normalizedText,
+          start_char: segment.start,
+          end_char: segment.end,
+          boundary_kind: segment.boundaryKind,
+          span_hash: spanHash,
+          created_at: source.timestamp || now,
+          updated_at: now,
+          metadata: {
+            importContractVersion: 'v2',
+            processingRail: 'automatic-pro-import',
+          },
+        });
+        if (createdSpan) {
+          spansCreated++;
+        }
+
+        const hasSpanEdgeId = `edge_has_span_${this.stableHash(`${source.id}:${spanId}`, 32)}`;
+        const createdHasSpanEdge = await this.writeEdgeIfAbsent({
+          id: hasSpanEdgeId,
+          kind: 'HAS_SPAN',
+          from: source.id,
+          to: spanId,
+          created_at: now,
+          metadata: {
+            start_char: segment.start,
+            end_char: segment.end,
+            boundary_kind: segment.boundaryKind,
+          },
+        });
+        if (createdHasSpanEdge) {
+          spanEdgesCreated++;
+        }
+
+        spans.push({
+          id: spanId,
+          sourceId: source.id,
+          messageId: source.messageId,
+          conversationId: source.conversationId,
+          text: segment.text,
+          normalizedText,
+          startChar: segment.start,
+          endChar: segment.end,
+          boundaryKind: segment.boundaryKind,
+        });
+      }
+    }
+
+    return { spans, spansCreated, spanEdgesCreated };
+  }
+
+  private extractAtomicTokens(normalizedText: string): { chars: string[]; trigrams: string[] } {
+    const compact = normalizedText.replace(/\s+/g, '');
+    if (!compact) {
+      return { chars: [], trigrams: [] };
+    }
+
+    const chars = compact.split('');
+    const trigrams: string[] = [];
+    if (compact.length < 3) {
+      trigrams.push(compact);
+    } else {
+      for (let i = 0; i <= compact.length - 3; i++) {
+        trigrams.push(compact.slice(i, i + 3));
+      }
+    }
+
+    return {
+      chars: Array.from(new Set(chars)),
+      trigrams: Array.from(new Set(trigrams)),
+    };
+  }
+
+  private parseAtomicKey(key: string): { unitType: 'char' | 'trigram'; value: string } {
+    const separatorIndex = key.indexOf(':');
+    const unitType = key.slice(0, separatorIndex);
+    const value = key.slice(separatorIndex + 1);
+    return {
+      unitType: unitType === 'char' ? 'char' : 'trigram',
+      value,
+    };
+  }
+
+  private async ensureAtomicUnit(
+    key: string,
+    atomicIdByKey: Map<string, string>
+  ): Promise<{ id: string; created: boolean }> {
+    if (!this.context?.accountId) {
+      throw new Error('No import context available for atomic extraction');
+    }
+
+    const existingId = atomicIdByKey.get(key);
+    if (existingId) {
+      return { id: existingId, created: false };
+    }
+
+    const { unitType, value } = this.parseAtomicKey(key);
+    const atomicId = `atomic_${this.stableHash(`${this.context.accountId}:${key}`, 32)}`;
+    const created = await this.writeNodeIfAbsent({
+      id: atomicId,
+      kind: 'AtomicUnit',
+      unit_type: unitType,
+      value,
+      normalized_value: value,
+      unit_hash: this.stableHash(key, 32),
+      created_at: Date.now(),
+      updated_at: Date.now(),
+      metadata: {
+        importContractVersion: 'v2',
+      },
+    });
+
+    atomicIdByKey.set(key, atomicId);
+    return { id: atomicId, created };
+  }
+
+  private async materializeAtomicUnits(
+    spans: MaterializedSpan[]
+  ): Promise<{ atomicUnitsCreated: number; atomicIdByKey: Map<string, string> }> {
+    const atomicKeys = new Set<string>();
+
+    for (const span of spans) {
+      const tokens = this.extractAtomicTokens(span.normalizedText);
+      for (const char of tokens.chars) {
+        atomicKeys.add(`char:${char}`);
+      }
+      for (const trigram of tokens.trigrams) {
+        atomicKeys.add(`trigram:${trigram}`);
+      }
+    }
+
+    const atomicIdByKey = new Map<string, string>();
+    let atomicUnitsCreated = 0;
+    for (const key of atomicKeys) {
+      const result = await this.ensureAtomicUnit(key, atomicIdByKey);
+      if (result.created) {
+        atomicUnitsCreated++;
+      }
+    }
+
+    return { atomicUnitsCreated, atomicIdByKey };
+  }
+
+  private tokenizeForPackets(normalizedText: string): string[] {
+    const matches = normalizedText.match(/[\p{L}\p{N}_]+/gu);
+    if (!matches) {
+      return [];
+    }
+    return matches.filter((token) => token.length > 1);
+  }
+
+  private derivePacketCandidates(spans: MaterializedSpan[]): PacketCandidate[] {
+    const candidateMap = new Map<string, PacketCandidate>();
+
+    for (const span of spans) {
+      const tokens = this.tokenizeForPackets(span.normalizedText);
+      const maxNgram = Math.min(6, tokens.length);
+      for (let n = 2; n <= maxNgram; n++) {
+        for (let start = 0; start <= tokens.length - n; start++) {
+          const normalizedText = tokens.slice(start, start + n).join(' ');
+          if (normalizedText.length < 8) {
+            continue;
+          }
+
+          const candidate = candidateMap.get(normalizedText) ?? {
+            normalizedText,
+            displayText: normalizedText,
+            occurrences: [],
+            sourceCounts: new Map<string, number>(),
+          };
+
+          candidate.occurrences.push({
+            spanId: span.id,
+            sourceId: span.sourceId,
+            tokenStart: start,
+            tokenEnd: start + n - 1,
+          });
+          candidate.sourceCounts.set(
+            span.sourceId,
+            (candidate.sourceCounts.get(span.sourceId) ?? 0) + 1
+          );
+
+          candidateMap.set(normalizedText, candidate);
+        }
+      }
+    }
+
+    return Array.from(candidateMap.values())
+      .filter((candidate) => candidate.occurrences.length >= 2)
+      .sort(
+        (a, b) =>
+          b.occurrences.length - a.occurrences.length ||
+          b.normalizedText.length - a.normalizedText.length ||
+          a.normalizedText.localeCompare(b.normalizedText)
+      )
+      .slice(0, 600);
+  }
+
+  private computeEntropyFactor(text: string): number {
+    const compact = text.replace(/\s+/g, '');
+    if (compact.length <= 1) {
+      return 0;
+    }
+
+    const counts = new Map<string, number>();
+    for (const char of compact) {
+      counts.set(char, (counts.get(char) ?? 0) + 1);
+    }
+
+    let entropy = 0;
+    const total = compact.length;
+    for (const count of counts.values()) {
+      const probability = count / total;
+      entropy -= probability * Math.log2(probability);
+    }
+
+    const maxEntropy = Math.log2(Math.max(counts.size, 1));
+    if (maxEntropy <= 0) {
+      return 0;
+    }
+
+    return Number((entropy / maxEntropy).toFixed(6));
+  }
+
+  private scorePacketCandidates(candidates: PacketCandidate[], sources: MaterializedSource[]) {
+    const totalSources = Math.max(sources.length, 1);
+    const totalChars = Math.max(
+      1,
+      sources.reduce((sum, source) => sum + source.content.replace(/\s+/g, '').length, 0)
+    );
+
+    return candidates
+      .map((candidate) => {
+        const occurrences = candidate.occurrences.length;
+        const sourceHitCount = Math.max(candidate.sourceCounts.size, 1);
+        const compactLength = candidate.normalizedText.replace(/\s+/g, '').length;
+        const coverage = (compactLength * occurrences) / totalChars;
+        const idf = Math.log(1 + totalSources / (1 + sourceHitCount));
+        const entropyFactor = this.computeEntropyFactor(candidate.normalizedText);
+        const mass = coverage * Math.log(1 + occurrences) * idf * (1 + entropyFactor);
+
+        return {
+          ...candidate,
+          mass: Number(mass.toFixed(9)),
+          coverage: Number(coverage.toFixed(9)),
+          idf: Number(idf.toFixed(9)),
+          entropyFactor,
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.mass - a.mass ||
+          b.occurrences.length - a.occurrences.length ||
+          a.normalizedText.localeCompare(b.normalizedText)
+      )
+      .slice(0, 300);
+  }
+
+  private async materializePackets(
+    scoredPackets: Array<
+      PacketCandidate & { mass: number; coverage: number; idf: number; entropyFactor: number }
+    >,
+    atomicIdByKey: Map<string, string>
+  ): Promise<{
+    packetsCreated: number;
+    packetOccurrenceEdgesCreated: number;
+    packetMassLinksCreated: number;
+    packetAtomicEdgesCreated: number;
+  }> {
+    let packetsCreated = 0;
+    let packetOccurrenceEdgesCreated = 0;
+    let packetMassLinksCreated = 0;
+    let packetAtomicEdgesCreated = 0;
+    const now = Date.now();
+
+    for (const packet of scoredPackets) {
+      if (!this.context?.accountId) {
+        throw new Error('No import context available for packet materialization');
+      }
+
+      const packetId = `packet_${this.stableHash(
+        `${this.context.accountId}:${packet.normalizedText}`,
+        32
+      )}`;
+
+      const packetCreated = await this.writeNodeIfAbsent({
+        id: packetId,
+        kind: 'Packet',
+        text: packet.displayText,
+        normalized_text: packet.normalizedText,
+        occurrences: packet.occurrences.length,
+        mass: packet.mass,
+        coverage: packet.coverage,
+        idf: packet.idf,
+        entropy_factor: packet.entropyFactor,
+        packet_hash: this.stableHash(packet.normalizedText, 32),
+        created_at: now,
+        updated_at: now,
+        metadata: {
+          importContractVersion: 'v2',
+        },
+      });
+      if (packetCreated) {
+        packetsCreated++;
+      }
+
+      for (let index = 0; index < packet.occurrences.length; index++) {
+        const occurrence = packet.occurrences[index];
+        const occursEdgeId = `edge_occurs_${this.stableHash(
+          `${packetId}:${occurrence.spanId}:${occurrence.tokenStart}:${occurrence.tokenEnd}:${index}`,
+          32
+        )}`;
+        const createdOccursEdge = await this.writeEdgeIfAbsent({
+          id: occursEdgeId,
+          kind: 'OCCURS_IN_SPAN',
+          from: packetId,
+          to: occurrence.spanId,
+          created_at: now,
+          metadata: {
+            count: 1,
+            mass: packet.mass,
+            token_start: occurrence.tokenStart,
+            token_end: occurrence.tokenEnd,
+          },
+        });
+        if (createdOccursEdge) {
+          packetOccurrenceEdgesCreated++;
+        }
+      }
+
+      for (const [sourceId, occurrenceCount] of packet.sourceCounts.entries()) {
+        const packetMassEdgeId = `edge_packet_mass_${this.stableHash(`${sourceId}:${packetId}`, 32)}`;
+        const createdPacketMassEdge = await this.writeEdgeIfAbsent({
+          id: packetMassEdgeId,
+          kind: 'CONTAINS',
+          from: sourceId,
+          to: packetId,
+          created_at: now,
+          metadata: {
+            relation: 'packet_mass',
+            occurrences: occurrenceCount,
+            coverage: packet.coverage,
+            idf: packet.idf,
+            entropy_factor: packet.entropyFactor,
+            mass: packet.mass,
+            importContractVersion: 'v2',
+          },
+        });
+        if (createdPacketMassEdge) {
+          packetMassLinksCreated++;
+        }
+      }
+
+      const packetAtomicTokens = this.extractAtomicTokens(packet.normalizedText);
+      const atomicKeys = [
+        ...packetAtomicTokens.chars.map((char) => `char:${char}`),
+        ...packetAtomicTokens.trigrams.map((trigram) => `trigram:${trigram}`),
+      ];
+
+      for (let position = 0; position < atomicKeys.length; position++) {
+        const atomicKey = atomicKeys[position];
+        const atomic = await this.ensureAtomicUnit(atomicKey, atomicIdByKey);
+        const { unitType } = this.parseAtomicKey(atomicKey);
+        const composedEdgeId = `edge_composed_${this.stableHash(`${packetId}:${atomic.id}`, 32)}`;
+        const createdComposedEdge = await this.writeEdgeIfAbsent({
+          id: composedEdgeId,
+          kind: 'COMPOSED_OF_ATOMIC',
+          from: packetId,
+          to: atomic.id,
+          created_at: now,
+          metadata: {
+            unit_type: unitType,
+            position,
+          },
+        });
+        if (createdComposedEdge) {
+          packetAtomicEdgesCreated++;
+        }
+      }
+    }
+
+    return {
+      packetsCreated,
+      packetOccurrenceEdgesCreated,
+      packetMassLinksCreated,
+      packetAtomicEdgesCreated,
+    };
   }
 
   /**
@@ -863,7 +1613,10 @@ export class EnhancedImportServiceV2 {
   /**
    * Create bundles using SourcesStitcher
    */
-  private async createBundles(sources: string[], config: ImportConfiguration): Promise<number> {
+  private async createBundles(
+    _sources: MaterializedSource[],
+    config: ImportConfiguration
+  ): Promise<number> {
     if (!config.sources.bundling.enabled) {
       return 0;
     }

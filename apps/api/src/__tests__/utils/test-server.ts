@@ -3,7 +3,7 @@
  */
 
 import { ChildProcess, execFile } from 'child_process';
-import { existsSync, mkdirSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, rmSync, unlinkSync } from 'fs';
 import { createServer } from 'net';
 import path from 'path';
 import fetch from 'node-fetch';
@@ -21,6 +21,7 @@ let isInitialized = false;
 let isShuttingDown = false;
 let currentPort = 4001;
 let testDatabasePath: string | null = null;
+let testLocalDocsPath: string | null = null;
 
 function sanitizeEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const cleanEnv: NodeJS.ProcessEnv = {};
@@ -55,6 +56,17 @@ function getOrCreateTestDatabasePath(projectRoot: string): string {
   mkdirSync(testDbDir, { recursive: true });
   testDatabasePath = path.join(testDbDir, `api-${Date.now()}-${process.pid}.db`);
   return testDatabasePath;
+}
+
+function getOrCreateTestLocalDocsPath(projectRoot: string): string {
+  if (testLocalDocsPath) {
+    return testLocalDocsPath;
+  }
+
+  const testDocsDir = path.join(projectRoot, '.tmp', 'api-test-localdocs', String(process.pid));
+  mkdirSync(testDocsDir, { recursive: true });
+  testLocalDocsPath = testDocsDir;
+  return testLocalDocsPath;
 }
 
 function getFreePort(): Promise<number> {
@@ -125,6 +137,7 @@ export async function startTestServer(): Promise<void> {
     const serverPath = path.join(apiSrcRoot, 'index.ts');
     const projectRoot = path.resolve(apiSrcRoot, '../../');
     const dbPath = getOrCreateTestDatabasePath(projectRoot);
+    const localDocsPath = getOrCreateTestLocalDocsPath(projectRoot);
     const tsxModulePath = path.join(projectRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
     if (!existsSync(tsxModulePath)) {
       throw new Error(`Required CLI not found: ${tsxModulePath}`);
@@ -140,6 +153,8 @@ export async function startTestServer(): Promise<void> {
       WORKER_POLL_INTERVAL_MS: '1000',
       DB_PATH: dbPath,
       SQLITE_PATH: dbPath,
+      LOCAL_DOCS_PATH: localDocsPath,
+      STORAGE_PATH: path.join(localDocsPath, 'storage'),
     });
 
     const nodeModulesBin = path.join(projectRoot, 'node_modules', '.bin');
@@ -260,6 +275,15 @@ export async function stopTestServer(): Promise<void> {
       removeFileIfExists(`${testDatabasePath}-wal`);
       removeFileIfExists(`${testDatabasePath}-shm`);
       testDatabasePath = null;
+    }
+
+    if (testLocalDocsPath) {
+      try {
+        rmSync(testLocalDocsPath, { recursive: true, force: true });
+      } catch {
+        // Best-effort cleanup for test local docs
+      }
+      testLocalDocsPath = null;
     }
   }
 }

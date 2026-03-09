@@ -7,6 +7,26 @@ import {
   GraphEdge as APIGraphEdge,
 } from '@/lib/api-client';
 
+// Node kinds that represent top-level structure (always shown)
+const STRUCTURAL_KINDS = new Set([
+  'ChatThread',
+  'Source',
+  'SourceDoc',
+  'Group',
+  'Folder',
+  'ObjectiveClaim',
+  'Constellation',
+  'Principal',
+  'ConversationThread',
+  'VerifiedSource',
+  'VerifiedClaim',
+  'CodeBlock',
+  'Topic',
+]);
+
+// Threshold at which we auto-filter to structural nodes only
+const SMART_FILTER_THRESHOLD = 5000;
+
 // Helper functions to map API types to Keimenon types
 function mapNodeKindToType(kind: string): 'conversation' | 'message' | 'source' | 'code' {
   switch (kind) {
@@ -193,36 +213,19 @@ export const useKeimenonStore = create<KeimenonState>()(
 
         try {
           // Fetch nodes and edges from API
-          // Local-first desktop app: load all data (SQLite on same machine = fast)
-          // High limits ensure all user data is visible without pagination
           const [nodesResult, edgesResult] = await Promise.all([
             getNodes({ limit: 100000 }),
             getEdges({ limit: 200000 }),
           ]);
 
-          console.log('🎨 loadGraphData received:', {
-            nodesCount: nodesResult.nodes.length,
-            edgesCount: edgesResult.edges.length,
-            sampleNode: nodesResult.nodes[0]
-              ? {
-                  id: nodesResult.nodes[0].id,
-                  kind: nodesResult.nodes[0].kind,
-                  hasProperties: !!nodesResult.nodes[0].properties,
-                  propertiesKeys: nodesResult.nodes[0].properties
-                    ? Object.keys(nodesResult.nodes[0].properties)
-                    : [],
-                }
-              : null,
-          });
-
           // Transform API nodes to Keimenon nodes
-          const keimenonNodes: KeimenonNode[] = nodesResult.nodes.map((apiNode: APIGraphNode) => ({
+          const allNodes: KeimenonNode[] = nodesResult.nodes.map((apiNode: APIGraphNode) => ({
             id: apiNode.id,
             type: mapNodeKindToType(apiNode.kind),
-            kind: apiNode.kind, // Store original kind
+            kind: apiNode.kind,
             sourceRole: apiNode.properties?.source_role as SourceRole | undefined,
             position: {
-              x: Math.random() * 800, // Will be overridden by D3 layout
+              x: Math.random() * 800,
               y: Math.random() * 600,
             },
             data: {
@@ -233,28 +236,34 @@ export const useKeimenonStore = create<KeimenonState>()(
             },
           }));
 
-          // Transform API edges to Keimenon edges
-          const keimenonEdges: KeimenonEdge[] = edgesResult.edges.map((apiEdge: APIGraphEdge) => ({
-            id: apiEdge.id,
-            source: typeof apiEdge.from === 'string' ? apiEdge.from : apiEdge.from.id,
-            target: typeof apiEdge.to === 'string' ? apiEdge.to : apiEdge.to.id,
-            type: mapEdgeKindToType(apiEdge.kind),
-            kind: apiEdge.kind, // Preserve original kind for edge styling
-            data: apiEdge.properties,
-          }));
+          // Performance: auto-filter to structural nodes when data volume is large
+          // This prevents the D3 simulation from choking on 100K+ Lexeme/Phrase nodes
+          let keimenonNodes = allNodes;
+          if (allNodes.length > SMART_FILTER_THRESHOLD) {
+            keimenonNodes = allNodes.filter((n) => STRUCTURAL_KINDS.has(n.kind || n.type));
+            console.info(
+              `[Keimenon] Smart filter: ${allNodes.length} nodes → ${keimenonNodes.length} structural nodes`
+            );
+          }
 
-          console.log('🎨 Transformed to keimenon format:', {
-            keimenonNodesCount: keimenonNodes.length,
-            keimenonEdgesCount: keimenonEdges.length,
-            sampleKeimenonNode: keimenonNodes[0]
-              ? {
-                  id: keimenonNodes[0].id,
-                  type: keimenonNodes[0].type,
-                  label: keimenonNodes[0].data.label,
-                  hasMetadata: !!keimenonNodes[0].data.metadata,
-                }
-              : null,
-          });
+          // Build a set of visible node IDs for edge filtering
+          const visibleNodeIds = new Set(keimenonNodes.map((n) => n.id));
+
+          // Transform API edges, filtering out edges that reference hidden nodes
+          const keimenonEdges: KeimenonEdge[] = edgesResult.edges
+            .filter((apiEdge: APIGraphEdge) => {
+              const fromId = typeof apiEdge.from === 'string' ? apiEdge.from : apiEdge.from.id;
+              const toId = typeof apiEdge.to === 'string' ? apiEdge.to : apiEdge.to.id;
+              return visibleNodeIds.has(fromId) && visibleNodeIds.has(toId);
+            })
+            .map((apiEdge: APIGraphEdge) => ({
+              id: apiEdge.id,
+              source: typeof apiEdge.from === 'string' ? apiEdge.from : apiEdge.from.id,
+              target: typeof apiEdge.to === 'string' ? apiEdge.to : apiEdge.to.id,
+              type: mapEdgeKindToType(apiEdge.kind),
+              kind: apiEdge.kind,
+              data: apiEdge.properties,
+            }));
 
           set({
             nodes: keimenonNodes,
@@ -262,8 +271,6 @@ export const useKeimenonStore = create<KeimenonState>()(
             isLoading: false,
             error: null,
           });
-
-          console.log('✅ Keimenon store updated successfully');
         } catch (error: any) {
           console.error('Failed to load graph data:', error);
           // TODO: Add retry logic and exponential backoff for graph data loading failures

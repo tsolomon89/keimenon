@@ -22,6 +22,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { getToken } from '@/contexts/AuthContext';
 import { errorCapture } from '@/services/error-capture.service';
 import { API_BASE_URL } from '@/lib/env.config';
+import type { ImportJobStage } from '@keimenon/types';
 
 export interface JobUpdate {
   jobId: string;
@@ -32,6 +33,14 @@ export interface JobUpdate {
     total: number;
     percent: number;
     message?: string;
+    stage?: ImportJobStage | string;
+    metadata?: Record<string, unknown>;
+  };
+  error?: {
+    code: string;
+    message: string;
+    stack?: string;
+    details?: Record<string, unknown>;
   };
   stats?: {
     nodesCreated?: number;
@@ -40,6 +49,13 @@ export interface JobUpdate {
     edgesDeleted?: number;
     sourcesCreated?: number;
     conversationsProcessed?: number;
+    messagesProcessed?: number;
+    manualGroups?: number;
+    autoGroups?: number;
+    spansCreated?: number;
+    packetsCreated?: number;
+    atomicUnitsCreated?: number;
+    packetMassLinksCreated?: number;
   };
   config?: {
     fileName?: string; // Extracted from job config for display
@@ -204,21 +220,27 @@ export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult 
           try {
             const data = JSON.parse(event.data);
             const updates: JobUpdate[] = data.jobs || [];
-            
+
             // Filter out locally deleted jobs (Zombies)
-            const validUpdates = updates.filter(u => {
+            const validUpdates = updates.filter((u) => {
               if (deletedJobIdsRef.current.has(u.jobId)) {
-                console.log(`[useJobStream] 🧟‍♂️ Blocking zombie job update for ${u.jobId} (locally deleted)`);
+                console.log(
+                  `[useJobStream] 🧟‍♂️ Blocking zombie job update for ${u.jobId} (locally deleted)`
+                );
                 return false;
               }
               return true;
             });
 
             if (validUpdates.length !== updates.length) {
-               console.log(`[useJobStream] Filtered ${updates.length - validUpdates.length} zombie updates`);
+              console.log(
+                `[useJobStream] Filtered ${updates.length - validUpdates.length} zombie updates`
+              );
             }
 
-            console.log(`[useJobStream] jobs.update event received with ${validUpdates.length} valid updates`);
+            console.log(
+              `[useJobStream] jobs.update event received with ${validUpdates.length} valid updates`
+            );
             validUpdates.forEach((u) => {
               if (u.status === 'deleted') {
                 console.log(`[useJobStream] ⚠️ Found deletion update in batch: ${u.jobId}`);
@@ -434,7 +456,7 @@ export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult 
     console.log(`[useJobStream] Removing ${jobIds.length} jobs from local state:`, jobIds);
 
     // Add to blacklist to prevent resurrection
-    jobIds.forEach(id => deletedJobIdsRef.current.add(id));
+    jobIds.forEach((id) => deletedJobIdsRef.current.add(id));
 
     setJobs((prev) => {
       const next = new Map(prev);

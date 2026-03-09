@@ -363,13 +363,8 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (settings !== undefined) board.settings = settings;
     board.updated_at = Date.now();
 
-    // Save updated node
-    const query = `
-      UPDATE nodes
-      SET properties = ?, updated_at = ?
-      WHERE id = ?
-    `;
-    await db.execute(query, [JSON.stringify(board), board.updated_at, id]);
+    // Save updated node using write-safe client method
+    await db.updateNode(id, board);
 
     return res.json({ success: true, board });
   } catch (error: any) {
@@ -438,17 +433,22 @@ router.delete('/:id', async (req: Request, res: Response) => {
         WHERE json_extract(properties, '$.metadata.board_id') = ?
       `;
       const countResult = await db.execute(countQuery, [id]);
-      const nodesDeleted = countResult.records[0].count;
+      const nodesDeleted = Number(countResult.records?.[0]?.count ?? 0);
 
-      // Delete nodes with this board_id
-      const deleteNodesQuery = `
-        DELETE FROM nodes
+      // Delete nodes with this board_id (write-safe path)
+      const nodeIdsQuery = `
+        SELECT id FROM nodes
         WHERE json_extract(properties, '$.metadata.board_id') = ?
       `;
-      await db.execute(deleteNodesQuery, [id]);
+      const nodeIdsResult = await db.execute(nodeIdsQuery, [id]);
+      for (const row of nodeIdsResult.records) {
+        if (row?.id) {
+          await db.deleteNode(row.id);
+        }
+      }
 
       // Delete the board itself
-      await db.execute('DELETE FROM nodes WHERE id = ?', [id]);
+      await db.deleteNode(id);
 
       return res.json({
         success: true,
@@ -456,7 +456,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
       });
     } else {
       // Just delete board, keep nodes
-      await db.execute('DELETE FROM nodes WHERE id = ?', [id]);
+      await db.deleteNode(id);
       return res.json({ success: true, deleted: 1 });
     }
   } catch (error: any) {

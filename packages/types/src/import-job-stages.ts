@@ -26,6 +26,36 @@ export enum ImportJobStage {
   NORMALIZE = 'NORMALIZE',
 
   /**
+   * Canonical conversation reconstruction before materialization
+   */
+  CANONICALIZE = 'CANONICALIZE',
+
+  /**
+   * Extracting addressable spans from source/message content
+   */
+  SPAN_EXTRACT = 'SPAN_EXTRACT',
+
+  /**
+   * Building mandatory atomic substrate (char + trigram)
+   */
+  ATOMIC_EXTRACT = 'ATOMIC_EXTRACT',
+
+  /**
+   * Deriving repeated packet fragments from spans
+   */
+  PACKET_DERIVE = 'PACKET_DERIVE',
+
+  /**
+   * Computing deterministic packet mass scores
+   */
+  MASS_SCORE = 'MASS_SCORE',
+
+  /**
+   * Wiring cross-layer graph links (span ↔ packet ↔ atomic)
+   */
+  LAYER_LINK = 'LAYER_LINK',
+
+  /**
    * Detecting duplicate conversations and messages
    */
   DEDUPE = 'DEDUPE',
@@ -72,6 +102,12 @@ export enum ImportJobStage {
 export const IMPORT_STAGE_LABELS: Record<ImportJobStage, string> = {
   [ImportJobStage.PARSE]: 'Parsing files',
   [ImportJobStage.NORMALIZE]: 'Normalizing data',
+  [ImportJobStage.CANONICALIZE]: 'Reconstructing conversations',
+  [ImportJobStage.SPAN_EXTRACT]: 'Extracting spans',
+  [ImportJobStage.ATOMIC_EXTRACT]: 'Building atomic layer',
+  [ImportJobStage.PACKET_DERIVE]: 'Deriving packets',
+  [ImportJobStage.MASS_SCORE]: 'Scoring packet mass',
+  [ImportJobStage.LAYER_LINK]: 'Linking graph layers',
   [ImportJobStage.DEDUPE]: 'Detecting duplicates',
   [ImportJobStage.AWAIT_DECISIONS]: 'Awaiting decisions',
   [ImportJobStage.APPLY_DECISIONS]: 'Applying decisions',
@@ -89,7 +125,13 @@ export const IMPORT_STAGE_LABELS: Record<ImportJobStage, string> = {
 export function getStageProgress(stage: ImportJobStage): number {
   const stageOrder = [
     ImportJobStage.PARSE,
+    ImportJobStage.CANONICALIZE,
     ImportJobStage.NORMALIZE,
+    ImportJobStage.SPAN_EXTRACT,
+    ImportJobStage.ATOMIC_EXTRACT,
+    ImportJobStage.PACKET_DERIVE,
+    ImportJobStage.MASS_SCORE,
+    ImportJobStage.LAYER_LINK,
     ImportJobStage.DEDUPE,
     ImportJobStage.AWAIT_DECISIONS,
     ImportJobStage.APPLY_DECISIONS,

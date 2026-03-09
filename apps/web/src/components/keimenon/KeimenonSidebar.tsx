@@ -96,7 +96,9 @@ export function KeimenonSidebar({
     const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
     const [selectedAccountIds, setSelectedAccountIds] = useState<Set<string>>(new Set());
     const [lastSelectedAccountId, setLastSelectedAccountId] = useState<string | null>(null);
-    const keimenonStore = useKeimenonStore();
+    const setFilteredNodeIds = useKeimenonStore((s) => s.setFilteredNodeIds);
+    const sidebarClearSelection = useKeimenonStore((s) => s.clearSelection);
+    const sidebarSelectNode = useKeimenonStore((s) => s.selectNode);
 
     // Subscribe to keimenon selection for bidirectional sync (Keimenon → Navigation)
     const keimenonSelectedNodeIds = useKeimenonStore((state) => state.selectedNodeIds);
@@ -260,11 +262,11 @@ export function KeimenonSidebar({
             });
 
             // Filter keimenon nodes to show only group members
-            keimenonStore.setFilteredNodeIds(memberIds);
+            setFilteredNodeIds(memberIds);
 
             // Bidirectional sync: Also select the member nodes on keimenon
-            keimenonStore.clearSelection();
-            memberIds.forEach((id) => keimenonStore.selectNode(id, true));
+            sidebarClearSelection();
+            memberIds.forEach((id) => sidebarSelectNode(id, true));
 
             // TODO: Implement zoom to fit filtered nodes
             // Related: apps/web/src/components/keimenon/KeimenonViewport.tsx (add zoomToFit method)

@@ -3,6 +3,11 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { AnyNode, AnyEdge } from '@keimenon/types';
 import { contentHashForNodeType, canonicalizeForNodeType } from '@keimenon/parsers';
+import { MigrationRunner } from './MigrationRunner';
+import {
+  ImportSchemaCompatibilityResult,
+  assertImportSchemaCompatibility,
+} from './import-schema-compatibility';
 
 /**
  * Safe JSON parse with error handling (bug fix #17)
@@ -108,6 +113,63 @@ CREATE TABLE IF NOT EXISTS account_links (
 CREATE INDEX IF NOT EXISTS idx_account_links_admin ON account_links(admin_account_id);
 CREATE INDEX IF NOT EXISTS idx_account_links_client ON account_links(client_account_id);
 
+-- Admin principal safeguards
+CREATE TRIGGER IF NOT EXISTS trg_protect_admin_account_delete
+BEFORE DELETE ON accounts
+FOR EACH ROW
+WHEN old.account_type = 'admin'
+BEGIN
+  SELECT RAISE(ABORT, 'Protected admin account cannot be deleted');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_admin_account_demote
+BEFORE UPDATE OF account_type ON accounts
+FOR EACH ROW
+WHEN old.account_type = 'admin' AND new.account_type <> 'admin'
+BEGIN
+  SELECT RAISE(ABORT, 'Protected admin account cannot be demoted');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_admin_user_delete
+BEFORE DELETE ON users
+FOR EACH ROW
+WHEN EXISTS (
+  SELECT 1
+  FROM user_accounts ua
+  JOIN accounts a ON a.id = ua.account_id
+  WHERE ua.user_id = old.id
+    AND a.account_type = 'admin'
+)
+BEGIN
+  SELECT RAISE(ABORT, 'Protected admin user cannot be deleted');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_admin_membership_delete
+BEFORE DELETE ON user_accounts
+FOR EACH ROW
+WHEN EXISTS (
+  SELECT 1
+  FROM accounts a
+  WHERE a.id = old.account_id
+    AND a.account_type = 'admin'
+)
+BEGIN
+  SELECT RAISE(ABORT, 'Protected admin membership cannot be deleted');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_protect_admin_membership_reassign
+BEFORE UPDATE OF user_id, account_id ON user_accounts
+FOR EACH ROW
+WHEN EXISTS (
+  SELECT 1
+  FROM accounts a
+  WHERE a.id = old.account_id
+    AND a.account_type = 'admin'
+)
+BEGIN
+  SELECT RAISE(ABORT, 'Protected admin membership cannot be reassigned');
+END;
+
 -- Sessions table (CRITICAL: includes data_tag for test isolation)
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
@@ -210,7 +272,10 @@ CREATE TABLE IF NOT EXISTS nodes (
   id TEXT PRIMARY KEY,
   kind TEXT NOT NULL CHECK(kind IN (
     'UploadItem', 'Chat', 'MessageRef', 'Source', 'Group', 'CodeBlock', 'Folder',
-    'ChatThread', 'Message', 'ObjectiveClaim', 'UnifiedDoc', 'Constellation', 'UserNode', 'AccountNode', 'Board'
+    'ChatThread', 'Message', 'ObjectiveClaim', 'UnifiedDoc', 'Constellation', 'UserNode', 'AccountNode', 'Board',
+    'SourceDoc', 'Lexeme', 'Phrase', 'Topic', 'VerifiedSource', 'VerifiedClaim', 'AgentNode',
+    'CanonicalDoc', 'DuplicateCluster', 'Evidence', 'Principal', 'ConversationThread',
+    'SourceSpan', 'Packet', 'AtomicUnit'
   )),
   properties TEXT NOT NULL,
   account_id TEXT NOT NULL,
@@ -233,7 +298,12 @@ CREATE TABLE IF NOT EXISTS edges (
     'SEQUESTERS', 'HAS_MESSAGE', 'COMPILED_FROM', 'STITCHED_FROM',
     'IN_SCOPE_FOR', 'EQUIVALENT_TO', 'DUP_OF', 'SUPPORTS', 'REFUTES',
     'VERIFIED_BY', 'ASSOCIATED_WITH_USER', 'PROMOTES_TO_GROUP',
-    'FOLDS_INTO_FOLDER', 'IN_GROUP', 'AFFINITY', 'DISCOURSE', 'OWNER_OF'
+    'FOLDS_INTO_FOLDER', 'IN_GROUP', 'AFFINITY', 'DISCOURSE', 'OWNER_OF',
+    'EXACT_DUP', 'NEAR_DUP', 'SPAN_CONTAINS', 'CLUSTER_MEMBER', 'MENTIONS', 'ABOUT',
+    'CO_OCCURS_WITH', 'BELONGS_TO_TOPIC', 'SOURCED_FROM', 'DERIVED_FROM', 'CANDIDATE_DUP',
+    'CREATED_BY_AGENT', 'EVIDENCE_FOR', 'CREATED_BY', 'ATTACHED_TO', 'PINS_CONTEXT',
+    'INITIATED_BY', 'PARTICIPATED_IN', 'PRODUCED_BY',
+    'HAS_SPAN', 'OCCURS_IN_SPAN', 'COMPOSED_OF_ATOMIC'
   )),
   from_id TEXT NOT NULL,
   to_id TEXT NOT NULL,
@@ -246,6 +316,23 @@ CREATE TABLE IF NOT EXISTS edges (
   FOREIGN KEY (to_id) REFERENCES nodes(id) ON DELETE CASCADE,
   FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS policy_profiles (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  can_upload INTEGER NOT NULL DEFAULT 1,
+  can_run_tools INTEGER NOT NULL DEFAULT 0,
+  can_import_web INTEGER NOT NULL DEFAULT 0,
+  can_own_account INTEGER NOT NULL DEFAULT 0,
+  can_approve_runs INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  UNIQUE(account_id, name)
 );
 
 -- =============================================================================
@@ -398,6 +485,21 @@ CREATE INDEX IF NOT EXISTS idx_edges_from_to ON edges(from_id, to_id);
 CREATE INDEX IF NOT EXISTS idx_edges_created ON edges(created_at);
 CREATE INDEX IF NOT EXISTS idx_edges_data_tag ON edges(data_tag);
 CREATE INDEX IF NOT EXISTS idx_edges_account_tag ON edges(account_id, data_tag);
+CREATE INDEX IF NOT EXISTS idx_policy_profiles_account ON policy_profiles(account_id);
+CREATE INDEX IF NOT EXISTS idx_nodes_spine ON nodes(kind) WHERE kind IN ('Lexeme', 'Phrase', 'Topic');
+CREATE INDEX IF NOT EXISTS idx_nodes_verified ON nodes(kind) WHERE kind IN ('VerifiedSource', 'VerifiedClaim');
+CREATE INDEX IF NOT EXISTS idx_nodes_agent ON nodes(kind) WHERE kind IN ('AgentNode', 'CanonicalDoc', 'DuplicateCluster', 'Evidence');
+CREATE INDEX IF NOT EXISTS idx_nodes_principal ON nodes(kind) WHERE kind = 'Principal';
+CREATE INDEX IF NOT EXISTS idx_nodes_conversation ON nodes(kind) WHERE kind = 'ConversationThread';
+CREATE INDEX IF NOT EXISTS idx_nodes_actors ON nodes(kind) WHERE kind IN ('Principal', 'UserNode', 'AgentNode');
+CREATE INDEX IF NOT EXISTS idx_nodes_pro_import ON nodes(kind) WHERE kind IN ('SourceSpan', 'Packet', 'AtomicUnit');
+CREATE INDEX IF NOT EXISTS idx_edges_spine ON edges(kind) WHERE kind IN ('MENTIONS', 'ABOUT', 'CO_OCCURS_WITH', 'BELONGS_TO_TOPIC');
+CREATE INDEX IF NOT EXISTS idx_edges_verified ON edges(kind) WHERE kind IN ('SOURCED_FROM', 'VERIFIED_BY');
+CREATE INDEX IF NOT EXISTS idx_edges_agent ON edges(kind) WHERE kind IN ('DERIVED_FROM', 'CANDIDATE_DUP', 'CREATED_BY_AGENT', 'EVIDENCE_FOR');
+CREATE INDEX IF NOT EXISTS idx_edges_workspace ON edges(kind) WHERE kind IN ('CREATED_BY', 'ATTACHED_TO', 'PINS_CONTEXT');
+CREATE INDEX IF NOT EXISTS idx_edges_conversation ON edges(kind) WHERE kind IN ('INITIATED_BY', 'PARTICIPATED_IN');
+CREATE INDEX IF NOT EXISTS idx_edges_run_attribution ON edges(kind) WHERE kind = 'PRODUCED_BY';
+CREATE INDEX IF NOT EXISTS idx_edges_pro_import ON edges(kind) WHERE kind IN ('HAS_SPAN', 'OCCURS_IN_SPAN', 'COMPOSED_OF_ATOMIC');
 
 -- Job Indexes
 CREATE INDEX IF NOT EXISTS idx_jobs_account ON jobs(account_id);
@@ -501,6 +603,7 @@ export class SQLiteClient {
   private db: Database.Database | null = null;
   private config: SQLiteConfig;
   private allowDirectWrites: boolean = false;
+  private schemaInitialized: boolean = false;
 
   constructor(config: SQLiteConfig) {
     this.config = config;
@@ -596,28 +699,20 @@ export class SQLiteClient {
       throw new Error('Database not connected');
     }
 
+    if (this.schemaInitialized) {
+      return;
+    }
+
     try {
-      // Use embedded schema - no file I/O required!
-      try {
-        this.db.exec(SQLITE_SCHEMA);
-      } catch (error: any) {
-        // Fix for missing columns in existing databases:
-        // If SQLITE_SCHEMA fails due to "no such column" (likely in an index creation),
-        // we try running migrations first to add the columns, then retry the schema.
-        if (error.message && error.message.includes('no such column')) {
-          console.warn(
-            '⚠️ Schema init failed due to missing column. Running migrations and retrying...'
-          );
-          await this.runMigrations();
-          this.db.exec(SQLITE_SCHEMA);
-        } else {
-          throw error;
-        }
-      }
+      const userTableCountBeforeInit = this.getUserTableCount();
+      const isFreshDatabase = userTableCountBeforeInit === 0;
 
-      // Run migrations for existing databases (idempotent)
-      await this.runMigrations();
-
+      this.repairLegacyCoreTablesForSchemaBootstrap();
+      this.db.exec(SQLITE_SCHEMA);
+      this.repairLegacyJobTables();
+      await this.runMigrations(isFreshDatabase);
+      this.assertImportSchemaCompatibility();
+      this.schemaInitialized = true;
       console.log('✅ SQLite schema initialized');
     } catch (error) {
       console.error('❌ Failed to initialize schema:', error);
@@ -626,62 +721,186 @@ export class SQLiteClient {
   }
 
   /**
-   * Run database migrations for existing databases
-   * Adds missing columns that were added after initial schema
+   * Run SQL migrations.
+   * For fresh databases bootstrapped from the embedded schema, mark all
+   * migrations as applied instead of replaying them.
    */
-  private async runMigrations(): Promise<void> {
+  private async runMigrations(isFreshDatabase: boolean): Promise<void> {
     if (!this.db) {
       throw new Error('Database not connected');
     }
 
-    // Migration 1: Add deduplication columns to nodes table
-    // Check if content_hash column exists
-    const tableInfo = this.db.prepare('PRAGMA table_info(nodes)').all() as any[];
-    const hasContentHash = tableInfo.some((col: any) => col.name === 'content_hash');
-
-    if (!hasContentHash) {
-      console.log('🔄 Running migration: Adding deduplication columns to nodes table');
-
-      try {
-        this.db.exec(`
-          ALTER TABLE nodes ADD COLUMN content_hash TEXT;
-          ALTER TABLE nodes ADD COLUMN canonical_content TEXT;
-          ALTER TABLE nodes ADD COLUMN is_duplicate INTEGER DEFAULT 0;
-          ALTER TABLE nodes ADD COLUMN original_node_id TEXT;
-        `);
-
-        // Create indexes for the new columns
-        this.db.exec(`
-          CREATE INDEX IF NOT EXISTS idx_nodes_content_hash ON nodes(content_hash);
-          CREATE INDEX IF NOT EXISTS idx_nodes_account_hash ON nodes(account_id, content_hash);
-        `);
-
-        console.log('✅ Migration complete: Deduplication columns added');
-      } catch (error) {
-        console.error('❌ Migration failed:', error);
-        // Don't throw - allow database to continue working without deduplication
-      }
+    const migrationRunner = new MigrationRunner(this.db);
+    if (isFreshDatabase) {
+      await migrationRunner.markAllAvailableMigrationsApplied();
+      console.log('[SQLiteClient] Fresh database detected; marked SQL migrations as applied');
+      return;
     }
 
-    // Migration 2: Add data_tag to nodes table
-    const tableInfo2 = this.db.prepare('PRAGMA table_info(nodes)').all() as any[];
-    const hasDataTagNodes = tableInfo2.some((col: any) => col.name === 'data_tag');
+    const hasAppliedMigrations = migrationRunner.hasAppliedMigrations();
+    if (!hasAppliedMigrations && this.isLegacyDatabaseWithoutMigrationHistory()) {
+      console.warn(
+        '[SQLiteClient] Legacy database without migration history detected; baselining migrations through 025 and applying 026+ only'
+      );
+      await migrationRunner.markMigrationsAppliedThrough('025');
+    } else if (this.shouldBaselineLegacyMigrations(migrationRunner)) {
+      console.warn(
+        '[SQLiteClient] Legacy database with partial migration history detected; baselining missing migrations through 025'
+      );
+      await migrationRunner.markMigrationsAppliedThrough('025');
+    }
 
-    if (!hasDataTagNodes) {
-      console.log('🔄 Running migration: Adding data_tag to nodes table');
-      try {
-        this.db.exec(
-          "ALTER TABLE nodes ADD COLUMN data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual'));"
-        );
-        this.db.exec('CREATE INDEX IF NOT EXISTS idx_nodes_data_tag ON nodes(data_tag);');
-        this.db.exec(
-          'CREATE INDEX IF NOT EXISTS idx_nodes_account_tag ON nodes(account_id, data_tag);'
-        );
-        console.log('✅ Migration complete: data_tag added to nodes');
-      } catch (error) {
-        console.error('❌ Migration failed:', error);
+    await migrationRunner.runPendingMigrations();
+  }
+
+  assertImportSchemaCompatibility(): ImportSchemaCompatibilityResult {
+    if (!this.db) {
+      throw new Error('Database not connected');
+    }
+
+    return assertImportSchemaCompatibility(this.db);
+  }
+
+  private getUserTableCount(): number {
+    if (!this.db) {
+      return 0;
+    }
+
+    const row = this.db
+      .prepare(
+        `SELECT COUNT(*) AS count
+         FROM sqlite_master
+         WHERE type = 'table'
+           AND name NOT LIKE 'sqlite_%'`
+      )
+      .get() as { count?: number } | undefined;
+
+    return row?.count ?? 0;
+  }
+
+  private tableExists(tableName: string): boolean {
+    if (!this.db) {
+      return false;
+    }
+
+    const row = this.db
+      .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`)
+      .get(tableName) as { name?: string } | undefined;
+
+    return !!row?.name;
+  }
+
+  private tableHasColumn(tableName: string, columnName: string): boolean {
+    if (!this.db || !this.tableExists(tableName)) {
+      return false;
+    }
+
+    const columns = this.db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{
+      name: string;
+    }>;
+
+    return columns.some((column) => column.name === columnName);
+  }
+
+  private ensureColumn(tableName: string, columnName: string, columnSql: string): void {
+    if (!this.db) {
+      throw new Error('Database not connected');
+    }
+
+    if (!this.tableExists(tableName) || this.tableHasColumn(tableName, columnName)) {
+      return;
+    }
+
+    this.db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnSql}`);
+  }
+
+  /**
+   * Bring known legacy tables up to the minimum shape required for executing
+   * the embedded schema bootstrap safely.
+   */
+  private repairLegacyCoreTablesForSchemaBootstrap(): void {
+    if (!this.db) {
+      throw new Error('Database not connected');
+    }
+
+    if (this.tableExists('nodes')) {
+      this.ensureColumn('nodes', 'content_hash', 'content_hash TEXT');
+      this.ensureColumn('nodes', 'canonical_content', 'canonical_content TEXT');
+      this.ensureColumn('nodes', 'is_duplicate', 'is_duplicate INTEGER DEFAULT 0');
+      this.ensureColumn('nodes', 'original_node_id', 'original_node_id TEXT');
+    }
+  }
+
+  /**
+   * Repair known legacy job table drift before replaying SQL migrations.
+   *
+   * Some older desktop DBs have `job_items` without `account_id`. Migration 008
+   * creates indexes/views that assume this column exists.
+   */
+  private repairLegacyJobTables(): void {
+    if (!this.db) {
+      throw new Error('Database not connected');
+    }
+
+    if (this.tableExists('job_items') && !this.tableHasColumn('job_items', 'account_id')) {
+      console.warn(
+        '[SQLiteClient] Repairing legacy job_items schema: adding missing account_id column'
+      );
+
+      this.db.exec(`ALTER TABLE job_items ADD COLUMN account_id TEXT`);
+
+      if (this.tableExists('jobs') && this.tableHasColumn('jobs', 'account_id')) {
+        this.db.exec(`
+          UPDATE job_items
+          SET account_id = (
+            SELECT jobs.account_id
+            FROM jobs
+            WHERE jobs.id = job_items.job_id
+          )
+          WHERE account_id IS NULL OR account_id = ''
+        `);
       }
     }
+  }
+
+  private isLegacyDatabaseWithoutMigrationHistory(): boolean {
+    if (!this.db) {
+      return false;
+    }
+
+    // Heuristic: DB is non-empty and already has modern account-scoped core tables,
+    // but no migration records. Replaying all historical SQL migrations is unsafe.
+    return (
+      this.tableExists('jobs') &&
+      this.tableHasColumn('jobs', 'account_id') &&
+      this.tableExists('nodes') &&
+      this.tableHasColumn('nodes', 'account_id')
+    );
+  }
+
+  private shouldBaselineLegacyMigrations(migrationRunner: MigrationRunner): boolean {
+    const applied = migrationRunner.getMigrationStatus().applied;
+    if (applied.length === 0) {
+      return false;
+    }
+
+    const maxAppliedVersion = applied.reduce((max, migration) => {
+      const value = Number.parseInt(migration.version, 10);
+      return Number.isFinite(value) ? Math.max(max, value) : max;
+    }, 0);
+
+    if (maxAppliedVersion >= 26) {
+      return false;
+    }
+
+    return (
+      this.tableExists('jobs') &&
+      this.tableHasColumn('jobs', 'account_id') &&
+      this.tableExists('nodes') &&
+      this.tableHasColumn('nodes', 'account_id') &&
+      this.tableExists('users') &&
+      !this.tableHasColumn('users', 'deprecated_account_id')
+    );
   }
 
   /**
@@ -703,6 +922,7 @@ export class SQLiteClient {
 
       this.db.close();
       this.db = null;
+      this.schemaInitialized = false;
       console.log('👋 Disconnected from SQLite');
     }
   }

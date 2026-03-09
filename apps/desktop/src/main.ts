@@ -276,10 +276,20 @@ ipcMain.handle('auth:logout-account', async (_, accountId: string) => {
       mainWindow?.webContents.send('account-changed', remainingAccounts[0]);
     } else {
       // No accounts left - user needs to login again
+      await secureStorage.clearActiveAccountId();
       mainWindow?.webContents.send('account-changed', null);
     }
   }
 
+  return { success: true };
+});
+
+/**
+ * Clear all locally stored auth state (tokens + account list + active account)
+ */
+ipcMain.handle('auth:clear-all', async () => {
+  await secureStorage.clearAllAuthData();
+  mainWindow?.webContents.send('account-changed', null);
   return { success: true };
 });
 
@@ -365,12 +375,20 @@ ipcMain.handle('app:open-data-folder', async () => {
 
 // Ingestion IPC
 ipcMain.handle('ingest:start', async (_, filePath) => {
-  if (!ingestionService && mainWindow) {
-    ingestionService = new FileIngestionService(mainWindow);
+  if (!mainWindow) {
+    throw new Error('Main window not initialized');
   }
+
+  if (!ingestionService) {
+    ingestionService = new FileIngestionService(mainWindow, currentApiPort);
+  } else {
+    ingestionService.setApiPort(currentApiPort);
+  }
+
   if (ingestionService) {
     return ingestionService.ingestFile(filePath);
   }
+
   throw new Error('Ingestion service not initialized');
 });
 

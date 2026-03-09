@@ -1,35 +1,28 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { app, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
 import log from 'electron-log';
-import { DatabaseFactory, DatabaseClient } from '@keimenon/db';
-import { v4 as uuidv4 } from 'uuid';
+import { normalizeImportOptions, IMPORT_CONTRACT_VERSION } from '@keimenon/types';
+import { secureStorage } from './secure-storage';
+
+interface ImportJobResponse {
+  success: boolean;
+  jobId?: string;
+  message?: string;
+  error?: string;
+}
 
 export class FileIngestionService {
-  private db: DatabaseClient | null = null;
+  constructor(
+    private mainWindow: BrowserWindow,
+    private apiPort: number
+  ) {}
 
-  constructor(private mainWindow: BrowserWindow) {}
-
-  private async getDb(): Promise<DatabaseClient> {
-    if (!this.db) {
-      // Use correct user data path for production
-      const userDataPath = app.getPath('userData');
-      const dbPath = path.join(userDataPath, 'keimenon.db');
-
-      log.info(`[Ingest] Initializing DB at: ${dbPath}`);
-
-      this.db = await DatabaseFactory.getClient({
-        mode: 'local',
-        local: {
-          databasePath: dbPath,
-          verbose: !app.isPackaged, // Only verbose in dev
-        },
-      });
-    }
-    return this.db;
+  setApiPort(port: number): void {
+    this.apiPort = port;
   }
 
-  async ingestFile(filePath: string): Promise<void> {
+  async ingestFile(filePath: string): Promise<{ success: boolean; jobId: string }> {
     try {
       log.info(`[Ingest] Starting ingestion job for: ${filePath}`);
 
@@ -39,71 +32,21 @@ export class FileIngestionService {
 
       const stats = fs.statSync(filePath);
       const fileName = path.basename(filePath);
-      const fileSize = stats.size;
+      log.info(`[Ingest] Preparing file ${fileName} (${stats.size} bytes)`);
 
-      // Get DB Connection
-      const db = await this.getDb();
+      this.sendProgress('uploading', 10, 'Preparing desktop import submission...');
 
-      // 1. Get Account ID (Desktop Single User Mode)
-      // Try to find the first account, or default to 'admin'/system
-      let accountId = 'admin';
-      try {
-        const result = await (db as any).execute('SELECT id FROM accounts LIMIT 1');
-        if (result && result.records && result.records.length > 0) {
-          accountId = result.records[0].id;
-        }
-      } catch (err) {
-        log.warn('[Ingest] Could not fetch accounts, defaulting to "admin"', err);
+      const accessToken = await this.getAccessToken();
+      const response = await this.createImportJob(filePath, accessToken);
+
+      if (!response.success || !response.jobId) {
+        throw new Error(response.error || 'Import job creation failed');
       }
 
-      // 2. Create Job Record
-      const jobId = uuidv4();
-      const now = Date.now();
+      log.info(`[Ingest] Job created through shared API flow: ${response.jobId}`);
+      this.sendProgress('queued', 0, `Job queued for processing (${response.jobId})`);
 
-      const jobConfig = {
-        files: [
-          {
-            filePath,
-            fileName,
-            fileSize,
-            mimeType: 'application/json', // Assume JSON for now
-          },
-        ],
-        importOptions: {
-          processingMode: 'automatic',
-          duplicateDetection: { enabled: true },
-        },
-      };
-
-      // Insert directly into 'jobs' table
-      // This shares the DB with the embedded API server, so the WorkerPool will pick it up.
-      const insertSql = `
-                INSERT INTO jobs (
-                    id, type, account_id, created_by, config, status, 
-                    state_data, created_at, updated_at, data_tag
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `;
-
-      await db.execute(insertSql, [
-        jobId,
-        'import',
-        accountId,
-        'desktop-user', // created_by
-        JSON.stringify(jobConfig),
-        'queued', // Initial status
-        JSON.stringify({ progress: 0 }),
-        now,
-        now,
-        'real',
-      ]);
-
-      log.info(`[Ingest] Job created: ${jobId}`);
-
-      // 3. Notify UI immediately
-      this.sendProgress('queued', 0, 'Job queued for processing...');
-
-      // The polling hook in UI (useJobStream) should pick up the job via SSE from API
-      // But we can also send a specialized event if needed.
+      return { success: true, jobId: response.jobId };
     } catch (err: unknown) {
       log.error('[Ingest] Failed:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -112,7 +55,67 @@ export class FileIngestionService {
     }
   }
 
-  private sendProgress(stage: string, percent: number, message: string) {
+  private async getAccessToken(): Promise<string> {
+    const activeAccountId = await secureStorage.getActiveAccountId();
+    if (!activeAccountId) {
+      throw new Error('No active account. Please sign in before importing files.');
+    }
+
+    const accessToken =
+      (await secureStorage.getAccountToken(activeAccountId, 'access_token')) ||
+      (await secureStorage.getToken('access_token'));
+
+    if (!accessToken) {
+      throw new Error('No access token found for active account. Please sign in again.');
+    }
+
+    return accessToken;
+  }
+
+  private async createImportJob(filePath: string, accessToken: string): Promise<ImportJobResponse> {
+    const fileName = path.basename(filePath);
+    const fileStats = fs.statSync(filePath);
+    const fileBlob = await fs.openAsBlob(filePath, { type: 'application/json' });
+    const formData = new FormData();
+
+    formData.append('files', fileBlob, fileName);
+    formData.append(
+      'config',
+      JSON.stringify(
+        normalizeImportOptions({
+          platform: 'generic',
+          processingMode: 'automatic',
+          duplicateDetection: { enabled: true },
+        })
+      )
+    );
+
+    log.info(`[Ingest] Submitting /api/v1/jobs/import`, {
+      apiPort: this.apiPort,
+      fileName,
+      fileSize: fileStats.size,
+      importContractVersion: IMPORT_CONTRACT_VERSION,
+    });
+
+    const response = await fetch(`http://127.0.0.1:${this.apiPort}/api/v1/jobs/import`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: formData,
+    });
+
+    const data = (await response.json().catch(() => ({}))) as ImportJobResponse;
+
+    if (!response.ok) {
+      const message = data.error || data.message || `HTTP ${response.status}`;
+      throw new Error(`Desktop import enqueue failed: ${message}`);
+    }
+
+    return data;
+  }
+
+  private sendProgress(stage: string, percent: number, message: string): void {
     if (!this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send('ingest:progress', { stage, percent, message });
     }

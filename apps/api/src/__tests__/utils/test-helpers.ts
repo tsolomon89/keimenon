@@ -281,6 +281,48 @@ export async function waitForJobCompletion(
 }
 
 /**
+ * Wait for upload session to be associated with a real import job ID.
+ */
+export async function waitForUploadSessionJobId(
+  sessionId: string,
+  token: string,
+  timeoutMs: number = 15000
+): Promise<string> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeoutMs) {
+    const response = await fetch(`${getApiUrl()}/api/v1/uploads/${sessionId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.ok) {
+      const data = (await response.json()) as any;
+      const jobId = data?.session?.jobId;
+      if (typeof jobId === 'string' && jobId.length > 0) {
+        return jobId;
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(`Upload session ${sessionId} did not receive jobId within ${timeoutMs}ms`);
+}
+
+/**
+ * Wait for chunked upload session import path to reach a terminal job state.
+ */
+export async function waitForChunkedImportCompletion(
+  sessionId: string,
+  token: string,
+  timeoutMs: number = 60000
+): Promise<{ jobId: string; job: any }> {
+  const jobId = await waitForUploadSessionJobId(sessionId, token, Math.min(timeoutMs, 20000));
+  const job = await waitForJobCompletion(jobId, token, timeoutMs);
+  return { jobId, job };
+}
+
+/**
  * Create import job via API (job-based system)
  * Uses POST /api/v1/jobs/import (primary production rail)
  */
@@ -680,6 +722,8 @@ export default {
   login,
   createFormData,
   waitForJobCompletion,
+  waitForUploadSessionJobId,
+  waitForChunkedImportCompletion,
   createImportJob,
   createDeleteJob,
   countNodes,

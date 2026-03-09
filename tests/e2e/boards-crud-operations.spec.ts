@@ -32,14 +32,35 @@ test.describe('Boards - CRUD Operations', () => {
 
   let authToken: string;
 
-  test.beforeEach(async ({ apiRequest }) => {
-    // Login and get auth token
-    const response = await apiRequest.post('/api/v1/auth/login', {
-      data: TEST_USER,
-    });
+  async function loginWithRetry(
+    apiRequest: any,
+    credentials: { email: string; password: string },
+    maxAttempts = 3
+  ): Promise<string> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const response = await apiRequest.post('/api/v1/auth/login', { data: credentials });
 
-    const auth = await response.json();
-    authToken = auth.token;
+      if (response.ok()) {
+        const auth = await response.json();
+        if (auth?.token) return auth.token;
+      }
+
+      const body = await response.json().catch(() => ({}));
+      const error = body?.error || body?.message || `status ${response.status()}`;
+
+      if (attempt < maxAttempts && String(error).includes('No active accounts')) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 100));
+        continue;
+      }
+
+      throw new Error(`Login failed: ${error}`);
+    }
+
+    throw new Error(`Login failed after ${maxAttempts} attempts`);
+  }
+
+  test.beforeEach(async ({ apiRequest }) => {
+    authToken = await loginWithRetry(apiRequest, TEST_USER);
   });
 
   test.afterEach(async ({ apiRequest }) => {

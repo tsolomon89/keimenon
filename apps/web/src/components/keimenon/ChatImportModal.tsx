@@ -16,10 +16,11 @@ import { ImportStageProcessing } from '../import/ImportStageProcessing';
 import { ImportStageConfig } from '../import/ImportStageConfig';
 import { DuplicateReviewPanel } from '../import/DuplicateReviewPanel';
 import {
-  importChatFilesAsJob,
   analyzeFiles,
   detectPlatform,
   applyDuplicateDecisions,
+  completeCoreProcessReimport,
+  getCoreProcessReimportStatus,
 } from '@/lib/api-client';
 import { useJobStream, type JobUpdate } from '@/hooks/useJobStream';
 import { useChunkedUpload } from '@/hooks/useChunkedUpload';
@@ -27,6 +28,11 @@ import { logApiEvent, logJobEvent } from '@/lib/error-handler';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOperating } from '@/contexts/OperatingContext';
 import { DEBUG_IMPORT_SELECTOR } from '@/lib/env.config';
+import {
+  deriveImportProgress,
+  mapImportStatusToUploadStage,
+  normalizeImportProgressPercent,
+} from '@/lib/import-job-progress';
 
 interface ChatImportModalProps {
   onDismiss: () => void;
@@ -57,8 +63,33 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
 
+  const clearCoreProcessReimportGate = useCallback(async () => {
+    try {
+      const status = await getCoreProcessReimportStatus();
+      if (!status.requiresReimport) {
+        return;
+      }
+
+      await completeCoreProcessReimport();
+      window.dispatchEvent(new CustomEvent('core-process-reimport-complete'));
+      console.log('[ChatImportModal] Core process reimport marked complete');
+    } catch (error) {
+      console.warn('[ChatImportModal] Failed to clear core process reimport gate:', error);
+    }
+  }, []);
+
   // Subscribe to job updates via SSE
   const { jobs, connected } = useJobStream();
+  const activeJobUpdate = currentJobId ? jobs.get(currentJobId) : undefined;
+  const runtimeProcessingStats = activeJobUpdate?.stats
+    ? {
+        conversationsProcessed: activeJobUpdate.stats.conversationsProcessed ?? 0,
+        messagesProcessed: activeJobUpdate.stats.messagesProcessed ?? 0,
+        nodesCreated: activeJobUpdate.stats.nodesCreated ?? 0,
+        edgesCreated: activeJobUpdate.stats.edgesCreated ?? 0,
+        sourcesCreated: activeJobUpdate.stats.sourcesCreated ?? 0,
+      }
+    : null;
 
   // Listen for job updates and update progress
   useEffect(() => {
@@ -69,26 +100,34 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
 
     console.log('[ChatImportModal] Job update received:', jobUpdate);
 
-    // Map job status to upload progress
-    const statusToStage: Record<string, UploadProgress['stage']> = {
-      queued: 'uploading',
-      running: 'analyzing',
-      succeeded: 'ready',
-      failed: 'error',
-      canceled: 'error',
-    };
+    const derivedProgress = deriveImportProgress({
+      backendStatus: jobUpdate.status,
+      jobType: jobUpdate.type,
+      progress: { message: jobUpdate.progress.message, stage: jobUpdate.progress.stage },
+    });
 
-    const stage = statusToStage[jobUpdate.status] || 'analyzing';
-    const percent = jobUpdate.progress.percent;
+    const stage = mapImportStatusToUploadStage(derivedProgress.status);
     const message = jobUpdate.progress.message || '';
 
-    setProgress({ stage, percent, message });
+    setProgress((previousProgress) => ({
+      stage,
+      percent: normalizeImportProgressPercent({
+        backendStatus: jobUpdate.status,
+        status: derivedProgress.status,
+        rawPercent: jobUpdate.progress.percent,
+        previousPercent: previousProgress.percent,
+        stage: jobUpdate.progress.stage,
+        metadata: jobUpdate.progress.metadata,
+      }),
+      message,
+    }));
 
     // Handle completion
     if (jobUpdate.status === 'succeeded') {
       setIsImporting(false);
       setStage('complete');
       console.log('[ChatImportModal] Import job completed successfully');
+      void clearCoreProcessReimportGate();
 
       // Log completion event
       logJobEvent(`Import completed successfully`, 'import.jobCompleted', {
@@ -97,19 +136,30 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       });
     } else if (jobUpdate.status === 'failed') {
       setIsImporting(false);
+      const failureCode = jobUpdate.error?.code || 'FAILED';
+      const failureStage = jobUpdate.progress?.stage
+        ? String(jobUpdate.progress.stage)
+        : 'UNKNOWN_STAGE';
+      const failurePercent =
+        typeof jobUpdate.progress?.percent === 'number' ? jobUpdate.progress.percent : 0;
+      const failureMessage =
+        jobUpdate.error?.message || jobUpdate.progress.message || 'Import failed.';
       setProgress({
         stage: 'error',
-        percent: 0,
-        message: 'Import failed. Please try again.',
+        percent: Math.max(0, failurePercent),
+        message: `${failureCode} at ${failureStage} (${failurePercent}%): ${failureMessage}`,
       });
 
       // Error is already captured by error handler, but log the failure
       logJobEvent(`Import job failed`, 'import.jobFailed', {
         jobId: currentJobId,
-        message: jobUpdate.progress.message,
+        message: failureMessage,
+        code: failureCode,
+        stage: failureStage,
+        percent: failurePercent,
       });
     }
-  }, [currentJobId, jobs]);
+  }, [currentJobId, jobs, clearCoreProcessReimportGate]);
 
   // Track chunked upload progress
   useEffect(() => {
@@ -317,8 +367,12 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         message: `Applying ${decisionsArray.length} duplicate decisions...`,
       });
 
+      if (!currentJobId) {
+        throw new Error('Cannot apply duplicate decisions without an active import job ID');
+      }
+
       // Apply decisions to backend
-      const result = await applyDuplicateDecisions(decisionsArray, currentJobId || undefined);
+      const result = await applyDuplicateDecisions(decisionsArray, currentJobId);
 
       console.log('[ChatImportModal] Decisions applied:', result);
 
@@ -429,9 +483,10 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
             )}
 
             {stage === 'processing' && (
-              <ImportStageProcessing 
-                platformDetection={platformDetection} 
+              <ImportStageProcessing
+                platformDetection={platformDetection}
                 progress={progress}
+                runtimeStats={runtimeProcessingStats}
                 onPause={chunkedUpload.pause}
                 onResume={chunkedUpload.resume}
                 isPaused={chunkedUpload.isPaused}

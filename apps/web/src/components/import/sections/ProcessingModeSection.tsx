@@ -31,7 +31,7 @@ export function ProcessingModeSection({ config, onConfigChange }: ProcessingMode
             <span className="font-medium text-sm">Automatic</span>
           </div>
           <div className="text-xs text-slate-400 mt-1">
-            AI-powered grouping (Pro)
+            Full Pro Import pipeline (spans, packets, atomic layer, mass graph)
           </div>
         </button>
 
@@ -48,7 +48,7 @@ export function ProcessingModeSection({ config, onConfigChange }: ProcessingMode
             <span className="font-medium text-sm">Manual</span>
           </div>
           <div className="text-xs text-slate-400 mt-1">
-            Define groups with keywords
+            Apply manual groups first, then auto-group unmatched
           </div>
         </button>
       </div>

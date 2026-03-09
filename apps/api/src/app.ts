@@ -1,8 +1,8 @@
 /**
  * Express App Configuration
  *
- * Separates app creation from server lifecycle for testability.
- * This module creates and configures the Express app without starting the server.
+ * Canonical route composition layer.
+ * Server startup/shutdown wiring belongs in src/index.ts.
  */
 
 import express, { Express, Request, Response, NextFunction } from 'express';
@@ -18,8 +18,6 @@ import ingestRoutes, { setAuthDependencies as setIngestAuthDeps } from './routes
 import { createNodesRoutes } from './routes/nodes';
 import boardsRoutes, { setAuthDependencies as setBoardsAuthDeps } from './routes/boards';
 import edgesRoutes, { setAuthDependencies as setEdgesAuthDeps } from './routes/edges';
-import { createImportDecisionsRoutes } from './routes/import-decisions';
-import { createImportEnhancedRoutes } from './routes/import-enhanced';
 import contentRoutes, { setAuthDependencies as setContentAuthDeps } from './routes/content';
 import configRoutes from './routes/config';
 import { createDuplicatesRoutes } from './routes/duplicates';
@@ -38,11 +36,15 @@ import { createJobsRoutes } from './modules/jobs/infrastructure/jobs.routes';
 import { createStreamRoutes } from './modules/jobs/infrastructure/stream.routes';
 import { createImportJobsRoutes as createJobBasedImportRoutes } from './modules/jobs/infrastructure/import-jobs.routes';
 import { createTestHelperRoutes } from './routes/test-helpers';
+import { createMetricsRoutes } from './routes/metrics.routes';
 import { createUploadRoutes } from './routes/uploads.routes';
 import { createSpineRoutes } from './routes/spine.routes';
 import { createVerificationRoutes } from './routes/verification.routes';
-import agentRoutesModule from './routes/agent.routes';
-// World Model V5: Principal, Workspace, Conversation routes
+import { createAiRoutes } from './routes/ai.routes';
+import { createAgentRoutes } from './routes/agent.routes';
+import { createDevAuthRoutes } from './routes/dev-auth.routes';
+import { createSystemRoutes } from './routes/system.routes';
+import healthRoutes from './routes/health.routes';
 import { createPrincipalsRoutes } from './routes/principals.routes';
 import { createWorkspaceRoutes } from './routes/workspace.routes';
 import { createConversationsRoutes } from './routes/conversations.routes';
@@ -52,10 +54,8 @@ import { DatabaseWriteQueue } from './services/DatabaseWriteQueue';
 import { AuthService } from './services/auth.service';
 import { testIsolationMiddleware } from './middleware/test-isolation.middleware';
 import { dbContextMiddleware } from './middleware/db-context.middleware';
+import { testCorrelationMiddleware } from './middleware/test-correlation.middleware';
 
-/**
- * App context holds initialized services
- */
 export interface AppContext {
   app: Express;
   authService: AuthService | null;
@@ -65,55 +65,60 @@ export interface AppContext {
   isReady: boolean;
 }
 
-/**
- * Create and configure Express app
- */
+type InitializeRoutes = (
+  authService: AuthService,
+  sseBroadcaster: SSEBroadcaster,
+  workerPool: WorkerPool,
+  writeQueue: DatabaseWriteQueue
+) => void;
+
 export function createApp(): { app: Express; context: AppContext } {
   const app: Express = express();
 
-  // Initialize Sentry (MUST be before all other middleware)
   initSentry(app);
-
-  // Security Middleware
   app.use(configureHelmet());
   app.use(configureCors());
   app.use(addCustomSecurityHeaders());
 
-  // Test isolation (only active in test environment) - MUST come before body parsing!
-  if (process.env.NODE_ENV === 'test') {
-    app.use(testIsolationMiddleware);
-    app.use(dbContextMiddleware);
-    console.log('🧪 Test isolation middleware enabled - using per-worker databases');
-  }
-
-  // Request logging (before body parsing so we can see ALL requests)
   app.use((req: Request, _res: Response, next: NextFunction) => {
     console.log(`${req.method} ${req.path}`);
+    next();
+  });
+
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const isChunkUpload = /^\/api\/v1\/uploads\/[^/]+\/chunks\/\d+$/.test(req.path);
+    if (isChunkUpload) {
+      return express.raw({ type: '*/*', limit: '15mb' })(req, res, next);
+    }
     return next();
   });
 
-  // Body parsing - Applied selectively to avoid consuming multipart streams
-  // IMPORTANT: Jobs routes and upload routes use busboy and must NOT have body-parser applied
   app.use((req: Request, res: Response, next: NextFunction) => {
-    // Check if this is a jobs route or upload route that handles multipart/binary uploads
-    // CRITICAL FIX: Do NOT skip body-parser for /initiate (it sends JSON)
-    // Only skip for the actual chunk upload endpoints which receive binary streams
-    if (
-      req.path.startsWith('/api/v1/jobs') ||
-      (req.path.startsWith('/api/v1/uploads') && !req.path.endsWith('/initiate'))
-    ) {
-      console.log(`[Body-Parser] ⏭️  Skipping body-parser for: ${req.method} ${req.path}`);
-      return next(); // Skip body-parser for jobs and upload routes
+    const isChunkUpload = /^\/api\/v1\/uploads\/[^/]+\/chunks\/\d+$/.test(req.path);
+    if (isChunkUpload) {
+      return next();
     }
 
-    // Apply body-parser for all other routes
-    express.json({ limit: '10mb' })(req, res, (err) => {
-      if (err) return next(err);
-      express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
-    });
+    return express.json({ limit: '10mb' })(req, res, next);
   });
 
-  // Context to hold services
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const isChunkUpload = /^\/api\/v1\/uploads\/[^/]+\/chunks\/\d+$/.test(req.path);
+    if (isChunkUpload) {
+      return next();
+    }
+
+    return express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+  });
+
+  app.use(testCorrelationMiddleware);
+
+  if (process.env.NODE_ENV === 'test') {
+    app.use(testIsolationMiddleware);
+    app.use(dbContextMiddleware);
+    console.log('Test isolation middleware enabled');
+  }
+
   const context: AppContext = {
     app,
     authService: null,
@@ -123,32 +128,8 @@ export function createApp(): { app: Express; context: AppContext } {
     isReady: false,
   };
 
-  // Health check
-  app.get('/health', async (_req: Request, res: Response) => {
-    let dbStatus = 'unknown';
+  app.use('/health', healthRoutes);
 
-    try {
-      if (global.dbClient) {
-        await global.dbClient.execute('SELECT 1');
-        dbStatus = 'connected';
-      }
-    } catch (error) {
-      dbStatus = 'disconnected';
-    }
-
-    return res.json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      service: 'keimenon-api',
-      version: '0.1.0',
-      storageMode: 'local',
-      dependencies: {
-        database: dbStatus,
-      },
-    });
-  });
-
-  // Readiness check
   app.get('/ready', async (_req: Request, res: Response) => {
     const checks = {
       server: context.isReady,
@@ -162,11 +143,11 @@ export function createApp(): { app: Express; context: AppContext } {
         await global.dbClient.execute('SELECT 1');
         checks.database = true;
       }
-    } catch (error) {
+    } catch {
       // Database not ready
     }
 
-    checks.storage = true; // Simplified for now
+    checks.storage = true;
 
     const ready = Object.values(checks).every((c) => c);
     const statusCode = ready ? 200 : 503;
@@ -179,25 +160,52 @@ export function createApp(): { app: Express; context: AppContext } {
     });
   });
 
-  // API routes
   app.get('/api/v1', (_req: Request, res: Response) => {
     return res.json({
       message: 'Keimenon API v1',
       version: '0.1.0',
       endpoints: {
-        auth: {
-          login: 'POST /api/v1/auth/login',
-          registerGoogle: 'POST /api/v1/auth/register/google',
-          logout: 'POST /api/v1/auth/logout',
-          me: 'GET /api/v1/auth/me',
-          verify: 'POST /api/v1/auth/verify',
+        jobs: {
+          import: 'POST /api/v1/jobs/import',
+          delete: 'POST /api/v1/jobs/delete',
+          list: 'GET /api/v1/jobs',
+          get: 'GET /api/v1/jobs/:id',
+          control: 'POST /api/v1/jobs/:id/cancel|pause|resume|retry',
+          stream: 'GET /api/v1/stream/jobs',
+          duplicateReviewApply: 'POST /api/v1/jobs/:id/duplicate-review/apply',
+          duplicateReviewStatus: 'GET /api/v1/jobs/:id/duplicate-review/status',
         },
-        // ... (other endpoints omitted for brevity)
+        uploads: {
+          initiate: 'POST /api/v1/uploads/initiate',
+          chunk: 'POST /api/v1/uploads/:sessionId/chunks/:chunkIndex',
+          status: 'GET /api/v1/uploads/:sessionId',
+          cancel: 'DELETE /api/v1/uploads/:sessionId',
+        },
+        system: {
+          reimportStatus: 'GET /api/v1/system/reimport-status',
+          reimportComplete: 'POST /api/v1/system/reimport-complete',
+        },
       },
     });
   });
 
-  // Route placeholders (will be initialized by initializeRoutes)
+  app.get('/api/v1/debug-info', (_req: Request, res: Response) => {
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '~';
+    const localDocsPath =
+      process.env.LOCAL_DOCS_PATH?.replace('~', homeDir) || `${homeDir}/.keimenon`;
+    const sqlitePath =
+      process.env.SQLITE_PATH?.replace('~', homeDir) || `${localDocsPath}/keimenon.db`;
+
+    return res.json({
+      cwd: process.cwd(),
+      env_sqlite_path: process.env.SQLITE_PATH,
+      resolved_sqlite_path: sqlitePath,
+      user_profile: process.env.USERPROFILE,
+      home: process.env.HOME,
+      node_env: process.env.NODE_ENV,
+    });
+  });
+
   let authRoutes: any = null;
   let accountsRoutes: any = null;
   let usersRoutes: any = null;
@@ -205,8 +213,6 @@ export function createApp(): { app: Express; context: AppContext } {
   let groupsNavigationRoutes: any = null;
   let settingsRoutes: any = null;
   let adminRoutes: any = null;
-  let importEnhancedRoutes: any = null;
-  let importDecisionsRoutes: any = null;
   let dataManagementRoutes: any = null;
   let deduplicationRoutes: any = null;
   let duplicatesRoutes: any = null;
@@ -214,23 +220,32 @@ export function createApp(): { app: Express; context: AppContext } {
   let streamRoutes: any = null;
   let jobBasedImportRoutes: any = null;
   let testHelperRoutes: any = null;
+  let testJobsRoutes: any = null;
   let nodesRoutes: any = null;
+  let metricsRoutes: any = null;
   let uploadRoutes: any = null;
   let spineRoutes: any = null;
   let verificationRoutes: any = null;
-  // World Model V5 routes
+  let aiRoutes: any = null;
   let principalsRoutes: any = null;
   let workspaceRoutes: any = null;
   let conversationsRoutes: any = null;
+  let agentRoutes: any = null;
+  let devAuthRoutes: any = null;
+  let systemRoutes: any = null;
 
-  // Initialize routes with services
-  const initializeRoutes = (
+  const initializeRoutes: InitializeRoutes = (
     authService: AuthService,
     sseBroadcaster: SSEBroadcaster,
     workerPool: WorkerPool,
     writeQueue: DatabaseWriteQueue
   ) => {
     const dbClient = global.dbClient as any;
+
+    context.authService = authService;
+    context.sseBroadcaster = sseBroadcaster;
+    context.workerPool = workerPool;
+    context.writeQueue = writeQueue;
 
     authRoutes = createAuthRoutes(authService);
     accountsRoutes = createAccountsRoutes(dbClient, authService);
@@ -239,8 +254,6 @@ export function createApp(): { app: Express; context: AppContext } {
     groupsNavigationRoutes = createGroupsRoutes(dbClient, authService);
     settingsRoutes = createSettingsRoutes(dbClient, authService);
     adminRoutes = createAdminRoutes(dbClient, authService);
-    importEnhancedRoutes = createImportEnhancedRoutes(authService);
-    importDecisionsRoutes = createImportDecisionsRoutes(dbClient, authService);
     dataManagementRoutes = createDataManagementRoutes(dbClient, authService);
     deduplicationRoutes = createDeduplicationRoutes(dbClient, authService);
     duplicatesRoutes = createDuplicatesRoutes(dbClient, authService);
@@ -254,21 +267,38 @@ export function createApp(): { app: Express; context: AppContext } {
     );
     testHelperRoutes = createTestHelperRoutes(dbClient);
     nodesRoutes = createNodesRoutes(authService);
+    metricsRoutes = createMetricsRoutes(authService);
     uploadRoutes = createUploadRoutes(authService);
     spineRoutes = createSpineRoutes(authService);
     verificationRoutes = createVerificationRoutes(authService);
-    // World Model V5: Initialize principal, workspace, conversation routes
+    aiRoutes = createAiRoutes(authService);
     principalsRoutes = createPrincipalsRoutes(dbClient, authService);
     workspaceRoutes = createWorkspaceRoutes(dbClient, authService);
     conversationsRoutes = createConversationsRoutes(dbClient, authService);
+    agentRoutes = createAgentRoutes(authService as any);
+    systemRoutes = createSystemRoutes(authService as any);
 
-    // Inject auth dependencies for legacy routes
+    if (process.env.NODE_ENV === 'development' || process.env.ENABLE_DEV_AUTH === 'true') {
+      devAuthRoutes = createDevAuthRoutes(authService as any);
+      console.log('Dev auth routes enabled');
+    }
+
+    if (process.env.NODE_ENV === 'test') {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const testJobsRouter = require('./routes/test-jobs.routes').default;
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const Router = require('express').Router;
+      const authRouter = Router();
+      authRouter.use(requireAuth(authService));
+      authRouter.use(testJobsRouter);
+      testJobsRoutes = authRouter;
+    }
+
     setEdgesAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
     setBoardsAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
     setContentAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
     setIngestAuthDeps(authService, requireAuth, requirePermission, isolateByAccount);
 
-    // Debug endpoints for write queue
     app.get('/api/v1/debug/queue/status', (_req: Request, res: Response) => {
       if (!writeQueue) {
         return res.status(503).json({ error: 'Write queue not initialized' });
@@ -306,10 +336,18 @@ export function createApp(): { app: Express; context: AppContext } {
     });
   };
 
-  // Store initializeRoutes for later use
   (context as any).initializeRoutes = initializeRoutes;
 
-  // Dynamic route handlers (deferred until services initialize)
+  app.use('/api/v1/auth/dev', (req, res, next) => {
+    if (devAuthRoutes) return devAuthRoutes(req, res, next);
+    return res.status(404).json({ error: 'Dev auth routes not enabled' });
+  });
+
+  app.use('/api/dev-auth', (req, res, next) => {
+    if (devAuthRoutes) return devAuthRoutes(req, res, next);
+    return res.status(404).json({ error: 'Dev auth routes not enabled' });
+  });
+
   app.use('/api/v1/auth', (req, res, next) => {
     if (authRoutes) return authRoutes(req, res, next);
     return res.status(503).json({ error: 'Auth service not initialized' });
@@ -345,6 +383,16 @@ export function createApp(): { app: Express; context: AppContext } {
     return res.status(503).json({ error: 'Auth service not initialized' });
   });
 
+  app.use('/api/v1/metrics', (req, res, next) => {
+    if (metricsRoutes) return metricsRoutes(req, res, next);
+    return res.status(503).json({ error: 'Auth service not initialized' });
+  });
+
+  app.use('/api/v1/ai', (req, res, next) => {
+    if (aiRoutes) return aiRoutes(req, res, next);
+    return res.status(503).json({ error: 'Auth service not initialized' });
+  });
+
   app.use('/api/v1/data', (req, res, next) => {
     if (dataManagementRoutes) return dataManagementRoutes(req, res, next);
     return res.status(503).json({ error: 'Auth service not initialized' });
@@ -360,22 +408,21 @@ export function createApp(): { app: Express; context: AppContext } {
     return res.status(503).json({ error: 'Auth service not initialized' });
   });
 
-  // Upload routes (body-parser automatically skips /api/v1/uploads/* paths to preserve binary streams)
   app.use('/api/v1/uploads', (req, res, next) => {
     if (uploadRoutes) return uploadRoutes(req, res, next);
     return res.status(503).json({ error: 'Upload service not initialized' });
   });
 
-  // Jobs routes (body-parser automatically skips /api/v1/jobs/* paths to preserve multipart streams)
   app.use('/api/v1/jobs', (req, res, next) => {
-    // Try import routes first (they handle /import, /delete with multipart)
     if (jobBasedImportRoutes) return jobBasedImportRoutes(req, res, next);
-    // Fall back to general jobs routes
+    return next();
+  });
+
+  app.use('/api/v1/jobs', (req, res, next) => {
     if (jobsRoutes) return jobsRoutes(req, res, next);
     return res.status(503).json({ error: 'Jobs service not initialized' });
   });
 
-  // Auth-protected data routes
   app.use('/api/v1/nodes', (req, res, next) => {
     if (nodesRoutes) return nodesRoutes(req, res, next);
     return res.status(503).json({ error: 'Auth service not initialized' });
@@ -405,16 +452,6 @@ export function createApp(): { app: Express; context: AppContext } {
     return ingestRoutes(req, res, next);
   });
 
-  app.use('/api/v1/import', (req, res, next) => {
-    if (importEnhancedRoutes) return importEnhancedRoutes(req, res, next);
-    return next();
-  });
-
-  app.use('/api/v1/import', (req, res, next) => {
-    if (importDecisionsRoutes) return importDecisionsRoutes(req, res, next);
-    return next();
-  });
-
   app.use('/api/v1/config', (req, res, next) => {
     if (!context.authService)
       return res.status(503).json({ error: 'Auth service not initialized' });
@@ -438,53 +475,53 @@ export function createApp(): { app: Express; context: AppContext } {
     return clusterRoutes(req, res, next);
   });
 
-  // Vision V2: Spine routes (Lexeme, Phrase, Topic extraction)
   app.use('/api/v1/spine', (req, res, next) => {
     if (spineRoutes) return spineRoutes(req, res, next);
     return res.status(503).json({ error: 'Spine service not initialized' });
   });
 
-  // Vision V2: Verification routes (VerifiedSource, VerifiedClaim)
   app.use('/api/v1/verification', (req, res, next) => {
     if (verificationRoutes) return verificationRoutes(req, res, next);
     return res.status(503).json({ error: 'Verification service not initialized' });
   });
 
-  // World Model V5: Principal routes (unified human/agent/contact)
   app.use('/api/v1/principals', (req, res, next) => {
     if (principalsRoutes) return principalsRoutes(req, res, next);
     return res.status(503).json({ error: 'Principals service not initialized' });
   });
 
-  // World Model V5: Workspace routes (working contexts with agents)
   app.use('/api/v1/workspaces', (req, res, next) => {
     if (workspaceRoutes) return workspaceRoutes(req, res, next);
     return res.status(503).json({ error: 'Workspace service not initialized' });
   });
 
-  // World Model V5: Conversation routes (formal joins)
+  app.use('/api/v1/system', (req, res, next) => {
+    if (systemRoutes) return systemRoutes(req, res, next);
+    return res.status(503).json({ error: 'System service not initialized' });
+  });
+
   app.use('/api/v1/conversations', (req, res, next) => {
     if (conversationsRoutes) return conversationsRoutes(req, res, next);
     return res.status(503).json({ error: 'Conversations service not initialized' });
   });
 
-  // Agent services routes (task execution, BYOK)
-  app.use('/api/v1/agent', agentRoutesModule);
+  app.use('/api/v1/agent', (req, res, next) => {
+    if (agentRoutes) return agentRoutes(req, res, next);
+    return res.status(503).json({ error: 'Agent service not initialized' });
+  });
 
-  // Test helper routes (savepoint API, cleanup, etc.)
-  // Only enabled when NODE_ENV=test
   app.use('/api/v1/test', (req, res, next) => {
     if (testHelperRoutes) return testHelperRoutes(req, res, next);
     return res.status(503).json({ error: 'Test helpers not initialized or not in test mode' });
   });
 
-  // 404 handler
+  app.use('/api/v1/test/jobs', (req, res, next) => {
+    if (testJobsRoutes) return testJobsRoutes(req, res, next);
+    return res.status(404).json({ error: 'Test jobs endpoint not available' });
+  });
+
   app.use(notFoundHandler);
-
-  // Sentry error handler
   addSentryErrorHandler(app);
-
-  // Global error handler
   app.use(errorLogger);
 
   return { app, context };

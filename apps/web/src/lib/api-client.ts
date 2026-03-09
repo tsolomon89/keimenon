@@ -2,6 +2,7 @@ import { ChatImportConfig, DuplicateGroup } from '@/types/chat-import';
 import { handleApiError, withRetry, FileError } from './error-handler';
 import { getToken } from '@/contexts/AuthContext';
 import { API_BASE_URL } from './env.config';
+import { normalizeImportOptions } from '@keimenon/types';
 
 // TODO: Add token refresh endpoint support
 // Related: apps/api/src/routes/auth.routes.ts (needs refresh endpoint)
@@ -212,61 +213,6 @@ export interface BatchImportResponse {
 }
 
 /**
- * Convert frontend ChatImportConfig to backend ImportConfig format
- */
-// TODO: Add input validation for ChatImportConfig before conversion
-// Related: apps/web/src/types/chat-import.ts (ChatImportConfig type definition)
-// See: docs/features/INPUT_VALIDATION.md (needs creation)
-// Validate: threshold ranges (0-1), minLength >= 0, proper enum values
-function convertConfig(config: ChatImportConfig): any {
-  return {
-    // Role & length filters
-    sources_role_subset:
-      config.extraction.includeUser && config.extraction.includeAssistant
-        ? 'both'
-        : config.extraction.includeUser
-          ? 'user'
-          : 'assistant',
-    sources_min_chars_user: config.minMessageLength,
-    sources_min_chars_assistant: config.minMessageLength,
-
-    // Grouping strategy
-    sources_stitch_strategy: config.processingMode === 'manual' ? 'by_chat' : 'by_title',
-    sources_preserve_chat_integrity: config.branches === 'merged',
-    sources_cap: 150,
-
-    // Duplication policy
-    sources_attach_mode: 'non-unique',
-    similarity_threshold: config.duplicateDetection.similarityThreshold,
-
-    // Code extraction
-    export_code: config.extractCode,
-    code_global_dedupe: config.codeSettings.deduplicate,
-    code_min_chars: config.codeSettings.minLength,
-
-    // Output format
-    sources_export_format: 'md',
-    include_assistant_context: config.extraction.includeAssistant,
-
-    // Duplicate detection
-    duplicate_detection_enabled: config.duplicateDetection.enabled,
-    duplicate_exact_match: config.duplicateDetection.exactMatch,
-    duplicate_similarity_threshold: config.duplicateDetection.similarityThreshold,
-    duplicate_cross_conversation: config.duplicateDetection.crossConversation,
-    duplicate_algorithm: config.duplicateDetection.algorithm,
-    duplicate_normalize_tokens: config.duplicateDetection.normalizeTokens,
-    duplicate_min_token_overlap: config.duplicateDetection.minTokenOverlap,
-    duplicate_length_ratio_tolerance: config.duplicateDetection.lengthRatioTolerance,
-    duplicate_ignore_whitespace: config.duplicateDetection.ignoreWhitespace,
-    duplicate_ignore_case: config.duplicateDetection.ignoreCase,
-    duplicate_ignore_timestamp: config.duplicateDetection.ignoreTimestamp,
-    duplicate_require_review: config.duplicateDetection.requireReview,
-    duplicate_auto_approve_exact: config.duplicateDetection.autoApproveExact,
-    duplicate_auto_merge_threshold: config.duplicateDetection.autoMergeThreshold,
-  };
-}
-
-/**
  * Cancel a running or queued job
  *
  * Sends a cancellation request to the backend, which updates the job status
@@ -301,7 +247,7 @@ export async function cancelJob(jobId: string): Promise<{
  * Retry a failed or canceled job
  *
  * Creates a new job with the same configuration as the original job.
- * The new job will start from scratch (checkpoint resumption not yet implemented).
+ * If checkpoint state exists, the backend may copy it to support resumed execution.
  *
  * Related:
  * - apps/api/src/modules/jobs/infrastructure/import-jobs.routes.ts:461 (retry endpoint)
@@ -334,7 +280,7 @@ export async function retryJob(jobId: string): Promise<{
  * Pause a running job
  *
  * Pauses the job at the next checkpoint. Job status becomes 'blocked'.
- * Resume the job to restart from scratch (checkpoint persistence not yet implemented).
+ * Resume continues from the latest persisted checkpoint when available.
  *
  * Related:
  * - apps/api/src/modules/jobs/infrastructure/import-jobs.routes.ts:606 (pause endpoint)
@@ -365,7 +311,7 @@ export async function pauseJob(jobId: string): Promise<{
  * Resume a paused job
  *
  * Resumes a job from 'blocked' (paused) status back to 'queued'.
- * WorkerPool will pick it up and restart from the beginning.
+ * WorkerPool will pick it up and continue from the latest checkpoint.
  *
  * Related:
  * - apps/api/src/modules/jobs/infrastructure/import-jobs.routes.ts:676 (resume endpoint)
@@ -418,30 +364,16 @@ export async function importChatFilesAsJob(
     formData.append('files', file);
   });
 
-  // Enhanced config for job-based import - send complete configuration
-  const jobConfig = {
-    // Platform detection (enables platform-specific parsers)
+  const jobConfig = normalizeImportOptions({
     platform: detectedPlatform,
-
-    // Extraction settings - which roles to include
     extraction: {
       includeUser: config.extraction.includeUser,
       includeAssistant: config.extraction.includeAssistant,
     },
-
-    // Filtering - minimum message length
     minMessageLength: config.minMessageLength,
-
-    // Processing mode (automatic vs manual grouping)
     processingMode: config.processingMode,
-
-    // Branches (conversation branch handling)
     branches: config.branches,
-
-    // Manual groups (used when processingMode is 'manual')
     groups: config.processingMode === 'manual' ? config.groups : [],
-
-    // Code extraction - complete settings
     extractCode: config.extractCode,
     codeSettings: {
       minLength: config.codeSettings.minLength,
@@ -449,8 +381,6 @@ export async function importChatFilesAsJob(
       groupBy: config.codeSettings.groupBy,
       deduplicate: config.codeSettings.deduplicate,
     },
-
-    // Duplicate detection - complete configuration
     duplicateDetection: {
       enabled: config.duplicateDetection.enabled,
       exactMatch: config.duplicateDetection.exactMatch,
@@ -467,13 +397,11 @@ export async function importChatFilesAsJob(
       autoApproveExact: config.duplicateDetection.autoApproveExact,
       autoMergeThreshold: config.duplicateDetection.autoMergeThreshold,
     },
-
-    // Legacy field support (for backward compatibility with old backend versions)
     autoGroup: config.processingMode === 'automatic',
     targetGroupCount: 25,
     codeMinChars: config.codeSettings.minLength,
     duplicateThreshold: config.duplicateDetection.similarityThreshold,
-  };
+  });
 
   formData.append('config', JSON.stringify(jobConfig));
 
@@ -564,96 +492,6 @@ export async function importChatFilesAsJob(
     );
   } catch (error: any) {
     console.error('[importChatFilesAsJob] Final error:', error);
-    throw await handleApiError(error);
-  }
-}
-
-/**
- * Import chat conversations from files (legacy synchronous endpoint)
- * Automatically uses streaming endpoint for files > 10MB
- *
- * @deprecated Use importChatFilesAsJob() instead for better UX with background job processing
- */
-export async function importChatFiles(
-  files: File[],
-  config: ChatImportConfig
-): Promise<BatchImportResponse> {
-  // TODO: Add validation for empty files array
-  // Related: apps/web/src/components/keimenon/ChatImportModal.tsx (file upload UI)
-  // See: docs/features/INPUT_VALIDATION.md (needs creation)
-  // Validate: files.length > 0, each file has valid size/type
-  const formData = new FormData();
-
-  // Add all files
-  files.forEach((file) => {
-    formData.append('files', file);
-  });
-
-  // Add configuration
-  const backendConfig = convertConfig(config);
-  formData.append('config', JSON.stringify(backendConfig));
-
-  // Validate files before uploading
-  const STANDARD_MAX_SIZE = 10 * 1024 * 1024; // 10MB
-  const STREAMING_MAX_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
-  let useStreaming = false;
-
-  for (const file of files) {
-    if (!file.name.match(/\.(json|jsonl)$/i)) {
-      throw new FileError(
-        `Invalid file type: ${file.name}. Only JSON and JSONL files are supported.`
-      );
-    }
-
-    // Check if we need streaming upload
-    if (file.size > STANDARD_MAX_SIZE) {
-      useStreaming = true;
-
-      // Validate against streaming max size
-      if (file.size > STREAMING_MAX_SIZE) {
-        throw new FileError(`File too large: ${file.name}. Maximum size is 2GB.`, {
-          fileName: file.name,
-          size: file.size,
-          maxSize: STREAMING_MAX_SIZE,
-        });
-      }
-    }
-  }
-
-  // Choose endpoint based on file size
-  const endpoint = useStreaming
-    ? `${API_BASE_URL}/api/v1/import/enhanced`
-    : `${API_BASE_URL}/api/v1/import/chat/batch`;
-
-  console.log(
-    `Using ${useStreaming ? 'streaming' : 'standard'} import for files:`,
-    files.map((f) => f.name)
-  );
-
-  try {
-    return await withRetry(
-      async () => {
-        const response = await fetchWithAuthInterceptor(endpoint, {
-          method: 'POST',
-          headers: getAuthHeaders(),
-          body: formData,
-        });
-
-        if (!response.ok) {
-          await handleApiError({ response });
-        }
-
-        return await response.json();
-      },
-      {
-        maxAttempts: 2,
-        delay: 1000,
-        onRetry: (attempt, error) => {
-          console.warn(`Import attempt ${attempt} failed, retrying...`, error);
-        },
-      }
-    );
-  } catch (error: any) {
     throw await handleApiError(error);
   }
 }
@@ -1563,7 +1401,7 @@ export async function deleteDuplicate(duplicateId: string): Promise<{ success: b
  * Creates appropriate edges and removes/merges nodes based on user decisions
  *
  * @param decisions Array of review decisions
- * @param importId Optional import ID for tracking
+ * @param jobId Required job ID for review context
  */
 export async function applyDuplicateDecisions(
   decisions: Array<{
@@ -1572,7 +1410,7 @@ export async function applyDuplicateDecisions(
     timestamp: number;
     userId?: string;
   }>,
-  importId?: string
+  jobId: string
 ): Promise<{
   success: boolean;
   result: {
@@ -1589,9 +1427,13 @@ export async function applyDuplicateDecisions(
     message: string;
   };
 }> {
+  if (!jobId) {
+    throw new Error('jobId is required to apply duplicate review decisions');
+  }
+
   try {
     const response = await fetchWithAuthInterceptor(
-      `${API_BASE_URL}/api/v1/import/chat/apply-decisions`,
+      `${API_BASE_URL}/api/v1/jobs/${jobId}/duplicate-review/apply`,
       {
         method: 'POST',
         headers: {
@@ -1600,7 +1442,6 @@ export async function applyDuplicateDecisions(
         },
         body: JSON.stringify({
           decisions,
-          import_id: importId,
         }),
       }
     );
@@ -1662,17 +1503,6 @@ export async function getNodes(params?: {
     }
 
     const data = await response.json();
-    console.log('📥 getNodes response:', {
-      nodeCount: data.nodes?.length || 0,
-      total: data.total,
-      sampleNode: data.nodes?.[0]
-        ? {
-            id: data.nodes[0].id,
-            kind: data.nodes[0].kind,
-            hasProperties: !!data.nodes[0].properties,
-          }
-        : null,
-    });
 
     return {
       nodes: data.nodes || [],
@@ -2207,6 +2037,46 @@ export async function ingestUrl(url: string, boardId?: string): Promise<URLInges
     throw new Error(
       errorData.error || errorData.message || `Failed to ingest URL: ${response.statusText}`
     );
+  }
+
+  return response.json();
+}
+
+export interface CoreProcessReimportStatus {
+  requiresReimport: boolean;
+  version: string | null;
+  lastResetAt: string | null;
+  backupPath: string | null;
+}
+
+export async function getCoreProcessReimportStatus(): Promise<CoreProcessReimportStatus> {
+  const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/system/reimport-status`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw await handleApiError({ response });
+  }
+
+  return response.json();
+}
+
+export async function completeCoreProcessReimport(): Promise<{ success: boolean }> {
+  const response = await fetchWithAuthInterceptor(
+    `${API_BASE_URL}/api/v1/system/reimport-complete`,
+    {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    }
+  );
+
+  if (!response.ok) {
+    throw await handleApiError({ response });
   }
 
   return response.json();

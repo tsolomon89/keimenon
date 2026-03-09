@@ -25,6 +25,7 @@ import { useState, useCallback, useRef } from 'react';
 import { apiClient } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/env.config';
 import { getToken } from '@/contexts/AuthContext';
+import { normalizeImportOptions } from '@keimenon/types';
 
 // ============================================================================
 // Types
@@ -376,6 +377,8 @@ export function useChunkedUpload() {
       importConfig?: any
     ): Promise<{ success: boolean; jobId?: string; error?: string }> => {
       try {
+        const effectiveImportConfig = normalizeImportOptions(importConfig);
+
         console.log(
           `📤 Starting chunked upload: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`
         );
@@ -408,7 +411,7 @@ export function useChunkedUpload() {
           fileSize: file.size,
           mimeType: file.type || 'application/json',
           chunkSize: CHUNK_SIZE,
-          importConfig: importConfig, // Pass import config to be stored in session metadata
+          importConfig: effectiveImportConfig,
         });
 
         if (!initResponse.data.success) {

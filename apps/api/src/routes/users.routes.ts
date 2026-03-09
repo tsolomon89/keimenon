@@ -3,6 +3,24 @@ import { SQLiteClient } from '@keimenon/db';
 import { AuthService } from '../services/auth.service';
 import { requireAuth, requireAdmin, requirePermission } from '../middleware/auth.middleware';
 
+function isProtectedAdminUser(database: any, userId: string): boolean {
+  const row = database
+    .prepare(
+      `
+        SELECT EXISTS(
+          SELECT 1
+          FROM user_accounts ua
+          JOIN accounts a ON a.id = ua.account_id
+          WHERE ua.user_id = ?
+            AND a.account_type = 'admin'
+        ) AS is_protected
+      `
+    )
+    .get(userId) as { is_protected?: number } | undefined;
+
+  return Number(row?.is_protected ?? 0) === 1;
+}
+
 export function createUsersRoutes(db: SQLiteClient, authService: AuthService): Router {
   const router = Router();
 
@@ -73,6 +91,21 @@ export function createUsersRoutes(db: SQLiteClient, authService: AuthService): R
 
       if (!canEditAll && !canEditSelf) {
         return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const isProtected = isProtectedAdminUser(database, id);
+      if (isProtected) {
+        const requestedPermissionLevel =
+          typeof permission_level === 'string' ? permission_level : user.permission_level;
+        const requestedIsActive =
+          typeof is_active === 'boolean' ? (is_active ? 1 : 0) : Number(user.is_active ?? 1);
+
+        if (requestedPermissionLevel !== 'admin' || requestedIsActive !== 1) {
+          return res.status(403).json({
+            error:
+              'Protected admin users cannot be deactivated or demoted. Keep permission_level=admin and is_active=true.',
+          });
+        }
       }
 
       const updates: string[] = [];
@@ -154,6 +187,12 @@ export function createUsersRoutes(db: SQLiteClient, authService: AuthService): R
 
         if (!user) {
           return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (isProtectedAdminUser(database, id)) {
+          return res.status(403).json({
+            error: 'Protected admin users cannot be deleted',
+          });
         }
 
         // Check permission

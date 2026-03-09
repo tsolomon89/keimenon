@@ -110,7 +110,102 @@ export interface LoginResult {
 }
 
 export class AuthServiceV2 {
+  private static readonly sessionMissLogTtlMs = Number.parseInt(
+    process.env.AUTH_SESSION_MISS_LOG_TTL_MS || String(10 * 60 * 1000),
+    10
+  );
+  private static readonly sessionMissCacheMax = Number.parseInt(
+    process.env.AUTH_SESSION_MISS_CACHE_MAX || '1000',
+    10
+  );
+  private static sessionMissLogCache = new Map<
+    string,
+    { lastWarnAt: number; suppressed: number; lastSeenAt: number }
+  >();
+
   constructor(private db: SQLiteClient) {}
+
+  private logSessionMissing(payload: JWTPayload): void {
+    const now = Date.now();
+    const cacheKey = `${payload.accountId}:${payload.userId}`;
+    const existing = AuthServiceV2.sessionMissLogCache.get(cacheKey);
+
+    if (!existing || now - existing.lastWarnAt >= AuthServiceV2.sessionMissLogTtlMs) {
+      const suppressed = existing?.suppressed ?? 0;
+      const suffix =
+        suppressed > 0
+          ? ` (suppressed ${suppressed} duplicate warning(s) in last ${Math.round(AuthServiceV2.sessionMissLogTtlMs / 1000)}s)`
+          : '';
+
+      console.warn(
+        `[AUTH] ⚠️  Valid JWT token but no session found (userId: ${payload.userId}, accountId: ${payload.accountId})${suffix}`
+      );
+
+      AuthServiceV2.sessionMissLogCache.set(cacheKey, {
+        lastWarnAt: now,
+        suppressed: 0,
+        lastSeenAt: now,
+      });
+    } else {
+      AuthServiceV2.sessionMissLogCache.set(cacheKey, {
+        ...existing,
+        suppressed: existing.suppressed + 1,
+        lastSeenAt: now,
+      });
+    }
+
+    if (AuthServiceV2.sessionMissLogCache.size > AuthServiceV2.sessionMissCacheMax) {
+      const oldest = Array.from(AuthServiceV2.sessionMissLogCache.entries()).sort(
+        (a, b) => a[1].lastSeenAt - b[1].lastSeenAt
+      )[0];
+      if (oldest) {
+        AuthServiceV2.sessionMissLogCache.delete(oldest[0]);
+      }
+    }
+  }
+
+  /**
+   * Returns the token invalidation epoch in milliseconds, if set.
+   *
+   * Tokens issued before this timestamp are considered invalid.
+   * This is primarily used to force-auth-reset after factory reset.
+   */
+  private getAuthTokenEpochMs(database: Database.Database): number | null {
+    try {
+      const explicitEpoch = database
+        .prepare(`SELECT value FROM schema_metadata WHERE key = 'auth_token_epoch_ms'`)
+        .get() as { value?: string } | undefined;
+
+      if (explicitEpoch?.value) {
+        const numeric = Number(explicitEpoch.value);
+        if (Number.isFinite(numeric) && numeric > 0) {
+          return numeric;
+        }
+      }
+
+      const factoryReset = database
+        .prepare(`SELECT value FROM schema_metadata WHERE key = 'last_factory_reset'`)
+        .get() as { value?: string } | undefined;
+
+      if (!factoryReset?.value) {
+        return null;
+      }
+
+      const asNumber = Number(factoryReset.value);
+      if (Number.isFinite(asNumber) && asNumber > 0) {
+        return asNumber;
+      }
+
+      const parsedDate = Date.parse(factoryReset.value);
+      if (Number.isFinite(parsedDate)) {
+        return parsedDate;
+      }
+    } catch (error) {
+      console.warn('[AUTH] Failed to read auth token epoch from schema metadata:', error);
+    }
+
+    return null;
+  }
 
   /**
    * Map permission level to numeric rank
@@ -677,9 +772,21 @@ export class AuthServiceV2 {
     try {
       // Step 1: Verify JWT signature - this is the source of truth
       const payload = jwt.verify(token, JWT_SECRET) as JWTPayload;
+      const database = this.db.getDatabase();
+
+      // Step 1.5: Invalidate tokens issued before factory-reset/auth epoch
+      const tokenEpochMs = this.getAuthTokenEpochMs(database);
+      if (tokenEpochMs) {
+        const tokenIssuedAtSeconds =
+          typeof (payload as any).iat === 'number' ? (payload as any).iat : 0;
+        const tokenIssuedAtMs = tokenIssuedAtSeconds * 1000;
+
+        if (tokenIssuedAtMs <= 0 || tokenIssuedAtMs < tokenEpochMs) {
+          return null;
+        }
+      }
 
       // Step 2: Optional session check for updating last_active
-      const database = this.db.getDatabase();
       const session = database
         .prepare(
           `
@@ -696,9 +803,7 @@ export class AuthServiceV2 {
         // sessions may not exist yet or may be in different database instances
         // This is expected behavior with JWT-first authentication
         if (process.env.NODE_ENV !== 'test') {
-          console.warn(
-            `[AUTH] ⚠️  Valid JWT token but no session found (userId: ${payload.userId}, accountId: ${payload.accountId})`
-          );
+          this.logSessionMissing(payload);
         }
         return payload; // Still return payload - JWT is valid!
       }

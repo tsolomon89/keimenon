@@ -18,6 +18,7 @@ import assert from 'node:assert';
 import Database from 'better-sqlite3';
 import path from 'path';
 import os from 'os';
+import fs from 'node:fs/promises';
 import {
   login,
   createImportJob,
@@ -87,6 +88,82 @@ const getDbPath = () => process.env.DB_PATH || path.join(os.homedir(), '.keimeno
 // Test credentials (from migration 001_seed_admin.ts)
 const ADMIN_EMAIL = 'admin@admin.com';
 const ADMIN_PASSWORD = 'admin123';
+
+async function createModeFixtureFile(): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const fixture = [
+    {
+      title: 'Mode Fixture Conversation',
+      create_time: now,
+      update_time: now + 10,
+      mapping: {
+        root: {
+          id: 'root',
+          message: {
+            id: 'root',
+            author: { role: 'system', name: null, metadata: {} },
+            create_time: now,
+            update_time: null,
+            content: { content_type: 'text', parts: [''] },
+            status: 'finished_successfully',
+            end_turn: true,
+            weight: 0,
+            metadata: {},
+            recipient: 'all',
+          },
+          parent: null,
+          children: ['user_1'],
+        },
+        user_1: {
+          id: 'user_1',
+          message: {
+            id: 'user_1',
+            author: { role: 'user', name: null, metadata: {} },
+            create_time: now + 1,
+            update_time: null,
+            content: {
+              content_type: 'text',
+              parts: [
+                'manualkeyword manualkeyword manualkeyword planning notes and implementation details for deterministic grouping coverage',
+              ],
+            },
+            status: 'finished_successfully',
+            end_turn: true,
+            weight: 1,
+            metadata: {},
+            recipient: 'all',
+          },
+          parent: 'root',
+          children: ['assistant_1'],
+        },
+        assistant_1: {
+          id: 'assistant_1',
+          message: {
+            id: 'assistant_1',
+            author: { role: 'assistant', name: null, metadata: {} },
+            create_time: now + 2,
+            update_time: null,
+            content: { content_type: 'text', parts: ['acknowledged'] },
+            status: 'finished_successfully',
+            end_turn: true,
+            weight: 1,
+            metadata: {},
+            recipient: 'all',
+          },
+          parent: 'user_1',
+          children: [],
+        },
+      },
+    },
+  ];
+
+  const tempPath = path.join(
+    os.tmpdir(),
+    `keimenon-mode-fixture-${Date.now()}-${Math.random().toString(36).slice(2)}.json`
+  );
+  await fs.writeFile(tempPath, JSON.stringify(fixture), 'utf8');
+  return tempPath;
+}
 
 describe('E2E Import Workflow', () => {
   let db: Database.Database;
@@ -240,11 +317,15 @@ describe('E2E Import Workflow', () => {
       const nodesByKind = getNodesByKind(db, adminAccountId);
       console.log('📦 Nodes by kind:', nodesByKind);
 
-      // Tiny.json should have Messages and Sources at minimum
-      const hasMessages = nodesByKind.some((n) => n.kind === 'Message');
-      const hasSources = nodesByKind.some((n) => n.kind === 'Source');
+      // World Model V5 imports should at least materialize core import/conversation entities.
+      const hasConversationThread = nodesByKind.some((n) => n.kind === 'ConversationThread');
+      const hasUploadItem = nodesByKind.some((n) => n.kind === 'UploadItem');
+      const hasPrincipal = nodesByKind.some((n) => n.kind === 'Principal');
 
-      assert.strictEqual(hasMessages || hasSources, true);
+      assert.ok(
+        hasConversationThread || hasUploadItem || hasPrincipal,
+        'import should materialize world model entities'
+      );
 
       // 11. Verify job appears in jobs list API
       const jobs = await listJobs(adminToken, { status: 'all' });
@@ -339,6 +420,71 @@ describe('E2E Import Workflow', () => {
 
       console.log('Import stats:', completedJob.state.result ?? completedJob.state.stats ?? {});
     }, 30000);
+
+    test('automatic mode should ignore manual-group definitions', async () => {
+      const fixturePath = await createModeFixtureFile();
+
+      try {
+        const { jobId } = await createImportJob(fixturePath, adminToken, {
+          minMessageLength: 1,
+          extraction: { includeUser: true, includeAssistant: false },
+          processingMode: 'automatic',
+          groups: [
+            {
+              id: 'grp_manual_automatic_should_ignore',
+              name: 'Manual Keyword Group',
+              keywords: ['manualkeyword'],
+            },
+          ],
+        });
+
+        const completedJob = await waitForJobCompletion(jobId, adminToken, 45000);
+        assert.strictEqual(completedJob.state.status, 'succeeded');
+
+        const persistedJob = await getJob(jobId, adminToken);
+        assert.strictEqual(persistedJob.config?.importOptions?.processingMode, 'automatic');
+        assert.strictEqual(persistedJob.config?.metadata?.importContractVersion, 'v2');
+        assert.strictEqual(persistedJob.config?.metadata?.processingRail, 'multipart');
+
+        const kinds = getNodesByKind(db, adminAccountId);
+        const spanCount = kinds.find((entry) => entry.kind === 'SourceSpan')?.count ?? 0;
+        const packetCount = kinds.find((entry) => entry.kind === 'Packet')?.count ?? 0;
+        const atomicCount = kinds.find((entry) => entry.kind === 'AtomicUnit')?.count ?? 0;
+        assert.ok(spanCount > 0, 'automatic mode should create SourceSpan nodes');
+        assert.ok(packetCount > 0, 'automatic mode should create Packet nodes');
+        assert.ok(atomicCount > 0, 'automatic mode should create AtomicUnit nodes');
+      } finally {
+        await fs.unlink(fixturePath).catch(() => undefined);
+      }
+    }, 60000);
+
+    test('manual mode should apply manual groups before auto fallback', async () => {
+      const fixturePath = await createModeFixtureFile();
+
+      try {
+        const { jobId } = await createImportJob(fixturePath, adminToken, {
+          minMessageLength: 1,
+          extraction: { includeUser: true, includeAssistant: false },
+          processingMode: 'manual',
+          groups: [
+            {
+              id: 'grp_manual_expected',
+              name: 'Manual Keyword Group',
+              keywords: ['manualkeyword'],
+            },
+          ],
+        });
+
+        const completedJob = await waitForJobCompletion(jobId, adminToken, 45000);
+        assert.strictEqual(completedJob.state.status, 'succeeded');
+        const persistedJob = await getJob(jobId, adminToken);
+        assert.strictEqual(persistedJob.config?.importOptions?.processingMode, 'manual');
+        assert.strictEqual(persistedJob.config?.metadata?.importContractVersion, 'v2');
+        assert.strictEqual(persistedJob.config?.metadata?.processingRail, 'multipart');
+      } finally {
+        await fs.unlink(fixturePath).catch(() => undefined);
+      }
+    }, 60000);
   });
 
   describe('Import Error Handling', () => {
@@ -401,6 +547,24 @@ describe('E2E Import Workflow', () => {
         console.log('✅ Missing file error caught');
       }
     }, 10000);
+
+    test('failed jobs should stay terminal and never regress to running', async () => {
+      const tempFile = path.join(os.tmpdir(), `malformed-${Date.now()}.json`);
+      await fs.writeFile(tempFile, '{ not valid json }', 'utf8');
+
+      try {
+        const { jobId } = await createImportJob(tempFile, adminToken);
+        const failedJob = await waitForJobCompletion(jobId, adminToken, 20000);
+        assert.strictEqual(failedJob.state.status, 'failed');
+
+        await sleep(3000);
+
+        const jobAfterDelay = await getJob(jobId, adminToken);
+        assert.strictEqual(jobAfterDelay.state.status, 'failed');
+      } finally {
+        await fs.unlink(tempFile).catch(() => undefined);
+      }
+    }, 30000);
   });
 
   describe('Import Jobs List API', () => {

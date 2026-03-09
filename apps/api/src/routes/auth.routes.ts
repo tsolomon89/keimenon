@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { AuthServiceV2 } from '../services/auth.service';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import { authRateLimiter, registrationRateLimiter } from '../middleware/rate-limit.middleware';
+import { getDbClient } from '../utils/get-db-client';
 
 export function createAuthRoutes(authService: AuthServiceV2): Router {
   const router = Router();
@@ -449,17 +450,92 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const user = await authService.getUserById(req.user.userId);
-      const account = await authService.getAccountById(req.user.accountId);
+      const dbClient = await getDbClient(req);
+      const db =
+        typeof (dbClient as any).getDatabase === 'function'
+          ? (dbClient as any).getDatabase()
+          : (dbClient as any).db;
 
-      if (!user || !account) {
-        return res.status(404).json({ error: 'User or account not found' });
-      }
+      const userRow = db?.prepare('SELECT * FROM users WHERE id = ?').get(req.user.userId) as
+        | any
+        | undefined;
+      const accountRow = db
+        ?.prepare('SELECT * FROM accounts WHERE id = ?')
+        .get(req.user.accountId) as any | undefined;
+      const membershipRow = db
+        ?.prepare(
+          `SELECT * FROM user_accounts WHERE user_id = ? AND account_id = ? AND status = 'active'`
+        )
+        .get(req.user.userId, req.user.accountId) as any | undefined;
+
+      // If database lookup misses (e.g. transient account-context skew), return JWT-derived identity
+      // instead of 404 so authenticated sessions remain usable.
+      const user = userRow
+        ? {
+            id: userRow.id,
+            email: userRow.email,
+            name: userRow.name,
+            user_class: userRow.user_class,
+            is_active: userRow.is_active === 1,
+            created_at: userRow.created_at,
+            updated_at: userRow.updated_at,
+          }
+        : {
+            id: req.user.userId,
+            email: req.user.email,
+            name: req.user.email,
+            user_class: 'human',
+            is_active: true,
+            created_at: 0,
+            updated_at: 0,
+          };
+
+      const account = accountRow
+        ? {
+            id: accountRow.id,
+            account_type: accountRow.account_type,
+            account_class: accountRow.account_class,
+            email: accountRow.email,
+            name: accountRow.name,
+            owner_user_id: accountRow.owner_user_id,
+            require_account_password: accountRow.require_account_password === 1,
+            created_at: accountRow.created_at,
+            updated_at: accountRow.updated_at,
+          }
+        : {
+            id: req.user.accountId,
+            account_type: req.user.accountType,
+            account_class: req.user.accountClass,
+            email: null,
+            name: null,
+            owner_user_id: null,
+            require_account_password: false,
+            created_at: 0,
+            updated_at: 0,
+          };
 
       // Return both nested and flattened structure for compatibility
       return res.json({
         user,
         account,
+        membership: membershipRow
+          ? {
+              user_id: membershipRow.user_id,
+              account_id: membershipRow.account_id,
+              permission_level: membershipRow.permission_level,
+              role_rank: membershipRow.role_rank,
+              role_overrides: (() => {
+                if (!membershipRow.role_overrides) return undefined;
+                try {
+                  return JSON.parse(membershipRow.role_overrides);
+                } catch {
+                  return undefined;
+                }
+              })(),
+              status: membershipRow.status,
+              joined_at: membershipRow.joined_at,
+            }
+          : undefined,
         // Flattened fields for easier access
         id: user.id,
         user_id: user.id,
@@ -471,7 +547,7 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         account_class: account.account_class,
       });
     } catch (error: any) {
-      console.error('Get current user error:', error);
+      logAuthRouteError('me', error, 500);
       return res.status(500).json({ error: error.message || 'Failed to get user' });
     }
   });

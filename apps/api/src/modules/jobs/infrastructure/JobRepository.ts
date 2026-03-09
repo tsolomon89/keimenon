@@ -20,6 +20,23 @@ import { JobStatus } from '../domain/JobStateMachine';
 import Database from 'better-sqlite3';
 import { ErrorFactory } from '../../../middleware/error-handler.middleware';
 
+const TERMINAL_JOB_STATUSES = new Set<JobStatus>(['succeeded', 'failed', 'canceled']);
+const CHANGE_TRACKER_PAGE_SIZE = Number.parseInt(
+  process.env.CHANGE_TRACKER_PAGE_SIZE || '5000',
+  10
+);
+const CHANGE_TRACKER_KEYS = [
+  'nodesCreated',
+  'edgesCreated',
+  'nodesDeleted',
+  'edgesDeleted',
+] as const;
+type ChangeTrackerKey = (typeof CHANGE_TRACKER_KEYS)[number];
+
+function isTerminalStatus(status: JobStatus | string | undefined): status is JobStatus {
+  return !!status && TERMINAL_JOB_STATUSES.has(status as JobStatus);
+}
+
 export interface JobFilters {
   accountId?: string; // Optional - if not provided, fetch from all accounts
   status?: JobStatus | JobStatus[];
@@ -53,6 +70,8 @@ export interface JobRepository {
  * SQLite implementation of JobRepository
  */
 export class SQLiteJobRepository implements JobRepository {
+  private changeTrackerPagesReady = false;
+
   constructor(private db: Database.Database) {}
 
   /**
@@ -87,8 +106,158 @@ export class SQLiteJobRepository implements JobRepository {
     return this.db;
   }
 
-  private serializeStateData(job: Job): string {
-    return JSON.stringify({ ...job.state, progress: job.progress, stats: job.stats });
+  private ensureChangeTrackerPagesTable(db: Database.Database): void {
+    if (this.changeTrackerPagesReady) {
+      return;
+    }
+
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS job_change_pages (
+        id TEXT PRIMARY KEY,
+        job_id TEXT NOT NULL,
+        account_id TEXT NOT NULL,
+        page_type TEXT NOT NULL CHECK(page_type IN ('nodesCreated', 'edgesCreated', 'nodesDeleted', 'edgesDeleted')),
+        page_index INTEGER NOT NULL,
+        ids_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        UNIQUE(job_id, page_type, page_index),
+        FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
+        FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_job_change_pages_job ON job_change_pages(job_id);
+      CREATE INDEX IF NOT EXISTS idx_job_change_pages_account ON job_change_pages(account_id);
+      CREATE INDEX IF NOT EXISTS idx_job_change_pages_type ON job_change_pages(page_type);
+    `);
+    this.changeTrackerPagesReady = true;
+  }
+
+  private pageChangeTracker(
+    stateData: Record<string, any>,
+    jobId: string,
+    accountId: string,
+    db: Database.Database
+  ): Record<string, any> {
+    const changeTracker = stateData.changeTracker as Record<string, any> | undefined;
+    if (!changeTracker || typeof changeTracker !== 'object') {
+      return stateData;
+    }
+
+    const arraysToPage = CHANGE_TRACKER_KEYS.filter((key) => {
+      const value = changeTracker[key];
+      return Array.isArray(value) && value.length > CHANGE_TRACKER_PAGE_SIZE;
+    });
+
+    if (arraysToPage.length === 0) {
+      return stateData;
+    }
+
+    this.ensureChangeTrackerPagesTable(db);
+    db.prepare('DELETE FROM job_change_pages WHERE job_id = ? AND account_id = ?').run(
+      jobId,
+      accountId
+    );
+
+    const insertPage = db.prepare(`
+      INSERT OR REPLACE INTO job_change_pages (
+        id, job_id, account_id, page_type, page_index, ids_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const now = Date.now();
+    const pageInfo: Record<string, { pageSize: number; pageCount: number; totalIds: number }> = {};
+
+    for (const key of arraysToPage) {
+      const values = changeTracker[key] as string[];
+      const pageCount = Math.ceil(values.length / CHANGE_TRACKER_PAGE_SIZE);
+      pageInfo[key] = {
+        pageSize: CHANGE_TRACKER_PAGE_SIZE,
+        pageCount,
+        totalIds: values.length,
+      };
+
+      for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+        const start = pageIndex * CHANGE_TRACKER_PAGE_SIZE;
+        const end = start + CHANGE_TRACKER_PAGE_SIZE;
+        const page = values.slice(start, end);
+        const pageId = `jcp_${jobId}_${key}_${pageIndex}`;
+        insertPage.run(pageId, jobId, accountId, key, pageIndex, JSON.stringify(page), now);
+      }
+
+      changeTracker[key] = [];
+    }
+
+    changeTracker.pageInfo = {
+      ...(changeTracker.pageInfo || {}),
+      ...pageInfo,
+    };
+    changeTracker.paged = true;
+    stateData.changeTrackerPaged = true;
+
+    return stateData;
+  }
+
+  private serializeStateData(job: Job, db: Database.Database): string {
+    const stateData = this.pageChangeTracker(
+      { ...job.state, progress: job.progress, stats: job.stats },
+      job.id,
+      job.accountId,
+      db
+    );
+    return JSON.stringify(stateData);
+  }
+
+  private hydrateChangeTrackerPages(
+    jobId: string,
+    accountId: string,
+    stateData: Record<string, any>
+  ): Record<string, any> {
+    const tracker = stateData.changeTracker as Record<string, any> | undefined;
+    const pageInfo = tracker?.pageInfo as
+      | Record<string, { pageCount?: number; totalIds?: number }>
+      | undefined;
+
+    if (!stateData.changeTrackerPaged || !pageInfo || !tracker) {
+      return stateData;
+    }
+
+    this.ensureChangeTrackerPagesTable(this.db);
+    const rows = this.db
+      .prepare(
+        `
+        SELECT page_type, page_index, ids_json
+        FROM job_change_pages
+        WHERE job_id = ? AND account_id = ?
+        ORDER BY page_type ASC, page_index ASC
+      `
+      )
+      .all(jobId, accountId) as Array<{
+      page_type: ChangeTrackerKey;
+      page_index: number;
+      ids_json: string;
+    }>;
+
+    for (const key of CHANGE_TRACKER_KEYS) {
+      const pages = rows.filter((row) => row.page_type === key);
+      if (pages.length === 0) {
+        continue;
+      }
+
+      const hydrated: string[] = [];
+      for (const page of pages) {
+        try {
+          const ids = JSON.parse(page.ids_json || '[]');
+          if (Array.isArray(ids)) {
+            hydrated.push(...ids);
+          }
+        } catch {
+          // Ignore malformed page payloads during hydration.
+        }
+      }
+
+      tracker[key] = hydrated;
+    }
+
+    return stateData;
   }
 
   /**
@@ -98,6 +267,21 @@ export class SQLiteJobRepository implements JobRepository {
     try {
       const now = Date.now();
       const db = await this.getDbForJob(job);
+      const existing = db
+        .prepare('SELECT status FROM jobs WHERE id = ? AND account_id = ?')
+        .get(job.id, job.accountId) as { status?: JobStatus } | undefined;
+
+      if (isTerminalStatus(existing?.status)) {
+        const incomingTerminal = isTerminalStatus(job.status);
+        const sameTerminalStatus = job.status === existing.status;
+
+        if (!incomingTerminal || !sameTerminalStatus) {
+          console.warn(
+            `[JobRepository] Ignoring stale state write for terminal job ${job.id}: existing=${existing.status}, incoming=${job.status}`
+          );
+          return;
+        }
+      }
 
       const stmt = db.prepare(`
         INSERT INTO jobs (
@@ -118,7 +302,7 @@ export class SQLiteJobRepository implements JobRepository {
         job.createdBy,
         JSON.stringify(job.config),
         job.status,
-        this.serializeStateData(job),
+        this.serializeStateData(job, db),
         now,
         now,
         job.idempotencyKey || null,
@@ -375,7 +559,8 @@ export class SQLiteJobRepository implements JobRepository {
     }
 
     try {
-      return JSON.parse(record.state_data);
+      const parsed = JSON.parse(record.state_data);
+      return this.hydrateChangeTrackerPages(jobId, accountId, parsed);
     } catch {
       return null;
     }
@@ -385,13 +570,22 @@ export class SQLiteJobRepository implements JobRepository {
    * Update state_data for a job (used by CompensateJob to mark as compensated)
    */
   async updateStateData(jobId: string, accountId: string, stateData: string): Promise<void> {
+    let serializedStateData = stateData;
+    try {
+      const parsed = JSON.parse(stateData);
+      const paged = this.pageChangeTracker(parsed, jobId, accountId, this.db);
+      serializedStateData = JSON.stringify(paged);
+    } catch {
+      // Preserve original state_data payload if parsing fails.
+    }
+
     const stmt = this.db.prepare(`
       UPDATE jobs
       SET state_data = ?, updated_at = ?
       WHERE id = ? AND account_id = ?
     `);
 
-    stmt.run(stateData, Date.now(), jobId, accountId);
+    stmt.run(serializedStateData, Date.now(), jobId, accountId);
   }
 
   /**

@@ -170,7 +170,7 @@ describe('ImportsTableCard', () => {
     );
   });
 
-  it('displays Processing status for running jobs', async () => {
+  it('displays Parsing status for running jobs', async () => {
     const job = createSSEJob({ status: 'running' });
     setupMocks([job]);
 
@@ -178,7 +178,7 @@ describe('ImportsTableCard', () => {
 
     await waitFor(
       () => {
-        expect(screen.getByText('Processing')).toBeInTheDocument();
+        expect(screen.getByText('Parsing')).toBeInTheDocument();
       },
       { timeout: 3000 }
     );

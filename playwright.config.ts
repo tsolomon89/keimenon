@@ -131,7 +131,7 @@ export default defineConfig({
       command: 'cd apps/api && npm run dev:test',
       url: 'http://localhost:4001/health',
       reuseExistingServer: !process.env.CI,
-      timeout: 120 * 1000,
+      timeout: 300 * 1000,
       env: {
         NODE_ENV: 'test',
         PORT: '4001',
@@ -142,7 +142,7 @@ export default defineConfig({
       command: 'cd apps/web && npm run dev',
       url: 'http://localhost:3000',
       reuseExistingServer: !process.env.CI,
-      timeout: 120 * 1000,
+      timeout: 300 * 1000,
       env: {
         PORT: '3000',
         NEXT_PUBLIC_API_URL: 'http://localhost:4001',

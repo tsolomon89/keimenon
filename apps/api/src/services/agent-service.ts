@@ -1,163 +1,175 @@
 /**
  * Agent Service
  *
- * Orchestrates agent task execution by connecting:
- * - Task handlers (GROUP_SUMMARY_BUILD, DUPLICATE_SUGGEST, VERIFY_SOURCE_CHAIN)
- * - Tool adapters (LLM, Web, Exec)
- * - Graph repository
- * - Event bus for progress updates
- *
- * This service is a singleton that manages the agent lifecycle.
+ * Persistent runtime wrapper around @keimenon/agent-core TaskRunner.
+ * Uses SQLite-backed graph/task/run/artifact storage.
  */
 
-import { v4 as uuidv4 } from 'uuid';
+import type Database from 'better-sqlite3';
 import {
-  getTaskHandler,
-  hasTaskHandler,
-  getTaskHandlerTypes,
-} from '@keimenon/task-handlers';
+  InMemoryEventBus,
+  InMemoryHandlerRegistry,
+  NullLLMAdapter,
+  NullWebAdapter,
+  TaskRunner,
+  type AgentEvent,
+  type Artifact,
+  type EventBus,
+  type ExecAdapter,
+  type GitAdapter,
+  type GraphRepo,
+  type ProofAdapter,
+  type Run,
+  type Task,
+  type TaskConfig,
+  type TaskType,
+  type ToolRegistry,
+  type ToolStatus,
+  type WebAdapter,
+  type LLMAdapter,
+} from '@keimenon/agent-core';
+import { LocalArtifactStorage } from './agent/LocalArtifactStorage';
+import { SQLiteAgentGraphRepo } from './agent/SQLiteAgentGraphRepo';
 
-/**
- * Minimal types for the service (avoiding full agent-core dependency)
- */
-interface Task {
-  id: string;
-  type: string;
-  account_id: string;
-  agent_id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-  input: Record<string, unknown>;
-  config: TaskConfig;
-  created_at: number;
-  started_at?: number;
-  completed_at?: number;
-  error?: string;
+type TaskHandlersModule = {
+  getTaskHandler: (type: string) => any;
+  getTaskHandlerTypes: () => string[];
+};
+
+const FALLBACK_TASK_TYPES: TaskType[] = [
+  'GROUP_SUMMARY_BUILD',
+  'DUPLICATE_SUGGEST',
+  'VERIFY_SOURCE_CHAIN',
+];
+
+class NoopToolRegistry implements ToolRegistry {
+  private readonly llmAdapter = new NullLLMAdapter();
+  private readonly webAdapter = new NullWebAdapter();
+
+  getLLMAdapter(): LLMAdapter | null {
+    return this.llmAdapter;
+  }
+
+  getWebAdapter(): WebAdapter | null {
+    return this.webAdapter;
+  }
+
+  getExecAdapter(): ExecAdapter | null {
+    return null;
+  }
+
+  getProofAdapter(): ProofAdapter | null {
+    return null;
+  }
+
+  getGitAdapter(): GitAdapter | null {
+    return null;
+  }
+
+  getStatus(): ToolStatus[] {
+    return [
+      { name: 'llm', available: false, provider: 'none' },
+      { name: 'web', available: false, provider: 'none' },
+      { name: 'exec', available: false, error: 'Not configured' },
+      { name: 'proof', available: false, error: 'Not configured' },
+      { name: 'git', available: false, error: 'Not configured' },
+    ];
+  }
+
+  isAvailable(tool: 'llm' | 'web' | 'exec' | 'proof' | 'git'): boolean {
+    return tool === 'llm' || tool === 'web' ? false : false;
+  }
+
+  async refresh(): Promise<void> {
+    // No-op
+  }
 }
 
-interface TaskConfig {
-  version: string;
-  model_policy?: string;
-  max_tokens?: number;
-  retry_policy?: { max_attempts: number; backoff_ms: number };
-  timeout_ms?: number;
+let taskHandlersModulePromise: Promise<TaskHandlersModule | null> | null = null;
+
+async function loadTaskHandlersModule(): Promise<TaskHandlersModule | null> {
+  if (!taskHandlersModulePromise) {
+    taskHandlersModulePromise = import('@keimenon/task-handlers')
+      .then((module: any) => ({
+        getTaskHandler: module.getTaskHandler,
+        getTaskHandlerTypes: module.getTaskHandlerTypes,
+      }))
+      .catch((error) => {
+        console.error('[AgentService] Failed to load @keimenon/task-handlers:', error);
+        return null;
+      });
+  }
+
+  return taskHandlersModulePromise;
 }
 
-interface Run {
-  id: string;
-  task_id: string;
-  attempt: number;
-  status: 'running' | 'completed' | 'failed';
-  started_at: number;
-  completed_at?: number;
-  error?: string;
-  metrics: { duration_ms: number; [key: string]: number | undefined };
+function resolveDatabase(): Database.Database {
+  const dbClient = global.dbClient as any;
+  if (!dbClient) {
+    throw new Error('Database client is not initialized');
+  }
+
+  if (dbClient.db) {
+    return dbClient.db as Database.Database;
+  }
+
+  if (typeof dbClient.getDatabase === 'function') {
+    return dbClient.getDatabase() as Database.Database;
+  }
+
+  throw new Error('Database client does not expose a SQLite handle');
 }
 
-interface TaskResult {
-  success: boolean;
-  output?: unknown;
-  error?: string;
-  artifacts: string[];
-  metrics?: { duration_ms: number; [key: string]: number | undefined };
-}
-
-/**
- * Agent task creation request
- */
 export interface CreateTaskRequest {
-  type: string;
+  type: TaskType | string;
   accountId: string;
   input: Record<string, unknown>;
   config?: Partial<TaskConfig>;
 }
 
-/**
- * Task execution result
- */
 export interface TaskExecutionResult {
   task: Task;
-  run: Run;
-  result: TaskResult;
 }
 
-/**
- * Simple in-memory storage for artifacts
- */
-class SimpleStorage {
-  private store = new Map<string, string | Buffer>();
-
-  async put(content: string | Buffer): Promise<{ hash: string; path: string }> {
-    const hash = this.simpleHash(content.toString());
-    const path = `artifacts/${hash}`;
-    this.store.set(hash, content);
-    return { hash, path };
-  }
-
-  async get(hash: string): Promise<string | Buffer | null> {
-    return this.store.get(hash) ?? null;
-  }
-
-  async exists(hash: string): Promise<boolean> {
-    return this.store.has(hash);
-  }
-
-  private simpleHash(content: string): string {
-    let hash = 0;
-    for (let i = 0; i < content.length; i++) {
-      const char = content.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16).padStart(8, '0');
-  }
+export interface TaskDetails {
+  task: Task;
+  runs: Run[];
+  artifacts: Artifact[];
 }
 
-/**
- * Simple event bus for broadcasting agent events
- */
-class SimpleEventBus {
-  private handlers: Array<(event: any) => void> = [];
-
-  emit(event: any): void {
-    for (const handler of this.handlers) {
-      try {
-        handler(event);
-      } catch (e) {
-        console.error('[EventBus] Handler error:', e);
-      }
-    }
-  }
-
-  subscribe(handler: (event: any) => void): () => void {
-    this.handlers.push(handler);
-    return () => {
-      const index = this.handlers.indexOf(handler);
-      if (index >= 0) {
-        this.handlers.splice(index, 1);
-      }
-    };
-  }
-}
-
-/**
- * Agent Service singleton
- */
 export class AgentService {
   private static instance: AgentService | null = null;
 
-  private storage = new SimpleStorage();
-  private eventBus = new SimpleEventBus();
-  private toolRegistry: any = null;
-  private graphRepo: any = null;
+  private readonly eventBus: EventBus = new InMemoryEventBus();
+  private toolRegistry: ToolRegistry = new NoopToolRegistry();
 
-  private runningTasks = new Map<string, AbortController>();
-  private taskHistory: Task[] = [];
+  private graphRepo:
+    | (GraphRepo & { getSourcesByImportBatch?: (...args: any[]) => Promise<any[]> })
+    | null = null;
+  private storage: LocalArtifactStorage | null = null;
+  private handlerRegistry: InMemoryHandlerRegistry | null = null;
+  private taskRunner: TaskRunner | null = null;
+  private runtimeInitPromise: Promise<void> | null = null;
+  private availableTaskTypes: TaskType[] = [...FALLBACK_TASK_TYPES];
+  private runningTasks = new Set<string>();
 
-  private constructor() {}
+  private constructor() {
+    this.eventBus.subscribe((event: AgentEvent) => {
+      if (event.type === 'task:started') {
+        this.runningTasks.add(event.taskId);
+        return;
+      }
 
-  /**
-   * Get singleton instance
-   */
+      if (
+        event.type === 'task:completed' ||
+        event.type === 'task:failed' ||
+        event.type === 'task:cancelled'
+      ) {
+        this.runningTasks.delete(event.taskId);
+      }
+    });
+  }
+
   static getInstance(): AgentService {
     if (!AgentService.instance) {
       AgentService.instance = new AgentService();
@@ -165,281 +177,175 @@ export class AgentService {
     return AgentService.instance;
   }
 
-  /**
-   * Configure the service with dependencies
-   */
-  configure(options: {
-    toolRegistry?: any;
-    graphRepo?: any;
-  }): void {
+  configure(options: { toolRegistry?: ToolRegistry; graphRepo?: GraphRepo }): void {
     if (options.toolRegistry) {
       this.toolRegistry = options.toolRegistry;
     }
     if (options.graphRepo) {
-      this.graphRepo = options.graphRepo;
+      this.graphRepo = options.graphRepo as any;
     }
   }
 
-  /**
-   * Subscribe to agent events
-   */
-  subscribe(handler: (event: any) => void): () => void {
-    return this.eventBus.subscribe(handler);
+  subscribe(handler: (event: AgentEvent) => void): () => void {
+    const subscription = this.eventBus.subscribe(handler);
+    return () => subscription.unsubscribe();
   }
 
-  /**
-   * Get available task handler types
-   */
   getAvailableTaskTypes(): string[] {
-    return getTaskHandlerTypes();
+    return [...this.availableTaskTypes];
   }
 
-  /**
-   * Check if a task type is available
-   */
   isTaskTypeAvailable(type: string): boolean {
-    return hasTaskHandler(type);
+    return this.availableTaskTypes.includes(type as TaskType);
   }
 
-  /**
-   * Create and execute a task
-   */
+  getRunningTasks(): string[] {
+    return Array.from(this.runningTasks);
+  }
+
   async executeTask(request: CreateTaskRequest): Promise<TaskExecutionResult> {
-    // Validate task type
-    const handler = getTaskHandler(request.type);
-    if (!handler) {
+    await this.ensureRuntimeInitialized();
+
+    const taskType = request.type as TaskType;
+    if (!this.isTaskTypeAvailable(taskType)) {
       throw new Error(`Unknown task type: ${request.type}`);
     }
 
-    // Validate input
-    const validation = handler.validate(request.input);
-    if (!validation.valid) {
-      throw new Error(`Invalid input: ${validation.errors?.join(', ')}`);
+    if (!this.taskRunner || !this.graphRepo) {
+      throw new Error('Agent runtime is not ready');
     }
 
-    // Check tool availability
-    if (handler.canExecute && this.toolRegistry) {
-      const canExec = handler.canExecute(this.toolRegistry);
-      if (!canExec.can) {
-        throw new Error(`Cannot execute: ${canExec.reason}`);
-      }
-    }
-
-    // Create task
-    const now = Date.now();
-    const taskId = uuidv4();
-    const agentId = `agent-${request.accountId}`;
-
-    const task: Task = {
-      id: taskId,
-      type: request.type,
+    const agent = await this.graphRepo.getOrCreateAgent(request.accountId);
+    const task = await this.taskRunner.submit({
+      type: taskType,
       account_id: request.accountId,
-      agent_id: agentId,
-      status: 'pending',
+      agent_id: agent.id,
       input: request.input,
       config: {
-        version: '1.0.0',
-        model_policy: request.config?.model_policy,
-        max_tokens: request.config?.max_tokens,
-        retry_policy: request.config?.retry_policy,
-        timeout_ms: request.config?.timeout_ms ?? 300000,
+        version: request.config?.version || '1.0.0',
+        ...request.config,
       },
-      created_at: now,
-    };
-
-    // Create run
-    const run: Run = {
-      id: uuidv4(),
-      task_id: taskId,
-      attempt: 1,
-      status: 'running',
-      started_at: now,
-      metrics: { duration_ms: 0 },
-    };
-
-    // Setup abort controller
-    const abortController = new AbortController();
-    this.runningTasks.set(taskId, abortController);
-
-    // Emit task started event
-    this.eventBus.emit({
-      type: 'task:started',
-      taskId,
-      taskType: request.type,
-      timestamp: now,
     });
 
-    // Update task status
-    task.status = 'running';
-    task.started_at = now;
+    return { task };
+  }
 
-    try {
-      // Create context for handler
-      const context = {
-        task,
-        run,
-        graph: this.graphRepo || this.createMockGraphRepo(),
-        storage: this.storage,
-        tools: this.toolRegistry || this.createMockToolRegistry(),
-        events: this.eventBus,
-        signal: abortController.signal,
-      };
+  async retryTask(taskId: string, accountId: string): Promise<TaskExecutionResult> {
+    await this.ensureRuntimeInitialized();
 
-      // Execute handler (cast context to any to avoid strict type checking)
-      const result = await handler.run(request.input, context as any);
+    if (!this.graphRepo) {
+      throw new Error('Agent runtime is not ready');
+    }
 
-      // Update run and task
-      const completedAt = Date.now();
-      run.status = result.success ? 'completed' : 'failed';
-      run.completed_at = completedAt;
-      run.metrics = result.metrics || { duration_ms: completedAt - now };
-      if (!result.success && result.error) {
-        run.error = result.error;
+    const task = await this.graphRepo.getTask(taskId);
+    if (!task) {
+      throw new Error('Task not found');
+    }
+
+    if (task.account_id !== accountId) {
+      throw new Error('Task does not belong to this account');
+    }
+
+    if (task.status === 'pending' || task.status === 'running') {
+      throw new Error('Only terminal tasks can be retried');
+    }
+
+    return this.executeTask({
+      type: task.type,
+      accountId,
+      input: task.input as Record<string, unknown>,
+      config: task.config,
+    });
+  }
+
+  async cancelTask(taskId: string): Promise<boolean> {
+    await this.ensureRuntimeInitialized();
+
+    if (!this.taskRunner) {
+      return false;
+    }
+
+    return this.taskRunner.cancel(taskId, 'Cancelled by user');
+  }
+
+  async getTask(taskId: string): Promise<Task | null> {
+    await this.ensureRuntimeInitialized();
+    return this.graphRepo?.getTask(taskId) || null;
+  }
+
+  async getTaskHistory(accountId: string): Promise<Task[]> {
+    await this.ensureRuntimeInitialized();
+    return this.graphRepo?.listTasks(accountId, { limit: 200 }) || [];
+  }
+
+  async getTaskDetails(taskId: string): Promise<TaskDetails | null> {
+    await this.ensureRuntimeInitialized();
+
+    if (!this.graphRepo) {
+      return null;
+    }
+
+    const task = await this.graphRepo.getTask(taskId);
+    if (!task) {
+      return null;
+    }
+
+    const runs = await this.graphRepo.getRuns(taskId);
+    const artifacts: Artifact[] = [];
+
+    for (const run of runs) {
+      const runArtifacts = await this.graphRepo.getArtifacts(run.id);
+      artifacts.push(...runArtifacts);
+    }
+
+    return { task, runs, artifacts };
+  }
+
+  private async ensureRuntimeInitialized(): Promise<void> {
+    if (this.runtimeInitPromise) {
+      await this.runtimeInitPromise;
+      return;
+    }
+
+    this.runtimeInitPromise = this.initializeRuntime();
+    await this.runtimeInitPromise;
+  }
+
+  private async initializeRuntime(): Promise<void> {
+    const db = resolveDatabase();
+    const graphRepo = this.graphRepo || new SQLiteAgentGraphRepo(db);
+    const storage = this.storage || new LocalArtifactStorage();
+    await storage.ensureReady();
+
+    const handlerRegistry = new InMemoryHandlerRegistry();
+    const taskHandlersModule = await loadTaskHandlersModule();
+    if (taskHandlersModule) {
+      const types = taskHandlersModule.getTaskHandlerTypes();
+      for (const type of types) {
+        const handler = taskHandlersModule.getTaskHandler(type);
+        if (handler) {
+          handlerRegistry.register(handler);
+        }
       }
-
-      task.status = result.success ? 'completed' : 'failed';
-      task.completed_at = completedAt;
-      if (!result.success && result.error) {
-        task.error = result.error;
-      }
-
-      // Emit completion event
-      this.eventBus.emit({
-        type: result.success ? 'task:completed' : 'task:failed',
-        taskId,
-        artifacts: result.artifacts,
-        error: result.error,
-        timestamp: completedAt,
-      });
-
-      // Store in history
-      this.taskHistory.push(task);
-
-      return { task, run, result };
-    } catch (error) {
-      // Handle execution error
-      const completedAt = Date.now();
-      run.status = 'failed';
-      run.completed_at = completedAt;
-      run.error = (error as Error).message;
-      run.metrics = { duration_ms: completedAt - now };
-
-      task.status = 'failed';
-      task.completed_at = completedAt;
-      task.error = (error as Error).message;
-
-      this.eventBus.emit({
-        type: 'task:failed',
-        taskId,
-        error: (error as Error).message,
-        timestamp: completedAt,
-      });
-
-      this.taskHistory.push(task);
-
-      return {
-        task,
-        run,
-        result: {
-          success: false,
-          error: (error as Error).message,
-          artifacts: [],
-        },
-      };
-    } finally {
-      this.runningTasks.delete(taskId);
     }
-  }
 
-  /**
-   * Cancel a running task
-   */
-  cancelTask(taskId: string): boolean {
-    const controller = this.runningTasks.get(taskId);
-    if (controller) {
-      controller.abort();
-      return true;
-    }
-    return false;
-  }
+    const registeredTypes = handlerRegistry.list();
+    this.availableTaskTypes =
+      registeredTypes.length > 0 ? registeredTypes : [...FALLBACK_TASK_TYPES];
 
-  /**
-   * Get task history
-   */
-  getTaskHistory(accountId?: string): Task[] {
-    if (accountId) {
-      return this.taskHistory.filter(t => t.account_id === accountId);
-    }
-    return [...this.taskHistory];
-  }
-
-  /**
-   * Get running tasks
-   */
-  getRunningTasks(): string[] {
-    return Array.from(this.runningTasks.keys());
-  }
-
-  /**
-   * Create mock graph repo for testing/development
-   */
-  private createMockGraphRepo(): any {
-    return {
-      listGroups: async () => [],
-      listSources: async () => [],
-      getSource: async () => null,
-      getSources: async () => [],
-      getNode: async () => null,
-      getNodesByKind: async () => [],
-      getEdges: async () => [],
-      createNode: async (node: any) => node,
-      createNodes: async (nodes: any[]) => nodes,
-      createEdge: async (edge: any) => ({ ...edge, id: uuidv4(), created_at: Date.now() }),
-      createEdges: async (edges: any[]) => edges.map(e => ({ ...e, id: uuidv4(), created_at: Date.now() })),
-      setNodeStatus: async () => {},
-      saveTask: async (task: any) => task,
-      updateTaskStatus: async () => {},
-      getTask: async () => null,
-      listTasks: async () => [],
-      saveRun: async (run: any) => run,
-      updateRun: async () => {},
-      getRuns: async () => [],
-      saveArtifact: async (artifact: any) => artifact,
-      getArtifacts: async () => [],
-      getOrCreateAgent: async (accountId: string) => ({
-        id: `agent-${accountId}`,
-        kind: 'AgentNode',
-        account_id: accountId,
-        name: 'Keimenon Agent',
-        is_active: true,
-        created_at: Date.now(),
-        updated_at: Date.now(),
-        metadata: { capabilities: ['summarize', 'dedupe'] },
-      }),
-      updateAgent: async () => {},
-    };
-  }
-
-  /**
-   * Create mock tool registry for testing/development
-   */
-  private createMockToolRegistry(): any {
-    return {
-      getLLMAdapter: () => null,
-      getWebAdapter: () => null,
-      getExecAdapter: () => null,
-      getProofAdapter: () => null,
-      getGitAdapter: () => null,
-      getStatus: () => [],
-      isAvailable: () => false,
-      refresh: async () => {},
-    };
+    this.graphRepo = graphRepo;
+    this.storage = storage;
+    this.handlerRegistry = handlerRegistry;
+    this.taskRunner = new TaskRunner({
+      graph: graphRepo,
+      storage,
+      events: this.eventBus,
+      tools: this.toolRegistry,
+      handlers: handlerRegistry,
+    });
   }
 }
 
-/**
- * Get singleton instance (convenience export)
- */
 export function getAgentService(): AgentService {
   return AgentService.getInstance();
 }

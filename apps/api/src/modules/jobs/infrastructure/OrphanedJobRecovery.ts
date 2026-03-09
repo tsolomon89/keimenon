@@ -1,12 +1,13 @@
 /**
  * Orphaned Job Recovery
  *
- * On server startup, identifies and marks jobs that were interrupted by
- * server crashes or restarts as failed.
+ * On server startup, identifies and recovers jobs interrupted by
+ * server crashes or restarts.
  *
  * Recovery Logic:
  * - Queries jobs with status 'running'
- * - Marks only stale running jobs as failed with error "Server restarted during execution"
+ * - Import jobs: mark as blocked/recoverable so users can resume from checkpoints
+ * - Non-import jobs: mark as failed with error "Server restarted during execution"
  * - Logs recovery count for observability
  *
  * Why This Matters:
@@ -30,14 +31,16 @@ export interface RecoveryResult {
 }
 
 /**
- * Recover orphaned jobs left in non-terminal states by previous server instance
+ * Recover orphaned jobs left in non-terminal states by previous server instance.
+ *
+ * INVARIANT: On server startup, ALL running jobs are orphaned by definition.
+ * No worker thread survives a server restart, so there is no legitimate reason
+ * for a job to be in 'running' status when the server boots.
  */
 export async function recoverOrphanedJobs(jobRepository: JobRepository): Promise<RecoveryResult> {
   console.log('🔍 Checking for orphaned running jobs from previous server instance...');
 
   try {
-    const orphanThresholdMs = Number.parseInt(process.env.JOB_ORPHAN_THRESHOLD_MS || '120000', 10);
-
     // Query running jobs only. Queued jobs can still be picked up after restart.
     const activeJobs = await jobRepository.find({
       status: 'running',
@@ -49,42 +52,40 @@ export async function recoverOrphanedJobs(jobRepository: JobRepository): Promise
       return { total: 0, running: 0, failed: [] };
     }
 
-    console.log(`📋 Found ${activeJobs.length} running jobs, checking for orphaned work...`);
+    console.log(`📋 Found ${activeJobs.length} running job(s) — recovering startup orphans`);
 
     const result: RecoveryResult = {
-      total: 0,
-      running: 0,
+      total: activeJobs.length,
+      running: activeJobs.length,
       failed: [],
     };
 
-    // Mark only stale or malformed running jobs as failed.
     for (const job of activeJobs) {
       try {
         const startedAt = job.state.startedAt?.getTime();
-        const runningTimeMs = startedAt ? Date.now() - startedAt : Number.POSITIVE_INFINITY;
-
-        if (startedAt && runningTimeMs <= orphanThresholdMs) {
-          console.log(
-            `ℹ️ Skipping recent running job ${job.id} (${Math.round(runningTimeMs / 1000)}s old)`
-          );
-          continue;
-        }
-
-        result.total++;
-        result.running++;
-
         const suffix = startedAt
-          ? ` (${Math.round(runningTimeMs / 1000 / 60)} minutes old)`
+          ? ` (started ${Math.round((Date.now() - startedAt) / 1000 / 60)} minutes ago)`
           : ' (missing startedAt timestamp)';
-        job.fail({
-          code: 'ORPHANED',
-          message: `Server restarted during job execution${suffix}. Please retry if needed.`,
-        });
 
-        // Persist updated job state
-        await jobRepository.save(job);
-
-        console.log(`   ✓ Marked job ${job.id} as failed`);
+        if (job.type === 'import') {
+          job.block(
+            `Server restarted during import execution${suffix}. Resume to continue from the latest checkpoint.`
+          );
+          job.updateStateMetadata({
+            recoverableAfterRestart: true,
+            interruptedAt: Date.now(),
+            interruptedReason: 'SERVER_RESTART',
+          });
+          await jobRepository.save(job);
+          console.log(`   ✓ Marked import ${job.id} as blocked/recoverable${suffix}`);
+        } else {
+          job.fail({
+            code: 'ORPHANED',
+            message: `Server restarted during job execution${suffix}. Please retry if needed.`,
+          });
+          await jobRepository.save(job);
+          console.log(`   ✓ Marked job ${job.id} as failed${suffix}`);
+        }
       } catch (error: any) {
         console.error(`   ✗ Failed to mark job ${job.id} as failed:`, error.message);
         result.failed.push(job.id);

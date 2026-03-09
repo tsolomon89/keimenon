@@ -21,6 +21,10 @@ import { ConcurrencyGuard } from './ConcurrencyGuard';
 import { StartJob } from '../../jobs/application/StartJob';
 import { SSEBroadcaster } from '../../jobs/infrastructure/SSEBroadcaster';
 import { ErrorFactory } from '../../../middleware/error-handler.middleware';
+import { getImportMetrics } from '../../../services/metrics/ImportMetrics';
+import * as fs from 'node:fs/promises';
+import { isManagedImportArtifactPath } from '../../../utils/import-artifacts';
+import { appLogger } from '../../../utils/logger';
 
 export interface WorkerPoolConfig {
   maxConcurrentJobs: number;
@@ -41,8 +45,14 @@ export interface ActiveJobExecution {
 export class WorkerPool {
   private workers: Map<JobType, IWorker> = new Map();
   private activeJobs: Map<string, ActiveJobExecution> = new Map();
+  private importProgressTracker: Map<string, { percent: number; updatedAt: number; mode: string }> =
+    new Map();
   private isRunning: boolean = false;
   private pollTimer: NodeJS.Timeout | null = null;
+  private readonly importStallThresholdMs: number = Number.parseInt(
+    process.env.IMPORT_STALL_THRESHOLD_MS || '180000',
+    10
+  );
 
   constructor(
     private jobRepository: JobRepository,
@@ -151,6 +161,7 @@ export class WorkerPool {
         `🔄 Polling for jobs... (${this.activeJobs.size}/${this.config.maxConcurrentJobs} active, ${availableSlots} slots available)`
       );
 
+      this.detectImportStalls();
       if (availableSlots <= 0) {
         console.log('⏸️ Pool is full, skipping poll');
         return; // Pool is full
@@ -331,6 +342,21 @@ export class WorkerPool {
 
       console.log(`▶️ Started job ${runningJob.id} (type: ${runningJob.type})`);
 
+      if (runningJob.type === 'import') {
+        const mode = this.getImportMode(runningJob);
+        const importMetrics = getImportMetrics();
+        importMetrics.recordJobStarted({
+          jobId: runningJob.id,
+          accountId: runningJob.accountId,
+          mode,
+        });
+        this.importProgressTracker.set(runningJob.id, {
+          percent: runningJob.progress.percent,
+          updatedAt: Date.now(),
+          mode,
+        });
+      }
+
       // Broadcast job started
       if (this.broadcaster) {
         this.broadcaster.broadcastJobUpdate(runningJob);
@@ -354,9 +380,13 @@ export class WorkerPool {
 
       // Process the job
       const result = await worker.process(job, context);
+      const execution = this.activeJobs.get(job.id);
+      const startedAtMs = execution?.startedAt?.getTime() ?? Date.now();
+      const mode = this.importProgressTracker.get(job.id)?.mode ?? this.getImportMode(job);
 
       // Remove from active jobs
       this.activeJobs.delete(job.id);
+      this.importProgressTracker.delete(job.id);
 
       // Reload job (it may have been updated during processing)
       // Pass test context if available
@@ -370,22 +400,55 @@ export class WorkerPool {
         return;
       }
 
+      const pausedAfterAbort =
+        !result.success && result.error?.code === 'CANCELED' && updatedJob.status === 'blocked';
+
       // Update job status based on result (only if not already terminal)
       if (!updatedJob.isTerminal) {
-        if (result.success) {
+        if (pausedAfterAbort) {
+          console.log(
+            `⏸️  Job ${job.id} remains blocked after cooperative pause abort; skipping fail transition`
+          );
+        } else if (result.success) {
           if (updatedJob.progress.percent < 100) {
             updatedJob.updateProgress(100, 100, 'Completed');
           }
           updatedJob.succeed('Job completed successfully');
+          await this.jobRepository.save(updatedJob);
         } else {
           updatedJob.fail(result.error!);
           console.log(`❌ Job ${job.id} failed: ${result.error?.message}`);
+          await this.jobRepository.save(updatedJob);
         }
-        await this.jobRepository.save(updatedJob);
       } else {
         console.log(
           `⏭️  Job ${job.id} already in terminal state (${updatedJob.status}), skipping status update`
         );
+      }
+
+      if (
+        updatedJob.type === 'import' &&
+        (updatedJob.status === 'succeeded' ||
+          updatedJob.status === 'failed' ||
+          updatedJob.status === 'canceled')
+      ) {
+        await this.cleanupImportInputArtifacts(updatedJob);
+      }
+
+      if (
+        updatedJob.type === 'import' &&
+        (updatedJob.status === 'succeeded' ||
+          updatedJob.status === 'failed' ||
+          updatedJob.status === 'canceled')
+      ) {
+        getImportMetrics().recordJobTerminal({
+          jobId: updatedJob.id,
+          accountId: updatedJob.accountId,
+          mode,
+          status: updatedJob.status,
+          durationMs: Math.max(0, Date.now() - startedAtMs),
+          errorCode: updatedJob.state.error?.code,
+        });
       }
 
       // Broadcast job completion
@@ -398,8 +461,13 @@ export class WorkerPool {
     } catch (error: any) {
       console.error(`❌ Unexpected error executing job ${job.id}:`, error);
 
+      const execution = this.activeJobs.get(job.id);
+      const startedAtMs = execution?.startedAt?.getTime() ?? Date.now();
+      const mode = this.importProgressTracker.get(job.id)?.mode ?? this.getImportMode(job);
+
       // Remove from active jobs
       this.activeJobs.delete(job.id);
+      this.importProgressTracker.delete(job.id);
 
       // Try to mark job as failed (only if not already in terminal state)
       try {
@@ -409,16 +477,36 @@ export class WorkerPool {
 
         const failedJob = await this.jobRepository.findById(job.id, job.accountId, reqContext);
         if (failedJob && !failedJob.isTerminal) {
-          failedJob.fail({
-            code: 'UNEXPECTED_ERROR',
-            message: error.message || 'Unknown error',
-            stack: error.stack,
-          });
-          await this.jobRepository.save(failedJob);
+          if (failedJob.status === 'blocked') {
+            console.log(`⏸️  Job ${job.id} is blocked; skipping unexpected-error fail transition`);
+            if (this.broadcaster) {
+              this.broadcaster.broadcastJobUpdate(failedJob);
+            }
+          } else {
+            failedJob.fail({
+              code: 'UNEXPECTED_ERROR',
+              message: error.message || 'Unknown error',
+              stack: error.stack,
+            });
+            await this.jobRepository.save(failedJob);
+            if (failedJob.type === 'import') {
+              await this.cleanupImportInputArtifacts(failedJob);
+            }
+            if (failedJob.type === 'import') {
+              getImportMetrics().recordJobTerminal({
+                jobId: failedJob.id,
+                accountId: failedJob.accountId,
+                mode,
+                status: 'failed',
+                durationMs: Math.max(0, Date.now() - startedAtMs),
+                errorCode: failedJob.state.error?.code,
+              });
+            }
 
-          // Broadcast failure
-          if (this.broadcaster) {
-            this.broadcaster.broadcastJobUpdate(failedJob);
+            // Broadcast failure
+            if (this.broadcaster) {
+              this.broadcaster.broadcastJobUpdate(failedJob);
+            }
           }
         } else if (failedJob?.isTerminal) {
           console.log(
@@ -444,6 +532,164 @@ export class WorkerPool {
         console.error('[WorkerPool] Critical error:', apiError);
       }
     }
+  }
+
+  private getImportMode(job: Job): string {
+    const mode = (job.config.importOptions as Record<string, unknown> | undefined)?.processingMode;
+    return typeof mode === 'string' && mode.length > 0 ? mode : 'automatic';
+  }
+
+  private detectImportStalls(): void {
+    if (this.importStallThresholdMs <= 0) {
+      return;
+    }
+
+    const now = Date.now();
+    for (const [jobId, execution] of this.activeJobs.entries()) {
+      if (execution.job.type !== 'import') {
+        continue;
+      }
+
+      const currentPercent = execution.job.progress.percent;
+      const existing = this.importProgressTracker.get(jobId);
+
+      if (!existing) {
+        this.importProgressTracker.set(jobId, {
+          percent: currentPercent,
+          updatedAt: now,
+          mode: this.getImportMode(execution.job),
+        });
+        continue;
+      }
+
+      if (currentPercent > existing.percent) {
+        this.importProgressTracker.set(jobId, {
+          ...existing,
+          percent: currentPercent,
+          updatedAt: now,
+        });
+        continue;
+      }
+
+      if (now - existing.updatedAt >= this.importStallThresholdMs) {
+        getImportMetrics().recordStallDetected(existing.mode);
+        this.importProgressTracker.set(jobId, {
+          ...existing,
+          updatedAt: now,
+        });
+      }
+    }
+  }
+
+  private getFailedArtifactRetentionMs(): number {
+    return Number.parseInt(
+      process.env.IMPORT_FAILED_ARTIFACT_RETENTION_MS || String(24 * 60 * 60 * 1000),
+      10
+    );
+  }
+
+  private getCleanupMetadata(job: Job): Record<string, unknown> {
+    const metadata = job.state.metadata;
+    if (!metadata || typeof metadata !== 'object') {
+      return {};
+    }
+    return metadata as Record<string, unknown>;
+  }
+
+  private async persistCleanupMetadata(job: Job, context: string): Promise<void> {
+    try {
+      const stateData = JSON.stringify({
+        ...job.state,
+        progress: job.progress,
+        stats: job.stats,
+      });
+      await this.jobRepository.updateStateData(job.id, job.accountId, stateData);
+      if (this.broadcaster) {
+        this.broadcaster.broadcastJobUpdate(job);
+      }
+    } catch (error: any) {
+      appLogger.warn('import.artifact.cleanup.metadata_persist_failed', {
+        context,
+        jobId: job.id,
+        status: job.status,
+        error: error.message,
+      });
+    }
+  }
+
+  private async cleanupImportInputArtifacts(job: Job): Promise<void> {
+    if (job.type !== 'import') {
+      return;
+    }
+
+    const files = Array.isArray(job.config.files) ? job.config.files : [];
+    const filePaths = files
+      .map((file) => (typeof file.filePath === 'string' ? file.filePath : ''))
+      .filter((filePath) => filePath.length > 0);
+    if (filePaths.length === 0) {
+      return;
+    }
+
+    const now = Date.now();
+    if (job.status === 'failed') {
+      const metadata = this.getCleanupMetadata(job);
+      if (
+        metadata.inputFileCleanupStatus === 'retained_for_failure' &&
+        typeof metadata.inputFileRetainedUntil === 'number' &&
+        metadata.inputFileRetainedUntil >= now
+      ) {
+        return;
+      }
+
+      const retainedUntil = now + this.getFailedArtifactRetentionMs();
+      job.updateStateMetadata({
+        inputFileRetainedUntil: retainedUntil,
+        inputFileCleanupStatus: 'retained_for_failure',
+      });
+      await this.persistCleanupMetadata(job, 'failed_retention');
+      return;
+    }
+
+    if (job.status !== 'succeeded' && job.status !== 'canceled') {
+      return;
+    }
+
+    const metadata = this.getCleanupMetadata(job);
+    if (typeof metadata.inputFileDeletedAt === 'number') {
+      return;
+    }
+
+    const deletedPaths: string[] = [];
+    for (const filePath of filePaths) {
+      if (!isManagedImportArtifactPath(filePath)) {
+        appLogger.warn('import.artifact.cleanup.skipped_unmanaged_path', {
+          jobId: job.id,
+          status: job.status,
+          filePath,
+        });
+        continue;
+      }
+
+      try {
+        await fs.rm(filePath, { force: true });
+        deletedPaths.push(filePath);
+      } catch (error: any) {
+        appLogger.warn('import.artifact.cleanup.delete_failed', {
+          jobId: job.id,
+          status: job.status,
+          filePath,
+          error: error.message,
+        });
+      }
+    }
+
+    job.updateStateMetadata({
+      inputFileDeletedAt: now,
+      inputFileCleanupStatus: 'deleted_on_terminal',
+      inputFilesDeletedCount: deletedPaths.length,
+      inputFilesDeleted: deletedPaths,
+    });
+    await this.persistCleanupMetadata(job, 'terminal_delete');
   }
 
   /**
@@ -500,16 +746,62 @@ export class WorkerPool {
   }
 
   /**
+   * Pause a specific running job.
+   *
+   * Marks the job as blocked and aborts the active worker cooperatively.
+   * Import workers persist checkpoint state before exiting, enabling resume.
+   */
+  async pauseJob(jobId: string, accountId: string, reason?: string): Promise<boolean> {
+    const execution = this.activeJobs.get(jobId);
+    if (!execution) {
+      return false;
+    }
+
+    try {
+      const activeJob = execution.job;
+      const reqContext = activeJob.config.testContext?.dbPath
+        ? { testDbPath: activeJob.config.testContext.dbPath }
+        : undefined;
+      const job = await this.jobRepository.findById(jobId, accountId, reqContext);
+      if (!job) {
+        console.warn(`⚠️ Job ${jobId} not found in database during pause`);
+        return false;
+      }
+
+      if (!job.canPause) {
+        console.warn(
+          `⚠️ Job ${jobId} cannot be paused from status ${job.status}; expected running`
+        );
+        return false;
+      }
+
+      job.block(reason || 'User paused job');
+      await this.jobRepository.save(job);
+
+      if (this.broadcaster) {
+        this.broadcaster.broadcastJobUpdate(job);
+      }
+
+      execution.abortController.abort();
+      console.log(`⏸️ Job ${jobId} marked blocked and abort signal sent`);
+      return true;
+    } catch (error: any) {
+      console.error(`❌ Error pausing job ${jobId}:`, error);
+      return false;
+    }
+  }
+
+  /**
    * Recover orphaned jobs from previous server instance
    *
    * When the server restarts, jobs that were in 'running' status
-   * are now orphaned (no worker is processing them). We need to
-   * mark them as failed so they don't block the queue.
+   * are now orphaned (no worker is processing them). We recover
+   * imports as paused/recoverable and fail non-import jobs.
    *
    * Detection strategy:
    * - Find all jobs with status='running'
-   * - Check if they were started more than ORPHAN_THRESHOLD_MS ago
-   * - Mark as failed with error code 'ORPHANED'
+   * - Import jobs: transition running -> blocked with recoverable metadata
+   * - Other jobs: mark failed with error code 'ORPHANED'
    */
   private async recoverOrphanedJobs(): Promise<void> {
     try {
@@ -527,24 +819,36 @@ export class WorkerPool {
         return;
       }
 
-      console.log(`📋 Found ${runningJobs.length} orphaned job(s), marking as failed...`);
+      console.log(`📋 Found ${runningJobs.length} orphaned job(s), recovering...`);
 
       let orphanedCount = 0;
 
       for (const job of runningJobs) {
         try {
-          job.fail({
-            code: 'ORPHANED',
-            message: 'Job orphaned: Server restarted while job was in progress',
-          });
-          await this.jobRepository.save(job);
+          if (job.type === 'import') {
+            job.block(
+              'Server restarted while import was running. Resume to continue from the latest checkpoint.'
+            );
+            job.updateStateMetadata({
+              recoverableAfterRestart: true,
+              interruptedAt: Date.now(),
+              interruptedReason: 'SERVER_RESTART',
+            });
+            await this.jobRepository.save(job);
+          } else {
+            job.fail({
+              code: 'ORPHANED',
+              message: 'Job orphaned: Server restarted while job was in progress',
+            });
+            await this.jobRepository.save(job);
+          }
 
           if (this.broadcaster) {
             this.broadcaster.broadcastJobUpdate(job);
           }
 
           orphanedCount++;
-          console.log(`  ⚠️ Orphaned: ${job.id} (type=${job.type})`);
+          console.log(`  ⚠️ Recovered: ${job.id} (type=${job.type}, status=${job.status})`);
         } catch (jobError: any) {
           console.error(`  ❌ Failed to recover ${job.id}: ${jobError.message}`);
         }

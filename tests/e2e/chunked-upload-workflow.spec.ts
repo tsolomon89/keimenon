@@ -42,6 +42,47 @@ const TEST_USER = {
   password: 'TestPass123!',
 };
 
+type LoginContext = {
+  token: string;
+  accountId: string;
+  userId?: string;
+};
+
+async function loginWithRetry(
+  apiRequest: any,
+  credentials: { email: string; password: string },
+  maxAttempts = 3
+): Promise<LoginContext> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const response = await apiRequest.post('/api/v1/auth/login', { data: credentials });
+    const body = await response.json().catch(() => ({}));
+
+    if (response.ok() && body?.token) {
+      const user = body?.user && typeof body.user === 'object' ? body.user : undefined;
+      const accountId = user?.accountId || body?.account?.id || body?.accountId;
+
+      if (accountId) {
+        return {
+          token: body.token,
+          accountId,
+          userId: user?.id || user?.userId || body?.userId,
+        };
+      }
+    }
+
+    const error = body?.error || body?.message || `status ${response.status()}`;
+
+    if (attempt < maxAttempts && String(error).includes('No active accounts')) {
+      await new Promise((resolve) => setTimeout(resolve, attempt * 100));
+      continue;
+    }
+
+    throw new Error(`Login failed: ${error}`);
+  }
+
+  throw new Error(`Login failed after ${maxAttempts} attempts`);
+}
+
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
 const SMALL_FILE_SIZE = 25 * 1024 * 1024; // 25MB test file (3 chunks)
 const DB_PATH = 'c:/Users/Audna/.keimenon/keimenon.db';
@@ -175,19 +216,12 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
 
   let authToken: string;
   let accountId: string;
-  let userId: string;
   const createdSessionIds: string[] = [];
 
   test.beforeEach(async ({ apiRequest }) => {
-    // Login and get auth token
-    const response = await apiRequest.post('/api/v1/auth/login', {
-      data: TEST_USER,
-    });
-
-    const auth = await response.json();
+    const auth = await loginWithRetry(apiRequest, TEST_USER);
     authToken = auth.token;
-    userId = auth.user.id || auth.user.userId;
-    accountId = auth.user.accountId || auth.account?.id;
+    accountId = auth.accountId;
 
     expect(authToken).toBeTruthy();
     expect(accountId).toBeTruthy();
@@ -269,6 +303,10 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 
@@ -304,6 +342,10 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 
@@ -343,11 +385,14 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
 
       console.log(`[Test 3] Chunk ${i} uploaded: ${chunkResult.progress}% complete`);
 
-      // Verify chunk file exists on disk
+      // Verify chunk file exists on disk while upload is still in-progress.
+      // Final chunk can trigger immediate assembly/cleanup, so filesystem checks are race-prone there.
       const tempCheck = checkTempDirectory(sessionId);
-      expect(tempCheck.exists).toBe(true);
-      expect(tempCheck.fileCount).toBe(i + 1);
-      expect(tempCheck.files).toContain(`chunk_${i}`);
+      if (i < chunks.length - 1) {
+        expect(tempCheck.exists).toBe(true);
+        expect(tempCheck.fileCount).toBe(i + 1);
+        expect(tempCheck.files).toContain(`chunk_${i}`);
+      }
     }
 
     // Step 4: Verify final session status
@@ -374,6 +419,10 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 
@@ -421,6 +470,10 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 
@@ -451,9 +504,19 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       console.log(`[Test 5] Concurrent chunk ${index} uploaded successfully`);
     });
 
-    // Verify all chunks saved
+    // Verify API-level invariants (authoritative even if assembly cleanup races local fs checks)
+    const apiSession = await getUploadSessionViaAPI(apiRequest, sessionId, authToken);
+    expect(apiSession).toBeTruthy();
+    expect(apiSession.chunksUploaded).toHaveLength(3);
+    expect(apiSession.progress).toBe(100);
+
+    // Temp files may already be assembled and cleaned up by the time we inspect disk.
     const tempCheck = checkTempDirectory(sessionId);
-    expect(tempCheck.fileCount).toBe(3);
+    if (tempCheck.exists) {
+      expect(tempCheck.fileCount).toBeGreaterThan(0);
+    } else {
+      expect(tempCheck.fileCount).toBe(0);
+    }
 
     console.log('[Test 5] ✅ Concurrent chunk uploads handled correctly');
   });
@@ -659,6 +722,10 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 
@@ -714,6 +781,10 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 
@@ -801,6 +872,10 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 
@@ -843,6 +918,10 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 
@@ -978,6 +1057,10 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 
@@ -1019,6 +1102,10 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 
@@ -1048,6 +1135,10 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 
@@ -1098,6 +1189,10 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 
@@ -1143,6 +1238,10 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 
@@ -1177,13 +1276,9 @@ test.describe('Upload Session Deletion via Data Management', () => {
   const createdSessionIds: string[] = [];
 
   test.beforeEach(async ({ apiRequest }) => {
-    const response = await apiRequest.post('/api/v1/auth/login', {
-      data: TEST_USER,
-    });
-
-    const auth = await response.json();
+    const auth = await loginWithRetry(apiRequest, TEST_USER);
     authToken = auth.token;
-    accountId = auth.user.accountId || auth.account?.id;
+    accountId = auth.accountId;
   });
 
   test.afterEach(async () => {
@@ -1208,6 +1303,10 @@ test.describe('Upload Session Deletion via Data Management', () => {
         fileSize: SMALL_FILE_SIZE,
         mimeType: 'application/json',
         chunkSize: CHUNK_SIZE,
+        importConfig: {
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        },
       },
     });
 

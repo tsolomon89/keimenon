@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { KeimenonHeader } from './KeimenonHeader';
 import { KeimenonToolbar } from './KeimenonToolbar';
 import { KeimenonSidebar, type InspectorPanel } from './KeimenonSidebar';
@@ -24,6 +24,8 @@ import { useUIVersion } from '@/contexts/UIVersionContext';
 import { useBackgroundOperations, type Operation } from '@/contexts/BackgroundOperationsContext';
 import { useConsole } from '@/contexts/ConsoleContext';
 import type { ImportJob } from './ImportsTableCard';
+import type { ImportUiStatus } from '@/lib/import-job-progress';
+import { getCoreProcessReimportStatus, type CoreProcessReimportStatus } from '@/lib/api-client';
 
 interface KeimenonLayoutProps {
   showUploadModal: boolean;
@@ -68,6 +70,10 @@ export function KeimenonLayout({
   const [inspectorPanel, setInspectorPanel] = useState<InspectorPanel | undefined>(undefined);
   const [selectedUser, setSelectedUser] = useState<any>(null); // User selected from Settings > Users
   const [activeOperation, setActiveOperation] = useState<Operation | null>(null);
+  const [coreProcessReimport, setCoreProcessReimport] = useState<CoreProcessReimportStatus | null>(
+    null
+  );
+  const previousRunningImportCountRef = useRef(0);
 
   // Keep active operation in sync with restored operations from background queue
   useEffect(() => {
@@ -78,6 +84,44 @@ export function KeimenonLayout({
       onClearRestoredOperation?.();
     }
   }, [restoredOperation, onClearRestoredOperation]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!user) {
+      setCoreProcessReimport(null);
+      return;
+    }
+
+    getCoreProcessReimportStatus()
+      .then((status) => {
+        if (!cancelled) {
+          setCoreProcessReimport(status);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCoreProcessReimport(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.accountId]);
+
+  useEffect(() => {
+    const onCoreProcessReimportComplete = () => {
+      setCoreProcessReimport((previous) =>
+        previous ? { ...previous, requiresReimport: false } : previous
+      );
+    };
+
+    window.addEventListener('core-process-reimport-complete', onCoreProcessReimportComplete);
+    return () => {
+      window.removeEventListener('core-process-reimport-complete', onCoreProcessReimportComplete);
+    };
+  }, []);
 
   // Refresh active operation when background context updates
   useEffect(() => {
@@ -113,17 +157,18 @@ export function KeimenonLayout({
           'indexing',
           'linking',
           'processing',
+          'blocked',
         ].includes(op.status)
     );
+    const runningImportCount = runningImports.length;
+    const hadRunningImports = previousRunningImportCountRef.current > 0;
+    const hasNewRunningImport = !hadRunningImports && runningImportCount > 0;
 
-    // Auto-switch to processing view when import starts (if we're in keimenon mode)
+    // Auto-switch only when imports transition from "none running" to "running".
+    // This avoids trapping users/tests in processing view due to stale background operations.
     // Shows minigraph visualization and real-time pipeline progress
-    if (
-      keimenonMode === 'keimenon' &&
-      runningImports.length > 0 &&
-      keimenonSurface !== 'processing'
-    ) {
-      console.log('[KeimenonLayout] Auto-switching to processing view for import job');
+    if (keimenonMode === 'keimenon' && hasNewRunningImport && keimenonSurface !== 'processing') {
+      console.debug('[KeimenonLayout] Auto-switching to processing view for import job');
       setKeimenonSurface('processing');
 
       // Set the first running import as active if none is selected
@@ -135,6 +180,8 @@ export function KeimenonLayout({
         setActiveOperation(runningImports[0]);
       }
     }
+
+    previousRunningImportCountRef.current = runningImportCount;
   }, [operations, keimenonMode, keimenonSurface, activeOperation]);
 
   // Reset processing surface when there is no active operation
@@ -144,10 +191,21 @@ export function KeimenonLayout({
     }
   }, [keimenonSurface, activeOperation]);
 
-  const hasProcessingOperations = Array.from(operations.values()).some((op) =>
-    ['queued', 'reading', 'parsing', 'normalizing', 'indexing', 'linking', 'processing'].includes(
-      op.status
-    )
+  const hasProcessingOperations = useMemo(
+    () =>
+      Array.from(operations.values()).some((op) =>
+        [
+          'queued',
+          'reading',
+          'parsing',
+          'normalizing',
+          'indexing',
+          'linking',
+          'processing',
+          'blocked',
+        ].includes(op.status)
+      ),
+    [operations]
   );
 
   const processingAvailable = hasProcessingOperations || !!activeOperation;
@@ -157,6 +215,10 @@ export function KeimenonLayout({
     // Open import flow in Inspector Bar (no modals)
     setInspectorPanel('import-flow');
     setRightSidebarOpen(true); // Auto-expand Inspector Bar if collapsed
+  };
+
+  const handleStartGuidedReimport = async () => {
+    handleOpenImportFlow();
   };
 
   // Handler for when user is selected from Settings > Users
@@ -174,23 +236,21 @@ export function KeimenonLayout({
   };
 
   const mapImportStatusToOperationStatus = (status: string): Operation['status'] => {
-    switch (status) {
-      case 'queued':
-        return 'queued';
-      case 'reading':
-      case 'parsing':
-      case 'normalizing':
-      case 'indexing':
-      case 'linking':
-      case 'processing':
-        return 'processing';
-      case 'done':
-        return 'done';
-      case 'error':
-        return 'error';
-      default:
-        return 'processing';
-    }
+    const importStatus = status as ImportUiStatus;
+    const allowed: ImportUiStatus[] = [
+      'queued',
+      'reading',
+      'parsing',
+      'normalizing',
+      'indexing',
+      'linking',
+      'processing',
+      'blocked',
+      'done',
+      'error',
+    ];
+
+    return allowed.includes(importStatus) ? (importStatus as Operation['status']) : 'processing';
   };
 
   const focusOperationFromJob = (job: ImportJob) => {
@@ -200,6 +260,11 @@ export function KeimenonLayout({
       edgesCreated: job.stats.edgesCreated,
       sourcesCreated: job.stats.sourcesCreated,
       conversationsProcessed: job.stats.conversationsProcessed,
+      messagesProcessed: job.stats.messagesProcessed ?? 0,
+      spansCreated: job.stats.spansCreated ?? 0,
+      packetsCreated: job.stats.packetsCreated ?? 0,
+      atomicUnitsCreated: job.stats.atomicUnitsCreated ?? 0,
+      packetMassLinksCreated: job.stats.packetMassLinksCreated ?? 0,
     };
 
     const existing = getOperation(job.id);
@@ -253,7 +318,7 @@ export function KeimenonLayout({
   // Admin operating mode: Admin user viewing another account's context
   const isAdminOperatingMode = isAdmin && !isNativeMode;
 
-  // Detect mobile/tablet screen size
+  // Detect mobile/tablet screen size (debounced)
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 1024; // lg breakpoint
@@ -265,20 +330,23 @@ export function KeimenonLayout({
       }
     };
 
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    const debouncedCheck = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(checkMobile, 150);
+    };
+
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener('resize', debouncedCheck);
+    return () => {
+      clearTimeout(resizeTimer);
+      window.removeEventListener('resize', debouncedCheck);
+    };
   }, []);
 
   // Set default settings section when entering settings mode
   useEffect(() => {
-    console.log('[KeimenonLayout] Settings mode check:', {
-      keimenonMode,
-      selectedSettingsSectionId,
-      hasDefault: !selectedSettingsSectionId,
-    });
     if (keimenonMode === 'settings' && !selectedSettingsSectionId) {
-      console.log('[KeimenonLayout] Setting default section: section_general_language');
       setSelectedSettingsSectionId('section_general_language');
     }
   }, [keimenonMode, selectedSettingsSectionId]);
@@ -321,6 +389,23 @@ export function KeimenonLayout({
 
             {/* Main viewport + toolbar */}
             <div className="flex-1 flex flex-col overflow-hidden">
+              {coreProcessReimport?.requiresReimport && (
+                <div className="px-4 py-2 border-b border-amber-500/30 bg-amber-500/10">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-sm text-amber-100">
+                      Core process upgrade reset prior import artifacts. Start guided reimport to
+                      rebuild your workspace.
+                    </p>
+                    <button
+                      onClick={handleStartGuidedReimport}
+                      className="px-3 py-1.5 rounded bg-amber-500 text-slate-900 text-sm font-semibold hover:bg-amber-400 transition-colors"
+                    >
+                      Start Reimport
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Toolbar */}
               <KeimenonToolbar
                 onUploadClick={handleOpenImportFlow}

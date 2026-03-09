@@ -1,221 +1,290 @@
-/**
- * Migration Runner
- *
- * Automatically runs pending database migrations on startup.
- *
- * Features:
- * - Scans migrations directory for .sql files
- * - Tracks applied migrations in 'migrations' table
- * - Runs migrations in order (by filename number)
- * - Idempotent - safe to run multiple times
- * - Logs all operations for debugging
- *
- * Usage:
- *   const runner = new MigrationRunner(db);
- *   await runner.runPendingMigrations();
- *
- * Related: Fix for "jobs table doesn't exist" issue
- * See: docs/active_development/JOBS_MIGRATION_CRITICAL_FIX.md
- */
-
 import Database from 'better-sqlite3';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { createHash } from 'crypto';
 
 export interface MigrationRecord {
   id: number;
+  version: string;
   name: string;
   applied_at: number;
   checksum?: string;
 }
 
+interface MigrationFile {
+  version: string;
+  name: string;
+  path: string;
+}
+
+const DESTRUCTIVE_MIGRATION_PREFIXES = ['026_', '027_'];
+
 export class MigrationRunner {
   constructor(
     private db: Database.Database,
     private migrationsDir?: string
-  ) {
-    console.log('DEBUG RUNNER DB:', db.name);
-  }
+  ) {}
 
-  /**
-   * Run all pending migrations
-   */
   async runPendingMigrations(): Promise<void> {
-    console.log('🔄 MigrationRunner: Checking for pending migrations...');
-
-    // Step 1: Ensure migrations tracking table exists
     this.ensureMigrationsTable();
 
-    // Step 2: Get list of applied migrations
     const applied = this.getAppliedMigrations();
-    console.log(`   Found ${applied.length} previously applied migrations`);
-
-    // Step 3: Scan migrations directory
     const available = await this.getAvailableMigrations();
-    console.log(`   Found ${available.length} total migration files`);
-
-    // Step 4: Determine pending migrations
-    const appliedNames = new Set(applied.map((m) => m.name));
-    const pending = available.filter((m) => !appliedNames.has(m.name));
+    const appliedNames = new Set(applied.map((migration) => migration.name));
+    const pending = available.filter((migration) => !appliedNames.has(migration.name));
 
     if (pending.length === 0) {
-      console.log('   ✅ All migrations up to date');
+      console.log('[MigrationRunner] No pending migrations');
       return;
     }
 
-    console.log(`   📋 Found ${pending.length} pending migrations:`);
-    pending.forEach((m) => console.log(`      - ${m.name}`));
+    await this.backupDatabaseIfNeeded(pending);
 
-    // Step 5: Run pending migrations in order
     for (const migration of pending) {
       await this.runMigration(migration);
     }
-
-    console.log('   ✅ All pending migrations completed successfully');
   }
 
-  /**
-   * Ensure migrations tracking table exists
-   */
+  async markAllAvailableMigrationsApplied(): Promise<void> {
+    this.ensureMigrationsTable();
+
+    const appliedNames = new Set(this.getAppliedMigrations().map((migration) => migration.name));
+    const available = await this.getAvailableMigrations();
+
+    for (const migration of available) {
+      if (appliedNames.has(migration.name)) {
+        continue;
+      }
+
+      const sql = await fs.readFile(migration.path, 'utf-8');
+      const checksum = this.calculateChecksum(sql);
+      this.recordMigration(migration, checksum);
+    }
+  }
+
+  async markMigrationsAppliedThrough(maxVersionInclusive: string): Promise<void> {
+    this.ensureMigrationsTable();
+
+    const maxVersion = Number.parseInt(maxVersionInclusive, 10);
+    if (!Number.isFinite(maxVersion)) {
+      throw new Error(`Invalid max migration version: ${maxVersionInclusive}`);
+    }
+
+    const appliedNames = new Set(this.getAppliedMigrations().map((migration) => migration.name));
+    const available = await this.getAvailableMigrations();
+
+    for (const migration of available) {
+      const migrationVersion = Number.parseInt(migration.version, 10);
+      if (!Number.isFinite(migrationVersion) || migrationVersion > maxVersion) {
+        continue;
+      }
+      if (appliedNames.has(migration.name)) {
+        continue;
+      }
+
+      const sql = await fs.readFile(migration.path, 'utf-8');
+      const checksum = this.calculateChecksum(sql);
+      this.recordMigration(migration, checksum);
+    }
+  }
+
+  hasAppliedMigrations(): boolean {
+    this.ensureMigrationsTable();
+
+    const row = this.db.prepare('SELECT COUNT(*) AS count FROM migrations').get() as
+      | { count?: number }
+      | undefined;
+
+    return (row?.count ?? 0) > 0;
+  }
+
+  getMigrationStatus(): { applied: MigrationRecord[]; pending: string[] } {
+    return {
+      applied: this.getAppliedMigrations(),
+      pending: [],
+    };
+  }
+
   private ensureMigrationsTable(): void {
-    console.log('DEBUG: Creating migrations table if not exists...');
-    try {
-      this.db.exec(`
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS migrations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        version TEXT NOT NULL,
         name TEXT NOT NULL UNIQUE,
         applied_at INTEGER NOT NULL,
         checksum TEXT
       )
     `);
-    } catch (err: any) {
-      console.error('ERROR in ensureMigrationsTable:', err);
-      throw err;
+
+    // Self-heal legacy installations that created `migrations` without
+    // the full column set (notably missing `version`).
+    const columns = this.db.prepare(`PRAGMA table_info(migrations)`).all() as Array<{
+      name: string;
+    }>;
+    const columnSet = new Set(columns.map((column) => column.name));
+
+    if (!columnSet.has('version')) {
+      this.db.exec(`ALTER TABLE migrations ADD COLUMN version TEXT`);
+      this.db.exec(`
+        UPDATE migrations
+        SET version = CASE
+          WHEN instr(name, '_') > 0 THEN substr(name, 1, instr(name, '_') - 1)
+          ELSE name
+        END
+        WHERE version IS NULL OR version = ''
+      `);
+    }
+
+    if (!columnSet.has('applied_at')) {
+      this.db.exec(`ALTER TABLE migrations ADD COLUMN applied_at INTEGER`);
+      this.db
+        .prepare(`UPDATE migrations SET applied_at = ? WHERE applied_at IS NULL`)
+        .run(Date.now());
+    }
+
+    if (!columnSet.has('checksum')) {
+      this.db.exec(`ALTER TABLE migrations ADD COLUMN checksum TEXT`);
     }
   }
 
-  /**
-   * Get list of applied migrations from database
-   */
   private getAppliedMigrations(): MigrationRecord[] {
-    const stmt = this.db.prepare('SELECT * FROM migrations ORDER BY name');
+    const stmt = this.db.prepare(
+      'SELECT id, version, name, applied_at, checksum FROM migrations ORDER BY version, id'
+    );
+
     return stmt.all() as MigrationRecord[];
   }
 
-  /**
-   * Get list of available migration files from filesystem
-   */
-  private async getAvailableMigrations(): Promise<Array<{ name: string; path: string }>> {
-    // Migrations are in packages/db/src/sqlite/migrations/
-    // Migrations are in packages/db/src/sqlite/migrations/
+  private async getAvailableMigrations(): Promise<MigrationFile[]> {
     const migrationsDir = this.migrationsDir || path.join(__dirname, 'migrations');
-    console.log('DEBUG: __dirname:', __dirname);
-    console.log('DEBUG: migrationsDir:', migrationsDir);
-
     let files: string[];
+
     try {
       files = await fs.readdir(migrationsDir);
     } catch (error: any) {
-      console.warn(`   ⚠️ Could not read migrations directory: ${migrationsDir}`);
-      console.warn(`   Error: ${error.message}`);
-      return [];
+      throw new Error(
+        `SQLite migrations directory is missing or unreadable: ${migrationsDir} (${error.message})`
+      );
     }
 
-    // Filter to .sql files only, sort by number prefix
     const sqlFiles = files
-      .filter((f) => f.endsWith('.sql'))
-      .sort((a, b) => {
-        // Extract number prefix (e.g., "002" from "002_add_data_tags.sql")
-        const numA = parseInt(a.split('_')[0], 10);
-        const numB = parseInt(b.split('_')[0], 10);
-        return numA - numB;
+      .filter((file) => file.endsWith('.sql'))
+      .sort((left, right) => {
+        const leftVersion = parseInt(left.split('_')[0], 10);
+        const rightVersion = parseInt(right.split('_')[0], 10);
+        return leftVersion - rightVersion;
       });
 
+    if (sqlFiles.length === 0) {
+      throw new Error(`No SQLite migration files found in ${migrationsDir}`);
+    }
+
     return sqlFiles.map((file) => ({
+      version: file.split('_')[0],
       name: file,
       path: path.join(migrationsDir, file),
     }));
   }
 
-  /**
-   * Run a single migration
-   */
-  private async runMigration(migration: { name: string; path: string }): Promise<void> {
-    console.log(`   🔧 Running migration: ${migration.name}`);
+  private async backupDatabaseIfNeeded(pendingMigrations: MigrationFile[]): Promise<void> {
+    const needsBackup = pendingMigrations.some((migration) =>
+      DESTRUCTIVE_MIGRATION_PREFIXES.some((prefix) => migration.name.startsWith(prefix))
+    );
 
-    // Read SQL file outside try block so we can access it in catch
+    if (!needsBackup) {
+      return;
+    }
+
+    const databasePath = this.getDatabasePath();
+    if (!databasePath) {
+      console.warn('[MigrationRunner] Skipping pre-migration backup for non-file database');
+      return;
+    }
+
+    try {
+      await fs.access(databasePath);
+    } catch {
+      console.warn(
+        `[MigrationRunner] Skipping pre-migration backup because database file does not exist: ${databasePath}`
+      );
+      return;
+    }
+
+    try {
+      this.db.pragma('wal_checkpoint(TRUNCATE)');
+    } catch (error: any) {
+      console.warn(
+        `[MigrationRunner] WAL checkpoint before backup failed: ${error.message ?? error}`
+      );
+    }
+
+    const parsed = path.parse(databasePath);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = path.join(
+      parsed.dir,
+      `${parsed.name}.pre-migration-${timestamp}${parsed.ext || '.db'}`
+    );
+
+    await fs.copyFile(databasePath, backupPath);
+    console.log(`[MigrationRunner] Created pre-migration backup at ${backupPath}`);
+  }
+
+  private getDatabasePath(): string | null {
+    const databasePath = (this.db as any).name;
+
+    if (!databasePath || databasePath === ':memory:' || databasePath.startsWith('file:')) {
+      return null;
+    }
+
+    return databasePath;
+  }
+
+  private async runMigration(migration: MigrationFile): Promise<void> {
     const sql = await fs.readFile(migration.path, 'utf-8');
     const checksum = this.calculateChecksum(sql);
 
-    // Extract version number from filename (e.g., "002" from "002_add_data_tags.sql")
-    const version = migration.name.split('_')[0];
-
     try {
-      // Execute migration in a transaction
-      const runMigration = this.db.transaction(() => {
-        // Execute the migration SQL
+      const applyMigration = this.db.transaction(() => {
         this.db.exec(sql);
-
-        // Record migration as applied
-        const stmt = this.db.prepare(
-          'INSERT INTO migrations (version, name, applied_at, checksum) VALUES (?, ?, ?, ?)'
-        );
-        stmt.run(version, migration.name, Date.now(), checksum);
+        this.recordMigration(migration, checksum);
       });
 
-      runMigration();
-
-      console.log(`      ✅ Migration ${migration.name} applied successfully`);
+      applyMigration();
+      console.log(`[MigrationRunner] Applied ${migration.name}`);
     } catch (error: any) {
-      // Check if this is a "duplicate column" error - means migration was already applied
-      if (error.message && error.message.includes('duplicate column name')) {
-        console.log(`      ⚠️ Migration ${migration.name} already applied (columns exist)`);
-        console.log(`      📝 Recording as applied...`);
-
-        // Record migration as applied (outside transaction since SQL failed)
-        try {
-          const stmt = this.db.prepare(
-            'INSERT OR IGNORE INTO migrations (version, name, applied_at, checksum) VALUES (?, ?, ?, ?)'
-          );
-          stmt.run(version, migration.name, Date.now(), checksum);
-          console.log(`      ✅ Migration ${migration.name} marked as applied`);
-          return; // Continue to next migration
-        } catch (recordError: any) {
-          console.error(`      ❌ Failed to record migration: ${recordError.message}`);
-        }
+      if (this.isIdempotentMigrationError(error)) {
+        this.recordMigration(migration, checksum);
+        console.warn(
+          `[MigrationRunner] ${migration.name} appears already applied (${error.message}). Recording migration.`
+        );
+        return;
       }
 
-      // For other errors, fail loudly
-      console.error(`      ❌ Migration ${migration.name} failed:`);
-      console.error(`      Error: ${error.message}`);
-      throw error; // Fail loudly - don't continue if migration fails
+      throw new Error(`Migration ${migration.name} failed: ${error.message}`);
     }
   }
 
-  /**
-   * Calculate checksum for migration file (simple implementation)
-   */
-  private calculateChecksum(sql: string): string {
-    // Simple checksum: length + first 100 chars + last 100 chars
-    // This is NOT cryptographic, just a basic sanity check
-    const first = sql.substring(0, 100);
-    const last = sql.substring(Math.max(0, sql.length - 100));
-    return `${sql.length}:${first.length}:${last.length}`;
+  private recordMigration(migration: MigrationFile, checksum: string): void {
+    this.db
+      .prepare(
+        `
+          INSERT OR IGNORE INTO migrations (version, name, applied_at, checksum)
+          VALUES (?, ?, ?, ?)
+        `
+      )
+      .run(migration.version, migration.name, Date.now(), checksum);
   }
 
-  /**
-   * Get migration status (for debugging/health checks)
-   */
-  getMigrationStatus(): {
-    applied: MigrationRecord[];
-    pending: string[];
-  } {
-    const applied = this.getAppliedMigrations();
-    // Note: Can't call async getAvailableMigrations here
-    // This is a sync method for quick status checks
-    return {
-      applied,
-      pending: [], // Would need to be async to get pending
-    };
+  private calculateChecksum(sql: string): string {
+    return createHash('sha256').update(sql).digest('hex');
+  }
+
+  private isIdempotentMigrationError(error: Error): boolean {
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('duplicate column name') ||
+      message.includes('already exists') ||
+      message.includes('duplicate index name')
+    );
   }
 }

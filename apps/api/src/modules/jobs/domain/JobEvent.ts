@@ -7,6 +7,8 @@
  * See: ai_context/schemas/Job.json (when created)
  */
 
+import { ImportJobStage } from '@keimenon/types';
+
 export type JobEventType =
   | 'job.queued'
   | 'job.started'
@@ -28,6 +30,8 @@ export interface JobEventData {
     current: number;
     total: number;
     percent: number;
+    stage?: ImportJobStage | string;
+    metadata?: Record<string, unknown>;
   };
 
   // Item event fields
@@ -39,6 +43,7 @@ export interface JobEventData {
     code: string;
     message: string;
     stack?: string;
+    details?: Record<string, unknown>;
   };
 
   // Metadata
@@ -143,7 +148,9 @@ export class JobEventBuilder {
     current: number,
     total: number,
     sequenceNumber: number,
-    message?: string
+    message?: string,
+    stage?: ImportJobStage | string,
+    metadata?: Record<string, unknown>
   ): JobEvent {
     const percent = total > 0 ? Math.round((current / total) * 100) : 0;
 
@@ -151,7 +158,7 @@ export class JobEventBuilder {
       jobId,
       'job.progress',
       {
-        progress: { current, total, percent },
+        progress: { current, total, percent, stage, metadata },
         message,
       },
       sequenceNumber
@@ -164,7 +171,7 @@ export class JobEventBuilder {
 
   static failed(
     jobId: string,
-    error: { code: string; message: string; stack?: string },
+    error: { code: string; message: string; stack?: string; details?: Record<string, unknown> },
     sequenceNumber: number
   ): JobEvent {
     return JobEvent.create(jobId, 'job.failed', { error }, sequenceNumber);

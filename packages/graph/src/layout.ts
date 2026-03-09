@@ -66,7 +66,9 @@ export function createSimulation(
     .force(
       'collide',
       forceCollide<GraphNode>().radius((d) => getNodeRadius(d.kind))
-    );
+    )
+    .alphaDecay(0.05) // 3× faster convergence (~80 ticks vs ~300)
+    .velocityDecay(0.6); // Faster settling, reduces overshooting
 }
 
 /**

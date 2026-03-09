@@ -81,8 +81,8 @@ export type VerifiedByEdge = z.infer<typeof VerifiedByEdgeSchema>;
 // EXACT_DUP edge (content-addressed exact duplicates)
 export const ExactDupEdgeSchema = BaseEdgeSchema.extend({
   kind: z.literal('EXACT_DUP'),
-  canonical: z.string(),       // node_id of canonical node
-  content_id: z.string(),      // shared content_id (cid_abc123...)
+  canonical: z.string(), // node_id of canonical node
+  content_id: z.string(), // shared content_id (cid_abc123...)
 });
 
 export type ExactDupEdge = z.infer<typeof ExactDupEdgeSchema>;
@@ -90,7 +90,7 @@ export type ExactDupEdge = z.infer<typeof ExactDupEdgeSchema>;
 // NEAR_DUP edge (similarity-based near duplicates)
 export const NearDupEdgeSchema = BaseEdgeSchema.extend({
   kind: z.literal('NEAR_DUP'),
-  canonical: z.string(),       // node_id of canonical node
+  canonical: z.string(), // node_id of canonical node
   score: z.number().min(0).max(1),
   features_used: z.array(z.string()), // e.g., ['jaccard', 'cosine', 'structure']
   algorithm: z.enum(['jaccard', 'cosine', 'minhash', 'ast', 'combined']),
@@ -103,7 +103,7 @@ export const SpanContainsEdgeSchema = BaseEdgeSchema.extend({
   kind: z.literal('SPAN_CONTAINS'),
   byte_start: z.number(),
   byte_end: z.number(),
-  blob_hash: z.string(),       // Which blob this span is in
+  blob_hash: z.string(), // Which blob this span is in
 });
 
 export type SpanContainsEdge = z.infer<typeof SpanContainsEdgeSchema>;
@@ -112,17 +112,47 @@ export type SpanContainsEdge = z.infer<typeof SpanContainsEdgeSchema>;
 export const ClusterMemberEdgeSchema = BaseEdgeSchema.extend({
   kind: z.literal('CLUSTER_MEMBER'),
   cluster_id: z.string(),
-  score: z.number().min(0).max(1),  // Similarity to canonical
+  score: z.number().min(0).max(1), // Similarity to canonical
 });
 
 export type ClusterMemberEdge = z.infer<typeof ClusterMemberEdgeSchema>;
+
+// --- Pro Import V2 Edges ---
+
+// HAS_SPAN edge (Source → SourceSpan)
+export const HasSpanEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('HAS_SPAN'),
+  start_char: z.number().min(0).optional(),
+  end_char: z.number().min(0).optional(),
+  boundary_kind: z.enum(['line', 'sentence', 'paragraph', 'token_window']).optional(),
+});
+
+export type HasSpanEdge = z.infer<typeof HasSpanEdgeSchema>;
+
+// OCCURS_IN_SPAN edge (Packet → SourceSpan)
+export const OccursInSpanEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('OCCURS_IN_SPAN'),
+  count: z.number().min(1).default(1),
+  mass: z.number().optional(),
+});
+
+export type OccursInSpanEdge = z.infer<typeof OccursInSpanEdgeSchema>;
+
+// COMPOSED_OF_ATOMIC edge (Packet → AtomicUnit)
+export const ComposedOfAtomicEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('COMPOSED_OF_ATOMIC'),
+  unit_type: z.enum(['char', 'trigram']).optional(),
+  position: z.number().min(0).optional(),
+});
+
+export type ComposedOfAtomicEdge = z.infer<typeof ComposedOfAtomicEdgeSchema>;
 
 // --- Vision V2: UGC Spine Edges ---
 
 // MENTIONS edge (UGCDoc → Lexeme/Phrase)
 export const MentionsEdgeSchema = BaseEdgeSchema.extend({
   kind: z.literal('MENTIONS'),
-  count: z.number().default(1),           // Occurrence count in source
+  count: z.number().default(1), // Occurrence count in source
   positions: z.array(z.number()).optional(), // Character positions
 });
 
@@ -139,8 +169,8 @@ export type AboutEdge = z.infer<typeof AboutEdgeSchema>;
 // CO_OCCURS_WITH edge (Phrase ↔ Phrase)
 export const CoOccursWithEdgeSchema = BaseEdgeSchema.extend({
   kind: z.literal('CO_OCCURS_WITH'),
-  count: z.number().default(1),           // Co-occurrence count
-  pmi: z.number().optional(),             // Pointwise Mutual Information
+  count: z.number().default(1), // Co-occurrence count
+  pmi: z.number().optional(), // Pointwise Mutual Information
 });
 
 export type CoOccursWithEdge = z.infer<typeof CoOccursWithEdgeSchema>;
@@ -158,7 +188,7 @@ export type BelongsToTopicEdge = z.infer<typeof BelongsToTopicEdgeSchema>;
 // SOURCED_FROM edge (VerifiedClaim → VerifiedSource)
 export const SourcedFromEdgeSchema = BaseEdgeSchema.extend({
   kind: z.literal('SOURCED_FROM'),
-  excerpt_span: z.string().optional(),    // Location in source (e.g., "p3:s12-34")
+  excerpt_span: z.string().optional(), // Location in source (e.g., "p3:s12-34")
   extraction_confidence: z.number().min(0).max(1).default(0.8),
 });
 
@@ -232,6 +262,9 @@ export type AnyEdge =
   | NearDupEdge
   | SpanContainsEdge
   | ClusterMemberEdge
+  | HasSpanEdge
+  | OccursInSpanEdge
+  | ComposedOfAtomicEdge
   // V2 Additions
   | MentionsEdge
   | AboutEdge

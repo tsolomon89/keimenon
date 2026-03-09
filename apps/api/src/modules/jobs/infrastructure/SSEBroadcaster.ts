@@ -17,6 +17,7 @@ import { Response } from 'express';
 import { Job } from '../domain/Job';
 import { JobEvent } from '../domain/JobEvent';
 import { JobRepository } from './JobRepository';
+import { ImportJobStage } from '@keimenon/types';
 
 export interface SSEConnection {
   accountId: string;
@@ -34,6 +35,14 @@ export interface SSEJobUpdate {
     total: number;
     percent: number;
     message?: string;
+    stage?: ImportJobStage | string;
+    metadata?: Record<string, unknown>;
+  };
+  error?: {
+    code: string;
+    message: string;
+    stack?: string;
+    details?: Record<string, unknown>;
   };
   stats?: {
     nodesCreated?: number;
@@ -42,6 +51,13 @@ export interface SSEJobUpdate {
     edgesDeleted?: number;
     sourcesCreated?: number;
     conversationsProcessed?: number;
+    messagesProcessed?: number;
+    manualGroups?: number;
+    autoGroups?: number;
+    spansCreated?: number;
+    packetsCreated?: number;
+    atomicUnitsCreated?: number;
+    packetMassLinksCreated?: number;
   };
   config?: {
     fileName?: string; // Extracted from config.files[0].fileName
@@ -205,6 +221,7 @@ export class SSEBroadcaster {
               type: job.type,
               status: job.status,
               progress: job.progress, // ✅ Use job.progress getter (not job.stateData)
+              error: job.state.error,
               stats: job.stats, // ✅ Include stats for real-time updates
               config: configMetadata,
               timestamp: Date.now(), // ✅ Timestamp of when update was sent
@@ -254,8 +271,15 @@ export class SSEBroadcaster {
   /**
    * Broadcast job update (will be coalesced)
    */
-  broadcastJobUpdate(job: Job): void {
-    const accountId = job.accountId;
+  broadcastJobUpdate(job: Job | Record<string, unknown>): void {
+    const jobLike = job as Record<string, unknown>;
+    const accountId = typeof jobLike.accountId === 'string' ? jobLike.accountId : '';
+    const jobId = typeof jobLike.id === 'string' ? jobLike.id : '';
+
+    if (!accountId || !jobId) {
+      console.warn('[SSEBroadcaster] Skipping malformed job update payload');
+      return;
+    }
 
     // Get or create pending events for this account
     if (!this.pendingEvents.has(accountId)) {
@@ -264,32 +288,94 @@ export class SSEBroadcaster {
 
     const accountEvents = this.pendingEvents.get(accountId)!;
 
-    // Extract minimal config metadata for UI display
-    const configMetadata: { fileName?: string; deleteScope?: string } = {};
-    if (job.config.files && job.config.files.length > 0) {
-      configMetadata.fileName = job.config.files[0].fileName;
+    const rawProgress =
+      typeof jobLike.progress === 'object' && jobLike.progress !== null
+        ? (jobLike.progress as Record<string, unknown>)
+        : {};
+    const current = typeof rawProgress.current === 'number' ? rawProgress.current : 0;
+    const total = typeof rawProgress.total === 'number' ? rawProgress.total : 0;
+    const progress: SSEJobUpdate['progress'] = {
+      current,
+      total,
+      percent:
+        typeof rawProgress.percent === 'number'
+          ? rawProgress.percent
+          : total > 0
+            ? Math.round((current / total) * 100)
+            : 0,
+    };
+    if (typeof rawProgress.message === 'string') {
+      progress.message = rawProgress.message;
     }
-    if (job.config.deleteScope) {
-      configMetadata.deleteScope = job.config.deleteScope;
+    if (typeof rawProgress.stage === 'string') {
+      progress.stage = rawProgress.stage;
+    }
+    if (typeof rawProgress.metadata === 'object' && rawProgress.metadata !== null) {
+      progress.metadata = rawProgress.metadata as Record<string, unknown>;
     }
 
+    // Extract minimal config metadata for UI display
+    const configMetadata: { fileName?: string; deleteScope?: string } = {};
+    const config =
+      typeof jobLike.config === 'object' && jobLike.config !== null
+        ? (jobLike.config as Record<string, unknown>)
+        : {};
+    const files = Array.isArray(config.files) ? config.files : [];
+    if (files.length > 0 && typeof files[0] === 'object' && files[0] !== null) {
+      const firstFile = files[0] as Record<string, unknown>;
+      if (typeof firstFile.fileName === 'string') {
+        configMetadata.fileName = firstFile.fileName;
+      }
+    }
+    if (typeof config.deleteScope === 'string') {
+      configMetadata.deleteScope = config.deleteScope;
+    }
+
+    const state =
+      typeof jobLike.state === 'object' && jobLike.state !== null
+        ? (jobLike.state as Record<string, unknown>)
+        : {};
+    const rawError =
+      typeof state.error === 'object' && state.error !== null
+        ? (state.error as Record<string, unknown>)
+        : undefined;
+    const error =
+      rawError && typeof rawError.code === 'string' && typeof rawError.message === 'string'
+        ? {
+            code: rawError.code,
+            message: rawError.message,
+            stack: typeof rawError.stack === 'string' ? rawError.stack : undefined,
+            details:
+              typeof rawError.details === 'object' && rawError.details !== null
+                ? (rawError.details as Record<string, unknown>)
+                : undefined,
+          }
+        : undefined;
+
+    const stats =
+      typeof jobLike.stats === 'object' && jobLike.stats !== null
+        ? (jobLike.stats as SSEJobUpdate['stats'])
+        : undefined;
+    const type = typeof jobLike.type === 'string' ? jobLike.type : 'import';
+    const status = typeof jobLike.status === 'string' ? jobLike.status : 'queued';
+
     // Store/update event (latest wins)
-    accountEvents.set(job.id, {
-      jobId: job.id,
-      type: job.type,
-      status: job.status,
-      progress: job.progress,
-      stats: job.stats, // ✅ Include stats for real-time updates
+    accountEvents.set(jobId, {
+      jobId,
+      type,
+      status,
+      progress,
+      error,
+      stats,
       config: configMetadata,
       timestamp: Date.now(),
     });
 
     // Log broadcast (detailed for debugging)
     console.log(
-      `[SSEBroadcaster] Queued update for job ${job.id} (${job.type}, ${job.status}, ${job.progress.percent}%)`
+      `[SSEBroadcaster] Queued update for job ${jobId} (${type}, ${status}, ${progress.percent}%)`
     );
   }
-
   /**
    * Broadcast graph update (write queue metrics)
    */

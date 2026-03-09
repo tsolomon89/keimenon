@@ -16,6 +16,7 @@
 
 import { JobStateMachine, JobState, JobStatus, JobTransition } from './JobStateMachine';
 import { JobEvent, JobEventBuilder } from './JobEvent';
+import { ImportJobStage } from '@keimenon/types';
 
 export type JobType = 'import' | 'delete' | 'export' | 'analyze';
 
@@ -71,8 +72,6 @@ export interface JobSpec {
   concurrencyGroup?: string;
 }
 
-console.error('!!!!!!! WORKER POOL MODULE LOADED !!!!!!!');
-
 /**
  * Job Aggregate Root
  */
@@ -98,6 +97,8 @@ export class Job {
     current: number;
     total: number;
     message?: string;
+    stage?: ImportJobStage;
+    metadata?: Record<string, unknown>;
   } = { current: 0, total: 0 };
 
   // Stats tracking (for real-time updates)
@@ -108,6 +109,13 @@ export class Job {
     edgesDeleted?: number;
     sourcesCreated?: number;
     conversationsProcessed?: number;
+    messagesProcessed?: number;
+    manualGroups?: number;
+    autoGroups?: number;
+    spansCreated?: number;
+    packetsCreated?: number;
+    atomicUnitsCreated?: number;
+    packetMassLinksCreated?: number;
   } = {};
 
   constructor(props: {
@@ -192,7 +200,12 @@ export class Job {
   /**
    * Mark job as failed (running → failed)
    */
-  fail(error: { code: string; message: string; stack?: string }): void {
+  fail(error: {
+    code: string;
+    message: string;
+    stack?: string;
+    details?: Record<string, unknown>;
+  }): void {
     this.transitionTo('fail', { error });
     this.addEvent(JobEventBuilder.failed(this.id, error, this._sequenceNumber));
   }
@@ -251,16 +264,32 @@ export class Job {
   /**
    * Update progress
    */
-  updateProgress(current: number, total: number, message?: string): void {
+  updateProgress(
+    current: number,
+    total: number,
+    message?: string,
+    stage?: ImportJobStage,
+    metadata?: Record<string, unknown>
+  ): void {
     // Only update if job is running
     if (this._state.status !== 'running') {
       throw new Error(`Cannot update progress for job in status: ${this._state.status}`);
     }
 
-    this._progress = { current, total, message };
+    this._progress = { current, total, message, stage, metadata };
 
     // Add progress event
-    this.addEvent(JobEventBuilder.progress(this.id, current, total, this._sequenceNumber, message));
+    this.addEvent(
+      JobEventBuilder.progress(
+        this.id,
+        current,
+        total,
+        this._sequenceNumber,
+        message,
+        stage,
+        metadata
+      )
+    );
   }
 
   /**
@@ -313,6 +342,20 @@ export class Job {
     this._stats = { ...this._stats, ...stats };
   }
 
+  /**
+   * Merge metadata into state_data payload.
+   * This is used for operational annotations such as artifact cleanup timestamps.
+   */
+  updateStateMetadata(metadata: Record<string, unknown>): void {
+    this._state = {
+      ...this._state,
+      metadata: {
+        ...(this._state.metadata || {}),
+        ...metadata,
+      },
+    };
+  }
+
   // ============================================================================
   // Getters
   // ============================================================================
@@ -329,7 +372,14 @@ export class Job {
     return [...this._events]; // Return copy
   }
 
-  get progress(): { current: number; total: number; percent: number; message?: string } {
+  get progress(): {
+    current: number;
+    total: number;
+    percent: number;
+    message?: string;
+    stage?: ImportJobStage;
+    metadata?: Record<string, unknown>;
+  } {
     const percent =
       this._progress.total > 0
         ? Math.round((this._progress.current / this._progress.total) * 100)
@@ -340,6 +390,8 @@ export class Job {
       total: this._progress.total,
       percent,
       message: this._progress.message,
+      stage: this._progress.stage,
+      metadata: this._progress.metadata,
     };
   }
 
@@ -394,6 +446,7 @@ export class Job {
         error: this._state.error,
         blockedReason: this._state.blockedReason,
         retryCount: this._state.retryCount,
+        metadata: this._state.metadata,
         progress: this._progress, // ✅ Include progress in state_data for persistence
         stats: this._stats, // ✅ Include stats in state_data for persistence
       },
@@ -433,6 +486,7 @@ export class Job {
       error: stateData.error,
       blockedReason: stateData.blockedReason,
       retryCount: stateData.retryCount,
+      metadata: stateData.metadata,
     };
 
     const job = new Job({
@@ -453,6 +507,8 @@ export class Job {
         current: stateData.progress.current || 0,
         total: stateData.progress.total || 0,
         message: stateData.progress.message,
+        stage: stateData.progress.stage,
+        metadata: stateData.progress.metadata,
       };
     }
 
@@ -478,6 +534,7 @@ export class Job {
       error: json.state.error,
       blockedReason: json.state.blockedReason,
       retryCount: json.state.retryCount,
+      metadata: json.state.metadata,
     };
 
     const job = new Job({
@@ -494,7 +551,13 @@ export class Job {
 
     // Restore progress
     if (json.state.progress) {
-      (job as any)._progress = { ...json.state.progress };
+      (job as any)._progress = {
+        current: json.state.progress.current || 0,
+        total: json.state.progress.total || 0,
+        message: json.state.progress.message,
+        stage: json.state.progress.stage,
+        metadata: json.state.progress.metadata,
+      };
     }
 
     // Restore stats

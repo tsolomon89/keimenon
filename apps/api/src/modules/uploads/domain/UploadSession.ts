@@ -18,6 +18,7 @@
 import { ulid } from 'ulid';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { sanitizeUploadFilename } from '../../../utils/upload-filename';
 
 export type UploadStatus = 'uploading' | 'assembling' | 'completed' | 'failed' | 'expired';
 
@@ -141,6 +142,7 @@ export class UploadSession {
     const DEFAULT_TTL = 4 * 60 * 60 * 1000; // 4 hours (local sessions)
 
     const id = `upl_${ulid()}`;
+    const sanitizedFile = sanitizeUploadFilename(spec.fileName);
     const chunkSize = spec.chunkSize || DEFAULT_CHUNK_SIZE;
     const totalChunks = Math.ceil(spec.fileSize / chunkSize);
     const now = Date.now();
@@ -153,7 +155,7 @@ export class UploadSession {
       accountId: spec.accountId,
       userId: spec.userId,
       jobId: spec.jobId || null, // Optional: Set after assembly
-      fileName: spec.fileName,
+      fileName: sanitizedFile.sanitized,
       fileSize: spec.fileSize,
       mimeType: spec.mimeType || null,
       chunkSize,
@@ -168,7 +170,10 @@ export class UploadSession {
       completedAt: null,
       isLocal: true,
       dataTag: 'real',
-      metadata: spec.metadata || null,
+      metadata: {
+        ...(spec.metadata || {}),
+        originalFileName: sanitizedFile.original || (spec.metadata as any)?.originalFileName,
+      },
     });
   }
 
@@ -251,6 +256,10 @@ export class UploadSession {
 
   get jobId(): string | null {
     return this._jobId;
+  }
+
+  get metadata(): Record<string, any> | null {
+    return this._metadata;
   }
 
   /**

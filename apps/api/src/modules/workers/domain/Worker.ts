@@ -16,6 +16,7 @@
 import { Job } from '../../jobs/domain/Job';
 import { JobRepository } from '../../jobs/infrastructure/JobRepository';
 import { SSEBroadcaster } from '../../jobs/infrastructure/SSEBroadcaster';
+import { ImportJobStage } from '@keimenon/types';
 
 export interface WorkerContext {
   jobRepository: JobRepository;
@@ -29,6 +30,7 @@ export interface WorkerResult {
     code: string;
     message: string;
     stack?: string;
+    details?: Record<string, unknown>;
   };
   metadata?: Record<string, unknown>;
 }
@@ -133,9 +135,11 @@ export abstract class BaseWorker implements IWorker {
     current: number,
     total: number,
     message: string,
-    context: WorkerContext
+    context: WorkerContext,
+    stage?: ImportJobStage,
+    metadata?: Record<string, unknown>
   ): Promise<void> {
-    job.updateProgress(current, total, message);
+    job.updateProgress(current, total, message, stage, metadata);
     await context.jobRepository.save(job);
 
     // Broadcast progress update via SSE

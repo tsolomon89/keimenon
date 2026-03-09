@@ -57,6 +57,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     migrateLegacy: (accountId: string) => ipcRenderer.invoke('auth:migrate-legacy', accountId),
 
     /**
+     * Clear all local auth state
+     */
+    clearAll: () => ipcRenderer.invoke('auth:clear-all'),
+
+    /**
      * Subscribe to account change events
      */
     onAccountChanged: (callback: (accountId: string | null) => void) => {
@@ -120,6 +125,7 @@ declare global {
           token: string
         ) => Promise<{ success: boolean }>;
         migrateLegacy: (accountId: string) => Promise<boolean>;
+        clearAll: () => Promise<{ success: boolean }>;
         onAccountChanged: (callback: (accountId: string | null) => void) => () => void;
       };
       secureStorage: {

@@ -15,6 +15,7 @@ export interface DatabaseClient {
   connect(): Promise<void>;
   disconnect(): Promise<void>;
   close(): Promise<void>;
+  assertImportSchemaCompatibility?(): void;
 
   createNode(node: AnyNode): Promise<void>;
   createNodes?(nodes: AnyNode[]): Promise<void>;
@@ -79,10 +80,6 @@ export class DatabaseFactory {
     if (!this.sqliteInstance) {
       this.sqliteInstance = new SQLiteClient(config);
       await this.sqliteInstance.connect();
-      // Initialize schema automatically
-      if (this.sqliteInstance.initializeSchema) {
-        await this.sqliteInstance.initializeSchema();
-      }
     }
     return this.sqliteInstance;
   }

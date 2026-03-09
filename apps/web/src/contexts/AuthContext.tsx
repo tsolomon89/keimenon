@@ -137,32 +137,93 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Load user from stored token on mount
    */
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    console.log('[AuthContext] Init check. Token present:', !!token);
+    let isCancelled = false;
 
-    if (!token) {
-      console.log('[AuthContext] No token, stopping load.');
-      setIsLoading(false);
-      return;
-    }
-
-    // Check if token is expired
-    if (isTokenExpired(token)) {
-      console.log('Token expired, clearing storage');
+    const clearPersistedAuthState = async () => {
       localStorage.removeItem(TOKEN_KEY);
-      setIsLoading(false);
-      return;
-    }
 
-    // Parse user from token
-    const parsedUser = parseUserFromToken(token);
-    if (parsedUser) {
-      setUser(parsedUser);
-    } else {
-      localStorage.removeItem(TOKEN_KEY);
-    }
+      // Desktop shell stores additional auth/account state in keytar.
+      // Clear it when the renderer token is no longer valid.
+      if (typeof window !== 'undefined' && window.electronAPI?.accounts) {
+        try {
+          await window.electronAPI.accounts.clearAll();
+        } catch (error) {
+          console.warn('[AuthContext] Failed to clear desktop auth state:', error);
+        }
+      }
+    };
 
-    setIsLoading(false);
+    const initializeAuth = async () => {
+      const token = localStorage.getItem(TOKEN_KEY);
+      console.log('[AuthContext] Init check. Token present:', !!token);
+
+      if (!token) {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      if (isTokenExpired(token)) {
+        console.log('[AuthContext] Token expired on startup, clearing storage');
+        await clearPersistedAuthState();
+        if (!isCancelled) {
+          setUser(null);
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const verifyResponse = await fetch(`${API_BASE_URL}/api/v1/auth/verify`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getTestHeaders(),
+          },
+          body: JSON.stringify({ token }),
+        });
+
+        if (!verifyResponse.ok) {
+          console.warn(
+            `[AuthContext] Stored token rejected by backend (${verifyResponse.status}), clearing auth state`
+          );
+          await clearPersistedAuthState();
+          if (!isCancelled) {
+            setUser(null);
+            setIsLoading(false);
+          }
+          return;
+        }
+      } catch (error) {
+        // Keep backward-compatible behavior if API is temporarily unavailable at boot.
+        console.warn(
+          '[AuthContext] Token verification request failed, using local token parse:',
+          error
+        );
+      }
+
+      const parsedUser = parseUserFromToken(token);
+      if (!parsedUser) {
+        await clearPersistedAuthState();
+        if (!isCancelled) {
+          setUser(null);
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      if (!isCancelled) {
+        setUser(parsedUser);
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   /**

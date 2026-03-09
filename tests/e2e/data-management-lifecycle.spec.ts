@@ -29,22 +29,60 @@ test.describe('Data Management Lifecycle', () => {
 
   let authToken: string;
 
-  test.beforeEach(async ({ apiRequest }) => {
-    // Login and get auth token
-    const response = await apiRequest.post('/api/v1/auth/login', {
-      data: TEST_USER,
-    });
+  const loginWithRetry = async (apiRequest: any, maxAttempts = 3): Promise<string> => {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const response = await apiRequest.post('/api/v1/auth/login', {
+        data: TEST_USER,
+      });
 
-    const auth = await response.json();
-    authToken = auth.token;
+      const body = await response
+        .json()
+        .catch(() => ({ error: `Login failed with status ${response.status()}` }));
+
+      if (response.ok() && body?.token) {
+        return body.token;
+      }
+
+      const isTransientNoAccountError =
+        typeof body?.error === 'string' && body.error.includes('No active accounts');
+
+      if (isTransientNoAccountError && attempt < maxAttempts) {
+        const backoffMs = attempt * 150;
+        console.warn(
+          `[DataManagementLifecycle] Login transient failure on attempt ${attempt}/${maxAttempts}: ${body.error}. Retrying in ${backoffMs}ms.`
+        );
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        continue;
+      }
+
+      throw new Error(
+        `[DataManagementLifecycle] Login failed on attempt ${attempt}/${maxAttempts}: ${
+          body?.error || `status ${response.status()}`
+        }`
+      );
+    }
+
+    throw new Error('[DataManagementLifecycle] Login failed: exhausted retries');
+  };
+
+  test.beforeEach(async ({ apiRequest }) => {
+    authToken = await loginWithRetry(apiRequest);
   });
 
   // Helper to wait for job status
-  const waitForJobStatus = async (apiRequest: any, jobId: string, targetStatuses: string[], maxAttempts = 60) => {
+  const waitForJobStatus = async (
+    apiRequest: any,
+    jobId: string,
+    targetStatuses: string[],
+    maxAttempts = 60
+  ) => {
+    const canonicalizeStatus = (status: string) => (status === 'cancelled' ? 'canceled' : status);
+    const targetStatusSet = new Set(targetStatuses.map(canonicalizeStatus));
+
     let jobStatus = 'queued';
     let attempts = 0;
 
-    while (!targetStatuses.includes(jobStatus) && attempts < maxAttempts) {
+    while (!targetStatusSet.has(canonicalizeStatus(jobStatus)) && attempts < maxAttempts) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       const statusResponse = await apiRequest.get(`/api/v1/jobs/${jobId}`, {
         headers: { Authorization: `Bearer ${authToken}` },
@@ -57,10 +95,12 @@ test.describe('Data Management Lifecycle', () => {
       attempts++;
       console.log(`Job ${jobId} status: ${jobStatus} (attempt ${attempts}/${maxAttempts})`);
     }
-    return jobStatus;
+    return canonicalizeStatus(jobStatus);
   };
 
-  test.only('Test 1: Full Import Lifecycle (Upload -> Success -> Verify Data)', async ({ apiRequest }) => {
+  test('Test 1: Full Import Lifecycle (Upload -> Success -> Verify Data)', async ({
+    apiRequest,
+  }) => {
     // Step 1: Prepare test file
     const testFile = path.join(
       process.cwd(),
@@ -83,8 +123,8 @@ test.describe('Data Management Lifecycle', () => {
           buffer: fileContent,
         },
         config: JSON.stringify({
-           platform: 'chatgpt', // Explicit platform to avoid detection delay
-           extraction: { includeUser: true, includeAssistant: true }
+          platform: 'chatgpt', // Explicit platform to avoid detection delay
+          extraction: { includeUser: true, includeAssistant: true },
         }),
       },
     });
@@ -114,27 +154,34 @@ test.describe('Data Management Lifecycle', () => {
     // Use a larger file or force a delay? For now, we try to be fast.
     // If tiny.json is too small, we might need a generated larger payload.
     // We'll use tiny.json but check quickly.
-    const testFile = path.join(process.cwd(), 'tests', 'test_data', 'chat_data', 'test-samples', 'tiny.json');
+    const testFile = path.join(
+      process.cwd(),
+      'tests',
+      'test_data',
+      'chat_data',
+      'test-samples',
+      'tiny.json'
+    );
     const fileContent = fs.readFileSync(testFile);
 
     const uploadResponse = await apiRequest.post('/api/v1/jobs/import', {
       headers: { Authorization: `Bearer ${authToken}` },
-       multipart: {
+      multipart: {
         files: {
           name: 'tiny_cancel.json',
           mimeType: 'application/json',
           buffer: fileContent,
         },
-         config: JSON.stringify({
-           platform: 'chatgpt',
-           // Force manual mode or something slow?
-           // Or just hit cancel immediately.
+        config: JSON.stringify({
+          platform: 'chatgpt',
+          // Force manual mode or something slow?
+          // Or just hit cancel immediately.
         }),
       },
     });
-    
+
     if (!uploadResponse.ok()) {
-        console.log('Test 2 Upload Failed:', await uploadResponse.text());
+      console.log('Test 2 Upload Failed:', await uploadResponse.text());
     }
     expect(uploadResponse.ok()).toBeTruthy();
     const { jobId } = await uploadResponse.json();
@@ -148,139 +195,165 @@ test.describe('Data Management Lifecycle', () => {
 
     let skipWait = false;
     if (cancelResponse.status() === 400 || cancelResponse.status() === 404) {
-        console.log(`Cancel failed with ${cancelResponse.status()} (likely already finished) - ACCEPTED as race condition`);
-        if (cancelResponse.status() === 404) skipWait = true;
-        expect(true).toBeTruthy(); 
+      console.log(
+        `Cancel failed with ${cancelResponse.status()} (likely already finished) - ACCEPTED as race condition`
+      );
+      if (cancelResponse.status() === 404) skipWait = true;
+      expect(true).toBeTruthy();
     } else {
-        expect(cancelResponse.ok()).toBeTruthy();
+      expect(cancelResponse.ok()).toBeTruthy();
     }
 
     // Wait for status update
     if (!skipWait) {
-        const finalStatus = await waitForJobStatus(apiRequest, jobId, ['cancelled', 'failed', 'succeeded']);
-        console.log(`Job ${jobId} final status after cancel: ${finalStatus}`);
-        expect(['cancelled', 'failed', 'succeeded']).toContain(finalStatus);
+      const finalStatus = await waitForJobStatus(apiRequest, jobId, [
+        'canceled',
+        'failed',
+        'succeeded',
+      ]);
+      console.log(`Job ${jobId} final status after cancel: ${finalStatus}`);
+      expect(['canceled', 'failed', 'succeeded']).toContain(finalStatus);
     }
   });
 
   test('Test 3: Job Deletion (Create -> Delete)', async ({ apiRequest }) => {
-      // 1. Upload file to create a job
-      const testFile = path.join(process.cwd(), 'tests', 'test_data', 'chat_data', 'test-samples', 'tiny.json');
-      const fileContent = fs.readFileSync(testFile);
+    // 1. Upload file to create a job
+    const testFile = path.join(
+      process.cwd(),
+      'tests',
+      'test_data',
+      'chat_data',
+      'test-samples',
+      'tiny.json'
+    );
+    const fileContent = fs.readFileSync(testFile);
 
-      const uploadResponse = await apiRequest.post('/api/v1/jobs/import', {
-        headers: { Authorization: `Bearer ${authToken}` },
-         multipart: {
-          files: {
-            name: 'tiny_delete_job.json',
-            mimeType: 'application/json',
-            buffer: fileContent,
-          },
+    const uploadResponse = await apiRequest.post('/api/v1/jobs/import', {
+      headers: { Authorization: `Bearer ${authToken}` },
+      multipart: {
+        files: {
+          name: 'tiny_delete_job.json',
+          mimeType: 'application/json',
+          buffer: fileContent,
         },
-      });
-      await logResponseError(uploadResponse, 'Test3 Upload');
-      // If upload failed, json() will fail, so let's handle that gracefully for debug
-      let jobId;
-      if (uploadResponse.ok()) {
-         const json = await uploadResponse.json();
-         jobId = json.jobId;
-      } else {
-         // Fail test but allow logging
-         expect(uploadResponse.ok()).toBeTruthy();
-      }
+      },
+    });
+    await logResponseError(uploadResponse, 'Test3 Upload');
+    // If upload failed, json() will fail, so let's handle that gracefully for debug
+    let jobId;
+    if (uploadResponse.ok()) {
+      const json = await uploadResponse.json();
+      jobId = json.jobId;
+    } else {
+      // Fail test but allow logging
+      expect(uploadResponse.ok()).toBeTruthy();
+    }
 
-      // 2. Wait for it to finish (or delete while running)
-      // Let's delete while running/queued or finished. Doesn't matter for the API usually.
-      
-      const deleteResponse = await apiRequest.delete(`/api/v1/jobs/${jobId}`, {
-           headers: { Authorization: `Bearer ${authToken}` },
-      });
-      await logResponseError(deleteResponse, 'Test3 Delete');
-      expect(deleteResponse.ok()).toBeTruthy();
+    // 2. Wait for it to finish (or delete while running)
+    // Let's delete while running/queued or finished. Doesn't matter for the API usually.
 
-      // 3. Verify it's gone (should return 404 or error)
-      const getResponse = await apiRequest.get(`/api/v1/jobs/${jobId}`, {
-          headers: { Authorization: `Bearer ${authToken}` },
-      });
-      expect(getResponse.status()).toBe(404);
+    const deleteResponse = await apiRequest.delete(`/api/v1/jobs/${jobId}`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    await logResponseError(deleteResponse, 'Test3 Delete');
+    expect(deleteResponse.ok()).toBeTruthy();
+
+    // 3. Verify it's gone (should return 404 or error)
+    const getResponse = await apiRequest.get(`/api/v1/jobs/${jobId}`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    expect(getResponse.status()).toBe(404);
   });
 
   test('Test 4: Clear Data & Re-import (The "Clean Slate" Flow)', async ({ apiRequest }) => {
-     // Step 1: Import Data to ensure we have something to clear
-     const testFile = path.join(process.cwd(), 'tests', 'test_data', 'chat_data', 'test-samples', 'tiny.json');
-     const fileContent = fs.readFileSync(testFile);
-     
-     const seedUpload = await apiRequest.post('/api/v1/jobs/import', {
-        headers: { Authorization: `Bearer ${authToken}` },
-         multipart: {
-          files: {
-            name: 'seed_data.json',
-            mimeType: 'application/json',
-            buffer: fileContent,
-          },
+    // Step 1: Import Data to ensure we have something to clear
+    const testFile = path.join(
+      process.cwd(),
+      'tests',
+      'test_data',
+      'chat_data',
+      'test-samples',
+      'tiny.json'
+    );
+    const fileContent = fs.readFileSync(testFile);
+
+    const seedUpload = await apiRequest.post('/api/v1/jobs/import', {
+      headers: { Authorization: `Bearer ${authToken}` },
+      multipart: {
+        files: {
+          name: 'seed_data.json',
+          mimeType: 'application/json',
+          buffer: fileContent,
         },
-      });
-     await logResponseError(seedUpload, 'Test4 Seed Upload');
-     
-     let seedJobId;
-     if (seedUpload.ok()) {
-        const json = await seedUpload.json();
-        seedJobId = json.jobId;
-        await waitForJobStatus(apiRequest, seedJobId, ['succeeded']);
-     } else {
-        expect(seedUpload.ok()).toBeTruthy();
-     }
+      },
+    });
+    await logResponseError(seedUpload, 'Test4 Seed Upload');
 
-     // Step 2: Verify we have nodes
-     const check1 = await apiRequest.get('/api/v1/nodes', {headers: { Authorization: `Bearer ${authToken}` }});
-     const nodes1 = await check1.json();
-     expect(nodes1.nodes.length).toBeGreaterThan(0);
+    let seedJobId;
+    if (seedUpload.ok()) {
+      const json = await seedUpload.json();
+      seedJobId = json.jobId;
+      await waitForJobStatus(apiRequest, seedJobId, ['succeeded']);
+    } else {
+      expect(seedUpload.ok()).toBeTruthy();
+    }
 
-     // Step 3: Trigger "Clear Keimenon Data"
-     // This uses the DELETE jobs endpoint with specific body usually, or a specific endpoint.
-     // Based on `DataManagementCard.test.tsx`, it calls:
-     // POST /api/v1/jobs/delete with body { scope: 'keimenon' }
-     
-     const clearResponse = await apiRequest.post('/api/v1/jobs/delete', {
-        headers: { Authorization: `Bearer ${authToken}` },
-        data: { scope: 'keimenon' }
-     });
-     await logResponseError(clearResponse, 'Test4 Clear');
-     expect(clearResponse.ok()).toBeTruthy();
-     const { jobId: clearJobId } = await clearResponse.json();
+    // Step 2: Verify we have nodes
+    const check1 = await apiRequest.get('/api/v1/nodes', {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    const nodes1 = await check1.json();
+    expect(nodes1.nodes.length).toBeGreaterThan(0);
 
-     // Step 4: Wait for Clear Job
-     const clearStatus = await waitForJobStatus(apiRequest, clearJobId, ['succeeded', 'failed']);
-     expect(clearStatus).toBe('succeeded');
+    // Step 3: Trigger "Clear Keimenon Data"
+    // This uses the DELETE jobs endpoint with specific body usually, or a specific endpoint.
+    // Based on `DataManagementCard.test.tsx`, it calls:
+    // POST /api/v1/jobs/delete with body { scope: 'keimenon' }
 
-     // Step 5: Verify Empty
-     // Note: This might depend on eventual consistency or if the delete is truly effectively immediate after job success
-     const check2 = await apiRequest.get('/api/v1/nodes', {headers: { Authorization: `Bearer ${authToken}` }});
-     const nodes2 = await check2.json();
-     expect(nodes2.nodes.length).toBe(0);
+    const clearResponse = await apiRequest.post('/api/v1/jobs/delete', {
+      headers: { Authorization: `Bearer ${authToken}` },
+      data: { scope: 'keimenon' },
+    });
+    await logResponseError(clearResponse, 'Test4 Clear');
+    expect(clearResponse.ok()).toBeTruthy();
+    const { jobId: clearJobId } = await clearResponse.json();
 
-     // Step 6: Re-import
-     const reImport = await apiRequest.post('/api/v1/jobs/import', {
-        headers: { Authorization: `Bearer ${authToken}` },
-         multipart: {
-          files: {
-            name: 'reimport.json',
-            mimeType: 'application/json',
-            buffer: fileContent, // re-use same file
-          },
-          config: JSON.stringify({
-            platform: 'chatgpt',
-            extraction: { includeUser: true, includeAssistant: true }
-          }),
+    // Step 4: Wait for Clear Job
+    const clearStatus = await waitForJobStatus(apiRequest, clearJobId, ['succeeded', 'failed']);
+    expect(clearStatus).toBe('succeeded');
+
+    // Step 5: Verify Empty
+    // Note: This might depend on eventual consistency or if the delete is truly effectively immediate after job success
+    const check2 = await apiRequest.get('/api/v1/nodes', {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    const nodes2 = await check2.json();
+    expect(nodes2.nodes.length).toBe(0);
+
+    // Step 6: Re-import
+    const reImport = await apiRequest.post('/api/v1/jobs/import', {
+      headers: { Authorization: `Bearer ${authToken}` },
+      multipart: {
+        files: {
+          name: 'reimport.json',
+          mimeType: 'application/json',
+          buffer: fileContent, // re-use same file
         },
-      });
-     await logResponseError(reImport, 'Test4 ReImport');
-     const { jobId: reImportId } = await reImport.json();
-     await waitForJobStatus(apiRequest, reImportId, ['succeeded']);
+        config: JSON.stringify({
+          platform: 'chatgpt',
+          extraction: { includeUser: true, includeAssistant: true },
+        }),
+      },
+    });
+    await logResponseError(reImport, 'Test4 ReImport');
+    const { jobId: reImportId } = await reImport.json();
+    await waitForJobStatus(apiRequest, reImportId, ['succeeded']);
 
-     // Step 7: Verify Data is back
-     const check3 = await apiRequest.get('/api/v1/nodes', {headers: { Authorization: `Bearer ${authToken}` }});
-     const nodes3 = await check3.json();
-     expect(nodes3.nodes.length).toBeGreaterThan(0);
+    // Step 7: Verify Data is back
+    const check3 = await apiRequest.get('/api/v1/nodes', {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    const nodes3 = await check3.json();
+    expect(nodes3.nodes.length).toBeGreaterThan(0);
   });
 });

@@ -1,25 +1,47 @@
 import { test, expect } from './fixtures/test-isolation';
+import fs from 'fs';
+import path from 'path';
 
 test.describe('Debug Jobs', () => {
   test('Create and Fetch Job', async ({ apiRequest }) => {
     console.log('[DebugTest] Starting Create and Fetch Job');
 
-    // 1. Create Job
-    const importData = {
-      sourceType: 'csv',
-      data: 'test,data\n1,2',
-    };
+    // 1. Login
+    const loginResponse = await apiRequest.post('/api/v1/auth/login', {
+      data: { email: 'admin@admin.com', password: 'TestPass123!' },
+    });
+    expect(loginResponse.ok()).toBeTruthy();
+
+    const loginPayload = await loginResponse.json();
+    const token = loginPayload?.token;
+    expect(token).toBeTruthy();
+
+    // 2. Create import job using the standardized contract
+    const fixturePath = path.join(
+      process.cwd(),
+      'tests',
+      'test_data',
+      'chat_data',
+      'test-samples',
+      'tiny.json'
+    );
+    const fixtureBuffer = fs.readFileSync(fixturePath);
 
     console.log('[DebugTest] POST /api/v1/jobs/import');
     const createResponse = await apiRequest.post('/api/v1/jobs/import', {
+      headers: { Authorization: `Bearer ${token}` },
       multipart: {
-        file: {
-          name: 'test.csv',
-          mimeType: 'text/csv',
-          buffer: Buffer.from('test,data\n1,2'),
+        files: {
+          name: 'debug-tiny.json',
+          mimeType: 'application/json',
+          buffer: fixtureBuffer,
         },
-        sourceType: 'csv',
-        params: JSON.stringify({ delimiter: ',' }),
+        config: JSON.stringify({
+          platform: 'chatgpt',
+          extractCode: true,
+          duplicateDetection: { enabled: true },
+          data_tag: 'test',
+        }),
       },
     });
 
@@ -28,13 +50,16 @@ test.describe('Debug Jobs', () => {
     console.log(`[DebugTest] Create Body:`, JSON.stringify(createData, null, 2));
 
     expect(createResponse.ok()).toBeTruthy();
-    const jobId = createData.job.id;
+    const jobId = createData?.jobId || createData?.job?.id || createData?.job_id;
+    expect(jobId).toBeTruthy();
     console.log(`[DebugTest] Job ID: ${jobId}`);
 
-    // 2. Fetch Job
+    // 3. Fetch Job
     console.log(`[DebugTest] GET /api/v1/jobs/${jobId}`);
-    const getResponse = await apiRequest.get(`/api/v1/jobs/${jobId}`);
-    
+    const getResponse = await apiRequest.get(`/api/v1/jobs/${jobId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
     console.log(`[DebugTest] Get Status: ${getResponse.status()}`);
     const getData = await getResponse.json();
     console.log(`[DebugTest] Get Body:`, JSON.stringify(getData, null, 2));

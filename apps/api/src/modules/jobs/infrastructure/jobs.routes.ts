@@ -26,6 +26,7 @@ import { CancelJob } from '../application/CancelJob';
 import { RetryJob } from '../application/RetryJob';
 import Database from 'better-sqlite3';
 import type { SSEBroadcaster } from './SSEBroadcaster';
+import { z } from 'zod';
 
 /**
  * Factory function to create jobs routes with auth and database
@@ -43,6 +44,17 @@ export function createJobsRoutes(
   const startJob = new StartJob(jobRepository);
   const cancelJob = new CancelJob(jobRepository);
   const retryJob = new RetryJob(jobRepository, sseBroadcaster);
+
+  const ReviewDecisionSchema = z.object({
+    duplicateId: z.string(),
+    action: z.enum(['keep-primary', 'keep-duplicate', 'keep-both', 'merge']),
+    timestamp: z.number(),
+    userId: z.string().optional(),
+  });
+
+  const ApplyDuplicateReviewRequestSchema = z.object({
+    decisions: z.array(ReviewDecisionSchema),
+  });
 
   /**
    * POST /api/v1/jobs
@@ -127,7 +139,9 @@ export function createJobsRoutes(
       // Determine target account based on operating context
       const targetAccountId = operating?.accountId || userAccountId;
 
-      console.log(`[API GET] Fetching job ${id} for account ${targetAccountId}, path: ${(req as any).testDbPath}`);
+      console.log(
+        `[API GET] Fetching job ${id} for account ${targetAccountId}, path: ${(req as any).testDbPath}`
+      );
       // Get job - CRITICAL FIX: Pass request for database routing
       const job = await jobRepository.findById(id, targetAccountId, req);
 
@@ -227,7 +241,9 @@ export function createJobsRoutes(
       // Parse query params
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
       const offset = parseInt(req.query.offset as string) || 0;
-      console.log(`[jobs.routes.ts] Request params: query=${JSON.stringify(req.query)}, body=${JSON.stringify(req.body)}`);
+      console.log(
+        `[jobs.routes.ts] Request params: query=${JSON.stringify(req.query)}, body=${JSON.stringify(req.body)}`
+      );
       let status = req.query.status as any;
       if (status === 'all') {
         status = undefined;
@@ -354,6 +370,209 @@ export function createJobsRoutes(
       return res.json({
         success: true,
         job: job.toJSON(),
+      });
+    })
+  );
+
+  /**
+   * POST /api/v1/jobs/:id/duplicate-review/apply
+   * Apply duplicate review decisions for a job.
+   */
+  router.post(
+    '/:id/duplicate-review/apply',
+    requireAuth(authService),
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = (req as any).user?.userId;
+      const userAccountId = (req as any).user?.accountId;
+      const operating = (req as any).operating;
+      const { id: jobId } = req.params;
+
+      if (!userAccountId || !userId) {
+        throw ErrorFactory.unauthorized('jobs.duplicateReviewApply');
+      }
+
+      const targetAccountId = operating?.accountId || userAccountId;
+      const job = await jobRepository.findById(jobId, targetAccountId, req);
+
+      if (!job) {
+        throw ErrorFactory.notFound('Job', 'jobs.duplicateReviewApply');
+      }
+
+      const { decisions } = ApplyDuplicateReviewRequestSchema.parse(req.body);
+      const { getDbClient } = await import('../../../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
+      const actionCounts = {
+        'keep-primary': 0,
+        'keep-duplicate': 0,
+        'keep-both': 0,
+        merge: 0,
+      } as Record<'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge', number>;
+
+      const nodesToKeep: string[] = [];
+      const nodesToRemove: string[] = [];
+      const nodesToMerge: Array<{ primary: string; duplicate: string }> = [];
+
+      for (const decision of decisions) {
+        actionCounts[decision.action] += 1;
+
+        const match = decision.duplicateId.match(/^dup_(\d+)_(\d+)$/);
+        if (!match) {
+          continue;
+        }
+
+        const [, primaryIdx, duplicateIdx] = match;
+        const primaryId = `msg_${primaryIdx}`;
+        const duplicateId = `msg_${duplicateIdx}`;
+
+        switch (decision.action) {
+          case 'keep-primary':
+            nodesToKeep.push(primaryId);
+            nodesToRemove.push(duplicateId);
+            break;
+          case 'keep-duplicate':
+            nodesToKeep.push(duplicateId);
+            nodesToRemove.push(primaryId);
+            break;
+          case 'keep-both':
+            nodesToKeep.push(primaryId, duplicateId);
+            break;
+          case 'merge':
+            nodesToMerge.push({ primary: primaryId, duplicate: duplicateId });
+            nodesToKeep.push(primaryId);
+            nodesToRemove.push(duplicateId);
+            break;
+        }
+      }
+
+      const savepointId = `apply_review_${Date.now()}`;
+      let removed = 0;
+      let merged = 0;
+
+      try {
+        database.prepare(`SAVEPOINT ${savepointId}`).run();
+
+        for (const { primary, duplicate } of nodesToMerge) {
+          const primaryNode = database
+            .prepare('SELECT * FROM nodes WHERE id = ? AND account_id = ?')
+            .get(primary, targetAccountId) as any;
+          const duplicateNode = database
+            .prepare('SELECT * FROM nodes WHERE id = ? AND account_id = ?')
+            .get(duplicate, targetAccountId) as any;
+
+          if (!primaryNode || !duplicateNode) {
+            continue;
+          }
+
+          const primaryProps = JSON.parse(primaryNode.properties || '{}');
+          const duplicateProps = JSON.parse(duplicateNode.properties || '{}');
+          const primaryLabel = primaryProps.label || primaryProps.name || primaryNode.id;
+          const duplicateLabel = duplicateProps.label || duplicateProps.name || duplicateNode.id;
+          const mergedLabel =
+            primaryLabel !== duplicateLabel ? `${primaryLabel} / ${duplicateLabel}` : primaryLabel;
+          const mergedProps = { ...primaryProps, label: mergedLabel };
+
+          database
+            .prepare(
+              'UPDATE nodes SET properties = ?, updated_at = ? WHERE id = ? AND account_id = ?'
+            )
+            .run(JSON.stringify(mergedProps), Date.now(), primary, targetAccountId);
+          merged += 1;
+        }
+
+        const removeStmt = database.prepare('DELETE FROM nodes WHERE id = ? AND account_id = ?');
+        for (const nodeId of nodesToRemove) {
+          const result = removeStmt.run(nodeId, targetAccountId);
+          if (result.changes > 0) {
+            removed += 1;
+          }
+        }
+
+        database
+          .prepare(
+            `
+            DELETE FROM edges
+            WHERE account_id = ? AND (
+              from_id NOT IN (SELECT id FROM nodes WHERE account_id = ?)
+              OR to_id NOT IN (SELECT id FROM nodes WHERE account_id = ?)
+            )
+          `
+          )
+          .run(targetAccountId, targetAccountId, targetAccountId);
+
+        database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
+      } catch (error: any) {
+        try {
+          database.prepare(`ROLLBACK TO SAVEPOINT ${savepointId}`).run();
+          database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
+        } catch {
+          // no-op
+        }
+        throw ErrorFactory.database(
+          `Failed to apply duplicate review decisions: ${error.message}`,
+          'jobs.duplicateReviewApply',
+          { jobId, accountId: targetAccountId }
+        );
+      }
+
+      return res.json({
+        success: true,
+        result: {
+          jobId,
+          applied_decisions: decisions.length,
+          action_counts: actionCounts,
+          nodes_kept: nodesToKeep.length,
+          nodes_removed: removed,
+          nodes_merged: merged,
+          message: `Applied ${decisions.length} decisions`,
+        },
+      });
+    })
+  );
+
+  /**
+   * GET /api/v1/jobs/:id/duplicate-review/status
+   * Get duplicate review status for a job.
+   */
+  router.get(
+    '/:id/duplicate-review/status',
+    requireAuth(authService),
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = (req as any).user?.userId;
+      const userAccountId = (req as any).user?.accountId;
+      const operating = (req as any).operating;
+      const { id: jobId } = req.params;
+
+      if (!userAccountId || !userId) {
+        throw ErrorFactory.unauthorized('jobs.duplicateReviewStatus');
+      }
+
+      const targetAccountId = operating?.accountId || userAccountId;
+      const job = await jobRepository.findById(jobId, targetAccountId, req);
+      if (!job) {
+        throw ErrorFactory.notFound('Job', 'jobs.duplicateReviewStatus');
+      }
+
+      const { getDbClient } = await import('../../../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
+      const totalNodes = database
+        .prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ? AND kind = ?')
+        .get(targetAccountId, 'Message') as any;
+      const totalEdges = database
+        .prepare('SELECT COUNT(*) as count FROM edges WHERE account_id = ?')
+        .get(targetAccountId) as any;
+
+      return res.json({
+        success: true,
+        status: {
+          jobId,
+          total_nodes: totalNodes?.count || 0,
+          total_edges: totalEdges?.count || 0,
+          last_updated: Date.now(),
+        },
       });
     })
   );

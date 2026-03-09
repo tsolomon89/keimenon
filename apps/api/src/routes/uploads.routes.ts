@@ -24,8 +24,13 @@ import {
   UploadSessionRepository,
 } from '../modules/uploads/infrastructure/UploadSessionRepository';
 import { UploadSession, UploadSessionSpec } from '../modules/uploads/domain/UploadSession';
-import { Job } from '../modules/jobs/domain/Job';
+import { EnqueueJob } from '../modules/jobs/application/EnqueueJob';
+import { enqueueImportJob as enqueueImportJobWithConfig } from '../modules/jobs/application/enqueue-import-job';
 import { SQLiteJobRepository } from '../modules/jobs/infrastructure/JobRepository';
+import {
+  ImportConfigSchema,
+  normalizeImportOptions,
+} from '../modules/jobs/domain/import-config-contract';
 import { ChunkAssemblyService } from '../modules/uploads/application/ChunkAssemblyService';
 import {
   getProgressBroadcaster,
@@ -38,6 +43,9 @@ import { mkdir, statfs, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
+import { ulid } from 'ulid';
+import { sanitizeUploadFilename } from '../utils/upload-filename';
+import { appLogger } from '../utils/logger';
 
 // ============================================================================
 // Request/Response Schemas
@@ -52,7 +60,7 @@ const InitiateUploadSchema = z.object({
   mimeType: z.string().optional(),
   chunkSize: z.number().int().positive().optional(), // Optional, defaults to 10MB
   jobId: z.string().optional(), // Optional: Associate with existing job
-  importConfig: z.any().optional(), // Import configuration (if uploading for import)
+  importConfig: ImportConfigSchema, // Required + schema-validated for rail parity
 });
 
 type InitiateUploadRequest = z.infer<typeof InitiateUploadSchema>;
@@ -159,12 +167,17 @@ export function createUploadRoutes(authService: AuthService): Router {
 
       // Validate request body
       const body = InitiateUploadSchema.parse(req.body);
+      const importOptions = normalizeImportOptions(body.importConfig);
+      const sanitized = sanitizeUploadFilename(body.fileName);
 
-      console.log('📤 UPLOAD INITIATE =========================================');
-      console.log(`  User: ${userEmail} (${userId})`);
-      console.log(`  Account: ${accountId}`);
-      console.log(`  File: ${body.fileName}`);
-      console.log(`  Size: ${(body.fileSize / 1024 / 1024).toFixed(2)} MB`);
+      appLogger.info('upload.initiate', {
+        accountId,
+        userId,
+        userEmail,
+        fileName: sanitized.sanitized,
+        originalFileName: sanitized.original,
+        sizeBytes: body.fileSize,
+      });
 
       // Get database client
       const db = await getDbClient(req);
@@ -178,21 +191,27 @@ export function createUploadRoutes(authService: AuthService): Router {
         accountId,
         userId,
         jobId: body.jobId, // Optional: Will be set after assembly completes
-        fileName: body.fileName,
+        fileName: sanitized.sanitized,
         fileSize: body.fileSize,
         mimeType: body.mimeType || 'application/json',
         chunkSize: body.chunkSize,
-        metadata: body.importConfig ? { importConfig: body.importConfig } : undefined,
+        metadata: {
+          importConfig: importOptions,
+          originalFileName: sanitized.original || undefined,
+        },
       };
 
       // Create session in database
       const session = await uploadRepo.create(sessionSpec);
 
-      console.log(`✅ Upload session created: ${session.id}`);
-      console.log(`  Job ID: ${session.jobId || 'Will be created after assembly'}`);
-      console.log(`  Total chunks: ${session.totalChunks}`);
-      console.log(`  Chunk size: ${(session.chunkSize / 1024 / 1024).toFixed(2)} MB`);
-      console.log(`  Expires: ${new Date(session.expiresAt).toISOString()}`);
+      appLogger.info('upload.initiate.created', {
+        sessionId: session.id,
+        accountId,
+        jobId: session.jobId || null,
+        totalChunks: session.totalChunks,
+        chunkSize: session.chunkSize,
+        expiresAt: session.expiresAt,
+      });
 
       // Prepare chunk storage directory
       await mkdir(session.chunksPath, { recursive: true });
@@ -206,7 +225,9 @@ export function createUploadRoutes(authService: AuthService): Router {
 
       return res.status(201).json(response);
     } catch (error: any) {
-      console.error('❌ Upload initiate error:', error);
+      appLogger.error('upload.initiate.error', {
+        error: error.message,
+      });
 
       // Handle Zod validation errors
       if (error.name === 'ZodError') {
@@ -275,10 +296,12 @@ export function createUploadRoutes(authService: AuthService): Router {
           });
         }
 
-        console.log(`📦 CHUNK UPLOAD REQUEST: ${sessionId} / chunk ${chunkIdx}`);
-        console.log(
-          `   Headers: content-type=${req.headers['content-type']}, length=${req.headers['content-length']}`
-        );
+        appLogger.debug('upload.chunk.request', {
+          sessionId,
+          chunkIndex: chunkIdx,
+          contentType: req.headers['content-type'],
+          contentLength: req.headers['content-length'],
+        });
 
         // Get database client
         const db = await getDbClient(req);
@@ -338,7 +361,11 @@ export function createUploadRoutes(authService: AuthService): Router {
         } catch (err: any) {
           if (err.message.includes('Insufficient disk space')) throw err;
           // statfs may fail on some systems (e.g., Windows), continue anyway
-          console.warn('[ChunkUpload] Could not check disk space:', err.message);
+          appLogger.warn('upload.chunk.disk_space_check_unavailable', {
+            sessionId,
+            chunkIndex: chunkIdx,
+            error: err.message,
+          });
         }
 
         // Write chunk to disk
@@ -354,7 +381,7 @@ export function createUploadRoutes(authService: AuthService): Router {
             req.pipe(writeStream);
             writeStream.on('finish', () => resolve());
             writeStream.on('error', (error: NodeJS.ErrnoException) => {
-              console.error('[ChunkUpload] Stream write failed:', {
+              appLogger.error('upload.chunk.stream_write_failed', {
                 code: error.code,
                 syscall: error.syscall,
                 message: error.message,
@@ -380,7 +407,11 @@ export function createUploadRoutes(authService: AuthService): Router {
         // Use the updated session from the atomic operation
         session = updatedSession;
 
-        console.log(`✅ Chunk ${chunkIdx} saved (${session.getProgress()}% complete)`);
+        appLogger.debug('upload.chunk.saved', {
+          sessionId,
+          chunkIndex: chunkIdx,
+          progress: session.getProgress(),
+        });
 
         // Broadcast progress via SSE
         const broadcaster = getProgressBroadcaster();
@@ -403,119 +434,72 @@ export function createUploadRoutes(authService: AuthService): Router {
 
         // Check if upload is complete
         const isComplete = session.isComplete();
-        console.log(
-          `[CHUNK UPLOAD] isComplete=${isComplete}, testDbPath=${(req as any).testDbPath ? 'SET' : 'UNSET'}`
-        );
+        appLogger.debug('upload.chunk.completion_check', {
+          sessionId,
+          chunkIndex: chunkIdx,
+          isComplete,
+        });
 
         if (isComplete) {
-          console.log(
-            `🎉 Upload ${sessionId} is complete! All ${session.totalChunks} chunks received.`
-          );
+          appLogger.info('upload.chunk.complete', {
+            sessionId,
+            totalChunks: session.totalChunks,
+          });
+          const assemblyService = new ChunkAssemblyService(uploadRepo);
+          try {
+            const result = await assemblyService.triggerAssembly(sessionId, accountId);
 
-          // ✅ FIX: In test mode, create minimal job record to satisfy FK constraint
-          // Test 7 verifies that jobId gets set after upload completes
-          const testDbHeader = req.headers['x-test-db-path'];
-          const testDbPath = (req as any).testDbPath || testDbHeader;
-          console.log(
-            `[CHUNK UPLOAD] Checking test mode: header=${testDbHeader}, property=${(req as any).testDbPath}, final=${testDbPath}`
-          );
-
-          if (testDbPath) {
-            console.log(`🧪 Test Mode: Creating minimal job record for FK constraint`);
-
-            try {
-              // Import Job domain model and repository
-              const dbClient = await getDbClient(req);
-
-              // Access underlying SQLite database from wrapper
-              const testDb = (dbClient as any).db as Database.Database;
-
-              // Create job repository with test database
-              const jobRepo = new SQLiteJobRepository(testDb);
-
-              // Create minimal job record (satisfies FK constraint)
-              const modeTestContext = testDbPath ? { dbPath: testDbPath } : undefined;
-              const testJob = Job.create({
-                accountId,
-                createdBy: userId,
-                type: 'import',
-                config: {
-                  files: [
-                    {
-                      fileName: session.fileName,
-                      fileSize: session.fileSize,
-                      mimeType: session.mimeType ?? 'application/octet-stream',
-                      filePath: `test-mode-${sessionId}`, // Placeholder path
-                    },
-                  ],
-                  ...(modeTestContext ? { testContext: modeTestContext } : {}),
-                },
+            if (result.success) {
+              appLogger.info('upload.assembly.complete', {
+                sessionId,
+                filePath: result.filePath,
+                fileSize: result.fileSize,
               });
 
-              // Save job to test database
-              await jobRepo.save(testJob);
-              console.log(`  ✅ Test job created: ${testJob.id}`);
+              try {
+                await triggerImportJobFromAssembledFile(
+                  session,
+                  result.filePath!,
+                  result.fileSize!,
+                  accountId,
+                  sqliteDb,
+                  uploadRepo,
+                  req
+                );
 
-              // Set job ID on session and mark completed
-              session.setJobId(testJob.id);
-              session.markCompleted();
-
-              // Save session with job reference
-              await uploadRepo.save(session);
-              console.log(`  ✅ Session updated with jobId: ${testJob.id}`);
-
-              // Verify the save worked
-              const reloaded = await uploadRepo.findById(sessionId, accountId);
-              console.log(`  ✅ Verification - jobId after reload: ${reloaded?.jobId}`);
-            } catch (error: any) {
-              console.error(`❌ Test Mode: Failed to create job:`, error);
-              throw error;
-            }
-          } else {
-            // Production mode: Await assembly and job creation so we can return jobId
-            const assemblyService = new ChunkAssemblyService(uploadRepo);
-            try {
-              const result = await assemblyService.triggerAssembly(sessionId, accountId);
-
-              if (result.success) {
-                console.log(`✅ Assembly completed: ${result.filePath} (${result.fileSize} bytes)`);
-
-                // PHASE 4 IMPLEMENTATION: Trigger import job processing
-                try {
-                  await triggerImportJobFromAssembledFile(
-                    session,
-                    result.filePath!,
-                    result.fileSize!,
-                    accountId,
-                    sqliteDb,
-                    uploadRepo,
-                    req // ✅ Pass request for test isolation context
-                  );
-
-                  // ✅ FIX: Reload session to get the jobId that was set by triggerImportJobFromAssembledFile
-                  const updatedSession = await uploadRepo.findById(sessionId, accountId);
-                  if (updatedSession) {
-                    session = updatedSession;
-                    console.log(`✅ Session reloaded with jobId: ${session.jobId}`);
-                  }
-                } catch (importError: any) {
-                  console.error(`❌ Failed to trigger import job:`, importError);
-                  // Mark session as failed
-                  session.markFailed(
-                    `Assembly succeeded but import job creation failed: ${importError.message}`
-                  );
-                  await uploadRepo.save(session);
+                const updatedSession = await uploadRepo.findById(sessionId, accountId);
+                if (updatedSession) {
+                  session = updatedSession;
+                  appLogger.info('upload.session.job_linked', {
+                    sessionId,
+                    jobId: session.jobId,
+                  });
                 }
-              } else {
-                console.error(`❌ Assembly failed: ${result.errorMessage}`);
-                session.markFailed(`Assembly failed: ${result.errorMessage}`);
+              } catch (importError: any) {
+                appLogger.error('upload.import_trigger_failed', {
+                  sessionId,
+                  error: importError.message,
+                });
+                session.markFailed(
+                  `Assembly succeeded but import job creation failed: ${importError.message}`
+                );
                 await uploadRepo.save(session);
               }
-            } catch (error: any) {
-              console.error(`❌ Assembly error:`, error);
-              session.markFailed(`Assembly error: ${error.message}`);
+            } else {
+              appLogger.error('upload.assembly.failed', {
+                sessionId,
+                error: result.errorMessage,
+              });
+              session.markFailed(`Assembly failed: ${result.errorMessage}`);
               await uploadRepo.save(session);
             }
+          } catch (error: any) {
+            appLogger.error('upload.assembly.error', {
+              sessionId,
+              error: error.message,
+            });
+            session.markFailed(`Assembly error: ${error.message}`);
+            await uploadRepo.save(session);
           }
         }
 
@@ -536,7 +520,11 @@ export function createUploadRoutes(authService: AuthService): Router {
 
         return res.status(200).json(response);
       } catch (error: any) {
-        console.error('❌ Chunk upload error:', error);
+        appLogger.error('upload.chunk.error', {
+          sessionId: req.params.sessionId,
+          chunkIndex: req.params.chunkIndex,
+          error: error.message,
+        });
 
         return res.status(500).json({
           success: false,
@@ -832,108 +820,59 @@ async function triggerImportJobFromAssembledFile(
     throw new Error(`Session not found: ${session.id}`);
   }
 
-  // Create job repository
+  // Create job repository / enqueue use case
   const jobRepo = new SQLiteJobRepository(db);
+  const enqueueJob = new EnqueueJob(jobRepo, (global as any).workerPool?.broadcaster);
 
-  // Get import configuration from session metadata (if stored during initiation)
-  // If no config was provided, use default import settings
-  const importOptions = (freshSession as any).metadata?.importConfig || {
-    platform: 'generic', // Auto-detect platform
-    extraction: {
-      includeUser: true,
-      includeAssistant: true,
-    },
-    minMessageLength: 10,
-    processingMode: 'automatic',
-    branches: 'first',
-    extractCode: true,
-    codeSettings: {
-      minLength: 50,
-      languages: [],
-      groupBy: 'language',
-      deduplicate: true,
-    },
-    duplicateDetection: {
-      enabled: true,
-      exactMatch: true,
-      similarityThreshold: 0.85,
-      crossConversation: true,
-      algorithm: 'jaccard',
-      normalizeTokens: true,
-      minTokenOverlap: 3,
-      lengthRatioTolerance: 0.2,
-      ignoreWhitespace: true,
-      ignoreCase: true,
-      ignoreTimestamp: true,
-      requireReview: false,
-      autoApproveExact: true,
-      autoMergeThreshold: 0.95,
-    },
-  };
+  const importOptions = normalizeImportOptions(freshSession.metadata?.importConfig);
 
-  // ✅ FIX: Extract test database path from request for test isolation
-  const testDbPath = (req as any).testDbPath;
-  const testContext = testDbPath ? { dbPath: testDbPath } : undefined;
+  const testDbPath =
+    (req as any).testDbPath || (req.headers['x-test-db-path'] as string | undefined);
+  const testContext = testDbPath ? { dbPath: testDbPath, testId: (req as any).testId } : undefined;
+  const userType = (req as any).user?.user_type || 'user';
+  const accountMembership = (req as any).user?.account_membership || 'member';
+  const userEmail = (req as any).user?.email || 'unknown';
+  const actorId = ulid();
 
-  // ✅ FIX: In test mode, set jobId immediately to satisfy Test 7
-  // Issue: Worker pool uses production DB, but test jobs are in test DB - never found
-  // Solution: For E2E tests, just set jobId without queuing background job
-  // NOTE: This doesn't actually process the import - it just verifies assembly triggers job creation
-  if (testContext) {
-    console.log(`  🧪 Test Mode: Setting jobId immediately (skipping background job)`);
-    console.log(`    Test DB: ${testDbPath}`);
-    console.log(`    Reason: Worker pool polls production DB, can't find jobs in test DB`);
+  console.log('  Creating background job');
 
-    // Create fake job ID for test verification
-    const testJobId = `job_test_${Date.now()}`;
-
-    // Update fresh session with job ID immediately
-    freshSession.setJobId(testJobId);
-    await uploadRepo.save(freshSession);
-
-    console.log(`    ✅ Session updated with job ID: ${testJobId}`);
-    console.log(`    ⚠️  Note: Import not actually processed (test infrastructure limitation)`);
-    return; // Exit early - no background job needed in test mode
-  }
-
-  // Production mode: Create background job for async processing
-  console.log(`  📋 Production Mode: Creating background job`);
-
-  // Create import job
-  const job = Job.create({
+  const result = await enqueueImportJobWithConfig(enqueueJob, {
     accountId,
-    createdBy: freshSession.userId, // Fixed: Job domain model expects createdBy, not userId
-    type: 'import',
-    config: {
-      files: [
-        {
-          fileName: freshSession.fileName,
-          fileSize: fileSize,
-          mimeType: freshSession.mimeType ?? 'application/octet-stream',
-          filePath: assembledFilePath, // ✅ ImportWorker will read from this path
-        },
-      ],
-      importOptions,
-      testContext, // ✅ FIX: Worker pool will use this to access correct test database
-      metadata: {
-        source: 'chunked-upload',
-        uploadSessionId: freshSession.id,
-        chunkCount: freshSession.totalChunks,
-        uploadedAt: new Date().toISOString(),
+    createdBy: freshSession.userId,
+    files: [
+      {
+        fileName: freshSession.fileName,
+        fileSize: fileSize,
+        mimeType: freshSession.mimeType ?? 'application/octet-stream',
+        filePath: assembledFilePath,
       },
+    ],
+    importOptions,
+    processingRail: 'chunked',
+    source: 'chunked-upload',
+    tenancy: {
+      actorId,
+      userId: freshSession.userId,
+      accountId,
+      userType,
+      accountMembership,
+      userEmail,
+    },
+    testContext,
+    metadata: {
+      uploadSessionId: freshSession.id,
+      chunkCount: freshSession.totalChunks,
+      uploadedAt: new Date().toISOString(),
     },
   });
 
-  // Save job to database (will be picked up by WorkerPool)
-  await jobRepo.save(job);
-
-  console.log(`✅ Import job created: ${job.id}`);
-  console.log(`  Job will be processed by WorkerPool automatically`);
-  console.log(`  Track progress via SSE: /api/v1/jobs/stream`);
+  console.log(`Import job created: ${result.jobId}`);
+  console.log('  Job will be processed by WorkerPool automatically');
+  console.log('  Track progress via SSE: /api/v1/stream/jobs');
 
   // Update upload session with job ID
-  freshSession.setJobId(job.id);
+  freshSession.setJobId(result.jobId);
   await uploadRepo.save(freshSession);
 
-  console.log(`✅ Upload session updated with job ID: ${job.id}`);
+  console.log(`Upload session updated with job ID: ${result.jobId}`);
 }

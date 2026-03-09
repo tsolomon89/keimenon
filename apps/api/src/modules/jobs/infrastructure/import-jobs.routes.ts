@@ -22,104 +22,12 @@ import { requireAuth } from '../../../middleware/auth.middleware';
 import { streamingUploadService } from '../../../services/streaming-upload';
 import { SQLiteJobRepository } from './JobRepository';
 import { EnqueueJob, EnqueueJobCommand } from '../application/EnqueueJob';
+import { enqueueImportJob as enqueueImportJobWithConfig } from '../application/enqueue-import-job';
+import { RetryJob } from '../application/RetryJob';
 import { SSEBroadcaster } from './SSEBroadcaster';
 import Database from 'better-sqlite3';
-import { z } from 'zod';
 import { ulid } from 'ulid';
-
-/**
- * Import configuration schema (form fields)
- * Complete configuration matching ChatImportConfig from UI
- */
-const ImportConfigSchema = z
-  .object({
-    // Platform detection
-    platform: z.enum(['chatgpt', 'claude', 'gemini', 'generic']).optional(),
-
-    // Extraction - which roles to include
-    extraction: z
-      .object({
-        includeUser: z.boolean().default(true),
-        includeAssistant: z.boolean().default(false),
-      })
-      .default({ includeUser: true, includeAssistant: false }),
-
-    // Filtering - minimum message length
-    minMessageLength: z.number().default(400),
-
-    // Processing mode
-    processingMode: z.enum(['automatic', 'manual']).default('automatic'),
-    branches: z.enum(['merged', 'separate']).default('merged'),
-
-    // Manual groups (only used when processingMode='manual')
-    groups: z
-      .array(
-        z.object({
-          id: z.string(),
-          name: z.string(),
-          keywords: z.array(z.string()),
-        })
-      )
-      .default([]),
-
-    // Code extraction
-    extractCode: z.boolean().default(true),
-    codeSettings: z
-      .object({
-        minLength: z.number().default(50),
-        languages: z.array(z.string()).default([]),
-        groupBy: z.enum(['language', 'conversation', 'keyword']).default('language'),
-        deduplicate: z.boolean().default(true),
-      })
-      .default({
-        minLength: 50,
-        languages: [],
-        groupBy: 'language',
-        deduplicate: true,
-      }),
-
-    // Duplicate detection
-    duplicateDetection: z
-      .object({
-        enabled: z.boolean().default(true),
-        exactMatch: z.boolean().default(true),
-        similarityThreshold: z.number().default(0.85),
-        crossConversation: z.boolean().default(true),
-        algorithm: z.enum(['jaccard', 'levenshtein', 'cosine', 'embedding']).default('jaccard'),
-        normalizeTokens: z.boolean().default(true),
-        minTokenOverlap: z.number().default(5),
-        lengthRatioTolerance: z.number().default(0.2),
-        ignoreWhitespace: z.boolean().default(true),
-        ignoreCase: z.boolean().default(false),
-        ignoreTimestamp: z.boolean().default(true),
-        requireReview: z.boolean().default(true),
-        autoApproveExact: z.boolean().default(false),
-        autoMergeThreshold: z.number().default(0.95),
-      })
-      .default({
-        enabled: true,
-        exactMatch: true,
-        similarityThreshold: 0.85,
-        crossConversation: true,
-        algorithm: 'jaccard',
-        normalizeTokens: true,
-        minTokenOverlap: 5,
-        lengthRatioTolerance: 0.2,
-        ignoreWhitespace: true,
-        ignoreCase: false,
-        ignoreTimestamp: true,
-        requireReview: true,
-        autoApproveExact: false,
-        autoMergeThreshold: 0.95,
-      }),
-
-    // Legacy fields (for backward compatibility, will be deprecated)
-    autoGroup: z.boolean().optional(),
-    targetGroupCount: z.number().optional(),
-    codeMinChars: z.number().optional(),
-    duplicateThreshold: z.number().optional(),
-  })
-  .partial();
+import { normalizeImportOptions } from '../domain/import-config-contract';
 
 /**
  * Factory function to create import jobs routes
@@ -139,6 +47,7 @@ export function createImportJobsRoutes(
   // Initialize repository and use case
   const jobRepository = new SQLiteJobRepository(db);
   const enqueueJob = new EnqueueJob(jobRepository, broadcaster);
+  const retryJob = new RetryJob(jobRepository, broadcaster);
 
   /**
    * POST /api/v1/jobs/import
@@ -194,7 +103,6 @@ export function createImportJobsRoutes(
 
       // Determine target account based on operating context
       const targetAccountId = operating?.accountId || userAccountId;
-
       // Generate stable actor_id (ULID) for this operation
       // This identifies the (user, account, action) tuple for audit purposes
       const actorId = ulid();
@@ -218,119 +126,65 @@ export function createImportJobsRoutes(
       });
 
       // Parse import configuration from form fields
-      let importOptions: any = {};
+      let importOptions = normalizeImportOptions();
       if (fields.config) {
+        let parsedConfig: unknown;
         try {
-          const parsed = JSON.parse(fields.config);
-          importOptions = ImportConfigSchema.parse(parsed);
+          parsedConfig = JSON.parse(fields.config);
         } catch (error: any) {
-          console.warn(`  ⚠️  Failed to parse config: ${error.message}`);
-          // Continue with defaults
+          return res.status(400).json({
+            success: false,
+            error: `Invalid import config JSON: ${error.message}`,
+          });
+        }
+
+        try {
+          importOptions = normalizeImportOptions(parsedConfig);
+        } catch (error: any) {
+          return res.status(400).json({
+            success: false,
+            error: `Invalid import config: ${error.message}`,
+          });
         }
       }
 
-      // Build job config with embedded tenancy metadata
-      const jobConfig = {
+      const testContext =
+        (req as any).testDbPath || req.headers['x-test-db-path']
+          ? {
+              dbPath: (req as any).testDbPath || (req.headers['x-test-db-path'] as string),
+              testId: (req as any).testId,
+            }
+          : undefined;
+
+      // DEBUG: Verify testContext is set correctly
+      if (testContext?.dbPath) {
+        console.log('[IMPORT JOB CREATE] Test context set in job config:', testContext.dbPath);
+      } else {
+        console.log('[IMPORT JOB CREATE] No test context (production mode)');
+      }
+
+      const result = await enqueueImportJobWithConfig(enqueueJob, {
+        accountId: targetAccountId,
+        createdBy: userId,
         files: files.map((f) => ({
           fileName: f.fileName,
           fileSize: f.size,
           mimeType: f.mimeType,
-          filePath: f.filePath, // Path to temp file
+          filePath: f.filePath,
         })),
-        importOptions: {
-          // Platform detection
-          platform: importOptions.platform,
-
-          // Extraction settings
-          extraction: importOptions.extraction || {
-            includeUser: true,
-            includeAssistant: false,
-          },
-
-          // Filtering
-          minMessageLength: importOptions.minMessageLength ?? 400,
-
-          // Processing mode
-          processingMode: importOptions.processingMode ?? 'automatic',
-          branches: importOptions.branches ?? 'merged',
-
-          // Manual groups
-          groups: importOptions.groups || [],
-
-          // Code extraction
-          extractCode: importOptions.extractCode ?? true,
-          codeSettings: importOptions.codeSettings || {
-            minLength: 50,
-            languages: [],
-            groupBy: 'language',
-            deduplicate: true,
-          },
-
-          // Duplicate detection
-          duplicateDetection: importOptions.duplicateDetection || {
-            enabled: true,
-            exactMatch: true,
-            similarityThreshold: 0.85,
-            crossConversation: true,
-            algorithm: 'jaccard',
-            normalizeTokens: true,
-            minTokenOverlap: 5,
-            lengthRatioTolerance: 0.2,
-            ignoreWhitespace: true,
-            ignoreCase: false,
-            ignoreTimestamp: true,
-            requireReview: true,
-            autoApproveExact: false,
-            autoMergeThreshold: 0.95,
-          },
-
-          // Legacy field support (backward compatibility)
-          autoGroup: importOptions.autoGroup,
-          targetGroupCount: importOptions.targetGroupCount,
-          codeMinChars: importOptions.codeMinChars,
-          duplicateThreshold: importOptions.duplicateThreshold,
-        },
-        // Tenancy metadata (server-side validated, never trust client)
+        importOptions,
+        processingRail: 'multipart',
+        source: 'jobs-import-route',
         tenancy: {
-          actorId, // Unique ULID for this operation
-          userId, // Who initiated the import
-          accountId: targetAccountId, // Which account owns the data
-          userType, // user | admin | super_admin
-          accountMembership, // owner | admin | member
-          userEmail, // For audit logs
+          actorId,
+          userId,
+          accountId: targetAccountId,
+          userType,
+          accountMembership,
+          userEmail,
         },
-        // Test isolation context (E2E testing only)
-        // Propagates test database path from API request to background worker
-        testContext:
-          (req as any).testDbPath || req.headers['x-test-db-path']
-            ? {
-                dbPath: (req as any).testDbPath || (req.headers['x-test-db-path'] as string),
-                testId: (req as any).testId,
-              }
-            : undefined,
-      };
-
-      // DEBUG: Verify testContext is set correctly
-      if (jobConfig.testContext?.dbPath) {
-        console.log(
-          `[IMPORT JOB CREATE] ✅ Test context set in job config:`,
-          jobConfig.testContext.dbPath
-        );
-      } else {
-        console.log(`[IMPORT JOB CREATE] ℹ️ No test context (production mode)`);
-      }
-
-      // Create import job
-      const command: EnqueueJobCommand = {
-        type: 'import',
-        accountId: targetAccountId,
-        createdBy: userId,
-        config: jobConfig,
-        idempotencyKey: undefined, // Allow duplicate imports
-        concurrencyGroup: undefined, // Allow parallel imports
-      };
-
-      const result = await enqueueJob.execute(command);
+        testContext,
+      });
 
       console.log(`  ✅ Import job created: ${result.jobId}`);
       console.log(`  Status: ${result.status}`);
@@ -386,6 +240,13 @@ export function createImportJobsRoutes(
 
       // Determine target account based on operating context
       const targetAccountId = operating?.accountId || userAccountId;
+      const testContext =
+        (req as any).testDbPath || req.headers['x-test-db-path']
+          ? {
+              dbPath: (req as any).testDbPath || (req.headers['x-test-db-path'] as string),
+              testId: (req as any).testId,
+            }
+          : undefined;
 
       // Generate stable actor_id for audit
       const actorId = ulid();
@@ -445,6 +306,7 @@ export function createImportJobsRoutes(
             accountMembership,
             userEmail,
           },
+          testContext,
         },
         idempotencyKey: undefined,
         concurrencyGroup: `delete:${targetAccountId}`, // Exclusive lock for deletes
@@ -533,14 +395,18 @@ export function createImportJobsRoutes(
       // Broadcast deletion event to UI BEFORE deleting from database
       // This allows the UI to remove the job from its state immediately
       if (workerPool?.broadcaster) {
-        // Create a temporary "deleted" status job for broadcasting
+        // Broadcast a minimal payload instead of spreading the class instance.
+        // This avoids leaking internals and keeps SSE payload shape predictable.
         const deletedJob = {
-          ...job,
+          id: job.id,
+          accountId: job.accountId,
+          type: job.type,
           status: 'deleted' as const,
           progress: { current: 0, total: 0, percent: 0 },
+          config: job.config,
         };
         console.log(`[API DELETE] 📡 Broadcasting deletion event via SSE for job ${jobId}`);
-        workerPool.broadcaster.broadcastJobUpdate(deletedJob as any);
+        workerPool.broadcaster.broadcastJobUpdate(deletedJob);
       } else {
         console.warn(`[API DELETE] ⚠️  No broadcaster available - SSE update will NOT be sent`);
       }
@@ -608,26 +474,29 @@ export function createImportJobsRoutes(
         });
       }
 
-      // Create new job with same config
-      const command: EnqueueJobCommand = {
-        type: originalJob.type,
+      const retryResult = await retryJob.execute({
+        jobId,
         accountId: targetAccountId,
-        createdBy: userId,
-        config: originalJob.config,
-        idempotencyKey: undefined, // Don't reuse idempotency key
-        concurrencyGroup: originalJob.concurrencyGroup,
-      };
+        retriedBy: userId,
+      });
 
-      const result = await enqueueJob.execute(command);
+      if (!retryResult.success || !retryResult.newJob) {
+        return res.status(400).json({
+          success: false,
+          error: retryResult.error || 'Failed to retry job',
+        });
+      }
 
-      console.log(`🔄 Job retried: ${jobId} -> ${result.jobId} (type: ${originalJob.type})`);
+      console.log(
+        `🔄 Job retried: ${jobId} -> ${retryResult.newJob.id} (type: ${originalJob.type})`
+      );
 
       return res.status(201).json({
         success: true,
-        jobId: result.jobId,
+        jobId: retryResult.newJob.id,
         originalJobId: jobId,
         message: 'Job retried successfully',
-        job: result.job.toJSON(),
+        job: retryResult.newJob.toJSON(),
       });
     } catch (error: any) {
       console.error('Error retrying job:', error);
@@ -714,7 +583,7 @@ export function createImportJobsRoutes(
    * Pause a running job at the next checkpoint
    *
    * Transitions job to 'blocked' status. Worker will detect this and stop cooperatively.
-   * Job can be resumed later, which will restart from the beginning (no checkpoint persistence yet).
+   * Job can be resumed later from persisted checkpoint state.
    */
   router.post('/:jobId/pause', requireAuth(authService), async (req: Request, res: Response) => {
     try {
@@ -756,10 +625,9 @@ export function createImportJobsRoutes(
 
       console.log(`⏸️  Job paused: ${jobId} (type: ${job.type})`);
 
-      // If WorkerPool is available, signal the worker to stop
+      // If WorkerPool is available, signal the worker to stop cooperatively
       if (workerPool) {
-        // Use same cancelJob mechanism (aborts worker) but job status is 'blocked' not 'canceled'
-        const signaled = await workerPool.cancelJob(jobId, targetAccountId);
+        const signaled = await workerPool.pauseJob(jobId, targetAccountId, 'User paused job');
         if (signaled) {
           console.log(`📡 Sent pause signal to worker for job ${jobId}`);
         }
@@ -767,7 +635,7 @@ export function createImportJobsRoutes(
 
       return res.status(200).json({
         success: true,
-        message: 'Job paused successfully. Resume to continue from scratch.',
+        message: 'Job paused successfully. Resume to continue from the latest checkpoint.',
         job: job.toJSON(),
       });
     } catch (error: any) {
@@ -783,8 +651,8 @@ export function createImportJobsRoutes(
    * POST /api/v1/jobs/:jobId/resume
    * Resume a paused job
    *
-   * Transitions job from 'blocked' back to 'queued'. WorkerPool will pick it up and restart.
-   * Note: Without checkpoint persistence, job restarts from the beginning.
+   * Transitions job from 'blocked' back to 'queued'. WorkerPool will pick it up
+   * and continue from the latest persisted checkpoint.
    */
   router.post('/:jobId/resume', requireAuth(authService), async (req: Request, res: Response) => {
     try {
@@ -828,7 +696,7 @@ export function createImportJobsRoutes(
 
       return res.status(200).json({
         success: true,
-        message: 'Job resumed successfully. It will restart from the beginning.',
+        message: 'Job resumed successfully. Continuing from the latest checkpoint.',
         job: job.toJSON(),
       });
     } catch (error: any) {
