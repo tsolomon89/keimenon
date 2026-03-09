@@ -31,6 +31,7 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
 
   // Track active savepoints per database path (for debugging)
   const activeSavepoints = new Map<string, Set<string>>();
+  const verboseSavepointLogs = process.env.TEST_HELPERS_VERBOSE_SAVEPOINT === '1';
 
   /**
    * POST /api/v1/test/savepoint
@@ -75,14 +76,15 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
         }
       }
 
-      console.error(
-        `[Test Helpers] /savepoint request received. Headers:`,
-        req.headers,
-        `Body:`,
-        req.body,
-        `Parsed values:`,
-        { action, savepointId }
-      );
+      if (verboseSavepointLogs) {
+        console.log('[Test Helpers] /savepoint request', {
+          dbPath,
+          action,
+          savepointId,
+          headers: req.headers,
+          body: req.body,
+        });
+      }
 
       if (!action || !savepointId) {
         console.error(

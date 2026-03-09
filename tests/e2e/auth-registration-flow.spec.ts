@@ -295,16 +295,14 @@ test.describe('Authentication - Registration Flow', () => {
     await expect(page).toHaveURL(/\/login\/?$/);
   });
 
-  // FIXME: Loading state test is timing-sensitive and the registration is too fast to reliably capture
-  // The test passes locally but fails intermittently in CI due to race conditions
-  // To fix: Add artificial delay in test or mock slow network, or mark as non-critical
-  // SKIP: Test has architectural limitation - page navigates too fast
-  // The registration succeeds so quickly that the loading state cannot be observed
-  // The test assertion itself is commented out (line 298)
-  // Would require network mocking to artificially slow down API response
-  // Not worth the complexity for this edge case
-  test.skip('should show loading state during registration', async ({ page }) => {
+  test('should show loading state during registration', async ({ page }) => {
     const testEmail = generateTestEmail();
+
+    // Make registration response deterministic so loading state can be asserted reliably.
+    await page.route('**/api/v1/auth/register', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      await route.continue();
+    });
 
     await page.goto('/register');
     await page.getByLabel(/full name|name/i).fill('Test User');
@@ -313,24 +311,15 @@ test.describe('Authentication - Registration Flow', () => {
     await page.getByLabel(/confirm password/i).fill('SecurePass123!');
 
     // Click register button
-    const registerButton = page.getByRole('button', { name: /sign up|register|create account/i });
+    const registerButton = page.locator('button[type="submit"]');
     await registerButton.click();
 
-    // Button should show loading state (disabled or spinner)
-    // This might be quick, so we check immediately
-    const isDisabled = await registerButton.isDisabled();
-    const hasLoadingText = await registerButton
-      .textContent()
-      .then(
-        (text) =>
-          text?.includes('...') ||
-          text?.toLowerCase().includes('loading') ||
-          text?.toLowerCase().includes('creating')
-      );
+    await expect(registerButton).toBeDisabled();
+    await expect(registerButton).toContainText(/creating account/i);
 
-    // At least one should be true during processing
-    // Note: This test is timing-sensitive and may need adjustment
-    // expect(isDisabled || hasLoadingText).toBeTruthy();
+    // Ensure the registration still completes successfully after delayed response.
+    await waitForAuthToken(page);
+    await expect(page).toHaveURL(/\/keimenon|\/dashboard/);
   });
 
   // ==================== ERROR HANDLING ====================
