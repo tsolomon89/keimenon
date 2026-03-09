@@ -406,9 +406,10 @@ export class ImportWorker extends BaseWorker {
                   if (isTestMode) {
                     try {
                       // Verify DB write immediately
-                      const nodeCount = (dbClient as any)
-                        .prepare('SELECT COUNT(*) as count FROM nodes')
-                        .get().count;
+                      const nodeCountResult = await dbClient.execute(
+                        'SELECT COUNT(*) as count FROM nodes'
+                      );
+                      const nodeCount = Number(nodeCountResult?.records?.[0]?.count ?? 0);
                       console.log(
                         `[ImportWorker] 🔍 Immediate DB check (worker file): ${nodeCount} nodes total`
                       );

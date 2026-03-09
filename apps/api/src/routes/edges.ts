@@ -4,6 +4,17 @@ import { getDbClient } from '../utils/get-db-client';
 
 const router = Router();
 
+function getQueryValue(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.length > 0) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    const first = value.find((item): item is string => typeof item === 'string' && item.length > 0);
+    return first;
+  }
+  return undefined;
+}
+
 // Auth middleware will be added by server.ts when authService is available
 let authService: any = null;
 let requireAuth: any = null;
@@ -44,10 +55,14 @@ router.get('/', async (req: Request, res: Response) => {
       });
     }
 
-    const { from, to, kind, limit = '100' } = req.query;
+    const fromNodeId = getQueryValue(req.query.from) ?? getQueryValue(req.query.from_id);
+    const toNodeId = getQueryValue(req.query.to) ?? getQueryValue(req.query.to_id);
+    const kind = getQueryValue(req.query.kind);
+    const limitRaw = getQueryValue(req.query.limit) ?? '100';
     const db = await getDbClient(req);
 
-    const limitNum = parseInt(limit as string, 10);
+    const parsedLimit = parseInt(limitRaw, 10);
+    const limitNum = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 100;
 
     // Build account filter
     const accountFilter = req.user && req.user.accountType !== 'admin' ? req.user.accountId : null;
@@ -65,13 +80,13 @@ router.get('/', async (req: Request, res: Response) => {
       params.push(accountFilter, accountFilter);
     }
 
-    if (from) {
+    if (fromNodeId) {
       conditions.push('e.from_id = ?');
-      params.push(from);
+      params.push(fromNodeId);
     }
-    if (to) {
+    if (toNodeId) {
       conditions.push('e.to_id = ?');
-      params.push(to);
+      params.push(toNodeId);
     }
     if (kind) {
       conditions.push('e.kind = ?');
@@ -239,19 +254,21 @@ router.delete('/', async (req: Request, res: Response) => {
       });
     }
 
-    const { from, to, kind } = req.query;
+    const fromNodeId = getQueryValue(req.query.from) ?? getQueryValue(req.query.from_id);
+    const toNodeId = getQueryValue(req.query.to) ?? getQueryValue(req.query.to_id);
+    const kind = getQueryValue(req.query.kind);
 
-    if (!from || !to || !kind) {
+    if (!fromNodeId || !toNodeId || !kind) {
       return res.status(400).json({
-        error: 'Missing required query params: from, to, kind',
+        error: 'Missing required query params: from/from_id, to/to_id, kind',
       });
     }
 
     const db = await getDbClient(req);
 
     // Verify nodes exist and check ownership
-    const fromNode = await db.getNode(from as string);
-    const toNode = await db.getNode(to as string);
+    const fromNode = await db.getNode(fromNodeId);
+    const toNode = await db.getNode(toNodeId);
 
     if (!fromNode || !toNode) {
       return res.status(404).json({
@@ -277,7 +294,7 @@ router.delete('/', async (req: Request, res: Response) => {
 
     let deleted = 0;
     const query = 'DELETE FROM edges WHERE from_id = ? AND to_id = ? AND kind = ?';
-    const result = await db.execute(query, [from, to, kind]);
+    const result = await db.execute(query, [fromNodeId, toNodeId, kind]);
     deleted = (result as any).changes || 0;
 
     if (deleted === 0) {
