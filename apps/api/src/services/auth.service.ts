@@ -205,24 +205,23 @@ export class AuthServiceV2 {
       .get(email) as any;
 
     if (!userRow) {
-      // Diagnostic check
-      const anyUser = database.prepare('SELECT * FROM users WHERE email = ?').get(email);
-      const userCount = database.prepare('SELECT count(*) as c FROM users').get();
-      
-      const debugInfo = {
-        receivedEmail: email,
-        emailLen: email.length,
-        foundWithoutActiveCheck: !!anyUser,
-        userInDb: anyUser,
-        totalUsers: userCount
-      };
-      
-      console.error('[AUTH DEBUG]', debugInfo);
+      if (process.env.AUTH_VERBOSE_DEBUG === '1') {
+        const anyUser = database.prepare('SELECT * FROM users WHERE email = ?').get(email);
+        const userCount = database.prepare('SELECT count(*) as c FROM users').get() as {
+          c?: number;
+        };
+        console.warn('[AUTH DEBUG] Login lookup miss', {
+          receivedEmail: email,
+          emailLen: email.length,
+          foundWithoutActiveCheck: !!anyUser,
+          totalUsers: userCount?.c ?? 0,
+        });
+      }
 
       // Record failed attempt - user not found
       recordLoginAttempt(database, email, ipAddress, false, userAgent, 'User not found');
       logLoginFailure(database, email, 'User not found', ipAddress, userAgent);
-      throw new Error(`User not found debug: ${JSON.stringify(debugInfo)}`);
+      throw new Error('User not found');
     }
 
     // Verify password hash for all users
@@ -1031,10 +1030,10 @@ export class AuthServiceV2 {
  * Principal capabilities - mirrors PrincipalCapabilitiesSchema in nodes.ts
  */
 export interface PrincipalCapabilities {
-  can_upload: boolean;       // Create sources from uploads
-  can_run_tools: boolean;    // Execute tool calls (agents)
-  can_import_web: boolean;   // Fetch external sources (agents)
-  can_own_account: boolean;  // Be account owner (humans)
+  can_upload: boolean; // Create sources from uploads
+  can_run_tools: boolean; // Execute tool calls (agents)
+  can_import_web: boolean; // Fetch external sources (agents)
+  can_own_account: boolean; // Be account owner (humans)
   can_approve_runs: boolean; // Approve agent outputs (humans)
 }
 
@@ -1069,11 +1068,11 @@ export const DEFAULT_CAPABILITIES: Record<'human' | 'agent' | 'contact', Princip
  * Action types that can be authorized via capabilities
  */
 export type CapabilityAction =
-  | 'upload'         // maps to can_upload
-  | 'run_tools'      // maps to can_run_tools
-  | 'import_web'     // maps to can_import_web
-  | 'own_account'    // maps to can_own_account
-  | 'approve_runs';  // maps to can_approve_runs
+  | 'upload' // maps to can_upload
+  | 'run_tools' // maps to can_run_tools
+  | 'import_web' // maps to can_import_web
+  | 'own_account' // maps to can_own_account
+  | 'approve_runs'; // maps to can_approve_runs
 
 /**
  * Map action to capability field
@@ -1108,7 +1107,67 @@ export interface AuthorizationResult {
  * If: Outcomes differ because of principal_kind → model is broken
  */
 export class CapabilityAuthorizationService {
+  private static readonly principalMissLogTtlMs = Number.parseInt(
+    process.env.AUTH_PRINCIPAL_MISS_LOG_TTL_MS || String(10 * 60 * 1000),
+    10
+  );
+  private static readonly principalMissCacheMax = Number.parseInt(
+    process.env.AUTH_PRINCIPAL_MISS_CACHE_MAX || '1000',
+    10
+  );
+  private static principalMissLogCache = new Map<
+    string,
+    { lastWarnAt: number; suppressed: number; lastSeenAt: number }
+  >();
+
   constructor(private db: SQLiteClient) {}
+
+  private logPrincipalMissing(principalId: string, accountId: string): void {
+    if (process.env.NODE_ENV === 'test' && process.env.AUTH_LOG_PRINCIPAL_MISS !== '1') {
+      return;
+    }
+
+    const now = Date.now();
+    const cacheKey = `${accountId}:${principalId}`;
+    const existing = CapabilityAuthorizationService.principalMissLogCache.get(cacheKey);
+
+    if (
+      !existing ||
+      now - existing.lastWarnAt >= CapabilityAuthorizationService.principalMissLogTtlMs
+    ) {
+      const suppressed = existing?.suppressed ?? 0;
+      const suffix =
+        suppressed > 0
+          ? ` (suppressed ${suppressed} duplicate warning(s) in last ${Math.round(CapabilityAuthorizationService.principalMissLogTtlMs / 1000)}s)`
+          : '';
+      console.warn(
+        `[AUTH] Principal not found: ${principalId} in account ${accountId}, using default capabilities${suffix}`
+      );
+      CapabilityAuthorizationService.principalMissLogCache.set(cacheKey, {
+        lastWarnAt: now,
+        suppressed: 0,
+        lastSeenAt: now,
+      });
+    } else {
+      CapabilityAuthorizationService.principalMissLogCache.set(cacheKey, {
+        ...existing,
+        suppressed: existing.suppressed + 1,
+        lastSeenAt: now,
+      });
+    }
+
+    if (
+      CapabilityAuthorizationService.principalMissLogCache.size >
+      CapabilityAuthorizationService.principalMissCacheMax
+    ) {
+      const oldest = Array.from(
+        CapabilityAuthorizationService.principalMissLogCache.entries()
+      ).sort((a, b) => a[1].lastSeenAt - b[1].lastSeenAt)[0];
+      if (oldest) {
+        CapabilityAuthorizationService.principalMissLogCache.delete(oldest[0]);
+      }
+    }
+  }
 
   /**
    * Get capabilities for a principal
@@ -1137,9 +1196,7 @@ export class CapabilityAuthorizationService {
 
     if (!principalNode) {
       // Principal not found - return default human capabilities
-      console.warn(
-        `[AUTH] Principal not found: ${principalId} in account ${accountId}, using default capabilities`
-      );
+      this.logPrincipalMissing(principalId, accountId);
       return { ...DEFAULT_CAPABILITIES.human };
     }
 

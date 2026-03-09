@@ -123,15 +123,35 @@ export function errorLogger(
         },
       };
 
-  // Log error (in production, this would go to a logging service)
-  const logLevel = statusCode >= 500 ? 'error' : 'warn';
-  console[logLevel]('[API Error]', {
-    message: err.message,
-    statusCode,
-    context,
-    stack: err.stack,
-    timestamp: new Date().toISOString(),
-  });
+  // Keep 5xx logging verbose, but reduce expected 4xx noise in test/dev runs.
+  const isClientError = statusCode >= 400 && statusCode < 500;
+  const verboseClientErrors = process.env.API_VERBOSE_4XX === '1';
+  const suppressClientErrorLog =
+    isClientError && process.env.NODE_ENV === 'test' && !verboseClientErrors;
+  const isRequestAbortError = /request aborted/i.test(err.message);
+  const suppressAbortedRequestLog = isRequestAbortError && process.env.NODE_ENV === 'test';
+
+  if (!suppressClientErrorLog && !suppressAbortedRequestLog) {
+    const logLevel = statusCode >= 500 ? 'error' : 'warn';
+    const payload =
+      isClientError && !verboseClientErrors
+        ? {
+            message: err.message,
+            statusCode,
+            operation: context.operation,
+            method: req.method,
+            path: req.path,
+            timestamp: new Date().toISOString(),
+          }
+        : {
+            message: err.message,
+            statusCode,
+            context,
+            stack: statusCode >= 500 ? err.stack : undefined,
+            timestamp: new Date().toISOString(),
+          };
+    console[logLevel]('[API Error]', payload);
+  }
 
   // Send error response
   res.status(statusCode).json({

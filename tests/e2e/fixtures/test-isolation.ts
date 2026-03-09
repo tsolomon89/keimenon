@@ -345,7 +345,14 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
         await context.clearCookies();
         console.log(`[Test Isolation] ✅ Browser state cleared after test`);
       } catch (error) {
-        console.warn(`[Test Isolation] ⚠️ Post-test browser cleanup error:`, error);
+        const message = error instanceof Error ? error.message : String(error);
+        const ignorable =
+          message.includes('Access is denied for this document') ||
+          message.includes('Execution context was destroyed') ||
+          message.includes('Target page, context or browser has been closed');
+        if (!ignorable) {
+          console.warn(`[Test Isolation] ⚠️ Post-test browser cleanup error:`, error);
+        }
         // Don't fail if cleanup fails
       }
 

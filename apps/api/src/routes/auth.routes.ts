@@ -21,6 +21,59 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
     return 500;
   };
 
+  const isExpectedAuthError = (errorMessage: string): boolean => {
+    const normalized = errorMessage.toLowerCase();
+    return (
+      normalized.includes('invalid password') ||
+      normalized.includes('invalid credentials') ||
+      normalized.includes('user not found') ||
+      normalized.includes('account not found') ||
+      normalized.includes('already exists') ||
+      normalized.includes('no active accounts found') ||
+      normalized.includes('you do not have access to this account') ||
+      normalized.includes('account password required') ||
+      normalized.includes('invalid account password') ||
+      normalized.includes('invalid or expired token')
+    );
+  };
+
+  const getAuthErrorStatus = (errorMessage: string): number => {
+    const normalized = errorMessage.toLowerCase();
+    if (normalized.includes('already exists') || normalized.includes('conflict')) {
+      return 409;
+    }
+    if (
+      normalized.includes('invalid') ||
+      normalized.includes('not found') ||
+      normalized.includes('no active accounts')
+    ) {
+      return 401;
+    }
+    if (normalized.includes('forbidden') || normalized.includes('do not have access')) {
+      return 403;
+    }
+    if (normalized.includes('required') || normalized.includes('missing')) {
+      return 400;
+    }
+    if (normalized.includes('locked') || normalized.includes('too many failed attempts')) {
+      return 423;
+    }
+    return 500;
+  };
+
+  const logAuthRouteError = (operation: string, error: unknown, statusCode: number): void => {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const expected = statusCode < 500 || isExpectedAuthError(errorMessage);
+    if (expected && process.env.NODE_ENV === 'test') {
+      return;
+    }
+    if (expected) {
+      console.warn(`[AuthRoutes] ${operation}: ${errorMessage}`);
+      return;
+    }
+    console.error(`[AuthRoutes] ${operation} failed:`, error);
+  };
+
   /**
    * POST /api/v1/auth/login
    * Login with email and password
@@ -61,9 +114,9 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         membership: result.membership,
       });
     } catch (error: any) {
-      console.error('Login error:', error);
       const errorMessage = error?.message || 'Login failed';
       const status = getLoginErrorStatus(errorMessage);
+      logAuthRouteError('login', error, status);
       return res.status(status).json({ error: errorMessage });
     }
   });
@@ -114,11 +167,10 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         membership: result.membership,
       });
     } catch (error: any) {
-      console.error('Registration error:', error);
-      if (error.message && error.message.includes('already exists')) {
-        return res.status(409).json({ error: error.message });
-      }
-      return res.status(500).json({ error: error.message || 'Registration failed' });
+      const errorMessage = error?.message || 'Registration failed';
+      const status = getAuthErrorStatus(errorMessage);
+      logAuthRouteError('register', error, status);
+      return res.status(status).json({ error: errorMessage });
     }
   });
 
@@ -162,7 +214,7 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         message: 'If an account exists with this email, you will receive reset instructions.',
       });
     } catch (error: any) {
-      console.error('Request password reset error:', error);
+      logAuthRouteError('reset-password/request', error, 500);
       return res.status(500).json({ error: error.message || 'Password reset request failed' });
     }
   });
@@ -198,8 +250,10 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         updatedAt: result.updatedAt,
       });
     } catch (error: any) {
-      console.error('Reset password error:', error);
-      return res.status(500).json({ error: error.message || 'Password reset failed' });
+      const errorMessage = error?.message || 'Password reset failed';
+      const status = getAuthErrorStatus(errorMessage);
+      logAuthRouteError('reset-password/confirm', error, status);
+      return res.status(status).json({ error: errorMessage });
     }
   });
 
@@ -238,8 +292,10 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         updatedAt: result.updatedAt,
       });
     } catch (error: any) {
-      console.error('Reset password (debug) error:', error);
-      return res.status(500).json({ error: error.message || 'Password reset failed' });
+      const errorMessage = error?.message || 'Password reset failed';
+      const status = getAuthErrorStatus(errorMessage);
+      logAuthRouteError('reset-password-debug', error, status);
+      return res.status(status).json({ error: errorMessage });
     }
   });
 
@@ -275,8 +331,10 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         membership: result.membership,
       });
     } catch (error: any) {
-      console.error('Select account error:', error);
-      return res.status(500).json({ error: error.message || 'Account selection failed' });
+      const errorMessage = error?.message || 'Account selection failed';
+      const status = getAuthErrorStatus(errorMessage);
+      logAuthRouteError('select-account', error, status);
+      return res.status(status).json({ error: errorMessage });
     }
   });
 
@@ -324,8 +382,10 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         membership: result.membership,
       });
     } catch (error: any) {
-      console.error('Switch account error:', error);
-      return res.status(500).json({ error: error.message || 'Account switch failed' });
+      const errorMessage = error?.message || 'Account switch failed';
+      const status = getAuthErrorStatus(errorMessage);
+      logAuthRouteError('switch-account', error, status);
+      return res.status(status).json({ error: errorMessage });
     }
   });
 
@@ -350,8 +410,10 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
       //   token: result.token,
       // });
     } catch (error: any) {
-      console.error('Google register error:', error);
-      return res.status(500).json({ error: error.message || 'Registration failed' });
+      const errorMessage = error?.message || 'Registration failed';
+      const status = getAuthErrorStatus(errorMessage);
+      logAuthRouteError('register/google', error, status);
+      return res.status(status).json({ error: errorMessage });
     }
   });
 
@@ -369,8 +431,10 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
 
       return res.json({ message: 'Logged out successfully' });
     } catch (error: any) {
-      console.error('Logout error:', error);
-      return res.status(500).json({ error: error.message || 'Logout failed' });
+      const errorMessage = error?.message || 'Logout failed';
+      const status = getAuthErrorStatus(errorMessage);
+      logAuthRouteError('logout', error, status);
+      return res.status(status).json({ error: errorMessage });
     }
   });
 
@@ -432,8 +496,10 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
 
       return res.json({ valid: true, payload });
     } catch (error: any) {
-      console.error('Token verify error:', error);
-      return res.status(500).json({ error: error.message || 'Verification failed' });
+      const errorMessage = error?.message || 'Verification failed';
+      const status = getAuthErrorStatus(errorMessage);
+      logAuthRouteError('verify', error, status);
+      return res.status(status).json({ error: errorMessage });
     }
   });
 
