@@ -21,6 +21,25 @@ import * as path from 'path';
 
 const API_BASE_URL = 'http://127.0.0.1:4001';
 const ERROR_LOG_PATH = path.join(process.cwd(), '.test-errors.log');
+const MAX_TRANSIENT_REQUEST_RETRIES = 2;
+
+function shouldEmitConsoleApiError(status: number): boolean {
+  if (process.env.E2E_VERBOSE_API_ERRORS === '1') {
+    return true;
+  }
+  return status >= 500;
+}
+
+function isTransientTransportError(error: unknown): boolean {
+  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  return (
+    /ECONNRESET/i.test(message) ||
+    /ECONNREFUSED/i.test(message) ||
+    /ETIMEDOUT/i.test(message) ||
+    /socket hang up/i.test(message) ||
+    /EPIPE/i.test(message)
+  );
+}
 
 export interface RequestOptions {
   data?: any;
@@ -64,9 +83,10 @@ async function logApiError(
     // Write to log file (append mode)
     fs.appendFileSync(ERROR_LOG_PATH, logEntry);
 
-    // Also log to console for immediate visibility
-    console.error(`[API ERROR] ${method} ${url} returned ${status}`);
-    console.error(`[API ERROR] Response: ${responseBody.substring(0, 500)}`);
+    if (shouldEmitConsoleApiError(status)) {
+      console.error(`[API ERROR] ${method} ${url} returned ${status}`);
+      console.error(`[API ERROR] Response: ${responseBody.substring(0, 500)}`);
+    }
   } catch (error) {
     // Don't fail the test if logging fails
     console.warn('[API ERROR LOGGING] Failed to log error:', error);
@@ -84,8 +104,28 @@ export async function makeAuthenticatedRequest(
   url: string,
   options?: RequestOptions
 ) {
-  // Extract token from localStorage
-  const token = await page.evaluate(() => localStorage.getItem('keimenon_token'));
+  // Extract token + test DB context from browser state.
+  // __TEST_DB_PATH__ is injected by test-isolation fixture.
+  const authState = await page.evaluate(() => {
+    const token =
+      localStorage.getItem('keimenon_token') ||
+      localStorage.getItem('temp_auth_token') ||
+      (() => {
+        const rawAuth = localStorage.getItem('auth');
+        if (!rawAuth) return null;
+        try {
+          const parsed = JSON.parse(rawAuth);
+          return typeof parsed?.token === 'string' ? parsed.token : null;
+        } catch {
+          return null;
+        }
+      })();
+
+    // @ts-ignore test-only global injected by fixture
+    const testDbPath = (window as any).__TEST_DB_PATH__ || null;
+    return { token, testDbPath };
+  });
+  const token = authState?.token;
 
   if (!token) {
     throw new Error(
@@ -101,6 +141,7 @@ export async function makeAuthenticatedRequest(
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      ...(authState?.testDbPath ? { 'X-Test-DB-Path': authState.testDbPath } : {}),
       ...(options?.headers || {}),
     },
   };
@@ -117,7 +158,26 @@ export async function makeAuthenticatedRequest(
 
   // Make the request using the appropriate method
   const methodLower = method.toLowerCase() as 'get' | 'post' | 'put' | 'delete';
-  const response = await page.request[methodLower](fullUrl, requestOptions);
+  let response: APIResponse;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      response = await page.request[methodLower](fullUrl, requestOptions);
+      break;
+    } catch (error) {
+      const shouldRetry =
+        attempt < MAX_TRANSIENT_REQUEST_RETRIES && isTransientTransportError(error);
+      if (!shouldRetry) {
+        throw error;
+      }
+
+      const waitMs = (attempt + 1) * 200;
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(
+        `[Authenticated Request] transient failure on ${method} ${fullUrl}: ${message}. Retrying in ${waitMs}ms (${attempt + 1}/${MAX_TRANSIENT_REQUEST_RETRIES}).`
+      );
+      await page.waitForTimeout(waitMs);
+    }
+  }
 
   // ENHANCED: Log non-200 responses for debugging intermittent failures
   if (!response.ok()) {

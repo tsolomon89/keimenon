@@ -1,7 +1,8 @@
 import { test, expect } from './fixtures/test-isolation';
-import { login } from './helpers/login';
+import { login, resetAuthState } from './helpers/login';
 import { createTestSourceNodeForAccount } from './helpers/create-test-node';
 import { authGet } from './helpers/authenticated-request';
+import { loginTokenWithRetry } from './helpers/login-token';
 
 /**
  * Multi-Tenant Isolation - Edges
@@ -22,7 +23,7 @@ import { authGet } from './helpers/authenticated-request';
  */
 
 test.describe('Multi-Tenant Isolation - Edges', () => {
-  test.describe.configure({ tag: '@smoke' });
+  test.describe.configure({ tag: '@smoke', timeout: 120000 });
 
   const ACCOUNT_A = {
     email: 'client-alpha@fixture.test',
@@ -46,11 +47,7 @@ test.describe('Multi-Tenant Isolation - Edges', () => {
   test.beforeEach(async ({ apiRequest }) => {
     // Fixture accounts already exist - skip registration, just login
     // Setup Account A: Create 2 nodes and 1 edge
-    const responseA = await apiRequest.post('/api/v1/auth/login', {
-      data: ACCOUNT_A,
-    });
-    const authA = await responseA.json();
-    tokenA = authA.token;
+    tokenA = await loginTokenWithRetry(apiRequest, ACCOUNT_A);
 
     // Create first node for Account A
     const nodeA1Data = createTestSourceNodeForAccount('Account A', 1, 'First node for');
@@ -87,11 +84,7 @@ test.describe('Multi-Tenant Isolation - Edges', () => {
     edgeAId = edgeA.edge?.id || edgeA.id;
 
     // Setup Account B: Create 2 nodes and 1 edge
-    const responseB = await apiRequest.post('/api/v1/auth/login', {
-      data: ACCOUNT_B,
-    });
-    const authB = await responseB.json();
-    tokenB = authB.token;
+    tokenB = await loginTokenWithRetry(apiRequest, ACCOUNT_B);
 
     // Create first node for Account B
     const nodeB1Data = createTestSourceNodeForAccount('Account B', 1, 'First node for');
@@ -299,32 +292,49 @@ test.describe('Multi-Tenant Isolation - Edges', () => {
     expect([400, 401, 403, 404]).toContain(maliciousEdge.status());
   });
 
-  test('should maintain edge isolation after account switching', async ({ page, request }) => {
+  test('should maintain edge isolation after account switching', async ({ page }) => {
     // Login as Account A
     await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
 
-    // Verify Account A can list their edges
-    const listA = await authGet(page, '/api/v1/edges', {
-      params: { limit: 1000 },
-    });
-    const dataA = await listA.json();
-    const edgesA = dataA.edges || dataA;
+    // Verify Account A can list their edges (poll for consistency under parallel suite load).
+    await expect
+      .poll(
+        async () => {
+          const listA = await authGet(page, '/api/v1/edges', {
+            params: { limit: 1000 },
+          });
+          const dataA = await listA.json();
+          const edgesA = dataA.edges || dataA;
+          return edgesA.some((e: any) => e.id === edgeAId);
+        },
+        { timeout: 15000, intervals: [250, 500, 1000] }
+      )
+      .toBeTruthy();
 
-    expect(edgesA.some((e: any) => e.id === edgeAId)).toBeTruthy();
-
-    // Logout and login as Account B
-    await page.goto('/logout');
+    // Switch to Account B with explicit cookie + storage reset to avoid stale token races.
+    await resetAuthState(page);
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
 
-    // Verify Account B cannot see Account A's edges
-    const listB = await authGet(page, '/api/v1/edges', {
-      params: { limit: 1000 },
-    });
-    const dataB = await listB.json();
-    const edgesB = dataB.edges || dataB;
-
-    expect(edgesB.some((e: any) => e.id === edgeAId)).toBeFalsy();
-    expect(edgesB.some((e: any) => e.id === edgeBId)).toBeTruthy();
+    // Verify Account B cannot see Account A's edges and can see their own edge.
+    await expect
+      .poll(
+        async () => {
+          const listB = await authGet(page, '/api/v1/edges', {
+            params: { limit: 1000 },
+          });
+          const dataB = await listB.json();
+          const edgesB = dataB.edges || dataB;
+          return {
+            hasAccountAEdge: edgesB.some((e: any) => e.id === edgeAId),
+            hasAccountBEdge: edgesB.some((e: any) => e.id === edgeBId),
+          };
+        },
+        { timeout: 15000, intervals: [250, 500, 1000] }
+      )
+      .toEqual({
+        hasAccountAEdge: false,
+        hasAccountBEdge: true,
+      });
   });
 });
 

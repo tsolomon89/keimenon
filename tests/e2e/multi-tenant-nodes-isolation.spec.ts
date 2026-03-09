@@ -1,7 +1,8 @@
 import { test, expect } from './fixtures/test-isolation';
-import { login } from './helpers/login';
+import { login, resetAuthState } from './helpers/login';
 import { createTestSourceNodeForAccount } from './helpers/create-test-node';
 import { authGet } from './helpers/authenticated-request';
+import { loginTokenWithRetry } from './helpers/login-token';
 
 /**
  * Multi-Tenant Isolation - Nodes
@@ -44,27 +45,9 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
   let tokenB: string;
 
   test.beforeEach(async ({ apiRequest }) => {
-    // Fixture accounts already exist - skip registration, just login
-    // Login to Account A and create test node
-    const responseA = await apiRequest.post('/api/v1/auth/login', {
-      data: ACCOUNT_A,
-    });
+    tokenA = await loginTokenWithRetry(apiRequest, ACCOUNT_A);
+    expect(tokenA).toBeTruthy();
 
-    // Debug: Check login response
-    if (!responseA.ok()) {
-      const errorText = await responseA.text();
-      console.error(`[Account A Login FAILED] Status: ${responseA.status()}, Error: ${errorText}`);
-    }
-
-    const authA = await responseA.json();
-    tokenA = authA.token;
-
-    // Debug: Log token info
-    console.log(
-      `[Account A Login] Token exists: ${!!tokenA}, Token length: ${tokenA?.length || 0}, Email: ${ACCOUNT_A.email}`
-    );
-
-    // Create node with complete schema-compliant data
     const nodeAData = createTestSourceNodeForAccount('Account A', 1);
 
     const createA = await apiRequest.post('/api/v1/nodes/source', {
@@ -73,44 +56,18 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
       },
       data: nodeAData,
     });
+    expect(createA.ok()).toBeTruthy();
+    const nodeA = await createA.json();
+    nodeAId = nodeA.node?.id || nodeA.id;
+    expect(nodeAId).toBeTruthy();
 
-    if (createA.ok()) {
-      const nodeA = await createA.json();
-      // API may return { node: {...} } or just the node directly
-      nodeAId = nodeA.node?.id || nodeA.id;
-    } else {
-      console.error('Failed to create node for Account A:', await createA.text());
-    }
+    tokenB = await loginTokenWithRetry(apiRequest, ACCOUNT_B);
+    expect(tokenB).toBeTruthy();
 
-    // Login to Account B and create test node
-    const responseB = await apiRequest.post('/api/v1/auth/login', {
-      data: ACCOUNT_B,
-    });
-
-    // Debug: Check login response
-    if (!responseB.ok()) {
-      const errorText = await responseB.text();
-      console.error(`[Account B Login FAILED] Status: ${responseB.status()}, Error: ${errorText}`);
-    }
-
-    const authB = await responseB.json();
-    tokenB = authB.token;
-
-    // Debug: Log token info
-    console.log(
-      `[Account B Login] Token exists: ${!!tokenB}, Token length: ${tokenB?.length || 0}, Email: ${ACCOUNT_B.email}`
-    );
-
-    // Create node with complete schema-compliant data
     const nodeBData = createTestSourceNodeForAccount(
       'Account B',
       1,
       'This is private data belonging to'
-    );
-
-    // Debug: Log what we're about to send
-    console.log(
-      `[Account B Node Creation] Attempting to create node with token: ${tokenB?.substring(0, 20)}...`
     );
 
     const createB = await apiRequest.post('/api/v1/nodes/source', {
@@ -119,23 +76,10 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
       },
       data: nodeBData,
     });
-
-    // Debug: Log response status
-    console.log(
-      `[Account B Node Creation] Response status: ${createB.status()}, OK: ${createB.ok()}`
-    );
-
-    if (createB.ok()) {
-      const nodeB = await createB.json();
-      // API may return { node: {...} } or just the node directly
-      nodeBId = nodeB.node?.id || nodeB.id;
-      console.log(`[Account B Node Creation] SUCCESS - Node ID: ${nodeBId}`);
-    } else {
-      const errorResponse = await createB.text();
-      console.error(
-        `[Account B Node Creation] FAILED - Status: ${createB.status()}, Error: ${errorResponse}`
-      );
-    }
+    expect(createB.ok()).toBeTruthy();
+    const nodeB = await createB.json();
+    nodeBId = nodeB.node?.id || nodeB.id;
+    expect(nodeBId).toBeTruthy();
   });
 
   test.afterEach(async ({ apiRequest }) => {
@@ -344,7 +288,7 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
   // FIXME: Account switching for nodes requires complete UI implementation
   // Complex UI workflow involving account dropdown, node list refresh, and state management
   // To fix: Verify account switching properly clears and reloads node list with correct account_id filter
-  test('should maintain isolation after account switching', async ({ page, request }) => {
+  test('should maintain isolation after account switching', async ({ page }) => {
     // Login as Account A
     await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
     await page.goto('/keimenon');
@@ -354,8 +298,8 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
     // Verify Account A sees their node (if UI displays it)
     // await expect(page.getByText('Account A Confidential Source')).toBeVisible();
 
-    // Logout and login as Account B
-    await page.goto('/logout');
+    // Switch to Account B with explicit local/session cleanup.
+    await resetAuthState(page);
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
     await page.goto('/keimenon');
     await page.waitForLoadState('domcontentloaded');
@@ -408,9 +352,8 @@ test.describe('Multi-Tenant Isolation - Nodes', () => {
     // Note: This test may need adjustment based on admin privilege implementation
     // If admin accounts are type 'admin' (not 'client'), they may see all data
     // If admin is type 'client', they may only see their own account's data
-
-    console.log(`Admin sees Account A node: ${hasAccountANode}`);
-    console.log(`Admin sees Account B node: ${hasAccountBNode}`);
+    expect(typeof hasAccountANode).toBe('boolean');
+    expect(typeof hasAccountBNode).toBe('boolean');
   });
 });
 

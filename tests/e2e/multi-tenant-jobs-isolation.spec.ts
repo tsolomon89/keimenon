@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/test-isolation';
-import { login } from './helpers/login';
+import { login, resetAuthState } from './helpers/login';
+import { loginTokenWithRetry } from './helpers/login-token';
 
 /**
  * Multi-Tenant Isolation - Jobs (Background Operations)
@@ -36,14 +37,87 @@ test.describe('Multi-Tenant Isolation - Jobs', () => {
   let tokenA: string;
   let tokenB: string;
 
+  function extractJobId(payload: Record<string, any>): string | undefined {
+    return payload.job_id || payload.jobId || payload.uploadId || payload.id || payload.job?.id;
+  }
+
+  async function dismissWelcomeModal(page: any): Promise<void> {
+    const modalTitle = page.locator('#welcome-modal-title');
+    const welcomeDialog = page.getByRole('dialog', { name: /welcome to keimenon/i });
+
+    const isModalVisible =
+      (await modalTitle.isVisible({ timeout: 1500 }).catch(() => false)) ||
+      (await welcomeDialog.isVisible({ timeout: 1500 }).catch(() => false));
+
+    if (!isModalVisible) return;
+
+    const closeButton = page.getByRole('button', { name: /close welcome modal/i });
+    const getStarted = page.getByRole('button', { name: /get started/i });
+
+    if (await closeButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await closeButton.click({ force: true });
+    } else if (await getStarted.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await getStarted.click({ force: true });
+    } else {
+      await page.keyboard.press('Escape').catch(() => {});
+    }
+
+    await welcomeDialog.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+    await modalTitle.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+  }
+
+  async function openBackgroundOperations(page: any) {
+    await page.goto('/keimenon');
+    await page.waitForLoadState('domcontentloaded');
+    const dashboardButton = page.getByRole('button', { name: 'Dashboard' });
+
+    if (await dashboardButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        await dismissWelcomeModal(page);
+        try {
+          await dashboardButton.click();
+          break;
+        } catch (error: any) {
+          const message = String(error?.message || '');
+          const isModalIntercept =
+            message.includes('intercepts pointer events') &&
+            message.includes('welcome-modal-title');
+          if (attempt < 3 && isModalIntercept) {
+            await page.waitForTimeout(300);
+            continue;
+          }
+          throw error;
+        }
+      }
+    }
+
+    const operationsTable = page.getByTestId('background-operations-card');
+    const operationsHeading = page.getByText('Background Operations');
+    const emptyState = page.getByText(/no active imports|import jobs will appear here/i);
+    await Promise.race([
+      operationsTable.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+      operationsHeading.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+      emptyState.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    ]);
+    return operationsTable;
+  }
+
+  async function isVisibleSafe(locator: any): Promise<boolean> {
+    try {
+      return await locator.isVisible();
+    } catch {
+      return false;
+    }
+  }
+
   test.beforeEach(async ({ apiRequest }) => {
+    jobAId = '';
+    jobBId = '';
+
     // Fixture accounts already exist - skip registration, just login
     // Login as Account A
-    const responseA = await apiRequest.post('/api/v1/auth/login', {
-      data: ACCOUNT_A,
-    });
-    const authA = await responseA.json();
-    tokenA = authA.token;
+    tokenA = await loginTokenWithRetry(apiRequest, ACCOUNT_A);
+    expect(tokenA).toBeTruthy();
 
     // Create a test job for Account A using test endpoint
     const triggerJobA = await apiRequest.post('/api/v1/test/jobs/create', {
@@ -54,21 +128,18 @@ test.describe('Multi-Tenant Isolation - Jobs', () => {
       },
     });
 
-    if (triggerJobA.ok) {
+    if (triggerJobA.ok()) {
       const resultA = await triggerJobA.json();
-      jobAId = resultA.job_id || resultA.uploadId;
-      console.log('[Setup] Account A job created:', jobAId);
+      jobAId = extractJobId(resultA) || '';
     } else {
       const errorText = await triggerJobA.text();
-      console.error('[Setup] Failed to create Account A job:', triggerJobA.status(), errorText);
+      throw new Error(`Failed to create Account A job: ${triggerJobA.status()} ${errorText}`);
     }
+    expect(jobAId).toBeTruthy();
 
     // Login as Account B
-    const responseB = await apiRequest.post('/api/v1/auth/login', {
-      data: ACCOUNT_B,
-    });
-    const authB = await responseB.json();
-    tokenB = authB.token;
+    tokenB = await loginTokenWithRetry(apiRequest, ACCOUNT_B);
+    expect(tokenB).toBeTruthy();
 
     // Create a test job for Account B using test endpoint
     const triggerJobB = await apiRequest.post('/api/v1/test/jobs/create', {
@@ -79,14 +150,14 @@ test.describe('Multi-Tenant Isolation - Jobs', () => {
       },
     });
 
-    if (triggerJobB.ok) {
+    if (triggerJobB.ok()) {
       const resultB = await triggerJobB.json();
-      jobBId = resultB.job_id || resultB.uploadId;
-      console.log('[Setup] Account B job created:', jobBId);
+      jobBId = extractJobId(resultB) || '';
     } else {
       const errorText = await triggerJobB.text();
-      console.error('[Setup] Failed to create Account B job:', triggerJobB.status(), errorText);
+      throw new Error(`Failed to create Account B job: ${triggerJobB.status()} ${errorText}`);
     }
+    expect(jobBId).toBeTruthy();
 
     // Wait a moment for jobs to be created
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -135,12 +206,8 @@ test.describe('Multi-Tenant Isolation - Jobs', () => {
     // Login as Account B
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
 
-    // Navigate to settings where background operations are shown
-    await page.goto('/settings/data');
-    await page.waitForLoadState('networkidle');
-
-    // Wait for background operations table to load
-    const operationsTable = page.getByTestId('background-operations-table');
+    // Navigate to background operations in dashboard view
+    const operationsTable = await openBackgroundOperations(page);
 
     if (await operationsTable.isVisible()) {
       // Account B should NOT see Account A's job
@@ -183,12 +250,8 @@ test.describe('Multi-Tenant Isolation - Jobs', () => {
     // Login as Account B
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
 
-    // Navigate to where jobs are displayed (typically settings/data page)
-    await page.goto('/settings/data');
-    await page.waitForLoadState('networkidle');
-
-    // Wait for background operations table
-    const operationsTable = page.getByTestId('background-operations-table');
+    // Navigate to dashboard background operations
+    const operationsTable = await openBackgroundOperations(page);
 
     // If table is visible, verify Account A's job is not shown
     if (await operationsTable.isVisible()) {
@@ -202,23 +265,17 @@ test.describe('Multi-Tenant Isolation - Jobs', () => {
   test('should isolate job deletion in UI', async ({ page }) => {
     // Login as Account A
     await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
-    await page.goto('/settings/data');
-    await page.waitForLoadState('networkidle');
+    const operationsTable = await openBackgroundOperations(page);
 
     // Find Account A's job in the background operations table
-    const operationsTable = page.getByTestId('background-operations-table');
-
-    if (await operationsTable.isVisible()) {
+    if (await isVisibleSafe(operationsTable)) {
       // Check if Account A's job is visible
       const accountAJobVisible = await page.getByText('Account A Test Import').isVisible();
 
       // Now login as Account B (clear session and login)
-      await page.context().clearCookies();
-      await page.goto('/login');
-      await page.waitForLoadState('networkidle');
+      await resetAuthState(page);
       await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
-      await page.goto('/settings/data');
-      await page.waitForLoadState('networkidle');
+      await openBackgroundOperations(page);
 
       // Account B should not see Account A's job
       await expect(page.getByText('Account A Test Import')).not.toBeVisible();
@@ -239,12 +296,9 @@ test.describe('Multi-Tenant Isolation - Jobs', () => {
         await page.waitForTimeout(1000);
 
         // Now login back as Account A (clear session and login)
-        await page.context().clearCookies();
-        await page.goto('/login');
-        await page.waitForLoadState('networkidle');
+        await resetAuthState(page);
         await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
-        await page.goto('/settings/data');
-        await page.waitForLoadState('networkidle');
+        await openBackgroundOperations(page);
 
         // Account A's job should still exist (not affected by Account B's delete)
         if (accountAJobVisible) {
@@ -259,36 +313,26 @@ test.describe('Multi-Tenant Isolation - Jobs', () => {
 
   test('should maintain job isolation after account switching', async ({ page }) => {
     // Login as Account A and verify their job is visible
-    await page.goto('/login');
-    await page.waitForLoadState('networkidle');
+    await resetAuthState(page);
     await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
-    await page.goto('/settings/data');
-    await page.waitForLoadState('networkidle');
+    const operationsTable = await openBackgroundOperations(page);
 
-    const operationsTable = page.getByTestId('background-operations-table');
-
-    if (await operationsTable.isVisible()) {
+    if (await isVisibleSafe(operationsTable)) {
       // Note: Jobs might complete quickly, so we check if they exist
-      const accountAJobExists = await page.getByText('Account A Test Import').isVisible();
+      await page.getByText('Account A Test Import').isVisible();
 
       // Switch to Account B (clear session and login)
-      await page.context().clearCookies();
-      await page.goto('/login');
-      await page.waitForLoadState('networkidle');
+      await resetAuthState(page);
       await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
-      await page.goto('/settings/data');
-      await page.waitForLoadState('networkidle');
+      await openBackgroundOperations(page);
 
       // Account A's job should not be visible
       await expect(page.getByText('Account A Test Import')).not.toBeVisible();
 
       // Switch back to Account A (clear session and login)
-      await page.context().clearCookies();
-      await page.goto('/login');
-      await page.waitForLoadState('networkidle');
+      await resetAuthState(page);
       await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
-      await page.goto('/settings/data');
-      await page.waitForLoadState('networkidle');
+      await openBackgroundOperations(page);
 
       // Account A's job should still be isolated (if not completed)
       // await expect(page.getByText('Account A Test Import')).toBeVisible();

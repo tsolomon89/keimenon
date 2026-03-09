@@ -40,6 +40,44 @@ async function getTestDbPath(page: Page): Promise<string | null> {
   });
 }
 
+async function clearBrowserAuthStorage(page: Page): Promise<void> {
+  const currentUrl = page.url();
+  if (!currentUrl || currentUrl === 'about:blank' || currentUrl.startsWith('chrome-error://')) {
+    return;
+  }
+
+  await page
+    .evaluate(() => {
+      localStorage.removeItem('keimenon_token');
+      localStorage.removeItem('temp_auth_token');
+      localStorage.removeItem('auth');
+      sessionStorage.clear();
+    })
+    .catch(() => {});
+}
+
+export async function resetAuthState(
+  page: Page,
+  options?: { navigateToLogin?: boolean }
+): Promise<void> {
+  await page.context().clearCookies();
+  await clearBrowserAuthStorage(page);
+
+  if (options?.navigateToLogin === false) {
+    return;
+  }
+
+  const loginLoaded = await gotoDomReady(
+    page,
+    '/login',
+    LOGIN_NAV_TIMEOUT_MS,
+    'Reset auth state navigation to /login timed out'
+  );
+  if (!loginLoaded) {
+    throw new Error('Unable to load /login while resetting auth state');
+  }
+}
+
 function isTransientRequestError(error: unknown): boolean {
   const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
   return (

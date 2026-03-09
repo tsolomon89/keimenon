@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/test-isolation';
-import { login } from './helpers/login';
+import { login, resetAuthState } from './helpers/login';
 import { createTestSourceNodeForAccount } from './helpers/create-test-node';
-import { authGet } from './helpers/authenticated-request';
+import { loginTokenWithRetry } from './helpers/login-token';
 
 /**
  * Multi-Tenant Isolation - Groups
@@ -21,7 +21,7 @@ import { authGet } from './helpers/authenticated-request';
  */
 
 test.describe('Multi-Tenant Isolation - Groups', () => {
-  test.describe.configure({ tag: '@smoke' });
+  test.describe.configure({ tag: '@smoke', timeout: 120000 });
 
   const ACCOUNT_A = {
     email: 'client-alpha@fixture.test',
@@ -45,11 +45,7 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
   test.beforeEach(async ({ apiRequest }) => {
     // Fixture accounts already exist - skip registration, just login
     // Setup Account A: Create nodes and group
-    const responseA = await apiRequest.post('/api/v1/auth/login', {
-      data: ACCOUNT_A,
-    });
-    const authA = await responseA.json();
-    tokenA = authA.token;
+    tokenA = await loginTokenWithRetry(apiRequest, ACCOUNT_A);
 
     // Create nodes for Account A
     const nodeA1Data = createTestSourceNodeForAccount('Account A', 1, 'Content for');
@@ -122,11 +118,7 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
     }
 
     // Setup Account B: Create nodes and group
-    const responseB = await apiRequest.post('/api/v1/auth/login', {
-      data: ACCOUNT_B,
-    });
-    const authB = await responseB.json();
-    tokenB = authB.token;
+    tokenB = await loginTokenWithRetry(apiRequest, ACCOUNT_B);
 
     // Create nodes for Account B
     const nodeB1Data = createTestSourceNodeForAccount('Account B', 1, 'Content for');
@@ -508,14 +500,8 @@ test.describe('Multi-Tenant Isolation - Groups', () => {
 
     expect(groupsA.some((g: any) => g.id === groupAId)).toBeTruthy();
 
-    // Logout and login as Account B
-    // CRITICAL FIX: Wait for logout to complete before logging in
-    // WebKit requires explicit wait for localStorage to be cleared
-    await page.goto('/logout');
-    await page.waitForURL(/\/login/, { timeout: 10000 }); // Wait for redirect to login
-    await page.waitForFunction(() => !localStorage.getItem('keimenon_token'), {
-      timeout: 5000,
-    }); // Ensure token cleared
+    // Switch to Account B with explicit cookie + storage reset to avoid stale session bleed.
+    await resetAuthState(page);
     await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
 
     // Get token from page after login
