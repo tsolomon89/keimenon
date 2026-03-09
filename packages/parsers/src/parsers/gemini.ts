@@ -17,7 +17,7 @@ export class GeminiParser implements ChatParser {
     if (obj.conversation || obj.turns || obj.history) return true;
 
     // Check for Google-specific fields
-    if (obj.model && obj.model.includes('gemini')) return true;
+    if (typeof obj.model === 'string' && obj.model.toLowerCase().includes('gemini')) return true;
 
     return false;
   }
@@ -61,11 +61,7 @@ export class GeminiParser implements ChatParser {
 
     // Try different possible message arrays
     const messageArray =
-      data.conversation?.messages ||
-      data.turns ||
-      data.history ||
-      data.messages ||
-      [];
+      data.conversation?.messages || data.turns || data.history || data.messages || [];
 
     const messages: NormalizedMessage[] = [];
 
@@ -88,17 +84,13 @@ export class GeminiParser implements ChatParser {
       if (msg.parts && Array.isArray(msg.parts)) {
         // Gemini format: parts array with text
         content = msg.parts
-          .map((p: any) => {
-            if (typeof p === 'string') return p;
-            if (p.text) return p.text;
-            return '';
-          })
+          .map((p: any) => this.extractContent(p))
           .filter((t: string) => t)
           .join('\n');
-      } else if (msg.content) {
-        content = msg.content;
-      } else if (msg.text) {
-        content = msg.text;
+      } else if (msg.content != null) {
+        content = this.extractContent(msg.content);
+      } else if (msg.text != null) {
+        content = this.extractContent(msg.text);
       }
 
       if (!content) continue;
@@ -134,18 +126,33 @@ export class GeminiParser implements ChatParser {
     };
   }
 
-  private normalizeRole(role: string): 'user' | 'assistant' | 'system' {
-    if (!role) return 'user';
+  private normalizeRole(role: unknown): 'user' | 'assistant' | 'system' {
+    if (role == null) return 'user';
 
-    const normalized = role.toLowerCase();
+    if (typeof role === 'object') {
+      const roleObj = role as Record<string, unknown>;
+      const nestedRole =
+        roleObj.role ?? roleObj.author ?? roleObj.sender ?? roleObj.type ?? roleObj.name;
+      if (nestedRole != null) {
+        return this.normalizeRole(nestedRole);
+      }
+      return 'user';
+    }
 
-    if (normalized === 'user') return 'user';
-    if (normalized === 'model' || normalized === 'assistant' || normalized === 'gemini') {
+    const normalized = String(role).toLowerCase();
+
+    if (normalized.includes('user') || normalized.includes('human')) return 'user';
+    if (
+      normalized.includes('model') ||
+      normalized.includes('assistant') ||
+      normalized.includes('gemini') ||
+      normalized.includes('bot') ||
+      normalized.includes('ai')
+    ) {
       return 'assistant';
     }
-    if (normalized === 'system') return 'system';
+    if (normalized.includes('system')) return 'system';
 
-    // Default to user if unknown
     return 'user';
   }
 
@@ -160,6 +167,40 @@ export class GeminiParser implements ChatParser {
       }
     }
     return Math.floor(Date.now() / 1000);
+  }
+
+  private extractContent(content: unknown): string {
+    if (content == null) return '';
+    if (typeof content === 'string') return content;
+    if (
+      typeof content === 'number' ||
+      typeof content === 'boolean' ||
+      typeof content === 'bigint'
+    ) {
+      return String(content);
+    }
+    if (Array.isArray(content)) {
+      return content
+        .map((part) => this.extractContent(part))
+        .filter((part) => part.length > 0)
+        .join('\n');
+    }
+    if (typeof content === 'object') {
+      const obj = content as Record<string, unknown>;
+      const textLikeKeys = ['text', 'content', 'message', 'body', 'value'];
+      for (const key of textLikeKeys) {
+        if (obj[key] != null) {
+          const extracted = this.extractContent(obj[key]);
+          if (extracted) return extracted;
+        }
+      }
+      try {
+        return JSON.stringify(obj);
+      } catch {
+        return String(obj);
+      }
+    }
+    return String(content);
   }
 
   private updateStats(conv: NormalizedConversation, stats: any): void {

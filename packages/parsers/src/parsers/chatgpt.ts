@@ -199,13 +199,7 @@ export class ChatGPTParser implements ChatParser {
 
       // Extract content
       let content = '';
-      if (msg.content?.parts && Array.isArray(msg.content.parts)) {
-        content = msg.content.parts.join('\n');
-      } else if (msg.content?.text) {
-        content = msg.content.text;
-      } else if (typeof msg.content === 'string') {
-        content = msg.content;
-      }
+      content = this.extractContent(msg.content);
 
       if (!content) continue;
 
@@ -239,22 +233,72 @@ export class ChatGPTParser implements ChatParser {
     };
   }
 
-  private normalizeRole(role: string): 'user' | 'assistant' | 'system' {
-    const normalized = role.toLowerCase();
-    if (normalized === 'user') return 'user';
-    if (normalized === 'assistant') return 'assistant';
-    if (normalized === 'system') return 'system';
-    // Default to user if unknown
+  private normalizeRole(role: unknown): 'user' | 'assistant' | 'system' {
+    if (role == null) return 'user';
+
+    if (typeof role === 'object') {
+      const roleObj = role as Record<string, unknown>;
+      const nestedRole =
+        roleObj.role ?? roleObj.author ?? roleObj.sender ?? roleObj.type ?? roleObj.name;
+      if (nestedRole != null) {
+        return this.normalizeRole(nestedRole);
+      }
+      return 'user';
+    }
+
+    const normalized = String(role).toLowerCase();
+    if (normalized.includes('user') || normalized.includes('human') || normalized === 'you') {
+      return 'user';
+    }
+    if (
+      normalized.includes('assistant') ||
+      normalized.includes('bot') ||
+      normalized.includes('ai') ||
+      normalized.includes('model')
+    ) {
+      return 'assistant';
+    }
+    if (normalized.includes('system')) return 'system';
+
     return 'user';
   }
 
-  private extractContent(content: any): string {
-    if (!content) return '';
+  private extractContent(content: unknown): string {
+    if (content == null) return '';
+
     if (typeof content === 'string') return content;
-    if (content.parts && Array.isArray(content.parts)) {
-      return content.parts.join('\n');
+    if (
+      typeof content === 'number' ||
+      typeof content === 'boolean' ||
+      typeof content === 'bigint'
+    ) {
+      return String(content);
     }
-    if (content.text) return content.text;
+    if (Array.isArray(content)) {
+      return content
+        .map((part) => this.extractContent(part))
+        .filter((part) => part.length > 0)
+        .join('\n');
+    }
+
+    if (typeof content === 'object') {
+      const obj = content as Record<string, unknown>;
+      if (Array.isArray(obj.parts)) {
+        return obj.parts
+          .map((part) => this.extractContent(part))
+          .filter((part) => part.length > 0)
+          .join('\n');
+      }
+
+      const textLikeKeys = ['text', 'content', 'message', 'body', 'value'];
+      for (const key of textLikeKeys) {
+        if (obj[key] != null) {
+          const extracted = this.extractContent(obj[key]);
+          if (extracted) return extracted;
+        }
+      }
+    }
+
     return '';
   }
 

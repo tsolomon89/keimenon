@@ -27,6 +27,36 @@ const SKIP_COUNT = config.skipConversations || 0;
 let conversationsProcessed = 0;
 let conversationsSkipped = 0;
 
+function normalizeErrorMessage(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value instanceof Error && typeof value.message === 'string') {
+    return value.message;
+  }
+  if (value == null) {
+    return 'Unknown stream error';
+  }
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+function isMalformedInputMessage(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('invalid json') ||
+    normalized.includes('unexpected token') ||
+    normalized.includes('unexpected end of json input') ||
+    normalized.includes('state stop')
+  );
+}
+
 // Main execution
 (async () => {
   if (!parentPort) {
@@ -49,6 +79,19 @@ let conversationsSkipped = 0;
     const parser = JSONStream.parse('*');
 
     let batch: any[] = [];
+    let terminalErrorEmitted = false;
+    const emitTerminalError = (errorMessage: string) => {
+      if (terminalErrorEmitted) {
+        return;
+      }
+      terminalErrorEmitted = true;
+      postMessage({ type: 'error', data: errorMessage });
+      try {
+        stream.destroy();
+      } catch {
+        // ignore teardown errors
+      }
+    };
 
     // Log skip info if resuming
     if (SKIP_COUNT > 0) {
@@ -113,11 +156,18 @@ let conversationsSkipped = 0;
     });
 
     parser.on('error', (err: any) => {
-      console.error('Stream Error:', err);
-      postMessage({ type: 'error', data: err.message });
+      const errorMessage = normalizeErrorMessage(err);
+      if (!isMalformedInputMessage(errorMessage)) {
+        console.error('[import.worker] Stream parser error:', errorMessage);
+      }
+      emitTerminalError(errorMessage);
     });
 
     parser.on('end', () => {
+      if (terminalErrorEmitted) {
+        return;
+      }
+
       // Send remaining batch
       if (batch.length > 0) {
         postMessage({ type: 'batch', data: batch });
@@ -127,11 +177,12 @@ let conversationsSkipped = 0;
     });
 
     stream.on('error', (err: any) => {
-      console.error('Read Stream Error:', err);
-      postMessage({ type: 'error', data: err.message });
+      const errorMessage = normalizeErrorMessage(err);
+      console.error('[import.worker] Read stream error:', errorMessage);
+      emitTerminalError(errorMessage);
     });
   } catch (error: any) {
-    postMessage({ type: 'error', data: error.message });
+    postMessage({ type: 'error', data: normalizeErrorMessage(error) });
   }
 })();
 

@@ -135,16 +135,33 @@ export class ClaudeParser implements ChatParser {
     };
   }
 
-  private normalizeRole(sender: string): 'user' | 'assistant' | 'system' {
-    if (!sender) return 'user';
+  private normalizeRole(sender: unknown): 'user' | 'assistant' | 'system' {
+    if (sender == null) return 'user';
 
-    const normalized = sender.toLowerCase();
+    if (typeof sender === 'object') {
+      const senderObj = sender as Record<string, unknown>;
+      const nestedSender =
+        senderObj.sender ?? senderObj.role ?? senderObj.author ?? senderObj.type ?? senderObj.name;
+      if (nestedSender != null) {
+        return this.normalizeRole(nestedSender);
+      }
+      return 'user';
+    }
 
-    if (normalized === 'human' || normalized === 'user') return 'user';
-    if (normalized === 'assistant' || normalized === 'claude') return 'assistant';
-    if (normalized === 'system') return 'system';
+    const normalized = String(sender).toLowerCase();
 
-    // Default to user if unknown
+    if (normalized.includes('human') || normalized.includes('user')) return 'user';
+    if (
+      normalized.includes('assistant') ||
+      normalized.includes('claude') ||
+      normalized.includes('bot') ||
+      normalized.includes('model') ||
+      normalized.includes('ai')
+    ) {
+      return 'assistant';
+    }
+    if (normalized.includes('system')) return 'system';
+
     return 'user';
   }
 
