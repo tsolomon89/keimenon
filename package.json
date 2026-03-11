@@ -42,6 +42,7 @@
     "ops:gate-e:evidence": "node scripts/ops/gate-e-evidence-bundle.js",
     "ops:branch-protection:apply": "node scripts/ops/apply-branch-protection.js",
     "ops:branch-protection:verify": "node scripts/ops/apply-branch-protection.js --verify-only",
+    "ops:vision-doc-sync:check": "node scripts/ops/verify-vision-doc-sync.js",
     "gate-e:hardening:ci": "npm run e2e -- --project=chromium && npm run perf:lod:burnin:quick && npm run ops:rollout-rollback:drill:quick",
     "gate-e:hardening:nightly": "npm run e2e -- --project=chromium && npm run perf:lod:burnin && npm run ops:rollout-rollback:drill",
     "diagnose-modules": "node scripts/diagnose-modules.js",

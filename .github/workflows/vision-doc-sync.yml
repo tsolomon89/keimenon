@@ -1,0 +1,16 @@
+name: Vision Doc Sync
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-vision-doc-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify AGENTS-derived doc alignment
+        run: node scripts/ops/verify-vision-doc-sync.js
