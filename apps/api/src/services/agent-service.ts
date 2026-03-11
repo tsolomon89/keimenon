@@ -36,13 +36,19 @@ type TaskHandlersModule = {
   getTaskHandlerTypes: () => string[];
 };
 
+type ToolAdaptersModule = {
+  createProductionRegistry?: () => ToolRegistry;
+};
+
 const FALLBACK_TASK_TYPES: TaskType[] = [
   'GROUP_SUMMARY_BUILD',
   'DUPLICATE_SUGGEST',
   'VERIFY_SOURCE_CHAIN',
 ];
 
-class NoopToolRegistry implements ToolRegistry {
+class UnavailableToolRegistry implements ToolRegistry {
+  constructor(private readonly reason: string = 'Tool adapters unavailable') {}
+
   private readonly llmAdapter = new NullLLMAdapter();
   private readonly webAdapter = new NullWebAdapter();
 
@@ -68,11 +74,11 @@ class NoopToolRegistry implements ToolRegistry {
 
   getStatus(): ToolStatus[] {
     return [
-      { name: 'llm', available: false, provider: 'none' },
-      { name: 'web', available: false, provider: 'none' },
-      { name: 'exec', available: false, error: 'Not configured' },
-      { name: 'proof', available: false, error: 'Not configured' },
-      { name: 'git', available: false, error: 'Not configured' },
+      { name: 'llm', available: false, provider: 'none', error: this.reason },
+      { name: 'web', available: false, provider: 'none', error: this.reason },
+      { name: 'exec', available: false, error: this.reason },
+      { name: 'proof', available: false, error: this.reason },
+      { name: 'git', available: false, error: this.reason },
     ];
   }
 
@@ -101,6 +107,25 @@ async function loadTaskHandlersModule(): Promise<TaskHandlersModule | null> {
   }
 
   return taskHandlersModulePromise;
+}
+
+async function loadProductionToolRegistry(): Promise<ToolRegistry | null> {
+  try {
+    // Keep ESM loading compatible with CommonJS API runtime.
+    const dynamicImport = new Function('specifier', 'return import(specifier)') as (
+      specifier: string
+    ) => Promise<ToolAdaptersModule>;
+
+    const toolAdapters = await dynamicImport('@keimenon/tool-adapters');
+    if (typeof toolAdapters.createProductionRegistry !== 'function') {
+      return null;
+    }
+
+    return toolAdapters.createProductionRegistry();
+  } catch (error) {
+    console.warn('[AgentService] Falling back to unavailable tool registry:', error);
+    return null;
+  }
 }
 
 function resolveDatabase(): Database.Database {
@@ -141,7 +166,7 @@ export class AgentService {
   private static instance: AgentService | null = null;
 
   private readonly eventBus: EventBus = new InMemoryEventBus();
-  private toolRegistry: ToolRegistry = new NoopToolRegistry();
+  private toolRegistry: ToolRegistry = new UnavailableToolRegistry('Tool adapters not initialized');
 
   private graphRepo:
     | (GraphRepo & { getSourcesByImportBatch?: (...args: any[]) => Promise<any[]> })
@@ -201,6 +226,35 @@ export class AgentService {
 
   getRunningTasks(): string[] {
     return Array.from(this.runningTasks);
+  }
+
+  getToolStatus(): ToolStatus[] {
+    return this.toolRegistry.getStatus();
+  }
+
+  async getHealth(): Promise<{
+    status: 'ok';
+    availableTypes: string[];
+    runningTasks: number;
+    tools: ToolStatus[];
+    degraded: boolean;
+    degradedReasons: string[];
+  }> {
+    await this.ensureRuntimeInitialized();
+
+    const tools = this.toolRegistry.getStatus();
+    const degradedReasons = tools
+      .filter((tool) => !tool.available)
+      .map((tool) => `${tool.name}: ${tool.error || 'unavailable'}`);
+
+    return {
+      status: 'ok',
+      availableTypes: this.getAvailableTaskTypes(),
+      runningTasks: this.getRunningTasks().length,
+      tools,
+      degraded: degradedReasons.length > 0,
+      degradedReasons,
+    };
   }
 
   async executeTask(request: CreateTaskRequest): Promise<TaskExecutionResult> {
@@ -316,6 +370,21 @@ export class AgentService {
     const graphRepo = this.graphRepo || new SQLiteAgentGraphRepo(db);
     const storage = this.storage || new LocalArtifactStorage();
     await storage.ensureReady();
+
+    if (this.toolRegistry instanceof UnavailableToolRegistry) {
+      const productionRegistry = await loadProductionToolRegistry();
+      if (productionRegistry) {
+        this.toolRegistry = productionRegistry;
+      } else {
+        this.toolRegistry = new UnavailableToolRegistry('Failed to load @keimenon/tool-adapters');
+      }
+    }
+
+    try {
+      await this.toolRegistry.refresh();
+    } catch (error) {
+      console.warn('[AgentService] Tool registry refresh failed:', error);
+    }
 
     const handlerRegistry = new InMemoryHandlerRegistry();
     const taskHandlersModule = await loadTaskHandlersModule();

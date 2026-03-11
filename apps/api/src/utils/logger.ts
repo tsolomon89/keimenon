@@ -8,11 +8,12 @@ const ORDER: Record<AppLogLevel, number> = {
 };
 
 function getConfiguredLevel(): AppLogLevel {
-  const raw = String(process.env.LOG_LEVEL || 'info').toLowerCase();
+  const defaultLevel = process.env.NODE_ENV === 'test' ? 'warn' : 'info';
+  const raw = String(process.env.LOG_LEVEL || defaultLevel).toLowerCase();
   if (raw === 'debug' || raw === 'info' || raw === 'warn' || raw === 'error') {
     return raw;
   }
-  return 'info';
+  return defaultLevel;
 }
 
 function shouldLog(level: AppLogLevel): boolean {

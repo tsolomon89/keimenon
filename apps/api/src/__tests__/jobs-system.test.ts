@@ -341,8 +341,10 @@ beforeEach(() => {
 describe('Import Jobs', () => {
   it('should create import job from file upload', async () => {
     const form = createFormData(TEST_FILES.tiny, {
-      exportCode: true,
-      codeMinChars: 50,
+      extractCode: true,
+      codeSettings: {
+        minLength: 50,
+      },
     });
 
     const response = await fetch(`${API_URL}/api/v1/jobs/import`, {

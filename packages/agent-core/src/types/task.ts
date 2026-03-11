@@ -8,20 +8,12 @@
 /**
  * Supported task types
  */
-export type TaskType =
-  | 'GROUP_SUMMARY_BUILD'
-  | 'DUPLICATE_SUGGEST'
-  | 'VERIFY_SOURCE_CHAIN';
+export type TaskType = 'GROUP_SUMMARY_BUILD' | 'DUPLICATE_SUGGEST' | 'VERIFY_SOURCE_CHAIN';
 
 /**
  * Task execution status
  */
-export type TaskStatus =
-  | 'pending'
-  | 'running'
-  | 'completed'
-  | 'failed'
-  | 'cancelled';
+export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 /**
  * Run execution status (for individual attempts)
@@ -31,12 +23,7 @@ export type RunStatus = 'running' | 'completed' | 'failed';
 /**
  * Artifact types produced by tasks
  */
-export type ArtifactType =
-  | 'canonical_doc'
-  | 'cluster_json'
-  | 'evidence_chain'
-  | 'diff'
-  | 'log';
+export type ArtifactType = 'canonical_doc' | 'cluster_json' | 'evidence_chain' | 'diff' | 'log';
 
 /**
  * Retry policy configuration
@@ -246,6 +233,8 @@ export interface VerifySourceChainInput {
     max_hops: number;
     /** Maximum sources to fetch */
     max_sources: number;
+    /** Explicit override for sending full raw content outside local runtime */
+    allow_full_raw_egress?: boolean;
   };
 }
 

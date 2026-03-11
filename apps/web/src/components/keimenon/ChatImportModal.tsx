@@ -19,6 +19,9 @@ import {
   analyzeFiles,
   detectPlatform,
   applyDuplicateDecisions,
+  getDuplicateReviewGroups,
+  getDuplicateReviewStatus,
+  getMyFeatures,
   completeCoreProcessReimport,
   getCoreProcessReimportStatus,
 } from '@/lib/api-client';
@@ -62,6 +65,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [postImportResolvedJobId, setPostImportResolvedJobId] = useState<string | null>(null);
 
   const clearCoreProcessReimportGate = useCallback(async () => {
     try {
@@ -124,10 +128,39 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
 
     // Handle completion
     if (jobUpdate.status === 'succeeded') {
+      if (postImportResolvedJobId === currentJobId) {
+        return;
+      }
+      setPostImportResolvedJobId(currentJobId);
       setIsImporting(false);
-      setStage('complete');
       console.log('[ChatImportModal] Import job completed successfully');
-      void clearCoreProcessReimportGate();
+
+      const resolvedJobId = currentJobId;
+      void (async () => {
+        try {
+          const reviewStatus = await getDuplicateReviewStatus(resolvedJobId);
+          const shouldReview = reviewStatus.status.review_required;
+
+          if (shouldReview) {
+            const reviewGroups = await getDuplicateReviewGroups(resolvedJobId);
+            if (reviewGroups.total_candidates > 0) {
+              setDuplicateGroups(reviewGroups.groups);
+              setProgress({
+                stage: 'ready',
+                percent: 100,
+                message: `${reviewStatus.status.pending_candidates} duplicate candidates require review`,
+              });
+              setStage('review');
+              return;
+            }
+          }
+        } catch (reviewError) {
+          console.warn('[ChatImportModal] Failed to load duplicate review status:', reviewError);
+        }
+
+        setStage('complete');
+        void clearCoreProcessReimportGate();
+      })();
 
       // Log completion event
       logJobEvent(`Import completed successfully`, 'import.jobCompleted', {
@@ -159,7 +192,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         percent: failurePercent,
       });
     }
-  }, [currentJobId, jobs, clearCoreProcessReimportGate]);
+  }, [currentJobId, jobs, clearCoreProcessReimportGate, postImportResolvedJobId]);
 
   // Track chunked upload progress
   useEffect(() => {
@@ -271,6 +304,16 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         return;
       }
 
+      try {
+        const featureManifest = await getMyFeatures();
+        if (!featureManifest.features.auto_graph) {
+          alert('Your current account tier does not allow automatic graph import.');
+          return;
+        }
+      } catch (featureError) {
+        console.warn('[ChatImportModal] Failed to fetch feature manifest:', featureError);
+      }
+
       // Set importing state and show loading
       setIsImporting(true);
       setStage('processing');
@@ -311,6 +354,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
 
       // Store job ID to track progress via SSE
       setCurrentJobId(uploadResult.jobId);
+      setPostImportResolvedJobId(null);
 
       // Log event for keimenon console
       logJobEvent(`Import job created via chunked upload: ${file.name}`, 'import.jobCreated', {
@@ -352,6 +396,8 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         duplicateId,
         action: decision.action,
         timestamp: Date.now(),
+        primaryNodeId: decision.primaryNodeId,
+        duplicateNodeId: decision.duplicateNodeId,
       }));
 
       if (decisionsArray.length === 0) {
@@ -382,23 +428,35 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         operation: 'duplicateDecisionsApplied',
         metadata: {
           applied: result.result.applied_decisions,
-          removed: result.result.nodes_removed,
+          sequestered: result.result.nodes_sequestered,
           merged: result.result.nodes_merged,
           actionCounts: result.result.action_counts,
         },
       });
 
-      // Show success message
+      if (result.result.pending_candidates > 0 && currentJobId) {
+        const reviewGroups = await getDuplicateReviewGroups(currentJobId);
+        setDuplicateGroups(reviewGroups.groups);
+        setProgress({
+          stage: 'ready',
+          percent: 100,
+          message: `${result.result.pending_candidates} duplicate candidates still pending`,
+        });
+        setStage('review');
+        return;
+      }
+
+      await clearCoreProcessReimportGate();
       setProgress({
         stage: 'ready',
         percent: 100,
         message: result.result.message,
       });
+      setStage('complete');
 
-      // Wait a bit to show the success message, then dismiss
       setTimeout(() => {
         onDismiss();
-      }, 1500);
+      }, 1000);
     } catch (error) {
       console.error('[ChatImportModal] Error applying decisions:', error);
 

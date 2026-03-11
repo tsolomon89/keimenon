@@ -93,6 +93,13 @@ npm run node:check
 ```
 
 `npm install` fails on the wrong Node major by design because `.npmrc` enforces `engine-strict=true`.
+Only `npm` is supported for this monorepo (pnpm/yarn are intentionally rejected in `preinstall`).
+
+If native modules were built under the wrong runtime, repair them with:
+
+```bash
+npm run runtime:repair
+```
 
 ### Stuck dev/test processes
 

@@ -3,6 +3,7 @@ const nextConfig = {
   // output: 'export', // Commented out to prevent dev server issues
   // No assetPrefix needed for app:// protocol
   trailingSlash: true,
+  allowedDevOrigins: ['127.0.0.1', 'localhost'],
   images: {
     unoptimized: true,
   },
@@ -31,9 +32,9 @@ const nextConfig = {
       managedPaths: [/^(.+?[\\/]node_modules[\\/])/i],
     };
 
-    // FIX: Use 'source-map' devtool instead of 'eval-source-map' for Electron compat
-    // eval-source-map wraps code in eval() which can cause SyntaxError in Electron
-    if (!isServer) {
+    // Use source maps in desktop Electron dev mode only.
+    // Keeping default Next.js devtool outside Electron avoids noisy devtool warnings.
+    if (!isServer && process.env.KEIMENON_ELECTRON_DEVTOOL === '1') {
       config.devtool = 'source-map';
     }
 

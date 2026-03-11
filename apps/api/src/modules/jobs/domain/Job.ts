@@ -16,7 +16,7 @@
 
 import { JobStateMachine, JobState, JobStatus, JobTransition } from './JobStateMachine';
 import { JobEvent, JobEventBuilder } from './JobEvent';
-import { ImportJobStage } from '@keimenon/types';
+import { ImportJobStage, type NormalizedImportOptions } from '@keimenon/types';
 
 export type JobType = 'import' | 'delete' | 'export' | 'analyze';
 
@@ -28,11 +28,7 @@ export interface JobConfig {
     mimeType: string;
     filePath?: string; // Path to temp file for processing
   }>;
-  importOptions?: {
-    platform?: string;
-    exportCode?: boolean;
-    codeMinChars?: number;
-  };
+  importOptions?: Partial<NormalizedImportOptions> | Record<string, unknown>;
 
   // Delete job config
   deleteScope?: 'keimenon' | 'all-clients';

@@ -21,6 +21,14 @@
 
 Closes #
 
+## Vision Traceability
+
+<!-- Required for Vision Closure Program work -->
+<!-- Example: VC-003, VC-005 -->
+
+- [ ] I referenced at least one traceability row from `docs/specs/vision-traceability-matrix.md`
+- ## Traceability Row IDs:
+
 ## Changes Made
 
 <!-- List the specific changes made in this PR -->

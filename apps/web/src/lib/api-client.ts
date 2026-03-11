@@ -2,7 +2,7 @@ import { ChatImportConfig, DuplicateGroup } from '@/types/chat-import';
 import { handleApiError, withRetry, FileError } from './error-handler';
 import { getToken } from '@/contexts/AuthContext';
 import { API_BASE_URL } from './env.config';
-import { normalizeImportOptions } from '@keimenon/types';
+import { normalizeImportOptions, type FeatureManifest } from '@keimenon/types';
 
 // TODO: Add token refresh endpoint support
 // Related: apps/api/src/routes/auth.routes.ts (needs refresh endpoint)
@@ -212,6 +212,87 @@ export interface BatchImportResponse {
   message?: string;
 }
 
+export interface FeatureManifestResponse {
+  plan: 'free' | 'pro' | 'business';
+  accountClass: 'free' | 'professional' | 'business';
+  features: FeatureManifest;
+  generatedAt: number;
+}
+
+export interface SimilarityPreviewSummary {
+  input: {
+    messages: number;
+    previewDocuments: number;
+    branches: 'merged' | 'separate';
+    processingMode: 'automatic' | 'manual' | 'hybrid';
+  };
+  predicted: {
+    clusterCount: number;
+    edgeCount: number;
+    edgeStrength: {
+      strong: number;
+      medium: number;
+      weak: number;
+    };
+    expectedReviewLoad: number;
+  };
+  mass: {
+    min: number;
+    mean: number;
+    p50: number;
+    p95: number;
+    max: number;
+  };
+  anchors: Array<{ term: string; count: number }>;
+  generatedAt: number;
+}
+
+export async function getSimilarityPreview(payload: {
+  config: unknown;
+  messages?: unknown[];
+  conversations?: unknown[];
+  sources?: unknown[];
+}): Promise<{ success: boolean; summary: SimilarityPreviewSummary }> {
+  try {
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/import/similarity-preview`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+export async function getMyFeatures(): Promise<FeatureManifestResponse> {
+  try {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/me/features`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
 /**
  * Cancel a running or queued job
  *
@@ -373,13 +454,15 @@ export async function importChatFilesAsJob(
     minMessageLength: config.minMessageLength,
     processingMode: config.processingMode,
     branches: config.branches,
-    groups: config.processingMode === 'manual' ? config.groups : [],
+    groups:
+      config.processingMode === 'manual' || config.processingMode === 'hybrid' ? config.groups : [],
     extractCode: config.extractCode,
     codeSettings: {
       minLength: config.codeSettings.minLength,
       languages: config.codeSettings.languages,
       groupBy: config.codeSettings.groupBy,
       deduplicate: config.codeSettings.deduplicate,
+      sourceHandling: config.codeSettings.sourceHandling,
     },
     duplicateDetection: {
       enabled: config.duplicateDetection.enabled,
@@ -397,10 +480,6 @@ export async function importChatFilesAsJob(
       autoApproveExact: config.duplicateDetection.autoApproveExact,
       autoMergeThreshold: config.duplicateDetection.autoMergeThreshold,
     },
-    autoGroup: config.processingMode === 'automatic',
-    targetGroupCount: 25,
-    codeMinChars: config.codeSettings.minLength,
-    duplicateThreshold: config.duplicateDetection.similarityThreshold,
   });
 
   formData.append('config', JSON.stringify(jobConfig));
@@ -1297,7 +1376,7 @@ export async function suggestGroups(
 export interface DuplicateResolutionResult {
   success: boolean;
   candidateId: string;
-  decision: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge';
+  decision: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge' | 'sequester';
   message?: string;
 }
 
@@ -1312,7 +1391,7 @@ export interface DuplicateResolutionResult {
  */
 export async function resolveDuplicate(
   candidateId: string,
-  decision: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge',
+  decision: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge' | 'sequester',
   primaryNodeId: string,
   duplicateNodeId: string
 ): Promise<DuplicateResolutionResult> {
@@ -1406,9 +1485,11 @@ export async function deleteDuplicate(duplicateId: string): Promise<{ success: b
 export async function applyDuplicateDecisions(
   decisions: Array<{
     duplicateId: string;
-    action: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge';
+    action: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge' | 'sequester';
     timestamp: number;
     userId?: string;
+    primaryNodeId?: string;
+    duplicateNodeId?: string;
   }>,
   jobId: string
 ): Promise<{
@@ -1420,10 +1501,12 @@ export async function applyDuplicateDecisions(
       'keep-duplicate': number;
       'keep-both': number;
       merge: number;
+      sequester: number;
     };
-    nodes_kept: number;
-    nodes_removed: number;
+    nodes_sequestered: number;
     nodes_merged: number;
+    edges_created: number;
+    pending_candidates: number;
     message: string;
   };
 }> {
@@ -1443,6 +1526,84 @@ export async function applyDuplicateDecisions(
         body: JSON.stringify({
           decisions,
         }),
+      }
+    );
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+export interface DuplicateReviewStatus {
+  jobId: string;
+  duplicate_detection_enabled: boolean;
+  require_review: boolean;
+  review_required: boolean;
+  stage: 'not_required' | 'pending' | 'in_progress' | 'completed';
+  total_groups: number;
+  total_candidates: number;
+  decided_candidates: number;
+  pending_candidates: number;
+  completed: boolean;
+  last_updated: number;
+}
+
+export interface DuplicateReviewStatusResponse {
+  success: boolean;
+  status: DuplicateReviewStatus;
+}
+
+export interface DuplicateReviewGroupsResponse {
+  success: boolean;
+  groups: DuplicateGroup[];
+  total_groups: number;
+  total_candidates: number;
+}
+
+export async function getDuplicateReviewStatus(
+  jobId: string
+): Promise<DuplicateReviewStatusResponse> {
+  if (!jobId) {
+    throw new Error('jobId is required to fetch duplicate review status');
+  }
+
+  try {
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/jobs/${jobId}/duplicate-review/status`,
+      {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      }
+    );
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+export async function getDuplicateReviewGroups(
+  jobId: string
+): Promise<DuplicateReviewGroupsResponse> {
+  if (!jobId) {
+    throw new Error('jobId is required to fetch duplicate review groups');
+  }
+
+  try {
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/jobs/${jobId}/duplicate-review/groups`,
+      {
+        method: 'GET',
+        headers: getAuthHeaders(),
       }
     );
 
@@ -1564,6 +1725,37 @@ export async function getNode(id: string): Promise<GraphNode> {
   } catch (error: any) {
     throw await handleApiError(error);
   }
+}
+
+/**
+ * Sequester or unsequester a node for the current user principal.
+ */
+export async function sequesterNode(
+  id: string,
+  options: { sequester?: boolean } = {}
+): Promise<{
+  success: boolean;
+  sequestered: boolean;
+  edgeId?: string;
+  alreadySequestered?: boolean;
+  removed?: number;
+}> {
+  const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/nodes/${id}/sequester`, {
+    method: 'POST',
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      sequester: options.sequester ?? true,
+    }),
+  });
+
+  if (!response.ok) {
+    await handleApiError({ response });
+  }
+
+  return response.json();
 }
 
 // ==================== Admin API ====================

@@ -95,3 +95,13 @@ export {
   type ClusterSplitResult,
   type ClusterOperation,
 } from './cluster-manual-ops';
+
+// Similarity Engine V2 exports
+export {
+  SimilarityEngineV2,
+  type SimilarityEngineDocument,
+  type SimilarityEngineInput,
+  type SimilarityEdgeV2,
+  type SimilarityClusterV2,
+  type SimilarityEngineResult,
+} from './similarity-engine-v2';

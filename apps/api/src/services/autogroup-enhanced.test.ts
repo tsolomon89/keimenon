@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { EnhancedAutogroupService } from './autogroup-enhanced';
-import type { GroupingConfig } from '@keimenon/types';
+import { EnhancedAutogroupService, type AutogroupRuntimeConfig } from './autogroup-enhanced';
 
 const messages = [
   {
@@ -22,11 +21,11 @@ const messages = [
 ];
 
 describe('EnhancedAutogroupService processing mode semantics', () => {
-  test('mode=auto ignores manual definitions', async () => {
+  test('mode=automatic ignores manual definitions', async () => {
     const service = new EnhancedAutogroupService();
-    const config: GroupingConfig = {
-      mode: 'auto',
-      auto: {
+    const config: AutogroupRuntimeConfig = {
+      mode: 'automatic',
+      automatic: {
         targetGroupCount: 4,
         createCatchAll: true,
         minGroupSize: 1,
@@ -43,9 +42,9 @@ describe('EnhancedAutogroupService processing mode semantics', () => {
 
   test('mode=manual applies manual groups first with auto fallback', async () => {
     const service = new EnhancedAutogroupService();
-    const config: GroupingConfig = {
+    const config: AutogroupRuntimeConfig = {
       mode: 'manual',
-      auto: {
+      automatic: {
         targetGroupCount: 4,
         createCatchAll: true,
         minGroupSize: 1,
@@ -64,9 +63,9 @@ describe('EnhancedAutogroupService processing mode semantics', () => {
 
   test('mode=hybrid aliases to manual-first behavior', async () => {
     const service = new EnhancedAutogroupService();
-    const config: GroupingConfig = {
+    const config: AutogroupRuntimeConfig = {
       mode: 'hybrid',
-      auto: {
+      automatic: {
         targetGroupCount: 4,
         createCatchAll: true,
         minGroupSize: 1,

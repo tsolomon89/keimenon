@@ -73,7 +73,14 @@ type ArtifactRow = {
 };
 
 const SOURCE_KINDS = ['Source', 'SourceDoc', 'Message', 'Chat'];
-const AGENT_NODE_KINDS = ['AgentNode', 'CanonicalDoc', 'DuplicateCluster', 'Evidence', 'Objective'];
+const AGENT_NODE_KINDS = [
+  'AgentNode',
+  'CanonicalDoc',
+  'DuplicateCluster',
+  'Evidence',
+  'ObjectiveClaim',
+  'UnifiedDoc',
+];
 
 function parseJson<T>(value: string | null | undefined, fallback: T): T {
   if (!value) {
@@ -627,15 +634,15 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
   async getOrCreateAgent(accountId: string): Promise<AgentNode> {
     const agentId = `agent-${accountId}`;
 
-    const existing = this.db
-      .prepare(
-        `
-          SELECT id, kind, properties, account_id, created_by, created_at, updated_at
-          FROM nodes
-          WHERE id = ? AND account_id = ? AND kind = 'AgentNode'
-        `
-      )
-      .get(agentId, accountId) as NodeRow | undefined;
+    const selectAgentRow = this.db.prepare(
+      `
+        SELECT id, kind, properties, account_id, created_by, created_at, updated_at
+        FROM nodes
+        WHERE id = ? AND account_id = ? AND kind = 'AgentNode'
+      `
+    );
+
+    const existing = selectAgentRow.get(agentId, accountId) as NodeRow | undefined;
 
     if (existing) {
       return this.toAgentNode(existing, accountId);
@@ -647,7 +654,7 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
     this.db
       .prepare(
         `
-          INSERT INTO nodes (
+          INSERT OR IGNORE INTO nodes (
             id, kind, properties, account_id, created_by, created_at, updated_at, data_tag
           ) VALUES (?, 'AgentNode', ?, ?, ?, ?, ?, 'real')
         `
@@ -661,7 +668,12 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
         agent.updated_at
       );
 
-    return agent;
+    const createdOrExisting = selectAgentRow.get(agentId, accountId) as NodeRow | undefined;
+    if (!createdOrExisting) {
+      throw new Error(`Failed to create or load agent node for account ${accountId}`);
+    }
+
+    return this.toAgentNode(createdOrExisting, accountId);
   }
 
   async updateAgent(

@@ -465,6 +465,9 @@ CREATE INDEX IF NOT EXISTS idx_edges_account_tag ON edges(account_id, data_tag);
 CREATE INDEX IF NOT EXISTS idx_policy_profiles_account ON policy_profiles(account_id);
 CREATE INDEX IF NOT EXISTS idx_nodes_spine ON nodes(kind) WHERE kind IN ('Lexeme', 'Phrase', 'Topic');
 CREATE INDEX IF NOT EXISTS idx_nodes_verified ON nodes(kind) WHERE kind IN ('VerifiedSource', 'VerifiedClaim');
+CREATE INDEX IF NOT EXISTS idx_nodes_objective_claim_status
+ON nodes(kind, json_extract(properties, '$.status'))
+WHERE kind = 'ObjectiveClaim';
 CREATE INDEX IF NOT EXISTS idx_nodes_agent ON nodes(kind) WHERE kind IN ('AgentNode', 'CanonicalDoc', 'DuplicateCluster', 'Evidence');
 CREATE INDEX IF NOT EXISTS idx_nodes_principal ON nodes(kind) WHERE kind = 'Principal';
 CREATE INDEX IF NOT EXISTS idx_nodes_conversation ON nodes(kind) WHERE kind = 'ConversationThread';

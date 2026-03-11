@@ -16,6 +16,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import type { AuthServiceV2 } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { getAgentService, type CreateTaskRequest } from '../services/agent-service';
+import { featureManifestForAccountClass } from '@keimenon/types';
 
 export function createAgentRoutes(authService?: AuthServiceV2): Router {
   const router = Router();
@@ -24,13 +25,14 @@ export function createAgentRoutes(authService?: AuthServiceV2): Router {
     router.use(requireAuth(authService));
   }
 
-  router.get('/health', (_req: Request, res: Response) => {
-    const agentService = getAgentService();
-    res.json({
-      status: 'ok',
-      availableTypes: agentService.getAvailableTaskTypes(),
-      runningTasks: agentService.getRunningTasks().length,
-    });
+  router.get('/health', async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const agentService = getAgentService();
+      const health = await agentService.getHealth();
+      res.json(health);
+    } catch (error) {
+      next(error);
+    }
   });
 
   router.get('/types', (_req: Request, res: Response) => {
@@ -89,10 +91,34 @@ export function createAgentRoutes(authService?: AuthServiceV2): Router {
         return;
       }
 
+      const accountClass = (req.user?.accountClass || 'free') as
+        | 'free'
+        | 'professional'
+        | 'business';
+      const features = featureManifestForAccountClass(accountClass);
+
       const { type, input, config } = req.body;
       if (!type || !input) {
         res.status(400).json({ error: 'type and input are required' });
         return;
+      }
+
+      if (!features.agent_runtime) {
+        res.status(403).json({
+          error: 'Agent runtime is not enabled for this account tier',
+          requiredFeature: 'agent_runtime',
+        });
+        return;
+      }
+
+      if (String(type) === 'VERIFY_SOURCE_CHAIN') {
+        if (!features.objective_layer || !features.external_research) {
+          res.status(403).json({
+            error: 'VERIFY_SOURCE_CHAIN requires objective layer + external research entitlements',
+            requiredFeatures: ['objective_layer', 'external_research'],
+          });
+          return;
+        }
       }
 
       const request: CreateTaskRequest = {

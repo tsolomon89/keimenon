@@ -27,11 +27,14 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
     return router; // Return empty router
   }
 
-  console.log('[Test Helpers] Routes enabled for test environment');
-
   // Track active savepoints per database path (for debugging)
   const activeSavepoints = new Map<string, Set<string>>();
   const verboseSavepointLogs = process.env.TEST_HELPERS_VERBOSE_SAVEPOINT === '1';
+  const verboseRouteLogs = process.env.TEST_HELPERS_VERBOSE_ROUTES === '1';
+
+  if (verboseRouteLogs) {
+    console.log('[Test Helpers] Routes enabled for test environment');
+  }
 
   /**
    * POST /api/v1/test/savepoint
@@ -81,8 +84,7 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
           dbPath,
           action,
           savepointId,
-          headers: req.headers,
-          body: req.body,
+          bodyKeys: Object.keys(req.body || {}),
         });
       }
 
@@ -117,10 +119,12 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
           }
           activeSavepoints.get(dbPath)!.add(savepointId);
 
-          console.log(`[Test Helpers] ✅ Savepoint created: ${savepointId} (DB: ${dbPath})`);
-          console.log(
-            `[Test Helpers] Active savepoints: ${activeSavepoints.get(dbPath)?.size || 0}`
-          );
+          if (verboseSavepointLogs) {
+            console.log(`[Test Helpers] Savepoint created: ${savepointId} (DB: ${dbPath})`);
+            console.log(
+              `[Test Helpers] Active savepoints: ${activeSavepoints.get(dbPath)?.size || 0}`
+            );
+          }
 
           return res.json({
             success: true,
@@ -137,13 +141,17 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
             // Release savepoint (free resources)
             database.prepare(`RELEASE SAVEPOINT ${savepointId}`).run();
 
-            console.log(`[Test Helpers] ✅ Rolled back to savepoint: ${savepointId}`);
+            if (verboseSavepointLogs) {
+              console.log(`[Test Helpers] Rolled back to savepoint: ${savepointId}`);
+            }
           } catch (rollbackError: any) {
             // Check if error is "no such savepoint"
             if (rollbackError.message?.includes('no such savepoint')) {
-              console.log(
-                `[Test Helpers] ⚠️ Savepoint already released: ${savepointId} (treating as success)`
-              );
+              if (verboseSavepointLogs) {
+                console.log(
+                  `[Test Helpers] Savepoint already released: ${savepointId} (treating as success)`
+                );
+              }
               // Don't throw - this is actually fine, the savepoint is already gone
             } else {
               // Other error - this is a real problem
@@ -154,9 +162,11 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
           // Untrack savepoint
           activeSavepoints.get(dbPath)?.delete(savepointId);
 
-          console.log(
-            `[Test Helpers] Remaining savepoints: ${activeSavepoints.get(dbPath)?.size || 0}`
-          );
+          if (verboseSavepointLogs) {
+            console.log(
+              `[Test Helpers] Remaining savepoints: ${activeSavepoints.get(dbPath)?.size || 0}`
+            );
+          }
 
           return res.json({
             success: true,
@@ -170,7 +180,9 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
           // Untrack savepoint
           activeSavepoints.get(dbPath)?.delete(savepointId);
 
-          console.log(`[Test Helpers] ✅ Committed savepoint: ${savepointId}`);
+          if (verboseSavepointLogs) {
+            console.log(`[Test Helpers] Committed savepoint: ${savepointId}`);
+          }
 
           return res.json({
             success: true,
@@ -283,9 +295,11 @@ export function createTestHelperRoutes(db: SQLiteClient): Router {
 
         const totalDeleted = Object.values(deletedCounts).reduce((sum, count) => sum + count, 0);
 
-        console.log(`[Test Helpers] ✅ Cleanup complete (data_tag='${dataTag}', DB: ${dbPath})`);
-        console.log(`[Test Helpers] Deleted counts:`, deletedCounts);
-        console.log(`[Test Helpers] Total deleted: ${totalDeleted} rows`);
+        if (verboseRouteLogs) {
+          console.log(`[Test Helpers] Cleanup complete (data_tag='${dataTag}', DB: ${dbPath})`);
+          console.log(`[Test Helpers] Deleted counts:`, deletedCounts);
+          console.log(`[Test Helpers] Total deleted: ${totalDeleted} rows`);
+        }
 
         return res.json({
           success: true,

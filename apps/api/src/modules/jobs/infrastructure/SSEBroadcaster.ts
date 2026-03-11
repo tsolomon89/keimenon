@@ -18,6 +18,7 @@ import { Job } from '../domain/Job';
 import { JobEvent } from '../domain/JobEvent';
 import { JobRepository } from './JobRepository';
 import { ImportJobStage } from '@keimenon/types';
+import { appLogger } from '../../../utils/logger';
 
 export interface SSEConnection {
   accountId: string;
@@ -110,7 +111,7 @@ export class SSEBroadcaster {
    * Start the broadcaster
    */
   start(): void {
-    console.log('📡 Starting SSE broadcaster...');
+    appLogger.info('sse.broadcaster.starting');
 
     // Start broadcast timer (coalesced events)
     this.broadcastTimer = setInterval(() => {
@@ -122,14 +123,16 @@ export class SSEBroadcaster {
       this.sendHeartbeats();
     }, this.heartbeatIntervalMs);
 
-    console.log(`✅ SSE broadcaster started (rate: ${1000 / this.broadcastIntervalMs}Hz)`);
+    appLogger.info('sse.broadcaster.started', {
+      rateHz: 1000 / this.broadcastIntervalMs,
+    });
   }
 
   /**
    * Stop the broadcaster
    */
   stop(): void {
-    console.log('🛑 Stopping SSE broadcaster...');
+    appLogger.info('sse.broadcaster.stopping');
 
     if (this.broadcastTimer) {
       clearInterval(this.broadcastTimer);
@@ -156,7 +159,7 @@ export class SSEBroadcaster {
     this.pendingEvents.clear();
     this.pendingGraphUpdates.clear();
 
-    console.log('✅ SSE broadcaster stopped');
+    appLogger.info('sse.broadcaster.stopped');
   }
 
   /**
@@ -177,9 +180,10 @@ export class SSEBroadcaster {
 
     this.connections.get(accountId)!.push(connection);
 
-    console.log(
-      `📡 SSE connection added for account ${accountId} (total: ${this.connections.get(accountId)!.length})`
-    );
+    appLogger.debug('sse.connection.added', {
+      accountId,
+      total: this.connections.get(accountId)!.length,
+    });
 
     // Setup connection close handler
     response.on('close', () => {
@@ -236,12 +240,16 @@ export class SSEBroadcaster {
             },
           });
 
-          console.log(
-            `📡 Sent initial state: ${activeJobs.length} active jobs for account ${accountId}`
-          );
+          appLogger.debug('sse.initial_state.sent', {
+            accountId,
+            activeJobs: activeJobs.length,
+          });
         }
       } catch (error) {
-        console.error(`❌ Error sending initial job state for account ${accountId}:`, error);
+        appLogger.warn('sse.initial_state.failed', {
+          accountId,
+          message: error instanceof Error ? error.message : String(error),
+        });
       }
     }
   }
@@ -258,9 +266,10 @@ export class SSEBroadcaster {
     const index = connections.findIndex((c) => c.response === response);
     if (index >= 0) {
       connections.splice(index, 1);
-      console.log(
-        `📡 SSE connection removed for account ${accountId} (remaining: ${connections.length})`
-      );
+      appLogger.debug('sse.connection.removed', {
+        accountId,
+        remaining: connections.length,
+      });
 
       if (connections.length === 0) {
         this.connections.delete(accountId);
@@ -277,7 +286,7 @@ export class SSEBroadcaster {
     const jobId = typeof jobLike.id === 'string' ? jobLike.id : '';
 
     if (!accountId || !jobId) {
-      console.warn('[SSEBroadcaster] Skipping malformed job update payload');
+      appLogger.warn('sse.job_update.malformed_payload');
       return;
     }
 
@@ -372,9 +381,12 @@ export class SSEBroadcaster {
     });
 
     // Log broadcast (detailed for debugging)
-    console.log(
-      `[SSEBroadcaster] Queued update for job ${jobId} (${type}, ${status}, ${progress.percent}%)`
-    );
+    appLogger.debug('sse.job_update.queued', {
+      jobId,
+      type,
+      status,
+      percent: progress.percent,
+    });
   }
   /**
    * Broadcast graph update (write queue metrics)
@@ -428,7 +440,10 @@ export class SSEBroadcaster {
             },
           });
         } catch (error) {
-          console.error(`Error sending SSE message to account ${accountId}:`, error);
+          appLogger.warn('sse.jobs_update.send_failed', {
+            accountId,
+            message: error instanceof Error ? error.message : String(error),
+          });
           // Connection will be removed by close handler
         }
       }
@@ -454,7 +469,10 @@ export class SSEBroadcaster {
             data: graphUpdate,
           });
         } catch (error) {
-          console.error(`Error sending graph update to account ${accountId}:`, error);
+          appLogger.warn('sse.graph_update.send_failed', {
+            accountId,
+            message: error instanceof Error ? error.message : String(error),
+          });
           // Connection will be removed by close handler
         }
       }
@@ -479,7 +497,10 @@ export class SSEBroadcaster {
           });
           conn.lastHeartbeat = new Date();
         } catch (error) {
-          console.error(`Error sending heartbeat to account ${accountId}:`, error);
+          appLogger.warn('sse.heartbeat.send_failed', {
+            accountId,
+            message: error instanceof Error ? error.message : String(error),
+          });
           // Connection will be removed by close handler
         }
       }

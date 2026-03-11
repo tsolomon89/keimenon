@@ -43,8 +43,8 @@ export function GroupsSection({ config, onConfigChange }: GroupsSectionProps) {
     onConfigChange({ ...config, groups: newGroups });
   };
 
-  // Only show if manual processing mode
-  if (config.processingMode !== 'manual') {
+  // Only show for manual and hybrid processing modes.
+  if (config.processingMode !== 'manual' && config.processingMode !== 'hybrid') {
     return null;
   }
 
@@ -73,10 +73,7 @@ export function GroupsSection({ config, onConfigChange }: GroupsSectionProps) {
       ) : (
         <div className="space-y-3">
           {config.groups.map((group, idx) => (
-            <div
-              key={group.id}
-              className="p-3 bg-slate-900 rounded-lg border border-slate-700"
-            >
+            <div key={group.id} className="p-3 bg-slate-900 rounded-lg border border-slate-700">
               <div className="flex gap-2 mb-2">
                 <input
                   type="text"

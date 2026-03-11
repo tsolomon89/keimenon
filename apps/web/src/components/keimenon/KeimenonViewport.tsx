@@ -17,6 +17,7 @@ import { EdgeTooltip } from './EdgeTooltip';
 import { GraphNode, GraphEdge } from '@keimenon/graph';
 import { useJobStream } from '@/hooks/useJobStream';
 import { logDataEvent } from '@/lib/error-handler';
+import type { LodPlanStats } from '@/lib/graph-lod';
 
 interface KeimenonViewportProps {
   onOpenUpload: () => void;
@@ -65,6 +66,7 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
       edge: { id: string; kind: string; data?: Record<string, unknown> };
       position: { x: number; y: number };
     } | null>(null);
+    const [lodStats, setLodStats] = useState<LodPlanStats | null>(null);
 
     // Find active import job
     useEffect(() => {
@@ -151,7 +153,7 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
       () =>
         displayNodes.map((node) => ({
           id: node.id,
-          kind: node.type,
+          kind: node.kind || node.type,
           x: node.position.x,
           y: node.position.y,
           ...node.data.metadata,
@@ -310,6 +312,7 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
               onNodeDoubleClick={handleNodeDoubleClick}
               onSelectionChange={handleSelectionChange}
               onEdgeHover={handleEdgeHover}
+              onLodStats={setLodStats}
             />
 
             {/* Progress Visualization Overlay - Game Dev Techniques */}
@@ -325,6 +328,25 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
               position={edgeTooltip?.position || { x: 0, y: 0 }}
               visible={!!edgeTooltip}
             />
+
+            {lodStats && (
+              <div className="absolute top-4 right-4 z-10 bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 shadow-lg">
+                <div className="font-semibold text-slate-100">
+                  {lodStats.level} · {lodStats.visibleNodeCount}/{lodStats.totalNodeCount} nodes
+                </div>
+                <div className="text-slate-400">
+                  {lodStats.visibleEdgeCount}/{lodStats.totalEdgeCount} edges · gate{' '}
+                  {lodStats.gate.pass ? 'pass' : 'warn'}
+                </div>
+                <button
+                  type="button"
+                  className="mt-2 px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 border border-slate-600"
+                  onClick={() => keimenon2DRef.current?.optimizeView()}
+                >
+                  Optimize View
+                </button>
+              </div>
+            )}
           </>
         )}
 

@@ -10,8 +10,9 @@ import os from 'os';
 import {
   AppConfigSchema,
   DEFAULT_IMPORT_CONFIGURATION,
+  normalizeStoredImportDefaults,
   type AppConfig,
-  type ImportConfiguration,
+  type NormalizedImportOptions,
 } from '@keimenon/types';
 
 const router = Router();
@@ -34,8 +35,22 @@ async function loadConfig(): Promise<AppConfig> {
 
   try {
     const content = await fs.readFile(configPath, 'utf-8');
-    const parsed = JSON.parse(content);
-    return AppConfigSchema.parse(parsed);
+    const parsed = JSON.parse(content) as Record<string, unknown>;
+    const normalizedDefaults = normalizeStoredImportDefaults(parsed.defaults);
+    const normalizedConfig = {
+      ...parsed,
+      defaults: normalizedDefaults,
+    };
+    const validated = AppConfigSchema.parse(normalizedConfig);
+
+    // Persist canonical defaults if this file was legacy-shaped.
+    const originalDefaultsJson = JSON.stringify(parsed.defaults ?? null);
+    const canonicalDefaultsJson = JSON.stringify(normalizedDefaults);
+    if (originalDefaultsJson !== canonicalDefaultsJson) {
+      await saveConfig(validated);
+    }
+
+    return validated;
   } catch (error) {
     // Return default config if file doesn't exist
     return getDefaultConfig();
@@ -126,8 +141,9 @@ router.put('/', async (req: Request, res: Response) => {
         ...(updates.documentStore || {}),
       },
       defaults: {
-        ...currentConfig.defaults,
-        ...(updates.defaults || {}),
+        ...(updates.defaults
+          ? normalizeStoredImportDefaults((updates as Record<string, unknown>).defaults)
+          : normalizeStoredImportDefaults(currentConfig.defaults)),
       },
     };
 
@@ -196,7 +212,7 @@ router.get('/import', async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      importConfig: config.defaults || DEFAULT_IMPORT_CONFIGURATION,
+      importConfig: normalizeStoredImportDefaults(config.defaults),
     });
   } catch (error: any) {
     console.error('Get import config error:', error);
@@ -213,7 +229,7 @@ router.get('/import', async (req: Request, res: Response) => {
  */
 router.put('/import', async (req: Request, res: Response) => {
   try {
-    const importConfig: Partial<ImportConfiguration> = req.body;
+    const importConfig: NormalizedImportOptions = normalizeStoredImportDefaults(req.body);
 
     // Load current config
     const currentConfig = await loadConfig();
@@ -221,19 +237,18 @@ router.put('/import', async (req: Request, res: Response) => {
     // Update import defaults
     const newConfig: AppConfig = {
       ...currentConfig,
-      defaults: {
-        ...currentConfig.defaults,
-        ...importConfig,
-      } as ImportConfiguration,
+      defaults: importConfig,
     };
 
+    const validated = AppConfigSchema.parse(newConfig);
+
     // Save
-    await saveConfig(newConfig);
+    await saveConfig(validated);
 
     return res.json({
       success: true,
       message: 'Import configuration updated',
-      importConfig: newConfig.defaults,
+      importConfig: importConfig,
     });
   } catch (error: any) {
     console.error('Update import config error:', error);

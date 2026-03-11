@@ -22,6 +22,7 @@ import {
 } from '../domain/UploadSession';
 import Database from 'better-sqlite3';
 import { ErrorFactory } from '../../../middleware/error-handler.middleware';
+import { appLogger } from '../../../utils/logger';
 
 export interface UploadSessionFilters {
   accountId?: string;
@@ -91,12 +92,17 @@ export class SQLiteUploadSessionRepository implements UploadSessionRepository {
     try {
       const session = UploadSession.create(spec);
       await this.save(session);
-      console.log(
-        `[UploadSessionRepository] ✅ Created session ${session.id} (${session.fileName})`
-      );
+      appLogger.debug('upload.session.created', {
+        sessionId: session.id,
+        fileName: session.fileName,
+      });
       return session;
     } catch (error: any) {
-      console.error(`[UploadSessionRepository] ❌ Failed to create session:`, error);
+      appLogger.error('upload.session.create_failed', {
+        error: error.message,
+        fileName: spec.fileName,
+        fileSize: spec.fileSize,
+      });
       throw ErrorFactory.database(
         `Failed to create upload session: ${error.message}`,
         'UploadSessionRepository.create',
@@ -156,15 +162,18 @@ export class SQLiteUploadSessionRepository implements UploadSessionRepository {
         json.metadata ? JSON.stringify(json.metadata) : null
       );
 
-      console.log(
-        `[UploadSessionRepository] ✅ Saved session ${session.id} (${session.status}, ${session.getProgress()}%)`
-      );
+      appLogger.debug('upload.session.saved', {
+        sessionId: session.id,
+        status: session.status,
+        progress: session.getProgress(),
+      });
     } catch (error: any) {
-      console.error(`[UploadSessionRepository] ❌ Failed to save session ${session.id}:`);
-      console.error(`   Session ID: ${session.id}`);
-      console.error(`   File: ${session.fileName}`);
-      console.error(`   Status: ${session.status}`);
-      console.error(`   Error: ${error.message}`);
+      appLogger.error('upload.session.save_failed', {
+        sessionId: session.id,
+        fileName: session.fileName,
+        status: session.status,
+        error: error.message,
+      });
 
       throw ErrorFactory.database(
         `Failed to save upload session: ${error.message}`,
@@ -192,7 +201,11 @@ export class SQLiteUploadSessionRepository implements UploadSessionRepository {
 
       return UploadSession.fromJSON(this.mapRowToJSON(row));
     } catch (error: any) {
-      console.error(`[UploadSessionRepository] ❌ Failed to find session ${id}:`, error);
+      appLogger.error('upload.session.lookup_failed', {
+        sessionId: id,
+        accountId,
+        error: error.message,
+      });
       throw ErrorFactory.database(
         `Failed to load upload session: ${error.message}`,
         'UploadSessionRepository.findById',
@@ -246,7 +259,10 @@ export class SQLiteUploadSessionRepository implements UploadSessionRepository {
 
       return rows.map((row) => UploadSession.fromJSON(this.mapRowToJSON(row)));
     } catch (error: any) {
-      console.error(`[UploadSessionRepository] ❌ Failed to find sessions:`, error);
+      appLogger.error('upload.session.query_failed', {
+        error: error.message,
+        filters,
+      });
       throw ErrorFactory.database(
         `Failed to find upload sessions: ${error.message}`,
         'UploadSessionRepository.find',
@@ -272,11 +288,13 @@ export class SQLiteUploadSessionRepository implements UploadSessionRepository {
 
       const rows = stmt.all(now) as any[];
 
-      console.log(`[UploadSessionRepository] Found ${rows.length} expired sessions for cleanup`);
+      appLogger.debug('upload.session.cleanup_scan', { expiredCount: rows.length });
 
       return rows.map((row) => UploadSession.fromJSON(this.mapRowToJSON(row)));
     } catch (error: any) {
-      console.error(`[UploadSessionRepository] ❌ Failed to find expired sessions:`, error);
+      appLogger.error('upload.session.cleanup_scan_failed', {
+        error: error.message,
+      });
       throw ErrorFactory.database(
         `Failed to find expired sessions: ${error.message}`,
         'UploadSessionRepository.findExpired',
@@ -299,15 +317,20 @@ export class SQLiteUploadSessionRepository implements UploadSessionRepository {
       const result = stmt.run(id, accountId);
 
       if (result.changes === 0) {
-        console.warn(
-          `[UploadSessionRepository] ⚠️ Session ${id} not found or access denied (accountId: ${accountId})`
-        );
+        appLogger.debug('upload.session.delete_noop', {
+          sessionId: id,
+          accountId,
+        });
         return;
       }
 
-      console.log(`[UploadSessionRepository] ✅ Deleted session ${id}`);
+      appLogger.debug('upload.session.deleted', { sessionId: id, accountId });
     } catch (error: any) {
-      console.error(`[UploadSessionRepository] ❌ Failed to delete session ${id}:`, error);
+      appLogger.error('upload.session.delete_failed', {
+        sessionId: id,
+        accountId,
+        error: error.message,
+      });
       throw ErrorFactory.database(
         `Failed to delete upload session: ${error.message}`,
         'UploadSessionRepository.delete',
@@ -331,9 +354,13 @@ export class SQLiteUploadSessionRepository implements UploadSessionRepository {
 
       const result = stmt.run(Date.now());
 
-      console.log(`[UploadSessionRepository] ✅ Cancelled ${result.changes} in-progress uploads`);
+      appLogger.info('upload.session.cancel_all', {
+        cancelledCount: result.changes,
+      });
     } catch (error: any) {
-      console.error(`[UploadSessionRepository] ❌ Failed to cancel uploads:`, error);
+      appLogger.error('upload.session.cancel_all_failed', {
+        error: error.message,
+      });
       // Don't throw - this is best-effort during shutdown
     }
   }
@@ -387,8 +414,8 @@ export class SQLiteUploadSessionRepository implements UploadSessionRepository {
       );
 
       if (result.changes === 0) {
-        console.warn(
-          `[UploadSessionRepository] ⚠️ recordChunkAtomic: No rows updated for session ${sessionId}, chunk ${chunkIndex}`
+        appLogger.debug(
+          `UploadSessionRepository.recordChunkAtomic no-op for session ${sessionId}, chunk ${chunkIndex}`
         );
         // Still try to load the session - it might exist but be in wrong status
         return this.findById(sessionId, accountId);
@@ -398,17 +425,23 @@ export class SQLiteUploadSessionRepository implements UploadSessionRepository {
       const session = await this.findById(sessionId, accountId);
 
       if (session) {
-        console.log(
-          `[UploadSessionRepository] ✅ Recorded chunk ${chunkIndex} atomically for ${sessionId} (${session.getProgress()}% complete, status: ${session.status})`
-        );
+        appLogger.debug('upload.session.chunk_recorded', {
+          sessionId,
+          accountId,
+          chunkIndex,
+          progress: session.getProgress(),
+          status: session.status,
+        });
       }
 
       return session;
     } catch (error: any) {
-      console.error(
-        `[UploadSessionRepository] ❌ Failed to record chunk ${chunkIndex} for session ${sessionId}:`,
-        error
-      );
+      appLogger.error('upload.session.chunk_record_failed', {
+        sessionId,
+        accountId,
+        chunkIndex,
+        error: error.message,
+      });
       throw ErrorFactory.database(
         `Failed to record chunk: ${error.message}`,
         'UploadSessionRepository.recordChunkAtomic',

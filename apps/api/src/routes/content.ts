@@ -1,9 +1,48 @@
 import { Router, Request, Response } from 'express';
 import { getLocalDocumentStore } from '../services/local-document-store';
 import { getDbClient } from '../utils/get-db-client';
+import {
+  buildAuditContextFromRequest,
+  recordDataHandlingAudit,
+} from '../utils/data-handling-audit';
 
 const router = Router();
 const localStore = getLocalDocumentStore();
+
+function auditRawContentAccess(
+  req: Request,
+  dbClient: unknown,
+  params: {
+    resourceId: string;
+    contentKind: 'message' | 'source' | 'code' | 'conversation';
+    success: boolean;
+    reason?: string;
+    metadata?: Record<string, unknown>;
+  }
+): void {
+  const context = buildAuditContextFromRequest(req);
+  if (!context.actorUserId || !context.actorAccountId) {
+    return;
+  }
+
+  recordDataHandlingAudit(dbClient, {
+    actorUserId: context.actorUserId,
+    actorAccountId: context.actorAccountId,
+    targetAccountId: context.targetAccountId,
+    mode: context.mode,
+    action: 'read',
+    resourceType: 'raw_content_access',
+    resourceId: params.resourceId,
+    success: params.success,
+    reason: params.reason,
+    ipAddress: context.ipAddress,
+    userAgent: context.userAgent,
+    metadata: {
+      endpoint: params.contentKind,
+      ...(params.metadata || {}),
+    },
+  });
+}
 
 // Auth middleware will be added by server.ts when authService is available
 let authService: any = null;
@@ -85,6 +124,16 @@ router.get('/message/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Content file not found on disk' });
     }
 
+    auditRawContentAccess(req, db, {
+      resourceId: id,
+      contentKind: 'message',
+      success: true,
+      metadata: {
+        role: message.role,
+        char_count: message.char_count,
+      },
+    });
+
     return res.json({
       id,
       content,
@@ -162,6 +211,16 @@ router.get('/source/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Content file not found on disk' });
     }
 
+    auditRawContentAccess(req, db, {
+      resourceId: id,
+      contentKind: 'source',
+      success: true,
+      metadata: {
+        mime_type: source.mime_type,
+        size_bytes: source.size_bytes,
+      },
+    });
+
     return res.json({
       id,
       title: source.title,
@@ -238,6 +297,16 @@ router.get('/code/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Code file not found on disk' });
     }
 
+    auditRawContentAccess(req, db, {
+      resourceId: id,
+      contentKind: 'code',
+      success: true,
+      metadata: {
+        language: codeBlock.language,
+        line_count: codeBlock.line_count,
+      },
+    });
+
     return res.json({
       id,
       code,
@@ -304,6 +373,15 @@ router.get('/conversation/:id', async (req: Request, res: Response) => {
 
     if (conversationData) {
       const parsed = JSON.parse(conversationData);
+      auditRawContentAccess(req, db, {
+        resourceId: id,
+        contentKind: 'conversation',
+        success: true,
+        metadata: {
+          source: 'local',
+          message_count: Array.isArray(parsed?.messages) ? parsed.messages.length : undefined,
+        },
+      });
       return res.json({
         id,
         source: 'local',
@@ -333,6 +411,16 @@ router.get('/conversation/:id', async (req: Request, res: Response) => {
 
     // Sort by index
     messages.sort((a, b) => a.index - b.index);
+
+    auditRawContentAccess(req, db, {
+      resourceId: id,
+      contentKind: 'conversation',
+      success: true,
+      metadata: {
+        source: 'database',
+        message_count: messages.length,
+      },
+    });
 
     return res.json({
       id,

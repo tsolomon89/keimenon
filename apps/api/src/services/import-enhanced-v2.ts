@@ -5,23 +5,38 @@
 
 import { nanoid } from 'nanoid';
 import { DatabaseClient, SQLiteClient } from '@keimenon/db';
-import { EnhancedAutogroupService, type Group } from './autogroup-enhanced';
+import {
+  EnhancedAutogroupService,
+  type AutogroupRuntimeConfig,
+  type Group,
+} from './autogroup-enhanced';
 import { getLocalDocumentStore } from './local-document-store';
 import { DatabaseWriteQueue } from './DatabaseWriteQueue';
-import type { ImportConfiguration, ImportJobStage } from '@keimenon/types';
+import type {
+  ImportJobStage,
+  NormalizedImportOptions,
+  SourceDoc,
+  PrincipalNode,
+} from '@keimenon/types';
 import { DuplicateDetectionConfig, DuplicateGroup } from './duplicate-detection';
 import {
   IntegratedDuplicateDetectionService,
   type DuplicateDetectionResult,
 } from './duplicate-detection-integrated';
-import { SourcesStitcher } from '@keimenon/parsers';
 import { GraphSpineBuilder } from './graph-spine-builder';
 import { PrincipalService, AgentPlatform } from './principal-service';
 import { WORKER_CONFIG } from '../modules/jobs/jobs.config';
 import { getImportMetrics } from './metrics/ImportMetrics';
-import type { LexemeNode, PhraseNode, TopicNode, SourceDoc, PrincipalNode } from '@keimenon/types';
+import type { LexemeNode, PhraseNode, TopicNode } from '@keimenon/types';
 import type { ImportPipelineStage } from '../modules/import-pipeline/stages';
 import { createHash } from 'crypto';
+import {
+  SimilarityEngineV2,
+  type SimilarityEngineInput,
+  type SimilarityClusterV2,
+} from '@keimenon/parsers';
+import { isSemanticStageKillSwitchEnabled } from '../utils/gate-e-kill-switches';
+import { applySemanticStageKillSwitchToEdges } from '../utils/semantic-stage-kill-switch';
 
 export interface ImportMessage {
   id: string;
@@ -61,6 +76,17 @@ export interface ImportResult {
       durationMs: number;
       messagesPerSecond: number;
     };
+    similarity?: {
+      edges: number;
+      strong: number;
+      medium: number;
+      weak: number;
+      clusters: number;
+    };
+    objective?: {
+      provisional: number;
+      clusters: number;
+    };
     // V2: Spine extraction stats
     spine?: {
       lexemes: number;
@@ -86,7 +112,22 @@ interface MaterializedSource {
   role: 'user' | 'assistant' | 'system';
   timestamp: number;
   content: string;
+  branch: 'merged' | 'user' | 'assistant';
+  messageIds: string[];
 }
+
+type SpineImportOptions = {
+  enabled?: boolean;
+  extractLexemes?: boolean;
+  extractPhrases?: boolean;
+  clusterTopics?: boolean;
+  minPhraseFrequency?: number;
+  minPhrasesPerTopic?: number;
+};
+
+type ImportRuntimeConfig = NormalizedImportOptions & {
+  spine?: SpineImportOptions;
+};
 
 interface MaterializedSpan {
   id: string;
@@ -132,9 +173,15 @@ export class EnhancedImportServiceV2 {
   private localStore: ReturnType<typeof getLocalDocumentStore>;
   private autogroupService: EnhancedAutogroupService;
   private duplicateService: IntegratedDuplicateDetectionService;
+  private similarityEngine: SimilarityEngineV2;
   private principalService: PrincipalService;
   private sqliteDb: ReturnType<SQLiteClient['getDatabase']>;
-  private context: { accountId: string; userId: string } | null = null;
+  private context: {
+    accountId: string;
+    userId: string;
+    jobId?: string;
+    agentRuntimeEnabled?: boolean;
+  } | null = null;
   private importMode: string = 'unknown';
   private knownNodeIds: Set<string> = new Set();
   private knownEdgeIds: Set<string> = new Set();
@@ -153,6 +200,7 @@ export class EnhancedImportServiceV2 {
     this.localStore = getLocalDocumentStore();
     this.autogroupService = new EnhancedAutogroupService();
     this.principalService = new PrincipalService(db);
+    this.similarityEngine = new SimilarityEngineV2();
 
     // CRITICAL FIX: FTS5 service needs the underlying better-sqlite3 Database instance
     // DatabaseClient is an interface, but IntegratedDuplicateDetectionService expects Database.Database
@@ -344,18 +392,18 @@ export class EnhancedImportServiceV2 {
   async import(
     conversations: ImportConversation[],
     uploadHash: string,
-    config: ImportConfiguration,
-    context: { accountId: string; userId: string },
+    config: ImportRuntimeConfig,
+    context: {
+      accountId: string;
+      userId: string;
+      jobId?: string;
+      agentRuntimeEnabled?: boolean;
+    },
     hooks?: ImportPipelineHooks,
     options?: ImportExecutionOptions
   ): Promise<ImportResult> {
     this.context = context;
-    this.importMode =
-      config.grouping?.mode === 'manual'
-        ? 'manual'
-        : config.grouping?.mode === 'hybrid'
-          ? 'hybrid'
-          : 'automatic';
+    this.importMode = config.processingMode || 'automatic';
     this.knownNodeIds.clear();
     this.knownEdgeIds.clear();
     const startTime = Date.now();
@@ -382,17 +430,27 @@ export class EnhancedImportServiceV2 {
       // Step 3: Auto-group messages
       const groupResult = await this.autogroupService.autoGroupMessages(
         allMessages,
-        config.grouping
+        this.toGroupingConfig(config)
       );
 
       // Step 4: Save conversations, messages, and groups to database
-      await this.saveToDatabase(conversations, groupResult.groups, uploadHash);
+      await this.saveToDatabase(conversations, groupResult.groups, uploadHash, config);
       await this.flushWritesStrict('canonicalize.save_to_database');
 
       // Step 5: Create sources from messages
       await this.emitPipelineStage(hooks, 'source', 'Materializing source nodes');
-      const sources = await this.createSources(allMessages, groupResult.groups, config);
+      const sources = await this.createSources(allMessages, groupResult.groups, config, uploadHash);
       await this.flushWritesStrict('canonicalize.create_sources');
+
+      // Similarity-first graph birth (canonical deterministic weighted similarity)
+      const similarityResult = await this.materializeSimilarityGraph(sources, uploadHash, config);
+      await this.flushWritesStrict('canonicalize.similarity_graph');
+      const objectiveStats = await this.createProvisionalObjectiveClaims(
+        similarityResult.clusters,
+        sources,
+        uploadHash
+      );
+      await this.flushWritesStrict('canonicalize.objective_provision');
 
       await this.emitPipelineStage(hooks, 'span', 'Extracting immutable source spans');
       await this.emitStage(
@@ -439,22 +497,21 @@ export class EnhancedImportServiceV2 {
       await this.emitPipelineStage(hooks, 'dedupe', 'Detecting duplicates');
       await this.emitStage(hooks, 'DEDUPE' as ImportJobStage, 'Detecting duplicates');
       let duplicatesForReview = 0;
-      if (config.duplicates.enabled) {
-        duplicatesForReview = await this.detectDuplicates(conversations, config);
+      if (config.duplicateDetection.enabled) {
+        const duplicateResult = await this.detectDuplicates(conversations, config);
+        duplicatesForReview = duplicateResult.reviewCandidateCount;
       }
 
       // Step 7: Extract code blocks (if enabled)
       await this.emitPipelineStage(hooks, 'code', 'Extracting code blocks');
       let codeBlocks = 0;
-      if (config.code.extract) {
+      if (config.extractCode) {
         codeBlocks = await this.extractCodeBlocks(conversations, config);
       }
 
-      // Step 8: Create bundles (if enabled)
+      // Step 8: Create SourceDoc bundles (deterministic stitching from materialized sources)
       let bundles = 0;
-      if (config.sources.bundling.enabled) {
-        bundles = await this.createBundles(sources, config);
-      }
+      bundles = await this.createBundles(sources, config);
 
       // Step 9: Extract spine (V2 - if enabled)
       await this.emitPipelineStage(hooks, 'spine', 'Building graph spine');
@@ -497,6 +554,8 @@ export class EnhancedImportServiceV2 {
             messagesPerSecond: Math.round((totalMessages / durationMs) * 1000),
           },
           spine: config.spine?.enabled ? spineStats : undefined,
+          similarity: similarityResult.stats,
+          objective: objectiveStats,
           proImport: {
             spans: spanResult.spansCreated,
             packets: packetResult.packetsCreated,
@@ -597,7 +656,7 @@ export class EnhancedImportServiceV2 {
   private async saveUploadMetadata(
     uploadHash: string,
     conversations: ImportConversation[],
-    config: ImportConfiguration
+    config: ImportRuntimeConfig
   ): Promise<void> {
     const totalMessages = conversations.reduce((sum, c) => sum + c.messages.length, 0);
     const userMessages = conversations.reduce(
@@ -631,28 +690,384 @@ export class EnhancedImportServiceV2 {
    */
   private extractMessages(
     conversations: ImportConversation[],
-    config: ImportConfiguration
+    config: ImportRuntimeConfig
   ): ImportMessage[] {
     const messages: ImportMessage[] = [];
 
     for (const conv of conversations) {
       for (const msg of conv.messages) {
-        // Filter by role
-        if (config.sources.roleFilter.user && msg.role === 'user') {
-          if (msg.content.length >= config.sources.minLengthUser) {
-            messages.push(msg);
-          }
+        if (msg.content.length < config.minMessageLength) {
+          continue;
         }
 
-        if (config.sources.roleFilter.ai && msg.role === 'assistant') {
-          if (msg.content.length >= config.sources.minLengthAI) {
-            messages.push(msg);
-          }
+        if (msg.role === 'user' && config.extraction.includeUser) {
+          messages.push(msg);
+          continue;
+        }
+
+        if (msg.role === 'assistant' && config.extraction.includeAssistant) {
+          messages.push(msg);
         }
       }
     }
 
     return messages;
+  }
+
+  private toGroupingConfig(config: ImportRuntimeConfig): AutogroupRuntimeConfig {
+    const mode: AutogroupRuntimeConfig['mode'] = config.processingMode;
+    const manual =
+      mode === 'manual' || mode === 'hybrid'
+        ? config.groups.map((group) => ({
+            name: group.name,
+            keywords: group.keywords,
+          }))
+        : [];
+
+    return {
+      mode,
+      automatic: {
+        targetGroupCount: 25,
+        createCatchAll: true,
+        minGroupSize: 2,
+        algorithm: 'tfidf',
+      },
+      manual,
+    };
+  }
+
+  private async ensureSimilarityMetadataStorage(): Promise<void> {
+    this.sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS import_similarity_clusters (
+        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL,
+        import_batch_id TEXT NOT NULL,
+        cluster_id TEXT NOT NULL,
+        node_id TEXT NOT NULL,
+        mass REAL NOT NULL DEFAULT 0,
+        metadata TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_similarity_clusters_account_batch
+      ON import_similarity_clusters(account_id, import_batch_id);
+      CREATE INDEX IF NOT EXISTS idx_similarity_clusters_cluster
+      ON import_similarity_clusters(cluster_id);
+      CREATE INDEX IF NOT EXISTS idx_similarity_clusters_node
+      ON import_similarity_clusters(node_id);
+    `);
+  }
+
+  private async materializeSimilarityGraph(
+    sources: MaterializedSource[],
+    uploadHash: string,
+    _config: ImportRuntimeConfig
+  ): Promise<{
+    stats: { edges: number; strong: number; medium: number; weak: number; clusters: number };
+    clusters: SimilarityClusterV2[];
+  }> {
+    if (!this.context?.accountId || sources.length < 2) {
+      return {
+        stats: { edges: 0, strong: 0, medium: 0, weak: 0, clusters: 0 },
+        clusters: [],
+      };
+    }
+
+    const semanticStageDisabled = isSemanticStageKillSwitchEnabled();
+    const input: SimilarityEngineInput = {
+      documents: sources.map((source) => ({
+        id: source.id,
+        text: source.content,
+        conversationId: source.conversationId,
+        role: source.role,
+        timestamp: source.timestamp,
+      })),
+      runtime: {
+        disableSemanticStage: semanticStageDisabled,
+      },
+    };
+    const result = this.similarityEngine.analyze(input);
+    if (semanticStageDisabled) {
+      applySemanticStageKillSwitchToEdges(result.edges as any[]);
+    }
+
+    let strong = 0;
+    let medium = 0;
+    let weak = 0;
+
+    for (const edge of result.edges) {
+      const edgeId = `edge_similarity_${this.stableHash(`${edge.sourceId}:${edge.targetId}:${uploadHash}`, 32)}`;
+      await this.writeEdgeIfAbsent({
+        id: edgeId,
+        kind: 'SIMILAR_TO',
+        from: edge.sourceId,
+        to: edge.targetId,
+        created_at: Date.now(),
+        metadata: {
+          score: edge.total,
+          strength: edge.strength,
+          breakdown: {
+            lexical: edge.lexical,
+            structural: edge.structural,
+            semantic: edge.semantic,
+            flow: edge.flow,
+          },
+          import_id: uploadHash,
+          importId: uploadHash,
+        },
+      });
+
+      if (edge.strength === 'strong') {
+        strong++;
+      } else if (edge.strength === 'medium') {
+        medium++;
+      } else {
+        weak++;
+      }
+    }
+
+    await this.ensureSimilarityMetadataStorage();
+    const now = Date.now();
+    const insertClusterStmt = this.sqliteDb.prepare(`
+      INSERT INTO import_similarity_clusters (
+        id, account_id, import_batch_id, cluster_id, node_id, mass, metadata, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        mass = excluded.mass,
+        metadata = excluded.metadata,
+        updated_at = excluded.updated_at
+    `);
+
+    const tx = this.sqliteDb.transaction(() => {
+      for (const cluster of result.clusters) {
+        for (const nodeId of cluster.memberIds) {
+          const clusterRowId = `sim_cluster_${this.stableHash(`${this.context?.accountId}:${uploadHash}:${cluster.id}:${nodeId}`, 40)}`;
+          insertClusterStmt.run(
+            clusterRowId,
+            this.context?.accountId,
+            uploadHash,
+            cluster.id,
+            nodeId,
+            result.massByNode[nodeId] ?? 0,
+            JSON.stringify({
+              node_count: cluster.memberIds.length,
+              cluster_mass: cluster.mass,
+            }),
+            now,
+            now
+          );
+        }
+      }
+    });
+    tx();
+
+    return {
+      stats: {
+        edges: result.edges.length,
+        strong,
+        medium,
+        weak,
+        clusters: result.clusters.length,
+      },
+      clusters: result.clusters,
+    };
+  }
+
+  private async createProvisionalObjectiveClaims(
+    clusters: SimilarityClusterV2[],
+    sources: MaterializedSource[],
+    uploadHash: string
+  ): Promise<{ provisional: number; clusters: number }> {
+    if (!this.context?.accountId || clusters.length === 0 || sources.length === 0) {
+      return { provisional: 0, clusters: 0 };
+    }
+
+    const sourceById = new Map<string, MaterializedSource>();
+    for (const source of sources) {
+      sourceById.set(source.id, source);
+    }
+
+    const rankedClusters = clusters
+      .map((cluster) => ({
+        ...cluster,
+        memberSourceIds: cluster.memberIds.filter((memberId) => sourceById.has(memberId)),
+      }))
+      .filter((cluster) => cluster.memberSourceIds.length > 0)
+      .sort((a, b) => b.mass - a.mass || a.id.localeCompare(b.id));
+
+    const majorClusters = rankedClusters.filter((cluster) => cluster.memberSourceIds.length >= 2);
+    const selectedClusters = (majorClusters.length > 0 ? majorClusters : rankedClusters).slice(
+      0,
+      24
+    );
+
+    let provisionalCreated = 0;
+
+    for (const cluster of selectedClusters) {
+      const objectiveId = `objective_${this.stableHash(`${this.context.accountId}:${uploadHash}:${cluster.id}`, 32)}`;
+      const claimText = this.buildProvisionalObjectiveClaimText(
+        cluster.memberSourceIds,
+        sourceById
+      );
+      const confidence = Math.max(0.35, Math.min(0.85, cluster.mass));
+
+      const createdObjective = await this.writeNodeIfAbsent({
+        id: objectiveId,
+        kind: 'ObjectiveClaim',
+        claim_text: claimText,
+        type: 'definition',
+        status: 'provisional',
+        confidence,
+        citations: cluster.memberSourceIds.map((sourceId) => ({ node_id: sourceId })),
+        supports: [],
+        contradicts: [],
+        created_at: Date.now(),
+        updated_at: Date.now(),
+        metadata: {
+          import_id: uploadHash,
+          importId: uploadHash,
+          import_batch: uploadHash,
+          cluster_id: cluster.id,
+          cluster_mass: cluster.mass,
+          member_source_count: cluster.memberSourceIds.length,
+          member_source_ids: cluster.memberSourceIds,
+          objective_lifecycle: {
+            state: 'provisional',
+            next: 'verifying',
+            reason: 'created_from_similarity_cluster',
+          },
+        },
+      });
+
+      if (createdObjective) {
+        provisionalCreated++;
+      }
+
+      for (const sourceId of cluster.memberSourceIds) {
+        const sourcedFromEdgeId = `edge_objective_source_${this.stableHash(`${objectiveId}:${sourceId}`, 32)}`;
+        await this.writeEdgeIfAbsent({
+          id: sourcedFromEdgeId,
+          kind: 'SOURCED_FROM',
+          from: objectiveId,
+          to: sourceId,
+          created_at: Date.now(),
+          metadata: {
+            import_id: uploadHash,
+            importId: uploadHash,
+            cluster_id: cluster.id,
+            objective_status: 'provisional',
+          },
+        });
+      }
+
+      if (this.humanPrincipal?.id) {
+        const createdByEdgeId = `edge_objective_created_by_${this.stableHash(`${objectiveId}:${this.humanPrincipal.id}`, 32)}`;
+        await this.writeEdgeIfAbsent({
+          id: createdByEdgeId,
+          kind: 'CREATED_BY',
+          from: objectiveId,
+          to: this.humanPrincipal.id,
+          created_at: Date.now(),
+        });
+      }
+    }
+
+    return {
+      provisional: provisionalCreated,
+      clusters: selectedClusters.length,
+    };
+  }
+
+  private buildProvisionalObjectiveClaimText(
+    sourceIds: string[],
+    sourceById: Map<string, MaterializedSource>
+  ): string {
+    const corpus = sourceIds
+      .map((sourceId) => sourceById.get(sourceId)?.content || '')
+      .map((content) => content.slice(0, 2000))
+      .join('\n\n')
+      .slice(0, 20000);
+
+    const anchors = this.extractObjectiveAnchorTerms(corpus, 5);
+    if (anchors.length === 0) {
+      return `Provisional objective synthesized from ${sourceIds.length} related sources`;
+    }
+    return `Provisional objective around ${anchors.join(', ')}`;
+  }
+
+  private extractObjectiveAnchorTerms(content: string, limit: number): string[] {
+    const stopWords = new Set([
+      'about',
+      'after',
+      'also',
+      'been',
+      'because',
+      'before',
+      'being',
+      'between',
+      'could',
+      'from',
+      'have',
+      'into',
+      'just',
+      'more',
+      'most',
+      'only',
+      'other',
+      'should',
+      'than',
+      'that',
+      'their',
+      'there',
+      'these',
+      'this',
+      'those',
+      'were',
+      'what',
+      'when',
+      'where',
+      'which',
+      'while',
+      'with',
+      'would',
+      'your',
+      'you',
+      'and',
+      'the',
+      'for',
+      'are',
+      'was',
+      'were',
+      'has',
+      'had',
+      'its',
+      'our',
+      'not',
+      'but',
+    ]);
+
+    const tokens = content
+      .normalize('NFKC')
+      .toLowerCase()
+      .match(/[a-z0-9_]{3,}/g);
+
+    if (!tokens || tokens.length === 0) {
+      return [];
+    }
+
+    const frequencies = new Map<string, number>();
+    for (const token of tokens) {
+      if (stopWords.has(token)) {
+        continue;
+      }
+      frequencies.set(token, (frequencies.get(token) || 0) + 1);
+    }
+
+    return [...frequencies.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, limit)
+      .map(([token]) => token);
   }
 
   /**
@@ -662,11 +1077,12 @@ export class EnhancedImportServiceV2 {
   private async saveToDatabase(
     conversations: ImportConversation[],
     groups: Group[],
-    uploadHash: string
+    uploadHash: string,
+    config: ImportRuntimeConfig
   ): Promise<void> {
     // World Model V5: Resolve Principals before creating conversations
     // This ensures idempotent creation - same import = same Principals
-    await this.resolvePrincipals(conversations);
+    await this.resolvePrincipals(conversations, config);
 
     // Save conversations as ConversationThread nodes (World Model V5)
     for (const conv of conversations) {
@@ -795,12 +1211,16 @@ export class EnhancedImportServiceV2 {
    * - Human Principal: The user who is importing
    * - Agent Principal: The AI assistant in the conversations (by platform)
    */
-  private async resolvePrincipals(conversations: ImportConversation[]): Promise<void> {
+  private async resolvePrincipals(
+    conversations: ImportConversation[],
+    config: ImportRuntimeConfig
+  ): Promise<void> {
     if (!this.context) {
       console.warn('[Import] No context available for Principal resolution');
       return;
     }
 
+    this.agentPrincipal = null;
     const { accountId, userId } = this.context;
 
     // Resolve human Principal for the uploader
@@ -812,6 +1232,15 @@ export class EnhancedImportServiceV2 {
     } catch (error: any) {
       console.error('[Import] Failed to resolve human Principal:', error.message);
       throw new Error(`Principal resolution failed: ${error.message}`);
+    }
+
+    const bootstrapMode = config.agent?.bootstrap || 'manual';
+    const agentRuntimeEnabled = Boolean(this.context.agentRuntimeEnabled);
+    if (bootstrapMode !== 'auto' || !agentRuntimeEnabled) {
+      console.log(
+        `[Import] Agent Principal bootstrap skipped (mode=${bootstrapMode}, agentRuntimeEnabled=${agentRuntimeEnabled})`
+      );
+      return;
     }
 
     // Detect platform from conversations (use the first conversation's platform)
@@ -840,84 +1269,166 @@ export class EnhancedImportServiceV2 {
   private async createSources(
     messages: ImportMessage[],
     groups: Group[],
-    config: ImportConfiguration
+    config: ImportRuntimeConfig,
+    uploadHash: string
   ): Promise<MaterializedSource[]> {
     const sources: MaterializedSource[] = [];
 
-    // OPTIMIZATION: Pre-build message-to-groups lookup map
-    // Converts O(m * g * s) to O(g * s + m) where m=messages, g=groups, s=sources per group
     const messageToGroups = new Map<string, string[]>();
     for (const group of groups) {
-      for (const sourceId of group.sources) {
-        if (!messageToGroups.has(sourceId)) {
-          messageToGroups.set(sourceId, []);
+      for (const messageId of group.sources) {
+        if (!messageToGroups.has(messageId)) {
+          messageToGroups.set(messageId, []);
         }
-        messageToGroups.get(sourceId)!.push(group.id);
+        messageToGroups.get(messageId)!.push(group.id);
       }
     }
 
-    // Create Source nodes from messages
-    // In future: stitch messages together, create bundles, etc.
+    const streamMap = new Map<
+      string,
+      {
+        conversationId: string;
+        branch: 'merged' | 'user' | 'assistant';
+        messages: ImportMessage[];
+      }
+    >();
 
-    for (const msg of messages) {
-      const sourceSeed = `${this.context?.accountId || 'unknown'}:${msg.conversationId}:${msg.id}:${msg.role}`;
+    const sortedMessages = [...messages].sort(
+      (a, b) =>
+        a.conversationId.localeCompare(b.conversationId) ||
+        a.index - b.index ||
+        a.timestamp - b.timestamp
+    );
+
+    for (const msg of sortedMessages) {
+      const branch: 'merged' | 'user' | 'assistant' =
+        config.branches === 'separate'
+          ? msg.role === 'user'
+            ? 'user'
+            : msg.role === 'assistant'
+              ? 'assistant'
+              : 'merged'
+          : 'merged';
+
+      if (config.branches === 'separate' && branch === 'merged') {
+        continue;
+      }
+
+      const streamKey = `${msg.conversationId}:${branch}`;
+      if (!streamMap.has(streamKey)) {
+        streamMap.set(streamKey, {
+          conversationId: msg.conversationId,
+          branch,
+          messages: [],
+        });
+      }
+      streamMap.get(streamKey)!.messages.push(msg);
+    }
+
+    const branchSourceByConversation = new Map<
+      string,
+      Partial<Record<'user' | 'assistant', string>>
+    >();
+
+    for (const [streamKey, stream] of streamMap.entries()) {
+      const streamMessages = [...stream.messages].sort(
+        (a, b) => a.index - b.index || a.timestamp - b.timestamp
+      );
+      const messageIds = streamMessages.map((message) => message.id);
+      const combinedRawContent = streamMessages.map((message) => message.content).join('\n\n');
+
+      const derived = this.buildDerivedSourceContent(
+        combinedRawContent,
+        config.codeSettings.sourceHandling
+      );
+      const contentMeta = await this.localStore.saveSource(
+        `src_${this.stableHash(`${this.context?.accountId || 'unknown'}:${streamKey}`, 32)}`,
+        derived.content
+      );
+
+      const sourceSeed = `${this.context?.accountId || 'unknown'}:${stream.conversationId}:${stream.branch}`;
       const sourceId = `src_${this.stableHash(sourceSeed, 32)}`;
+      const fingerprint = `src:${stream.conversationId}:${stream.branch}:${this.stableHash(combinedRawContent, 16)}`;
 
-      // Save content to local store
-      const contentMeta = await this.localStore.saveSource(sourceId, msg.content);
+      const sourceGroupSet = new Set<string>();
+      for (const messageId of messageIds) {
+        for (const groupId of messageToGroups.get(messageId) || []) {
+          sourceGroupSet.add(groupId);
+        }
+      }
+      const sourceGroups = Array.from(sourceGroupSet);
+      const sourceTitle =
+        stream.branch === 'merged'
+          ? `Conversation stream (${new Date(streamMessages[0]?.timestamp || Date.now()).toISOString()})`
+          : `${stream.branch === 'user' ? 'User' : 'Assistant'} branch stream (${new Date(streamMessages[0]?.timestamp || Date.now()).toISOString()})`;
 
-      // Calculate fingerprint for deduplication
-      const fingerprint = `src:${msg.conversationId}:${msg.id}`;
-
-      // OPTIMIZATION: O(1) lookup instead of O(g * s) filter+includes
-      const sourceGroups = messageToGroups.get(msg.id) || [];
-
-      // Create Source node in database with full World Model provenance
       await this.writeNode({
         id: sourceId,
         kind: 'Source',
-        title: `Message from ${msg.role} (${new Date(msg.timestamp).toISOString()})`,
+        title: sourceTitle,
         fingerprint,
         mime_type: 'text/markdown',
-        size_bytes: msg.content.length,
+        size_bytes: derived.content.length,
         content_location: this.localStore.getStorageLocation(contentMeta),
         content_hash: contentMeta.hash,
-        created_at: msg.timestamp,
+        created_at: streamMessages[0]?.timestamp || Date.now(),
         updated_at: Date.now(),
-        // World Model V5: Full provenance tracking (WHO/HOW/FROM/VERIFIED)
         provenance: {
-          origin_principal_id: this.humanPrincipal?.id || this.context?.userId || 'unknown', // WHO: Principal who imported
-          origin_type: 'chat_import', // HOW: Chat import mechanism
-          origin_ref: msg.conversationId, // FROM: Source conversation ID
-          trust_state: 'ugc', // VERIFIED: User-generated content
-          original_url: undefined, // N/A for chat imports
+          origin_principal_id: this.humanPrincipal?.id || this.context?.userId || 'unknown',
+          origin_type: 'chat_import',
+          origin_ref: stream.conversationId,
+          trust_state: 'ugc',
           retrieved_at: Date.now(),
         },
         metadata: {
-          type: 'message_source',
-          role: msg.role,
-          conversation_id: msg.conversationId,
-          message_id: msg.id,
-          message_index: msg.index,
-          scope: config.sources.scope,
+          type: 'conversation_stream_source',
+          branch: stream.branch,
+          branches_mode: config.branches,
+          source_handling: config.codeSettings.sourceHandling,
+          code_removed_ranges: derived.codeRemovedRanges,
+          conversation_id: stream.conversationId,
+          message_ids: messageIds,
+          import_id: uploadHash,
+          importId: uploadHash,
+          import_batch: uploadHash,
+          parser_source: 'chat_export',
+          derivation_chain: [
+            'raw_message_persisted',
+            'conversation_stream_materialized',
+            `source_handling:${config.codeSettings.sourceHandling}`,
+          ],
           groups: sourceGroups,
         },
       });
 
-      // Create COMPILED_FROM edge from Source to Message
-      const compiledFromEdgeId = `edge_compiled_${this.stableHash(`${sourceId}:${msg.id}`, 32)}`;
-      await this.writeEdge({
-        id: compiledFromEdgeId,
-        kind: 'COMPILED_FROM',
+      const derivesFromConversationEdgeId = `edge_derives_conv_${this.stableHash(`${sourceId}:${stream.conversationId}`, 32)}`;
+      await this.writeEdgeIfAbsent({
+        id: derivesFromConversationEdgeId,
+        kind: 'DERIVES_FROM',
         from: sourceId,
-        to: msg.id,
+        to: stream.conversationId,
         created_at: Date.now(),
         metadata: {
-          derivation_type: 'message_extraction',
+          relation: 'conversation_branch',
+          branch: stream.branch,
         },
       });
 
-      // Create edges to groups if needed
+      for (const messageId of messageIds) {
+        const compiledFromEdgeId = `edge_compiled_${this.stableHash(`${sourceId}:${messageId}`, 32)}`;
+        await this.writeEdge({
+          id: compiledFromEdgeId,
+          kind: 'COMPILED_FROM',
+          from: sourceId,
+          to: messageId,
+          created_at: Date.now(),
+          metadata: {
+            derivation_type: 'conversation_stream_extraction',
+            branch: stream.branch,
+          },
+        });
+      }
+
       for (const groupId of sourceGroups) {
         const inGroupEdgeId = `edge_in_group_${this.stableHash(`${sourceId}:${groupId}`, 32)}`;
         await this.writeEdge({
@@ -929,7 +1440,6 @@ export class EnhancedImportServiceV2 {
         });
       }
 
-      // World Model V5: Create CREATED_BY edge from Source to Human Principal
       if (this.humanPrincipal) {
         const createdByEdgeId = `edge_created_by_${this.stableHash(`${sourceId}:${this.humanPrincipal.id}`, 32)}`;
         await this.writeEdge({
@@ -941,17 +1451,71 @@ export class EnhancedImportServiceV2 {
         });
       }
 
+      if (stream.branch !== 'merged') {
+        const entry = branchSourceByConversation.get(stream.conversationId) || {};
+        entry[stream.branch] = sourceId;
+        branchSourceByConversation.set(stream.conversationId, entry);
+      }
+
       sources.push({
         id: sourceId,
-        messageId: msg.id,
-        conversationId: msg.conversationId,
-        role: msg.role,
-        timestamp: msg.timestamp,
-        content: msg.content,
+        messageId: messageIds[0],
+        conversationId: stream.conversationId,
+        role: streamMessages[0]?.role || 'user',
+        timestamp: streamMessages[0]?.timestamp || Date.now(),
+        content: derived.content,
+        branch: stream.branch,
+        messageIds,
       });
     }
 
+    for (const [conversationId, branchRefs] of branchSourceByConversation.entries()) {
+      if (branchRefs.user && branchRefs.assistant) {
+        const discourseEdgeId = `edge_discourse_${this.stableHash(`${branchRefs.user}:${branchRefs.assistant}`, 32)}`;
+        await this.writeEdgeIfAbsent({
+          id: discourseEdgeId,
+          kind: 'DISCOURSE',
+          from: branchRefs.user,
+          to: branchRefs.assistant,
+          created_at: Date.now(),
+          metadata: {
+            relation: 'role_branch_lineage',
+            conversation_id: conversationId,
+          },
+        });
+      }
+    }
+
     return sources;
+  }
+
+  private buildDerivedSourceContent(
+    rawContent: string,
+    sourceHandling: 'keep_inline' | 'extract_and_remove'
+  ): { content: string; codeRemovedRanges: Array<{ start: number; end: number; length: number }> } {
+    if (sourceHandling === 'keep_inline') {
+      return { content: rawContent, codeRemovedRanges: [] };
+    }
+
+    const codeRemovedRanges: Array<{ start: number; end: number; length: number }> = [];
+    const codeBlockRegex = /```[\w-]*\n[\s\S]*?```/g;
+
+    let match: RegExpExecArray | null = null;
+    while ((match = codeBlockRegex.exec(rawContent)) !== null) {
+      codeRemovedRanges.push({
+        start: match.index,
+        end: match.index + match[0].length,
+        length: match[0].length,
+      });
+    }
+
+    return {
+      content: rawContent
+        .replace(codeBlockRegex, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim(),
+      codeRemovedRanges,
+    };
   }
 
   private splitIntoSpans(content: string): Array<{
@@ -1437,7 +2001,7 @@ export class EnhancedImportServiceV2 {
    */
   private async extractCodeBlocks(
     conversations: ImportConversation[],
-    config: ImportConfiguration
+    config: ImportRuntimeConfig
   ): Promise<number> {
     let count = 0;
 
@@ -1454,7 +2018,7 @@ export class EnhancedImportServiceV2 {
           const language = match[1] || 'text';
           const code = match[2];
 
-          if (code.length >= config.code.minLength) {
+          if (code.length >= config.codeSettings.minLength) {
             const codeId = `code_${nanoid()}`;
 
             // Save to local store
@@ -1504,15 +2068,15 @@ export class EnhancedImportServiceV2 {
    */
   private async detectDuplicates(
     conversations: ImportConversation[],
-    config: ImportConfiguration
-  ): Promise<number> {
-    if (!config.duplicates.enabled) {
-      return 0;
+    config: ImportRuntimeConfig
+  ): Promise<{ edgeCount: number; reviewCandidateCount: number }> {
+    if (!config.duplicateDetection.enabled) {
+      return { edgeCount: 0, reviewCandidateCount: 0 };
     }
 
     if (!this.context) {
       console.warn('⚠️  Skipping duplicate detection: no context (accountId required)');
-      return 0;
+      return { edgeCount: 0, reviewCandidateCount: 0 };
     }
 
     // Flatten all messages from all conversations into a single array
@@ -1535,23 +2099,22 @@ export class EnhancedImportServiceV2 {
 
     console.log(`🔍 Starting FTS5 duplicate detection for ${allMessages.length} messages`);
 
-    // Build detection config from ImportConfiguration
+    // Build detection config from canonical import runtime options
     const detectionConfig: DuplicateDetectionConfig = {
-      enabled: config.duplicates.enabled,
-      exactMatch: config.duplicates.detectExact ?? true,
-      similarityThreshold: config.duplicates.nearThreshold ?? 0.85,
-      crossConversation:
-        config.duplicates.level === 'both' || config.duplicates.level === 'conversation',
-      algorithm: 'jaccard',
-      normalizeTokens: true,
-      minTokenOverlap: 3,
-      lengthRatioTolerance: 0.2,
-      ignoreWhitespace: true,
-      ignoreCase: true,
-      ignoreTimestamp: false,
-      requireReview: config.duplicates.createReviewFolders ?? true,
-      autoApproveExact: config.duplicates.autoMergeSuggestions ?? false,
-      autoMergeThreshold: config.duplicates.autoMergeSuggestions ? 0.95 : 1.0,
+      enabled: config.duplicateDetection.enabled,
+      exactMatch: config.duplicateDetection.exactMatch ?? true,
+      similarityThreshold: config.duplicateDetection.similarityThreshold ?? 0.85,
+      crossConversation: config.duplicateDetection.crossConversation ?? true,
+      algorithm: config.duplicateDetection.algorithm || 'jaccard',
+      normalizeTokens: config.duplicateDetection.normalizeTokens ?? true,
+      minTokenOverlap: config.duplicateDetection.minTokenOverlap ?? 3,
+      lengthRatioTolerance: config.duplicateDetection.lengthRatioTolerance ?? 0.2,
+      ignoreWhitespace: config.duplicateDetection.ignoreWhitespace ?? true,
+      ignoreCase: config.duplicateDetection.ignoreCase ?? false,
+      ignoreTimestamp: config.duplicateDetection.ignoreTimestamp ?? true,
+      requireReview: config.duplicateDetection.requireReview ?? true,
+      autoApproveExact: config.duplicateDetection.autoApproveExact ?? false,
+      autoMergeThreshold: config.duplicateDetection.autoMergeThreshold ?? 0.95,
     };
 
     // Call integrated duplicate detection service (uses FTS5 if available)
@@ -1607,30 +2170,243 @@ export class EnhancedImportServiceV2 {
     }
 
     console.log(`✅ Created ${edgeCount} DUP_OF edges (using ${metadata.strategy} strategy)`);
-    return edgeCount;
+    const reviewCandidateCount = detectionConfig.requireReview
+      ? duplicateGroups.reduce((sum, group) => sum + group.candidates.length, 0)
+      : 0;
+
+    if (reviewCandidateCount > 0 && this.context.jobId) {
+      await this.persistDuplicateReviewCandidates(
+        this.context.jobId,
+        this.context.accountId,
+        duplicateGroups
+      );
+    }
+
+    return { edgeCount, reviewCandidateCount };
+  }
+
+  private ensureJobDuplicateCandidatesTable(): void {
+    this.sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS job_duplicate_candidates (
+        id TEXT PRIMARY KEY,
+        job_id TEXT NOT NULL,
+        account_id TEXT NOT NULL,
+        group_id TEXT NOT NULL,
+        candidate_id TEXT NOT NULL,
+        primary_node_id TEXT NOT NULL,
+        duplicate_node_id TEXT NOT NULL,
+        similarity REAL NOT NULL,
+        metrics_json TEXT NOT NULL,
+        primary_json TEXT NOT NULL,
+        duplicate_json TEXT NOT NULL,
+        decision TEXT CHECK(decision IN ('keep-primary', 'keep-duplicate', 'keep-both', 'merge', 'sequester')),
+        decision_meta TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        UNIQUE(job_id, account_id, candidate_id),
+        FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
+        FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_job_duplicate_candidates_job
+      ON job_duplicate_candidates(job_id, account_id);
+      CREATE INDEX IF NOT EXISTS idx_job_duplicate_candidates_group
+      ON job_duplicate_candidates(job_id, account_id, group_id);
+    `);
+  }
+
+  private toStableDuplicateCandidateId(primaryNodeId: string, duplicateNodeId: string): string {
+    const [a, b] = [primaryNodeId, duplicateNodeId].sort();
+    return `dup_${this.stableHash(`${a}::${b}`, 20)}`;
+  }
+
+  private toStableDuplicateGroupId(candidateIds: string[]): string {
+    return `grp_${this.stableHash([...candidateIds].sort().join('|'), 20)}`;
+  }
+
+  private async persistDuplicateReviewCandidates(
+    jobId: string,
+    accountId: string,
+    duplicateGroups: DuplicateGroup[]
+  ): Promise<void> {
+    this.ensureJobDuplicateCandidatesTable();
+
+    const now = Date.now();
+    const deleteByJobStmt = this.sqliteDb.prepare(
+      `
+      DELETE FROM job_duplicate_candidates
+      WHERE job_id = ? AND account_id = ?
+    `
+    );
+    deleteByJobStmt.run(jobId, accountId);
+
+    const insertStmt = this.sqliteDb.prepare(
+      `
+      INSERT INTO job_duplicate_candidates (
+        id,
+        job_id,
+        account_id,
+        group_id,
+        candidate_id,
+        primary_node_id,
+        duplicate_node_id,
+        similarity,
+        metrics_json,
+        primary_json,
+        duplicate_json,
+        decision,
+        decision_meta,
+        created_at,
+        updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(job_id, account_id, candidate_id) DO UPDATE SET
+        group_id = excluded.group_id,
+        primary_node_id = excluded.primary_node_id,
+        duplicate_node_id = excluded.duplicate_node_id,
+        similarity = excluded.similarity,
+        metrics_json = excluded.metrics_json,
+        primary_json = excluded.primary_json,
+        duplicate_json = excluded.duplicate_json,
+        decision = excluded.decision,
+        decision_meta = excluded.decision_meta,
+        updated_at = excluded.updated_at
+    `
+    );
+
+    const transaction = this.sqliteDb.transaction((groups: DuplicateGroup[]) => {
+      for (const group of groups) {
+        const stabilizedCandidates = group.candidates
+          .map((candidate) => {
+            const primaryNodeId = candidate.primary.id;
+            const duplicateNodeId = candidate.duplicate.id;
+            if (!primaryNodeId || !duplicateNodeId) {
+              return null;
+            }
+
+            return {
+              candidate,
+              candidateId: this.toStableDuplicateCandidateId(primaryNodeId, duplicateNodeId),
+              primaryNodeId,
+              duplicateNodeId,
+            };
+          })
+          .filter((value): value is NonNullable<typeof value> => value !== null);
+
+        if (stabilizedCandidates.length === 0) {
+          continue;
+        }
+
+        const groupId = this.toStableDuplicateGroupId(
+          stabilizedCandidates.map((entry) => entry.candidateId)
+        );
+
+        for (const entry of stabilizedCandidates) {
+          const recordId = `jdup_${this.stableHash(`${jobId}:${entry.candidateId}`, 28)}`;
+          const decisionMeta = JSON.stringify({
+            originalCandidateId: entry.candidate.id,
+            suggestedAction: entry.candidate.decision ?? null,
+          });
+
+          insertStmt.run(
+            recordId,
+            jobId,
+            accountId,
+            groupId,
+            entry.candidateId,
+            entry.primaryNodeId,
+            entry.duplicateNodeId,
+            entry.candidate.similarity,
+            JSON.stringify(entry.candidate.metrics || {}),
+            JSON.stringify(entry.candidate.primary),
+            JSON.stringify(entry.candidate.duplicate),
+            entry.candidate.decision ?? null,
+            decisionMeta,
+            now,
+            now
+          );
+        }
+      }
+    });
+
+    transaction(duplicateGroups);
   }
 
   /**
-   * Create bundles using SourcesStitcher
+   * Create deterministic SourceDoc bundles from materialized source streams.
    */
   private async createBundles(
-    _sources: MaterializedSource[],
-    config: ImportConfiguration
+    sources: MaterializedSource[],
+    _config: ImportRuntimeConfig
   ): Promise<number> {
-    if (!config.sources.bundling.enabled) {
+    if (!this.context?.accountId || sources.length === 0) {
       return 0;
     }
 
-    // Note: SourcesStitcher expects UserSegment[] from the parsing phase
-    // At this point in the pipeline, we have already created individual message nodes
-    // and the stitching should happen during the createSources() step, not here.
+    const byConversation = new Map<string, MaterializedSource[]>();
+    for (const source of sources) {
+      if (!byConversation.has(source.conversationId)) {
+        byConversation.set(source.conversationId, []);
+      }
+      byConversation.get(source.conversationId)!.push(source);
+    }
 
-    // TODO(architecture): Refactor createSources() to use SourcesStitcher
-    // The stitcher should be called INSTEAD of the simple per-message source creation
-    // in createSources() method around line 358-379
+    let bundlesCreated = 0;
 
-    // For now, return 0 as bundling is handled differently in this architecture
-    return 0; // Bundling deferred to createSources() refactor
+    for (const [conversationId, conversationSources] of byConversation.entries()) {
+      const ordered = [...conversationSources].sort(
+        (a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id)
+      );
+      const content = ordered
+        .map((source) => `## ${source.branch}\n\n${source.content}`)
+        .join('\n\n');
+      const bundleId = `sdoc_${this.stableHash(`${this.context.accountId}:${conversationId}`, 32)}`;
+      const bundleMeta = await this.localStore.saveSource(bundleId, content);
+
+      const provenance: SourceDoc['provenance'] = ordered.map((source) => ({
+        conversation_id: source.conversationId,
+        message_idx_start: 0,
+        message_idx_end: Math.max(0, source.messageIds.length - 1),
+        timestamp_min: source.timestamp,
+        timestamp_max: source.timestamp,
+        original_title: `Source stream ${source.branch}`,
+      }));
+
+      const created = await this.writeNodeIfAbsent({
+        id: bundleId,
+        kind: 'SourceDoc',
+        title: `Conversation Bundle ${conversationId}`,
+        n_segments: ordered.length,
+        n_chars: content.length,
+        created_ts_min: ordered[0]?.timestamp || Date.now(),
+        created_ts_max: ordered[ordered.length - 1]?.timestamp || Date.now(),
+        content_location: this.localStore.getStorageLocation(bundleMeta),
+        provenance,
+        created_at: Date.now(),
+        updated_at: Date.now(),
+        metadata: {
+          conversation_id: conversationId,
+          bundle_type: 'conversation_stream_bundle',
+        },
+      });
+      if (created) {
+        bundlesCreated++;
+      }
+
+      for (const source of ordered) {
+        const stitchedEdgeId = `edge_stitched_${this.stableHash(`${bundleId}:${source.id}`, 32)}`;
+        await this.writeEdgeIfAbsent({
+          id: stitchedEdgeId,
+          kind: 'STITCHED_FROM',
+          from: bundleId,
+          to: source.id,
+          created_at: Date.now(),
+          metadata: {
+            conversation_id: conversationId,
+          },
+        });
+      }
+    }
+
+    return bundlesCreated;
   }
 
   /**
@@ -1648,7 +2424,7 @@ export class EnhancedImportServiceV2 {
    */
   private async extractSpine(
     messages: ImportMessage[],
-    config: ImportConfiguration
+    config: ImportRuntimeConfig
   ): Promise<{ lexemes: number; phrases: number; topics: number }> {
     const spineBuilder = GraphSpineBuilder.getInstance();
     const spineConfig = config.spine;

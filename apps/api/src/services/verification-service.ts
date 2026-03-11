@@ -1,6 +1,7 @@
 import { VerifiedSourceNode, VerifiedClaimNode, TopicNode } from '@keimenon/types';
 import { v4 as uuidv4 } from 'uuid';
 import { LLMService } from './llm.service';
+import { appLogger } from '../utils/logger';
 
 // Interface for Search Results
 interface SearchResult {
@@ -35,9 +36,13 @@ export class VerificationService {
     this.llmService = LLMService.getInstance();
     this.tavilyApiKey = process.env.TAVILY_API_KEY || null;
 
-    if (!this.tavilyApiKey) {
-      console.warn('[VerificationService] TAVILY_API_KEY not found. Using mock search results.');
+    if (!this.tavilyApiKey && this.shouldLogOptionalProviderWarnings()) {
+      appLogger.warn('verification.config.missing_tavily_key');
     }
+  }
+
+  private shouldLogOptionalProviderWarnings(): boolean {
+    return process.env.NODE_ENV !== 'test' || process.env.VERBOSE_AI_TOOLING_LOGS === '1';
   }
 
   /**
@@ -59,16 +64,21 @@ export class VerificationService {
    * Performs online research to verify claims related to a topic.
    * This corresponds to "Step 5: The agent goes online (verification lane)"
    */
-  public async verifyTopic(topic: TopicNode): Promise<{ sources: VerifiedSourceNode[], claims: VerifiedClaimNode[] }> {
+  public async verifyTopic(
+    topic: TopicNode
+  ): Promise<{ sources: VerifiedSourceNode[]; claims: VerifiedClaimNode[] }> {
     // 1. Formulate queries
     const queries = this.generateQueries(topic);
-    console.log(`[VerificationService] Generated queries for topic "${topic.name}":`, queries);
+    appLogger.debug('verification.queries.generated', {
+      topic: topic.name,
+      queryCount: queries.length,
+    });
 
     // 2. Fetch external sources using Tavily API (with mock fallback)
     const searchResults = await this.search(queries[0]);
 
     // 3. Create VerifiedSource nodes
-    const verifiedSources: VerifiedSourceNode[] = searchResults.map(result => ({
+    const verifiedSources: VerifiedSourceNode[] = searchResults.map((result) => ({
       id: uuidv4(),
       kind: 'VerifiedSource',
       title: result.title,
@@ -80,42 +90,40 @@ export class VerificationService {
       trust_score: 0.8, // Placeholder
       metadata: {
         snippet: result.snippet,
-        query: queries[0]
-      }
+        query: queries[0],
+      },
     }));
 
     // 4. Extract claims using LLM
     const verifiedClaims: VerifiedClaimNode[] = [];
-    
+
     if (this.llmService.isConfigured()) {
-        // Real LLM extraction would go here
-        // For now, we'll create one grounded claim per source as a placeholder
-        for (const source of verifiedSources) {
-            verifiedClaims.push({
-                id: uuidv4(),
-                kind: 'VerifiedClaim',
-                claim_text: `Verified fact extracted from ${source.title}`,
-                source_id: source.id,
-                confidence: 0.9,
-                status: 'verified',
-                created_at: Date.now(),
-                updated_at: Date.now(),
-                metadata: {}
-            });
-        }
+      // Real LLM extraction would go here
+      // For now, we'll create one grounded claim per source as a placeholder
+      for (const source of verifiedSources) {
+        verifiedClaims.push({
+          id: uuidv4(),
+          kind: 'VerifiedClaim',
+          claim_text: `Verified fact extracted from ${source.title}`,
+          source_id: source.id,
+          confidence: 0.9,
+          status: 'verified',
+          created_at: Date.now(),
+          updated_at: Date.now(),
+          metadata: {},
+        });
+      }
     } else {
-        console.warn('[VerificationService] LLM not configured, skipping claim extraction.');
+      appLogger.debug('verification.claim_extraction.skipped', {
+        reason: 'LLM not configured',
+      });
     }
 
     return { sources: verifiedSources, claims: verifiedClaims };
   }
 
   private generateQueries(topic: TopicNode): string[] {
-    return [
-      `"is ${topic.name} real"`,
-      `${topic.name} definition`,
-      `${topic.name} analysis`
-    ];
+    return [`"is ${topic.name} real"`, `${topic.name} definition`, `${topic.name} analysis`];
   }
 
   /**
@@ -144,7 +152,10 @@ export class VerificationService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[VerificationService] Tavily API error:', response.status, errorText);
+        appLogger.warn('verification.tavily.error_response', {
+          status: response.status,
+          response: errorText,
+        });
         throw new Error(`Tavily API error: ${response.status}`);
       }
 
@@ -158,9 +169,10 @@ export class VerificationService {
         published_date: result.published_date,
         score: result.score,
       }));
-
-    } catch (error) {
-      console.error('[VerificationService] Tavily search failed:', error);
+    } catch (error: any) {
+      appLogger.warn('verification.tavily.search_failed', {
+        message: error?.message || String(error),
+      });
       throw error;
     }
   }
@@ -173,7 +185,9 @@ export class VerificationService {
       try {
         return await this.tavilySearch(query);
       } catch (error) {
-        console.warn('[VerificationService] Falling back to mock search due to API error');
+        appLogger.debug('verification.search.fallback_to_mock', {
+          reason: 'tavily_error',
+        });
         return this.mockSearch(query);
       }
     }
@@ -185,7 +199,7 @@ export class VerificationService {
    */
   private async mockSearch(query: string): Promise<SearchResult[]> {
     // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     const cleanQuery = query.replace(/"/g, '');
     return [
@@ -202,7 +216,7 @@ export class VerificationService {
         snippet: `News and analysis about ${cleanQuery}. This is mock data for development.`,
         source: 'news.example.com',
         score: 0.85,
-      }
+      },
     ];
   }
 }

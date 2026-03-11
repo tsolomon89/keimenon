@@ -2,8 +2,9 @@
 
 const { spawn, spawnSync } = require('child_process');
 const path = require('path');
+const { REQUIRED_NODE_MAJOR, REQUIRED_NODE_VERSION } = require('./node-version-config');
 
-const REQUIRED_NODE_MAJOR = 22;
+const NODE_PACKAGE_SPEC = REQUIRED_NODE_VERSION || String(REQUIRED_NODE_MAJOR);
 
 function getCurrentNodeMajor(version = process.versions.node) {
   return Number.parseInt(version.split('.')[0], 10);
@@ -14,7 +15,7 @@ function isRequiredNodeVersion(version = process.versions.node) {
 }
 
 function getNodePackageSpec() {
-  return `node@${REQUIRED_NODE_MAJOR}`;
+  return `node@${NODE_PACKAGE_SPEC}`;
 }
 
 function getNpxCommand() {
@@ -72,6 +73,7 @@ function runShellCommandUnderNode22(command, options = {}) {
 
 module.exports = {
   REQUIRED_NODE_MAJOR,
+  REQUIRED_NODE_VERSION,
   getCurrentNodeMajor,
   isRequiredNodeVersion,
   resolveNode22NodeCommand,

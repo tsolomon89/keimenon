@@ -26,6 +26,7 @@ import { useImportProgress } from '@/contexts/ImportProgressContext';
 import { useUIVersion } from '@/contexts/UIVersionContext';
 import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
 import { useKeimenonStore } from '@/store/keimenonStore';
+import { ENABLE_3D_RENDERER } from '@/lib/env.config';
 
 export function KeimenonHeader() {
   const router = useRouter();
@@ -143,7 +144,9 @@ export function KeimenonHeader() {
         <ChevronRight className="w-4 h-4 text-slate-600" />
         <span className="text-white font-medium">Default Board</span>
         <ChevronRight className="w-4 h-4 text-slate-600" />
-        <span className="text-slate-400">2D View</span>
+        <span className="text-slate-400">
+          {ENABLE_3D_RENDERER ? '2D View' : '2D View (3D disabled)'}
+        </span>
       </div>
 
       {/* Center: Search */}

@@ -7,6 +7,7 @@ const { mockAgentService } = vi.hoisted(() => ({
   mockAgentService: {
     getAvailableTaskTypes: vi.fn(),
     getRunningTasks: vi.fn(),
+    getHealth: vi.fn(),
     executeTask: vi.fn(),
     retryTask: vi.fn(),
     getTaskHistory: vi.fn(),
@@ -28,6 +29,7 @@ function buildApp(withUser = true): express.Application {
     app.use((req: any, _res, next) => {
       req.user = {
         accountId: 'acc_1',
+        accountClass: 'professional',
       };
       next();
     });
@@ -45,6 +47,14 @@ describe('Agent Routes', () => {
       'DUPLICATE_SUGGEST',
     ]);
     mockAgentService.getRunningTasks.mockReturnValue([]);
+    mockAgentService.getHealth.mockResolvedValue({
+      status: 'ok',
+      availableTypes: ['GROUP_SUMMARY_BUILD', 'DUPLICATE_SUGGEST'],
+      runningTasks: 0,
+      tools: [],
+      degraded: false,
+      degradedReasons: [],
+    });
   });
 
   it('GET /health returns runtime status', async () => {
@@ -53,6 +63,11 @@ describe('Agent Routes', () => {
     const response = await request(app).get('/api/v1/agent/health').expect(200);
     expect(response.body.status).toBe('ok');
     expect(response.body.availableTypes).toEqual(['GROUP_SUMMARY_BUILD', 'DUPLICATE_SUGGEST']);
+  });
+
+  it('GET /api/v1/agents/* legacy path is not exposed', async () => {
+    const app = buildApp();
+    await request(app).get('/api/v1/agents/health').expect(404);
   });
 
   it('POST /tasks enqueues task and returns 202', async () => {

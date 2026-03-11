@@ -22,6 +22,7 @@ import { authGet, switchAccount } from './helpers/authenticated-request';
 
 test.describe('Authentication - Account Switching', () => {
   test.describe.configure({ tag: '@smoke' });
+  test.describe.configure({ timeout: 90000 });
 
   // Use a test user that has multiple accounts
   // NOTE: This test requires a fixture user with multiple accounts

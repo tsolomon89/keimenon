@@ -74,6 +74,71 @@ Flow:
 
 Boot helper that prepares env files/dependencies and then runs `dev.js`.
 
+## Gate E Hardening Scripts
+
+### `perf/lod-burnin.ts`
+
+Deterministic 10k/50k LOD performance burn-in with budget gates and JSON report output.
+
+```bash
+npm run perf:lod:burnin:quick
+npm run perf:lod:burnin
+```
+
+### `ops/rollout-rollback-drill.ts`
+
+Automated rollout/rollback drill:
+
+1. Run SQL migrations on isolated temp database
+2. Create backup snapshot
+3. Simulate rollout mutation
+4. Restore backup and verify invariants
+5. Run regression checks for raw-local policy and objective lifecycle bridge
+6. Validate Gate-E kill-switch contract tests
+7. Execute kill-switch matrix scenarios:
+   - baseline
+   - objective enqueue kill switch on
+   - semantic stage kill switch on
+
+```bash
+npm run ops:rollout-rollback:drill:quick
+npm run ops:rollout-rollback:drill
+```
+
+Kill-switch env flags used in rollback drills:
+
+- `KILL_SWITCH_OBJECTIVE_ENQUEUE`
+- `KILL_SWITCH_SIMILARITY_SEMANTIC_STAGE`
+
+### `ops/gate-e-evidence-bundle.js`
+
+Aggregates Gate-E outputs into a single machine-readable evidence bundle.
+
+Output contract:
+
+- `e2e`
+- `lod`
+- `drill`
+- `timestamp`
+- `pass`
+
+Usage:
+
+```bash
+npm run ops:gate-e:evidence -- --e2e-status success --lod-report test-results/perf/lod-burnin-latest.json --drill-report test-results/ops/rollout-rollback-drill-latest.json --output test-results/ops/gate-e-evidence-latest.json
+```
+
+### `ops/apply-branch-protection.js`
+
+Applies and verifies required Gate-E checks on `main` branch protection.
+
+Requires `GH_TOKEN` or `GITHUB_TOKEN` with repository admin permissions.
+
+```bash
+npm run ops:branch-protection:apply
+npm run ops:branch-protection:verify
+```
+
 ## Port Reference
 
 | Port | Service | Protocol |

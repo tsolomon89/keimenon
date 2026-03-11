@@ -5,6 +5,22 @@ import {
   PrincipalCapabilities,
 } from '../services/auth.service';
 
+function shouldLogCapabilityLookupWarnings(): boolean {
+  if (process.env.AUTH_CAPABILITY_LOOKUP_LOG_ERRORS === '1') {
+    return true;
+  }
+
+  return process.env.NODE_ENV !== 'test';
+}
+
+function shouldLogCapabilityGuardErrors(): boolean {
+  if (process.env.AUTH_CAPABILITY_GUARD_LOG_ERRORS === '1') {
+    return true;
+  }
+
+  return process.env.NODE_ENV !== 'test';
+}
+
 // Extend Express Request to include auth data
 declare global {
   namespace Express {
@@ -89,7 +105,9 @@ export function requireAuth(authService: AuthServiceV2) {
       } catch (capError) {
         // Non-fatal: default to no special capabilities if lookup fails
         // This maintains backward compatibility with existing auth flows
-        console.warn('[AuthMiddleware] Could not fetch principal capabilities:', capError);
+        if (shouldLogCapabilityLookupWarnings()) {
+          console.warn('[AuthMiddleware] Could not fetch principal capabilities:', capError);
+        }
       }
 
       // Check for operating context headers (nested/CRM mode)
@@ -211,7 +229,19 @@ export function requireAuth(authService: AuthServiceV2) {
 
       return next();
     } catch (error) {
-      console.error('Auth middleware error:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      const shouldLog =
+        process.env.AUTH_MIDDLEWARE_LOG_ERRORS === '1' ||
+        !(
+          process.env.NODE_ENV === 'test' &&
+          (message === 'Invalid token' ||
+            message.toLowerCase().includes('invalid token') ||
+            message.toLowerCase().includes('jwt'))
+        );
+
+      if (shouldLog) {
+        console.error('Auth middleware error:', error);
+      }
       return res.status(401).json({ error: 'Authentication failed' });
     }
   };
@@ -335,7 +365,9 @@ export function requireCapability(capability: keyof PrincipalCapabilities) {
     if (!req.user.capabilities) {
       // Security fix: Do NOT fall back to next() - this creates auth bypass
       // If capabilities are required but not loaded, deny access
-      console.error('[RequireCapability] Capabilities not loaded - denying access');
+      if (shouldLogCapabilityGuardErrors()) {
+        console.error('[RequireCapability] Capabilities not loaded - denying access');
+      }
       return res.status(403).json({
         error: 'Authorization failed',
         message: 'Could not verify capabilities. Please try again.',
@@ -370,7 +402,9 @@ export function requireAnyCapability(capabilities: Array<keyof PrincipalCapabili
 
     if (!req.user.capabilities) {
       // Security fix: Do NOT fall back to next() - this creates auth bypass
-      console.error('[RequireAnyCapability] Capabilities not loaded - denying access');
+      if (shouldLogCapabilityGuardErrors()) {
+        console.error('[RequireAnyCapability] Capabilities not loaded - denying access');
+      }
       return res.status(403).json({
         error: 'Authorization failed',
         message: 'Could not verify capabilities. Please try again.',

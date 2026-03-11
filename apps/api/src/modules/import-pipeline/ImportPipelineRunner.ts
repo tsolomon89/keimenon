@@ -1,5 +1,5 @@
 import { DatabaseClient } from '@keimenon/db';
-import type { ImportConfiguration, ImportJobStage } from '@keimenon/types';
+import type { ImportJobStage, NormalizedImportOptions } from '@keimenon/types';
 import {
   EnhancedImportServiceV2,
   ImportConversation,
@@ -17,8 +17,13 @@ export interface ImportPipelineHooks {
 export interface ImportPipelineRunnerInput {
   conversations: ImportConversation[];
   uploadHash: string;
-  config: ImportConfiguration;
-  context: { accountId: string; userId: string };
+  config: NormalizedImportOptions;
+  context: {
+    accountId: string;
+    userId: string;
+    jobId?: string;
+    agentRuntimeEnabled?: boolean;
+  };
   hooks?: ImportPipelineHooks;
 }
 

@@ -10,10 +10,7 @@ interface CodeExtractionSectionProps {
   onConfigChange: (config: ChatImportConfig) => void;
 }
 
-export function CodeExtractionSection({
-  config,
-  onConfigChange,
-}: CodeExtractionSectionProps) {
+export function CodeExtractionSection({ config, onConfigChange }: CodeExtractionSectionProps) {
   const [showSettings, setShowSettings] = useState(false);
 
   const handleExtractCodeChange = (checked: boolean) => {
@@ -69,9 +66,7 @@ export function CodeExtractionSection({
                 type="number"
                 min={0}
                 value={config.codeSettings.minLength}
-                onChange={(e) =>
-                  updateCodeSettings({ minLength: parseInt(e.target.value) || 0 })
-                }
+                onChange={(e) => updateCodeSettings({ minLength: parseInt(e.target.value) || 0 })}
                 className="w-32 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:border-purple-500 outline-none"
               />
               <span className="text-sm text-slate-400">characters</span>
@@ -79,9 +74,7 @@ export function CodeExtractionSection({
           </div>
 
           <div>
-            <label className="block text-sm mb-2">
-              Filter by languages (leave empty for all)
-            </label>
+            <label className="block text-sm mb-2">Filter by languages (leave empty for all)</label>
             <TagInput
               tags={config.codeSettings.languages}
               onTagsChange={(languages) => updateCodeSettings({ languages })}
@@ -111,9 +104,7 @@ export function CodeExtractionSection({
                     name="code-groupby"
                     value={value}
                     checked={config.codeSettings.groupBy === value}
-                    onChange={(e) =>
-                      updateCodeSettings({ groupBy: e.target.value as any })
-                    }
+                    onChange={(e) => updateCodeSettings({ groupBy: e.target.value as any })}
                     className="rounded-full bg-slate-800 border-slate-700"
                   />
                   <Icon className="w-4 h-4 text-slate-400" />
@@ -132,6 +123,45 @@ export function CodeExtractionSection({
             />
             <span className="text-sm">Deduplicate identical code blocks globally</span>
           </label>
+
+          <div>
+            <label className="block text-sm mb-2">Code handling in source messages</label>
+            <div className="space-y-2">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="code-source-handling"
+                  value="keep_inline"
+                  checked={config.codeSettings.sourceHandling === 'keep_inline'}
+                  onChange={() => updateCodeSettings({ sourceHandling: 'keep_inline' })}
+                  className="mt-0.5 rounded-full bg-slate-800 border-slate-700"
+                />
+                <div>
+                  <div className="text-sm">Keep inline</div>
+                  <div className="text-xs text-slate-400">
+                    Preserve code blocks inside raw message content and create code nodes.
+                  </div>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="code-source-handling"
+                  value="extract_and_remove"
+                  checked={config.codeSettings.sourceHandling === 'extract_and_remove'}
+                  onChange={() => updateCodeSettings({ sourceHandling: 'extract_and_remove' })}
+                  className="mt-0.5 rounded-full bg-slate-800 border-slate-700"
+                />
+                <div>
+                  <div className="text-sm">Extract and remove</div>
+                  <div className="text-xs text-slate-400">
+                    Keep raw provenance while excluding fenced code blocks from source text copies.
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
 
           <div className="p-3 bg-blue-600/10 border border-blue-500/20 rounded-lg">
             <div className="flex gap-2">

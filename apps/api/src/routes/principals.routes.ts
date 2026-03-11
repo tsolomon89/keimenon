@@ -16,7 +16,13 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { SQLiteClient } from '@keimenon/db';
-import { AuthService, CapabilityAuthorizationService, DEFAULT_CAPABILITIES, PrincipalCapabilities } from '../services/auth.service';
+import { featureManifestForAccountClass } from '@keimenon/types';
+import {
+  AuthService,
+  CapabilityAuthorizationService,
+  DEFAULT_CAPABILITIES,
+  PrincipalCapabilities,
+} from '../services/auth.service';
 import { requireAuth, requirePermission, requireCapability } from '../middleware/auth.middleware';
 import { getDbClient } from '../utils/get-db-client';
 
@@ -28,13 +34,15 @@ const CreatePrincipalSchema = z.object({
   display_name: z.string().min(1, 'Display name required'),
   email: z.string().email().optional(),
   principal_kind: z.enum(['human', 'agent', 'contact']),
-  capabilities: z.object({
-    can_upload: z.boolean().optional(),
-    can_run_tools: z.boolean().optional(),
-    can_import_web: z.boolean().optional(),
-    can_own_account: z.boolean().optional(),
-    can_approve_runs: z.boolean().optional(),
-  }).optional(),
+  capabilities: z
+    .object({
+      can_upload: z.boolean().optional(),
+      can_run_tools: z.boolean().optional(),
+      can_import_web: z.boolean().optional(),
+      can_own_account: z.boolean().optional(),
+      can_approve_runs: z.boolean().optional(),
+    })
+    .optional(),
   metadata: z.record(z.any()).optional(),
 });
 
@@ -66,6 +74,19 @@ export function createPrincipalsRoutes(db: SQLiteClient, authService: AuthServic
       const body = CreatePrincipalSchema.parse(req.body);
       const accountId = req.user!.accountId;
       const userId = req.user!.userId;
+      const accountClass = ((req.user as any)?.accountClass || 'free') as
+        | 'free'
+        | 'professional'
+        | 'business';
+      const features = featureManifestForAccountClass(accountClass);
+
+      if (body.principal_kind === 'agent' && !features.agent_runtime) {
+        return res.status(403).json({
+          success: false,
+          error: 'Agent principal creation requires agent runtime entitlement',
+          requiredFeature: 'agent_runtime',
+        });
+      }
 
       // Generate principal ID
       const principalId = `principal_${nanoid()}`;
@@ -92,10 +113,14 @@ export function createPrincipalsRoutes(db: SQLiteClient, authService: AuthServic
       });
 
       // Insert Principal node
-      database.prepare(`
+      database
+        .prepare(
+          `
         INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
         VALUES (?, 'Principal', ?, ?, ?, ?, ?)
-      `).run(principalId, properties, accountId, userId, now, now);
+      `
+        )
+        .run(principalId, properties, accountId, userId, now, now);
 
       // Return created principal
       return res.status(201).json({
@@ -218,10 +243,14 @@ export function createPrincipalsRoutes(db: SQLiteClient, authService: AuthServic
       const accountId = req.user!.accountId;
 
       // F2: Account Boundary - only return principals from same account
-      const row = database.prepare(`
+      const row = database
+        .prepare(
+          `
         SELECT * FROM nodes
         WHERE id = ? AND kind = 'Principal' AND account_id = ?
-      `).get(id, accountId) as any;
+      `
+        )
+        .get(id, accountId) as any;
 
       if (!row) {
         return res.status(404).json({
@@ -263,85 +292,89 @@ export function createPrincipalsRoutes(db: SQLiteClient, authService: AuthServic
    * Update principal capabilities
    * World Model V5: Capability updates require approve_runs capability
    */
-  router.put(
-    '/:id/capabilities',
-    requireAuth(authService),
-    async (req: Request, res: Response) => {
-      try {
-        const dbClient = await getDbClient(req);
-        const database = dbClient.getDatabase();
-        const { id } = req.params;
-        const accountId = req.user!.accountId;
+  router.put('/:id/capabilities', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+      const { id } = req.params;
+      const accountId = req.user!.accountId;
 
-        // Validate request body
-        const updates = UpdateCapabilitiesSchema.parse(req.body);
+      // Validate request body
+      const updates = UpdateCapabilitiesSchema.parse(req.body);
 
-        // F2: Account Boundary - only update principals from same account
-        const row = database.prepare(`
+      // F2: Account Boundary - only update principals from same account
+      const row = database
+        .prepare(
+          `
           SELECT * FROM nodes
           WHERE id = ? AND kind = 'Principal' AND account_id = ?
-        `).get(id, accountId) as any;
+        `
+        )
+        .get(id, accountId) as any;
 
-        if (!row) {
-          return res.status(404).json({
-            success: false,
-            error: 'Principal not found',
-          });
-        }
+      if (!row) {
+        return res.status(404).json({
+          success: false,
+          error: 'Principal not found',
+        });
+      }
 
-        const props = JSON.parse(row.properties);
-        const now = Date.now();
+      const props = JSON.parse(row.properties);
+      const now = Date.now();
 
-        // Merge capabilities
-        const newCapabilities = {
-          ...props.capabilities,
-          ...updates,
-        };
+      // Merge capabilities
+      const newCapabilities = {
+        ...props.capabilities,
+        ...updates,
+      };
 
-        // Update properties
-        props.capabilities = newCapabilities;
-        const newProperties = JSON.stringify(props);
+      // Update properties
+      props.capabilities = newCapabilities;
+      const newProperties = JSON.stringify(props);
 
-        database.prepare(`
+      database
+        .prepare(
+          `
           UPDATE nodes
           SET properties = ?, updated_at = ?
           WHERE id = ? AND account_id = ?
-        `).run(newProperties, now, id, accountId);
+        `
+        )
+        .run(newProperties, now, id, accountId);
 
-        return res.json({
-          success: true,
-          principal: {
-            id: row.id,
-            kind: row.kind,
-            display_name: props.display_name,
-            email: props.email,
-            principal_kind: props.principal_kind,
-            capabilities: newCapabilities,
-            account_id: row.account_id,
-            created_by: row.created_by,
-            created_at: row.created_at,
-            updated_at: now,
-          },
-        });
-      } catch (error: any) {
-        console.error('[Principals] Update capabilities error:', error);
+      return res.json({
+        success: true,
+        principal: {
+          id: row.id,
+          kind: row.kind,
+          display_name: props.display_name,
+          email: props.email,
+          principal_kind: props.principal_kind,
+          capabilities: newCapabilities,
+          account_id: row.account_id,
+          created_by: row.created_by,
+          created_at: row.created_at,
+          updated_at: now,
+        },
+      });
+    } catch (error: any) {
+      console.error('[Principals] Update capabilities error:', error);
 
-        if (error.name === 'ZodError') {
-          return res.status(400).json({
-            success: false,
-            error: 'Validation failed',
-            details: error.errors,
-          });
-        }
-
-        return res.status(500).json({
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
           success: false,
-          error: 'Failed to update capabilities',
-          message: error.message,
+          error: 'Validation failed',
+          details: error.errors,
         });
       }
+
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update capabilities',
+        message: error.message,
+      });
     }
-  );
+  });
 
   /**
    * DELETE /api/v1/principals/:id
@@ -359,10 +392,14 @@ export function createPrincipalsRoutes(db: SQLiteClient, authService: AuthServic
         const accountId = req.user!.accountId;
 
         // F2: Account Boundary - only delete principals from same account
-        const row = database.prepare(`
+        const row = database
+          .prepare(
+            `
           SELECT * FROM nodes
           WHERE id = ? AND kind = 'Principal' AND account_id = ?
-        `).get(id, accountId) as any;
+        `
+          )
+          .get(id, accountId) as any;
 
         if (!row) {
           return res.status(404).json({
@@ -377,11 +414,15 @@ export function createPrincipalsRoutes(db: SQLiteClient, authService: AuthServic
         props.deleted_at = Date.now();
         const newProperties = JSON.stringify(props);
 
-        database.prepare(`
+        database
+          .prepare(
+            `
           UPDATE nodes
           SET properties = ?, updated_at = ?
           WHERE id = ? AND account_id = ?
-        `).run(newProperties, Date.now(), id, accountId);
+        `
+          )
+          .run(newProperties, Date.now(), id, accountId);
 
         return res.json({
           success: true,

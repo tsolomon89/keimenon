@@ -31,11 +31,8 @@ import {
   ImportConfigSchema,
   normalizeImportOptions,
 } from '../modules/jobs/domain/import-config-contract';
+import { featureManifestForAccountClass } from '@keimenon/types';
 import { ChunkAssemblyService } from '../modules/uploads/application/ChunkAssemblyService';
-import {
-  getProgressBroadcaster,
-  UploadProgressEvent,
-} from '../modules/uploads/application/UploadProgressBroadcaster';
 import Database from 'better-sqlite3';
 import busboy from 'busboy';
 import { createWriteStream } from 'fs';
@@ -157,6 +154,10 @@ export function createUploadRoutes(authService: AuthService): Router {
       const accountId = (req as any).user?.accountId;
       const userId = (req as any).user?.userId;
       const userEmail = (req as any).user?.email;
+      const accountClass = ((req as any).user?.accountClass || 'free') as
+        | 'free'
+        | 'professional'
+        | 'business';
 
       if (!accountId || !userId) {
         return res.status(401).json({
@@ -168,6 +169,13 @@ export function createUploadRoutes(authService: AuthService): Router {
       // Validate request body
       const body = InitiateUploadSchema.parse(req.body);
       const importOptions = normalizeImportOptions(body.importConfig);
+      const features = featureManifestForAccountClass(accountClass);
+      if (!features.auto_graph) {
+        return res.status(403).json({
+          success: false,
+          error: 'Current account tier does not permit automatic graph import.',
+        });
+      }
       const sanitized = sanitizeUploadFilename(body.fileName);
 
       appLogger.info('upload.initiate', {
@@ -197,6 +205,8 @@ export function createUploadRoutes(authService: AuthService): Router {
         chunkSize: body.chunkSize,
         metadata: {
           importConfig: importOptions,
+          accountClass,
+          features,
           originalFileName: sanitized.original || undefined,
         },
       };
@@ -225,18 +235,23 @@ export function createUploadRoutes(authService: AuthService): Router {
 
       return res.status(201).json(response);
     } catch (error: any) {
-      appLogger.error('upload.initiate.error', {
-        error: error.message,
-      });
-
-      // Handle Zod validation errors
+      // Handle Zod validation errors (quiet in test by default)
       if (error.name === 'ZodError') {
+        if (process.env.NODE_ENV !== 'test' || process.env.UPLOAD_LOG_VALIDATION_ERRORS === '1') {
+          appLogger.warn('upload.initiate.validation_failed', {
+            error: error.message,
+          });
+        }
         return res.status(400).json({
           success: false,
           error: 'Validation failed',
           details: error.errors,
         });
       }
+
+      appLogger.error('upload.initiate.error', {
+        error: error.message,
+      });
 
       return res.status(500).json({
         success: false,
@@ -413,25 +428,6 @@ export function createUploadRoutes(authService: AuthService): Router {
           progress: session.getProgress(),
         });
 
-        // Broadcast progress via SSE
-        const broadcaster = getProgressBroadcaster();
-        if (broadcaster) {
-          const chunksReceived = session.toJSON().chunksReceived
-            ? Object.keys(session.toJSON().chunksReceived).length
-            : 0;
-
-          broadcaster.broadcastProgress({
-            type: 'progress',
-            sessionId: session.id,
-            chunkIndex: chunkIdx,
-            chunksReceived,
-            totalChunks: session.totalChunks,
-            progress: session.getProgress(),
-            status: session.status,
-            timestamp: Date.now(),
-          });
-        }
-
         // Check if upload is complete
         const isComplete = session.isComplete();
         appLogger.debug('upload.chunk.completion_check', {
@@ -534,99 +530,8 @@ export function createUploadRoutes(authService: AuthService): Router {
       }
     }
   );
-
   // ============================================================================
-  // Endpoint 3: GET /:sessionId/progress - SSE Progress Stream
-  // ============================================================================
-
-  /**
-   * GET /api/v1/uploads/:sessionId/progress
-   *
-   * Server-Sent Events endpoint for real-time upload progress updates.
-   * Clients connect to this endpoint to receive live progress as chunks are uploaded.
-   *
-   * Response: SSE stream
-   * data: { type, sessionId, chunkIndex, chunksReceived, totalChunks, progress, status }
-   */
-  router.get(
-    '/:sessionId/progress',
-    requireAuth(authService),
-    async (req: Request, res: Response) => {
-      const { sessionId } = req.params;
-      const accountId = (req as any).user?.accountId;
-      const userId = (req as any).user?.userId;
-
-      if (!accountId || !userId) {
-        return res.status(401).json({
-          success: false,
-          error: 'Authentication required',
-        });
-      }
-
-      console.log(`📡 SSE CONNECT: ${sessionId} (user: ${userId}, account: ${accountId})`);
-
-      // Get broadcaster instance
-      const broadcaster = getProgressBroadcaster();
-
-      if (!broadcaster) {
-        return res.status(503).json({
-          success: false,
-          error: 'Progress broadcaster not available',
-        });
-      }
-
-      // Verify session exists and belongs to user's account
-      try {
-        const db = await getDbClient(req);
-        const sqliteDb = (db as any).db as Database.Database;
-        const uploadRepo: UploadSessionRepository = new SQLiteUploadSessionRepository(sqliteDb);
-
-        const session = await uploadRepo.findById(sessionId, accountId);
-
-        if (!session) {
-          return res.status(404).json({
-            success: false,
-            error: 'Upload session not found or access denied',
-          });
-        }
-
-        // Register client for SSE streaming
-        broadcaster.registerClient(sessionId, accountId, res);
-
-        // Send initial progress event
-        const chunksReceived = session.toJSON().chunksReceived
-          ? Object.keys(session.toJSON().chunksReceived).length
-          : 0;
-
-        const initialEvent: UploadProgressEvent = {
-          type: 'progress',
-          sessionId: session.id,
-          chunksReceived,
-          totalChunks: session.totalChunks,
-          progress: session.getProgress(),
-          status: session.status,
-          timestamp: Date.now(),
-        };
-
-        broadcaster.broadcastProgress(initialEvent);
-
-        // SSE connection established - response is now managed by broadcaster
-        // No explicit return needed, but TypeScript requires all code paths to return
-        return;
-      } catch (error: any) {
-        console.error('❌ SSE connection error:', error);
-
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to establish SSE connection',
-          message: error.message,
-        });
-      }
-    }
-  );
-
-  // ============================================================================
-  // Endpoint 4: GET /:sessionId - Get Upload Status
+  // Endpoint 3: GET /:sessionId - Get Upload Status
   // ============================================================================
 
   /**
@@ -657,8 +562,6 @@ export function createUploadRoutes(authService: AuthService): Router {
         });
       }
 
-      console.log(`📊 STATUS CHECK: ${sessionId}`);
-
       // Get database client
       const db = await getDbClient(req);
       const sqliteDb = (db as any).db as Database.Database;
@@ -677,12 +580,6 @@ export function createUploadRoutes(authService: AuthService): Router {
       // Get session data with all computed fields
       const sessionData = session.toJSON();
 
-      console.log(
-        `  Progress: ${sessionData.progress || 0}% (${(sessionData.chunksUploaded || []).length}/${session.totalChunks})`
-      );
-      console.log(`  Status: ${session.status}`);
-      console.log(`  Missing chunks: ${(sessionData.missingChunks || []).length}`);
-
       // Return session status (use toJSON() to include all computed fields)
       const response: SessionStatusResponse = {
         success: true,
@@ -696,7 +593,10 @@ export function createUploadRoutes(authService: AuthService): Router {
 
       return res.status(200).json(response);
     } catch (error: any) {
-      console.error('❌ Status check error:', error);
+      appLogger.error('upload.status.error', {
+        sessionId: req.params.sessionId,
+        message: error?.message || 'Failed to get upload status',
+      });
 
       return res.status(500).json({
         success: false,
@@ -734,8 +634,6 @@ export function createUploadRoutes(authService: AuthService): Router {
         });
       }
 
-      console.log(`🗑️  CANCEL UPLOAD: ${sessionId}`);
-
       // Get database client
       const db = await getDbClient(req);
       const sqliteDb = (db as any).db as Database.Database;
@@ -755,22 +653,25 @@ export function createUploadRoutes(authService: AuthService): Router {
       const fs = require('fs').promises;
       try {
         await fs.rm(session.chunksPath, { recursive: true, force: true });
-        console.log(`  Chunk files deleted: ${session.chunksPath}`);
       } catch (cleanupError) {
-        console.warn(`  Failed to delete chunk files (non-fatal):`, cleanupError);
+        appLogger.warn('upload.cancel.cleanup_warn', {
+          sessionId,
+          message: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+        });
       }
 
       // Delete session from database
       await uploadRepo.delete(sessionId, accountId);
-
-      console.log(`✅ Upload session cancelled: ${sessionId}`);
 
       return res.status(200).json({
         success: true,
         message: 'Upload session cancelled',
       });
     } catch (error: any) {
-      console.error('❌ Cancel upload error:', error);
+      appLogger.error('upload.cancel.error', {
+        sessionId: req.params.sessionId,
+        message: error?.message || 'Failed to cancel upload',
+      });
 
       return res.status(500).json({
         success: false,
@@ -807,10 +708,12 @@ async function triggerImportJobFromAssembledFile(
   uploadRepo: UploadSessionRepository,
   req: Request // ✅ For test isolation context (testDbPath)
 ): Promise<void> {
-  console.log(`🚀 TRIGGER IMPORT JOB: ${session.id}`);
-  console.log(`  File: ${session.fileName}`);
-  console.log(`  Size: ${(fileSize / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`  Path: ${assembledFilePath}`);
+  appLogger.info('upload.import.trigger', {
+    sessionId: session.id,
+    fileName: session.fileName,
+    sizeBytes: fileSize,
+    assembledFilePath,
+  });
 
   // ✅ FIX: Reload session from database to get latest state after assembly
   // The session object passed in is stale (from chunk upload handler)
@@ -832,9 +735,15 @@ async function triggerImportJobFromAssembledFile(
   const userType = (req as any).user?.user_type || 'user';
   const accountMembership = (req as any).user?.account_membership || 'member';
   const userEmail = (req as any).user?.email || 'unknown';
+  const accountClass = ((req as any).user?.accountClass || 'free') as
+    | 'free'
+    | 'professional'
+    | 'business';
+  const features = featureManifestForAccountClass(accountClass);
+  if (!features.auto_graph) {
+    throw new Error('Current account tier does not permit automatic graph import.');
+  }
   const actorId = ulid();
-
-  console.log('  Creating background job');
 
   const result = await enqueueImportJobWithConfig(enqueueJob, {
     accountId,
@@ -857,6 +766,8 @@ async function triggerImportJobFromAssembledFile(
       userType,
       accountMembership,
       userEmail,
+      accountClass,
+      features,
     },
     testContext,
     metadata: {
@@ -866,13 +777,11 @@ async function triggerImportJobFromAssembledFile(
     },
   });
 
-  console.log(`Import job created: ${result.jobId}`);
-  console.log('  Job will be processed by WorkerPool automatically');
-  console.log('  Track progress via SSE: /api/v1/stream/jobs');
-
   // Update upload session with job ID
   freshSession.setJobId(result.jobId);
   await uploadRepo.save(freshSession);
-
-  console.log(`Upload session updated with job ID: ${result.jobId}`);
+  appLogger.info('upload.import.session_linked', {
+    sessionId: freshSession.id,
+    jobId: result.jobId,
+  });
 }

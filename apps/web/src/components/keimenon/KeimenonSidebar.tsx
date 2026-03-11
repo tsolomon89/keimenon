@@ -25,6 +25,7 @@ import { useNodeGroupLookup } from '@/hooks/useNodeGroupLookup';
 import { useKeimenonStore } from '@/store/keimenonStore';
 import { NavigationModelFactory } from '@keimenon/types/src/navigation.model';
 import { logDataEvent } from '@/lib/error-handler';
+import { sequesterNode } from '@/lib/api-client';
 import { errorCapture } from '@/services/error-capture.service';
 import type { Operation } from '@/contexts/BackgroundOperationsContext';
 import { DEBUG_IMPORT_SELECTOR } from '@/lib/env.config';
@@ -634,14 +635,19 @@ export function KeimenonSidebar({
                 // See: docs/features/SCOPE_BUILDER.md (needs creation)
               }}
               onSequester={(nodeId) => {
-                errorCapture.warn('Sequester action pending implementation', {
-                  domain: 'ui',
-                  operation: 'keimenon.scope.sequester',
-                  metadata: { nodeId },
-                });
-                // TODO: Implement sequester functionality
-                // Related: apps/api/src/routes/nodes.ts (add sequester endpoint)
-                // See: docs/architecture/SEQUESTER.md (needs creation)
+                void (async () => {
+                  try {
+                    await sequesterNode(nodeId, { sequester: true });
+                    logDataEvent('Node sequestered', 'keimenon.scope.sequester', { nodeId });
+                  } catch (error) {
+                    const err = error instanceof Error ? error : new Error(String(error));
+                    errorCapture.capture(err, {
+                      domain: 'api',
+                      operation: 'keimenon.scope.sequester',
+                      metadata: { nodeId },
+                    });
+                  }
+                })();
               }}
             />
           ) : selectedNode ? (

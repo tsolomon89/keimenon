@@ -1,5 +1,6 @@
 import { ChatParser, NormalizedConversation, NormalizedMessage, ParseResult } from '../types';
 import { fingerprint } from '../utils/fingerprint';
+import { logParserError } from '../utils/parse-error-logging';
 import { nanoid } from 'nanoid';
 
 /**
@@ -41,7 +42,7 @@ export class GeminiParser implements ChatParser {
         this.updateStats(conv, stats);
       }
     } catch (error) {
-      console.error('Gemini parse error:', error);
+      logParserError('GeminiParser', error);
       stats.parse_errors++;
     }
 

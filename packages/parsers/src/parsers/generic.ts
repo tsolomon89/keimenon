@@ -1,5 +1,6 @@
 import { ChatParser, NormalizedConversation, NormalizedMessage, ParseResult } from '../types';
 import { fingerprint } from '../utils/fingerprint';
+import { logParserError } from '../utils/parse-error-logging';
 import { nanoid } from 'nanoid';
 
 /**
@@ -84,7 +85,7 @@ export class GenericParser implements ChatParser {
         this.updateStats(conv, stats);
       }
     } catch (error) {
-      console.error('Generic parse error:', error);
+      logParserError('GenericParser', error);
       stats.parse_errors++;
     }
 

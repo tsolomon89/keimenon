@@ -13,14 +13,15 @@ import type {
   ExecAdapter,
   ProofAdapter,
   GitAdapter,
-  NullLLMAdapter,
-  NullWebAdapter,
 } from '@keimenon/agent-core';
 
 import { LiteLLMAdapter, type LiteLLMConfig } from '../llm/litellm-adapter.js';
 import { SearXNGAdapter, type SearXNGConfig } from '../web/searxng-adapter.js';
 import { MockLLMAdapter, type MockLLMConfig } from '../mocks/mock-llm-adapter.js';
 import { MockWebAdapter, type MockWebConfig } from '../mocks/mock-web-adapter.js';
+import { LocalExecAdapter, type LocalExecConfig } from '../exec/local-exec-adapter.js';
+import { LocalProofAdapter, type LocalProofConfig } from '../proof/local-proof-adapter.js';
+import { LocalGitAdapter, type LocalGitConfig } from '../git/local-git-adapter.js';
 
 /**
  * Configuration for the default tool registry
@@ -36,6 +37,21 @@ export interface DefaultRegistryConfig {
     type: 'searxng' | 'mock' | 'none';
     config?: SearXNGConfig | MockWebConfig;
   };
+  /** Exec adapter configuration */
+  exec?: {
+    type: 'local' | 'none';
+    config?: LocalExecConfig;
+  };
+  /** Proof adapter configuration */
+  proof?: {
+    type: 'local' | 'none';
+    config?: LocalProofConfig;
+  };
+  /** Git adapter configuration */
+  git?: {
+    type: 'local' | 'none';
+    config?: LocalGitConfig;
+  };
   /** Whether to use mock adapters as fallback */
   useMockFallback?: boolean;
 }
@@ -46,8 +62,25 @@ export interface DefaultRegistryConfig {
 const DEFAULT_CONFIG: DefaultRegistryConfig = {
   llm: { type: 'litellm' },
   web: { type: 'searxng' },
+  exec: { type: 'local' },
+  proof: { type: 'local' },
+  git: { type: 'local' },
   useMockFallback: process.env.NODE_ENV === 'test',
 };
+
+type AvailabilityReason = {
+  getUnavailableReason?: () => string | undefined;
+};
+
+function readUnavailableReason(adapter: unknown, fallback: string): string {
+  if (adapter && typeof adapter === 'object') {
+    const reason = (adapter as AvailabilityReason).getUnavailableReason?.();
+    if (reason && reason.length > 0) {
+      return reason;
+    }
+  }
+  return fallback;
+}
 
 /**
  * Default Tool Registry Implementation
@@ -75,14 +108,10 @@ export class DefaultToolRegistry implements ToolRegistry {
     // Initialize LLM adapter
     switch (this.config.llm?.type) {
       case 'litellm':
-        this.llmAdapter = new LiteLLMAdapter(
-          this.config.llm.config as LiteLLMConfig
-        );
+        this.llmAdapter = new LiteLLMAdapter(this.config.llm.config as LiteLLMConfig);
         break;
       case 'mock':
-        this.llmAdapter = new MockLLMAdapter(
-          this.config.llm.config as MockLLMConfig
-        );
+        this.llmAdapter = new MockLLMAdapter(this.config.llm.config as MockLLMConfig);
         break;
       case 'none':
       default:
@@ -92,14 +121,10 @@ export class DefaultToolRegistry implements ToolRegistry {
     // Initialize Web adapter
     switch (this.config.web?.type) {
       case 'searxng':
-        this.webAdapter = new SearXNGAdapter(
-          this.config.web.config as SearXNGConfig
-        );
+        this.webAdapter = new SearXNGAdapter(this.config.web.config as SearXNGConfig);
         break;
       case 'mock':
-        this.webAdapter = new MockWebAdapter(
-          this.config.web.config as MockWebConfig
-        );
+        this.webAdapter = new MockWebAdapter(this.config.web.config as MockWebConfig);
         break;
       case 'none':
       default:
@@ -107,18 +132,37 @@ export class DefaultToolRegistry implements ToolRegistry {
     }
 
     // Exec, Proof, Git adapters not yet implemented
-    this.execAdapter = null;
-    this.proofAdapter = null;
-    this.gitAdapter = null;
+    switch (this.config.exec?.type) {
+      case 'local':
+        this.execAdapter = new LocalExecAdapter(this.config.exec.config as LocalExecConfig);
+        break;
+      case 'none':
+      default:
+        this.execAdapter = null;
+    }
+
+    switch (this.config.proof?.type) {
+      case 'local':
+        this.proofAdapter = new LocalProofAdapter(this.config.proof.config as LocalProofConfig);
+        break;
+      case 'none':
+      default:
+        this.proofAdapter = null;
+    }
+
+    switch (this.config.git?.type) {
+      case 'local':
+        this.gitAdapter = new LocalGitAdapter(this.config.git.config as LocalGitConfig);
+        break;
+      case 'none':
+      default:
+        this.gitAdapter = null;
+    }
   }
 
   getLLMAdapter(): LLMAdapter | null {
     // If primary adapter unavailable and fallback enabled, use mock
-    if (
-      this.llmAdapter &&
-      !this.llmAdapter.isAvailable() &&
-      this.config.useMockFallback
-    ) {
+    if (this.llmAdapter && !this.llmAdapter.isAvailable() && this.config.useMockFallback) {
       return new MockLLMAdapter();
     }
     return this.llmAdapter;
@@ -126,11 +170,7 @@ export class DefaultToolRegistry implements ToolRegistry {
 
   getWebAdapter(): WebAdapter | null {
     // If primary adapter unavailable and fallback enabled, use mock
-    if (
-      this.webAdapter &&
-      !this.webAdapter.isAvailable() &&
-      this.config.useMockFallback
-    ) {
+    if (this.webAdapter && !this.webAdapter.isAvailable() && this.config.useMockFallback) {
       return new MockWebAdapter();
     }
     return this.webAdapter;
@@ -154,26 +194,62 @@ export class DefaultToolRegistry implements ToolRegistry {
         name: 'llm',
         available: this.llmAdapter?.isAvailable() ?? false,
         provider: this.llmAdapter?.getProvider(),
+        ...(this.llmAdapter && !this.llmAdapter.isAvailable()
+          ? { error: readUnavailableReason(this.llmAdapter, 'LLM adapter unavailable') }
+          : {}),
       },
       {
         name: 'web',
         available: this.webAdapter?.isAvailable() ?? false,
         provider: this.webAdapter?.getProvider(),
+        ...(this.webAdapter && !this.webAdapter.isAvailable()
+          ? { error: readUnavailableReason(this.webAdapter, 'Web adapter unavailable') }
+          : {}),
       },
       {
         name: 'exec',
-        available: false,
-        error: 'Not implemented',
+        available: this.execAdapter?.isAvailable() ?? false,
+        provider:
+          this.execAdapter && 'getProvider' in this.execAdapter
+            ? (this.execAdapter as any).getProvider?.()
+            : undefined,
+        ...(this.execAdapter
+          ? this.execAdapter.isAvailable()
+            ? {}
+            : {
+                error: readUnavailableReason(this.execAdapter, 'Exec adapter unavailable'),
+              }
+          : { error: 'Exec adapter disabled' }),
       },
       {
         name: 'proof',
-        available: false,
-        error: 'Not implemented',
+        available: this.proofAdapter?.isAvailable() ?? false,
+        provider:
+          this.proofAdapter && 'getProvider' in this.proofAdapter
+            ? (this.proofAdapter as any).getProvider?.()
+            : undefined,
+        ...(this.proofAdapter
+          ? this.proofAdapter.isAvailable()
+            ? {}
+            : {
+                error: readUnavailableReason(this.proofAdapter, 'Proof adapter unavailable'),
+              }
+          : { error: 'Proof adapter disabled' }),
       },
       {
         name: 'git',
-        available: false,
-        error: 'Not implemented',
+        available: this.gitAdapter?.isAvailable() ?? false,
+        provider:
+          this.gitAdapter && 'getProvider' in this.gitAdapter
+            ? (this.gitAdapter as any).getProvider?.()
+            : undefined,
+        ...(this.gitAdapter
+          ? this.gitAdapter.isAvailable()
+            ? {}
+            : {
+                error: readUnavailableReason(this.gitAdapter, 'Git adapter unavailable'),
+              }
+          : { error: 'Git adapter disabled' }),
       },
     ];
   }
@@ -205,6 +281,18 @@ export class DefaultToolRegistry implements ToolRegistry {
 
     if (this.webAdapter && 'refresh' in this.webAdapter) {
       refreshPromises.push((this.webAdapter as any).refresh());
+    }
+
+    if (this.execAdapter && 'refresh' in this.execAdapter) {
+      refreshPromises.push((this.execAdapter as any).refresh());
+    }
+
+    if (this.proofAdapter && 'refresh' in this.proofAdapter) {
+      refreshPromises.push((this.proofAdapter as any).refresh());
+    }
+
+    if (this.gitAdapter && 'refresh' in this.gitAdapter) {
+      refreshPromises.push((this.gitAdapter as any).refresh());
     }
 
     await Promise.all(refreshPromises);
@@ -240,6 +328,9 @@ export function createMockRegistry(): DefaultToolRegistry {
   return new DefaultToolRegistry({
     llm: { type: 'mock' },
     web: { type: 'mock' },
+    exec: { type: 'none' },
+    proof: { type: 'none' },
+    git: { type: 'none' },
     useMockFallback: false,
   });
 }
@@ -253,6 +344,9 @@ export function createProductionRegistry(
   return new DefaultToolRegistry({
     llm: { type: 'litellm' },
     web: { type: 'searxng' },
+    exec: { type: 'local' },
+    proof: { type: 'local' },
+    git: { type: 'local' },
     useMockFallback: false,
     ...config,
   });

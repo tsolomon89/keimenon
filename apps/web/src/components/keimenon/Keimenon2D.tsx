@@ -12,6 +12,7 @@ import {
 import { GraphNode, GraphEdge as BaseGraphEdge, getNodeRadius } from '@keimenon/graph';
 import { getNodeLabel, LabelableNode } from '@/lib/node-labels';
 import { buildEdgeStyleCache, ComputedEdgeStyle } from './edge-styles';
+import { buildLodPlan, type LodPlanStats } from '@/lib/graph-lod';
 
 // Extended GraphEdge with metadata for styling
 interface GraphEdge extends BaseGraphEdge {
@@ -27,6 +28,7 @@ interface Keimenon2DProps {
   onNodeDoubleClick?: (node: GraphNode) => void;
   onSelectionChange?: (selectedIds: string[]) => void;
   onEdgeHover?: (edge: GraphEdge | null, position: { x: number; y: number }) => void;
+  onLodStats?: (stats: LodPlanStats) => void;
 }
 
 export interface Keimenon2DHandle {
@@ -34,6 +36,7 @@ export interface Keimenon2DHandle {
   zoomOut: () => void;
   centerView: () => void;
   resetView: () => void;
+  optimizeView: () => void;
 }
 
 // ==================== Perf: Mutable state kept in refs, not React state ====================
@@ -174,6 +177,7 @@ export const Keimenon2D = memo(
         onNodeDoubleClick,
         onSelectionChange,
         onEdgeHover,
+        onLodStats,
       },
       ref
     ) => {
@@ -181,6 +185,9 @@ export const Keimenon2D = memo(
       const workerRef = useRef<Worker | null>(null);
       const offscreenRef = useRef<HTMLCanvasElement | null>(null);
       const rafRef = useRef<number>(0);
+      const optimizeLevelRef = useRef(0);
+      const visibleNodeIdsRef = useRef<Set<string>>(new Set());
+      const visibleEdgeIdsRef = useRef<Set<string>>(new Set());
 
       // ---- Mutable refs for hot-path state (no React re-renders) ----
       const transformRef = useRef<CanvasTransform>({ x: 0, y: 0, scale: 1 });
@@ -206,8 +213,15 @@ export const Keimenon2D = memo(
         onNodeDoubleClick,
         onSelectionChange,
         onEdgeHover,
+        onLodStats,
       });
-      callbacksRef.current = { onNodeClick, onNodeDoubleClick, onSelectionChange, onEdgeHover };
+      callbacksRef.current = {
+        onNodeClick,
+        onNodeDoubleClick,
+        onSelectionChange,
+        onEdgeHover,
+        onLodStats,
+      };
 
       // ---- Pre-computed caches (recomputed only when data changes) ----
 
@@ -225,7 +239,11 @@ export const Keimenon2D = memo(
       const rebuildGrid = useCallback(() => {
         const grid = gridRef.current;
         grid.clear();
+        const visibleNodeIds = visibleNodeIdsRef.current;
         for (const node of nodes) {
+          if (visibleNodeIds.size > 0 && !visibleNodeIds.has(node.id)) {
+            continue;
+          }
           grid.insert(node);
         }
       }, [nodes]);
@@ -242,11 +260,13 @@ export const Keimenon2D = memo(
           zoomIn: () => {
             const t = transformRef.current;
             t.scale = Math.min(t.scale * 1.2, 5);
+            optimizeLevelRef.current = 0;
             requestRedraw();
           },
           zoomOut: () => {
             const t = transformRef.current;
             t.scale = Math.max(t.scale / 1.2, 0.1);
+            optimizeLevelRef.current = 0;
             requestRedraw();
           },
           centerView: () => {
@@ -275,6 +295,7 @@ export const Keimenon2D = memo(
             t.x = width / 2 - ((minX + maxX) / 2) * scale;
             t.y = height / 2 - ((minY + maxY) / 2) * scale;
             t.scale = scale;
+            optimizeLevelRef.current = 0;
             requestRedraw();
           },
           resetView: () => {
@@ -282,6 +303,11 @@ export const Keimenon2D = memo(
             t.x = 0;
             t.y = 0;
             t.scale = 1;
+            optimizeLevelRef.current = 0;
+            requestRedraw();
+          },
+          optimizeView: () => {
+            optimizeLevelRef.current = Math.min(3, optimizeLevelRef.current + 1);
             requestRedraw();
           },
         }),
@@ -305,6 +331,22 @@ export const Keimenon2D = memo(
 
         const t = transformRef.current;
         const inter = interactionRef.current;
+        const selected = Array.from(inter.selectedNodes);
+        const focusNodeId = selected.length === 1 ? selected[0] : null;
+        const lodPlan = buildLodPlan({
+          nodes,
+          edges: edges as GraphEdge[],
+          zoom: t.scale,
+          focusNodeId,
+          optimizeLevel: optimizeLevelRef.current,
+          includeConnectors: false,
+        });
+        const renderNodes = lodPlan.visibleNodes;
+        const renderEdges = lodPlan.visibleEdges as GraphEdge[];
+
+        visibleNodeIdsRef.current = lodPlan.visibleNodeIds;
+        visibleEdgeIdsRef.current = lodPlan.visibleEdgeIds;
+        callbacksRef.current.onLodStats?.(lodPlan.stats);
 
         ctx.clearRect(0, 0, width, height);
         ctx.save();
@@ -327,7 +369,7 @@ export const Keimenon2D = memo(
             Array<{ edge: GraphEdge; style: ComputedEdgeStyle }>
           >();
 
-          for (const edge of edges) {
+          for (const edge of renderEdges) {
             const source = edge.source as GraphNode;
             const target = edge.target as GraphNode;
             if (
@@ -408,7 +450,7 @@ export const Keimenon2D = memo(
           ctx.textBaseline = 'top';
         }
 
-        for (const node of nodes) {
+        for (const node of renderNodes) {
           if (node.x === undefined || node.y === undefined) continue;
 
           // Viewport culling
@@ -567,9 +609,13 @@ export const Keimenon2D = memo(
       const findNodeAt = useCallback((graphX: number, graphY: number) => {
         const maxRadius = 50; // Largest node radius
         const candidates = gridRef.current.query(graphX, graphY, maxRadius);
+        const visibleNodeIds = visibleNodeIdsRef.current;
         // Reverse for top-node priority
         for (let i = candidates.length - 1; i >= 0; i--) {
           const node = candidates[i];
+          if (visibleNodeIds.size > 0 && !visibleNodeIds.has(node.id)) {
+            continue;
+          }
           if (node.x === undefined || node.y === undefined) continue;
           const dx = node.x - graphX;
           const dy = node.y - graphY;
@@ -598,8 +644,12 @@ export const Keimenon2D = memo(
         (graphX: number, graphY: number): GraphEdge | null => {
           const t = transformRef.current;
           const hitDistSq = (8 / t.scale) ** 2;
+          const visibleEdgeIds = visibleEdgeIdsRef.current;
 
           for (const edge of edges) {
+            if (visibleEdgeIds.size > 0 && !visibleEdgeIds.has(edge.id)) {
+              continue;
+            }
             const source = edge.source as GraphNode;
             const target = edge.target as GraphNode;
             if (
@@ -837,6 +887,7 @@ export const Keimenon2D = memo(
           t.x = x - (x - t.x) * (newScale / t.scale);
           t.y = y - (y - t.y) * (newScale / t.scale);
           t.scale = newScale;
+          optimizeLevelRef.current = 0;
           requestRedraw();
         };
 

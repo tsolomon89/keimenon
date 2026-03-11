@@ -81,6 +81,31 @@ export enum ImportJobStage {
   INDEXING = 'INDEXING',
 
   /**
+   * Queue async objective/archetype build task
+   */
+  OBJECTIVE_QUEUE = 'OBJECTIVE_QUEUE',
+
+  /**
+   * Extract candidate claims for objective build
+   */
+  OBJECTIVE_EXTRACT = 'OBJECTIVE_EXTRACT',
+
+  /**
+   * Verify extracted claims with tool adapters
+   */
+  OBJECTIVE_VERIFY = 'OBJECTIVE_VERIFY',
+
+  /**
+   * Publish objective/archetype nodes
+   */
+  OBJECTIVE_PUBLISH = 'OBJECTIVE_PUBLISH',
+
+  /**
+   * Objective/archetype async build finished
+   */
+  OBJECTIVE_DONE = 'OBJECTIVE_DONE',
+
+  /**
    * Import completed successfully
    */
   SUCCEEDED = 'SUCCEEDED',
@@ -113,6 +138,11 @@ export const IMPORT_STAGE_LABELS: Record<ImportJobStage, string> = {
   [ImportJobStage.APPLY_DECISIONS]: 'Applying decisions',
   [ImportJobStage.MATERIALIZE]: 'Saving to database',
   [ImportJobStage.INDEXING]: 'Building indexes',
+  [ImportJobStage.OBJECTIVE_QUEUE]: 'Queueing objective build',
+  [ImportJobStage.OBJECTIVE_EXTRACT]: 'Extracting objective claims',
+  [ImportJobStage.OBJECTIVE_VERIFY]: 'Verifying objective claims',
+  [ImportJobStage.OBJECTIVE_PUBLISH]: 'Publishing objective layer',
+  [ImportJobStage.OBJECTIVE_DONE]: 'Objective layer complete',
   [ImportJobStage.SUCCEEDED]: 'Completed',
   [ImportJobStage.FAILED]: 'Failed',
   [ImportJobStage.CANCELED]: 'Canceled',
@@ -137,6 +167,11 @@ export function getStageProgress(stage: ImportJobStage): number {
     ImportJobStage.APPLY_DECISIONS,
     ImportJobStage.MATERIALIZE,
     ImportJobStage.INDEXING,
+    ImportJobStage.OBJECTIVE_QUEUE,
+    ImportJobStage.OBJECTIVE_EXTRACT,
+    ImportJobStage.OBJECTIVE_VERIFY,
+    ImportJobStage.OBJECTIVE_PUBLISH,
+    ImportJobStage.OBJECTIVE_DONE,
     ImportJobStage.SUCCEEDED,
   ];
 

@@ -36,6 +36,18 @@ export type { LiteLLMConfig } from './llm/index.js';
 export { SearXNGAdapter } from './web/index.js';
 export type { SearXNGConfig } from './web/index.js';
 
+// Exec Adapters
+export { LocalExecAdapter } from './exec/index.js';
+export type { LocalExecConfig } from './exec/index.js';
+
+// Proof Adapters
+export { LocalProofAdapter } from './proof/index.js';
+export type { LocalProofConfig } from './proof/index.js';
+
+// Git Adapters
+export { LocalGitAdapter } from './git/index.js';
+export type { LocalGitConfig } from './git/index.js';
+
 // Mock Adapters
 export { MockLLMAdapter, MockWebAdapter } from './mocks/index.js';
 export type { MockLLMConfig, MockWebConfig } from './mocks/index.js';

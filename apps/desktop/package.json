@@ -6,18 +6,29 @@
   "private": true,
   "main": "dist/main.js",
   "scripts": {
+    "prebuild": "node ../../scripts/check-node-version.js",
     "build": "npm run build:dist",
     "postinstall": "electron-builder install-app-deps",
+    "predev": "node ../../scripts/check-node-version.js",
     "dev": "tsc -w",
+    "preelectron:dev": "node ../../scripts/check-node-version.js",
     "electron:dev": "tsc && electron .",
+    "prestart": "node ../../scripts/check-node-version.js",
     "start": "electron .",
     "clean": "rimraf dist out",
+    "pretype-check": "node ../../scripts/check-node-version.js",
     "type-check": "tsc --noEmit",
+    "premake": "node ../../scripts/check-node-version.js",
     "make": "npm run build:dist && npm run package -- --win",
     "lint": "eslint src --ext .ts",
+    "pretest": "node ../../scripts/check-node-version.js",
     "test": "vitest run",
     "build:dist": "tsc",
     "package": "electron-builder"
+  },
+  "engines": {
+    "node": "22.x",
+    "npm": ">=9.0.0"
   },
   "dependencies": {
     "@keimenon/api": "*",

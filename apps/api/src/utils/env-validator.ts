@@ -58,6 +58,14 @@ const ENV_VARS: EnvVarDefinition[] = [
     example: 'local',
   },
   {
+    name: 'RAW_STORAGE_MODE',
+    required: false,
+    default: 'local_only',
+    validator: (val) => val === 'local_only',
+    description: 'Raw content storage policy mode (must be local_only)',
+    example: 'local_only',
+  },
+  {
     name: 'LOCAL_DOCS_PATH',
     required: true,
     description: 'Path to local document storage',
@@ -83,6 +91,24 @@ const ENV_VARS: EnvVarDefinition[] = [
     validator: (val) => !isNaN(Number(val)) && Number(val) > 0,
     description: 'Maximum file upload size in MB',
     example: '10',
+  },
+  {
+    name: 'KILL_SWITCH_OBJECTIVE_ENQUEUE',
+    required: false,
+    default: '0',
+    validator: (val) =>
+      ['0', '1', 'true', 'false', 'on', 'off', 'yes', 'no'].includes(val.toLowerCase()),
+    description: 'Gate-E rollback switch for objective enqueue stage',
+    example: '0',
+  },
+  {
+    name: 'KILL_SWITCH_SIMILARITY_SEMANTIC_STAGE',
+    required: false,
+    default: '0',
+    validator: (val) =>
+      ['0', '1', 'true', 'false', 'on', 'off', 'yes', 'no'].includes(val.toLowerCase()),
+    description: 'Gate-E rollback switch for SimilarityEngineV2 semantic stage',
+    example: '0',
   },
 
   // Security
@@ -185,6 +211,15 @@ export function validateEnvironment(): EnvValidationResult {
       errors.push({
         variable: envVar.name,
         message: `STORAGE_MODE='${value}' is not supported. Only 'local' is allowed.`,
+        severity: 'error',
+      });
+      continue;
+    }
+
+    if (envVar.name === 'RAW_STORAGE_MODE' && value && value !== 'local_only') {
+      errors.push({
+        variable: envVar.name,
+        message: `RAW_STORAGE_MODE='${value}' is not supported. Only 'local_only' is allowed.`,
         severity: 'error',
       });
       continue;

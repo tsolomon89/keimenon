@@ -24,6 +24,9 @@ import { SQLiteUploadSessionRepository } from './modules/uploads/infrastructure/
 import { ImportArtifactJanitorService } from './services/ImportArtifactJanitorService';
 import { ImportOperationalRetentionService } from './services/ImportOperationalRetentionService';
 import { runCoreProcessVersionGate } from './services/core-process-version-gate';
+import { getAgentService } from './services/agent-service';
+import { initializeObjectiveBuildJobBridge } from './services/objective-build-job-bridge';
+import { assertRawStoragePolicy } from './utils/raw-storage-policy';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 validateAndFailFast();
@@ -41,6 +44,7 @@ let workerPool: WorkerPool | null = null;
 let uploadCleanupService: any = null;
 let importArtifactJanitor: ImportArtifactJanitorService | null = null;
 let importRetentionService: ImportOperationalRetentionService | null = null;
+let stopObjectiveBuildBridge: (() => void) | null = null;
 
 export interface ServerConfig {
   port?: number;
@@ -114,6 +118,16 @@ async function gracefulShutdown(signal: string) {
     }
   }
 
+  if (stopObjectiveBuildBridge) {
+    try {
+      stopObjectiveBuildBridge();
+      stopObjectiveBuildBridge = null;
+      console.log('Objective build bridge stopped');
+    } catch (error) {
+      console.error('Error stopping objective build bridge:', error);
+    }
+  }
+
   try {
     if (databaseClient) {
       await databaseClient.close();
@@ -136,6 +150,13 @@ async function start(config?: ServerConfig) {
     if (config?.localDocsPath) process.env.LOCAL_DOCS_PATH = config.localDocsPath;
     if (config?.sqlitePath) process.env.SQLITE_PATH = config.sqlitePath;
     if (config?.storagePath) process.env.STORAGE_PATH = config.storagePath;
+
+    assertRawStoragePolicy({
+      rawStorageMode: process.env.RAW_STORAGE_MODE,
+      localDocsPath: process.env.LOCAL_DOCS_PATH,
+      sqlitePath: process.env.SQLITE_PATH,
+      storagePath: process.env.STORAGE_PATH,
+    });
 
     const homeDir = process.env.HOME || process.env.USERPROFILE || '~';
     const localDocsPath =
@@ -204,6 +225,17 @@ async function start(config?: ServerConfig) {
     if (sseBroadcaster) {
       sseBroadcaster.setJobRepository(jobRepository);
     }
+
+    if (!sseBroadcaster) {
+      throw new Error('SSE broadcaster failed to initialize');
+    }
+
+    const agentService = getAgentService();
+    stopObjectiveBuildBridge = initializeObjectiveBuildJobBridge(
+      agentService,
+      jobRepository,
+      sseBroadcaster
+    );
 
     workerPool = new WorkerPool(
       jobRepository,

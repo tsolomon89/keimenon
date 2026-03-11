@@ -187,6 +187,8 @@ export function DuplicateTreeView({
           return <CheckCircle2 className="w-4 h-4 text-blue-500" />;
         case 'merge':
           return <CheckCircle2 className="w-4 h-4 text-purple-500" />;
+        case 'sequester':
+          return <CheckCircle2 className="w-4 h-4 text-amber-500" />;
         default:
           return <XCircle className="w-4 h-4 text-red-500" />;
       }

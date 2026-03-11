@@ -13,7 +13,22 @@ import {
   type KeywordScore,
   type Message,
 } from './keyword-extractor';
-import type { GroupingConfig } from '@keimenon/types';
+
+export interface AutogroupRuntimeConfig {
+  mode: 'automatic' | 'manual' | 'hybrid';
+  automatic?: {
+    targetGroupCount?: number;
+    createCatchAll?: boolean;
+    minGroupSize?: number;
+    algorithm?: 'keyword' | 'tfidf' | 'embedding';
+  };
+  manual?: Array<{
+    name: string;
+    keywords: string[];
+    color?: string;
+    icon?: string;
+  }>;
+}
 
 export interface Group {
   id: string;
@@ -45,10 +60,12 @@ export class EnhancedAutogroupService {
   /**
    * Auto-group messages based on keyword clustering
    */
-  async autoGroupMessages(messages: Message[], config: GroupingConfig): Promise<AutoGroupResult> {
+  async autoGroupMessages(
+    messages: Message[],
+    config: AutogroupRuntimeConfig
+  ): Promise<AutoGroupResult> {
     const groups: Group[] = [];
-    const mode: GroupingConfig['mode'] =
-      config.mode === 'manual' || config.mode === 'hybrid' ? config.mode : 'auto';
+    const mode: AutogroupRuntimeConfig['mode'] = config.mode;
     const useManualFirstPass = mode === 'manual' || mode === 'hybrid';
 
     // Step 1 (manual/hybrid only): Create manual groups first (manual-priority behavior)
@@ -98,7 +115,7 @@ export class EnhancedAutogroupService {
     const cooccurrence = buildCooccurrenceMatrix(unassignedMessages, topKeywords);
 
     // Step 4: Cluster keywords
-    const targetCount = config.auto?.targetGroupCount || 25;
+    const targetCount = config.automatic?.targetGroupCount || 25;
     const keywordClusters = clusterKeywords(cooccurrence, targetCount);
 
     // Step 5: Assign messages to clusters
@@ -107,7 +124,7 @@ export class EnhancedAutogroupService {
     // Step 6: Create auto-generated groups
     let createdCount = 0;
     for (const [clusterName, clusteredMessages] of messageAssignments) {
-      const minGroupSize = config.auto?.minGroupSize || 2;
+      const minGroupSize = config.automatic?.minGroupSize || 2;
 
       if (clusteredMessages.length >= minGroupSize) {
         const keywords = keywordClusters.get(clusterName) || [clusterName];
@@ -129,7 +146,7 @@ export class EnhancedAutogroupService {
     }
 
     // Step 7: Create catch-all group for unmatched messages
-    const createCatchAll = config.auto?.createCatchAll !== false;
+    const createCatchAll = config.automatic?.createCatchAll !== false;
 
     if (createCatchAll) {
       const allAssigned = new Set(groups.flatMap((g) => g.sources));
@@ -213,17 +230,17 @@ export class EnhancedAutogroupService {
    */
   async recomputeGroups(
     messages: Message[],
-    config: GroupingConfig,
+    config: AutogroupRuntimeConfig,
     newTargetCount: number
   ): Promise<AutoGroupResult> {
     // Create new config with updated target
-    const newConfig: GroupingConfig = {
+    const newConfig: AutogroupRuntimeConfig = {
       ...config,
-      auto: {
+      automatic: {
         targetGroupCount: newTargetCount,
-        createCatchAll: config.auto?.createCatchAll ?? true,
-        minGroupSize: config.auto?.minGroupSize ?? 2,
-        algorithm: config.auto?.algorithm ?? 'tfidf',
+        createCatchAll: config.automatic?.createCatchAll ?? true,
+        minGroupSize: config.automatic?.minGroupSize ?? 2,
+        algorithm: config.automatic?.algorithm ?? 'tfidf',
       },
     };
 

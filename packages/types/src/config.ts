@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  normalizeImportOptions,
+  ImportConfigSchema,
+  type NormalizedImportOptions,
+} from './import-contract';
 
 /**
  * Storage mode configuration
@@ -154,6 +159,128 @@ export const ImportConfigurationSchema = z.object({
 
 export type ImportConfiguration = z.infer<typeof ImportConfigurationSchema>;
 
+export const StoredImportDefaultsSchema = z.union([ImportConfigSchema, ImportConfigurationSchema]);
+
+function toRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  return value as Record<string, unknown>;
+}
+
+function toBoolean(value: unknown, fallback: boolean): boolean {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  return fallback;
+}
+
+function toNumber(value: unknown, fallback: number): number {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function isLegacyImportDefaults(value: unknown): boolean {
+  const record = toRecord(value);
+  return (
+    'grouping' in record ||
+    'sources' in record ||
+    'code' in record ||
+    'duplicates' in record ||
+    'privacy' in record
+  );
+}
+
+export function normalizeStoredImportDefaults(input?: unknown): NormalizedImportOptions {
+  if (typeof input === 'undefined' || input === null) {
+    return normalizeImportOptions();
+  }
+
+  if (!isLegacyImportDefaults(input)) {
+    return normalizeImportOptions(input);
+  }
+
+  const legacy = toRecord(input);
+  const grouping = toRecord(legacy.grouping);
+  const sources = toRecord(legacy.sources);
+  const roleFilter = toRecord(sources.roleFilter);
+  const code = toRecord(legacy.code);
+  const duplicates = toRecord(legacy.duplicates);
+  const legacyManual = Array.isArray(grouping.manual) ? grouping.manual : [];
+
+  const modeRaw = String(grouping.mode || 'auto').toLowerCase();
+  const processingMode: 'automatic' | 'manual' | 'hybrid' =
+    modeRaw === 'manual' ? 'manual' : modeRaw === 'hybrid' ? 'hybrid' : 'automatic';
+
+  const includeUser = toBoolean(roleFilter.user, true);
+  const includeAssistant = toBoolean(roleFilter.ai, false);
+  const branches = toBoolean(roleFilter.separate, true) ? 'separate' : 'merged';
+
+  const minLengthUser = toNumber(sources.minLengthUser, 400);
+  const minLengthAssistant = toNumber(sources.minLengthAI, 400);
+  const minMessageLength = Math.max(0, Math.min(minLengthUser, minLengthAssistant));
+
+  const normalizedInput = {
+    extraction: {
+      includeUser,
+      includeAssistant,
+    },
+    processingMode,
+    branches,
+    minMessageLength,
+    groups:
+      processingMode === 'manual' || processingMode === 'hybrid'
+        ? legacyManual
+            .map((entry, index) => {
+              const record = toRecord(entry);
+              const name = String(record.name || '').trim();
+              const keywords = Array.isArray(record.keywords)
+                ? record.keywords.map((keyword) => String(keyword))
+                : [];
+              if (!name) {
+                return null;
+              }
+              return {
+                id: String(record.id || `legacy_group_${index + 1}`),
+                name,
+                keywords,
+              };
+            })
+            .filter((group): group is { id: string; name: string; keywords: string[] } => !!group)
+        : [],
+    extractCode: toBoolean(code.extract, true),
+    codeSettings: {
+      minLength: toNumber(code.minLength, 50),
+      languages: [],
+      groupBy: 'language' as const,
+      deduplicate: toBoolean(code.deduplicate, true),
+      sourceHandling: toBoolean(code.removeFromSource, true)
+        ? ('extract_and_remove' as const)
+        : ('keep_inline' as const),
+    },
+    duplicateDetection: {
+      enabled: toBoolean(duplicates.enabled, true),
+      exactMatch: toBoolean(duplicates.detectExact, true),
+      similarityThreshold: toNumber(duplicates.nearThreshold, 0.85),
+      crossConversation: String(duplicates.level || 'message') !== 'conversation',
+      algorithm: toBoolean(duplicates.detectSemantic, false)
+        ? ('embedding' as const)
+        : ('jaccard' as const),
+      normalizeTokens: true,
+      minTokenOverlap: 5,
+      lengthRatioTolerance: 0.2,
+      ignoreWhitespace: true,
+      ignoreCase: false,
+      ignoreTimestamp: true,
+      requireReview: toBoolean(duplicates.createReviewFolders, true),
+      autoApproveExact: false,
+      autoMergeThreshold: 0.95,
+    },
+  };
+
+  return normalizeImportOptions(normalizedInput);
+}
+
 /**
  * Application configuration (stored in ~/.keimenon/config.json)
  */
@@ -175,7 +302,7 @@ export const AppConfigSchema = z.object({
   }),
 
   // Default import settings
-  defaults: ImportConfigurationSchema.optional(),
+  defaults: StoredImportDefaultsSchema.optional(),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;
@@ -236,10 +363,4 @@ export const DEFAULT_PRIVACY_CONFIG: PrivacyConfig = {
   apiKey: null,
 };
 
-export const DEFAULT_IMPORT_CONFIGURATION: ImportConfiguration = {
-  grouping: DEFAULT_GROUPING_CONFIG,
-  sources: DEFAULT_SOURCE_CONFIG,
-  code: DEFAULT_CODE_CONFIG,
-  duplicates: DEFAULT_DUPLICATE_CONFIG,
-  privacy: DEFAULT_PRIVACY_CONFIG,
-};
+export const DEFAULT_IMPORT_CONFIGURATION: NormalizedImportOptions = normalizeImportOptions();

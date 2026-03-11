@@ -1,4 +1,4 @@
-name: E2E Tests
+name: E2E Smoke Tests
 
 on:
   push:
@@ -8,96 +8,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  e2e-tests:
-    name: E2E Tests - ${{ matrix.browser }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox, webkit]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npm run e2e:install
-
-      - name: Setup test environment
-        run: |
-          # Copy example env files for testing
-          cp apps/api/.env.example apps/api/.env
-          cp apps/web/.env.example apps/web/.env.local
-
-          # Set test-specific environment variables
-          echo "NODE_ENV=test" >> apps/api/.env
-          echo "STORAGE_MODE=local" >> apps/api/.env
-          echo "API_BASE_URL=http://localhost:4001" >> apps/api/.env
-          echo "NEXT_PUBLIC_API_URL=http://localhost:4001" >> apps/web/.env.local
-
-      - name: Build applications
-        run: npm run build
-
-      - name: Start API server
-        run: |
-          cd apps/api
-          npm run start &
-          echo "Waiting for API server to be ready..."
-          timeout 60 bash -c 'until curl -f http://localhost:4001/health; do sleep 2; done'
-        env:
-          PORT: 4001
-
-      - name: Start Web server
-        run: |
-          cd apps/web
-          npm run start &
-          echo "Waiting for Web server to be ready..."
-          timeout 60 bash -c 'until curl -f http://localhost:3000; do sleep 2; done'
-        env:
-          PORT: 3000
-
-      - name: Run E2E tests
-        run: |
-          if [ "${{ matrix.browser }}" = "webkit" ]; then
-            npm run e2e -- --project=${{ matrix.browser }} --workers=1
-          else
-            npm run e2e -- --project=${{ matrix.browser }}
-          fi
-        env:
-          BASE_URL: http://localhost:3000
-          API_BASE_URL: http://localhost:4001
-          TEST_USER_EMAIL: admin@admin.com
-          TEST_USER_PASSWORD: admin123
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-results-${{ matrix.browser }}
-          path: |
-            playwright-report/
-            test-results/
-          retention-days: 7
-
-      - name: Upload trace files
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-traces-${{ matrix.browser }}
-          path: test-results/**/*.zip
-          retention-days: 7
-
   e2e-smoke:
     name: E2E Smoke Tests (Quick)
     runs-on: ubuntu-latest

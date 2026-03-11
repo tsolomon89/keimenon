@@ -5,8 +5,10 @@
 
 import { Router, Request, Response } from 'express';
 import { DatabaseFactory } from '@keimenon/db';
-import { EnhancedAutogroupService } from '../services/autogroup-enhanced';
-import type { GroupingConfig } from '@keimenon/types';
+import {
+  EnhancedAutogroupService,
+  type AutogroupRuntimeConfig,
+} from '../services/autogroup-enhanced';
 import path from 'path';
 import os from 'os';
 
@@ -21,6 +23,46 @@ function getDatabasePath(): string {
   return path.join(os.homedir(), '.keimenon', 'graph.db');
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  return value as Record<string, unknown>;
+}
+
+function asNumber(value: unknown, fallback: number): number {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function normalizeGroupingConfig(input: unknown): AutogroupRuntimeConfig {
+  const record = asRecord(input);
+  const modeInput = String(record.mode || 'automatic').toLowerCase();
+  const mode: AutogroupRuntimeConfig['mode'] =
+    modeInput === 'manual' ? 'manual' : modeInput === 'hybrid' ? 'hybrid' : 'automatic';
+
+  const automaticRaw = asRecord(record.automatic ?? record.auto);
+  const manualRaw = Array.isArray(record.manual) ? record.manual : [];
+
+  return {
+    mode,
+    automatic: {
+      targetGroupCount: asNumber(automaticRaw.targetGroupCount, 25),
+      createCatchAll:
+        typeof automaticRaw.createCatchAll === 'boolean' ? automaticRaw.createCatchAll : true,
+      minGroupSize: asNumber(automaticRaw.minGroupSize, 2),
+      algorithm: (automaticRaw.algorithm as 'keyword' | 'tfidf' | 'embedding') || 'tfidf',
+    },
+    manual: manualRaw
+      .map((item) => asRecord(item))
+      .filter((item) => typeof item.name === 'string' && Array.isArray(item.keywords))
+      .map((item) => ({
+        name: String(item.name),
+        keywords: (item.keywords as unknown[]).map((keyword) => String(keyword)),
+      })),
+  };
+}
+
 /**
  * POST /api/v1/groups/auto
  * Auto-generate groups from messages
@@ -33,17 +75,7 @@ router.post('/auto', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'messages array is required' });
     }
 
-    // Use default config if not provided
-    const groupingConfig: GroupingConfig = config || {
-      mode: 'auto',
-      auto: {
-        targetGroupCount: 25,
-        createCatchAll: true,
-        minGroupSize: 2,
-        algorithm: 'tfidf',
-      },
-      manual: [],
-    };
+    const groupingConfig = normalizeGroupingConfig(config);
 
     const autogroupService = new EnhancedAutogroupService();
     const result = await autogroupService.autoGroupMessages(messages, groupingConfig);
@@ -109,7 +141,11 @@ router.post('/recompute', async (req: Request, res: Response) => {
     }
 
     const autogroupService = new EnhancedAutogroupService();
-    const result = await autogroupService.recomputeGroups(messages, config, newTargetCount);
+    const result = await autogroupService.recomputeGroups(
+      messages,
+      normalizeGroupingConfig(config),
+      newTargetCount
+    );
 
     return res.json({
       success: true,

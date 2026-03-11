@@ -16,8 +16,8 @@
 
 import { Router, Request, Response } from 'express';
 import { AuthService } from '../../../services/auth.service';
-import { requireAuth } from '../../../middleware/auth.middleware';
 import { SSEBroadcaster } from './SSEBroadcaster';
+import { appLogger } from '../../../utils/logger';
 
 /**
  * Factory function to create stream routes
@@ -95,7 +95,9 @@ export function createStreamRoutes(authService: AuthService, broadcaster: SSEBro
       // Add connection to broadcaster
       broadcaster.addConnection(targetAccountId, res);
 
-      console.log(`📡 SSE client connected for account ${targetAccountId}`);
+      appLogger.debug('sse.stream.connected', {
+        accountId: targetAccountId,
+      });
 
       // Connection will be automatically removed when client disconnects
       // (handled by broadcaster's close event listener)

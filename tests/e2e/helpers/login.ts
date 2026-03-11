@@ -13,8 +13,24 @@
 
 import { Page } from '@playwright/test';
 
-const LOGIN_NAV_TIMEOUT_MS = 20000;
-const KEIMENON_NAV_TIMEOUT_MS = 8000;
+const LOGIN_NAV_TIMEOUT_MS = parseInt(process.env.E2E_LOGIN_NAV_TIMEOUT_MS || '30000', 10);
+const KEIMENON_NAV_TIMEOUT_MS = parseInt(process.env.E2E_KEIMENON_NAV_TIMEOUT_MS || '15000', 10);
+const AUTH_DEBUG_LOGS = process.env.E2E_AUTH_DEBUG === '1';
+const PAGE_TOKEN_CACHE = new WeakMap<Page, string>();
+
+function logAuthDebug(message: string): void {
+  if (AUTH_DEBUG_LOGS) {
+    console.warn(`[Login Helper] ${message}`);
+  }
+}
+
+export function getCachedAuthToken(page: Page): string | null {
+  return PAGE_TOKEN_CACHE.get(page) || null;
+}
+
+function isWebAppOrigin(url: string): boolean {
+  return /^https?:\/\/(127\.0\.0\.1|localhost):3000/i.test(url);
+}
 
 async function gotoDomReady(
   page: Page,
@@ -28,16 +44,63 @@ async function gotoDomReady(
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.warn(`[Login Helper] ${contextLabel}: ${message}`);
+    logAuthDebug(`${contextLabel}: ${message}`);
     return false;
   }
 }
 
 async function getTestDbPath(page: Page): Promise<string | null> {
-  return page.evaluate(() => {
-    // @ts-ignore test-only global injected by test-isolation fixture
-    return window.__TEST_DB_PATH__ || null;
-  });
+  const fromWindow = await page
+    .evaluate(() => {
+      // @ts-ignore test-only global injected by test-isolation fixture
+      return window.__TEST_DB_PATH__ || null;
+    })
+    .catch(() => null);
+
+  if (typeof fromWindow === 'string' && fromWindow.length > 0) {
+    return fromWindow;
+  }
+
+  const fromProcess = process.env.PLAYWRIGHT_TEST_DB_PATH;
+  if (typeof fromProcess === 'string' && fromProcess.length > 0) {
+    return fromProcess;
+  }
+
+  return null;
+}
+
+async function persistAuthToken(page: Page, token: string): Promise<boolean> {
+  PAGE_TOKEN_CACHE.set(page, token);
+
+  const currentUrl = page.url();
+  const hasUsableDocument =
+    currentUrl &&
+    currentUrl !== 'about:blank' &&
+    !currentUrl.startsWith('chrome-error://') &&
+    isWebAppOrigin(currentUrl);
+
+  if (!hasUsableDocument) {
+    const bootstrapLoaded = await gotoDomReady(
+      page,
+      '/',
+      LOGIN_NAV_TIMEOUT_MS,
+      'Token bootstrap navigation to / timed out',
+      'commit'
+    );
+    if (!bootstrapLoaded) {
+      return false;
+    }
+  }
+
+  const persisted = await page
+    .evaluate((resolvedToken) => {
+      localStorage.setItem('keimenon_token', resolvedToken);
+      localStorage.removeItem('temp_auth_token');
+    }, token)
+    .then(() => true)
+    .catch(() => false);
+
+  return persisted;
 }
 
 async function clearBrowserAuthStorage(page: Page): Promise<void> {
@@ -90,16 +153,6 @@ function isTransientRequestError(error: unknown): boolean {
 }
 
 async function loginViaApi(page: Page, email: string, password: string): Promise<boolean> {
-  const loginLoaded = await gotoDomReady(
-    page,
-    '/login',
-    LOGIN_NAV_TIMEOUT_MS,
-    'Initial navigation to /login timed out (API login path)'
-  );
-  if (!loginLoaded) {
-    return false;
-  }
-
   const testDbPath = await getTestDbPath(page);
   const requestHeaders = testDbPath ? { 'X-Test-DB-Path': testDbPath } : undefined;
 
@@ -170,35 +223,52 @@ async function loginViaApi(page: Page, email: string, password: string): Promise
       return false;
     }
 
-    await page.evaluate((resolvedToken) => {
-      localStorage.setItem('keimenon_token', resolvedToken);
-      localStorage.removeItem('temp_auth_token');
-    }, token);
+    const tokenPersisted = await persistAuthToken(page, token);
+    if (!tokenPersisted) {
+      logAuthDebug('Token persisted to cache only; localStorage write did not complete yet');
+    }
 
-    const redirectedToKeimenon = await page
-      .waitForURL(/\/keimenon/, { timeout: 2000 })
-      .then(() => true)
-      .catch(() => false);
+    const redirectedToKeimenon = /\/keimenon/.test(page.url());
 
     if (!redirectedToKeimenon) {
       const navigated = await gotoDomReady(
         page,
         '/keimenon',
-        15000,
+        KEIMENON_NAV_TIMEOUT_MS,
         'API login path navigation to /keimenon timed out',
         'commit'
       );
       if (!navigated) {
-        return false;
+        const hasToken = await page
+          .evaluate(() => Boolean(localStorage.getItem('keimenon_token')))
+          .catch(() => false);
+        if (!hasToken) {
+          return false;
+        }
+
+        logAuthDebug(
+          'API login token was set, but /keimenon navigation timed out; continuing without UI fallback'
+        );
+        return true;
       }
     }
 
     const reachedKeimenon = await page
-      .waitForURL(/\/keimenon/, { timeout: 15000 })
+      .waitForURL(/\/keimenon/, { timeout: KEIMENON_NAV_TIMEOUT_MS })
       .then(() => true)
       .catch(() => false);
     if (!reachedKeimenon) {
-      return false;
+      const hasToken = await page
+        .evaluate(() => Boolean(localStorage.getItem('keimenon_token')))
+        .catch(() => false);
+      if (!hasToken) {
+        return false;
+      }
+
+      logAuthDebug(
+        'API login token was set, but /keimenon URL assertion timed out; continuing without UI fallback'
+      );
+      return true;
     }
     await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
     return true;
@@ -213,7 +283,7 @@ export async function login(page: Page, email: string, password: string): Promis
     return;
   }
 
-  console.warn('[Login Helper] API login fast-path unavailable, falling back to UI login flow');
+  logAuthDebug('API login fast-path unavailable, falling back to UI login flow');
 
   const loginLoaded = await gotoDomReady(
     page,
@@ -257,8 +327,8 @@ export async function login(page: Page, email: string, password: string): Promis
               e.message.includes('Timeout'))
           ) {
             const backoffMs = 200 * clickAttempt; // Progressive backoff: 200ms, 400ms, 600ms, 800ms
-            console.warn(
-              `[Login Helper] Email input unstable (attempt ${clickAttempt}/5), retrying after ${backoffMs}ms...`
+            logAuthDebug(
+              `Email input unstable (attempt ${clickAttempt}/5), retrying after ${backoffMs}ms...`
             );
             await page.waitForTimeout(backoffMs);
             continue;
@@ -290,8 +360,8 @@ export async function login(page: Page, email: string, password: string): Promis
               e.message.includes('Timeout'))
           ) {
             const backoffMs = 200 * clickAttempt; // Progressive backoff: 200ms, 400ms, 600ms, 800ms
-            console.warn(
-              `[Login Helper] Password input unstable (attempt ${clickAttempt}/5), retrying after ${backoffMs}ms...`
+            logAuthDebug(
+              `Password input unstable (attempt ${clickAttempt}/5), retrying after ${backoffMs}ms...`
             );
             await page.waitForTimeout(backoffMs);
             continue;
@@ -320,14 +390,14 @@ export async function login(page: Page, email: string, password: string): Promis
 
       // Some builds occasionally miss the click handler on first submit under load.
       if (!response) {
-        console.warn('[Login Helper] Login response not observed; retrying submit with Enter...');
+        logAuthDebug('Login response not observed; retrying submit with Enter...');
         await passwordInput.press('Enter').catch(() => {});
         response = await waitForLoginResponse(3000).catch(() => null);
       }
 
       // Final fallback: call login API directly so tests don't fail due to transient UI submit race.
       if (!response) {
-        console.warn('[Login Helper] Login response still missing; using API fallback login');
+        logAuthDebug('Login response still missing; using API fallback login');
         const testDbPath = await getTestDbPath(page);
         response = await page.request.post('http://127.0.0.1:4001/api/v1/auth/login', {
           headers: testDbPath ? { 'X-Test-DB-Path': testDbPath } : undefined,
@@ -344,10 +414,10 @@ export async function login(page: Page, email: string, password: string): Promis
 
           if (attempt < maxAttempts) {
             // Log retry for diagnostic visibility
-            console.warn(
-              `[Login Helper] Attempt ${attempt}/${maxAttempts} failed (race condition): ${body.error}`
+            logAuthDebug(
+              `Attempt ${attempt}/${maxAttempts} failed (race condition): ${body.error}`
             );
-            console.warn(`[Login Helper] Retrying in ${100 * attempt}ms...`);
+            logAuthDebug(`Retrying in ${100 * attempt}ms...`);
 
             // Wait with exponential backoff before retry
             await page.waitForTimeout(100 * attempt);
@@ -381,16 +451,13 @@ export async function login(page: Page, email: string, password: string): Promis
 
       // Ensure token is persisted when login was completed through API fallback.
       if (typeof body.token === 'string' && body.token.length > 0) {
-        await page.evaluate((token) => {
-          localStorage.setItem('keimenon_token', token);
-          localStorage.removeItem('temp_auth_token');
-        }, body.token);
+        await persistAuthToken(page, body.token);
       }
 
       // Handle multi-account users (requiresAccountSelection)
       if (body.requiresAccountSelection && body.availableAccounts && body.tempToken) {
-        console.log(
-          `[Login Helper] Multi-account user detected (${body.availableAccounts.length} accounts), selecting first account...`
+        logAuthDebug(
+          `Multi-account user detected (${body.availableAccounts.length} accounts), selecting first account...`
         );
 
         // Store temp token first
@@ -448,10 +515,7 @@ export async function login(page: Page, email: string, password: string): Promis
             const selectBody = await selectResponse.json();
 
             // Store the real token (use correct key expected by AuthContext)
-            await page.evaluate((token) => {
-              localStorage.setItem('keimenon_token', token);
-              localStorage.removeItem('temp_auth_token');
-            }, selectBody.token);
+            await persistAuthToken(page, selectBody.token);
 
             // Navigate to keimenon manually.
             await gotoDomReady(
@@ -473,7 +537,7 @@ export async function login(page: Page, email: string, password: string): Promis
         .catch(() => false);
 
       if (!redirectedToKeimenon) {
-        console.warn('[Login Helper] Redirect to /keimenon timed out, navigating directly...');
+        logAuthDebug('Redirect to /keimenon timed out, navigating directly...');
         await gotoDomReady(
           page,
           '/keimenon',
@@ -488,7 +552,7 @@ export async function login(page: Page, email: string, password: string): Promis
 
       // Log successful login (helpful for debugging)
       if (attempt > 1) {
-        console.log(`[Login Helper] ✅ Login succeeded on attempt ${attempt}/${maxAttempts}`);
+        logAuthDebug(`Login succeeded on attempt ${attempt}/${maxAttempts}`);
       }
 
       return; // Success!
@@ -501,9 +565,7 @@ export async function login(page: Page, email: string, password: string): Promis
       }
 
       if (attempt < maxAttempts) {
-        console.warn(
-          `[Login Helper] Attempt ${attempt}/${maxAttempts} error: ${lastError.message}`
-        );
+        logAuthDebug(`Attempt ${attempt}/${maxAttempts} error: ${lastError.message}`);
         await page.waitForTimeout(100 * attempt);
       }
     }

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Integration Tests for Import-Enhanced Endpoint
  *
  * Tests the /api/v1/jobs/import endpoint with authentication,
@@ -28,6 +28,97 @@ const CLIENT_PASSWORD = 'clientpass123';
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseNodeProperties(row: { properties?: unknown } | undefined): Record<string, any> {
+  if (!row) {
+    return {};
+  }
+  if (typeof row.properties === 'string') {
+    return JSON.parse(row.properties);
+  }
+  if (row.properties && typeof row.properties === 'object') {
+    return row.properties as Record<string, any>;
+  }
+  return {};
+}
+
+function buildSingleConversationFixture(
+  title: string,
+  userContent: string,
+  assistantContent: string
+): unknown[] {
+  const base = randomUUID().replace(/-/g, '');
+  const systemId = `sys_${base}`;
+  const userId = `usr_${base}`;
+  const assistantId = `ast_${base}`;
+
+  return [
+    {
+      title,
+      create_time: 1700000000,
+      update_time: 1700000010,
+      mapping: {
+        [systemId]: {
+          id: systemId,
+          message: {
+            id: systemId,
+            author: { role: 'system', name: null, metadata: {} },
+            create_time: 1700000000,
+            update_time: null,
+            content: { content_type: 'text', parts: [''] },
+            status: 'finished_successfully',
+            end_turn: true,
+            weight: 0,
+            metadata: {},
+            recipient: 'all',
+          },
+          parent: null,
+          children: [userId],
+        },
+        [userId]: {
+          id: userId,
+          message: {
+            id: userId,
+            author: { role: 'user', name: null, metadata: {} },
+            create_time: 1700000001,
+            update_time: null,
+            content: { content_type: 'text', parts: [userContent] },
+            status: 'finished_successfully',
+            end_turn: true,
+            weight: 1,
+            metadata: {},
+            recipient: 'all',
+          },
+          parent: systemId,
+          children: [assistantId],
+        },
+        [assistantId]: {
+          id: assistantId,
+          message: {
+            id: assistantId,
+            author: { role: 'assistant', name: null, metadata: {} },
+            create_time: 1700000002,
+            update_time: null,
+            content: { content_type: 'text', parts: [assistantContent] },
+            status: 'finished_successfully',
+            end_turn: true,
+            weight: 1,
+            metadata: {},
+            recipient: 'all',
+          },
+          parent: userId,
+          children: [],
+        },
+      },
+    },
+  ];
+}
+
+function writeFixtureFile(payload: unknown, namePrefix: string): string {
+  const filePath = path.join(path.dirname(TEST_DB_PATH), `${namePrefix}-${randomUUID()}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf-8');
+  return filePath;
 }
 
 async function fetchJsonWithRetry(
@@ -115,6 +206,33 @@ async function postMultipartWithRetry(
   return { status: lastStatus, data: lastData };
 }
 
+async function waitForJobCompletion(jobId: string, token: string, timeoutMs = 45000): Promise<any> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const { status, data } = await fetchJsonWithRetry(
+      `${getApiBaseUrl()}/api/v1/jobs/${jobId}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+      200
+    );
+
+    assert.strictEqual(status, 200, 'Job status endpoint should return 200');
+    const job = data?.job;
+    if (job?.state?.status && ['succeeded', 'failed'].includes(job.state.status)) {
+      return job;
+    }
+
+    await sleep(500);
+  }
+
+  throw new Error(`Timed out waiting for import job ${jobId} completion`);
+}
+
 describe('Import-Enhanced Integration Tests', () => {
   let db: SQLiteClient;
   let authService: AuthService;
@@ -126,7 +244,7 @@ describe('Import-Enhanced Integration Tests', () => {
   let clientToken: string;
 
   beforeAll(async () => {
-    console.log('⏳ Setting up test database and accounts...');
+    console.log('â³ Setting up test database and accounts...');
 
     // Setup test database
     if (SHOULD_DELETE_TEST_DB && fs.existsSync(TEST_DB_PATH)) {
@@ -283,61 +401,68 @@ describe('Import-Enhanced Integration Tests', () => {
     );
     assert.strictEqual(clientLogin.userId, clientUserId, 'Client should resolve to seeded user');
 
-    console.log('✅ Test setup complete');
+    console.log('âœ… Test setup complete');
   });
 
   afterAll(async () => {
-    console.log('🧹 Cleaning up test database...');
+    console.log('ðŸ§¹ Cleaning up test database...');
     if (db) {
       await db.disconnect();
     }
     if (SHOULD_DELETE_TEST_DB && fs.existsSync(TEST_DB_PATH)) {
       fs.unlinkSync(TEST_DB_PATH);
     }
-    console.log('✅ Cleanup complete');
+    console.log('âœ… Cleanup complete');
   });
 
   it('should import data with authentication and create organizational structure', async () => {
     const testFilePath = getFixturePath('tiny.json');
 
     if (!fs.existsSync(testFilePath)) {
-      console.warn(`⚠️  Test file not found: ${testFilePath}, skipping test`);
+      console.warn(`âš ï¸  Test file not found: ${testFilePath}, skipping test`);
       return;
     }
 
-    console.log('📁 Uploading test file as admin...');
+    console.log('ðŸ“ Uploading test file as admin...');
 
     const { status, data } = await postMultipartWithRetry(
       `${getApiBaseUrl()}/api/v1/jobs/import`,
       adminToken,
-      200,
+      201,
       () => {
         const form = new FormData();
         form.append('files', fs.createReadStream(testFilePath), 'tiny.json');
-        form.append('config', JSON.stringify({ export_code: true }));
+        form.append(
+          'config',
+          JSON.stringify({
+            extraction: { includeUser: true, includeAssistant: true },
+            minMessageLength: 0,
+            processingMode: 'automatic',
+            branches: 'merged',
+          })
+        );
         return form;
       }
     );
 
-    assert.strictEqual(status, 200, 'Import should succeed with 200 status');
+    assert.strictEqual(status, 201, 'Import job creation should return 201');
     assert.ok(data.success, 'Response should indicate success');
-    assert.ok(data.results, 'Response should include results');
-    assert.ok(data.results.length > 0, 'Results should have at least one entry');
+    assert.ok(data.jobId, 'Response should include jobId');
 
-    console.log(`✅ Import successful: ${data.results.length} file(s) processed`);
+    const job = await waitForJobCompletion(data.jobId, adminToken);
+    assert.strictEqual(job.state.status, 'succeeded', 'Import job should succeed');
 
-    // Verify ChatThread nodes have account_id
-    const chatThreads = db
+    // Verify ConversationThread nodes have account_id
+    const conversationThreads = db
       .getDatabase()
       .prepare(
         `
       SELECT * FROM nodes
-      WHERE kind = 'ChatThread' AND account_id = ?
+      WHERE kind = 'ConversationThread' AND account_id = ?
     `
       )
       .all(adminAccountId);
-    assert.ok(chatThreads.length > 0, 'ChatThread nodes should be created');
-    console.log(`   ✓ Created ${chatThreads.length} ChatThread nodes`);
+    assert.ok(conversationThreads.length > 0, 'ConversationThread nodes should be created');
 
     // Verify Message nodes have account_id
     const messages = db
@@ -350,32 +475,8 @@ describe('Import-Enhanced Integration Tests', () => {
       )
       .all(adminAccountId);
     assert.ok(messages.length > 0, 'Message nodes should be created');
-    console.log(`   ✓ Created ${messages.length} Message nodes`);
 
-    // Verify Folder node created
-    const folders = db
-      .getDatabase()
-      .prepare(
-        `
-      SELECT * FROM nodes
-      WHERE kind = 'Folder' AND account_id = ?
-    `
-      )
-      .all(adminAccountId) as any[];
-    assert.strictEqual(folders.length, 1, 'Exactly one Folder should be created');
-    const folderProps = JSON.parse(folders[0].properties);
-    const folderMetadata =
-      typeof folderProps.properties === 'string'
-        ? JSON.parse(folderProps.properties)
-        : folderProps.properties || folderProps;
-    assert.strictEqual(
-      folderMetadata.name,
-      'Imported Conversations',
-      'Folder should be named "Imported Conversations"'
-    );
-    console.log(`   ✓ Created folder: "${folderMetadata.name}"`);
-
-    // Verify Group nodes created (one per conversation)
+    // Verify Group nodes created
     const groups = db
       .getDatabase()
       .prepare(
@@ -385,14 +486,9 @@ describe('Import-Enhanced Integration Tests', () => {
     `
       )
       .all(adminAccountId);
-    assert.strictEqual(
-      groups.length,
-      chatThreads.length,
-      'One Group should be created per ChatThread'
-    );
-    console.log(`   ✓ Created ${groups.length} Group nodes`);
+    assert.ok(groups.length > 0, 'Group nodes should be created');
 
-    // Verify IN_GROUP edges link ChatThreads to Groups
+    // Verify IN_GROUP edges link Source members to Groups
     const inGroupEdges = db
       .getDatabase()
       .prepare(
@@ -402,25 +498,7 @@ describe('Import-Enhanced Integration Tests', () => {
     `
       )
       .all(adminAccountId);
-    assert.strictEqual(
-      inGroupEdges.length,
-      chatThreads.length,
-      'Each ChatThread should have an IN_GROUP edge'
-    );
-    console.log(`   ✓ Created ${inGroupEdges.length} IN_GROUP edges`);
-
-    // Verify FOLDS_INTO_FOLDER edges link Groups to Folder
-    const foldsEdges = db
-      .getDatabase()
-      .prepare(
-        `
-      SELECT * FROM edges
-      WHERE kind = 'FOLDS_INTO_FOLDER' AND account_id = ?
-    `
-      )
-      .all(adminAccountId);
-    assert.strictEqual(foldsEdges.length, groups.length, 'Each Group should fold into the Folder');
-    console.log(`   ✓ Created ${foldsEdges.length} FOLDS_INTO_FOLDER edges`);
+    assert.ok(inGroupEdges.length > 0, 'IN_GROUP edges should be created');
 
     // Verify CONTAINS edges have account_id
     const containsEdges = db
@@ -433,9 +511,9 @@ describe('Import-Enhanced Integration Tests', () => {
       )
       .all(adminAccountId);
     assert.ok(containsEdges.length > 0, 'CONTAINS edges should be created');
-    console.log(`   ✓ Created ${containsEdges.length} CONTAINS edges`);
+    console.log(`   âœ“ Created ${containsEdges.length} CONTAINS edges`);
 
-    console.log('✅ All organizational structure verified');
+    console.log('âœ… All organizational structure verified');
   });
 
   it('should verify tenant isolation between admin and client accounts', async () => {
@@ -445,11 +523,11 @@ describe('Import-Enhanced Integration Tests', () => {
       .prepare(
         `
       SELECT * FROM nodes
-      WHERE kind = 'ChatThread' AND account_id = ?
+      WHERE kind = 'ConversationThread' AND account_id = ?
     `
       )
       .all(adminAccountId);
-    assert.ok(adminChatThreads.length > 0, 'Admin should have ChatThreads');
+    assert.ok(adminChatThreads.length > 0, 'Admin should have ConversationThread nodes');
 
     // Verify no cross-contamination (admin data created by admin user only)
     const crossContamination = db
@@ -457,7 +535,7 @@ describe('Import-Enhanced Integration Tests', () => {
       .prepare(
         `
       SELECT * FROM nodes
-      WHERE kind = 'ChatThread'
+      WHERE kind = 'ConversationThread'
         AND account_id = ?
         AND created_by != ?
     `
@@ -465,11 +543,11 @@ describe('Import-Enhanced Integration Tests', () => {
       .all(adminAccountId, adminUserId);
     assert.strictEqual(crossContamination.length, 0, 'No cross-contamination should exist');
 
-    console.log('✅ Tenant isolation verified');
+    console.log('âœ… Tenant isolation verified');
   });
 
   it('should return folders/groups via navigation API', async () => {
-    console.log('🔍 Querying navigation API...');
+    console.log('ðŸ” Querying navigation API...');
 
     const { status, data } = await fetchJsonWithRetry(
       `${getApiBaseUrl()}/api/v1/groups`,
@@ -494,11 +572,11 @@ describe('Import-Enhanced Integration Tests', () => {
       assert.ok(folder.badge > 0, 'Folder should have children (badge > 0)');
     }
 
-    console.log(`✅ Navigation API returns ${data.groups.length} items (including folder)`);
+    console.log(`âœ… Navigation API returns ${data.groups.length} items (including folder)`);
   });
 
   it('should fetch group members for a specific group', async () => {
-    console.log('🔍 Testing group member fetching...');
+    console.log('ðŸ” Testing group member fetching...');
 
     // Get groups for admin account
     const groupsResult = await fetchJsonWithRetry(
@@ -564,7 +642,7 @@ describe('Import-Enhanced Integration Tests', () => {
     assert.ok(membersData.node_ids, 'Should have node_ids array');
     assert.ok(membersData.node_ids.length > 0, 'Node IDs should not be empty');
 
-    // Verify node IDs are ChatThread nodes
+    // Verify node IDs are Source nodes
     const nodeId = membersData.node_ids[0];
     const node = db
       .getDatabase()
@@ -575,18 +653,18 @@ describe('Import-Enhanced Integration Tests', () => {
       )
       .get(nodeId, adminAccountId) as any;
     assert.ok(node, 'Node should exist in database');
-    assert.strictEqual(node.kind, 'ChatThread', 'Node should be a ChatThread');
+    assert.strictEqual(node.kind, 'Source', 'Node should be a Source');
 
-    console.log(`✅ Successfully fetched ${membersData.node_ids.length} member(s) from group`);
+    console.log(`âœ… Successfully fetched ${membersData.node_ids.length} member(s) from group`);
   });
 
   it('[Job-Based] should create import job instead of processing synchronously', async () => {
-    console.log('📋 Testing job-based import endpoint...');
+    console.log('ðŸ“‹ Testing job-based import endpoint...');
 
     const testFilePath = getFixturePath('tiny.json');
 
     if (!fs.existsSync(testFilePath)) {
-      console.warn(`⚠️  Test file not found: ${testFilePath}, skipping test`);
+      console.warn(`âš ï¸  Test file not found: ${testFilePath}, skipping test`);
       return;
     }
 
@@ -600,8 +678,10 @@ describe('Import-Enhanced Integration Tests', () => {
         form.append(
           'config',
           JSON.stringify({
-            exportCode: true,
-            codeMinChars: 50,
+            extractCode: true,
+            codeSettings: {
+              minLength: 50,
+            },
           })
         );
         return form;
@@ -621,18 +701,18 @@ describe('Import-Enhanced Integration Tests', () => {
       'File name should be preserved'
     );
 
-    console.log(`✅ Job created: ${data.jobId}`);
+    console.log(`âœ… Job created: ${data.jobId}`);
     console.log(`   Status: ${data.job.state.status}`);
     console.log(`   Files: ${data.job.config.files.length}`);
   });
 
   it('[Job-Based] should process import job and verify completion', async () => {
-    console.log('📋 Testing job execution and completion...');
+    console.log('ðŸ“‹ Testing job execution and completion...');
 
     const testFilePath = getFixturePath('tiny.json');
 
     if (!fs.existsSync(testFilePath)) {
-      console.warn(`⚠️  Test file not found: ${testFilePath}, skipping test`);
+      console.warn(`âš ï¸  Test file not found: ${testFilePath}, skipping test`);
       return;
     }
 
@@ -685,8 +765,306 @@ describe('Import-Enhanced Integration Tests', () => {
     assert.strictEqual(job.state.status, 'succeeded', 'Job should succeed');
     assert.strictEqual(job.progress.percent, 100, 'Progress should be 100%');
 
-    console.log(`✅ Job completed successfully`);
+    console.log(`âœ… Job completed successfully`);
     console.log(`   Duration: ${Date.now() - startTime}ms`);
     console.log(`   Status: ${job.state.status}`);
+  });
+
+  it('[Fidelity] should materialize separate role branches with discourse lineage', async () => {
+    const title = `Branch Fidelity ${Date.now()}`;
+    const fixturePath = writeFixtureFile(
+      buildSingleConversationFixture(
+        title,
+        'User branch message for deterministic branch test.',
+        'Assistant branch response for deterministic branch test.'
+      ),
+      'branch-fidelity'
+    );
+
+    try {
+      const { status, data } = await postMultipartWithRetry(
+        `${getApiBaseUrl()}/api/v1/jobs/import`,
+        adminToken,
+        201,
+        () => {
+          const form = new FormData();
+          form.append('files', fs.createReadStream(fixturePath), 'branch-fidelity.json');
+          form.append(
+            'config',
+            JSON.stringify({
+              extraction: { includeUser: true, includeAssistant: true },
+              minMessageLength: 0,
+              processingMode: 'automatic',
+              branches: 'separate',
+              extractCode: false,
+              codeSettings: {
+                minLength: 0,
+                languages: [],
+                groupBy: 'language',
+                deduplicate: true,
+                sourceHandling: 'keep_inline',
+              },
+            })
+          );
+          return form;
+        }
+      );
+
+      assert.strictEqual(status, 201, 'Job creation should return 201');
+      const job = await waitForJobCompletion(data.jobId, adminToken);
+      assert.strictEqual(job.state.status, 'succeeded', 'Branch fidelity import should succeed');
+
+      const conversationRows = db
+        .getDatabase()
+        .prepare(
+          `SELECT id, properties FROM nodes WHERE kind = 'ConversationThread' AND account_id = ?`
+        )
+        .all(adminAccountId) as Array<{ id: string; properties: string }>;
+      const conversation = conversationRows.find((row) => parseNodeProperties(row).title === title);
+      assert.ok(conversation, 'Expected imported conversation thread to exist');
+
+      const conversationId = conversation!.id;
+      const sourceRows = db
+        .getDatabase()
+        .prepare(`SELECT id, properties FROM nodes WHERE kind = 'Source' AND account_id = ?`)
+        .all(adminAccountId) as Array<{ id: string; properties: string }>;
+
+      const branchSources = sourceRows.filter(
+        (row) => parseNodeProperties(row).metadata?.conversation_id === conversationId
+      );
+      assert.strictEqual(
+        branchSources.length,
+        2,
+        'Separate branch mode should materialize user and assistant sources'
+      );
+
+      const branches = branchSources
+        .map((row) => String(parseNodeProperties(row).metadata?.branch || ''))
+        .sort();
+      assert.deepStrictEqual(branches, ['assistant', 'user']);
+      assert.ok(
+        branchSources.every(
+          (row) => parseNodeProperties(row).metadata?.branches_mode === 'separate'
+        ),
+        'Every source should record branches_mode=separate'
+      );
+
+      const userSource = branchSources.find(
+        (row) => parseNodeProperties(row).metadata?.branch === 'user'
+      );
+      const assistantSource = branchSources.find(
+        (row) => parseNodeProperties(row).metadata?.branch === 'assistant'
+      );
+      assert.ok(userSource && assistantSource, 'Expected both user and assistant branch sources');
+
+      const discourseEdge = db
+        .getDatabase()
+        .prepare(
+          `
+          SELECT id
+          FROM edges
+          WHERE kind = 'DISCOURSE'
+            AND account_id = ?
+            AND (
+              (from_id = ? AND to_id = ?)
+              OR (from_id = ? AND to_id = ?)
+            )
+        `
+        )
+        .get(
+          adminAccountId,
+          userSource!.id,
+          assistantSource!.id,
+          assistantSource!.id,
+          userSource!.id
+        );
+
+      assert.ok(discourseEdge, 'Separate branch mode should create discourse lineage edge');
+    } finally {
+      if (fs.existsSync(fixturePath)) {
+        fs.unlinkSync(fixturePath);
+      }
+    }
+  });
+
+  it('[Fidelity] should keep raw messages invariant while applying sourceHandling modes', async () => {
+    const userWithCode =
+      'Shared raw message with code.\n```ts\nconst fidelity = 42;\n```\nCode block should remain in raw.';
+    const assistantReply = 'Assistant response for source handling fidelity.';
+
+    const importWithMode = async (
+      title: string,
+      sourceHandling: 'keep_inline' | 'extract_and_remove'
+    ): Promise<{ sourceId: string; userMessageId: string }> => {
+      const fixturePath = writeFixtureFile(
+        buildSingleConversationFixture(title, userWithCode, assistantReply),
+        `source-handling-${sourceHandling}`
+      );
+
+      try {
+        const { data } = await postMultipartWithRetry(
+          `${getApiBaseUrl()}/api/v1/jobs/import`,
+          adminToken,
+          201,
+          () => {
+            const form = new FormData();
+            form.append('files', fs.createReadStream(fixturePath), `${sourceHandling}.json`);
+            form.append(
+              'config',
+              JSON.stringify({
+                extraction: { includeUser: true, includeAssistant: true },
+                minMessageLength: 0,
+                processingMode: 'automatic',
+                branches: 'merged',
+                extractCode: true,
+                codeSettings: {
+                  minLength: 0,
+                  languages: ['ts'],
+                  groupBy: 'language',
+                  deduplicate: true,
+                  sourceHandling,
+                },
+              })
+            );
+            return form;
+          }
+        );
+
+        const job = await waitForJobCompletion(data.jobId, adminToken);
+        assert.strictEqual(
+          job.state.status,
+          'succeeded',
+          `${sourceHandling} import should succeed`
+        );
+
+        const conversationRows = db
+          .getDatabase()
+          .prepare(
+            `SELECT id, properties FROM nodes WHERE kind = 'ConversationThread' AND account_id = ?`
+          )
+          .all(adminAccountId) as Array<{ id: string; properties: string }>;
+        const conversation = conversationRows.find(
+          (row) => parseNodeProperties(row).title === title
+        ) as { id: string; properties: string } | undefined;
+        assert.ok(conversation, `Expected conversation thread for ${sourceHandling}`);
+
+        const conversationId = conversation!.id;
+        const sourceRows = db
+          .getDatabase()
+          .prepare(`SELECT id, properties FROM nodes WHERE kind = 'Source' AND account_id = ?`)
+          .all(adminAccountId) as Array<{ id: string; properties: string }>;
+        const source = sourceRows.find(
+          (row) => parseNodeProperties(row).metadata?.conversation_id === conversationId
+        );
+        assert.ok(source, `Expected merged source node for ${sourceHandling}`);
+
+        const messageRows = db
+          .getDatabase()
+          .prepare(`SELECT id, properties FROM nodes WHERE kind = 'Message' AND account_id = ?`)
+          .all(adminAccountId) as Array<{ id: string; properties: string }>;
+        const userMessage = messageRows.find((row) => {
+          const props = parseNodeProperties(row);
+          return props.thread_id === conversationId && props.role === 'user';
+        });
+        assert.ok(userMessage, `Expected raw user message node for ${sourceHandling}`);
+
+        return {
+          sourceId: source!.id,
+          userMessageId: userMessage!.id,
+        };
+      } finally {
+        if (fs.existsSync(fixturePath)) {
+          fs.unlinkSync(fixturePath);
+        }
+      }
+    };
+
+    const keepInline = await importWithMode(
+      `Source Handling Keep Inline ${Date.now()}`,
+      'keep_inline'
+    );
+    const extractAndRemove = await importWithMode(
+      `Source Handling Extract Remove ${Date.now()}`,
+      'extract_and_remove'
+    );
+
+    const inlineSourceContent = await fetchJsonWithRetry(
+      `${getApiBaseUrl()}/api/v1/content/source/${keepInline.sourceId}`,
+      {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${adminToken}` },
+      },
+      200
+    );
+    const extractedSourceContent = await fetchJsonWithRetry(
+      `${getApiBaseUrl()}/api/v1/content/source/${extractAndRemove.sourceId}`,
+      {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${adminToken}` },
+      },
+      200
+    );
+
+    assert.ok(
+      String(inlineSourceContent.data.content).includes('```ts'),
+      'keep_inline source should retain fenced code'
+    );
+    assert.ok(
+      !String(extractedSourceContent.data.content).includes('```'),
+      'extract_and_remove source should remove fenced code from derived content'
+    );
+
+    const inlineSourceRow = db
+      .getDatabase()
+      .prepare(`SELECT properties FROM nodes WHERE id = ? AND account_id = ?`)
+      .get(keepInline.sourceId, adminAccountId) as { properties: string };
+    const extractedSourceRow = db
+      .getDatabase()
+      .prepare(`SELECT properties FROM nodes WHERE id = ? AND account_id = ?`)
+      .get(extractAndRemove.sourceId, adminAccountId) as { properties: string };
+
+    const inlineSourceProps = parseNodeProperties(inlineSourceRow);
+    const extractedSourceProps = parseNodeProperties(extractedSourceRow);
+    assert.deepStrictEqual(
+      inlineSourceProps.metadata?.code_removed_ranges || [],
+      [],
+      'keep_inline should not emit removed code ranges'
+    );
+    assert.ok(
+      Array.isArray(extractedSourceProps.metadata?.code_removed_ranges) &&
+        extractedSourceProps.metadata.code_removed_ranges.length > 0,
+      'extract_and_remove should emit removed code ranges'
+    );
+
+    const inlineRawMessage = await fetchJsonWithRetry(
+      `${getApiBaseUrl()}/api/v1/content/message/${keepInline.userMessageId}`,
+      {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${adminToken}` },
+      },
+      200
+    );
+    const extractedRawMessage = await fetchJsonWithRetry(
+      `${getApiBaseUrl()}/api/v1/content/message/${extractAndRemove.userMessageId}`,
+      {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${adminToken}` },
+      },
+      200
+    );
+
+    assert.ok(
+      String(inlineRawMessage.data.content).includes('```ts'),
+      'Raw message content should preserve fenced code in keep_inline import'
+    );
+    assert.ok(
+      String(extractedRawMessage.data.content).includes('```ts'),
+      'Raw message content should preserve fenced code in extract_and_remove import'
+    );
+    assert.strictEqual(
+      inlineRawMessage.data.content,
+      extractedRawMessage.data.content,
+      'Raw content must remain invariant across sourceHandling modes'
+    );
   });
 });

@@ -1,8 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { SourceNodeSchema, GroupNodeSchema, ObjectiveClaimSchema } from '@keimenon/types';
+import { nanoid } from 'nanoid';
 import { getDbClient } from '../utils/get-db-client';
 import { requireAuth, requirePermission, isolateByAccount } from '../middleware/auth.middleware';
 import { AuthService } from '../services/auth.service';
+import { PrincipalService } from '../services/principal-service';
+import { appLogger } from '../utils/logger';
 
 // Create routes with auth service (will be called from app.ts)
 export function createNodesRoutes(authService: AuthService): Router {
@@ -13,7 +16,7 @@ export function createNodesRoutes(authService: AuthService): Router {
       parsedProperties =
         typeof row.properties === 'string' ? JSON.parse(row.properties) : row.properties || {};
     } catch (error) {
-      console.error('Failed to parse properties for node:', row?.id, error);
+      appLogger.warn(`Failed to parse properties for node ${row?.id || 'unknown'}`);
     }
 
     return {
@@ -57,16 +60,21 @@ export function createNodesRoutes(authService: AuthService): Router {
         // Return the complete node with all fields (account_id, created_by, data_tag, etc.)
         return res.status(201).json({ success: true, node: nodeData });
       } catch (error: any) {
-        console.error('Create source error:', error);
-
         // Handle Zod validation errors - return 400 instead of 500
         if (error.name === 'ZodError') {
+          appLogger.debug('nodes.createSource.validation', {
+            issueCount: Array.isArray(error.errors) ? error.errors.length : 0,
+          });
           return res.status(400).json({
             error: 'Validation failed',
             details: error.errors,
             message: 'Invalid node data provided',
           });
         }
+
+        appLogger.error('nodes.createSource.failed', {
+          message: error?.message || 'Unknown error',
+        });
 
         return res.status(500).json({
           error: 'Failed to create source node',
@@ -198,6 +206,143 @@ export function createNodesRoutes(authService: AuthService): Router {
         console.error('Get node error:', error);
         return res.status(500).json({
           error: 'Failed to get node',
+          message: error.message,
+        });
+      }
+    }
+  );
+
+  /**
+   * POST /api/v1/nodes/:id/sequester
+   * Create or remove a SEQUESTERS edge from the current human principal to the target node.
+   */
+  router.post(
+    '/:id/sequester',
+    requireAuth(authService),
+    isolateByAccount,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const accountId = req.user?.accountId;
+        const userId = req.user?.userId;
+        const requestUser = req.user;
+
+        if (!accountId || !userId) {
+          return res.status(401).json({
+            success: false,
+            error: 'Authentication required',
+          });
+        }
+
+        const shouldSequester = req.body?.sequester !== false;
+        const db = await getDbClient(req);
+        const targetNode = await db.getNode(id);
+
+        if (!targetNode) {
+          return res.status(404).json({
+            success: false,
+            error: 'Node not found',
+          });
+        }
+
+        const targetNodeAccountId = (targetNode as any).account_id;
+        if (requestUser?.accountType !== 'admin' && targetNodeAccountId !== accountId) {
+          return res.status(403).json({
+            success: false,
+            error: 'Access denied',
+          });
+        }
+
+        const principalService = new PrincipalService(db);
+        const principal = await principalService.resolveHumanPrincipal(
+          accountId,
+          userId,
+          requestUser?.email || undefined,
+          requestUser?.email || undefined
+        );
+
+        const sqliteDb = (db as any).db;
+        let existingEdges: Array<{ id: string }> = [];
+
+        if (sqliteDb?.prepare) {
+          existingEdges = sqliteDb
+            .prepare(
+              `
+                SELECT id
+                FROM edges
+                WHERE account_id = ? AND kind = 'SEQUESTERS' AND from_id = ? AND to_id = ?
+              `
+            )
+            .all(accountId, principal.id, id) as Array<{ id: string }>;
+        } else if (db.getNodeEdges) {
+          const outgoing = await db.getNodeEdges(principal.id, 'outgoing');
+          existingEdges = outgoing
+            .filter((edge: any) => edge.kind === 'SEQUESTERS' && edge.to === id)
+            .map((edge: any) => ({ id: edge.id }));
+        }
+
+        if (!shouldSequester) {
+          let removed = 0;
+          if (existingEdges.length > 0) {
+            if (sqliteDb?.prepare) {
+              const result = sqliteDb
+                .prepare(
+                  `
+                    DELETE FROM edges
+                    WHERE account_id = ? AND kind = 'SEQUESTERS' AND from_id = ? AND to_id = ?
+                  `
+                )
+                .run(accountId, principal.id, id);
+              removed = result?.changes || 0;
+            } else if (db.deleteEdge) {
+              for (const edge of existingEdges) {
+                await db.deleteEdge(edge.id);
+                removed += 1;
+              }
+            }
+          }
+
+          return res.json({
+            success: true,
+            sequestered: false,
+            removed,
+          });
+        }
+
+        if (existingEdges.length > 0) {
+          return res.json({
+            success: true,
+            sequestered: true,
+            alreadySequestered: true,
+            edgeId: existingEdges[0].id,
+          });
+        }
+
+        const edgeId = `edge_sequesters_${nanoid(12)}`;
+        await db.createEdge({
+          id: edgeId,
+          kind: 'SEQUESTERS',
+          from: principal.id,
+          to: id,
+          created_at: Date.now(),
+          account_id: accountId,
+          created_by: userId,
+          metadata: {
+            sequesteredBy: userId,
+            sequesteredAt: Date.now(),
+          },
+        } as any);
+
+        return res.status(201).json({
+          success: true,
+          sequestered: true,
+          edgeId,
+        });
+      } catch (error: any) {
+        console.error('Sequester node error:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to sequester node',
           message: error.message,
         });
       }

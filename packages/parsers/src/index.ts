@@ -152,6 +152,12 @@ export {
   type ClusterMergeResult,
   type ClusterSplitResult,
   type ClusterOperation,
+  SimilarityEngineV2,
+  type SimilarityEngineDocument,
+  type SimilarityEngineInput,
+  type SimilarityEdgeV2,
+  type SimilarityClusterV2,
+  type SimilarityEngineResult,
 } from './services';
 
 // Breaking Pipeline exports

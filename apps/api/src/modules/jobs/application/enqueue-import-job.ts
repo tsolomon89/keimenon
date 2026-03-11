@@ -20,6 +20,8 @@ export interface ImportTenancyContext {
   userType: string;
   accountMembership: string;
   userEmail: string;
+  accountClass?: 'free' | 'professional' | 'business';
+  features?: Record<string, boolean>;
 }
 
 export interface ImportTestContext {

@@ -6,7 +6,6 @@ import { DuplicateTreeView } from './DuplicateTreeView';
 import { DuplicateComparisonView } from './DuplicateComparisonView';
 import { DuplicateActionsPanel } from './DuplicateActionsPanel';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
-import { resolveDuplicate } from '@/lib/api-client';
 
 interface DuplicateReviewPanelProps {
   groups: DuplicateGroup[];
@@ -38,47 +37,38 @@ export function DuplicateReviewPanel({
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
   const selectedCandidate = selectedGroup?.candidates.find((c) => c.id === selectedCandidateId);
 
-  const handleDecision = async (candidateId: string, action: ReviewDecision['action']) => {
-    try {
-      // Find the candidate to get node IDs
-      const candidate = selectedGroup?.candidates.find((c) => c.id === candidateId);
-      if (!candidate) {
-        console.error('Candidate not found:', candidateId);
-        return;
-      }
+  const handleDecision = (candidateId: string, action: ReviewDecision['action']) => {
+    // Find the candidate to include canonical node IDs in apply payload.
+    const candidate = selectedGroup?.candidates.find((c) => c.id === candidateId);
+    if (!candidate) {
+      console.error('Candidate not found:', candidateId);
+      return;
+    }
 
-      // ✅ Call backend API to resolve the duplicate with node IDs
-      await resolveDuplicate(candidateId, action, candidate.primary.id, candidate.duplicate.id);
+    // Update local state only; backend mutation happens in one job-scoped apply call.
+    const newDecisions = new Map(decisions);
+    newDecisions.set(candidateId, {
+      duplicateId: candidateId,
+      action,
+      timestamp: Date.now(),
+      primaryNodeId: candidate.primary.id,
+      duplicateNodeId: candidate.duplicate.id,
+    });
+    setDecisions(newDecisions);
 
-      // Update local state
-      const newDecisions = new Map(decisions);
-      newDecisions.set(candidateId, {
-        duplicateId: candidateId,
-        action,
-        timestamp: Date.now(),
-      });
-      setDecisions(newDecisions);
-
-      // Auto-advance to next candidate
-      if (selectedGroup) {
-        const currentIndex = selectedGroup.candidates.findIndex((c) => c.id === candidateId);
-        if (currentIndex < selectedGroup.candidates.length - 1) {
-          setSelectedCandidateId(selectedGroup.candidates[currentIndex + 1].id);
-        } else {
-          // Move to next group
-          const currentGroupIndex = groups.findIndex((g) => g.id === selectedGroupId);
-          if (currentGroupIndex < groups.length - 1) {
-            const nextGroup = groups[currentGroupIndex + 1];
-            setSelectedGroupId(nextGroup.id);
-            setSelectedCandidateId(nextGroup.candidates[0]?.id || null);
-          }
+    // Auto-advance to next candidate.
+    if (selectedGroup) {
+      const currentIndex = selectedGroup.candidates.findIndex((c) => c.id === candidateId);
+      if (currentIndex < selectedGroup.candidates.length - 1) {
+        setSelectedCandidateId(selectedGroup.candidates[currentIndex + 1].id);
+      } else {
+        const currentGroupIndex = groups.findIndex((g) => g.id === selectedGroupId);
+        if (currentGroupIndex < groups.length - 1) {
+          const nextGroup = groups[currentGroupIndex + 1];
+          setSelectedGroupId(nextGroup.id);
+          setSelectedCandidateId(nextGroup.candidates[0]?.id || null);
         }
       }
-    } catch (error) {
-      console.error('Failed to resolve duplicate:', error);
-      // TODO: Show error toast to user
-      // Related: apps/web/src/components/common/Toast.tsx (create toast system)
-      // See: docs/features/ERROR_HANDLING.md
     }
   };
 
@@ -89,13 +79,14 @@ export function DuplicateReviewPanel({
   const handleBulkAction = (action: ReviewDecision['action']) => {
     const newDecisions = new Map(decisions);
 
-    // Apply action to all candidates in current group
     if (selectedGroup) {
       selectedGroup.candidates.forEach((candidate) => {
         newDecisions.set(candidate.id, {
           duplicateId: candidate.id,
           action,
           timestamp: Date.now(),
+          primaryNodeId: candidate.primary.id,
+          duplicateNodeId: candidate.duplicate.id,
         });
       });
       setDecisions(newDecisions);
@@ -105,13 +96,14 @@ export function DuplicateReviewPanel({
   const handleBulkActionAll = (action: ReviewDecision['action']) => {
     const newDecisions = new Map(decisions);
 
-    // Apply action to all candidates in all groups
     groups.forEach((group) => {
       group.candidates.forEach((candidate) => {
         newDecisions.set(candidate.id, {
           duplicateId: candidate.id,
           action,
           timestamp: Date.now(),
+          primaryNodeId: candidate.primary.id,
+          duplicateNodeId: candidate.duplicate.id,
         });
       });
     });
@@ -121,10 +113,8 @@ export function DuplicateReviewPanel({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle if a candidate is selected
       if (!selectedCandidateId) return;
 
-      // Ignore if user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
@@ -145,6 +135,10 @@ export function DuplicateReviewPanel({
         case '4':
           e.preventDefault();
           handleDecision(selectedCandidateId, 'merge');
+          break;
+        case '5':
+          e.preventDefault();
+          handleDecision(selectedCandidateId, 'sequester');
           break;
         case 'z':
           if (e.ctrlKey || e.metaKey) {
@@ -193,7 +187,6 @@ export function DuplicateReviewPanel({
       if (currentIndex < selectedGroup.candidates.length - 1) {
         setSelectedCandidateId(selectedGroup.candidates[currentIndex + 1].id);
       } else {
-        // Move to next group
         const currentGroupIndex = groups.findIndex((g) => g.id === selectedGroupId);
         if (currentGroupIndex < groups.length - 1) {
           const nextGroup = groups[currentGroupIndex + 1];
@@ -205,7 +198,6 @@ export function DuplicateReviewPanel({
       if (currentIndex > 0) {
         setSelectedCandidateId(selectedGroup.candidates[currentIndex - 1].id);
       } else {
-        // Move to previous group
         const currentGroupIndex = groups.findIndex((g) => g.id === selectedGroupId);
         if (currentGroupIndex > 0) {
           const prevGroup = groups[currentGroupIndex - 1];
@@ -222,21 +214,19 @@ export function DuplicateReviewPanel({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header with progress */}
       <div className="p-4 border-b border-slate-700 bg-slate-900">
         <div className="flex items-center justify-between mb-2">
           <div>
             <h2 className="text-lg font-semibold">Review Duplicates</h2>
             <div className="text-xs text-slate-500 mt-1">
-              Use ↑↓ arrows to navigate • 1-4 for actions • Ctrl+Z/Y to undo/redo • Esc to cancel •
+              Use up/down arrows to navigate, 1-5 for actions, Ctrl+Z/Y to undo/redo, Esc to cancel,
               Ctrl+Enter to complete
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {/* Bulk Actions Dropdown */}
             <div className="relative group">
               <button className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded transition-colors">
-                Bulk Actions ▾
+                Bulk Actions
               </button>
               <div className="absolute right-0 mt-1 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
                 <div className="p-2">
@@ -259,6 +249,12 @@ export function DuplicateReviewPanel({
                   >
                     Keep Both for All
                   </button>
+                  <button
+                    onClick={() => handleBulkAction('sequester')}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors"
+                  >
+                    Sequester Duplicates for All
+                  </button>
                   <div className="border-t border-slate-700 my-2"></div>
                   <div className="text-xs text-slate-400 mb-2 px-2">Apply to all groups:</div>
                   <button
@@ -279,6 +275,12 @@ export function DuplicateReviewPanel({
                   >
                     Keep Both Everywhere
                   </button>
+                  <button
+                    onClick={() => handleBulkActionAll('sequester')}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors"
+                  >
+                    Sequester Duplicates Everywhere
+                  </button>
                 </div>
               </div>
             </div>
@@ -295,9 +297,7 @@ export function DuplicateReviewPanel({
         </div>
       </div>
 
-      {/* Three-panel layout */}
       <div className="flex-1 flex overflow-hidden">
-        {/* LHS: Tree view */}
         <div className="w-80 border-r border-slate-700 overflow-y-auto bg-slate-900/50">
           <DuplicateTreeView
             groups={groups}
@@ -309,7 +309,6 @@ export function DuplicateReviewPanel({
           />
         </div>
 
-        {/* Center: Comparison view */}
         <div className="flex-1 overflow-y-auto">
           {selectedCandidate ? (
             <DuplicateComparisonView
@@ -324,7 +323,6 @@ export function DuplicateReviewPanel({
           )}
         </div>
 
-        {/* RHS: Actions panel */}
         <div className="w-80 border-l border-slate-700 overflow-y-auto bg-slate-900/50">
           {selectedCandidate && (
             <DuplicateActionsPanel
@@ -338,7 +336,6 @@ export function DuplicateReviewPanel({
         </div>
       </div>
 
-      {/* Footer with actions */}
       <div className="p-4 border-t border-slate-700 bg-slate-900 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button

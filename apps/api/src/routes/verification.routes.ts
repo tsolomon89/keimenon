@@ -16,10 +16,50 @@ import { VerificationService } from '../services/verification-service';
 import { AuthService } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { TopicNode } from '@keimenon/types';
+import { getDbClient } from '../utils/get-db-client';
+import {
+  buildAuditContextFromRequest,
+  recordDataHandlingAudit,
+} from '../utils/data-handling-audit';
 
 export function createVerificationRoutes(authService: AuthService) {
   const router = Router();
   const verificationService = VerificationService.getInstance();
+
+  async function auditVerificationEgress(
+    req: Request,
+    params: {
+      resourceId: string;
+      success: boolean;
+      reason?: string;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<void> {
+    try {
+      const dbClient = await getDbClient(req);
+      const context = buildAuditContextFromRequest(req);
+      if (!context.actorUserId || !context.actorAccountId) {
+        return;
+      }
+
+      recordDataHandlingAudit(dbClient, {
+        actorUserId: context.actorUserId,
+        actorAccountId: context.actorAccountId,
+        targetAccountId: context.targetAccountId,
+        mode: context.mode,
+        action: 'read',
+        resourceType: 'verification_egress',
+        resourceId: params.resourceId,
+        success: params.success,
+        reason: params.reason,
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
+        metadata: params.metadata,
+      });
+    } catch {
+      // Best effort audit logging; do not block response flow.
+    }
+  }
 
   // Middleware
   router.use(requireAuth(authService));
@@ -91,7 +131,7 @@ export function createVerificationRoutes(authService: AuthService) {
         metadata: { ...c.metadata, account_id: accountId, topic_id: topic.id },
       }));
 
-      return res.json({
+      const response = {
         success: true,
         topicId: topic.id,
         topicName: topic.name,
@@ -101,9 +141,32 @@ export function createVerificationRoutes(authService: AuthService) {
           sourceCount: enrichedSources.length,
           claimCount: enrichedClaims.length,
         },
+      };
+
+      await auditVerificationEgress(req, {
+        resourceId: topic.id,
+        success: true,
+        metadata: {
+          route: 'verify-topic',
+          sourceCount: enrichedSources.length,
+          claimCount: enrichedClaims.length,
+          searchProvider: verificationService.isSearchConfigured() ? 'tavily' : 'mock',
+          egressPolicy: 'claims_excerpts_only',
+        },
       });
+
+      return res.json(response);
     } catch (error: any) {
       console.error('[VerificationRoutes] Verify topic failed:', error);
+      await auditVerificationEgress(req, {
+        resourceId: req.body?.topic?.id || 'unknown_topic',
+        success: false,
+        reason: error?.message || 'verify_topic_failed',
+        metadata: {
+          route: 'verify-topic',
+          egressPolicy: 'claims_excerpts_only',
+        },
+      });
       return res.status(500).json({
         error: 'Topic verification failed',
         details: error.message,
@@ -159,7 +222,7 @@ export function createVerificationRoutes(authService: AuthService) {
         status = avgConfidence > 0.7 ? 'verified' : 'disputed';
       }
 
-      return res.json({
+      const response = {
         success: true,
         claimText,
         status,
@@ -175,9 +238,33 @@ export function createVerificationRoutes(authService: AuthService) {
           sourceCount: sources.length,
           claimCount: claims.length,
         },
+      };
+
+      await auditVerificationEgress(req, {
+        resourceId: `claim:${claimText.slice(0, 80)}`,
+        success: true,
+        metadata: {
+          route: 'verify-claim',
+          status,
+          sourceCount: sources.length,
+          claimCount: claims.length,
+          searchProvider: verificationService.isSearchConfigured() ? 'tavily' : 'mock',
+          egressPolicy: 'claims_excerpts_only',
+        },
       });
+
+      return res.json(response);
     } catch (error: any) {
       console.error('[VerificationRoutes] Verify claim failed:', error);
+      await auditVerificationEgress(req, {
+        resourceId: 'claim:unknown',
+        success: false,
+        reason: error?.message || 'verify_claim_failed',
+        metadata: {
+          route: 'verify-claim',
+          egressPolicy: 'claims_excerpts_only',
+        },
+      });
       return res.status(500).json({
         error: 'Claim verification failed',
         details: error.message,

@@ -18,7 +18,15 @@ import { Job } from '../../jobs/domain/Job';
 import { DatabaseClient } from '@keimenon/db';
 import { ImportConversation, ImportResult } from '../../../services/import-enhanced-v2';
 import { DatabaseWriteQueue } from '../../../services/DatabaseWriteQueue';
-import { ImportConfiguration, ImportJobStage, IMPORT_STAGE_LABELS } from '@keimenon/types';
+import {
+  ImportJobStage,
+  IMPORT_STAGE_LABELS,
+  featureManifestForAccountClass,
+  type ImportGraphBirthMetadata,
+  type ObjectiveBuildTaskInput,
+  type NormalizedImportOptions,
+} from '@keimenon/types';
+import { normalizeImportOptions } from '../../jobs/domain/import-config-contract';
 import { ParserRegistry, NormalizedConversation, NormalizedMessage } from '@keimenon/parsers';
 import * as fs from 'fs/promises';
 import { nanoid } from 'nanoid';
@@ -32,6 +40,9 @@ import {
 } from '../../jobs/domain/ChangeTracker';
 import { JobRepository } from '../../jobs/infrastructure/JobRepository';
 import { WORKER_CONFIG } from '../../jobs/jobs.config';
+import { getAgentService } from '../../../services/agent-service';
+import { appLogger } from '../../../utils/logger';
+import { isObjectiveEnqueueKillSwitchEnabled } from '../../../utils/gate-e-kill-switches';
 
 /**
  * Import Checkpoint State
@@ -53,6 +64,7 @@ export interface ImportCheckpoint {
 const CHECKPOINT_INTERVAL_CONVERSATIONS = 100;
 const CHECKPOINT_INTERVAL_MS = 30000;
 const MAX_PARSE_ERROR_SAMPLES = 10;
+const MAX_PARSE_ERROR_LOG_SAMPLES = 3;
 const PARSE_ERROR_RATE_THRESHOLD = 0.3;
 const PARSE_ERROR_RATE_MIN_ATTEMPTS = 100;
 const BATCH_HEARTBEAT_INTERVAL_MS = parseInt(
@@ -84,6 +96,11 @@ const STAGE_PROGRESS_FLOORS: Partial<Record<ImportJobStage, number>> = {
   [ImportJobStage.APPLY_DECISIONS]: 98,
   [ImportJobStage.MATERIALIZE]: 98,
   [ImportJobStage.INDEXING]: 99,
+  [ImportJobStage.OBJECTIVE_QUEUE]: 99,
+  [ImportJobStage.OBJECTIVE_EXTRACT]: 99,
+  [ImportJobStage.OBJECTIVE_VERIFY]: 99,
+  [ImportJobStage.OBJECTIVE_PUBLISH]: 99,
+  [ImportJobStage.OBJECTIVE_DONE]: 99,
   [ImportJobStage.SUCCEEDED]: 100,
 };
 
@@ -118,6 +135,48 @@ export interface ParseQualityGateResult {
     threshold?: number;
     minimumAttempts?: number;
     samples: ParseErrorSample[];
+  };
+}
+
+export interface ObjectiveQueueDecisionInput {
+  objectiveLayerEnabled: boolean;
+  agentRuntimeEnabled: boolean;
+  agentBootstrapMode: 'manual' | 'auto';
+  objectiveEnqueueKillSwitchEnabled: boolean;
+}
+
+export interface ObjectiveQueueDecision {
+  shouldEnqueue: boolean;
+  reason: 'enabled' | 'entitlement_missing' | 'kill_switch_enabled' | 'manual_activation_required';
+}
+
+export function evaluateObjectiveQueueDecision(
+  input: ObjectiveQueueDecisionInput
+): ObjectiveQueueDecision {
+  if (!input.objectiveLayerEnabled || !input.agentRuntimeEnabled) {
+    return {
+      shouldEnqueue: false,
+      reason: 'entitlement_missing',
+    };
+  }
+
+  if (input.objectiveEnqueueKillSwitchEnabled) {
+    return {
+      shouldEnqueue: false,
+      reason: 'kill_switch_enabled',
+    };
+  }
+
+  if (input.agentBootstrapMode !== 'auto') {
+    return {
+      shouldEnqueue: false,
+      reason: 'manual_activation_required',
+    };
+  }
+
+  return {
+    shouldEnqueue: true,
+    reason: 'enabled',
   };
 }
 
@@ -200,6 +259,17 @@ function toImportInvalidInputError(message: string): Error & { code: string } {
 
 function shouldLogInvalidInputRejection(): boolean {
   const override = process.env.IMPORT_WORKER_LOG_INVALID_INPUT;
+  if (override === '1') {
+    return true;
+  }
+  if (override === '0') {
+    return false;
+  }
+  return process.env.NODE_ENV !== 'test';
+}
+
+function shouldLogParseItemErrors(): boolean {
+  const override = process.env.IMPORT_WORKER_LOG_PARSE_ERRORS;
   if (override === '1') {
     return true;
   }
@@ -658,8 +728,10 @@ export class ImportWorker extends BaseWorker {
         console.log(`📥 Starting fresh import with hash: ${uploadHash}`);
       }
 
-      // Build config
-      const config: ImportConfiguration = this.buildImportConfig(importOptions);
+      // Canonical runtime config (single contract across UI/API/worker)
+      const config: NormalizedImportOptions = normalizeImportOptions(importOptions);
+      const accountClass = this.resolveJobAccountClass(job);
+      const features = featureManifestForAccountClass(accountClass);
 
       // Track last checkpoint save time
       let lastCheckpointTime = Date.now();
@@ -719,6 +791,10 @@ export class ImportWorker extends BaseWorker {
           `[ImportWorker] Spawning worker for: ${file.fileName}${skipConversations > 0 ? ` (resuming, skipping ~${skipConversations} conversations)` : ''}`
         );
 
+        if (!file.filePath) {
+          throw new Error(`Missing file path for import file: ${file.fileName}`);
+        }
+
         const workerOptions: {
           workerData: {
             filePath: string;
@@ -732,7 +808,7 @@ export class ImportWorker extends BaseWorker {
           workerData: {
             filePath: file.filePath,
             fileSize: file.fileSize,
-            mimeType: file.mimeType,
+            mimeType: file.mimeType || 'application/octet-stream',
             batchSize,
             skipConversations, // Resume optimization: worker skips these internally
           },
@@ -955,9 +1031,14 @@ export class ImportWorker extends BaseWorker {
                       } catch (parseError: any) {
                         parseErrorCount++;
                         const errorMessage = parseError.message || 'Unknown parse error';
-                        console.warn(
-                          `[ImportWorker] Parse error for item ${item.index}: ${errorMessage}`
-                        );
+                        if (
+                          shouldLogParseItemErrors() &&
+                          parseErrorSamples.length < MAX_PARSE_ERROR_LOG_SAMPLES
+                        ) {
+                          console.warn(
+                            `[ImportWorker] Parse error for item ${item.index}: ${errorMessage}`
+                          );
+                        }
 
                         // Track sample errors for reporting (limit to prevent memory issues)
                         if (parseErrorSamples.length < MAX_PARSE_ERROR_SAMPLES) {
@@ -985,6 +1066,8 @@ export class ImportWorker extends BaseWorker {
                         context: {
                           accountId: job.accountId,
                           userId: job.createdBy,
+                          jobId: job.id,
+                          agentRuntimeEnabled: features.agent_runtime,
                         },
                         hooks: {
                           onStage: async (stage, stageMessage) => {
@@ -1266,6 +1349,91 @@ export class ImportWorker extends BaseWorker {
 
       await this.saveCheckpoint(job, context, finalCheckpoint, changeTracker);
 
+      const importGraphBirth = this.buildImportGraphBirthMetadata({
+        packetMassLinksCreated: totalPacketMassLinksCreated,
+        packetsCreated: totalPacketsCreated,
+        atomicUnitsCreated: totalAtomicUnitsCreated,
+        manualGroups: totalManualGroups,
+        autoGroups: totalAutoGroups,
+        sourcesCreated: totalSourcesCreated,
+      });
+
+      let objectiveBuildTaskId: string | null = null;
+      const objectiveQueueDecision = evaluateObjectiveQueueDecision({
+        objectiveLayerEnabled: features.objective_layer,
+        agentRuntimeEnabled: features.agent_runtime,
+        agentBootstrapMode: config.agent.bootstrap,
+        objectiveEnqueueKillSwitchEnabled: isObjectiveEnqueueKillSwitchEnabled(),
+      });
+
+      if (objectiveQueueDecision.shouldEnqueue) {
+        try {
+          await this.reportProgress(
+            job,
+            99,
+            100,
+            IMPORT_STAGE_LABELS[ImportJobStage.OBJECTIVE_QUEUE],
+            context,
+            ImportJobStage.OBJECTIVE_QUEUE
+          );
+
+          objectiveBuildTaskId = await this.enqueueObjectiveBuildTask(job, uploadHash);
+
+          if (objectiveBuildTaskId) {
+            await this.reportProgress(
+              job,
+              99,
+              100,
+              IMPORT_STAGE_LABELS[ImportJobStage.OBJECTIVE_DONE],
+              context,
+              ImportJobStage.OBJECTIVE_DONE,
+              {
+                objectiveBuildTaskId,
+              }
+            );
+          }
+        } catch (objectiveError: any) {
+          const objectiveMessage = objectiveError?.message || String(objectiveError);
+          const isExpectedDuplicateAgent =
+            typeof objectiveMessage === 'string' &&
+            objectiveMessage.includes('UNIQUE constraint failed: nodes.id');
+          const isMissingAccountMembership =
+            typeof objectiveMessage === 'string' &&
+            objectiveMessage.includes('No user membership found for account');
+
+          if (isExpectedDuplicateAgent || isMissingAccountMembership) {
+            appLogger.debug(
+              `[ImportWorker] Objective build task queue skipped for job ${job.id}: ${objectiveMessage}`
+            );
+          } else {
+            appLogger.warn(
+              `[ImportWorker] Unable to queue objective build task for job ${job.id}: ${objectiveMessage}`
+            );
+          }
+        }
+      } else {
+        let skipReason = `feature entitlements missing (accountClass=${accountClass})`;
+        if (objectiveQueueDecision.reason === 'kill_switch_enabled') {
+          skipReason = 'kill switch enabled';
+        } else if (objectiveQueueDecision.reason === 'manual_activation_required') {
+          skipReason = 'manual activation required (agent.bootstrap=manual)';
+        }
+        appLogger.info(`[ImportWorker] Objective queue skipped for job ${job.id}: ${skipReason}`);
+      }
+
+      const graphBirthMetadata: ImportGraphBirthMetadata = {
+        ...importGraphBirth,
+        objectiveBuildTaskId: objectiveBuildTaskId || undefined,
+      };
+      job.updateStateMetadata({
+        importGraphBirth: graphBirthMetadata,
+        objectiveBuildTaskId: objectiveBuildTaskId || null,
+      });
+      await context.jobRepository.save(job);
+      if (context.broadcaster) {
+        context.broadcaster.broadcastJobUpdate(job);
+      }
+
       await this.reportProgress(
         job,
         100,
@@ -1276,7 +1444,7 @@ export class ImportWorker extends BaseWorker {
       );
 
       // Log parse error summary if any occurred
-      if (parseErrorCount > 0) {
+      if (parseErrorCount > 0 && shouldLogParseItemErrors()) {
         console.warn(`[ImportWorker] Completed with ${parseErrorCount} parse error(s)`);
       }
 
@@ -1288,6 +1456,7 @@ export class ImportWorker extends BaseWorker {
           messages: totalMessagesProcessed,
           checkpoint: finalCheckpoint,
           changeTracker: serializeChangeTracker(changeTracker),
+          importGraphBirth: graphBirthMetadata,
           parseErrors: {
             count: parseErrorCount,
             attempts: parseAttemptCount,
@@ -1363,6 +1532,83 @@ export class ImportWorker extends BaseWorker {
         },
       };
     }
+  }
+
+  private buildImportGraphBirthMetadata(input: {
+    packetMassLinksCreated: number;
+    packetsCreated: number;
+    atomicUnitsCreated: number;
+    manualGroups: number;
+    autoGroups: number;
+    sourcesCreated: number;
+  }): Omit<ImportGraphBirthMetadata, 'objectiveBuildTaskId'> {
+    const weightedMassTotal = Math.max(0, input.packetMassLinksCreated);
+    const weightedMassMean =
+      input.packetsCreated > 0 ? weightedMassTotal / input.packetsCreated : 0;
+    const edgeStrengthMean =
+      input.packetMassLinksCreated > 0 ? weightedMassTotal / input.packetMassLinksCreated : 0;
+    const groups = Math.max(0, input.manualGroups + input.autoGroups);
+
+    return {
+      massStats: {
+        atomicCount: Math.max(0, input.atomicUnitsCreated),
+        packetCount: Math.max(0, input.packetsCreated),
+        weightedMassTotal,
+        weightedMassMean,
+        weightedMassP95: weightedMassMean,
+      },
+      clusterCounts: {
+        groups,
+        subgroups: 0,
+        isolated: Math.max(0, input.sourcesCreated - groups),
+      },
+      edgeStrengthStats: {
+        count: Math.max(0, input.packetMassLinksCreated),
+        mean: edgeStrengthMean,
+        p50: edgeStrengthMean,
+        p95: edgeStrengthMean,
+        max: edgeStrengthMean,
+      },
+    };
+  }
+
+  private async enqueueObjectiveBuildTask(job: Job, importBatchId: string): Promise<string | null> {
+    const agentService = getAgentService();
+    const objectiveInput: ObjectiveBuildTaskInput = {
+      importJobId: job.id,
+      accountId: job.accountId,
+      sourceBatchId: importBatchId,
+      targetId: importBatchId,
+      policy: {
+        domain_weights: {
+          'wikipedia.org': 0.85,
+          'arxiv.org': 0.95,
+          gov: 0.95,
+          edu: 0.9,
+        },
+        max_hops: 2,
+        max_sources: 8,
+      },
+    };
+    const taskResult = await agentService.executeTask({
+      type: 'VERIFY_SOURCE_CHAIN',
+      accountId: job.accountId,
+      input: objectiveInput as unknown as Record<string, unknown>,
+      config: {
+        version: '1.0.0',
+      },
+    });
+
+    return taskResult.task.id;
+  }
+
+  private resolveJobAccountClass(job: Job): 'free' | 'professional' | 'business' {
+    const tenancy = (job.config?.tenancy || {}) as Record<string, unknown>;
+    const raw = String(tenancy.accountClass || '').toLowerCase();
+    if (raw === 'business' || raw === 'professional') {
+      return raw;
+    }
+    return 'free';
   }
 
   /**
@@ -1462,121 +1708,4 @@ export class ImportWorker extends BaseWorker {
   }
 
   // Removed parseFile as it is now handled by the worker
-
-  /**
-   * Build import configuration from job options
-   * Maps the complete configuration from UI to ImportConfiguration schema
-   */
-  private buildImportConfig(options: any): ImportConfiguration {
-    // Extract extraction settings (which roles to include)
-    const extraction = options.extraction || { includeUser: true, includeAssistant: false };
-    const includeUser = extraction.includeUser ?? true;
-    const includeAssistant = extraction.includeAssistant ?? false;
-
-    // Extract and validate processing mode
-    const processingModeRaw = String(options.processingMode || 'automatic').toLowerCase();
-    const processingMode: 'automatic' | 'manual' | 'hybrid' =
-      processingModeRaw === 'manual' || processingModeRaw === 'hybrid'
-        ? processingModeRaw
-        : 'automatic';
-    const manualGroups = Array.isArray(options.groups) ? options.groups : [];
-
-    if (
-      processingModeRaw !== 'automatic' &&
-      processingModeRaw !== 'manual' &&
-      processingModeRaw !== 'hybrid'
-    ) {
-      console.warn(
-        `[ImportWorker] Invalid processingMode "${processingModeRaw}" received. Defaulting to "automatic".`
-      );
-    }
-
-    if (processingMode === 'automatic' && manualGroups.length > 0) {
-      console.warn(
-        `[ImportWorker] processingMode=automatic received ${manualGroups.length} manual group(s). Manual groups will be ignored.`
-      );
-    }
-
-    if ((processingMode === 'manual' || processingMode === 'hybrid') && manualGroups.length === 0) {
-      console.warn(
-        `[ImportWorker] processingMode=${processingMode} has no manual groups. Import will run with auto fallback only.`
-      );
-    }
-
-    // Extract duplicate detection config
-    const dupeConfig = options.duplicateDetection || {};
-    const dupeEnabled = dupeConfig.enabled ?? true;
-
-    // Extract code settings
-    const codeSettings = options.codeSettings || {};
-    const minMessageLength = options.minMessageLength ?? 400;
-
-    // Support legacy fields for backward compatibility
-    const targetGroupCount = options.targetGroupCount ?? 25;
-    const codeMinChars = options.codeMinChars;
-    const legacyDupeThreshold = options.duplicateThreshold;
-
-    return {
-      sources: {
-        scope: 'message',
-        roleFilter: {
-          user: includeUser,
-          ai: includeAssistant,
-          separate: includeUser && includeAssistant, // Only separate if both enabled
-        },
-        // FIX: Use minMessageLength instead of codeMinChars
-        minLengthUser: minMessageLength,
-        minLengthAI: minMessageLength,
-        bundling: {
-          enabled: false, // TODO: Make this configurable in future
-          method: 'keyword',
-          similarityThreshold: 0.75,
-        },
-      },
-      grouping: {
-        mode:
-          processingMode === 'automatic'
-            ? 'auto'
-            : processingMode === 'hybrid'
-              ? 'hybrid'
-              : 'manual',
-        auto:
-          processingMode === 'automatic'
-            ? {
-                targetGroupCount: targetGroupCount,
-                createCatchAll: true,
-                minGroupSize: 2,
-                algorithm: 'tfidf',
-              }
-            : undefined,
-        manual: processingMode === 'manual' || processingMode === 'hybrid' ? manualGroups : [],
-      },
-      code: {
-        extract: options.extractCode ?? true,
-        removeFromSource: true,
-        createEdges: true,
-        // Use codeSettings.minLength if available, fallback to legacy codeMinChars, then default
-        minLength: codeSettings.minLength ?? codeMinChars ?? 50,
-        deduplicate: codeSettings.deduplicate ?? true,
-      },
-      duplicates: {
-        // FIX: Respect user's enabled preference
-        enabled: dupeEnabled,
-        level: dupeConfig.level || 'both', // Default to 'both' (message + conversation)
-        detectExact: dupeConfig.exactMatch ?? true,
-        detectNear: true,
-        // Use new threshold if available, fallback to legacy field
-        nearThreshold: dupeConfig.similarityThreshold ?? legacyDupeThreshold ?? 0.85,
-        detectSemantic: false, // Future: Premium feature
-        semanticThreshold: 0.9,
-        createReviewFolders: dupeConfig.requireReview ?? true,
-        autoMergeSuggestions: dupeConfig.autoApproveExact ?? false,
-      },
-      privacy: {
-        storageMode: 'local',
-        allowExternalAPIs: false,
-        apiKey: null,
-      },
-    };
-  }
 }

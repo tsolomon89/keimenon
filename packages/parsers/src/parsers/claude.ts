@@ -1,5 +1,6 @@
 import { ChatParser, NormalizedConversation, NormalizedMessage, ParseResult } from '../types';
 import { fingerprint } from '../utils/fingerprint';
+import { logParserError } from '../utils/parse-error-logging';
 import { nanoid } from 'nanoid';
 
 /**
@@ -58,7 +59,7 @@ export class ClaudeParser implements ChatParser {
         }
       }
     } catch (error) {
-      console.error('Claude parse error:', error);
+      logParserError('ClaudeParser', error);
       stats.parse_errors++;
     }
 

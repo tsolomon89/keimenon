@@ -118,6 +118,14 @@ function mapImportJobStage(stage?: ImportJobStage | string | null): ImportUiStat
     case ImportJobStage.MATERIALIZE:
     case ImportJobStage.INDEXING:
       return 'indexing';
+    case ImportJobStage.OBJECTIVE_QUEUE:
+      return 'linking';
+    case ImportJobStage.OBJECTIVE_EXTRACT:
+    case ImportJobStage.OBJECTIVE_VERIFY:
+    case ImportJobStage.OBJECTIVE_PUBLISH:
+      return 'processing';
+    case ImportJobStage.OBJECTIVE_DONE:
+      return 'done';
     case ImportJobStage.SUCCEEDED:
       return 'done';
     case ImportJobStage.FAILED:
@@ -164,6 +172,9 @@ function mapMessageToStatus(message?: string): ImportUiStatus | null {
     text.includes('packet')
   ) {
     return 'linking';
+  }
+  if (text.includes('objective') || text.includes('archetype') || text.includes('verify')) {
+    return 'processing';
   }
   if (text.includes('pause') || text.includes('blocked')) {
     return 'blocked';

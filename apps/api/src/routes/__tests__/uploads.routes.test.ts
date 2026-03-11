@@ -135,6 +135,22 @@ describe('Upload Routes (Integration)', () => {
     app.use(express.json());
     app.use(express.raw({ type: 'application/octet-stream', limit: '50mb' }));
 
+    // Backward-compatible test shim:
+    // route now requires `importConfig` object for initiate requests.
+    app.use((req, _res, next) => {
+      if (
+        req.method === 'POST' &&
+        req.path === '/api/v1/uploads/initiate' &&
+        req.body &&
+        typeof req.body === 'object' &&
+        !Array.isArray(req.body) &&
+        !('importConfig' in req.body)
+      ) {
+        (req.body as any).importConfig = {};
+      }
+      next();
+    });
+
     // Mock getDbClient middleware
     app.use((req, res, next) => {
       (req as any).db = { db };
@@ -668,6 +684,13 @@ describe('Upload Routes (Integration)', () => {
     it('should return 404 for non-existent session', async () => {
       await request(app)
         .get('/api/v1/uploads/upl_nonexistent')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(404);
+    });
+
+    it('should return 404 for removed legacy progress endpoint', async () => {
+      await request(app)
+        .get('/api/v1/uploads/upl_nonexistent/progress')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(404);
     });

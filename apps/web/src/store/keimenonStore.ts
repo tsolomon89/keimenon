@@ -27,8 +27,8 @@ const STRUCTURAL_KINDS = new Set([
 // Threshold at which we auto-filter to structural nodes only
 const SMART_FILTER_THRESHOLD = 5000;
 
-// Helper functions to map API types to Keimenon types
-function mapNodeKindToType(kind: string): 'conversation' | 'message' | 'source' | 'code' {
+// Helper functions to map API kinds to viewport types while preserving backend kind fidelity.
+function mapNodeKindToType(kind: string): string {
   switch (kind) {
     case 'ChatThread':
       return 'conversation';
@@ -39,7 +39,7 @@ function mapNodeKindToType(kind: string): 'conversation' | 'message' | 'source' 
     case 'CodeBlock':
       return 'code';
     default:
-      return 'source'; // Default fallback
+      return kind || 'source';
   }
 }
 
@@ -67,18 +67,7 @@ export type SourceRole = 'imported' | 'workspace' | 'brief' | 'agent_output' | '
 
 export interface KeimenonNode {
   id: string;
-  type:
-    | 'conversation'
-    | 'message'
-    | 'source'
-    | 'code' // Original types
-    | 'Lexeme'
-    | 'Phrase'
-    | 'Topic' // V2: UGC Spine
-    | 'VerifiedSource'
-    | 'VerifiedClaim' // V2: Verified Layer
-    | 'Principal'
-    | 'ConversationThread'; // V5: World Model principals
+  type: string;
   kind?: string; // Original API kind
   sourceRole?: SourceRole; // World Model V5: role determines visibility and UI treatment
   position: { x: number; y: number };

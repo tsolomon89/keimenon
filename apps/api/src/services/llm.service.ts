@@ -1,7 +1,11 @@
-
 import OpenAI from 'openai';
 import { SmartClaim, SuggestedConnection, AiAnalysisResult } from '@keimenon/types';
 import { v4 as uuidv4 } from 'uuid';
+import { appLogger } from '../utils/logger';
+
+function shouldLogOptionalAiProviderWarnings(): boolean {
+  return process.env.NODE_ENV !== 'test' || process.env.VERBOSE_AI_TOOLING_LOGS === '1';
+}
 
 export class LLMService {
   private static instance: LLMService;
@@ -15,7 +19,9 @@ export class LLMService {
         apiKey: apiKey,
       });
     } else {
-      console.warn('[LLMService] OPENAI_API_KEY not found. AI features will be disabled or mocked.');
+      if (shouldLogOptionalAiProviderWarnings()) {
+        appLogger.warn('llm.config.missing_openai_key');
+      }
     }
   }
 
@@ -55,12 +61,12 @@ export class LLMService {
             - suggestedTags: An array of strings representing high-level topics/tags for the whole document.
             - connections: An array of suggested connections to other concepts (optional, can be empty).
             
-            Output valid JSON only.`
+            Output valid JSON only.`,
           },
           {
             role: 'user',
-            content: `Document Content:\n\n${content.substring(0, 10000)}` // Limit content length for safety
-          }
+            content: `Document Content:\n\n${content.substring(0, 10000)}`, // Limit content length for safety
+          },
         ],
         response_format: { type: 'json_object' },
         temperature: 0.2,
@@ -94,9 +100,11 @@ export class LLMService {
         analyzedAt: Date.now(),
         model: this.model,
       };
-
-    } catch (error) {
-      console.error('[LLMService] Analysis failed:', error);
+    } catch (error: any) {
+      appLogger.error('llm.analysis.failed', {
+        sourceId,
+        message: error?.message || String(error),
+      });
       throw error;
     }
   }

@@ -38,6 +38,38 @@ interface TestIsolationWorkerFixtures {
   dbPath: string;
 }
 
+const VERBOSE_TEST_ISOLATION_LOGS = process.env.E2E_VERBOSE_TEST_ISOLATION === '1';
+
+function isolationLog(message: string, ...optionalParams: unknown[]): void {
+  if (!VERBOSE_TEST_ISOLATION_LOGS) {
+    return;
+  }
+
+  console.log(message, ...optionalParams);
+}
+
+function formatErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
+}
+
+function isolationWarn(message: string, error?: unknown): void {
+  if (typeof error === 'undefined') {
+    console.warn(message);
+    return;
+  }
+
+  if (VERBOSE_TEST_ISOLATION_LOGS) {
+    console.warn(message, error);
+    return;
+  }
+
+  console.warn(`${message}: ${formatErrorMessage(error)}`);
+}
+
 /**
  * Initialize worker-specific database
  * Copies template DB and updates test user to be worker-specific
@@ -62,7 +94,7 @@ async function initializeWorkerDb(workerIndex: number, dbPath: string): Promise<
     }
 
     if (fs.existsSync(sourceDb)) {
-      console.log(
+      isolationLog(
         `[Worker ${workerIndex}] Copying main DB from ${path.basename(path.dirname(sourceDb))}...`
       );
       fs.copyFileSync(sourceDb, dbPath);
@@ -76,7 +108,7 @@ async function initializeWorkerDb(workerIndex: number, dbPath: string): Promise<
 
   // No need to modify user emails - each worker has isolated DB
   // Tests can use standard credentials (admin@admin.com)
-  console.log(`[Worker ${workerIndex}] Worker DB initialized with standard test user`);
+  isolationLog(`[Worker ${workerIndex}] Worker DB initialized with standard test user`);
 
   // Future: could add worker-specific data initialization here if needed
 }
@@ -155,8 +187,8 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
     // Wrap the raw context to automatically merge X-Test-DB-Path header
     const apiContext = createWrappedApiContext(rawApiContext, dbPath);
 
-    console.log(`[Test Isolation] API Request context created with baseURL: ${API_BASE_URL}`);
-    console.log(`[Test Isolation] Auto-injecting X-Test-DB-Path: ${dbPath}`);
+    isolationLog(`[Test Isolation] API Request context created with baseURL: ${API_BASE_URL}`);
+    isolationLog(`[Test Isolation] Auto-injecting X-Test-DB-Path: ${dbPath}`);
 
     // Generate unique savepoint ID for this test
     const testId = `test_${testInfo.testId.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
@@ -172,7 +204,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
         console.warn(`[Test Isolation] ⚠️ Failed to begin savepoint: ${beginResponse.status()}`);
         // Continue anyway - test will run without savepoint protection
       } else {
-        console.log(`[Test Isolation] ✅ Savepoint created: ${testId}`);
+        isolationLog(`[Test Isolation] ✅ Savepoint created: ${testId}`);
       }
 
       // Run the test with the wrapped context
@@ -190,10 +222,10 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
             `[Test Isolation] ⚠️ Failed to rollback savepoint: ${rollbackResponse.status()}`
           );
         } else {
-          console.log(`[Test Isolation] ✅ Rolled back savepoint: ${testId}`);
+          isolationLog(`[Test Isolation] ✅ Rolled back savepoint: ${testId}`);
         }
       } catch (error) {
-        console.warn(`[Test Isolation] ⚠️ Savepoint rollback error:`, error);
+        isolationWarn(`[Test Isolation] ⚠️ Savepoint rollback error`, error);
         // Don't fail the test if cleanup fails
       }
 
@@ -236,18 +268,18 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
 
         if (closeResponse.ok) {
           const result = await closeResponse.json();
-          console.log(
+          isolationLog(
             `[Worker ${workerInfo.workerIndex}] ✅ Closed cached connection: ${result.message || 'success'}`
           );
         } else {
           // Not an error - connection might not be cached yet
-          console.log(
+          isolationLog(
             `[Worker ${workerInfo.workerIndex}] No cached connection to close (first run)`
           );
         }
       } catch (error) {
         // Don't fail if API not available yet
-        console.log(
+        isolationLog(
           `[Worker ${workerInfo.workerIndex}] Could not close connection (API not ready):`,
           error
         );
@@ -256,7 +288,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
       // Restore pristine snapshot to worker DB
       await snapshotManager.restoreToWorker(workerInfo.workerIndex);
 
-      console.log(
+      isolationLog(
         `[Worker ${workerInfo.workerIndex}] Restored from snapshot: ${workerDbAbsolutePath}`
       );
 
@@ -292,7 +324,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
           localStorage.clear();
           sessionStorage.clear();
         });
-        console.log(
+        isolationLog(
           `[Test Isolation] ✅ Browser state cleared (cookies, localStorage, sessionStorage)`
         );
       } catch (error: any) {
@@ -305,6 +337,9 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
       'X-Test-DB-Path': dbPath,
     });
 
+    // Expose the worker DB path to helper modules that perform API calls before first navigation.
+    process.env.PLAYWRIGHT_TEST_DB_PATH = dbPath;
+
     // CRITICAL FIX #4: Inject test DB path into window so frontend JavaScript can access it
     // This is needed because setExtraHTTPHeaders() only affects page navigation,
     // NOT fetch() or XMLHttpRequest() calls made by the frontend code
@@ -313,7 +348,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
       window.__TEST_DB_PATH__ = testDbPath;
     }, dbPath);
 
-    console.log(`[Test Isolation] Page configured with DB: ${path.basename(dbPath)}`);
+    isolationLog(`[Test Isolation] Page configured with DB: ${path.basename(dbPath)}`);
 
     // Generate unique savepoint ID for this test
     const testId = `test_${testInfo.testId.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
@@ -329,7 +364,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
         console.warn(`[Test Isolation] ⚠️ Failed to begin savepoint: ${beginResponse.status()}`);
         // Continue anyway - test will run without savepoint protection
       } else {
-        console.log(`[Test Isolation] ✅ Savepoint created: ${testId}`);
+        isolationLog(`[Test Isolation] ✅ Savepoint created: ${testId}`);
       }
 
       // Run the test
@@ -343,7 +378,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
           sessionStorage.clear();
         });
         await context.clearCookies();
-        console.log(`[Test Isolation] ✅ Browser state cleared after test`);
+        isolationLog(`[Test Isolation] ✅ Browser state cleared after test`);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         const ignorable =
@@ -351,7 +386,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
           message.includes('Execution context was destroyed') ||
           message.includes('Target page, context or browser has been closed');
         if (!ignorable) {
-          console.warn(`[Test Isolation] ⚠️ Post-test browser cleanup error:`, error);
+          isolationWarn(`[Test Isolation] ⚠️ Post-test browser cleanup error`, error);
         }
         // Don't fail if cleanup fails
       }
@@ -369,10 +404,10 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
             `[Test Isolation] ⚠️ Failed to rollback savepoint: ${rollbackResponse.status()}`
           );
         } else {
-          console.log(`[Test Isolation] ✅ Rolled back savepoint: ${testId}`);
+          isolationLog(`[Test Isolation] ✅ Rolled back savepoint: ${testId}`);
         }
       } catch (error) {
-        console.warn(`[Test Isolation] ⚠️ Savepoint rollback error:`, error);
+        isolationWarn(`[Test Isolation] ⚠️ Savepoint rollback error`, error);
         // Don't fail the test if cleanup fails
       }
     }

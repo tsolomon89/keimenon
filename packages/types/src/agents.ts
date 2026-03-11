@@ -87,7 +87,7 @@ export type VerifierInput = z.infer<typeof VerifierInputSchema>;
 
 export const ClaimStatusUpdateSchema = z.object({
   claim_id: z.string(),
-  status: z.enum(['verified', 'contested', 'stale']),
+  status: z.enum(['provisional', 'verifying', 'verified', 'contested', 'stale']),
   receipt_id: z.string(),
 });
 export type ClaimStatusUpdate = z.infer<typeof ClaimStatusUpdateSchema>;

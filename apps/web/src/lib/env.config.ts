@@ -50,6 +50,7 @@ export const ENABLE_PRO_FEATURES = getEnv('NEXT_PUBLIC_ENABLE_PRO_FEATURES') ===
 export const ENABLE_BUSINESS_FEATURES = getEnv('NEXT_PUBLIC_ENABLE_BUSINESS_FEATURES') === 'true';
 export const ENABLE_LEGACY_IMPORTS = getEnv('NEXT_PUBLIC_ENABLE_LEGACY_IMPORTS') === '1';
 export const ENABLE_HYBRID_LOCAL_FIRST = getEnv('NEXT_PUBLIC_ENABLE_HYBRID_LOCAL_FIRST') === '1';
+export const ENABLE_3D_RENDERER = getEnv('NEXT_PUBLIC_ENABLE_3D_RENDERER', 'true') !== 'false';
 
 /**
  * SSE Direct Subscription Feature Flag (for phased rollout)

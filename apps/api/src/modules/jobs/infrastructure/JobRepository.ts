@@ -48,6 +48,7 @@ export interface JobFilters {
 export interface JobRepository {
   save(job: Job): Promise<void>;
   findById(id: string, accountId: string, req?: any): Promise<Job | null>;
+  findByObjectiveBuildTaskId(taskId: string, req?: any): Promise<Job | null>;
   find(filters: JobFilters, req?: any): Promise<Job[]>;
   appendEvent(event: JobEvent, dbOrReq?: any): Promise<void>;
   loadEvents(jobId: string, accountId: string, req?: any): Promise<JobEvent[]>;
@@ -368,6 +369,35 @@ export class SQLiteJobRepository implements JobRepository {
       },
       events
     ); // ✅ Pass events to factory method
+  }
+
+  /**
+   * Find an import job by objective build task ID.
+   * Mapping source: state_data.metadata.objectiveBuildTaskId.
+   */
+  async findByObjectiveBuildTaskId(taskId: string, req?: any): Promise<Job | null> {
+    const db = await this.getDbForRequest(req);
+
+    const stmt = db.prepare(`
+      SELECT * FROM jobs
+      WHERE json_extract(state_data, '$.metadata.objectiveBuildTaskId') = ?
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `);
+
+    const record = stmt.get(taskId) as any;
+    if (!record) {
+      return null;
+    }
+
+    const events = await this.loadEvents(record.id, record.account_id, req);
+    return Job.fromDatabase(
+      {
+        ...record,
+        state_data: record.state_data,
+      },
+      events
+    );
   }
 
   /**

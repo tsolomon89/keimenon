@@ -1,5 +1,6 @@
 import { ChatParser, NormalizedConversation, NormalizedMessage, ParseResult } from '../types';
 import { fingerprint } from '../utils/fingerprint';
+import { logParserError } from '../utils/parse-error-logging';
 import { nanoid } from 'nanoid';
 
 /**
@@ -54,7 +55,7 @@ export class ChatGPTParser implements ChatParser {
         }
       }
     } catch (error) {
-      console.error('ChatGPT parse error:', error);
+      logParserError('ChatGPTParser', error);
       stats.parse_errors++;
     }
 

@@ -16,6 +16,13 @@ export const ImportConfigSchema = z
     minMessageLength: z.number().min(0).default(400),
     processingMode: z.enum(['automatic', 'manual', 'hybrid']).default('automatic'),
     branches: z.enum(['merged', 'separate']).default('merged'),
+    agent: z
+      .object({
+        bootstrap: z.enum(['manual', 'auto']).default('manual'),
+      })
+      .default({
+        bootstrap: 'manual',
+      }),
     groups: z
       .array(
         z.object({
@@ -32,12 +39,14 @@ export const ImportConfigSchema = z
         languages: z.array(z.string()).default([]),
         groupBy: z.enum(['language', 'conversation', 'keyword']).default('language'),
         deduplicate: z.boolean().default(true),
+        sourceHandling: z.enum(['keep_inline', 'extract_and_remove']).default('extract_and_remove'),
       })
       .default({
         minLength: 50,
         languages: [],
         groupBy: 'language',
         deduplicate: true,
+        sourceHandling: 'extract_and_remove',
       }),
     duplicateDetection: z
       .object({
@@ -72,12 +81,6 @@ export const ImportConfigSchema = z
         autoApproveExact: false,
         autoMergeThreshold: 0.95,
       }),
-
-    // Legacy aliases kept for migration (normalized into canonical fields)
-    autoGroup: z.boolean().optional(),
-    targetGroupCount: z.number().optional(),
-    codeMinChars: z.number().optional(),
-    duplicateThreshold: z.number().optional(),
   })
   .partial();
 
@@ -93,6 +96,9 @@ export interface NormalizedImportOptions {
   minMessageLength: number;
   processingMode: 'automatic' | 'manual' | 'hybrid';
   branches: 'merged' | 'separate';
+  agent: {
+    bootstrap: 'manual' | 'auto';
+  };
   groups: Array<{ id: string; name: string; keywords: string[] }>;
   extractCode: boolean;
   codeSettings: {
@@ -100,6 +106,7 @@ export interface NormalizedImportOptions {
     languages: string[];
     groupBy: 'language' | 'conversation' | 'keyword';
     deduplicate: boolean;
+    sourceHandling: 'keep_inline' | 'extract_and_remove';
   };
   duplicateDetection: {
     enabled: boolean;
@@ -117,10 +124,6 @@ export interface NormalizedImportOptions {
     autoApproveExact: boolean;
     autoMergeThreshold: number;
   };
-  autoGroup?: boolean;
-  targetGroupCount?: number;
-  codeMinChars?: number;
-  duplicateThreshold?: number;
 }
 
 const DEFAULT_IMPORT_OPTIONS: NormalizedImportOptions = {
@@ -132,6 +135,9 @@ const DEFAULT_IMPORT_OPTIONS: NormalizedImportOptions = {
   minMessageLength: 400,
   processingMode: 'automatic',
   branches: 'merged',
+  agent: {
+    bootstrap: 'manual',
+  },
   groups: [],
   extractCode: true,
   codeSettings: {
@@ -139,6 +145,7 @@ const DEFAULT_IMPORT_OPTIONS: NormalizedImportOptions = {
     languages: [],
     groupBy: 'language',
     deduplicate: true,
+    sourceHandling: 'extract_and_remove',
   },
   duplicateDetection: {
     enabled: true,
@@ -170,30 +177,69 @@ export function normalizeImportOptions(input?: unknown): NormalizedImportOptions
   const parsed = ImportConfigSchema.parse(input);
   const defaults = cloneDefaults();
 
-  const similarityThreshold =
-    parsed.duplicateDetection?.similarityThreshold ?? parsed.duplicateThreshold;
-
-  const minLength = parsed.codeSettings?.minLength ?? parsed.codeMinChars;
-
   return {
     platform: parsed.platform ?? defaults.platform,
     extraction: parsed.extraction ?? defaults.extraction,
     minMessageLength: parsed.minMessageLength ?? defaults.minMessageLength,
     processingMode: parsed.processingMode ?? defaults.processingMode,
     branches: parsed.branches ?? defaults.branches,
+    agent: parsed.agent ?? defaults.agent,
     groups: parsed.groups ?? defaults.groups,
     extractCode: parsed.extractCode ?? defaults.extractCode,
     codeSettings: {
       ...(parsed.codeSettings ?? defaults.codeSettings),
-      minLength: minLength ?? defaults.codeSettings.minLength,
+      minLength: parsed.codeSettings?.minLength ?? defaults.codeSettings.minLength,
     },
     duplicateDetection: {
       ...(parsed.duplicateDetection ?? defaults.duplicateDetection),
-      similarityThreshold: similarityThreshold ?? defaults.duplicateDetection.similarityThreshold,
+      similarityThreshold:
+        parsed.duplicateDetection?.similarityThreshold ??
+        defaults.duplicateDetection.similarityThreshold,
     },
-    autoGroup: parsed.autoGroup,
-    targetGroupCount: parsed.targetGroupCount,
-    codeMinChars: parsed.codeMinChars,
-    duplicateThreshold: parsed.duplicateThreshold,
   };
+}
+
+export interface ImportGraphBirthMetadata {
+  massStats: {
+    atomicCount: number;
+    packetCount: number;
+    weightedMassTotal: number;
+    weightedMassMean: number;
+    weightedMassP95: number;
+  };
+  clusterCounts: {
+    groups: number;
+    subgroups: number;
+    isolated: number;
+  };
+  edgeStrengthStats: {
+    count: number;
+    mean: number;
+    p50: number;
+    p95: number;
+    max: number;
+  };
+  objectiveBuildTaskId?: string;
+}
+
+export interface ObjectiveBuildTaskInput {
+  importJobId: string;
+  accountId: string;
+  sourceBatchId?: string;
+  targetId?: string;
+  policy: {
+    domain_weights: Record<string, number>;
+    max_hops: number;
+    max_sources: number;
+    allow_full_raw_egress?: boolean;
+  };
+}
+
+export interface ObjectiveBuildResult {
+  taskId: string;
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+  evidenceNodeIds: string[];
+  objectiveNodeIds: string[];
+  unifiedDocIds: string[];
+  error?: string;
 }

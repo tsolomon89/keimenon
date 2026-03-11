@@ -488,6 +488,9 @@ CREATE INDEX IF NOT EXISTS idx_edges_account_tag ON edges(account_id, data_tag);
 CREATE INDEX IF NOT EXISTS idx_policy_profiles_account ON policy_profiles(account_id);
 CREATE INDEX IF NOT EXISTS idx_nodes_spine ON nodes(kind) WHERE kind IN ('Lexeme', 'Phrase', 'Topic');
 CREATE INDEX IF NOT EXISTS idx_nodes_verified ON nodes(kind) WHERE kind IN ('VerifiedSource', 'VerifiedClaim');
+CREATE INDEX IF NOT EXISTS idx_nodes_objective_claim_status
+ON nodes(kind, json_extract(properties, '$.status'))
+WHERE kind = 'ObjectiveClaim';
 CREATE INDEX IF NOT EXISTS idx_nodes_agent ON nodes(kind) WHERE kind IN ('AgentNode', 'CanonicalDoc', 'DuplicateCluster', 'Evidence');
 CREATE INDEX IF NOT EXISTS idx_nodes_principal ON nodes(kind) WHERE kind = 'Principal';
 CREATE INDEX IF NOT EXISTS idx_nodes_conversation ON nodes(kind) WHERE kind = 'ConversationThread';
@@ -739,14 +742,18 @@ export class SQLiteClient {
 
     const hasAppliedMigrations = migrationRunner.hasAppliedMigrations();
     if (!hasAppliedMigrations && this.isLegacyDatabaseWithoutMigrationHistory()) {
-      console.warn(
-        '[SQLiteClient] Legacy database without migration history detected; baselining migrations through 025 and applying 026+ only'
-      );
+      if (process.env.NODE_ENV !== 'test' || process.env.VERBOSE_DB_SCHEMA_REPAIR_LOGS === '1') {
+        console.warn(
+          '[SQLiteClient] Legacy database without migration history detected; baselining migrations through 025 and applying 026+ only'
+        );
+      }
       await migrationRunner.markMigrationsAppliedThrough('025');
     } else if (this.shouldBaselineLegacyMigrations(migrationRunner)) {
-      console.warn(
-        '[SQLiteClient] Legacy database with partial migration history detected; baselining missing migrations through 025'
-      );
+      if (process.env.NODE_ENV !== 'test' || process.env.VERBOSE_DB_SCHEMA_REPAIR_LOGS === '1') {
+        console.warn(
+          '[SQLiteClient] Legacy database with partial migration history detected; baselining missing migrations through 025'
+        );
+      }
       await migrationRunner.markMigrationsAppliedThrough('025');
     }
 
@@ -843,9 +850,11 @@ export class SQLiteClient {
     }
 
     if (this.tableExists('job_items') && !this.tableHasColumn('job_items', 'account_id')) {
-      console.warn(
-        '[SQLiteClient] Repairing legacy job_items schema: adding missing account_id column'
-      );
+      if (process.env.NODE_ENV !== 'test' || process.env.VERBOSE_DB_SCHEMA_REPAIR_LOGS === '1') {
+        console.warn(
+          '[SQLiteClient] Repairing legacy job_items schema: adding missing account_id column'
+        );
+      }
 
       this.db.exec(`ALTER TABLE job_items ADD COLUMN account_id TEXT`);
 

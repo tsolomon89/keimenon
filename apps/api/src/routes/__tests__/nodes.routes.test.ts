@@ -11,6 +11,9 @@ const { mockDbClient, mockDb } = vi.hoisted(() => {
     getNode: vi.fn(),
     updateNode: vi.fn(),
     deleteNode: vi.fn(),
+    createEdge: vi.fn(),
+    getNodeEdges: vi.fn(),
+    deleteEdge: vi.fn(),
     execute: vi.fn(),
   };
   return {
@@ -21,8 +24,11 @@ const { mockDbClient, mockDb } = vi.hoisted(() => {
       getNode: db.getNode,
       updateNode: db.updateNode,
       deleteNode: db.deleteNode,
+      createEdge: db.createEdge,
+      getNodeEdges: db.getNodeEdges,
+      deleteEdge: db.deleteEdge,
       execute: db.execute,
-    }
+    },
   };
 });
 
@@ -82,19 +88,19 @@ describe('Nodes Routes', () => {
         url: 'http://example.com',
       };
 
-      const res = await request(app)
-        .post('/nodes/source')
-        .send(payload);
+      const res = await request(app).post('/nodes/source').send(payload);
 
       if (res.status !== 201) {
         console.error('Create Source Error:', JSON.stringify(res.body, null, 2));
       }
 
       expect(res.status).toBe(201);
-      expect(mockDb.createNode).toHaveBeenCalledWith(expect.objectContaining({
-        kind: 'Source',
-        account_id: 'acct-1',
-      }));
+      expect(mockDb.createNode).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: 'Source',
+          account_id: 'acct-1',
+        })
+      );
     });
   });
 
@@ -126,6 +132,76 @@ describe('Nodes Routes', () => {
 
       expect(res.status).toBe(200);
       expect(mockDb.deleteNode).toHaveBeenCalledWith('n1');
+    });
+  });
+
+  describe('POST /nodes/:id/sequester', () => {
+    it('should create SEQUESTERS edge when node is not yet sequestered', async () => {
+      mockDb.getNode.mockImplementation(async (id: string) => {
+        if (id === 'n1') {
+          return { id: 'n1', kind: 'Source', account_id: 'acct-1' };
+        }
+        return null;
+      });
+      mockDb.getNodeEdges.mockResolvedValue([]);
+      mockDb.createNode.mockResolvedValue(undefined);
+      mockDb.createEdge.mockResolvedValue(undefined);
+
+      const res = await request(app).post('/nodes/n1/sequester').send({ sequester: true });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.sequestered).toBe(true);
+      expect(mockDb.createEdge).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: 'SEQUESTERS',
+          to: 'n1',
+          account_id: 'acct-1',
+          created_by: 'admin-id',
+        })
+      );
+    });
+
+    it('should return idempotent success when already sequestered', async () => {
+      mockDb.getNode.mockImplementation(async (id: string) => {
+        if (id === 'n1') {
+          return { id: 'n1', kind: 'Source', account_id: 'acct-1' };
+        }
+        return null;
+      });
+      mockDb.getNodeEdges.mockResolvedValue([
+        { id: 'edge_existing', kind: 'SEQUESTERS', from: 'principal_x', to: 'n1' },
+      ]);
+      mockDb.createNode.mockResolvedValue(undefined);
+
+      const res = await request(app).post('/nodes/n1/sequester').send({ sequester: true });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.alreadySequestered).toBe(true);
+      expect(mockDb.createEdge).not.toHaveBeenCalled();
+    });
+
+    it('should remove existing SEQUESTERS edges when unsequestering', async () => {
+      mockDb.getNode.mockImplementation(async (id: string) => {
+        if (id === 'n1') {
+          return { id: 'n1', kind: 'Source', account_id: 'acct-1' };
+        }
+        return null;
+      });
+      mockDb.getNodeEdges.mockResolvedValue([
+        { id: 'edge_existing', kind: 'SEQUESTERS', from: 'principal_x', to: 'n1' },
+      ]);
+      mockDb.createNode.mockResolvedValue(undefined);
+      mockDb.deleteEdge.mockResolvedValue(undefined);
+
+      const res = await request(app).post('/nodes/n1/sequester').send({ sequester: false });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.sequestered).toBe(false);
+      expect(res.body.removed).toBe(1);
+      expect(mockDb.deleteEdge).toHaveBeenCalledWith('edge_existing');
     });
   });
 });

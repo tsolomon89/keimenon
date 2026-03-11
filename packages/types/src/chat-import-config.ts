@@ -1,96 +1,43 @@
 /**
  * Type definitions for chat import feature
+ *
+ * Canonical source of truth is import-contract.ts; this file layers
+ * UI-specific fields (e.g. matchCount) and review state helpers.
  */
 
-export interface ChatImportConfig {
-  // Extraction
-  extraction: {
-    includeUser: boolean;
-    includeAssistant: boolean;
-  };
+import { normalizeImportOptions, type NormalizedImportOptions } from './import-contract';
 
-  // Branches
-  branches: 'merged' | 'separate';
-
-  // Filtering
-  minMessageLength: number;
-
-  // Processing
-  processingMode: 'automatic' | 'manual';
-
-  // Manual groups (only if processingMode='manual')
+export interface ChatImportConfig extends Omit<NormalizedImportOptions, 'platform'> {
   groups: Array<{
     id: string;
     name: string;
     keywords: string[];
     matchCount?: number; // computed after analysis
   }>;
-
-  // Duplicate detection
-  duplicateDetection: {
-    enabled: boolean;
-    exactMatch: boolean;
-    similarityThreshold: number;
-    crossConversation: boolean;
-
-    // Advanced
-    algorithm: 'jaccard' | 'levenshtein' | 'cosine' | 'embedding';
-    normalizeTokens: boolean;
-    minTokenOverlap: number;
-    lengthRatioTolerance: number;
-
-    // Ignore options
-    ignoreWhitespace: boolean;
-    ignoreCase: boolean;
-    ignoreTimestamp: boolean;
-
-    // Review
-    requireReview: boolean;
-    autoApproveExact: boolean;
-    autoMergeThreshold: number;
-  };
-
-  // Code extraction
-  extractCode: boolean;
-  codeSettings: {
-    minLength: number;
-    languages: string[];
-    groupBy: 'language' | 'conversation' | 'keyword';
-    deduplicate: boolean;
-  };
 }
+
+const IMPORT_DEFAULTS = normalizeImportOptions();
 
 export const DEFAULT_IMPORT_CONFIG: ChatImportConfig = {
   extraction: {
-    includeUser: true,
-    includeAssistant: false,
+    includeUser: IMPORT_DEFAULTS.extraction.includeUser,
+    includeAssistant: IMPORT_DEFAULTS.extraction.includeAssistant,
   },
-  branches: 'merged',
-  minMessageLength: 400,
-  processingMode: 'manual',
+  branches: IMPORT_DEFAULTS.branches,
+  agent: {
+    bootstrap: IMPORT_DEFAULTS.agent.bootstrap,
+  },
+  minMessageLength: IMPORT_DEFAULTS.minMessageLength,
+  processingMode: IMPORT_DEFAULTS.processingMode,
   groups: [],
-  duplicateDetection: {
-    enabled: true,
-    exactMatch: true,
-    similarityThreshold: 0.85,
-    crossConversation: true,
-    algorithm: 'jaccard',
-    normalizeTokens: true,
-    minTokenOverlap: 5,
-    lengthRatioTolerance: 0.2,
-    ignoreWhitespace: true,
-    ignoreCase: false,
-    ignoreTimestamp: true,
-    requireReview: true,
-    autoApproveExact: false,
-    autoMergeThreshold: 0.95,
-  },
-  extractCode: true,
+  duplicateDetection: { ...IMPORT_DEFAULTS.duplicateDetection },
+  extractCode: IMPORT_DEFAULTS.extractCode,
   codeSettings: {
-    minLength: 50,
-    languages: [],
-    groupBy: 'language',
-    deduplicate: true,
+    minLength: IMPORT_DEFAULTS.codeSettings.minLength,
+    languages: [...IMPORT_DEFAULTS.codeSettings.languages],
+    groupBy: IMPORT_DEFAULTS.codeSettings.groupBy,
+    deduplicate: IMPORT_DEFAULTS.codeSettings.deduplicate,
+    sourceHandling: IMPORT_DEFAULTS.codeSettings.sourceHandling,
   },
 };
 
@@ -140,14 +87,16 @@ export interface DuplicateCandidate {
     editDistance: number;
     lengthRatio: number;
   };
-  decision?: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge';
+  decision?: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge' | 'sequester';
 }
 
 export interface ReviewDecision {
   duplicateId: string;
-  action: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge';
+  action: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge' | 'sequester';
   timestamp: number;
   userId?: string;
+  primaryNodeId?: string;
+  duplicateNodeId?: string;
 }
 
 // Duplicate Review UI State

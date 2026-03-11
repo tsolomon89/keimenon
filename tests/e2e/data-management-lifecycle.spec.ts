@@ -93,7 +93,9 @@ test.describe('Data Management Lifecycle', () => {
       }
       jobStatus = statusData.job?.status;
       attempts++;
-      console.log(`Job ${jobId} status: ${jobStatus} (attempt ${attempts}/${maxAttempts})`);
+      if (process.env.E2E_VERBOSE_LIFECYCLE_LOGS === '1') {
+        console.log(`Job ${jobId} status: ${jobStatus} (attempt ${attempts}/${maxAttempts})`);
+      }
     }
     return canonicalizeStatus(jobStatus);
   };
@@ -322,13 +324,22 @@ test.describe('Data Management Lifecycle', () => {
     const clearStatus = await waitForJobStatus(apiRequest, clearJobId, ['succeeded', 'failed']);
     expect(clearStatus).toBe('succeeded');
 
-    // Step 5: Verify Empty
-    // Note: This might depend on eventual consistency or if the delete is truly effectively immediate after job success
-    const check2 = await apiRequest.get('/api/v1/nodes', {
+    // Step 5: Verify Keimenon data is empty.
+    // System nodes (User/Account/etc.) may remain by design, so we validate via /data/stats.
+    const statsAfterClearResponse = await apiRequest.get('/api/v1/data/stats', {
       headers: { Authorization: `Bearer ${authToken}` },
     });
-    const nodes2 = await check2.json();
-    expect(nodes2.nodes.length).toBe(0);
+    expect(statsAfterClearResponse.ok()).toBeTruthy();
+    const statsAfterClear = await statsAfterClearResponse.json();
+    const remainingKeimenonNodes = (
+      (statsAfterClear?.stats?.nodes as Array<{ count: number }>) || []
+    )
+      .map((entry) => Number(entry?.count || 0))
+      .reduce((sum, count) => sum + count, 0);
+    const remainingKeimenonEdges = Number(statsAfterClear?.stats?.edges || 0);
+
+    expect(remainingKeimenonNodes).toBe(0);
+    expect(remainingKeimenonEdges).toBe(0);
 
     // Step 6: Re-import
     const reImport = await apiRequest.post('/api/v1/jobs/import', {

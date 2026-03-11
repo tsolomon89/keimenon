@@ -1,0 +1,428 @@
+﻿name: Gate E Hardening
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+concurrency:
+  group: gate-e-hardening-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  full-e2e-chromium:
+    name: Full E2E (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: node scripts/run-with-node22.js "npx playwright install --with-deps chromium"
+
+      - name: Run full E2E suite (Chromium)
+        run: npm run e2e -- --project=chromium
+        env:
+          CI: 'true'
+          BASE_URL: http://127.0.0.1:3000
+          API_BASE_URL: http://127.0.0.1:4001
+          TEST_USER_EMAIL: admin@admin.com
+          TEST_USER_PASSWORD: TestPass123!
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-e-e2e-chromium
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 21
+
+  lod-performance-burnin:
+    name: LOD Burn-in (10k/50k)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run LOD burn-in (CI mode)
+        if: github.event_name != 'schedule'
+        run: npm run perf:lod:burnin:quick
+
+      - name: Run LOD burn-in (nightly mode)
+        if: github.event_name == 'schedule'
+        run: npm run perf:lod:burnin -- --iterations 10 --strict --output test-results/perf/lod-burnin-nightly.json
+
+      - name: Upload performance reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-e-lod-burnin
+          path: test-results/perf/
+          retention-days: 21
+
+  rollout-rollback-drill:
+    name: Rollout/Rollback Drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run drill (CI mode)
+        if: github.event_name != 'schedule'
+        run: npm run ops:rollout-rollback:drill:quick
+
+      - name: Run drill (nightly mode)
+        if: github.event_name == 'schedule'
+        run: npm run ops:rollout-rollback:drill -- --output test-results/ops/rollout-rollback-nightly.json --keep-temp
+
+      - name: Upload drill reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-e-rollout-rollback
+          path: test-results/ops/
+          retention-days: 21
+
+  gate-e-evidence:
+    name: Gate-E Evidence + Summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: always()
+    needs:
+      - full-e2e-chromium
+      - lod-performance-burnin
+      - rollout-rollback-drill
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download LOD artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: gate-e-lod-burnin
+          path: test-results/perf
+
+      - name: Download drill artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: gate-e-rollout-rollback
+          path: test-results/ops
+
+      - name: Resolve report paths
+        id: report_paths
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "lod_report=test-results/perf/lod-burnin-nightly.json" >> "$GITHUB_OUTPUT"
+            echo "drill_report=test-results/ops/rollout-rollback-nightly.json" >> "$GITHUB_OUTPUT"
+          else
+            echo "lod_report=test-results/perf/lod-burnin-latest.json" >> "$GITHUB_OUTPUT"
+            echo "drill_report=test-results/ops/rollout-rollback-drill-latest.json" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate Gate-E evidence bundle
+        id: evidence_bundle
+        continue-on-error: true
+        run: |
+          node scripts/ops/gate-e-evidence-bundle.js \
+            --e2e-status "${{ needs.full-e2e-chromium.result }}" \
+            --lod-report "${{ steps.report_paths.outputs.lod_report }}" \
+            --drill-report "${{ steps.report_paths.outputs.drill_report }}" \
+            --output test-results/ops/gate-e-evidence-latest.json \
+            --summary-output test-results/ops/gate-e-summary-latest.md
+
+      - name: Publish red/yellow/green summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f test-results/ops/gate-e-summary-latest.md ]; then
+            cat test-results/ops/gate-e-summary-latest.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## Gate-E Summary [RED]" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Summary file missing: \`test-results/ops/gate-e-summary-latest.md\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Compute nightly green streak
+        if: github.event_name == 'schedule'
+        id: nightly_streak
+        uses: actions/github-script@v7
+        env:
+          E2E_RESULT: ${{ needs.full-e2e-chromium.result }}
+          LOD_RESULT: ${{ needs.lod-performance-burnin.result }}
+          DRILL_RESULT: ${{ needs.rollout-rollback-drill.result }}
+          EVIDENCE_RESULT: ${{ steps.evidence_bundle.outcome }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const target = 14;
+            const workflowId = 'gate-e-hardening.yml';
+
+            const response = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: workflowId,
+              branch: 'main',
+              event: 'schedule',
+              status: 'completed',
+              per_page: 50,
+            });
+
+            const historicalRuns = (response.data.workflow_runs || []).sort(
+              (a, b) => new Date(b.created_at) - new Date(a.created_at)
+            );
+
+            let historicalStreak = 0;
+            for (const run of historicalRuns) {
+              if (run.conclusion === 'success') {
+                historicalStreak += 1;
+                continue;
+              }
+              break;
+            }
+
+            const currentPass =
+              process.env.E2E_RESULT === 'success' &&
+              process.env.LOD_RESULT === 'success' &&
+              process.env.DRILL_RESULT === 'success' &&
+              process.env.EVIDENCE_RESULT === 'success';
+
+            const streak = currentPass ? historicalStreak + 1 : 0;
+            const meetsTarget = streak >= target;
+
+            const payload = {
+              timestamp: new Date().toISOString(),
+              target,
+              streak,
+              meetsTarget,
+              currentRun: {
+                runId: context.runId,
+                pass: currentPass,
+                e2e: process.env.E2E_RESULT,
+                lod: process.env.LOD_RESULT,
+                drill: process.env.DRILL_RESULT,
+                evidence: process.env.EVIDENCE_RESULT,
+              },
+              historicalStreak,
+              historicalRunsInspected: historicalRuns.slice(0, 20).map((run) => ({
+                id: run.id,
+                runNumber: run.run_number,
+                conclusion: run.conclusion,
+                createdAt: run.created_at,
+                htmlUrl: run.html_url,
+              })),
+            };
+
+            fs.mkdirSync(path.resolve('test-results/ops'), { recursive: true });
+            fs.writeFileSync(
+              path.resolve('test-results/ops/gate-e-nightly-streak-latest.json'),
+              JSON.stringify(payload, null, 2),
+              'utf8'
+            );
+
+            core.setOutput('streak', String(streak));
+            core.setOutput('meets_target', meetsTarget ? 'true' : 'false');
+            core.summary.addHeading('Gate-E Nightly Streak');
+            core.summary.addRaw(`- Consecutive green nightlies: ${streak}/${target}\n`);
+            core.summary.addRaw(`- Current nightly pass: ${currentPass}\n`);
+            core.summary.addRaw(`- Meets target: ${meetsTarget}\n`);
+
+      - name: Close nightly failure tracker when criteria is met
+        if: github.event_name == 'schedule' && steps.nightly_streak.outputs.meets_target == 'true'
+        uses: actions/github-script@v7
+        env:
+          STREAK: ${{ steps.nightly_streak.outputs.streak }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const label = 'gate-e-nightly';
+            const title = 'Gate-E nightly failure tracker';
+
+            const search = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${owner}/${repo} is:issue is:open label:${label} in:title "${title}"`
+            });
+
+            if (search.data.items.length === 0) {
+              core.summary.addRaw('- No open nightly failure tracker issue to close.\n');
+              return;
+            }
+
+            const issueNumber = search.data.items[0].number;
+            const commentBody = [
+              'Closing nightly failure tracker after meeting Gate-E operational hardening streak criteria.',
+              '',
+              `Consecutive green nightlies: ${process.env.STREAK}/14`,
+              `Run: https://github.com/${owner}/${repo}/actions/runs/${context.runId}`,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              body: commentBody,
+            });
+
+            await github.rest.issues.update({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              state: 'closed',
+            });
+
+      - name: Create/update nightly failure issue
+        if: github.event_name == 'schedule' && (needs.full-e2e-chromium.result != 'success' || needs.lod-performance-burnin.result != 'success' || needs.rollout-rollback-drill.result != 'success' || steps.evidence_bundle.outcome != 'success')
+        uses: actions/github-script@v7
+        env:
+          E2E_RESULT: ${{ needs.full-e2e-chromium.result }}
+          LOD_RESULT: ${{ needs.lod-performance-burnin.result }}
+          DRILL_RESULT: ${{ needs.rollout-rollback-drill.result }}
+          EVIDENCE_RESULT: ${{ steps.evidence_bundle.outcome }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const label = 'gate-e-nightly';
+            const title = 'Gate-E nightly failure tracker';
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: label });
+            } catch (error) {
+              if (error.status === 404) {
+                await github.rest.issues.createLabel({
+                  owner,
+                  repo,
+                  name: label,
+                  color: 'B60205',
+                  description: 'Nightly Gate-E hardening failures'
+                });
+              } else {
+                throw error;
+              }
+            }
+
+            const search = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${owner}/${repo} is:issue is:open label:${label} in:title "${title}"`
+            });
+
+            const statusBlock = [
+              `- E2E: ${process.env.E2E_RESULT}`,
+              `- LOD burn-in: ${process.env.LOD_RESULT}`,
+              `- Rollout/rollback drill: ${process.env.DRILL_RESULT}`,
+              `- Evidence bundle: ${process.env.EVIDENCE_RESULT}`
+            ].join('\n');
+
+            const commentBody = [
+              `Nightly Gate-E run failed.`,
+              ``,
+              `Run: ${runUrl}`,
+              ``,
+              statusBlock,
+              ``,
+              `Timestamp: ${new Date().toISOString()}`
+            ].join('\n');
+
+            if (search.data.items.length > 0) {
+              const issueNumber = search.data.items[0].number;
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body: commentBody,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                labels: [label],
+                body: commentBody,
+              });
+            }
+
+      - name: Optional nightly webhook alert
+        if: github.event_name == 'schedule' && (needs.full-e2e-chromium.result != 'success' || needs.lod-performance-burnin.result != 'success' || needs.rollout-rollback-drill.result != 'success' || steps.evidence_bundle.outcome != 'success') && secrets.GATE_E_ALERT_WEBHOOK_URL != ''
+        env:
+          GATE_E_ALERT_WEBHOOK_URL: ${{ secrets.GATE_E_ALERT_WEBHOOK_URL }}
+        shell: bash
+        run: |
+          payload=$(cat <<'JSON'
+          {
+            "text": "Gate-E nightly failure detected",
+            "workflow": "gate-e-hardening",
+            "run_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "e2e": "${{ needs.full-e2e-chromium.result }}",
+            "lod": "${{ needs.lod-performance-burnin.result }}",
+            "drill": "${{ needs.rollout-rollback-drill.result }}",
+            "evidence": "${{ steps.evidence_bundle.outcome }}"
+          }
+          JSON
+          )
+          curl -sS -X POST "$GATE_E_ALERT_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            --data "$payload"
+
+      - name: Upload Gate-E evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-e-evidence
+          path: |
+            test-results/ops/gate-e-evidence-latest.json
+            test-results/ops/gate-e-nightly-streak-latest.json
+            test-results/ops/gate-e-summary-latest.md
+          retention-days: 30
+
+      - name: Enforce evidence bundle pass
+        if: steps.evidence_bundle.outcome != 'success'
+        run: exit 1

@@ -18,10 +18,12 @@
 import { Page, APIResponse } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getCachedAuthToken } from './login';
 
 const API_BASE_URL = 'http://127.0.0.1:4001';
 const ERROR_LOG_PATH = path.join(process.cwd(), '.test-errors.log');
 const MAX_TRANSIENT_REQUEST_RETRIES = 2;
+const SHOULD_LOG_AUTH_HELPER_WARNINGS = process.env.E2E_VERBOSE_AUTH_LOGS === '1';
 
 function shouldEmitConsoleApiError(status: number): boolean {
   if (process.env.E2E_VERBOSE_API_ERRORS === '1') {
@@ -106,26 +108,52 @@ export async function makeAuthenticatedRequest(
 ) {
   // Extract token + test DB context from browser state.
   // __TEST_DB_PATH__ is injected by test-isolation fixture.
-  const authState = await page.evaluate(() => {
-    const token =
-      localStorage.getItem('keimenon_token') ||
-      localStorage.getItem('temp_auth_token') ||
-      (() => {
-        const rawAuth = localStorage.getItem('auth');
-        if (!rawAuth) return null;
+  const authState = await page
+    .evaluate(() => {
+      const safeLocalStorageGet = (key: string): string | null => {
         try {
-          const parsed = JSON.parse(rawAuth);
-          return typeof parsed?.token === 'string' ? parsed.token : null;
+          return localStorage.getItem(key);
         } catch {
           return null;
         }
-      })();
+      };
 
-    // @ts-ignore test-only global injected by fixture
-    const testDbPath = (window as any).__TEST_DB_PATH__ || null;
-    return { token, testDbPath };
-  });
-  const token = authState?.token;
+      const safeSessionStorageGet = (key: string): string | null => {
+        try {
+          return sessionStorage.getItem(key);
+        } catch {
+          return null;
+        }
+      };
+
+      const token =
+        safeLocalStorageGet('keimenon_token') ||
+        safeLocalStorageGet('temp_auth_token') ||
+        safeSessionStorageGet('keimenon_token') ||
+        (() => {
+          const rawAuth = safeLocalStorageGet('auth');
+          if (!rawAuth) return null;
+          try {
+            const parsed = JSON.parse(rawAuth);
+            return typeof parsed?.token === 'string' ? parsed.token : null;
+          } catch {
+            return null;
+          }
+        })();
+
+      let testDbPath: string | null = null;
+      try {
+        // @ts-ignore test-only global injected by fixture
+        testDbPath = (window as any).__TEST_DB_PATH__ || null;
+      } catch {
+        testDbPath = null;
+      }
+
+      return { token, testDbPath };
+    })
+    .catch(() => ({ token: null, testDbPath: null }));
+  const token = authState?.token || getCachedAuthToken(page);
+  const resolvedTestDbPath = authState?.testDbPath || process.env.PLAYWRIGHT_TEST_DB_PATH || null;
 
   if (!token) {
     throw new Error(
@@ -141,7 +169,7 @@ export async function makeAuthenticatedRequest(
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
-      ...(authState?.testDbPath ? { 'X-Test-DB-Path': authState.testDbPath } : {}),
+      ...(resolvedTestDbPath ? { 'X-Test-DB-Path': resolvedTestDbPath } : {}),
       ...(options?.headers || {}),
     },
   };
@@ -172,9 +200,11 @@ export async function makeAuthenticatedRequest(
 
       const waitMs = (attempt + 1) * 200;
       const message = error instanceof Error ? error.message : String(error);
-      console.warn(
-        `[Authenticated Request] transient failure on ${method} ${fullUrl}: ${message}. Retrying in ${waitMs}ms (${attempt + 1}/${MAX_TRANSIENT_REQUEST_RETRIES}).`
-      );
+      if (SHOULD_LOG_AUTH_HELPER_WARNINGS) {
+        console.warn(
+          `[Authenticated Request] transient failure on ${method} ${fullUrl}: ${message}. Retrying in ${waitMs}ms (${attempt + 1}/${MAX_TRANSIENT_REQUEST_RETRIES}).`
+        );
+      }
       await page.waitForTimeout(waitMs);
     }
   }

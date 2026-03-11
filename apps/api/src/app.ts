@@ -44,6 +44,8 @@ import { createAiRoutes } from './routes/ai.routes';
 import { createAgentRoutes } from './routes/agent.routes';
 import { createDevAuthRoutes } from './routes/dev-auth.routes';
 import { createSystemRoutes } from './routes/system.routes';
+import { createMeRoutes } from './routes/me.routes';
+import { createImportRoutes } from './routes/import.routes';
 import healthRoutes from './routes/health.routes';
 import { createPrincipalsRoutes } from './routes/principals.routes';
 import { createWorkspaceRoutes } from './routes/workspace.routes';
@@ -55,6 +57,7 @@ import { AuthService } from './services/auth.service';
 import { testIsolationMiddleware } from './middleware/test-isolation.middleware';
 import { dbContextMiddleware } from './middleware/db-context.middleware';
 import { testCorrelationMiddleware } from './middleware/test-correlation.middleware';
+import { appLogger } from './utils/logger';
 
 export interface AppContext {
   app: Express;
@@ -80,10 +83,12 @@ export function createApp(): { app: Express; context: AppContext } {
   app.use(configureCors());
   app.use(addCustomSecurityHeaders());
 
-  app.use((req: Request, _res: Response, next: NextFunction) => {
-    console.log(`${req.method} ${req.path}`);
-    next();
-  });
+  if (process.env.API_LOG_REQUESTS === '1') {
+    app.use((req: Request, _res: Response, next: NextFunction) => {
+      appLogger.debug('http.request', { method: req.method, path: req.path });
+      next();
+    });
+  }
 
   app.use((req: Request, res: Response, next: NextFunction) => {
     const isChunkUpload = /^\/api\/v1\/uploads\/[^/]+\/chunks\/\d+$/.test(req.path);
@@ -116,7 +121,7 @@ export function createApp(): { app: Express; context: AppContext } {
   if (process.env.NODE_ENV === 'test') {
     app.use(testIsolationMiddleware);
     app.use(dbContextMiddleware);
-    console.log('Test isolation middleware enabled');
+    appLogger.info('test.isolation.enabled');
   }
 
   const context: AppContext = {
@@ -185,6 +190,12 @@ export function createApp(): { app: Express; context: AppContext } {
           reimportStatus: 'GET /api/v1/system/reimport-status',
           reimportComplete: 'POST /api/v1/system/reimport-complete',
         },
+        me: {
+          features: 'GET /api/v1/me/features',
+        },
+        import: {
+          similarityPreview: 'POST /api/v1/import/similarity-preview',
+        },
       },
     });
   });
@@ -233,6 +244,8 @@ export function createApp(): { app: Express; context: AppContext } {
   let agentRoutes: any = null;
   let devAuthRoutes: any = null;
   let systemRoutes: any = null;
+  let meRoutes: any = null;
+  let importRoutes: any = null;
 
   const initializeRoutes: InitializeRoutes = (
     authService: AuthService,
@@ -257,7 +270,7 @@ export function createApp(): { app: Express; context: AppContext } {
     dataManagementRoutes = createDataManagementRoutes(dbClient, authService);
     deduplicationRoutes = createDeduplicationRoutes(dbClient, authService);
     duplicatesRoutes = createDuplicatesRoutes(dbClient, authService);
-    jobsRoutes = createJobsRoutes(authService, dbClient.db, sseBroadcaster);
+    jobsRoutes = createJobsRoutes(authService, dbClient.db, sseBroadcaster, workerPool);
     streamRoutes = createStreamRoutes(authService, sseBroadcaster);
     jobBasedImportRoutes = createJobBasedImportRoutes(
       authService,
@@ -277,10 +290,12 @@ export function createApp(): { app: Express; context: AppContext } {
     conversationsRoutes = createConversationsRoutes(dbClient, authService);
     agentRoutes = createAgentRoutes(authService as any);
     systemRoutes = createSystemRoutes(authService as any);
+    meRoutes = createMeRoutes(authService as any);
+    importRoutes = createImportRoutes(authService as any);
 
     if (process.env.NODE_ENV === 'development' || process.env.ENABLE_DEV_AUTH === 'true') {
       devAuthRoutes = createDevAuthRoutes(authService as any);
-      console.log('Dev auth routes enabled');
+      appLogger.info('auth.dev_routes.enabled');
     }
 
     if (process.env.NODE_ENV === 'test') {
@@ -498,6 +513,16 @@ export function createApp(): { app: Express; context: AppContext } {
   app.use('/api/v1/system', (req, res, next) => {
     if (systemRoutes) return systemRoutes(req, res, next);
     return res.status(503).json({ error: 'System service not initialized' });
+  });
+
+  app.use('/api/v1/me', (req, res, next) => {
+    if (meRoutes) return meRoutes(req, res, next);
+    return res.status(503).json({ error: 'Auth service not initialized' });
+  });
+
+  app.use('/api/v1/import', (req, res, next) => {
+    if (importRoutes) return importRoutes(req, res, next);
+    return res.status(503).json({ error: 'Import preview service not initialized' });
   });
 
   app.use('/api/v1/conversations', (req, res, next) => {

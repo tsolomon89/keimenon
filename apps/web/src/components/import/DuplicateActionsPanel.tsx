@@ -57,6 +57,13 @@ export function DuplicateActionsPanel({
       icon: <GitMerge className="w-5 h-5" />,
       color: 'purple',
     },
+    {
+      action: 'sequester',
+      label: 'Sequester',
+      description: 'Keep raw data but exclude duplicate from model scope',
+      icon: <AlertCircle className="w-5 h-5" />,
+      color: 'orange',
+    },
   ];
 
   const getActionColorClasses = (color: string, isSelected: boolean) => {
@@ -71,6 +78,8 @@ export function DuplicateActionsPanel({
           return `${baseClasses} bg-green-600 border-green-500 text-white`;
         case 'purple':
           return `${baseClasses} bg-purple-600 border-purple-500 text-white`;
+        case 'orange':
+          return `${baseClasses} bg-orange-600 border-orange-500 text-white`;
         default:
           return baseClasses;
       }
@@ -114,9 +123,7 @@ export function DuplicateActionsPanel({
                 <div className="flex-shrink-0 mt-0.5">{action.icon}</div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm mb-1">{action.label}</div>
-                  <div
-                    className={`text-xs ${isSelected ? 'text-white/80' : 'text-slate-400'}`}
-                  >
+                  <div className={`text-xs ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
                     {action.description}
                   </div>
                 </div>
@@ -203,6 +210,7 @@ export function DuplicateActionsPanel({
             <div>2 - Keep Duplicate</div>
             <div>3 - Keep Both</div>
             <div>4 - Merge</div>
+            <div>5 - Sequester</div>
           </div>
         </div>
       </div>
