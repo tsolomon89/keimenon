@@ -1,6 +1,7 @@
 # Branch Protection Required Checks (Gate-E)
 
 Scope: `main` branch protection policy.
+Status: enforced on `main` for `tsolomon89/keimenon` on March 12, 2026.
 
 The following status checks are the canonical Gate-E merge gate and must be required on `main`:
 

@@ -1,6 +1,6 @@
 # Vision Gap Analysis (AGENTS-Aligned)
 
-Date: March 11, 2026
+Date: March 12, 2026
 Scope: active codebase against canonical `AGENTS.md` at repository root.
 
 ## Baseline
@@ -33,18 +33,21 @@ Scope: active codebase against canonical `AGENTS.md` at repository root.
 
 ## Remaining Work (Operational, Not Product-Contract Gaps)
 
-1. Apply required branch protection checks to `main` via GitHub admin/API.
-   - Required checks policy is documented.
-   - Automation script exists, but apply/verify requires repo-admin token in the execution environment.
-2. Complete 14 consecutive green nightly Gate-E runs.
+1. Complete 14 consecutive green nightly Gate-E runs.
    - Time-based completion dependent on scheduled CI history.
-3. Maintain zero unresolved critical rollout/rollback drill regressions through the streak window.
+2. Maintain zero unresolved critical rollout/rollback drill regressions through the streak window.
+
+## Status Update (March 12, 2026)
+
+1. Branch protection required checks are now enforced on `main` for `tsolomon89/keimenon`.
+   - Apply + verify passed via `scripts/ops/apply-branch-protection.js`.
+   - Required checks present: `Full E2E (Chromium)`, `LOD Burn-in (10k/50k)`, `Rollout/Rollback Drill`.
 
 ## Hardening Complete Criteria
 
-1. 14 consecutive nightly Gate-E runs are green.
-2. No unresolved critical rollout/rollback drill regressions.
-3. Required checks are enforced on `main` branch protection.
+1. 14 consecutive nightly Gate-E runs are green. (Pending)
+2. No unresolved critical rollout/rollback drill regressions. (In progress)
+3. Required checks are enforced on `main` branch protection. (Completed on March 12, 2026)
 
 ## Evidence Sources
 
