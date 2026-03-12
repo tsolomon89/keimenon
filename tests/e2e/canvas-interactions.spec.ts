@@ -126,8 +126,35 @@ test.describe('Canvas Interactions', () => {
       .getByText(/No selection/i)
       .isVisible()
       .catch(() => false);
+    const accountInspectorVisible = await page
+      .getByText(/Account ID:/i)
+      .isVisible()
+      .catch(() => false);
 
-    expect(selectionStackVisible || noSelectionVisible).toBe(true);
+    // Sidebar mode can switch between selection and account inspector states in parallel workers.
+    await expect
+      .poll(
+        async () => {
+          const selectionVisible = await page
+            .getByText(/Selection Stack \(/)
+            .isVisible()
+            .catch(() => false);
+          const noSelectionStateVisible = await page
+            .getByText(/No selection/i)
+            .isVisible()
+            .catch(() => false);
+          const accountStateVisible = await page
+            .getByText(/Account ID:/i)
+            .isVisible()
+            .catch(() => false);
+
+          return selectionVisible || noSelectionStateVisible || accountStateVisible;
+        },
+        { timeout: 8000 }
+      )
+      .toBe(true);
+
+    expect(selectionStackVisible || noSelectionVisible || accountInspectorVisible).toBe(true);
   });
 
   test('physics simulation should settle', async ({ page }) => {

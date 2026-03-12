@@ -42,6 +42,22 @@ Scope: active codebase against canonical `AGENTS.md` at repository root.
 1. Branch protection required checks are now enforced on `main` for `tsolomon89/keimenon`.
    - Apply + verify passed via `scripts/ops/apply-branch-protection.js`.
    - Required checks present: `Full E2E (Chromium)`, `LOD Burn-in (10k/50k)`, `Rollout/Rollback Drill`.
+2. M0 baseline lock automation is implemented and executed.
+   - Full preflight battery + archival passed in one command:
+     - `npm run ops:gate-e:baseline-lock`
+   - Baseline archive created at:
+     - `test-results/ops/baselines/2026-03-12T10-46-21-058Z/`
+   - Baseline lock report:
+     - `test-results/ops/gate-e-baseline-lock-latest.json`
+   - Nightly validation and signoff helpers now generate machine-readable status:
+     - `test-results/ops/gate-e-nightly-validation-latest.json`
+     - `test-results/ops/gate-e-completion-signoff-latest.json`
+   - Nightly tracker and handoff bundle helpers now support daily operations and final artifact packaging:
+     - `scripts/ops/gate-e-nightly-tracker.js`
+     - `scripts/ops/gate-e-handoff-bundle.js`
+     - `test-results/ops/gate-e-nightly-tracker-latest.md`
+     - `test-results/ops/gate-e-handoff-bundle-latest.json`
+   - Nightly streak remains pending because schedule-only artifact is not yet present locally.
 
 ## Hardening Complete Criteria
 
@@ -59,6 +75,12 @@ Scope: active codebase against canonical `AGENTS.md` at repository root.
 6. `test-results/ops/gate-e-evidence-latest.json`
 7. `test-results/ops/gate-e-nightly-streak-latest.json`
 8. `scripts/ops/apply-branch-protection.js`
+9. `scripts/ops/gate-e-baseline-lock.js`
+10. `scripts/ops/gate-e-nightly-validate.js`
+11. `scripts/ops/gate-e-signoff.js`
+12. `test-results/ops/gate-e-baseline-lock-latest.json`
+13. `scripts/ops/gate-e-nightly-tracker.js`
+14. `scripts/ops/gate-e-handoff-bundle.js`
 
 ## Current Assessment
 

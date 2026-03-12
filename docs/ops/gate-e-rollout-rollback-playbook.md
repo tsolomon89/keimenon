@@ -11,6 +11,36 @@ This playbook defines the automated drill path for Gate E hardening.
 
 ## Commands
 
+Baseline lock (includes required-check sync, preflight battery, evidence generation, and archive):
+
+```bash
+npm run ops:gate-e:baseline-lock
+```
+
+Nightly artifact validation:
+
+```bash
+npm run ops:gate-e:nightly:validate -- --require-streak
+```
+
+Nightly tracker entry generation:
+
+```bash
+npm run ops:gate-e:nightly:tracker -- --run-url "<workflow-run-url>"
+```
+
+Completion signoff:
+
+```bash
+npm run ops:gate-e:signoff
+```
+
+Final handoff bundle generation:
+
+```bash
+npm run ops:gate-e:handoff
+```
+
 CI quick drill:
 
 ```bash
@@ -104,6 +134,9 @@ Aggregated release evidence artifact:
 
 - `test-results/ops/gate-e-evidence-latest.json`
 - `test-results/ops/gate-e-nightly-streak-latest.json` (nightly streak tracking)
+- `test-results/ops/gate-e-baseline-lock-latest.json` (baseline lock and archive report)
+- `test-results/ops/gate-e-completion-signoff-latest.json` (completion criteria evaluation)
+- `test-results/ops/gate-e-handoff-bundle-latest.json` (final handoff pointer package)
 
 Contract:
 

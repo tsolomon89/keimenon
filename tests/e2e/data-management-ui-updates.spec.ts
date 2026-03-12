@@ -1119,9 +1119,13 @@ test.describe.serial('Data Management UI Updates', () => {
     console.log(`[Test] Deletion took ${duration.toFixed(1)} seconds`);
     console.log('[Test] âœ… Bulk loading state cleared (no false timeout)');
 
-    // Verify jobs removed from table
+    // Verify jobs removed from table (eventual consistency after SSE/store reconciliation).
+    await expect
+      .poll(async () => await operationsTable.getByTestId('background-operation-row').count(), {
+        timeout: 15000,
+      })
+      .toBeLessThan(jobCount);
     const finalJobCount = await operationsTable.getByTestId('background-operation-row').count();
-    expect(finalJobCount).toBeLessThan(jobCount);
 
     console.log(`[Test] âœ… ${jobCount - finalJobCount} jobs deleted successfully`);
   });
