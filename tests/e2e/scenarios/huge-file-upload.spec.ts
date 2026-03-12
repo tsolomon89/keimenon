@@ -8,11 +8,30 @@ const TARGET_SIZE_MB = 500; // 500MB for reasonable test duration, scalable to 1
 const TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
 async function dismissWelcomeModal(page: Page): Promise<void> {
+  const welcomeDialog = page.getByRole('dialog', { name: /welcome to keimenon/i });
+  if (!(await welcomeDialog.isVisible({ timeout: 3000 }).catch(() => false))) {
+    return;
+  }
+
+  const importButton = welcomeDialog.getByRole('button', {
+    name: /import chat conversations/i,
+  });
+  if (await importButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await importButton.click({ force: true });
+    return;
+  }
+
   const getStartedButton = page.getByRole('button', { name: /get started/i });
   if (await getStartedButton.isVisible({ timeout: 10000 }).catch(() => false)) {
     await getStartedButton.click({ force: true });
     await getStartedButton.waitFor({ state: 'hidden', timeout: 5000 });
+    return;
   }
+
+  await page.keyboard.press('Escape').catch(() => {});
+  await expect(welcomeDialog)
+    .toBeHidden({ timeout: 5000 })
+    .catch(() => {});
 }
 
 test.describe('Huge File Scenario', () => {
@@ -42,21 +61,38 @@ test.describe('Huge File Scenario', () => {
 
     // 1. Login
     await login(page, 'admin@admin.com', 'TestPass123!');
-    // 2. Open import rail from either welcome modal CTA or shell action button
-    const welcomeDialog = page.getByRole('dialog', { name: /welcome to keimenon/i });
-    const welcomeImportButton = welcomeDialog.getByRole('button', {
-      name: /import chat conversations/i,
-    });
+    // 2. Open import rail from either welcome modal CTA or shell action button.
+    await dismissWelcomeModal(page);
 
-    if (await welcomeImportButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await welcomeImportButton.click({ force: true });
-    } else {
-      await dismissWelcomeModal(page);
+    const importModal = page.getByRole('dialog', { name: /import ai chat conversations/i });
+    if (!(await importModal.isVisible({ timeout: 1000 }).catch(() => false))) {
       const openImportButton = page.getByRole('button', { name: /upload sources/i }).first();
-      await openImportButton.click();
+      await expect(openImportButton).toBeVisible({ timeout: 15000 });
+
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        if (await importModal.isVisible({ timeout: 500 }).catch(() => false)) {
+          break;
+        }
+
+        try {
+          await openImportButton.click({ timeout: 10000 });
+          if (await importModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+            break;
+          }
+        } catch (_error) {
+          if (await importModal.isVisible({ timeout: 500 }).catch(() => false)) {
+            break;
+          }
+          await dismissWelcomeModal(page);
+          await page.waitForTimeout(250);
+          if (attempt === 2) {
+            throw _error;
+          }
+        }
+      }
     }
 
-    await expect(page.getByTestId('chat-import-modal')).toBeVisible();
+    await expect(importModal).toBeVisible();
 
     // 3. Start Upload
     const fileInput = page.locator('#file-input');
