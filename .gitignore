@@ -135,6 +135,7 @@ pids
 # Runtime
 .runtime/
 tmp/
+.tmp/
 temp/
 
 # Backups
