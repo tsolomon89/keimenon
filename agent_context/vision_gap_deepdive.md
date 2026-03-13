@@ -1,66 +1,87 @@
-# Keimenon Vision Gap Deep Dive (Rebaselined)
+# Keimenon Vision Gap Deep Dive (Final 2% Rebaseline)
 
 Date: March 13, 2026
-Branch: release/final-vision-bigbang
+Branch: `release/final-vision-bigbang`
+Scope: codebase and ops artifacts on current branch head against canonical `AGENTS.md`.
 
 ## Rebaseline Summary
 
-This file now tracks only real remaining closeout items after the latest implementation pass.
-Stale gaps from earlier snapshots (topic clustering, double-click focus, graph retry/backoff, import presets, sparkline backend series, analytics persistence) are removed.
+Functional backlog is closed on this branch. Remaining work is operational signoff and hygiene only.
 
-## Closed in This Pass
+Only the blockers below remain open:
 
-1. Auth/session hardening shipped:
-   - `034_auth_session_hardening.sql` added.
-   - Session + reset tokens moved to hashed persistence semantics.
-   - Refresh now rotates sessions and revokes predecessor token.
-   - Session revocation enforced on logout, password reset, and password change.
-   - Strict session-binding behavior is production-default, with explicit test-only relaxation gate.
-2. Auth API/security completion shipped:
-   - Added `POST /api/v1/auth/password/change`.
-   - Enforced HIBP checks for password change.
-   - Password reset email dispatch failures now emit deterministic error codes in logs.
-3. Dedupe/worker hardening shipped:
-   - Shared similarity utility extracted and reused across duplicate services.
-   - Explicit strategy support now includes `lsh` and `embeddings` (flagged by `DEDUP_EMBEDDINGS_ENABLED`).
-   - Real edit-distance metrics now emitted.
-   - Added `035_dedupe_role_tracking.sql` and `dedupe_evidence` schema.
-   - Added `Job.updateState(...)` domain API and removed private `_state` mutation hack in checkpointing.
-   - Import worker parser selection now handles JSON array, JSON object, and JSONL.
-4. Canvas/import legacy-path fidelity improvements shipped:
-   - Scope builder wiring added in `KeimenonSidebar` with node-add/remove/apply flows.
-   - Legacy board preview and board page now load/render edges from `/api/v1/edges`.
-   - `BoardViewContainer` now consumes board graph edges and persists node move metadata updates.
-5. Dead/mock runtime purge and gate hardening shipped:
-   - Removed dead `ai-analysis-service.ts` runtime mock service.
-   - Removed unused web PoC adapters under `apps/web/src/components/adapters/*`.
-   - Expanded static runtime marker gate with allowlist support for test-only adapter imports.
-6. Provider backbone operational hardening shipped:
-   - Added production startup validation for LiteLLM + SearXNG env/availability.
-   - Added operator runbook: `docs/ops/provider-backbone-runbook.md`.
+1. Branch-protection verification requires valid local GitHub auth (`GH_TOKEN` or `GITHUB_TOKEN`).
+2. Gate-E nightly streak is time-gated and currently below strict target (`14`).
+3. Local legacy artifact residue exists under `packages/agents` and must be cleaned and guardrailed.
 
-## Remaining Gaps (Current)
+No additional product/runtime feature implementation is currently required for AGENTS conformance.
 
-### P0
+## Open Blockers
 
-1. Full branch regression gate execution and evidence refresh still pending in this pass:
-   - smoke E2E
-   - full Chromium E2E
-   - LOD burn-in
-   - rollout/rollback drill
-   - Gate-E signoff bundle refresh
-2. `ops:branch-protection:verify` has not been re-run in this pass with confirmed valid GitHub auth.
+### 1) Branch Protection Verify (Hard Blocker)
 
-### P1
+Current state:
 
-1. Staging dry-run + rollback rehearsal for new migrations/backfill scripts still pending execution evidence.
-2. End-to-end AGENTS evidence sync check (`ops:vision-doc-sync:check`) must be rerun after doc updates.
+- `ops:branch-protection:verify` fails without GitHub token in local environment.
 
-### P2
+Required closeout:
 
-1. Repo-wide lint remains blocked by pre-existing unrelated issues outside this delta.
+- Export valid token locally.
+- Run `npm run ops:branch-protection:verify`.
+- Persist evidence in:
+  - `test-results/ops/branch-protection-verify-latest.txt`
+  - `test-results/ops/branch-protection-verify-latest.json`
 
-## Current Read
+Exit criteria:
 
-Product-contract/runtime gaps are substantially narrowed.
-Primary remaining work is operational gate completion + evidence capture.
+- Verification command passes on this branch and evidence files are updated.
+
+### 2) Nightly Streak (Hard Blocker, Time-Gated)
+
+Current state:
+
+- `test-results/ops/gate-e-nightly-streak-latest.json` reports streak below target.
+
+Required closeout:
+
+- Keep strict target `14` unchanged.
+- Use scheduled `gate-e-hardening.yml` runs as source of truth.
+- Validate each nightly update with:
+  - `npm run ops:gate-e:nightly:validate -- --require-streak`
+- Maintain tracker:
+  - `test-results/ops/gate-e-nightly-tracker-latest.md`
+
+Exit criteria:
+
+- Streak artifact shows `streak >= 14` and `meetsTarget: true`.
+
+### 3) Legacy `packages/agents` Artifact Hygiene
+
+Current state:
+
+- Local residue present:
+  - `packages/agents/.turbo/`
+  - `packages/agents/dist/`
+  - `packages/agents/node_modules/`
+  - `packages/agents/tsconfig.tsbuildinfo`
+
+Required closeout:
+
+- Remove residue from local tree.
+- Add/verify guardrails to prevent reintroduction in release evidence and CI.
+- Provide deterministic cleanup command for maintainers.
+
+Exit criteria:
+
+- Residue removed locally.
+- CI/runtime marker gate enforces no legacy artifact tracking/reference drift.
+
+## Acceptance Snapshot for This Rebaseline
+
+Closeout is complete only when all are true:
+
+1. `ops:vision-doc-sync:check` is green.
+2. Branch protection verification is green with evidence captured.
+3. Nightly streak target is met (`>= 14`).
+4. Legacy `packages/agents` residue is cleaned and guarded.
+5. `ops:gate-e:signoff` reports pass.

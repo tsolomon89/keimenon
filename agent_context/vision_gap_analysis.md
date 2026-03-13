@@ -1,45 +1,41 @@
-# Vision Gap Analysis (AGENTS-Aligned, Rebased)
+# Vision Gap Analysis (Final 2% Operational Closeout)
 
 Date: March 13, 2026
-Scope: current branch code against canonical `AGENTS.md`.
-This analysis is scoped against canonical `AGENTS.md` at repository root.
+Branch: `release/final-vision-bigbang`
+Scope: current branch against canonical `AGENTS.md` at repository root.
 
 ## Canonical Source
 
-- `AGENTS.md` is authoritative.
-- `GEMINI.md`, `docs/specs/vision-contract-v1.md`, and `docs/specs/vision-traceability-matrix.md` are derived.
+`AGENTS.md` is authoritative for product and engineering behavior.
+Derived docs must remain aligned to it.
 
-## Current Alignment Snapshot
+## Current Alignment Status
 
-1. Similarity-first + objective-layer baseline behavior remains aligned to AGENTS contract.
-2. Unified agent runtime lane remains in place for verification/analysis (`/api/v1/agent/*`).
-3. Legacy `/api/v1/ai/*` and `/api/v1/verification/*` runtime surface remains removed.
-4. Auth/session lifecycle hardening has been implemented for rotating, hashed session/reset tokens.
-5. Dedupe/worker closeout items are implemented: shared similarity utility, explicit strategies, parser selection matrix, checkpoint API cleanup.
-6. Legacy board/preview edge rendering parity and scope-builder wiring now exist in runtime UI paths.
-7. Runtime mock/debt static gate has been strengthened and currently passes.
+All feature/runtime backlog items required for AGENTS behavior are implemented on this branch.
+The remaining delta is operational signoff and repository hygiene only.
 
-## Remaining Delta
+## Remaining Blockers
 
-1. Execute and capture complete regression gate evidence on this branch:
-   - `e2e:smoke`
-   - full Chromium E2E
-   - `perf:lod:burnin`
-   - `ops:rollout-rollback:drill`
-   - `ops:gate-e:signoff`
-2. Re-run and capture `ops:branch-protection:verify` with valid GitHub auth context.
-3. Re-run `ops:vision-doc-sync:check` and keep derived artifacts in sync with AGENTS.
-4. Run staging dry-run and rollback rehearsal for migrations `034` and `035`, including backfill scripts.
+1. Branch-protection verification requires valid local GitHub auth:
+   - run `npm run ops:branch-protection:verify` with `GH_TOKEN` or `GITHUB_TOKEN`.
+   - persist output to:
+     - `test-results/ops/branch-protection-verify-latest.txt`
+     - `test-results/ops/branch-protection-verify-latest.json`
+2. Gate-E nightly streak is below strict target and time-gated:
+   - policy remains `14/14` with no override.
+   - canonical source is scheduled nightly workflow artifacts.
+3. Legacy local artifact residue under `packages/agents` requires cleanup and guardrails:
+   - remove `.turbo`, `dist`, `node_modules`, `tsconfig.tsbuildinfo`.
+   - enforce CI/runtime marker gate checks for legacy reference/residue drift.
 
-## Notes
+## Out Of Scope For This Closeout Cycle
 
-- Full `npm run lint` currently fails due pre-existing unrelated lint violations outside this delta.
-- Targeted lint/type/test checks for modified closeout files pass.
+1. Provider deployment execution (LiteLLM/SearXNG rollout).
+2. New feature work, unless regression appears during mandatory gate runs.
 
-## Evidence Targets
+## Merge/Release Preconditions
 
-1. `test-results/ops/gate-e-nightly-streak-latest.json`
-2. `test-results/ops/gate-e-completion-signoff-latest.json`
-3. `test-results/ops/gate-e-nightly-validation-latest.json`
-4. `test-results/ops/gate-e-evidence-latest.json`
-5. `test-results/perf/lod-burnin-latest.json`
+1. `npm run ops:vision-doc-sync:check` passes.
+2. Branch-protection verify passes with evidence captured.
+3. Nightly streak artifact reports `streak >= 14` and `meetsTarget: true`.
+4. `npm run ops:gate-e:signoff` passes in strict mode.

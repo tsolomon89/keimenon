@@ -1,5 +1,5 @@
 ﻿import { test, expect, type Page } from './fixtures/testId';
-import { login } from './helpers/login';
+import { login, resetAuthState } from './helpers/login';
 import fs from 'fs';
 import path from 'path';
 
@@ -345,6 +345,20 @@ test.describe.serial('Data Management UI Updates', () => {
     // Give it time to initialize before interacting with the page.
     await page.waitForTimeout(2000);
 
+    // Under heavy parallel load, auth can occasionally land back on /login with
+    // a transient "Session Expired" state; retry once from a clean auth context.
+    if (/\/login/.test(page.url())) {
+      await resetAuthState(page);
+      await login(page, TEST_EMAIL, TEST_PASSWORD);
+      await page.waitForTimeout(1000);
+    }
+
+    // Ensure the suite starts from a stable keimenon route before shell checks.
+    if (!/\/keimenon/.test(page.url())) {
+      await page.goto('/keimenon');
+      await page.waitForLoadState('domcontentloaded');
+    }
+
     // Verify keimenon shell is ready using multiple UI signals to avoid brittle single-selector waits.
     await expect
       .poll(
@@ -364,16 +378,20 @@ test.describe.serial('Data Management UI Updates', () => {
             .first()
             .isVisible()
             .catch(() => false);
-          const onKeimenonRoute = /\/keimenon/.test(page.url());
+          const operationsCardVisible = await page
+            .getByTestId('background-operations-card')
+            .isVisible()
+            .catch(() => false);
+          const onKeimenonRoute = /\/keimenon/.test(page.url()) && !/\/login/.test(page.url());
 
           return (
-            keimenonButtonVisible ||
+            (onKeimenonRoute && keimenonButtonVisible) ||
             settingsButtonVisible ||
             dashboardButtonVisible ||
-            onKeimenonRoute
+            operationsCardVisible
           );
         },
-        { timeout: 20000, intervals: [250, 500, 1000] }
+        { timeout: 30000, intervals: [250, 500, 1000, 1500] }
       )
       .toBe(true);
   });

@@ -50,6 +50,18 @@ Generate signoff report without failing the command while streak is still in pro
 npm run ops:gate-e:signoff -- --allow-incomplete --skip-branch-protection-verify
 ```
 
+Capture branch-protection verification evidence:
+
+```bash
+npm run ops:branch-protection:verify:evidence
+```
+
+Clean legacy `packages/agents` artifact residue:
+
+```bash
+npm run clean:legacy-artifacts
+```
+
 Generate final handoff bundle pointers:
 
 ```bash
@@ -125,3 +137,8 @@ npm run ops:gate-e:handoff
 
 1. Local runs usually do not produce `gate-e-nightly-streak-latest.json` because that artifact is generated only in scheduled workflow context.
 2. Branch protection verification requires authenticated GitHub CLI or valid `GH_TOKEN`.
+3. Legacy artifact cleanup target paths are:
+   - `packages/agents/.turbo`
+   - `packages/agents/dist`
+   - `packages/agents/node_modules`
+   - `packages/agents/tsconfig.tsbuildinfo`

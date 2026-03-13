@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const ROOTS = ['apps/api/src', 'apps/web/src', 'packages'];
 
@@ -19,6 +20,7 @@ const RUNTIME_ALLOWLIST_LINE_PATTERNS = [/@keimenon\/tool-adapters\/testing\b/];
 
 const MARKERS = [
   { name: '@keimenon/agents', regex: /@keimenon\/agents\b/g },
+  { name: 'legacy packages/agents reference', regex: /packages\/agents\b/g },
   { name: 'mock fallback', regex: /mock fallback/gi },
   { name: 'fallback to mock', regex: /falling back to mock|fallback to mock/gi },
   { name: 'mock implementation', regex: /\bmock implementation\b/gi },
@@ -30,6 +32,25 @@ const MARKERS = [
   { name: 'ai.routes reference', regex: /\bai\.routes\b/g },
   { name: 'verification.routes reference', regex: /\bverification\.routes\b/g },
 ];
+
+function listTrackedLegacyAgentsFiles() {
+  const result = spawnSync('git', ['ls-files', '--', 'packages/agents'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  if (typeof result.status !== 'number' || result.status !== 0) {
+    const stderr = String(result.stderr || '').trim();
+    throw new Error(
+      `Unable to verify tracked legacy files via git ls-files: ${stderr || 'unknown git error'}`
+    );
+  }
+
+  return String(result.stdout || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
 
 function isTestPath(filePath) {
   return TEST_PATH_PATTERNS.some((fragment) => filePath.includes(fragment));
@@ -91,6 +112,24 @@ function scanFile(filePath) {
 }
 
 function main() {
+  let trackedLegacyFiles = [];
+  try {
+    trackedLegacyFiles = listTrackedLegacyAgentsFiles();
+  } catch (error) {
+    console.error(`[mock-ban] FAIL ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
+
+  if (trackedLegacyFiles.length > 0) {
+    console.error(
+      `[mock-ban] FAIL tracked legacy workspace paths detected under packages/agents (${trackedLegacyFiles.length})`
+    );
+    for (const trackedPath of trackedLegacyFiles) {
+      console.error(`- ${trackedPath}`);
+    }
+    process.exit(1);
+  }
+
   const files = [];
   for (const root of ROOTS) {
     collectFiles(path.resolve(root), files);
