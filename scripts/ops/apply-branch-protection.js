@@ -88,7 +88,20 @@ function resolveRepo(cliRepo) {
 }
 
 function getToken() {
-  return process.env.GH_TOKEN || process.env.GITHUB_TOKEN || '';
+  const envToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || '';
+  if (envToken) {
+    return envToken;
+  }
+
+  try {
+    const ghCliToken = execSync('gh auth token', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
+    return ghCliToken;
+  } catch (_error) {
+    return '';
+  }
 }
 
 async function githubRequest({ method, path, token, body }) {
@@ -216,7 +229,7 @@ async function main() {
   const token = getToken();
   if (!token) {
     throw new Error(
-      'Missing GitHub token. Set GH_TOKEN or GITHUB_TOKEN with repository admin permissions.'
+      'Missing GitHub token. Set GH_TOKEN/GITHUB_TOKEN or authenticate via `gh auth login` with repository admin permissions.'
     );
   }
 
