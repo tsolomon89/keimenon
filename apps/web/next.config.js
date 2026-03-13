@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
+const isDesktopStaticExport = process.env.NEXT_OUTPUT_EXPORT === '1';
+
 const nextConfig = {
-  // output: 'export', // Commented out to prevent dev server issues
+  ...(isDesktopStaticExport
+    ? {
+        output: 'export',
+        generateBuildId: async () => 'desktop-static',
+      }
+    : {}),
   // No assetPrefix needed for app:// protocol
   trailingSlash: true,
   allowedDevOrigins: ['127.0.0.1', 'localhost'],

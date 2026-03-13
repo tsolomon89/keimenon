@@ -62,6 +62,30 @@ Clean legacy `packages/agents` artifact residue:
 npm run clean:legacy-artifacts
 ```
 
+Clean local repo residue (safe mode):
+
+```bash
+npm run clean:repo-local
+```
+
+Refresh tracked desktop static bundle:
+
+```bash
+npm run desktop:web-dist:refresh
+```
+
+Verify tracked desktop static bundle + manifest sync:
+
+```bash
+npm run desktop:web-dist:verify
+```
+
+Run repo hygiene guard checks:
+
+```bash
+npm run ci:hygiene:check
+```
+
 Generate final handoff bundle pointers:
 
 ```bash
@@ -142,3 +166,9 @@ npm run ops:gate-e:handoff
    - `packages/agents/dist`
    - `packages/agents/node_modules`
    - `packages/agents/tsconfig.tsbuildinfo`
+4. Import diagnostics script output is standardized under:
+   - `test-results/diagnostics/`
+5. Recommended local cleanup sequence before local Gate-E reruns:
+   - `npm run clean:repo-local`
+   - `npm run clean:legacy-artifacts`
+   - `npm run desktop:web-dist:verify`

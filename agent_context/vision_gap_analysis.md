@@ -1,41 +1,30 @@
-# Vision Gap Analysis (Final 2% Operational Closeout)
+# Keimenon Vision Gap Analysis (Closeout Baseline)
 
-Date: March 13, 2026
-Branch: `release/final-vision-bigbang`
-Scope: current branch against canonical `AGENTS.md` at repository root.
+Last updated: 2026-03-13.
 
-## Canonical Source
+Scope is implementation state versus the canonical `AGENTS.md` at repository root.
 
-`AGENTS.md` is authoritative for product and engineering behavior.
-Derived docs must remain aligned to it.
+## Current Status
 
-## Current Alignment Status
+1. Functional backlog is closed for the AGENTS vision contract.
+2. Runtime lane is unified on `/api/v1/agent/*` for verification/analysis.
+3. Remaining deltas are operational and hygiene closeout tasks, not feature design gaps.
 
-All feature/runtime backlog items required for AGENTS behavior are implemented on this branch.
-The remaining delta is operational signoff and repository hygiene only.
+## Active Blockers
 
-## Remaining Blockers
+1. Gate-E nightly streak target is still time-gated until `14/14` is reached.
+2. Repo hygiene pass must stay enforced in CI to prevent debug/runtime residue regressions.
 
-1. Branch-protection verification requires valid local GitHub auth:
-   - run `npm run ops:branch-protection:verify` with `GH_TOKEN` or `GITHUB_TOKEN`.
-   - persist output to:
-     - `test-results/ops/branch-protection-verify-latest.txt`
-     - `test-results/ops/branch-protection-verify-latest.json`
-2. Gate-E nightly streak is below strict target and time-gated:
-   - policy remains `14/14` with no override.
-   - canonical source is scheduled nightly workflow artifacts.
-3. Legacy local artifact residue under `packages/agents` requires cleanup and guardrails:
-   - remove `.turbo`, `dist`, `node_modules`, `tsconfig.tsbuildinfo`.
-   - enforce CI/runtime marker gate checks for legacy reference/residue drift.
+## Closeout Focus
 
-## Out Of Scope For This Closeout Cycle
+1. Keep all derived docs synchronized to root `AGENTS.md`.
+2. Keep runtime free of debug password-reset and debug env surfaces.
+3. Keep tracked desktop bundle (`apps/desktop/resources/web-dist`) refreshed and verified deterministically.
+4. Keep root artifact debt from re-entering tracked history.
 
-1. Provider deployment execution (LiteLLM/SearXNG rollout).
-2. New feature work, unless regression appears during mandatory gate runs.
+## Acceptance Snapshot
 
-## Merge/Release Preconditions
-
-1. `npm run ops:vision-doc-sync:check` passes.
-2. Branch-protection verify passes with evidence captured.
-3. Nightly streak artifact reports `streak >= 14` and `meetsTarget: true`.
-4. `npm run ops:gate-e:signoff` passes in strict mode.
+1. Vision doc sync check passes.
+2. Runtime mock/debug marker checks pass.
+3. Hygiene checks pass (root artifact ban + desktop bundle verification).
+4. Gate-E strict signoff remains blocked only by nightly streak until `14/14` is achieved.

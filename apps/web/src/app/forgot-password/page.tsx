@@ -1,15 +1,20 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Key, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/env.config';
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = useMemo(() => (searchParams.get('token') || '').trim(), [searchParams]);
+  const isConfirmMode = token.length > 0;
+
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -20,28 +25,50 @@ export default function ForgotPasswordPage() {
     setError(null);
     setSuccess(null);
 
+    if (isConfirmMode && newPassword !== confirmPassword) {
+      setIsSubmitting(false);
+      setError('Passwords do not match.');
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/reset-password-debug`, {
+      const endpoint = isConfirmMode
+        ? '/api/v1/auth/reset-password/confirm'
+        : '/api/v1/auth/reset-password/request';
+
+      const body = isConfirmMode
+        ? { token, newPassword }
+        : {
+            email,
+          };
+
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, newPassword }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Unable to reset password right now.');
+        throw new Error(data.error || 'Unable to process password reset request right now.');
       }
 
-      setSuccess('Password updated. You can log in with the new credential.');
-      setEmail('');
-      setNewPassword('');
-
-      setTimeout(() => {
-        router.push('/login');
-      }, 1200);
+      if (isConfirmMode) {
+        setSuccess(data.message || 'Password reset complete. Redirecting to login...');
+        setNewPassword('');
+        setConfirmPassword('');
+        setTimeout(() => {
+          router.push('/login');
+        }, 1200);
+      } else {
+        setSuccess(
+          data.message || 'If an account exists with this email, reset instructions were sent.'
+        );
+        setEmail('');
+      }
     } catch (err: any) {
       console.error('Forgot password error:', err);
       setError(err.message || 'Something went wrong.');
@@ -57,10 +84,13 @@ export default function ForgotPasswordPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-purple-600">
             <Key className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Reset Password (Debug)</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            {isConfirmMode ? 'Set New Password' : 'Forgot Password'}
+          </h1>
           <p className="text-slate-400 text-sm max-w-sm mx-auto">
-            No email needed. This insecure tool lets you set a fresh password while we debug the
-            real flow.
+            {isConfirmMode
+              ? 'Enter a new password for your account.'
+              : 'Enter your email and we will send password reset instructions if an account exists.'}
           </p>
         </div>
 
@@ -78,7 +108,7 @@ export default function ForgotPasswordPage() {
           <div className="bg-emerald-900/20 border border-emerald-500/50 rounded-lg p-4 flex items-start gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-emerald-200">Password reset</p>
+              <p className="text-sm font-medium text-emerald-200">Request accepted</p>
               <p className="text-sm text-emerald-300 mt-1">{success}</p>
             </div>
           </div>
@@ -86,43 +116,69 @@ export default function ForgotPasswordPage() {
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
           <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                disabled={isSubmitting}
-                className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder="name@example.com"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="newPassword"
-                className="block text-sm font-medium text-slate-300 mb-2"
-              >
-                New password
-              </label>
-              <input
-                id="newPassword"
-                name="newPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                disabled={isSubmitting}
-                className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder="enter something memorable"
-              />
-            </div>
+            {!isConfirmMode && (
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+                  Email address
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="name@example.com"
+                />
+              </div>
+            )}
+            {isConfirmMode && (
+              <>
+                <div>
+                  <label
+                    htmlFor="newPassword"
+                    className="block text-sm font-medium text-slate-300 mb-2"
+                  >
+                    New password
+                  </label>
+                  <input
+                    id="newPassword"
+                    name="newPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    disabled={isSubmitting}
+                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Enter a strong password"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="confirmPassword"
+                    className="block text-sm font-medium text-slate-300 mb-2"
+                  >
+                    Confirm password
+                  </label>
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    disabled={isSubmitting}
+                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Repeat your new password"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <button
@@ -130,7 +186,11 @@ export default function ForgotPasswordPage() {
             disabled={isSubmitting}
             className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-all shadow-lg shadow-purple-500/30"
           >
-            {isSubmitting ? 'Updating…' : 'Set new password'}
+            {isSubmitting
+              ? 'Submitting...'
+              : isConfirmMode
+                ? 'Reset password'
+                : 'Send reset instructions'}
           </button>
         </form>
 
@@ -142,9 +202,22 @@ export default function ForgotPasswordPage() {
             <ArrowLeft className="w-4 h-4" />
             Back to login
           </Link>
-          <span className="text-xs text-slate-500">Remove before production.</span>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-950 to-purple-900">
+          <div className="text-white">Loading...</div>
+        </div>
+      }
+    >
+      <ForgotPasswordForm />
+    </Suspense>
   );
 }

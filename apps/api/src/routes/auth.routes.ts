@@ -378,47 +378,6 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
   );
 
   /**
-   * POST /api/v1/auth/reset-password-debug
-   * DEBUG ONLY: Insecure debug helper to reset password by email.
-   *
-   * WARNING: This endpoint bypasses the secure token flow.
-   * Only use in development/testing. Disable or remove in production!
-   */
-  router.post('/reset-password-debug', authRateLimiter, async (req: Request, res: Response) => {
-    try {
-      // Reject in production
-      if (process.env.NODE_ENV === 'production') {
-        return res
-          .status(403)
-          .json({ error: 'Debug endpoint disabled in production for security' });
-      }
-
-      const { email, newPassword } = req.body;
-
-      if (!email || !newPassword) {
-        return res.status(400).json({ error: 'Email and new password required' });
-      }
-
-      const result = await authService.debugResetPassword(email, newPassword);
-
-      if (!result) {
-        return res.status(404).json({ error: 'User not found for that email' });
-      }
-
-      return res.json({
-        message:
-          'Password updated (DEBUG MODE). Please log in with the new password. This endpoint is disabled in production.',
-        updatedAt: result.updatedAt,
-      });
-    } catch (error: any) {
-      const errorMessage = error?.message || 'Password reset failed';
-      const status = getAuthErrorStatus(errorMessage);
-      logAuthRouteError('reset-password-debug', error, status);
-      return res.status(status).json({ error: errorMessage });
-    }
-  });
-
-  /**
    * POST /api/v1/auth/select-account
    * Select an account after multi-account login
    */

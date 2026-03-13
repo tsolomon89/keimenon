@@ -1405,51 +1405,6 @@ export class AuthServiceV2 {
   }
 
   /**
-   * DEBUG ONLY: Insecure password reset for local debugging (no email link).
-   * Clears sessions and unlocks account so next login succeeds.
-   *
-   * WARNING: This endpoint bypasses the secure token flow and should ONLY be used
-   * in development/testing environments. Remove or disable in production!
-   */
-  async debugResetPassword(
-    email: string,
-    newPassword: string
-  ): Promise<{ userId: string; updatedAt: number } | null> {
-    const database = this.db.getDatabase();
-    const userRow = database.prepare('SELECT id FROM users WHERE email = ?').get(email) as any;
-
-    if (!userRow) {
-      return null;
-    }
-
-    const passwordHash = await this.hashPassword(newPassword);
-    const now = Date.now();
-
-    const runReset = database.transaction(() => {
-      database
-        .prepare(
-          'UPDATE users SET password_hash = ?, updated_at = ?, is_active = 1 WHERE email = ?'
-        )
-        .run(passwordHash, now, email);
-
-      database
-        .prepare(
-          `
-          UPDATE sessions
-          SET revoked_at = ?, revoked_reason = ?
-          WHERE user_id = ? AND revoked_at IS NULL
-        `
-        )
-        .run(now, 'debug_password_reset', userRow.id);
-      unlockAccount(database, email);
-    });
-
-    runReset();
-
-    return { userId: userRow.id, updatedAt: now };
-  }
-
-  /**
    * Hash password with bcrypt
    */
   async hashPassword(password: string): Promise<string> {

@@ -33,6 +33,9 @@ jobs:
       - name: Enforce Runtime Mock Ban
         run: npm run ci:mock-ban:check
 
+      - name: Enforce Repo Hygiene
+        run: npm run ci:hygiene:check
+
       - name: Run Test
         run: npm run test
 
