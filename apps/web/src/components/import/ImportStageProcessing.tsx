@@ -4,6 +4,7 @@ import { Pause, Play } from 'lucide-react';
 import { PlatformDetection, UploadProgress } from '@/types/chat-import';
 import { PlatformDetectionBadge, RuntimeProcessingStats } from './PlatformDetectionBadge';
 import { ProgressBar } from './ProgressBar';
+import { ImportStatsPanel } from './ImportStatsPanel';
 
 interface ImportStageProcessingProps {
   platformDetection: PlatformDetection | null;
@@ -30,6 +31,20 @@ export function ImportStageProcessing({
         <PlatformDetectionBadge detection={platformDetection} runtimeStats={runtimeStats} />
       )}
       <ProgressBar progress={progress} />
+      {runtimeStats && (
+        <ImportStatsPanel
+          stats={{
+            conversationsProcessed: runtimeStats.conversationsProcessed ?? 0,
+            messagesProcessed: runtimeStats.messagesProcessed ?? 0,
+            sourcesCreated: runtimeStats.sourcesCreated ?? 0,
+            nodesCreated: runtimeStats.nodesCreated ?? 0,
+            edgesCreated: runtimeStats.edgesCreated ?? 0,
+          }}
+          animated
+          layout="grid"
+          seriesWindow="24h"
+        />
+      )}
 
       {showControls && (
         <div className="flex justify-center gap-2 mt-2">

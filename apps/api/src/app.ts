@@ -39,13 +39,12 @@ import { createTestHelperRoutes } from './routes/test-helpers';
 import { createMetricsRoutes } from './routes/metrics.routes';
 import { createUploadRoutes } from './routes/uploads.routes';
 import { createSpineRoutes } from './routes/spine.routes';
-import { createVerificationRoutes } from './routes/verification.routes';
-import { createAiRoutes } from './routes/ai.routes';
 import { createAgentRoutes } from './routes/agent.routes';
 import { createDevAuthRoutes } from './routes/dev-auth.routes';
 import { createSystemRoutes } from './routes/system.routes';
 import { createMeRoutes } from './routes/me.routes';
 import { createImportRoutes } from './routes/import.routes';
+import testJobsRouter from './routes/test-jobs.routes';
 import healthRoutes from './routes/health.routes';
 import { createPrincipalsRoutes } from './routes/principals.routes';
 import { createWorkspaceRoutes } from './routes/workspace.routes';
@@ -195,6 +194,11 @@ export function createApp(): { app: Express; context: AppContext } {
         },
         import: {
           similarityPreview: 'POST /api/v1/import/similarity-preview',
+          listPresets: 'GET /api/v1/import/presets',
+          createPreset: 'POST /api/v1/import/presets',
+          updatePreset: 'PUT /api/v1/import/presets/:id',
+          deletePreset: 'DELETE /api/v1/import/presets/:id',
+          statsSeries: 'GET /api/v1/import/stats/series',
         },
       },
     });
@@ -236,8 +240,6 @@ export function createApp(): { app: Express; context: AppContext } {
   let metricsRoutes: any = null;
   let uploadRoutes: any = null;
   let spineRoutes: any = null;
-  let verificationRoutes: any = null;
-  let aiRoutes: any = null;
   let principalsRoutes: any = null;
   let workspaceRoutes: any = null;
   let conversationsRoutes: any = null;
@@ -283,8 +285,6 @@ export function createApp(): { app: Express; context: AppContext } {
     metricsRoutes = createMetricsRoutes(authService);
     uploadRoutes = createUploadRoutes(authService);
     spineRoutes = createSpineRoutes(authService);
-    verificationRoutes = createVerificationRoutes(authService);
-    aiRoutes = createAiRoutes(authService);
     principalsRoutes = createPrincipalsRoutes(dbClient, authService);
     workspaceRoutes = createWorkspaceRoutes(dbClient, authService);
     conversationsRoutes = createConversationsRoutes(dbClient, authService);
@@ -299,11 +299,7 @@ export function createApp(): { app: Express; context: AppContext } {
     }
 
     if (process.env.NODE_ENV === 'test') {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const testJobsRouter = require('./routes/test-jobs.routes').default;
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const Router = require('express').Router;
-      const authRouter = Router();
+      const authRouter = express.Router();
       authRouter.use(requireAuth(authService));
       authRouter.use(testJobsRouter);
       testJobsRoutes = authRouter;
@@ -403,11 +399,6 @@ export function createApp(): { app: Express; context: AppContext } {
     return res.status(503).json({ error: 'Auth service not initialized' });
   });
 
-  app.use('/api/v1/ai', (req, res, next) => {
-    if (aiRoutes) return aiRoutes(req, res, next);
-    return res.status(503).json({ error: 'Auth service not initialized' });
-  });
-
   app.use('/api/v1/data', (req, res, next) => {
     if (dataManagementRoutes) return dataManagementRoutes(req, res, next);
     return res.status(503).json({ error: 'Auth service not initialized' });
@@ -493,11 +484,6 @@ export function createApp(): { app: Express; context: AppContext } {
   app.use('/api/v1/spine', (req, res, next) => {
     if (spineRoutes) return spineRoutes(req, res, next);
     return res.status(503).json({ error: 'Spine service not initialized' });
-  });
-
-  app.use('/api/v1/verification', (req, res, next) => {
-    if (verificationRoutes) return verificationRoutes(req, res, next);
-    return res.status(503).json({ error: 'Verification service not initialized' });
   });
 
   app.use('/api/v1/principals', (req, res, next) => {

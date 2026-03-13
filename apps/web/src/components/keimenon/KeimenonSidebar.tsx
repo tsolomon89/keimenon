@@ -38,6 +38,7 @@ export type InspectorPanel =
   | 'settings-control' // Settings inspector
   | 'import-flow' // Unified import panel
   | 'import-detail' // Import job detail (Manager mode)
+  | 'scope-builder' // Scope builder panel
   | 'user-detail'; // User detail inspector (Settings > Users)
 
 interface KeimenonSidebarProps {
@@ -52,6 +53,7 @@ interface KeimenonSidebarProps {
   onUserUpdate?: (user: any) => void; // Callback when user is updated
   activeOperation?: Operation | null;
   onViewProcessing?: () => void;
+  onZoomToFilteredNodes?: () => void;
 }
 
 export function KeimenonSidebar({
@@ -66,6 +68,7 @@ export function KeimenonSidebar({
   onUserUpdate,
   activeOperation,
   onViewProcessing,
+  onZoomToFilteredNodes,
 }: KeimenonSidebarProps) {
   const CollapsedSidebar = (
     <button
@@ -269,9 +272,10 @@ export function KeimenonSidebar({
             sidebarClearSelection();
             memberIds.forEach((id) => sidebarSelectNode(id, true));
 
-            // TODO: Implement zoom to fit filtered nodes
-            // Related: apps/web/src/components/keimenon/KeimenonViewport.tsx (add zoomToFit method)
-            // See: apps/web/src/components/keimenon/Keimenon2D.tsx (camera controls)
+            // Let store/state update settle before camera action.
+            window.setTimeout(() => {
+              onZoomToFilteredNodes?.();
+            }, 0);
           } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
             errorCapture.capture(err, {
@@ -363,8 +367,10 @@ export function KeimenonSidebar({
   const deselectNode = useKeimenonStore((state) => state.deselectNode);
   const clearSelection = useKeimenonStore((state) => state.clearSelection);
   const openDetailPanel = useKeimenonStore((state) => state.openDetailPanel);
+  const setFilteredNodeIds = useKeimenonStore((state) => state.setFilteredNodeIds);
 
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [scopeNodeIds, setScopeNodeIds] = useState<string[]>([]);
 
   // Inspector panel state management
   const [internalInspectorPanel, setInternalInspectorPanel] = useState<InspectorPanel | null>(null);
@@ -436,6 +442,28 @@ export function KeimenonSidebar({
   // For now, selectedAccounts is just the single selected account if any
   const selectedAccounts = selectedAccount ? [selectedAccount] : [];
 
+  const addNodeToScope = (nodeId: string) => {
+    setScopeNodeIds((prev) => (prev.includes(nodeId) ? prev : [...prev, nodeId]));
+    changePanel('scope-builder');
+    logDataEvent('Added node to scope', 'keimenon.scope.add', { nodeId });
+  };
+
+  const removeNodeFromScope = (nodeId: string) => {
+    setScopeNodeIds((prev) => prev.filter((id) => id !== nodeId));
+  };
+
+  const applyScopeFilter = () => {
+    setFilteredNodeIds(scopeNodeIds.length > 0 ? scopeNodeIds : null);
+    if (scopeNodeIds.length > 0) {
+      onZoomToFilteredNodes?.();
+    }
+  };
+
+  const clearScope = () => {
+    setScopeNodeIds([]);
+    setFilteredNodeIds(null);
+  };
+
   // Helper function to transform KeimenonNode to InspectorData
   const transformNodeToInspectorData = (node: KeimenonNode): InspectorData => {
     const typeMapping: Record<string, string> = {
@@ -475,14 +503,7 @@ export function KeimenonSidebar({
           label: 'Add to Scope',
           icon: 'link',
           onClick: () => {
-            errorCapture.warn('Scope builder integration pending', {
-              domain: 'ui',
-              operation: 'keimenon.scope.add',
-              metadata: { nodeId: node.id },
-            });
-            // TODO: Implement scope builder integration
-            // Related: apps/web/src/components/scope/ScopeBuilder.tsx (needs creation)
-            // See: docs/features/SCOPE_BUILDER.md (needs creation)
+            addNodeToScope(node.id);
           },
         },
       ],
@@ -551,6 +572,64 @@ export function KeimenonSidebar({
                 />
               )}
             </>
+          ) : currentPanel === 'scope-builder' ? (
+            <div className="h-full flex flex-col">
+              <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-300">
+                  Scope Builder ({scopeNodeIds.length})
+                </h3>
+                <button
+                  onClick={goBackToPanel}
+                  className="text-xs text-slate-400 hover:text-slate-200"
+                >
+                  Back
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {scopeNodeIds.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    Add nodes from selection actions to build a scoped view.
+                  </p>
+                ) : (
+                  scopeNodeIds.map((nodeId) => {
+                    const node = nodes.find((candidate) => candidate.id === nodeId);
+                    return (
+                      <div
+                        key={nodeId}
+                        className="flex items-center justify-between gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-xs text-slate-200 truncate">
+                            {node?.data?.label || nodeId}
+                          </p>
+                          <p className="text-[11px] text-slate-500 truncate">{nodeId}</p>
+                        </div>
+                        <button
+                          onClick={() => removeNodeFromScope(nodeId)}
+                          className="text-xs text-slate-400 hover:text-red-300"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              <div className="border-t border-slate-800 p-4 flex gap-2">
+                <button
+                  onClick={applyScopeFilter}
+                  className="flex-1 px-3 py-2 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded"
+                >
+                  Apply Scope
+                </button>
+                <button
+                  onClick={clearScope}
+                  className="px-3 py-2 text-sm bg-slate-800 hover:bg-slate-700 text-slate-200 rounded"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
           ) : rightKeimenonMode === 'settings' ? (
             // Settings Inspector
             <SettingsInspector selectedControlId={selectedSettingsControlId || null} />
@@ -625,14 +704,7 @@ export function KeimenonSidebar({
               onClearAll={() => clearSelection()}
               onViewDetails={(node) => openDetailPanel(node)}
               onAddToScope={(nodeId) => {
-                errorCapture.warn('Scope builder integration pending', {
-                  domain: 'ui',
-                  operation: 'keimenon.scope.add',
-                  metadata: { nodeId },
-                });
-                // TODO: Implement scope builder integration
-                // Related: apps/web/src/components/scope/ScopeBuilder.tsx (needs creation)
-                // See: docs/features/SCOPE_BUILDER.md (needs creation)
+                addNodeToScope(nodeId);
               }}
               onSequester={(nodeId) => {
                 void (async () => {

@@ -395,7 +395,7 @@ describe('Data Management API', () => {
     database.prepare('DELETE FROM nodes WHERE account_id = ?').run(adminAccountId);
 
     const accountBEmail = `export-isolation-${Date.now()}@example.com`;
-    const accountBPassword = 'TestPass123!';
+    const accountBPassword = `S3curePass!${Date.now()}Aa`;
 
     const registerResponse = await fetch(`${API_URL}/api/v1/auth/register`, {
       method: 'POST',
@@ -404,7 +404,7 @@ describe('Data Management API', () => {
         email: accountBEmail,
         password: accountBPassword,
         name: 'Export Isolation Account',
-        account_type: 'client',
+        accountType: 'client',
       }),
     });
 

@@ -15,6 +15,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { MessageSquare, FileText, Code2, Network, Users, TrendingUp } from 'lucide-react';
+import { getImportStatsSeries, type ImportStatsSeriesPoint } from '@/lib/api-client';
 
 interface ImportStatsProps {
   stats: {
@@ -26,6 +27,9 @@ interface ImportStatsProps {
   };
   animated?: boolean;
   layout?: 'grid' | 'horizontal';
+  series?: ImportStatsSeriesPoint[];
+  seriesWindow?: '24h' | '7d' | '30d';
+  enableSeriesFetch?: boolean;
 }
 
 interface StatCardProps {
@@ -33,8 +37,11 @@ interface StatCardProps {
   value: number;
   icon: any;
   color: string;
+  sparklineValues: number[];
   animated?: boolean;
 }
+
+type SparklineMetric = 'imports' | 'conversations' | 'messages' | 'sources' | 'nodes' | 'edges';
 
 /**
  * Animated counter component
@@ -93,10 +100,43 @@ function AnimatedCounter({ value, duration = 500 }: { value: number; duration?: 
   return <span>{displayValue.toLocaleString()}</span>;
 }
 
+function SparklineBars({ color, values }: { color: string; values: number[] }) {
+  const safeValues = values.length > 0 ? values : [0];
+  const max = Math.max(...safeValues, 1);
+  const barColor = `${color.split(' ')[0]}/30`;
+
+  return (
+    <div className="mt-3 h-8 flex items-end gap-0.5" aria-hidden>
+      {safeValues.map((value, index) => {
+        const normalized = max === 0 ? 0 : value / max;
+        const height = Math.max(8, Math.round(normalized * 100));
+
+        return (
+          <div
+            key={`${index}-${value}`}
+            className={`flex-1 rounded-t ${barColor}`}
+            style={{
+              height: `${height}%`,
+              transition: 'height 0.3s ease',
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 /**
  * Individual stat card
  */
-function StatCard({ label, value, icon: Icon, color, animated = true }: StatCardProps) {
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  color,
+  sparklineValues,
+  animated = true,
+}: StatCardProps) {
   return (
     <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50 hover:border-slate-600 transition-all">
       <div className="flex items-start justify-between mb-3">
@@ -117,20 +157,7 @@ function StatCard({ label, value, icon: Icon, color, animated = true }: StatCard
         <div className="text-xs text-slate-400 font-medium">{label}</div>
       </div>
 
-      {/* Mini sparkline placeholder (optional) */}
-      {/* TODO: Add real sparkline graph showing growth over time */}
-      <div className="mt-3 h-8 flex items-end gap-0.5">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <div
-            key={i}
-            className={`flex-1 rounded-t ${color.split(' ')[0]}/30`}
-            style={{
-              height: `${Math.random() * 100}%`,
-              transition: 'height 0.3s ease',
-            }}
-          />
-        ))}
-      </div>
+      <SparklineBars color={color} values={sparklineValues} />
     </div>
   );
 }
@@ -138,43 +165,94 @@ function StatCard({ label, value, icon: Icon, color, animated = true }: StatCard
 /**
  * Main stats panel component
  */
-export function ImportStatsPanel({ stats, animated = true, layout = 'grid' }: ImportStatsProps) {
+export function ImportStatsPanel({
+  stats,
+  animated = true,
+  layout = 'grid',
+  series,
+  seriesWindow = '24h',
+  enableSeriesFetch = true,
+}: ImportStatsProps) {
+  const [backendSeries, setBackendSeries] = useState<ImportStatsSeriesPoint[]>(series || []);
+
+  useEffect(() => {
+    setBackendSeries(series || []);
+  }, [series]);
+
+  useEffect(() => {
+    if (!enableSeriesFetch || series) {
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await getImportStatsSeries(seriesWindow, 12);
+        if (!cancelled) {
+          setBackendSeries(response.series);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setBackendSeries([]);
+        }
+        console.warn('[ImportStatsPanel] Failed to load import stats series', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enableSeriesFetch, series, seriesWindow]);
+
+  const sparklineFromSeries = (metric: SparklineMetric): number[] => {
+    if (backendSeries.length === 0) {
+      return Array.from({ length: 12 }).fill(0) as number[];
+    }
+    return backendSeries.map((point) => Number(point[metric] || 0));
+  };
+
   const statCards = [
     {
       label: 'Conversations',
       value: stats.conversationsProcessed,
       icon: MessageSquare,
       color: 'from-blue-500 to-blue-600',
+      sparklineValues: sparklineFromSeries('conversations'),
     },
     {
       label: 'Messages',
       value: stats.messagesProcessed,
       icon: Users,
       color: 'from-purple-500 to-purple-600',
+      sparklineValues: sparklineFromSeries('messages'),
     },
     {
       label: 'Sources',
       value: stats.sourcesCreated,
       icon: FileText,
       color: 'from-green-500 to-green-600',
+      sparklineValues: sparklineFromSeries('sources'),
     },
     {
       label: 'Code Blocks',
       value: stats.nodesCreated, // Placeholder - should be separate code blocks count
       icon: Code2,
       color: 'from-orange-500 to-orange-600',
+      sparklineValues: sparklineFromSeries('nodes'),
     },
     {
       label: 'Nodes Created',
       value: stats.nodesCreated,
       icon: Network,
       color: 'from-pink-500 to-pink-600',
+      sparklineValues: sparklineFromSeries('nodes'),
     },
     {
       label: 'Edges Created',
       value: stats.edgesCreated,
       icon: Network,
       color: 'from-cyan-500 to-cyan-600',
+      sparklineValues: sparklineFromSeries('edges'),
     },
   ];
 
@@ -193,6 +271,7 @@ export function ImportStatsPanel({ stats, animated = true, layout = 'grid' }: Im
           value={card.value}
           icon={card.icon}
           color={card.color}
+          sparklineValues={card.sparklineValues}
           animated={animated}
         />
       ))}

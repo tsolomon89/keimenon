@@ -3,6 +3,8 @@ import { AuthServiceV2 } from '../services/auth.service';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import { authRateLimiter, registrationRateLimiter } from '../middleware/rate-limit.middleware';
 import { getDbClient } from '../utils/get-db-client';
+import { checkPasswordCompromised } from '../utils/hibp-password';
+import { dispatchPasswordResetEmail } from '../utils/password-reset-email';
 
 export function createAuthRoutes(authService: AuthServiceV2): Router {
   const router = Router();
@@ -75,6 +77,21 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
     console.error(`[AuthRoutes] ${operation} failed:`, error);
   };
 
+  const classifyResetDispatchError = (error: unknown): string => {
+    const message =
+      error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    if (message.includes('timeout') || message.includes('timed out')) {
+      return 'EMAIL_DISPATCH_TIMEOUT';
+    }
+    if (message.includes('auth') || message.includes('credential')) {
+      return 'EMAIL_DISPATCH_AUTH_FAILED';
+    }
+    if (message.includes('dns') || message.includes('enotfound')) {
+      return 'EMAIL_DISPATCH_DNS_ERROR';
+    }
+    return 'EMAIL_DISPATCH_FAILED';
+  };
+
   /**
    * POST /api/v1/auth/login
    * Login with email and password
@@ -134,6 +151,21 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         return res.status(400).json({ error: 'Email, password, and name required' });
       }
 
+      if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: 'Valid email required' });
+      }
+
+      if (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 120) {
+        return res.status(400).json({ error: 'Name must be between 2 and 120 characters' });
+      }
+
+      const requestedAccountType =
+        accountType === 'admin' || accountType === 'client' ? accountType : 'client';
+      const requestedAccountClass =
+        accountClass === 'professional' || accountClass === 'business' || accountClass === 'free'
+          ? accountClass
+          : 'free';
+
       // Password strength validation (matches client-side rules)
       if (password.length < 8) {
         return res
@@ -148,13 +180,22 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
           .json({ error: 'Password is too weak - must contain both letters and numbers' });
       }
 
+      const compromiseCheck = await checkPasswordCompromised(password);
+      if (compromiseCheck.compromised) {
+        return res.status(400).json({
+          error: 'Password has appeared in public breach data. Choose a different password.',
+          code: 'PASSWORD_COMPROMISED',
+          breachCount: compromiseCheck.count,
+        });
+      }
+
       const result = await authService.register(
         email,
         password,
         name,
         accountName || name, // Use user's name as account name if not provided
-        accountType || 'client',
-        accountClass || 'free'
+        requestedAccountType,
+        requestedAccountClass
       );
 
       if (!result) {
@@ -204,7 +245,25 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
           });
         }
 
-        // Production: don't return token (send via email instead)
+        // Production: dispatch reset email, but keep response generic.
+        if (process.env.NODE_ENV === 'production') {
+          try {
+            await dispatchPasswordResetEmail({
+              to: email,
+              token: result.token,
+              expiresAt: result.expiresAt,
+            });
+          } catch (emailError) {
+            const code = classifyResetDispatchError(emailError);
+            const message = emailError instanceof Error ? emailError.message : String(emailError);
+            console.error('[AuthRoutes] Password reset email dispatch failed', {
+              code,
+              message,
+              route: 'reset-password/request',
+            });
+          }
+        }
+
         return res.json({
           message: 'If an account exists with this email, you will receive reset instructions.',
         });
@@ -230,6 +289,15 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
 
       if (!token || !newPassword) {
         return res.status(400).json({ error: 'Token and new password required' });
+      }
+
+      const compromiseCheck = await checkPasswordCompromised(newPassword);
+      if (compromiseCheck.compromised) {
+        return res.status(400).json({
+          error: 'Password has appeared in public breach data. Choose a different password.',
+          code: 'PASSWORD_COMPROMISED',
+          breachCount: compromiseCheck.count,
+        });
       }
 
       const ipAddress = req.ip || req.socket.remoteAddress;
@@ -259,6 +327,57 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
   });
 
   /**
+   * POST /api/v1/auth/password/change
+   * Authenticated password change with current-password verification.
+   */
+  router.post(
+    '/password/change',
+    authRateLimiter,
+    requireAuth(authService),
+    async (req: Request, res: Response) => {
+      try {
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+          return res.status(400).json({ error: 'Current password and new password required' });
+        }
+
+        if (!req.user) {
+          return res.status(401).json({ error: 'Not authenticated' });
+        }
+
+        const compromiseCheck = await checkPasswordCompromised(newPassword);
+        if (compromiseCheck.compromised) {
+          return res.status(400).json({
+            error: 'Password has appeared in public breach data. Choose a different password.',
+            code: 'PASSWORD_COMPROMISED',
+            breachCount: compromiseCheck.count,
+          });
+        }
+
+        const result = await authService.changePassword(
+          req.user.userId,
+          req.user.accountId,
+          currentPassword,
+          newPassword,
+          req.ip || req.socket.remoteAddress,
+          req.headers['user-agent']
+        );
+
+        return res.json({
+          message: 'Password updated successfully. Please log in again.',
+          updatedAt: result.updatedAt,
+        });
+      } catch (error: any) {
+        const errorMessage = error?.message || 'Password change failed';
+        const status = getAuthErrorStatus(errorMessage);
+        logAuthRouteError('password/change', error, status);
+        return res.status(status).json({ error: errorMessage });
+      }
+    }
+  );
+
+  /**
    * POST /api/v1/auth/reset-password-debug
    * DEBUG ONLY: Insecure debug helper to reset password by email.
    *
@@ -286,7 +405,6 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         return res.status(404).json({ error: 'User not found for that email' });
       }
 
-      // HACK(auth): Temporary insecure reset endpoint - remove once real flow ships.
       return res.json({
         message:
           'Password updated (DEBUG MODE). Please log in with the new password. This endpoint is disabled in production.',
@@ -396,20 +514,42 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
    */
   router.post('/register/google', async (req: Request, res: Response) => {
     try {
-      const { googleId, email, name } = req.body;
+      const { googleId, email, name, accountClass } = req.body;
 
       if (!googleId || !email || !name) {
         return res.status(400).json({ error: 'Google ID, email, and name required' });
       }
 
-      // TODO: Implement registerWithGoogle method in AuthServiceV2
-      throw new Error('Google registration not yet implemented');
+      if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: 'Valid email required' });
+      }
 
-      // return res.json({
-      //   user: result.user,
-      //   account: result.account,
-      //   token: result.token,
-      // });
+      const requestedAccountClass =
+        accountClass === 'professional' || accountClass === 'business' || accountClass === 'free'
+          ? accountClass
+          : 'free';
+
+      const result = await authService.registerWithGoogle(
+        String(googleId),
+        email,
+        name,
+        requestedAccountClass
+      );
+
+      if (result.requiresAccountSelection) {
+        return res.json({
+          requiresAccountSelection: true,
+          availableAccounts: result.availableAccounts,
+          tempToken: result.tempToken,
+        });
+      }
+
+      return res.status(201).json({
+        user: result.user,
+        account: result.account,
+        token: result.token,
+        membership: result.membership,
+      });
     } catch (error: any) {
       const errorMessage = error?.message || 'Registration failed';
       const status = getAuthErrorStatus(errorMessage);
@@ -575,6 +715,46 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
       const errorMessage = error?.message || 'Verification failed';
       const status = getAuthErrorStatus(errorMessage);
       logAuthRouteError('verify', error, status);
+      return res.status(status).json({ error: errorMessage });
+    }
+  });
+
+  /**
+   * POST /api/v1/auth/refresh
+   * Refresh access token for an active session.
+   */
+  router.post('/refresh', async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      const bearerToken =
+        authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+      const bodyToken = typeof req.body?.token === 'string' ? req.body.token : null;
+      const token = bearerToken || bodyToken;
+
+      if (!token) {
+        return res.status(400).json({ error: 'Token required' });
+      }
+
+      const refreshed = await authService.refreshToken(
+        token,
+        req.ip || req.socket.remoteAddress,
+        req.headers['user-agent']
+      );
+
+      if (!refreshed || !refreshed.token) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+
+      return res.json({
+        token: refreshed.token,
+        user: refreshed.user,
+        account: refreshed.account,
+        membership: refreshed.membership,
+      });
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Token refresh failed';
+      const status = getAuthErrorStatus(errorMessage);
+      logAuthRouteError('refresh', error, status);
       return res.status(status).json({ error: errorMessage });
     }
   });

@@ -7,6 +7,9 @@ import {
   GraphEdge as APIGraphEdge,
 } from '@/lib/api-client';
 
+const GRAPH_LOAD_RETRY_DELAYS_MS = [300, 900, 2100] as const;
+const SSR_VIEWPORT_FALLBACK = { width: 1280, height: 720 } as const;
+
 // Node kinds that represent top-level structure (always shown)
 const STRUCTURAL_KINDS = new Set([
   'ChatThread',
@@ -26,6 +29,26 @@ const STRUCTURAL_KINDS = new Set([
 
 // Threshold at which we auto-filter to structural nodes only
 const SMART_FILTER_THRESHOLD = 5000;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shouldRetryGraphLoad(error: unknown): boolean {
+  const maybeError = error as { statusCode?: number; code?: string; message?: string };
+  const statusCode = maybeError?.statusCode;
+  const message = (maybeError?.message || '').toLowerCase();
+
+  if (maybeError?.code === 'NETWORK_ERROR') {
+    return true;
+  }
+
+  if (statusCode === 429 || (typeof statusCode === 'number' && statusCode >= 500)) {
+    return true;
+  }
+
+  return message.includes('timeout') || message.includes('network') || message.includes('fetch');
+}
 
 // Helper functions to map API kinds to viewport types while preserving backend kind fidelity.
 function mapNodeKindToType(kind: string): string {
@@ -201,11 +224,30 @@ export const useKeimenonStore = create<KeimenonState>()(
         set({ isLoading: true, error: null });
 
         try {
-          // Fetch nodes and edges from API
-          const [nodesResult, edgesResult] = await Promise.all([
-            getNodes({ limit: 100000 }),
-            getEdges({ limit: 200000 }),
-          ]);
+          let nodesResult: Awaited<ReturnType<typeof getNodes>> | null = null;
+          let edgesResult: Awaited<ReturnType<typeof getEdges>> | null = null;
+
+          for (let attempt = 0; attempt <= GRAPH_LOAD_RETRY_DELAYS_MS.length; attempt += 1) {
+            try {
+              [nodesResult, edgesResult] = await Promise.all([
+                getNodes({ limit: 100000 }),
+                getEdges({ limit: 200000 }),
+              ]);
+              break;
+            } catch (error) {
+              const canRetry =
+                attempt < GRAPH_LOAD_RETRY_DELAYS_MS.length && shouldRetryGraphLoad(error);
+              if (!canRetry) {
+                throw error;
+              }
+
+              await wait(GRAPH_LOAD_RETRY_DELAYS_MS[attempt]);
+            }
+          }
+
+          if (!nodesResult || !edgesResult) {
+            throw new Error('Failed to load graph data after retries');
+          }
 
           // Transform API nodes to Keimenon nodes
           const allNodes: KeimenonNode[] = nodesResult.nodes.map((apiNode: APIGraphNode) => ({
@@ -262,10 +304,6 @@ export const useKeimenonStore = create<KeimenonState>()(
           });
         } catch (error: any) {
           console.error('Failed to load graph data:', error);
-          // TODO: Add retry logic and exponential backoff for graph data loading failures
-          // Related: apps/web/src/lib/error-handler.ts:withRetry (retry utility exists)
-          // See: docs/features/ERROR_RECOVERY.md (needs creation)
-          // Implement: Automatic retry with backoff, manual retry button in UI
           set({
             isLoading: false,
             error: error.message || 'Failed to load graph data',
@@ -365,10 +403,6 @@ export const useKeimenonStore = create<KeimenonState>()(
         const { nodes } = get();
         if (nodes.length === 0) return;
 
-        // TODO: Handle edge case where window dimensions are unavailable (SSR, tests)
-        // Related: apps/web/src/components/keimenon/KeimenonViewport.tsx (viewport management)
-        // See: docs/features/CANVAS_VIEWPORT.md (needs creation)
-        // Add: Check for window existence and fallback dimensions
         const padding = 50;
         const minX = Math.min(...nodes.map((n) => n.position.x)) - padding;
         const minY = Math.min(...nodes.map((n) => n.position.y)) - padding;
@@ -378,8 +412,10 @@ export const useKeimenonStore = create<KeimenonState>()(
         const width = maxX - minX;
         const height = maxY - minY;
 
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
+        const viewportWidth =
+          typeof window === 'undefined' ? SSR_VIEWPORT_FALLBACK.width : window.innerWidth;
+        const viewportHeight =
+          typeof window === 'undefined' ? SSR_VIEWPORT_FALLBACK.height : window.innerHeight;
 
         const zoom = Math.min(viewportWidth / width, viewportHeight / height, 1);
 

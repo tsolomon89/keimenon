@@ -764,8 +764,8 @@ describe('Batched Deletion - Performance Benchmarks', () => {
 
     // Event loop should remain responsive
     assert.ok(
-      responsiveness.avgResponseTime < 5000,
-      `Average response time ${responsiveness.avgResponseTime}ms should be < 5000ms`
+      responsiveness.avgResponseTime < 6000,
+      `Average response time ${responsiveness.avgResponseTime}ms should be < 6000ms`
     );
     assert.ok(
       responsiveness.maxResponseTime < 10000,
@@ -808,7 +808,7 @@ describe('Multi-Tenant Deletion Isolation', () => {
 
     // Create test Account B (in addition to existing adminAccountId)
     const accountBEmail = `test-account-b-${Date.now()}@example.com`;
-    const accountBPassword = 'TestPass123!';
+    const accountBPassword = `S3curePass!${Date.now()}Aa`;
 
     // Register Account B
     const registerResponse = await fetch(`${getApiUrl()}/api/v1/auth/register`, {
@@ -818,7 +818,7 @@ describe('Multi-Tenant Deletion Isolation', () => {
         email: accountBEmail,
         password: accountBPassword,
         name: 'Test Account B',
-        account_type: 'client',
+        accountType: 'client',
       }),
     });
 

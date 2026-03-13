@@ -1,7 +1,6 @@
 import { app, BrowserWindow, ipcMain, shell, protocol, net as electronNet } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as url from 'url';
 import * as net from 'net';
 import { secureStorage } from './services/secure-storage';

@@ -52,7 +52,9 @@ import { ImportWorker } from '../modules/workers/infrastructure/ImportWorker';
 // Test Configuration
 let PORT = 0;
 let API_BASE_URL = '';
-const DB_PATH = process.env.DB_PATH || path.join(os.homedir(), '.keimenon', 'keimenon.db');
+const DB_PATH =
+  process.env.DB_PATH ||
+  path.join(os.tmpdir(), `keimenon-ui-integration-${process.pid}-${Date.now()}.db`);
 const TEST_FILES_DIR_CANDIDATES = [
   path.join(__dirname, 'fixtures'),
   path.join(process.cwd(), 'src', '__tests__', 'fixtures'),
@@ -123,7 +125,7 @@ beforeAll(async () => {
 
   workerPool = new WorkerPool(jobRepository, concurrencyGuard, startJob, {
     maxConcurrentJobs: 2,
-    pollIntervalMs: 5000,
+    pollIntervalMs: 1000,
   });
 
   // Register Workers
@@ -227,6 +229,51 @@ async function uploadFile(filePath: string, token: string, config: any = {}) {
   return response;
 }
 
+async function waitForJobCompletion(token: string, jobId: string, timeoutMs = 180_000) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      continue;
+    }
+
+    const payload = (await response.json()) as any;
+    const job = payload?.job;
+    const status = job?.state?.status || job?.status;
+
+    if (status === 'succeeded') {
+      return job;
+    }
+
+    if (status === 'failed' || status === 'cancelled' || status === 'canceled') {
+      throw new Error(`Import job ${jobId} failed with status: ${status}`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  throw new Error(`Timed out waiting for import job ${jobId} completion`);
+}
+
+async function uploadFileAndWait(filePath: string, token: string, config: any = {}) {
+  const response = await uploadFile(filePath, token, config);
+  assert.strictEqual(response.ok, true);
+
+  const body = (await response.json()) as any;
+  const jobId = body?.jobId || body?.job?.id;
+  assert.ok(jobId, 'Import response missing jobId');
+
+  await waitForJobCompletion(token, jobId);
+}
+
 /**
  * Helper: Get groups/folders tree
  */
@@ -280,7 +327,7 @@ function cleanupTestData(accountId: string) {
  */
 describe('API Upload Endpoint', () => {
   it('should accept multipart form data with files and config', async () => {
-    const testFile = path.join(TEST_FILES_DIR, 'small.json');
+    const testFile = path.join(TEST_FILES_DIR, 'tiny.json');
 
     if (!fs.existsSync(testFile)) {
       console.warn(`⚠️  Test file not found: ${testFile}`);
@@ -296,10 +343,13 @@ describe('API Upload Endpoint', () => {
 
     const data = await response.json();
     assert.strictEqual(data.success, true);
+    const jobId = data?.jobId || data?.job?.id;
+    assert.ok(jobId, 'Import response missing jobId');
+    await waitForJobCompletion(adminToken, jobId);
   }, 60000); // 60s timeout
 
   it('should reject unauthenticated requests', async () => {
-    const testFile = path.join(TEST_FILES_DIR, 'small.json');
+    const testFile = path.join(TEST_FILES_DIR, 'tiny.json');
 
     if (!fs.existsSync(testFile)) {
       return;
@@ -317,7 +367,7 @@ describe('API Upload Endpoint', () => {
   });
 
   it('should parse config from form fields', async () => {
-    const testFile = path.join(TEST_FILES_DIR, 'small.json');
+    const testFile = path.join(TEST_FILES_DIR, 'tiny.json');
 
     if (!fs.existsSync(testFile)) {
       return;
@@ -331,6 +381,10 @@ describe('API Upload Endpoint', () => {
 
     const response = await uploadFile(testFile, adminToken, customConfig);
     assert.strictEqual(response.ok, true);
+    const data = await response.json();
+    const jobId = data?.jobId || data?.job?.id;
+    assert.ok(jobId, 'Import response missing jobId');
+    await waitForJobCompletion(adminToken, jobId);
   }, 60000);
 });
 
@@ -347,7 +401,7 @@ describe('Data Persistence & Multi-Tenancy', () => {
   });
 
   it('should persist imported data with correct account_id', async () => {
-    const testFile = path.join(TEST_FILES_DIR, 'small.json');
+    const testFile = path.join(TEST_FILES_DIR, 'tiny.json');
 
     if (!fs.existsSync(testFile)) {
       console.warn(`⚠️  Test file not found: ${testFile}`);
@@ -357,8 +411,7 @@ describe('Data Persistence & Multi-Tenancy', () => {
     const beforeCounts = getNodesByAccount(adminAccountId);
     console.log('📊 Before import:', beforeCounts);
 
-    const response = await uploadFile(testFile, adminToken);
-    assert.strictEqual(response.ok, true);
+    await uploadFileAndWait(testFile, adminToken);
 
     const afterCounts = getNodesByAccount(adminAccountId);
     console.log('📊 After import:', afterCounts);
@@ -375,26 +428,28 @@ describe('Data Persistence & Multi-Tenancy', () => {
 
     assert.ok(totalAfter > totalBefore);
 
-    // Should have Folder nodes (Group nodes are optional in local-mode imports)
-    const folderCount = (afterCounts as any[]).find((r: any) => r.kind === 'Folder')?.count || 0;
+    // Import output now centers on conversation/message materialization in local-mode.
+    // Folder/Group creation is optional and should not gate persistence verification.
+    const messageCount = (afterCounts as any[]).find((r: any) => r.kind === 'Message')?.count || 0;
+    const conversationCount =
+      (afterCounts as any[]).find((r: any) => r.kind === 'ConversationThread')?.count || 0;
 
-    assert.ok(folderCount > 0);
+    assert.ok(messageCount > 0);
+    assert.ok(conversationCount > 0);
   }, 120000); // 2min timeout
 
   it('should isolate data between accounts', async () => {
-    const testFile = path.join(TEST_FILES_DIR, 'small.json');
+    const testFile = path.join(TEST_FILES_DIR, 'tiny.json');
 
     if (!fs.existsSync(testFile)) {
       return;
     }
 
     // Upload as admin
-    const adminUpload = await uploadFile(testFile, adminToken);
-    assert.strictEqual(adminUpload.ok, true);
+    await uploadFileAndWait(testFile, adminToken);
 
     // Upload as client
-    const clientUpload = await uploadFile(testFile, clientToken);
-    assert.strictEqual(clientUpload.ok, true);
+    await uploadFileAndWait(testFile, clientToken);
 
     // Check admin data
     const adminNodes = db
@@ -453,9 +508,9 @@ describe('Data Persistence & Multi-Tenancy', () => {
 describe('Groups & Folders Navigation', () => {
   beforeAll(async () => {
     // Ensure admin has some imported data
-    const testFile = path.join(TEST_FILES_DIR, 'small.json');
+    const testFile = path.join(TEST_FILES_DIR, 'tiny.json');
     if (fs.existsSync(testFile)) {
-      await uploadFile(testFile, adminToken);
+      await uploadFileAndWait(testFile, adminToken);
     }
   });
 
@@ -609,7 +664,7 @@ describe('Error Handling', () => {
   });
 
   test('should handle missing config gracefully', async () => {
-    const testFile = path.join(TEST_FILES_DIR, 'small.json');
+    const testFile = path.join(TEST_FILES_DIR, 'tiny.json');
 
     if (!fs.existsSync(testFile)) {
       return;

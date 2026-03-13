@@ -32,6 +32,7 @@ import { createTestSourceNode } from './helpers/create-test-node';
 
 test.describe('Data Retrieval Workflow', () => {
   test.describe.configure({ tag: '@full' });
+  test.setTimeout(180000);
 
   const TEST_USER = {
     email: 'admin@admin.com',
@@ -151,53 +152,75 @@ test.describe('Data Retrieval Workflow', () => {
     );
     const fileContent = fs.readFileSync(testFile);
 
-    const uploadResponse = await apiRequest.post('/api/v1/jobs/import', {
-      headers: { Authorization: `Bearer ${token}` },
-      multipart: {
-        files: {
-          name: filename,
-          mimeType: 'application/json',
-          buffer: fileContent,
-        },
-        config: JSON.stringify({
-          platform: 'chatgpt',
-          extractCode: true,
-          duplicateDetection: { enabled: true },
-          data_tag: 'test', // CRITICAL: Mark all test data for cleanup
-        }),
-      },
-    });
+    const maxJobAttempts = 2;
+    const maxPollAttempts = 75; // 75s per import attempt; allows bounded retry under suite load
 
-    expect(uploadResponse.status()).toBe(201);
-    const uploadData = await uploadResponse.json();
-
-    // Wait for job to complete (poll status)
-    const jobId = uploadData.jobId;
-    let jobComplete = false;
-    let attempts = 0;
-    const maxAttempts = 30; // 30 seconds timeout
-
-    while (!jobComplete && attempts < maxAttempts) {
-      const jobResponse = await apiRequest.get(`/api/v1/jobs/${jobId}`, {
+    for (let jobAttempt = 1; jobAttempt <= maxJobAttempts; jobAttempt++) {
+      const uploadResponse = await apiRequest.post('/api/v1/jobs/import', {
         headers: { Authorization: `Bearer ${token}` },
+        multipart: {
+          files: {
+            name: filename,
+            mimeType: 'application/json',
+            buffer: fileContent,
+          },
+          config: JSON.stringify({
+            platform: 'chatgpt',
+            extractCode: true,
+            duplicateDetection: { enabled: true },
+            data_tag: 'test', // CRITICAL: Mark all test data for cleanup
+          }),
+        },
       });
 
-      const payload = await jobResponse.json();
-      const job = payload?.job ?? payload;
-      const status = job?.status;
+      expect(uploadResponse.status()).toBe(201);
+      const uploadData = await uploadResponse.json();
+      const jobId = uploadData.jobId;
 
-      if (status === 'succeeded' || status === 'completed') {
-        jobComplete = true;
-        return { jobId, nodeCount: getNodesCreatedFromJob(job) };
-      } else if (status === 'failed' || status === 'canceled' || status === 'cancelled') {
-        throw new Error(`Import job failed: ${job?.error || status}`);
+      let attempts = 0;
+      let lastStatus = 'queued';
+      let lastError: string | undefined;
+
+      while (attempts < maxPollAttempts) {
+        const jobResponse = await apiRequest.get(`/api/v1/jobs/${jobId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const payload = await jobResponse.json();
+        const job = payload?.job ?? payload;
+        const status = job?.status;
+        lastStatus = typeof status === 'string' ? status : 'unknown';
+        lastError = job?.error;
+
+        if (status === 'succeeded' || status === 'completed') {
+          return { jobId, nodeCount: getNodesCreatedFromJob(job) };
+        }
+
+        if (status === 'failed' || status === 'canceled' || status === 'cancelled') {
+          throw new Error(`Import job failed: ${job?.error || status}`);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        attempts++;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      attempts++;
+      if (jobAttempt < maxJobAttempts) {
+        // Best-effort cancellation of a stuck job before retrying.
+        await apiRequest
+          .post(`/api/v1/jobs/${jobId}/cancel`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          .catch(() => {});
+        await new Promise((resolve) => setTimeout(resolve, 1000 * jobAttempt));
+        continue;
+      }
+
+      throw new Error(
+        `Import job did not complete within ${maxPollAttempts} seconds (attempt ${jobAttempt}/${maxJobAttempts}, lastStatus=${lastStatus}, lastError=${lastError || 'n/a'})`
+      );
     }
 
-    throw new Error(`Import job did not complete within ${maxAttempts} seconds`);
+    throw new Error('Import job retry loop exhausted unexpectedly');
   }
 
   // ==================== CRITICAL PATH TESTS ====================

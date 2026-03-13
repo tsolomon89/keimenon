@@ -10,6 +10,7 @@
 
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { createHash } from 'crypto';
 import { randomUUID } from 'crypto';
 import Database from 'better-sqlite3';
 import { SQLiteClient } from '@keimenon/db';
@@ -26,6 +27,7 @@ import {
   logAccountLockout,
   logLogout,
   logRegistration,
+  logPasswordChange,
   logAccountSwitch,
 } from '../utils/audit-logger';
 
@@ -109,6 +111,15 @@ export interface LoginResult {
   tempToken?: string; // Temporary token for account selection
 }
 
+interface SessionRotationOptions {
+  sessionFamilyId?: string;
+  parentSessionId?: string;
+  revokeExistingForAccount?: boolean;
+  revokeReason?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
 export class AuthServiceV2 {
   private static readonly sessionMissLogTtlMs = Number.parseInt(
     process.env.AUTH_SESSION_MISS_LOG_TTL_MS || String(10 * 60 * 1000),
@@ -124,6 +135,65 @@ export class AuthServiceV2 {
   >();
 
   constructor(private db: SQLiteClient) {}
+
+  private static readonly testSessionRelaxEnv = 'AUTH_TEST_RELAX_SESSION_BINDING';
+
+  private hashOpaqueToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private shouldRelaxSessionBindingInThisProcess(): boolean {
+    if (process.env.NODE_ENV !== 'test') {
+      return false;
+    }
+
+    // Tests may disable this relaxation by setting AUTH_TEST_RELAX_SESSION_BINDING=0.
+    return process.env[AuthServiceV2.testSessionRelaxEnv] !== '0';
+  }
+
+  private getSessionByAccessToken(database: Database.Database, token: string): any | null {
+    const tokenHash = this.hashOpaqueToken(token);
+    let session: any | null = null;
+
+    try {
+      session = database
+        .prepare('SELECT * FROM sessions WHERE token_hash = ?')
+        .get(tokenHash) as any;
+    } catch {
+      // Legacy test schemas may not include token_hash yet.
+      session = null;
+    }
+
+    if (session) {
+      return session;
+    }
+
+    // Migration bridge: support legacy raw-token rows and upgrade them in-place.
+    session = database.prepare('SELECT * FROM sessions WHERE token = ?').get(token) as any;
+    if (!session) {
+      return null;
+    }
+
+    try {
+      database
+        .prepare(
+          `
+          UPDATE sessions
+          SET token_hash = ?, token = ?
+          WHERE id = ?
+        `
+        )
+        .run(tokenHash, tokenHash, session.id);
+    } catch {
+      // token_hash not available in legacy schema.
+    }
+
+    return {
+      ...session,
+      token_hash: tokenHash,
+      token: tokenHash,
+    };
+  }
 
   private logSessionMissing(payload: JWTPayload): void {
     const now = Date.now();
@@ -476,7 +546,12 @@ export class AuthServiceV2 {
     // CRITICAL FIX #6: Pass database instance to createSession() for consistency
     // This ensures createSession() uses the same DB instance as selectAccount()
     // Prevents FOREIGN KEY constraint failures when called from register()
-    const token = await this.createSession(user, account, membership, db);
+    const token = await this.createSession(user, account, membership, db, {
+      revokeExistingForAccount: true,
+      revokeReason: 'login_replaced',
+      ipAddress,
+      userAgent,
+    });
 
     // Log successful login
     // TEMPORARILY DISABLED: logLoginSuccess(database, user.id, account.id, user.email, ipAddress, userAgent);
@@ -629,6 +704,81 @@ export class AuthServiceV2 {
   }
 
   /**
+   * Register or sign in using Google identity.
+   *
+   * Existing users are linked by google_id first, then by email.
+   */
+  async registerWithGoogle(
+    googleId: string,
+    email: string,
+    name: string,
+    accountClass: 'free' | 'professional' | 'business' = 'free',
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<LoginResult> {
+    const database = this.db.getDatabase();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error('Invalid email format');
+    }
+
+    let userRow = database
+      .prepare('SELECT * FROM users WHERE google_id = ? AND is_active = 1')
+      .get(googleId) as any;
+
+    if (!userRow) {
+      userRow = database
+        .prepare('SELECT * FROM users WHERE email = ? AND is_active = 1')
+        .get(email) as any;
+    }
+
+    if (!userRow) {
+      const generatedPassword = `${randomUUID()}Aa1!`;
+      const registration = await this.register(
+        email,
+        generatedPassword,
+        name,
+        name,
+        'client',
+        accountClass,
+        ipAddress,
+        userAgent
+      );
+
+      database.prepare('UPDATE users SET google_id = ? WHERE email = ?').run(googleId, email);
+      return registration;
+    }
+
+    if (!userRow.google_id) {
+      database
+        .prepare('UPDATE users SET google_id = ?, updated_at = ? WHERE id = ?')
+        .run(googleId, Date.now(), userRow.id);
+    }
+
+    const accounts = await this.getUserAccounts(userRow.id);
+    if (accounts.length === 0) {
+      throw new Error('No active accounts found for this user');
+    }
+
+    if (accounts.length === 1) {
+      return this.selectAccount(userRow.id, accounts[0].accountId, undefined, ipAddress, userAgent);
+    }
+
+    const tempToken = jwt.sign(
+      { userId: userRow.id, email: userRow.email, purpose: 'account_selection' } as TempJWTPayload,
+      JWT_SECRET,
+      { expiresIn: JWT_TEMP_EXPIRES_IN }
+    );
+
+    return {
+      requiresAccountSelection: true,
+      availableAccounts: accounts,
+      tempToken,
+    };
+  }
+
+  /**
    * Create a session and return JWT token
    *
    * CRITICAL FIX #3: Transaction-based session creation
@@ -646,7 +796,8 @@ export class AuthServiceV2 {
     user: User,
     account: Account,
     membership: UserAccountMembership,
-    database?: Database.Database
+    database?: Database.Database,
+    options?: SessionRotationOptions
   ): Promise<string> {
     // Use provided database (for consistency within register flow) or get new instance
     const db = database || this.db.getDatabase();
@@ -675,36 +826,58 @@ export class AuthServiceV2 {
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const tokenHash = this.hashOpaqueToken(token);
+    const sessionFamilyId = options?.sessionFamilyId || sessionId;
+    const parentSessionId = options?.parentSessionId || null;
+    const revokeReason = options?.revokeReason || 'session_replaced';
 
-    // ATOMIC OPERATION: Delete old sessions + Insert new session in transaction
+    // ATOMIC OPERATION: revoke old session(s) + insert new session in transaction
     const createSessionTransaction = db.transaction(() => {
-      // Delete old sessions for this user in this account
-      db.prepare(
+      if (options?.revokeExistingForAccount !== false) {
+        db.prepare(
+          `
+          UPDATE sessions
+          SET revoked_at = ?, revoked_reason = ?
+          WHERE user_id = ? AND operating_account_id = ? AND revoked_at IS NULL
         `
-        DELETE FROM sessions
-        WHERE user_id = ? AND operating_account_id = ?
-      `
-      ).run(user.id, account.id);
+        ).run(now, revokeReason, user.id, account.id);
+      }
+
+      if (parentSessionId) {
+        db.prepare(
+          `
+          UPDATE sessions
+          SET revoked_at = ?, revoked_reason = ?
+          WHERE id = ? AND revoked_at IS NULL
+        `
+        ).run(now, 'refresh_rotated', parentSessionId);
+      }
 
       // Store new session in database
       db.prepare(
         `
         INSERT INTO sessions (
-          id, user_id, account_id, token, expires_at, created_at,
-          operating_account_id, available_accounts, last_active
+          id, user_id, account_id, token, token_hash, token_family_id,
+          parent_session_id, expires_at, created_at, operating_account_id,
+          available_accounts, last_active, ip_address, user_agent
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       ).run(
         sessionId,
         user.id,
         account.id, // Backward compat
-        token,
+        tokenHash,
+        tokenHash,
+        sessionFamilyId,
+        parentSessionId,
         expiresAt,
         now,
         account.id, // Current operating account
         JSON.stringify(allAccountIds),
-        now
+        now,
+        options?.ipAddress || null,
+        options?.userAgent || null
       );
     });
 
@@ -713,8 +886,8 @@ export class AuthServiceV2 {
 
     // DIAGNOSTIC: Verify session was created successfully
     const verifySession = db
-      .prepare(`SELECT id, token, user_id, account_id FROM sessions WHERE token = ?`)
-      .get(token) as any;
+      .prepare(`SELECT id, token_hash, user_id, account_id FROM sessions WHERE token_hash = ?`)
+      .get(tokenHash) as any;
 
     if (!verifySession) {
       console.error(
@@ -773,6 +946,7 @@ export class AuthServiceV2 {
       // Step 1: Verify JWT signature - this is the source of truth
       const payload = jwt.verify(token, JWT_SECRET) as JWTPayload;
       const database = this.db.getDatabase();
+      const now = Date.now();
 
       // Step 1.5: Invalidate tokens issued before factory-reset/auth epoch
       const tokenEpochMs = this.getAuthTokenEpochMs(database);
@@ -786,38 +960,138 @@ export class AuthServiceV2 {
         }
       }
 
-      // Step 2: Optional session check for updating last_active
-      const session = database
-        .prepare(
-          `
-        SELECT * FROM sessions
-        WHERE token = ? AND expires_at > ?
-      `
-        )
-        .get(token, Date.now()) as any;
+      // Step 2: Session check for strict binding.
+      const session = this.getSessionByAccessToken(database, token);
 
       if (!session) {
-        // Session not found, but JWT is valid - log warning and proceed
-        // CRITICAL FIX #7: Suppress warning in TEST mode to reduce noise
-        // In test mode with worker-specific databases and savepoint rollbacks,
-        // sessions may not exist yet or may be in different database instances
-        // This is expected behavior with JWT-first authentication
-        if (process.env.NODE_ENV !== 'test') {
-          this.logSessionMissing(payload);
+        if (this.shouldRelaxSessionBindingInThisProcess()) {
+          return payload;
         }
-        return payload; // Still return payload - JWT is valid!
+
+        this.logSessionMissing(payload);
+        return null;
       }
 
-      // Step 3: If session exists, update last_active timestamp
-      database
-        .prepare('UPDATE sessions SET last_active = ? WHERE id = ?')
-        .run(Date.now(), session.id);
+      if (session.expires_at <= now || session.revoked_at) {
+        return null;
+      }
+
+      const sessionMatchesPayload =
+        session.id === payload.sessionId &&
+        session.user_id === payload.userId &&
+        session.operating_account_id === payload.accountId;
+
+      if (!sessionMatchesPayload && !this.shouldRelaxSessionBindingInThisProcess()) {
+        return null;
+      }
+
+      // Step 3: Update last_active timestamp.
+      database.prepare('UPDATE sessions SET last_active = ? WHERE id = ?').run(now, session.id);
 
       return payload;
     } catch (error) {
       // JWT verification failed (invalid signature, expired, etc.)
       return null;
     }
+  }
+
+  /**
+   * Refresh an active access token by minting a new session token for the same
+   * user/account membership context.
+   */
+  async refreshToken(
+    token: string,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<LoginResult | null> {
+    const payload = await this.verifyToken(token);
+    if (!payload) {
+      return null;
+    }
+
+    const database = this.db.getDatabase();
+    const currentSession = this.getSessionByAccessToken(database, token);
+
+    if (!currentSession || currentSession.revoked_at || currentSession.expires_at <= Date.now()) {
+      return null;
+    }
+
+    if (
+      currentSession.id !== payload.sessionId ||
+      currentSession.user_id !== payload.userId ||
+      currentSession.operating_account_id !== payload.accountId
+    ) {
+      return null;
+    }
+
+    const userRow = database
+      .prepare('SELECT * FROM users WHERE id = ? AND is_active = 1')
+      .get(payload.userId) as any;
+    const accountRow = database
+      .prepare('SELECT * FROM accounts WHERE id = ?')
+      .get(payload.accountId) as any;
+    const membershipRow = database
+      .prepare(
+        `
+        SELECT * FROM user_accounts
+        WHERE user_id = ? AND account_id = ? AND status = 'active'
+      `
+      )
+      .get(payload.userId, payload.accountId) as any;
+
+    if (!userRow || !accountRow || !membershipRow) {
+      return null;
+    }
+
+    const user: User = {
+      id: userRow.id,
+      email: userRow.email,
+      name: userRow.name,
+      user_class: userRow.user_class,
+      is_active: userRow.is_active === 1,
+      created_at: userRow.created_at,
+      updated_at: userRow.updated_at,
+    };
+
+    const account: Account = {
+      id: accountRow.id,
+      account_type: accountRow.account_type,
+      account_class: accountRow.account_class,
+      email: accountRow.email,
+      name: accountRow.name,
+      owner_user_id: accountRow.owner_user_id,
+      require_account_password: accountRow.require_account_password === 1,
+      created_at: accountRow.created_at,
+      updated_at: accountRow.updated_at,
+    };
+
+    const membership: UserAccountMembership = {
+      user_id: membershipRow.user_id,
+      account_id: membershipRow.account_id,
+      permission_level: membershipRow.permission_level,
+      role_rank: membershipRow.role_rank,
+      role_overrides: this.parseOverrides(membershipRow.role_overrides),
+      status: membershipRow.status,
+      joined_at: membershipRow.joined_at,
+    };
+
+    const refreshedToken = await this.createSession(user, account, membership, database, {
+      sessionFamilyId: currentSession.token_family_id || currentSession.id,
+      parentSessionId: currentSession.id,
+      revokeExistingForAccount: false,
+      revokeReason: 'refresh_rotated',
+      ipAddress,
+      userAgent,
+    });
+
+    logLoginSuccess(database, user.id, account.id, user.email, ipAddress, userAgent);
+
+    return {
+      user,
+      account,
+      membership,
+      token: refreshedToken,
+    };
   }
 
   /**
@@ -840,14 +1114,22 @@ export class AuthServiceV2 {
    */
   async logout(token: string, ipAddress?: string, userAgent?: string): Promise<void> {
     const database = this.db.getDatabase();
+    const now = Date.now();
 
-    // Get session info before deleting
-    const session = database
-      .prepare('SELECT user_id, account_id FROM sessions WHERE token = ?')
-      .get(token) as any;
+    // Get session info before revoking
+    const session = this.getSessionByAccessToken(database, token);
 
-    // Delete session
-    database.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+    if (session) {
+      database
+        .prepare(
+          `
+          UPDATE sessions
+          SET revoked_at = ?, revoked_reason = ?
+          WHERE id = ?
+        `
+        )
+        .run(now, 'logout', session.id);
+    }
 
     // Log logout
     if (session) {
@@ -887,20 +1169,22 @@ export class AuthServiceV2 {
     const now = Date.now();
     const tokenId = randomUUID();
     const token = randomUUID(); // Secure random token
+    const tokenHash = this.hashOpaqueToken(token);
     const expiresAt = now + 60 * 60 * 1000; // 1 hour expiration
 
     // Store reset token in database
     database
       .prepare(
         `
-        INSERT INTO password_reset_tokens (id, user_id, token, expires_at, created_at, ip_address, user_agent)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO password_reset_tokens (
+          id, user_id, token, token_hash, expires_at, created_at, ip_address, user_agent
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `
       )
-      .run(tokenId, userRow.id, token, expiresAt, now, ipAddress, userAgent);
+      .run(tokenId, userRow.id, tokenHash, tokenHash, expiresAt, now, ipAddress, userAgent);
 
-    // TODO: In production, send email with reset link containing token
-    // For now, return token for testing
+    // Token is returned for development/testing diagnostics.
     return { token, expiresAt };
   }
 
@@ -923,15 +1207,7 @@ export class AuthServiceV2 {
     const now = Date.now();
 
     // Find valid, unused token
-    const tokenRow = database
-      .prepare(
-        `
-        SELECT id, user_id, expires_at, used_at
-        FROM password_reset_tokens
-        WHERE token = ?
-      `
-      )
-      .get(token) as any;
+    const tokenRow = this.getPasswordResetTokenRow(database, token);
 
     if (!tokenRow) {
       return null; // Token not found
@@ -968,8 +1244,8 @@ export class AuthServiceV2 {
         .prepare('UPDATE password_reset_tokens SET used_at = ? WHERE id = ?')
         .run(now, tokenRow.id);
 
-      // Delete all sessions for this user (force re-login)
-      database.prepare('DELETE FROM sessions WHERE user_id = ?').run(tokenRow.user_id);
+      // Revoke all sessions for this user (force re-login).
+      this.revokeAllUserSessions(database, tokenRow.user_id, 'password_reset', now);
 
       // Unlock account if it was locked
       const user = database
@@ -982,7 +1258,150 @@ export class AuthServiceV2 {
 
     runReset();
 
+    const membershipRow = database
+      .prepare(
+        `
+        SELECT account_id
+        FROM user_accounts
+        WHERE user_id = ? AND status = 'active'
+        ORDER BY role_rank DESC, joined_at ASC
+        LIMIT 1
+      `
+      )
+      .get(tokenRow.user_id) as any;
+    if (membershipRow?.account_id) {
+      logPasswordChange(
+        database,
+        tokenRow.user_id,
+        membershipRow.account_id,
+        ipAddress,
+        userAgent,
+        true
+      );
+    }
+
     return { userId: tokenRow.user_id, updatedAt: now };
+  }
+
+  private revokeAllUserSessions(
+    database: Database.Database,
+    userId: string,
+    reason: string,
+    revokedAt: number
+  ): void {
+    database
+      .prepare(
+        `
+        UPDATE sessions
+        SET revoked_at = ?, revoked_reason = ?
+        WHERE user_id = ? AND revoked_at IS NULL
+      `
+      )
+      .run(revokedAt, reason, userId);
+  }
+
+  private getPasswordResetTokenRow(database: Database.Database, token: string): any | null {
+    const tokenHash = this.hashOpaqueToken(token);
+    let tokenRow: any | null = null;
+
+    try {
+      tokenRow = database
+        .prepare(
+          `
+          SELECT id, user_id, expires_at, used_at
+          FROM password_reset_tokens
+          WHERE token_hash = ?
+        `
+        )
+        .get(tokenHash) as any;
+    } catch {
+      tokenRow = null;
+    }
+
+    if (tokenRow) {
+      return tokenRow;
+    }
+
+    tokenRow = database
+      .prepare(
+        `
+        SELECT id, user_id, expires_at, used_at
+        FROM password_reset_tokens
+        WHERE token = ?
+      `
+      )
+      .get(token) as any;
+
+    if (!tokenRow) {
+      return null;
+    }
+
+    try {
+      database
+        .prepare(
+          `
+          UPDATE password_reset_tokens
+          SET token_hash = ?, token = ?
+          WHERE id = ?
+        `
+        )
+        .run(tokenHash, tokenHash, tokenRow.id);
+    } catch {
+      // token_hash not available in legacy schema.
+    }
+
+    return tokenRow;
+  }
+
+  async changePassword(
+    userId: string,
+    accountId: string,
+    currentPassword: string,
+    newPassword: string,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<{ userId: string; updatedAt: number }> {
+    const database = this.db.getDatabase();
+    const now = Date.now();
+
+    const userRow = database
+      .prepare('SELECT id, email, password_hash FROM users WHERE id = ? AND is_active = 1')
+      .get(userId) as any;
+    if (!userRow) {
+      throw new Error('User not found');
+    }
+
+    const currentPasswordMatches = await bcrypt.compare(currentPassword, userRow.password_hash);
+    if (!currentPasswordMatches) {
+      throw new Error('Invalid current password');
+    }
+
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.valid) {
+      throw new Error(
+        `Password does not meet requirements: ${passwordValidation.errors.join(', ')}`
+      );
+    }
+
+    const newPasswordMatchesCurrent = await bcrypt.compare(newPassword, userRow.password_hash);
+    if (newPasswordMatchesCurrent) {
+      throw new Error('New password must be different from current password');
+    }
+
+    const passwordHash = await this.hashPassword(newPassword);
+
+    const runChange = database.transaction(() => {
+      database
+        .prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?')
+        .run(passwordHash, now, userRow.id);
+      this.revokeAllUserSessions(database, userRow.id, 'password_change', now);
+      unlockAccount(database, userRow.email);
+    });
+
+    runChange();
+
+    logPasswordChange(database, userRow.id, accountId, ipAddress, userAgent, false);
+    return { userId: userRow.id, updatedAt: now };
   }
 
   /**
@@ -1006,7 +1425,6 @@ export class AuthServiceV2 {
     const passwordHash = await this.hashPassword(newPassword);
     const now = Date.now();
 
-    // HACK(auth): Temporary insecure reset - replace with token flow before production.
     const runReset = database.transaction(() => {
       database
         .prepare(
@@ -1014,7 +1432,15 @@ export class AuthServiceV2 {
         )
         .run(passwordHash, now, email);
 
-      database.prepare('DELETE FROM sessions WHERE user_id = ?').run(userRow.id);
+      database
+        .prepare(
+          `
+          UPDATE sessions
+          SET revoked_at = ?, revoked_reason = ?
+          WHERE user_id = ? AND revoked_at IS NULL
+        `
+        )
+        .run(now, 'debug_password_reset', userRow.id);
       unlockAccount(database, email);
     });
 

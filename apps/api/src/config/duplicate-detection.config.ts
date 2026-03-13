@@ -58,7 +58,7 @@ export function isFTS5Enabled(): boolean {
 /**
  * Duplicate detection strategy selection
  */
-export type DuplicateDetectionStrategy = 'fts5' | 'baseline' | 'auto';
+export type DuplicateDetectionStrategy = 'fts5' | 'baseline' | 'lsh' | 'embeddings' | 'auto';
 
 /**
  * Get the active duplicate detection strategy
@@ -73,11 +73,21 @@ export type DuplicateDetectionStrategy = 'fts5' | 'baseline' | 'auto';
 export function getDuplicateDetectionStrategy(): DuplicateDetectionStrategy {
   const strategy = process.env.DUPLICATE_DETECTION_STRATEGY as DuplicateDetectionStrategy;
 
-  if (strategy === 'fts5' || strategy === 'baseline' || strategy === 'auto') {
+  if (
+    strategy === 'fts5' ||
+    strategy === 'baseline' ||
+    strategy === 'lsh' ||
+    strategy === 'embeddings' ||
+    strategy === 'auto'
+  ) {
     return strategy;
   }
 
   return 'auto'; // Default: auto-detect and fallback
+}
+
+export function isEmbeddingsStrategyEnabled(): boolean {
+  return process.env.DEDUP_EMBEDDINGS_ENABLED === 'true';
 }
 
 /**
@@ -95,8 +105,7 @@ export interface DuplicateDetectionLoggingConfig {
 export function getDuplicateDetectionLoggingConfig(): DuplicateDetectionLoggingConfig {
   return {
     enabled: process.env.DUPLICATE_DETECTION_LOGGING_ENABLED !== 'false', // Default: true
-    logPerformanceMetrics:
-      process.env.DUPLICATE_DETECTION_LOG_PERFORMANCE_METRICS !== 'false', // Default: true
+    logPerformanceMetrics: process.env.DUPLICATE_DETECTION_LOG_PERFORMANCE_METRICS !== 'false', // Default: true
     logFallbackEvents: process.env.DUPLICATE_DETECTION_LOG_FALLBACK_EVENTS !== 'false', // Default: true
   };
 }
@@ -130,9 +139,7 @@ export function getDuplicateDetectionPerformanceThresholds(): DuplicateDetection
  */
 export function validateFTS5Config(config: FTS5Config): void {
   if (config.candidateLimit <= 0) {
-    throw new Error(
-      `Invalid FTS5 candidate limit: ${config.candidateLimit}. Must be > 0.`
-    );
+    throw new Error(`Invalid FTS5 candidate limit: ${config.candidateLimit}. Must be > 0.`);
   }
 
   if (config.candidateLimit > 1000) {

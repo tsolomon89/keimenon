@@ -4,21 +4,16 @@
  * Pluggable tool adapters for Keimenon agent services:
  * - LLM: LiteLLM proxy for unified access to 100+ providers
  * - Web: SearXNG for self-hosted, privacy-focused search
- * - Mock adapters for testing
  *
  * @example
  * ```typescript
  * import {
  *   DefaultToolRegistry,
- *   createMockRegistry,
  *   createProductionRegistry,
  * } from '@keimenon/tool-adapters';
  *
  * // For production
  * const registry = createProductionRegistry();
- *
- * // For testing
- * const mockRegistry = createMockRegistry();
  *
  * // Get adapters
  * const llm = registry.getLLMAdapter();
@@ -48,14 +43,6 @@ export type { LocalProofConfig } from './proof/index.js';
 export { LocalGitAdapter } from './git/index.js';
 export type { LocalGitConfig } from './git/index.js';
 
-// Mock Adapters
-export { MockLLMAdapter, MockWebAdapter } from './mocks/index.js';
-export type { MockLLMConfig, MockWebConfig } from './mocks/index.js';
-
 // Registry
-export {
-  DefaultToolRegistry,
-  createMockRegistry,
-  createProductionRegistry,
-} from './registry/index.js';
+export { DefaultToolRegistry, createProductionRegistry } from './registry/index.js';
 export type { DefaultRegistryConfig } from './registry/index.js';

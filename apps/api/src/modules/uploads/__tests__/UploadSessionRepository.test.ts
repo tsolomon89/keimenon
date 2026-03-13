@@ -18,6 +18,7 @@ import { UploadSession, UploadSessionSpec } from '../domain/UploadSession';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
+import { sanitizeUploadFilename } from '../../../utils/upload-filename';
 
 describe('UploadSessionRepository', () => {
   let db: Database.Database;
@@ -640,7 +641,7 @@ describe('UploadSessionRepository', () => {
       const session = await repository.create(spec);
       const loaded = await repository.findById(session.id, session.accountId);
 
-      expect(loaded!.fileName).toBe(spec.fileName);
+      expect(loaded!.fileName).toBe(sanitizeUploadFilename(spec.fileName).sanitized);
     });
 
     it('should handle unicode file names', async () => {
@@ -651,7 +652,7 @@ describe('UploadSessionRepository', () => {
       const session = await repository.create(spec);
       const loaded = await repository.findById(session.id, session.accountId);
 
-      expect(loaded!.fileName).toBe(spec.fileName);
+      expect(loaded!.fileName).toBe(sanitizeUploadFilename(spec.fileName).sanitized);
     });
 
     it('should handle sessions with all chunks received', async () => {

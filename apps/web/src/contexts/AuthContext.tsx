@@ -63,6 +63,7 @@ import { API_BASE_URL } from '@/lib/env.config';
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'keimenon_token';
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * CRITICAL FIX #4: Get test headers for E2E test isolation
@@ -328,10 +329,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name: string,
       accountClass: 'free' | 'professional' | 'business' = 'free'
     ) => {
-      // TODO: Add client-side validation for registration fields
-      // Related: apps/web/src/app/register/page.tsx (registration form)
-      // See: docs/features/INPUT_VALIDATION.md (needs creation)
-      // Validate: email format, password strength, name length, accountClass enum
+      const trimmedName = name.trim();
+      if (trimmedName.length < 2 || trimmedName.length > 120) {
+        throw new Error('Name must be between 2 and 120 characters');
+      }
+      if (!EMAIL_REGEX.test(email)) {
+        throw new Error('Please provide a valid email address');
+      }
+      if (password.length < 8) {
+        throw new Error('Password must be at least 8 characters');
+      }
+      if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+        throw new Error('Password must include both letters and numbers');
+      }
+      if (!['free', 'professional', 'business'].includes(accountClass)) {
+        throw new Error('Invalid account class');
+      }
+
       setIsLoading(true);
 
       try {
@@ -341,7 +355,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({
             email,
             password,
-            name,
+            name: trimmedName,
             accountType: 'client', // New registrations are always client accounts
             accountClass,
           }),
@@ -583,6 +597,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   /**
+   * Refresh access token for the active session.
+   */
+  const refreshToken = useCallback(async (): Promise<boolean> => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          ...getTestHeaders(),
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = await response.json();
+      if (!data?.token || typeof data.token !== 'string') {
+        return false;
+      }
+
+      localStorage.setItem(TOKEN_KEY, data.token);
+      const parsedUser = parseUserFromToken(data.token);
+      if (parsedUser) {
+        setUser(parsedUser);
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const intervalId = setInterval(async () => {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) {
+        return;
+      }
+
+      const payload = decodeJWT(token);
+      if (!payload?.exp) {
+        return;
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      const secondsUntilExpiry = payload.exp - now;
+
+      if (secondsUntilExpiry <= 120) {
+        const ok = await refreshToken();
+        if (!ok && isTokenExpired(token)) {
+          logout();
+        }
+      }
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [user, refreshToken, logout]);
+
+  /**
    * Refresh user from stored token
    * Useful after token updates
    */
@@ -595,7 +680,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (isTokenExpired(token)) {
-      logout();
+      void refreshToken().then((ok) => {
+        if (!ok) {
+          logout();
+        }
+      });
       return;
     }
 
@@ -605,7 +694,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       logout();
     }
-  }, [logout]);
+  }, [logout, refreshToken]);
 
   const value: AuthContextType = {
     user,

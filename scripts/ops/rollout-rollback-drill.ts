@@ -312,7 +312,7 @@ async function main(): Promise<void> {
   steps.push(
     await runStep('raw-local-policy-regression', async () => {
       const command = runCommand(
-        'npm run test --workspace=@keimenon/api -- src/utils/__tests__/raw-storage-policy.test.ts src/routes/__tests__/content.routes.audit.test.ts src/routes/__tests__/verification.routes.audit.test.ts',
+        'npm run test --workspace=@keimenon/api -- src/utils/__tests__/raw-storage-policy.test.ts src/routes/__tests__/content.routes.audit.test.ts src/routes/__tests__/legacy-runtime-hard-break.test.ts',
         process.cwd()
       );
 

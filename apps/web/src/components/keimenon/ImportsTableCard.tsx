@@ -438,8 +438,8 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       },
     });
 
-    // Extract filename from job config
-    const fileName = apiJob.config?.files?.[0]?.fileName || `Job ${apiJob.id.substring(0, 8)}`;
+    const fileName =
+      apiJob.fileName || apiJob.config?.files?.[0]?.fileName || `Job ${apiJob.id.substring(0, 8)}`;
     const platform = apiJob.config?.platform;
 
     return {
@@ -504,6 +504,8 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       let fileName: string;
       if (sseJob.config?.fileName) {
         fileName = sseJob.config.fileName;
+      } else if (existing?.fileName) {
+        fileName = existing.fileName;
       } else if (sseJob.type === 'delete') {
         const scope = sseJob.config?.deleteScope || 'keimenon';
         fileName = scope === 'keimenon' ? 'Delete Keimenon Data' : 'Delete All Client Data';
@@ -589,7 +591,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
           {
             id: uploadId,
             type: 'import', // Default to import for legacy progress updates
-            fileName: 'Import in progress...', // TODO: Get from backend
+            fileName: progress.fileName || `Job ${uploadId.substring(0, 8)}`,
             fileType: 'unknown' as const,
             status: progress.stage,
             progress: progress.progress,

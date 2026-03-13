@@ -136,9 +136,14 @@ vi.mock('@/services/error-capture.service', () => ({
   },
 }));
 
-vi.mock('@/lib/env.config', () => ({
-  DEBUG_IMPORT_SELECTOR: false,
-}));
+vi.mock('@/lib/env.config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/env.config')>();
+  return {
+    ...actual,
+    API_BASE_URL: 'http://127.0.0.1:4001',
+    DEBUG_IMPORT_SELECTOR: false,
+  };
+});
 
 describe('KeimenonSidebar snapshots', () => {
   beforeEach(() => {

@@ -16,6 +16,7 @@ import { createWriteStream } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
+import { sanitizeUploadFilename } from '../../../utils/upload-filename';
 
 // Mock repository for testing
 class MockUploadSessionRepository implements UploadSessionRepository {
@@ -504,7 +505,7 @@ describe('ChunkAssemblyService', () => {
       const result = await service.assembleChunks(session);
 
       expect(result.success).toBe(true);
-      expect(result.filePath).toContain(spec.fileName);
+      expect(result.filePath).toContain(sanitizeUploadFilename(spec.fileName).sanitized);
     });
 
     it('should handle unicode file names', async () => {
@@ -529,7 +530,7 @@ describe('ChunkAssemblyService', () => {
       const result = await service.assembleChunks(session);
 
       expect(result.success).toBe(true);
-      expect(result.filePath).toContain(spec.fileName);
+      expect(result.filePath).toContain(sanitizeUploadFilename(spec.fileName).sanitized);
     });
 
     it('should handle very small files (single byte)', async () => {

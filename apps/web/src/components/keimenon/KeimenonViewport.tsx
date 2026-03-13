@@ -28,6 +28,8 @@ export interface KeimenonViewportHandle {
   zoomIn: () => void;
   zoomOut: () => void;
   centerView: () => void;
+  zoomToFitFilteredNodes: () => void;
+  focusOnNode: (nodeId: string) => void;
 }
 
 export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewportProps>(
@@ -81,17 +83,6 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
       setActiveImportJobId(activeJob);
     }, [jobs]);
 
-    // Expose camera control methods to parent via ref
-    useImperativeHandle(
-      ref,
-      () => ({
-        zoomIn: () => keimenon2DRef.current?.zoomIn(),
-        zoomOut: () => keimenon2DRef.current?.zoomOut(),
-        centerView: () => keimenon2DRef.current?.centerView(),
-      }),
-      []
-    );
-
     // Filter nodes by filteredNodeIds and sourceRoleFilter
     const displayNodes = useMemo(() => {
       let filtered = nodes;
@@ -121,31 +112,47 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
 
     const hasContent = displayNodes.length > 0;
 
-    // Update dimensions on mount and resize (debounced)
+    // Expose camera control methods to parent via ref.
+    useImperativeHandle(
+      ref,
+      () => ({
+        zoomIn: () => keimenon2DRef.current?.zoomIn(),
+        zoomOut: () => keimenon2DRef.current?.zoomOut(),
+        centerView: () => keimenon2DRef.current?.centerView(),
+        zoomToFitFilteredNodes: () =>
+          keimenon2DRef.current?.zoomToFitNodes(displayNodes.map((node) => node.id)),
+        focusOnNode: (nodeId: string) => keimenon2DRef.current?.focusOnNode(nodeId, 1.6, 220),
+      }),
+      [displayNodes]
+    );
+
+    // Update dimensions on mount and via ResizeObserver for robust viewport correction.
     useEffect(() => {
-      if (!containerRef.current) return;
+      const container = containerRef.current;
+      if (!container) return;
 
-      const updateDimensions = () => {
-        if (containerRef.current) {
-          setDimensions({
-            width: containerRef.current.clientWidth,
-            height: containerRef.current.clientHeight,
-          });
-        }
-      };
-
-      let resizeTimer: ReturnType<typeof setTimeout>;
-      const debouncedResize = () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(updateDimensions, 150);
+      const updateDimensions = (width?: number, height?: number) => {
+        setDimensions({
+          width: Math.floor(width ?? container.clientWidth),
+          height: Math.floor(height ?? container.clientHeight),
+        });
       };
 
       updateDimensions();
-      window.addEventListener('resize', debouncedResize);
-      return () => {
-        clearTimeout(resizeTimer);
-        window.removeEventListener('resize', debouncedResize);
-      };
+
+      if (typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver((entries) => {
+          const entry = entries[0];
+          if (!entry) return;
+          updateDimensions(entry.contentRect.width, entry.contentRect.height);
+        });
+        observer.observe(container);
+        return () => observer.disconnect();
+      }
+
+      const onResize = () => updateDimensions();
+      window.addEventListener('resize', onResize);
+      return () => window.removeEventListener('resize', onResize);
     }, []);
 
     // Transform filtered nodes to GraphNode format
@@ -212,9 +219,7 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
         nodeId: node.id,
         nodeKind: node.kind,
       });
-      // TODO: Implement zoom/focus on double-clicked node
-      // Related: apps/web/src/components/keimenon/Keimenon2D.tsx (add focusOnNode method)
-      // See: docs/features/CANVAS_NAVIGATION.md (needs creation)
+      keimenon2DRef.current?.focusOnNode(node.id, 1.6, 220);
     }, []);
 
     const handleSelectionChange = useCallback(

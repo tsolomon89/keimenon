@@ -419,7 +419,7 @@ describe('Import-Enhanced Integration Tests', () => {
     const testFilePath = getFixturePath('tiny.json');
 
     if (!fs.existsSync(testFilePath)) {
-      console.warn(`âš ï¸  Test file not found: ${testFilePath}, skipping test`);
+      console.warn(`[WARN] Test file not found: ${testFilePath}, skipping test`);
       return;
     }
 
@@ -664,7 +664,7 @@ describe('Import-Enhanced Integration Tests', () => {
     const testFilePath = getFixturePath('tiny.json');
 
     if (!fs.existsSync(testFilePath)) {
-      console.warn(`âš ï¸  Test file not found: ${testFilePath}, skipping test`);
+      console.warn(`[WARN] Test file not found: ${testFilePath}, skipping test`);
       return;
     }
 
@@ -712,7 +712,7 @@ describe('Import-Enhanced Integration Tests', () => {
     const testFilePath = getFixturePath('tiny.json');
 
     if (!fs.existsSync(testFilePath)) {
-      console.warn(`âš ï¸  Test file not found: ${testFilePath}, skipping test`);
+      console.warn(`[WARN] Test file not found: ${testFilePath}, skipping test`);
       return;
     }
 

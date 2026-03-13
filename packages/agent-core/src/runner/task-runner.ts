@@ -6,14 +6,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import type {
-  Task,
-  TaskStatus,
-  Run,
-  RunMetrics,
-  TaskConfig,
-  RetryPolicy,
-} from '../types/task.js';
+import type { Task, TaskStatus, Run, RunMetrics, TaskConfig, RetryPolicy } from '../types/task.js';
 import { createEvent } from '../types/events.js';
 import type { GraphRepo } from '../interfaces/graph-repo.js';
 import type { Storage } from '../interfaces/storage.js';
@@ -25,6 +18,22 @@ import type {
   TaskResult,
   HandlerRegistry,
 } from '../interfaces/task-handler.js';
+
+type PersistedArtifactRef = {
+  hash: string;
+  type:
+    | 'canonical_doc'
+    | 'cluster_json'
+    | 'evidence_chain'
+    | 'analysis_json'
+    | 'verification_json'
+    | 'diff'
+    | 'log';
+  path?: string;
+  metadata?: Record<string, unknown>;
+};
+
+type ExecutedRunResult = Omit<TaskResult, 'artifacts'> & { artifacts: string[] };
 
 /**
  * Default retry policy
@@ -252,12 +261,7 @@ export class TaskRunner {
       attempt++;
 
       try {
-        const result = await this.executeRun(
-          task,
-          handler,
-          attempt,
-          controller.signal
-        );
+        const result = await this.executeRun(task, handler, attempt, controller.signal);
 
         if (result.success) {
           // Success - update task and emit event
@@ -323,7 +327,7 @@ export class TaskRunner {
     handler: TaskHandler,
     attempt: number,
     signal: AbortSignal
-  ): Promise<TaskResult> {
+  ): Promise<ExecutedRunResult> {
     const startTime = Date.now();
 
     // Create run record
@@ -366,10 +370,12 @@ export class TaskRunner {
       const timeoutPromise = this.createTimeout(timeout, signal);
 
       // Execute handler
-      const result = await Promise.race([
+      const result = (await Promise.race([
         handler.run(task.input, ctx),
         timeoutPromise,
-      ]);
+      ])) as TaskResult;
+
+      const artifactIds = await this.persistRunArtifacts(run.id, result.artifacts || []);
 
       // Update run metrics
       const metrics: RunMetrics = {
@@ -382,6 +388,7 @@ export class TaskRunner {
         completed_at: Date.now(),
         error: result.error,
         metrics,
+        output: result.success ? result.output : undefined,
       });
 
       if (result.success) {
@@ -391,7 +398,7 @@ export class TaskRunner {
             taskId: task.id,
             runId: run.id,
             attempt,
-            artifacts: result.artifacts,
+            artifacts: artifactIds,
           })
         );
       } else {
@@ -406,7 +413,11 @@ export class TaskRunner {
         );
       }
 
-      return { ...result, metrics };
+      return {
+        ...result,
+        artifacts: artifactIds,
+        metrics,
+      };
     } catch (error) {
       const metrics: RunMetrics = {
         duration_ms: Date.now() - startTime,
@@ -489,5 +500,82 @@ export class TaskRunner {
         reject(new Error('Task cancelled'));
       });
     });
+  }
+
+  private normalizeArtifactRef(
+    artifact:
+      | string
+      | {
+          hash: string;
+          type?: PersistedArtifactRef['type'];
+          path?: string;
+          metadata?: Record<string, unknown>;
+        }
+  ): PersistedArtifactRef | null {
+    if (typeof artifact === 'string') {
+      const hash = artifact.trim();
+      if (!hash) {
+        return null;
+      }
+      return {
+        hash,
+        type: 'log',
+      };
+    }
+
+    if (!artifact?.hash || typeof artifact.hash !== 'string') {
+      return null;
+    }
+
+    return {
+      hash: artifact.hash,
+      type: artifact.type || 'log',
+      path: artifact.path,
+      metadata: artifact.metadata,
+    };
+  }
+
+  private async persistRunArtifacts(
+    runId: string,
+    artifacts: Array<
+      | string
+      | {
+          hash: string;
+          type?: PersistedArtifactRef['type'];
+          path?: string;
+          metadata?: Record<string, unknown>;
+        }
+    >
+  ): Promise<string[]> {
+    const artifactIds: string[] = [];
+
+    for (const rawArtifact of artifacts) {
+      const artifact = this.normalizeArtifactRef(rawArtifact);
+      if (!artifact) {
+        continue;
+      }
+
+      const storagePath =
+        artifact.path || (await this.deps.storage.getPath(artifact.hash)) || artifact.hash;
+      const storageMetadata = await this.deps.storage.getMetadata(artifact.hash);
+
+      const saved = await this.deps.graph.saveArtifact({
+        id: uuidv4(),
+        run_id: runId,
+        type: artifact.type,
+        content_hash: artifact.hash,
+        storage_path: storagePath,
+        created_at: Date.now(),
+        metadata: {
+          ...(artifact.metadata || {}),
+          content_type: storageMetadata?.content_type,
+          size_bytes: storageMetadata?.size,
+        },
+      });
+
+      artifactIds.push(saved.id);
+    }
+
+    return artifactIds;
   }
 }

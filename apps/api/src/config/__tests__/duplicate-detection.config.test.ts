@@ -12,6 +12,7 @@ import {
   getDuplicateDetectionStrategy,
   getDuplicateDetectionLoggingConfig,
   getDuplicateDetectionPerformanceThresholds,
+  isEmbeddingsStrategyEnabled,
 } from '../duplicate-detection.config';
 
 describe('Duplicate Detection Configuration', () => {
@@ -32,6 +33,7 @@ describe('Duplicate Detection Configuration', () => {
       'DUPLICATE_DETECTION_MAX_DURATION_MS',
       'DUPLICATE_DETECTION_MAX_COMPARISONS',
       'DUPLICATE_DETECTION_TARGET_SPEEDUP',
+      'DEDUP_EMBEDDINGS_ENABLED',
     ];
 
     for (const key of envKeys) {
@@ -53,6 +55,7 @@ describe('Duplicate Detection Configuration', () => {
       'DUPLICATE_DETECTION_MAX_DURATION_MS',
       'DUPLICATE_DETECTION_MAX_COMPARISONS',
       'DUPLICATE_DETECTION_TARGET_SPEEDUP',
+      'DEDUP_EMBEDDINGS_ENABLED',
     ];
 
     for (const key of envKeys) {
@@ -163,6 +166,18 @@ describe('Duplicate Detection Configuration', () => {
       assert.strictEqual(strategy, 'auto');
     });
 
+    it('should return "lsh" when DUPLICATE_DETECTION_STRATEGY=lsh', () => {
+      process.env.DUPLICATE_DETECTION_STRATEGY = 'lsh';
+      const strategy = getDuplicateDetectionStrategy();
+      assert.strictEqual(strategy, 'lsh');
+    });
+
+    it('should return "embeddings" when DUPLICATE_DETECTION_STRATEGY=embeddings', () => {
+      process.env.DUPLICATE_DETECTION_STRATEGY = 'embeddings';
+      const strategy = getDuplicateDetectionStrategy();
+      assert.strictEqual(strategy, 'embeddings');
+    });
+
     it('should return "auto" for invalid strategy values', () => {
       process.env.DUPLICATE_DETECTION_STRATEGY = 'invalid';
       const strategy = getDuplicateDetectionStrategy();
@@ -173,6 +188,17 @@ describe('Duplicate Detection Configuration', () => {
       process.env.DUPLICATE_DETECTION_STRATEGY = '';
       const strategy = getDuplicateDetectionStrategy();
       assert.strictEqual(strategy, 'auto', 'Empty strategy should fallback to "auto"');
+    });
+  });
+
+  describe('isEmbeddingsStrategyEnabled()', () => {
+    it('should be false by default', () => {
+      assert.strictEqual(isEmbeddingsStrategyEnabled(), false);
+    });
+
+    it('should be true when DEDUP_EMBEDDINGS_ENABLED=true', () => {
+      process.env.DEDUP_EMBEDDINGS_ENABLED = 'true';
+      assert.strictEqual(isEmbeddingsStrategyEnabled(), true);
     });
   });
 

@@ -35,6 +35,8 @@ export interface Keimenon2DHandle {
   zoomIn: () => void;
   zoomOut: () => void;
   centerView: () => void;
+  focusOnNode: (nodeId: string, targetScale?: number, durationMs?: number) => void;
+  zoomToFitNodes: (nodeIds: string[]) => void;
   resetView: () => void;
   optimizeView: () => void;
 }
@@ -185,6 +187,7 @@ export const Keimenon2D = memo(
       const workerRef = useRef<Worker | null>(null);
       const offscreenRef = useRef<HTMLCanvasElement | null>(null);
       const rafRef = useRef<number>(0);
+      const cameraAnimationRef = useRef<number>(0);
       const optimizeLevelRef = useRef(0);
       const visibleNodeIdsRef = useRef<Set<string>>(new Set());
       const visibleEdgeIdsRef = useRef<Set<string>>(new Set());
@@ -253,17 +256,66 @@ export const Keimenon2D = memo(
         needsRedrawRef.current = true;
       }, []);
 
+      const stopCameraAnimation = useCallback(() => {
+        if (cameraAnimationRef.current) {
+          cancelAnimationFrame(cameraAnimationRef.current);
+          cameraAnimationRef.current = 0;
+        }
+      }, []);
+
+      const getNodeById = useCallback(
+        (nodeId: string): GraphNode | null => {
+          const node = nodes.find((candidate) => candidate.id === nodeId);
+          return node && node.x !== undefined && node.y !== undefined ? node : null;
+        },
+        [nodes]
+      );
+
+      const animateToTransform = useCallback(
+        (
+          target: { x: number; y: number; scale: number },
+          durationMs: number,
+          easing: (progress: number) => number = (progress) => 1 - Math.pow(1 - progress, 3)
+        ) => {
+          stopCameraAnimation();
+          const initial = { ...transformRef.current };
+          const startedAt = performance.now();
+
+          const frame = (now: number) => {
+            const elapsed = now - startedAt;
+            const progress = Math.min(1, elapsed / durationMs);
+            const eased = easing(progress);
+            const t = transformRef.current;
+            t.x = initial.x + (target.x - initial.x) * eased;
+            t.y = initial.y + (target.y - initial.y) * eased;
+            t.scale = initial.scale + (target.scale - initial.scale) * eased;
+            requestRedraw();
+
+            if (progress < 1) {
+              cameraAnimationRef.current = requestAnimationFrame(frame);
+            } else {
+              cameraAnimationRef.current = 0;
+            }
+          };
+
+          cameraAnimationRef.current = requestAnimationFrame(frame);
+        },
+        [requestRedraw, stopCameraAnimation]
+      );
+
       // ---- Camera controls exposed via ref ----
       useImperativeHandle(
         ref,
         () => ({
           zoomIn: () => {
+            stopCameraAnimation();
             const t = transformRef.current;
             t.scale = Math.min(t.scale * 1.2, 5);
             optimizeLevelRef.current = 0;
             requestRedraw();
           },
           zoomOut: () => {
+            stopCameraAnimation();
             const t = transformRef.current;
             t.scale = Math.max(t.scale / 1.2, 0.1);
             optimizeLevelRef.current = 0;
@@ -271,6 +323,7 @@ export const Keimenon2D = memo(
           },
           centerView: () => {
             if (nodes.length === 0) return;
+            stopCameraAnimation();
             const padding = 100;
             let minX = Infinity,
               minY = Infinity,
@@ -298,7 +351,62 @@ export const Keimenon2D = memo(
             optimizeLevelRef.current = 0;
             requestRedraw();
           },
+          focusOnNode: (nodeId: string, targetScale = 1.6, durationMs = 220) => {
+            const node = getNodeById(nodeId);
+            if (!node) return;
+
+            const clampedScale = Math.max(0.1, Math.min(5, targetScale));
+            animateToTransform(
+              {
+                x: width / 2 - node.x! * clampedScale,
+                y: height / 2 - node.y! * clampedScale,
+                scale: clampedScale,
+              },
+              durationMs
+            );
+          },
+          zoomToFitNodes: (nodeIds: string[]) => {
+            const targetNodes = (
+              nodeIds.length > 0 ? nodes.filter((node) => nodeIds.includes(node.id)) : nodes
+            ).filter((node) => node.x !== undefined && node.y !== undefined);
+            if (targetNodes.length === 0) {
+              return;
+            }
+
+            stopCameraAnimation();
+            const padding = 80;
+            let minX = Infinity;
+            let minY = Infinity;
+            let maxX = -Infinity;
+            let maxY = -Infinity;
+
+            for (const node of targetNodes) {
+              minX = Math.min(minX, node.x!);
+              minY = Math.min(minY, node.y!);
+              maxX = Math.max(maxX, node.x!);
+              maxY = Math.max(maxY, node.y!);
+            }
+
+            minX -= padding;
+            minY -= padding;
+            maxX += padding;
+            maxY += padding;
+
+            const graphWidth = Math.max(maxX - minX, 1);
+            const graphHeight = Math.max(maxY - minY, 1);
+            const scale = Math.max(
+              0.1,
+              Math.min(5, Math.min(width / graphWidth, height / graphHeight))
+            );
+            const t = transformRef.current;
+            t.x = width / 2 - ((minX + maxX) / 2) * scale;
+            t.y = height / 2 - ((minY + maxY) / 2) * scale;
+            t.scale = scale;
+            optimizeLevelRef.current = 0;
+            requestRedraw();
+          },
           resetView: () => {
+            stopCameraAnimation();
             const t = transformRef.current;
             t.x = 0;
             t.y = 0;
@@ -311,7 +419,7 @@ export const Keimenon2D = memo(
             requestRedraw();
           },
         }),
-        [nodes, width, height, requestRedraw]
+        [animateToTransform, getNodeById, nodes, requestRedraw, stopCameraAnimation, width, height]
       );
 
       // ---- Core draw function with LOD (#9) and OffscreenCanvas (#10) ----
@@ -534,6 +642,8 @@ export const Keimenon2D = memo(
         return () => cancelAnimationFrame(rafRef.current);
       }, [drawFrame]);
 
+      useEffect(() => () => stopCameraAnimation(), [stopCameraAnimation]);
+
       // ---- #8: Web Worker D3 Force Simulation ----
       useEffect(() => {
         if (!nodes.length) return;
@@ -687,6 +797,7 @@ export const Keimenon2D = memo(
       const handleMouseDown = useCallback(
         (e: React.MouseEvent<HTMLCanvasElement>) => {
           if (!canvasRef.current) return;
+          stopCameraAnimation();
           const { x, y, graphX, graphY } = getEventCoordinates(e);
           const inter = interactionRef.current;
           const t = transformRef.current;
@@ -729,7 +840,7 @@ export const Keimenon2D = memo(
           }
           requestRedraw();
         },
-        [getEventCoordinates, findNodeAt, requestRedraw]
+        [getEventCoordinates, findNodeAt, requestRedraw, stopCameraAnimation]
       );
 
       // Throttle mouse-move to rAF (coalesce multiple move events per frame)
@@ -878,6 +989,7 @@ export const Keimenon2D = memo(
 
         const onWheel = (e: WheelEvent) => {
           e.preventDefault();
+          stopCameraAnimation();
           const rect = canvas.getBoundingClientRect();
           const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
@@ -893,7 +1005,7 @@ export const Keimenon2D = memo(
 
         canvas.addEventListener('wheel', onWheel, { passive: false });
         return () => canvas.removeEventListener('wheel', onWheel);
-      }, [requestRedraw]);
+      }, [requestRedraw, stopCameraAnimation]);
 
       // ---- Cursor style (read from ref) ----
       const getCursorClass = useCallback(() => {

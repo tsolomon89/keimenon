@@ -38,6 +38,11 @@ import {
 } from '@/lib/api-client';
 import { useKeimenonStore } from '@/store/keimenonStore';
 import { getNodeLabel, LabelableNode } from '@/lib/node-labels';
+import {
+  createAgentTask,
+  waitForAgentTask,
+  type AgentTaskStatus,
+} from '@/services/agent-task-service';
 
 // Provenance types
 interface Provenance {
@@ -58,6 +63,37 @@ interface Provenance {
   attested?: boolean;
 }
 
+interface VerifyTopicTaskOutput {
+  sourceCount: number;
+  claimCount: number;
+  credibilityScore: number;
+}
+
+function readVerifyTopicOutput(value: unknown): VerifyTopicTaskOutput | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const candidate = value as {
+    sourceCount?: unknown;
+    claimCount?: unknown;
+    credibilityScore?: unknown;
+  };
+  if (
+    typeof candidate.sourceCount !== 'number' ||
+    typeof candidate.claimCount !== 'number' ||
+    typeof candidate.credibilityScore !== 'number'
+  ) {
+    return null;
+  }
+
+  return {
+    sourceCount: candidate.sourceCount,
+    claimCount: candidate.claimCount,
+    credibilityScore: candidate.credibilityScore,
+  };
+}
+
 /**
  * NodeDetailPanel - Modal overlay for viewing node details
  *
@@ -75,7 +111,13 @@ export function NodeDetailPanel() {
   const { loadContent, getContent, isLoading, getError } = useContentLoader();
   const [autoLoaded, setAutoLoaded] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationResult, setVerificationResult] = useState<any>(null);
+  const [verificationStatus, setVerificationStatus] = useState<AgentTaskStatus | null>(null);
+  const [verificationResult, setVerificationResult] = useState<{
+    taskId: string;
+    sourceCount: number;
+    claimCount: number;
+    credibilityScore: number;
+  } | null>(null);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -86,31 +128,46 @@ export function NodeDetailPanel() {
     setIsVerifying(true);
     setVerificationError(null);
     setVerificationResult(null);
+    setVerificationStatus(null);
 
     try {
-      const response = await fetch('/api/v1/verification/verify-topic', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          topic: {
-            id: detailPanelNode.id,
-            name:
-              detailPanelNode.data?.label ||
-              detailPanelNode.data?.metadata?.name ||
-              'Unknown Topic',
-            description: detailPanelNode.data?.metadata?.description,
-            keywords: detailPanelNode.data?.metadata?.keywords || [],
-          },
-        }),
+      const task = await createAgentTask({
+        type: 'VERIFY_TOPIC',
+        input: {
+          topicId: detailPanelNode.id,
+          topicName:
+            detailPanelNode.data?.label || detailPanelNode.data?.metadata?.name || 'Unknown Topic',
+          description: detailPanelNode.data?.metadata?.description,
+          keywords: detailPanelNode.data?.metadata?.keywords || [],
+        },
+      });
+      setVerificationStatus(task.status);
+
+      const details = await waitForAgentTask(task.id, {
+        timeoutMs: 180000,
+        pollIntervalMs: 1200,
+        onUpdate: (update) => setVerificationStatus(update.task.status),
       });
 
-      if (!response.ok) {
-        throw new Error(`Verification failed: ${response.statusText}`);
+      if (details.task.status !== 'completed') {
+        throw new Error(details.task.error || `Verification ${details.task.status}`);
       }
 
-      const result = await response.json();
-      setVerificationResult(result);
+      const latestRun = details.runs
+        .slice()
+        .sort((a, b) => a.attempt - b.attempt)
+        .at(-1);
+      const output = latestRun ? readVerifyTopicOutput(latestRun.output) : null;
+      if (!output) {
+        throw new Error('Verification output missing from completed task');
+      }
+
+      setVerificationResult({
+        taskId: task.id,
+        sourceCount: output.sourceCount,
+        claimCount: output.claimCount,
+        credibilityScore: output.credibilityScore,
+      });
     } catch (error: any) {
       setVerificationError(error.message || 'Verification failed');
     } finally {
@@ -302,6 +359,15 @@ export function NodeDetailPanel() {
               )}
             </button>
 
+            {verificationStatus && isVerifying && (
+              <div className="mt-3 p-3 bg-slate-700/30 border border-slate-600 rounded-lg">
+                <p className="text-xs text-slate-300">
+                  Verification task status:{' '}
+                  <span className="font-medium">{verificationStatus}</span>
+                </p>
+              </div>
+            )}
+
             {verificationError && (
               <div className="mt-3 p-3 bg-red-600/10 border border-red-500/30 rounded-lg">
                 <p className="text-sm text-red-300">{verificationError}</p>
@@ -314,14 +380,22 @@ export function NodeDetailPanel() {
                 <dl className="space-y-1 text-xs">
                   <div className="flex justify-between">
                     <dt className="text-slate-400">Sources found:</dt>
-                    <dd className="text-emerald-300">
-                      {verificationResult.stats?.sourceCount || 0}
-                    </dd>
+                    <dd className="text-emerald-300">{verificationResult.sourceCount}</dd>
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-slate-400">Claims extracted:</dt>
+                    <dd className="text-emerald-300">{verificationResult.claimCount}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-slate-400">Credibility score:</dt>
                     <dd className="text-emerald-300">
-                      {verificationResult.stats?.claimCount || 0}
+                      {Math.round(verificationResult.credibilityScore * 100)}%
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-slate-400">Task ID:</dt>
+                    <dd className="text-slate-300 font-mono">
+                      {verificationResult.taskId.slice(0, 12)}...
                     </dd>
                   </div>
                 </dl>

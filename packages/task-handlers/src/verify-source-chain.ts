@@ -195,8 +195,16 @@ export class VerifySourceChainHandler implements TaskHandler<
    * Check if handler can execute
    */
   canExecute(tools: ToolRegistry): { can: boolean; reason?: string } {
-    // Lifecycle contract requires graceful degradation when adapters are unavailable.
-    // We always execute and explicitly mark objective status with reason codes in run().
+    const llm = tools.getLLMAdapter();
+    if (!llm || !llm.isAvailable()) {
+      return { can: false, reason: 'LLM adapter unavailable' };
+    }
+
+    const web = tools.getWebAdapter();
+    if (!web || !web.isAvailable()) {
+      return { can: false, reason: 'Web adapter unavailable' };
+    }
+
     return { can: true };
   }
 
@@ -259,17 +267,9 @@ export class VerifySourceChainHandler implements TaskHandler<
           });
         }
         return {
-          success: true,
-          output: {
-            evidenceNodes: [],
-            objectiveNodes: trackedObjectiveClaims.map((objective) => objective.id),
-            credibilityScore: 0,
-          },
+          success: false,
+          error: 'LLM adapter unavailable',
           artifacts: [],
-          metrics: {
-            duration_ms: Date.now() - run.started_at,
-            objective_lifecycle_updates: trackedObjectiveClaims.length,
-          },
         };
       }
 
@@ -323,17 +323,9 @@ export class VerifySourceChainHandler implements TaskHandler<
           });
         }
         return {
-          success: true,
-          output: {
-            evidenceNodes: [],
-            objectiveNodes: trackedObjectiveClaims.map((objective) => objective.id),
-            credibilityScore: 0,
-          },
+          success: false,
+          error: 'Web adapter unavailable',
           artifacts: [],
-          metrics: {
-            duration_ms: Date.now() - run.started_at,
-            objective_lifecycle_updates: trackedObjectiveClaims.length,
-          },
         };
       }
 

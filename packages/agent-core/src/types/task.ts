@@ -8,7 +8,12 @@
 /**
  * Supported task types
  */
-export type TaskType = 'GROUP_SUMMARY_BUILD' | 'DUPLICATE_SUGGEST' | 'VERIFY_SOURCE_CHAIN';
+export type TaskType =
+  | 'GROUP_SUMMARY_BUILD'
+  | 'DUPLICATE_SUGGEST'
+  | 'VERIFY_SOURCE_CHAIN'
+  | 'ANALYZE_SOURCE'
+  | 'VERIFY_TOPIC';
 
 /**
  * Task execution status
@@ -23,7 +28,14 @@ export type RunStatus = 'running' | 'completed' | 'failed';
 /**
  * Artifact types produced by tasks
  */
-export type ArtifactType = 'canonical_doc' | 'cluster_json' | 'evidence_chain' | 'diff' | 'log';
+export type ArtifactType =
+  | 'canonical_doc'
+  | 'cluster_json'
+  | 'evidence_chain'
+  | 'analysis_json'
+  | 'verification_json'
+  | 'diff'
+  | 'log';
 
 /**
  * Retry policy configuration
@@ -103,6 +115,8 @@ export interface Run {
   error?: string;
   /** Execution metrics */
   metrics: RunMetrics;
+  /** Structured run output for clients that need deterministic task results */
+  output?: unknown;
 }
 
 /**
@@ -251,6 +265,61 @@ export interface VerifySourceChainOutput {
 }
 
 /**
+ * Input for ANALYZE_SOURCE task
+ */
+export interface AnalyzeSourceInput {
+  /** Source node ID to analyze */
+  sourceId: string;
+  /** Optional hard cap for claims in output */
+  maxClaims?: number;
+  /** Optional summary length hint in words */
+  maxSummaryWords?: number;
+}
+
+/**
+ * Output from ANALYZE_SOURCE task
+ */
+export interface AnalyzeSourceOutput {
+  sourceId: string;
+  summary: string;
+  claims: Array<{ claim: string; confidence: number }>;
+  suggestedTags: string[];
+  analyzedAt: number;
+  model: string;
+}
+
+/**
+ * Input for VERIFY_TOPIC task
+ */
+export interface VerifyTopicInput {
+  /** Existing Topic node ID, if present */
+  topicId?: string;
+  /** Display name for the topic */
+  topicName: string;
+  /** Optional supporting description */
+  description?: string;
+  /** Optional keyword anchors */
+  keywords?: string[];
+  /** Maximum web sources to fetch */
+  maxSources?: number;
+  /** Domain weighting map for trust scoring */
+  domainWeights?: Record<string, number>;
+}
+
+/**
+ * Output from VERIFY_TOPIC task
+ */
+export interface VerifyTopicOutput {
+  topicName: string;
+  sourceIds: string[];
+  claimIds: string[];
+  sourceCount: number;
+  claimCount: number;
+  credibilityScore: number;
+  generatedAt: number;
+}
+
+/**
  * Type-safe task with specific input type
  */
 export type TypedTask<T extends TaskType> = T extends 'GROUP_SUMMARY_BUILD'
@@ -259,4 +328,8 @@ export type TypedTask<T extends TaskType> = T extends 'GROUP_SUMMARY_BUILD'
     ? Task<DuplicateSuggestInput>
     : T extends 'VERIFY_SOURCE_CHAIN'
       ? Task<VerifySourceChainInput>
-      : Task;
+      : T extends 'ANALYZE_SOURCE'
+        ? Task<AnalyzeSourceInput>
+        : T extends 'VERIFY_TOPIC'
+          ? Task<VerifyTopicInput>
+          : Task;

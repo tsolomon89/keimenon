@@ -129,6 +129,6 @@ Implementation is acceptable only when all are true:
 2. Similarity-weighted grouping/edges/mass are visible.
 3. Raw content invariance and provenance are verifiable.
 4. Duplicate review is job-based, stable-ID, and non-destructive.
-5. Entitlement gating is server-enforced and mirrored client-side.
+5. Entitlement gating is server-enforced and client-aware.
 6. Node kind fidelity is preserved end-to-end in canvas rendering.
 7. Manual-by-default agent bootstrap is enforced.

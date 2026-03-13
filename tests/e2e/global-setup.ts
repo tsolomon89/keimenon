@@ -17,7 +17,7 @@ import { chromium, FullConfig } from '@playwright/test';
 import { DatabaseSnapshotManager } from './fixtures/database-snapshots';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://127.0.0.1:4001';
-const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3000';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3211';
 
 import fs from 'fs';
 import path from 'path';
@@ -54,13 +54,13 @@ async function globalSetup(_config: FullConfig) {
     // Check module health
     const modulesResponse = await page.request.get(`${API_BASE_URL}/health/modules`);
     if (!modulesResponse.ok()) {
-         logDebug('❌ API modules health check failed status: ' + modulesResponse.status());
-         throw new Error('API modules check failed');
+      logDebug('❌ API modules health check failed status: ' + modulesResponse.status());
+      throw new Error('API modules check failed');
     }
     const modulesData = await modulesResponse.json();
     if (!modulesData.healthy) {
-        logDebug('❌ API modules not healthy: ' + JSON.stringify(modulesData));
-        throw new Error('API modules not healthy');
+      logDebug('❌ API modules not healthy: ' + JSON.stringify(modulesData));
+      throw new Error('API modules not healthy');
     }
     logDebug('✅ All API modules are healthy\n');
 
@@ -84,6 +84,21 @@ async function globalSetup(_config: FullConfig) {
         `❌ Web server not accessible at ${baseURL} (status: ${webResponse.status()})`
       );
     }
+
+    const loginResponse = await page.request.get(`${baseURL}/login`);
+    if (!loginResponse.ok()) {
+      throw new Error(
+        `❌ Login page not accessible at ${baseURL}/login (status: ${loginResponse.status()})`
+      );
+    }
+
+    const loginMarkup = await loginResponse.text();
+    if (!/keimenon/i.test(loginMarkup)) {
+      throw new Error(
+        `❌ Base URL ${baseURL} is not serving the Keimenon app (missing Keimenon marker on /login)`
+      );
+    }
+
     logDebug('✅ Web server is accessible\n');
 
     // Create database snapshot template

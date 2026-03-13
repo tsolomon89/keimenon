@@ -25,7 +25,12 @@ import { useBackgroundOperations, type Operation } from '@/contexts/BackgroundOp
 import { useConsole } from '@/contexts/ConsoleContext';
 import type { ImportJob } from './ImportsTableCard';
 import type { ImportUiStatus } from '@/lib/import-job-progress';
-import { getCoreProcessReimportStatus, type CoreProcessReimportStatus } from '@/lib/api-client';
+import {
+  fetchSettings,
+  getCoreProcessReimportStatus,
+  type CoreProcessReimportStatus,
+  updateSetting,
+} from '@/lib/api-client';
 
 interface KeimenonLayoutProps {
   showUploadModal: boolean;
@@ -73,7 +78,12 @@ export function KeimenonLayout({
   const [coreProcessReimport, setCoreProcessReimport] = useState<CoreProcessReimportStatus | null>(
     null
   );
+  const [autoSwitchProcessingView, setAutoSwitchProcessingView] = useState(true);
   const previousRunningImportCountRef = useRef(0);
+
+  const handleZoomToFilteredNodes = () => {
+    keimenonViewportRef.current?.zoomToFitFilteredNodes();
+  };
 
   // Keep active operation in sync with restored operations from background queue
   useEffect(() => {
@@ -102,6 +112,34 @@ export function KeimenonLayout({
       .catch(() => {
         if (!cancelled) {
           setCoreProcessReimport(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.accountId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!user?.accountId) {
+      setAutoSwitchProcessingView(true);
+      return;
+    }
+
+    fetchSettings(user.accountId)
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+
+        const configuredValue = response?.settings?.import_auto_switch_processing?.value;
+        setAutoSwitchProcessingView(typeof configuredValue === 'boolean' ? configuredValue : true);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAutoSwitchProcessingView(true);
         }
       });
 
@@ -167,7 +205,12 @@ export function KeimenonLayout({
     // Auto-switch only when imports transition from "none running" to "running".
     // This avoids trapping users/tests in processing view due to stale background operations.
     // Shows minigraph visualization and real-time pipeline progress
-    if (keimenonMode === 'keimenon' && hasNewRunningImport && keimenonSurface !== 'processing') {
+    if (
+      autoSwitchProcessingView &&
+      keimenonMode === 'keimenon' &&
+      hasNewRunningImport &&
+      keimenonSurface !== 'processing'
+    ) {
       console.debug('[KeimenonLayout] Auto-switching to processing view for import job');
       setKeimenonSurface('processing');
 
@@ -182,7 +225,17 @@ export function KeimenonLayout({
     }
 
     previousRunningImportCountRef.current = runningImportCount;
-  }, [operations, keimenonMode, keimenonSurface, activeOperation]);
+  }, [operations, keimenonMode, keimenonSurface, activeOperation, autoSwitchProcessingView]);
+
+  const handleAutoSwitchProcessingViewChange = async (enabled: boolean) => {
+    setAutoSwitchProcessingView(enabled);
+
+    try {
+      await updateSetting('import_auto_switch_processing', enabled);
+    } catch (error) {
+      console.warn('[KeimenonLayout] Failed to persist auto-switch preference', error);
+    }
+  };
 
   // Reset processing surface when there is no active operation
   useEffect(() => {
@@ -385,6 +438,7 @@ export function KeimenonLayout({
               isOpen={leftSidebarOpen}
               onToggle={() => setLeftSidebarOpen(!leftSidebarOpen)}
               onSettingsSectionSelect={setSelectedSettingsSectionId}
+              onZoomToFilteredNodes={handleZoomToFilteredNodes}
             />
 
             {/* Main viewport + toolbar */}
@@ -420,6 +474,8 @@ export function KeimenonLayout({
                 dashboardView={dashboardView}
                 onDashboardViewChange={setDashboardView}
                 processingAvailable={processingAvailable}
+                autoSwitchToProcessingEnabled={autoSwitchProcessingView}
+                onAutoSwitchToProcessingChange={handleAutoSwitchProcessingViewChange}
                 onZoomIn={() => keimenonViewportRef.current?.zoomIn()}
                 onZoomOut={() => keimenonViewportRef.current?.zoomOut()}
                 onCenterView={() => keimenonViewportRef.current?.centerView()}

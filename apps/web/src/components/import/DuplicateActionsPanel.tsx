@@ -78,8 +78,6 @@ export function DuplicateActionsPanel({
           return `${baseClasses} bg-green-600 border-green-500 text-white`;
         case 'purple':
           return `${baseClasses} bg-purple-600 border-purple-500 text-white`;
-        case 'orange':
-          return `${baseClasses} bg-orange-600 border-orange-500 text-white`;
         default:
           return baseClasses;
       }

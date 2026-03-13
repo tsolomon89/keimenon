@@ -9,7 +9,7 @@ import { login } from './helpers/login';
  */
 
 test.describe('Settings Navigation', () => {
-  test.describe.configure({ tag: '@smoke' });
+  test.describe.configure({ tag: '@smoke', timeout: 60000 });
 
   // Test credentials
   const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@admin.com';
@@ -22,7 +22,7 @@ test.describe('Settings Navigation', () => {
 
   test('should navigate to settings page', async ({ page }) => {
     // Navigate directly to settings
-    await page.goto('/settings');
+    await page.goto('/settings', { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForLoadState('domcontentloaded');
 
     // Verify we're on the settings page
@@ -31,7 +31,7 @@ test.describe('Settings Navigation', () => {
 
   test('should display settings page content', async ({ page }) => {
     // Navigate to settings
-    await page.goto('/settings');
+    await page.goto('/settings', { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForLoadState('domcontentloaded');
 
     // Look for settings-related content
@@ -45,7 +45,7 @@ test.describe('Settings Navigation', () => {
     // Already logged in from beforeEach
 
     // Navigate to settings
-    await page.goto('/settings');
+    await page.goto('/settings', { waitUntil: 'domcontentloaded', timeout: 45000 });
 
     // Should not redirect to login
     await page.waitForLoadState('domcontentloaded');

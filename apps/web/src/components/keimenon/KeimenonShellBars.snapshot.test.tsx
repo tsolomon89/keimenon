@@ -144,6 +144,8 @@ describe('Keimenon shell bars snapshots', () => {
         dashboardView="analytics"
         onDashboardViewChange={vi.fn()}
         processingAvailable={true}
+        autoSwitchToProcessingEnabled={true}
+        onAutoSwitchToProcessingChange={vi.fn()}
       />
     );
 

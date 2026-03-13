@@ -119,26 +119,18 @@ test.describe('Authentication and Keimenon Flow', () => {
     await page.waitForURL(/\/keimenon/, { timeout: 15000 });
   });
 
-  test('logout should clear session and redirect to login', async ({ page, context }) => {
+  test('logout should clear session and return to unauthenticated entrypoint', async ({
+    page,
+    context,
+  }) => {
     // First, log in using WebKit-friendly helper
     await login(page, TEST_EMAIL, TEST_PASSWORD);
 
-    // Look for logout button (exact location depends on your UI)
-    // This might be in a dropdown menu or settings
-    // Adjust selector based on your actual logout button location
-    // For now, we'll clear localStorage to simulate logout
-    await page.evaluate(() => {
-      localStorage.clear();
-      sessionStorage.clear();
-    });
-
-    // Navigate to home
-    await page.goto('/');
-
-    // Wait for page to load before checking redirect
+    // Use canonical logout route so auth context and server session are both revoked.
+    await page.goto('/logout');
     await page.waitForLoadState('domcontentloaded');
 
-    // Should redirect to login (session cleared)
-    await page.waitForURL(/\/login/, { timeout: 15000 });
+    // App may render unauthenticated entrypoint at "/" or "/login".
+    await expect(page).toHaveURL(/\/($|login)/, { timeout: 20000 });
   });
 });

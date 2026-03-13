@@ -701,7 +701,3 @@ export function createNodesRoutes(authService: AuthService): Router {
 
   return router;
 }
-
-// Legacy export for backward compatibility
-// TODO: Remove after all imports updated to use createNodesRoutes
-export default createNodesRoutes as any;

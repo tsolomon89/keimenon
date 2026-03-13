@@ -16,6 +16,8 @@ import { Page } from '@playwright/test';
 const LOGIN_NAV_TIMEOUT_MS = parseInt(process.env.E2E_LOGIN_NAV_TIMEOUT_MS || '30000', 10);
 const KEIMENON_NAV_TIMEOUT_MS = parseInt(process.env.E2E_KEIMENON_NAV_TIMEOUT_MS || '15000', 10);
 const AUTH_DEBUG_LOGS = process.env.E2E_AUTH_DEBUG === '1';
+const API_BASE_URL = process.env.API_BASE_URL || 'http://127.0.0.1:4001';
+const WEB_BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3000';
 const PAGE_TOKEN_CACHE = new WeakMap<Page, string>();
 
 function logAuthDebug(message: string): void {
@@ -29,7 +31,11 @@ export function getCachedAuthToken(page: Page): string | null {
 }
 
 function isWebAppOrigin(url: string): boolean {
-  return /^https?:\/\/(127\.0\.0\.1|localhost):3000/i.test(url);
+  try {
+    return new URL(url).origin === new URL(WEB_BASE_URL).origin;
+  } catch {
+    return false;
+  }
 }
 
 async function gotoDomReady(
@@ -80,16 +86,13 @@ async function persistAuthToken(page: Page, token: string): Promise<boolean> {
     isWebAppOrigin(currentUrl);
 
   if (!hasUsableDocument) {
-    const bootstrapLoaded = await gotoDomReady(
-      page,
-      '/',
-      LOGIN_NAV_TIMEOUT_MS,
-      'Token bootstrap navigation to / timed out',
-      'commit'
-    );
-    if (!bootstrapLoaded) {
-      return false;
-    }
+    await page
+      .addInitScript((resolvedToken) => {
+        localStorage.setItem('keimenon_token', resolvedToken);
+        localStorage.removeItem('temp_auth_token');
+      }, token)
+      .catch(() => {});
+    return true;
   }
 
   const persisted = await page
@@ -123,21 +126,50 @@ export async function resetAuthState(
   page: Page,
   options?: { navigateToLogin?: boolean }
 ): Promise<void> {
+  PAGE_TOKEN_CACHE.delete(page);
   await page.context().clearCookies();
-  await clearBrowserAuthStorage(page);
 
   if (options?.navigateToLogin === false) {
+    await clearBrowserAuthStorage(page);
     return;
   }
 
-  const loginLoaded = await gotoDomReady(
-    page,
-    '/login',
-    LOGIN_NAV_TIMEOUT_MS,
-    'Reset auth state navigation to /login timed out'
-  );
-  if (!loginLoaded) {
-    throw new Error('Unable to load /login while resetting auth state');
+  if (!isWebAppOrigin(page.url())) {
+    const bootstrapLoginLoaded = await gotoDomReady(
+      page,
+      '/login',
+      LOGIN_NAV_TIMEOUT_MS,
+      'Reset auth state bootstrap navigation to /login timed out',
+      'commit'
+    );
+
+    if (!bootstrapLoginLoaded) {
+      const bootstrapRootLoaded = await gotoDomReady(
+        page,
+        '/',
+        LOGIN_NAV_TIMEOUT_MS,
+        'Reset auth state bootstrap navigation to / timed out',
+        'commit'
+      );
+      if (!bootstrapRootLoaded) {
+        throw new Error('Unable to load app origin while resetting auth state');
+      }
+    }
+  }
+
+  await clearBrowserAuthStorage(page);
+
+  if (!/\/login/.test(page.url())) {
+    const loginLoaded = await gotoDomReady(
+      page,
+      '/login',
+      LOGIN_NAV_TIMEOUT_MS,
+      'Reset auth state navigation to /login timed out',
+      'commit'
+    );
+    if (!loginLoaded) {
+      throw new Error('Unable to load /login while resetting auth state');
+    }
   }
 }
 
@@ -159,7 +191,7 @@ async function loginViaApi(page: Page, email: string, password: string): Promise
   for (let attempt = 1; attempt <= 3; attempt++) {
     let loginResponse;
     try {
-      loginResponse = await page.request.post('http://127.0.0.1:4001/api/v1/auth/login', {
+      loginResponse = await page.request.post(`${API_BASE_URL}/api/v1/auth/login`, {
         headers: requestHeaders,
         data: { email, password },
       });
@@ -193,16 +225,13 @@ async function loginViaApi(page: Page, email: string, password: string): Promise
     ) {
       let selectResponse;
       try {
-        selectResponse = await page.request.post(
-          'http://127.0.0.1:4001/api/v1/auth/select-account',
-          {
-            headers: requestHeaders,
-            data: {
-              tempToken: loginBody.tempToken,
-              accountId: loginBody.availableAccounts[0].accountId,
-            },
-          }
-        );
+        selectResponse = await page.request.post(`${API_BASE_URL}/api/v1/auth/select-account`, {
+          headers: requestHeaders,
+          data: {
+            tempToken: loginBody.tempToken,
+            accountId: loginBody.availableAccounts[0].accountId,
+          },
+        });
       } catch (error) {
         if (isTransientRequestError(error) && attempt < 3) {
           await page.waitForTimeout(200 * attempt);
@@ -278,6 +307,8 @@ async function loginViaApi(page: Page, email: string, password: string): Promise
 }
 
 export async function login(page: Page, email: string, password: string): Promise<void> {
+  PAGE_TOKEN_CACHE.delete(page);
+
   const apiLoginSucceeded = await loginViaApi(page, email, password);
   if (apiLoginSucceeded) {
     return;
@@ -289,9 +320,41 @@ export async function login(page: Page, email: string, password: string): Promis
     page,
     '/login',
     LOGIN_NAV_TIMEOUT_MS,
-    'Initial navigation to /login timed out'
+    'Initial navigation to /login timed out',
+    'commit'
   );
   if (!loginLoaded) {
+    const rootLoaded = await gotoDomReady(
+      page,
+      '/',
+      LOGIN_NAV_TIMEOUT_MS,
+      'Fallback navigation to / timed out while bootstrapping login page',
+      'commit'
+    );
+    if (rootLoaded) {
+      const retryLoginLoaded = await gotoDomReady(
+        page,
+        '/login',
+        LOGIN_NAV_TIMEOUT_MS,
+        'Retry navigation to /login timed out after root fallback',
+        'commit'
+      );
+      if (retryLoginLoaded) {
+        // Continue through UI login flow after successful fallback bootstrap.
+      } else {
+        throw new Error('Unable to load /login');
+      }
+    } else {
+      throw new Error('Unable to load /login');
+    }
+  }
+
+  if (!/\/login/.test(page.url())) {
+    if (/\/keimenon/.test(page.url())) {
+      await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
+      return;
+    }
+
     throw new Error('Unable to load /login');
   }
 
@@ -399,7 +462,7 @@ export async function login(page: Page, email: string, password: string): Promis
       if (!response) {
         logAuthDebug('Login response still missing; using API fallback login');
         const testDbPath = await getTestDbPath(page);
-        response = await page.request.post('http://127.0.0.1:4001/api/v1/auth/login', {
+        response = await page.request.post(`${API_BASE_URL}/api/v1/auth/login`, {
           headers: testDbPath ? { 'X-Test-DB-Path': testDbPath } : undefined,
           data: { email, password },
         });
@@ -427,7 +490,8 @@ export async function login(page: Page, email: string, password: string): Promis
               page,
               '/login',
               LOGIN_NAV_TIMEOUT_MS,
-              'Retry navigation to /login timed out'
+              'Retry navigation to /login timed out',
+              'commit'
             );
             if (!retryLoginLoaded) {
               throw new Error('Unable to reload /login for retry');
@@ -495,7 +559,7 @@ export async function login(page: Page, email: string, password: string): Promis
             const testDbPath = await getTestDbPath(page);
 
             const selectResponse = await page.request.post(
-              'http://127.0.0.1:4001/api/v1/auth/select-account',
+              `${API_BASE_URL}/api/v1/auth/select-account`,
               {
                 headers: testDbPath ? { 'X-Test-DB-Path': testDbPath } : undefined,
                 data: {

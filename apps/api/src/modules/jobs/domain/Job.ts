@@ -339,17 +339,50 @@ export class Job {
   }
 
   /**
+   * Replace/merge internal state via domain API (used by checkpointing and recovery paths).
+   */
+  updateState(statePatch: Partial<JobState>): void {
+    const normalizeDate = (value: unknown): Date | undefined => {
+      if (!value) return undefined;
+      if (value instanceof Date) return value;
+      if (typeof value === 'string' || typeof value === 'number') {
+        const parsed = new Date(value);
+        if (!Number.isNaN(parsed.getTime())) {
+          return parsed;
+        }
+      }
+      return undefined;
+    };
+
+    const nextState: JobState = {
+      ...this._state,
+      ...statePatch,
+      queuedAt: normalizeDate(statePatch.queuedAt ?? this._state.queuedAt),
+      startedAt: normalizeDate(statePatch.startedAt ?? this._state.startedAt),
+      completedAt: normalizeDate(statePatch.completedAt ?? this._state.completedAt),
+      canceledAt: normalizeDate(statePatch.canceledAt ?? this._state.canceledAt),
+      blockedAt: normalizeDate(statePatch.blockedAt ?? this._state.blockedAt),
+    };
+
+    const validation = JobStateMachine.validate(nextState);
+    if (!validation.valid) {
+      throw new Error(`Cannot update job state: ${validation.errors.join(', ')}`);
+    }
+
+    this._state = nextState;
+  }
+
+  /**
    * Merge metadata into state_data payload.
    * This is used for operational annotations such as artifact cleanup timestamps.
    */
   updateStateMetadata(metadata: Record<string, unknown>): void {
-    this._state = {
-      ...this._state,
+    this.updateState({
       metadata: {
         ...(this._state.metadata || {}),
         ...metadata,
       },
-    };
+    });
   }
 
   // ============================================================================
@@ -423,12 +456,25 @@ export class Job {
    * Serialize to JSON for storage
    */
   toJSON(): Record<string, unknown> {
+    const config = this.config as Record<string, unknown>;
+    const files = Array.isArray(config.files) ? (config.files as Array<{ fileName?: string }>) : [];
+    const firstFileName =
+      files.length > 0 && typeof files[0]?.fileName === 'string' ? files[0].fileName : undefined;
+    const deleteScope = typeof config.deleteScope === 'string' ? config.deleteScope : undefined;
+
     return {
       id: this.id,
       type: this.type,
       status: this.status, // ✅ Expose status at top level for API consumers
       accountId: this.accountId,
       createdBy: this.createdBy,
+      fileName:
+        firstFileName ||
+        (this.type === 'delete'
+          ? deleteScope === 'keimenon'
+            ? 'Delete Keimenon Data'
+            : 'Delete All Client Data'
+          : undefined),
       config: this.config,
       idempotencyKey: this.idempotencyKey,
       concurrencyGroup: this.concurrencyGroup,

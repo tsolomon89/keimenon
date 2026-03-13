@@ -109,10 +109,14 @@ export class ImportArtifactJanitorService {
       let stateData: any = {};
       try {
         config = JSON.parse(row.config || '{}');
-      } catch {}
+      } catch {
+        config = {};
+      }
       try {
         stateData = JSON.parse(row.state_data || '{}');
-      } catch {}
+      } catch {
+        stateData = {};
+      }
 
       const retainedUntil = Number(stateData?.metadata?.inputFileRetainedUntil || 0);
       const shouldKeep =

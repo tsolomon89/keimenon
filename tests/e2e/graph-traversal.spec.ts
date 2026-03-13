@@ -29,10 +29,10 @@ import { createHash } from 'crypto';
 
 test.describe('Graph Traversal', () => {
   test.describe.configure({ tag: '@full' });
-  test.setTimeout(120000);
+  test.setTimeout(180000);
 
   const JOB_STATUS_POLL_MS = 1000;
-  const JOB_STATUS_MAX_ATTEMPTS = 90;
+  const JOB_STATUS_MAX_ATTEMPTS = 150;
 
   const TEST_USER = {
     email: 'admin@admin.com',

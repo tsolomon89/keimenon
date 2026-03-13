@@ -1,5 +1,33 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const DEFAULT_E2E_WEB_PORT = '3211';
+const DEFAULT_E2E_API_PORT = '4001';
+const WEB_PORT_FALLBACK = process.env.E2E_WEB_PORT || DEFAULT_E2E_WEB_PORT;
+const API_PORT_FALLBACK = process.env.E2E_API_PORT || DEFAULT_E2E_API_PORT;
+const BASE_URL = process.env.BASE_URL || `http://127.0.0.1:${WEB_PORT_FALLBACK}`;
+const API_BASE_URL = process.env.API_BASE_URL || `http://127.0.0.1:${API_PORT_FALLBACK}`;
+
+function resolvePort(urlValue: string, fallbackPort: string): string {
+  try {
+    const parsed = new URL(urlValue);
+    if (parsed.port) {
+      return parsed.port;
+    }
+
+    return parsed.protocol === 'https:' ? '443' : '80';
+  } catch {
+    return fallbackPort;
+  }
+}
+
+const WEB_PORT = resolvePort(BASE_URL, WEB_PORT_FALLBACK);
+const API_PORT = resolvePort(API_BASE_URL, API_PORT_FALLBACK);
+const E2E_WORKERS = Number.parseInt(process.env.E2E_WORKERS || (process.env.CI ? '4' : '2'), 10);
+
+// Ensure helper modules and global setup resolve to the same E2E endpoints.
+process.env.BASE_URL = BASE_URL;
+process.env.API_BASE_URL = API_BASE_URL;
+
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
@@ -34,7 +62,7 @@ export default defineConfig({
    * - testIsolationMiddleware and dbContextMiddleware handle per-request DB routing
    * - See: tests/e2e/fixtures/test-isolation.ts, tests/e2e/fixtures/database-snapshots.ts
    */
-  workers: 4, // Parallel execution with perfect test isolation
+  workers: E2E_WORKERS, // Tunable via E2E_WORKERS for local stability/perf tradeoff
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
@@ -46,7 +74,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    baseURL: BASE_URL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -129,23 +157,25 @@ export default defineConfig({
     {
       // Start API server in TEST mode (enables savepoint routes)
       command: 'cd apps/api && npm run dev:test',
-      url: 'http://localhost:4001/health',
+      url: `${API_BASE_URL}/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 300 * 1000,
       env: {
         NODE_ENV: 'test',
-        PORT: '4001',
+        PORT: API_PORT,
+        MAX_CONCURRENT_JOBS: process.env.MAX_CONCURRENT_JOBS || '8',
+        WORKER_POLL_INTERVAL_MS: process.env.WORKER_POLL_INTERVAL_MS || '500',
       },
     },
     {
       // Start Web server
       command: 'cd apps/web && npm run dev',
-      url: 'http://localhost:3000',
+      url: BASE_URL,
       reuseExistingServer: !process.env.CI,
       timeout: 300 * 1000,
       env: {
-        PORT: '3000',
-        NEXT_PUBLIC_API_URL: 'http://localhost:4001',
+        PORT: WEB_PORT,
+        NEXT_PUBLIC_API_URL: API_BASE_URL,
       },
     },
   ],

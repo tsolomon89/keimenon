@@ -141,8 +141,13 @@ CREATE TABLE IF NOT EXISTS sessions (
   user_id TEXT NOT NULL,
   account_id TEXT NOT NULL,
   token TEXT NOT NULL UNIQUE,
+  token_hash TEXT NOT NULL UNIQUE,
+  token_family_id TEXT NOT NULL,
+  parent_session_id TEXT,
   expires_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
+  revoked_at INTEGER,
+  revoked_reason TEXT,
   operating_account_id TEXT,
   available_accounts TEXT,
   last_account_switch INTEGER,
@@ -191,6 +196,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   token TEXT NOT NULL UNIQUE,
+  token_hash TEXT NOT NULL UNIQUE,
   expires_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
   used_at INTEGER,
@@ -201,6 +207,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token_hash ON password_reset_tokens(token_hash);
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires ON password_reset_tokens(expires_at);
 
@@ -228,6 +235,128 @@ CREATE TABLE IF NOT EXISTS settings_changes (
   reason TEXT,
   data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual'))
 );
+
+-- Import presets table
+CREATE TABLE IF NOT EXISTS import_presets (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  config TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(user_id, name)
+);
+
+-- Analytics and billing support tables
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  plan TEXT NOT NULL CHECK(plan IN ('free', 'professional', 'business')),
+  status TEXT NOT NULL CHECK(status IN ('active', 'trialing', 'past_due', 'canceled')),
+  billing_period TEXT NOT NULL CHECK(billing_period IN ('monthly', 'yearly')),
+  amount_cents INTEGER NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'USD',
+  started_at INTEGER NOT NULL,
+  current_period_start INTEGER,
+  current_period_end INTEGER,
+  canceled_at INTEGER,
+  metadata TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS invoices (
+  id TEXT PRIMARY KEY,
+  subscription_id TEXT,
+  account_id TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'USD',
+  status TEXT NOT NULL CHECK(status IN ('draft', 'open', 'paid', 'void', 'uncollectible')),
+  issued_at INTEGER NOT NULL,
+  due_at INTEGER,
+  paid_at INTEGER,
+  metadata TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE SET NULL,
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS system_alerts (
+  id TEXT PRIMARY KEY,
+  account_id TEXT,
+  source TEXT NOT NULL,
+  type TEXT NOT NULL CHECK(type IN ('info', 'warning', 'error')),
+  severity TEXT NOT NULL CHECK(severity IN ('low', 'medium', 'high', 'critical')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'acknowledged', 'resolved')),
+  message TEXT NOT NULL,
+  metadata TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  resolved_at INTEGER,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS analytics_metrics (
+  id TEXT PRIMARY KEY,
+  account_id TEXT,
+  metric_namespace TEXT NOT NULL CHECK(metric_namespace IN ('processing', 'system', 'billing', 'imports')),
+  metric_name TEXT NOT NULL,
+  bucket_start INTEGER NOT NULL,
+  bucket_end INTEGER NOT NULL,
+  value REAL NOT NULL,
+  metadata TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  UNIQUE(account_id, metric_namespace, metric_name, bucket_start)
+);
+
+CREATE TABLE IF NOT EXISTS alert_rules (
+  id TEXT PRIMARY KEY,
+  account_id TEXT,
+  source TEXT NOT NULL,
+  metric_namespace TEXT NOT NULL CHECK(metric_namespace IN ('processing', 'system', 'billing', 'imports')),
+  metric_name TEXT NOT NULL,
+  comparison TEXT NOT NULL CHECK(comparison IN ('gt', 'gte', 'lt', 'lte', 'eq')),
+  threshold REAL NOT NULL,
+  severity TEXT NOT NULL CHECK(severity IN ('low', 'medium', 'high', 'critical')),
+  enabled INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS dedupe_evidence (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  primary_node_id TEXT NOT NULL,
+  duplicate_node_id TEXT NOT NULL,
+  similarity REAL NOT NULL,
+  role_user_count INTEGER NOT NULL DEFAULT 0,
+  role_assistant_count INTEGER NOT NULL DEFAULT 0,
+  role_system_count INTEGER NOT NULL DEFAULT 0,
+  role_unknown_count INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_dedupe_evidence_account ON dedupe_evidence(account_id);
+CREATE INDEX IF NOT EXISTS idx_dedupe_evidence_primary ON dedupe_evidence(primary_node_id);
+CREATE INDEX IF NOT EXISTS idx_dedupe_evidence_duplicate ON dedupe_evidence(duplicate_node_id);
+CREATE INDEX IF NOT EXISTS idx_dedupe_evidence_similarity ON dedupe_evidence(similarity DESC);
 
 -- =============================================================================
 -- GRAPH TABLES
@@ -419,7 +548,10 @@ CREATE INDEX IF NOT EXISTS idx_user_accounts_status ON user_accounts(status);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash);
+CREATE INDEX IF NOT EXISTS idx_sessions_family ON sessions(token_family_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_revoked ON sessions(revoked_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_data_tag ON sessions(data_tag);
 CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts(email);
 CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip_address);
@@ -442,6 +574,26 @@ CREATE INDEX IF NOT EXISTS idx_settings_config_data_tag ON settings_config(data_
 CREATE INDEX IF NOT EXISTS idx_settings_changes_control ON settings_changes(control_id);
 CREATE INDEX IF NOT EXISTS idx_settings_changes_time ON settings_changes(changed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_settings_changes_data_tag ON settings_changes(data_tag);
+CREATE INDEX IF NOT EXISTS idx_import_presets_account ON import_presets(account_id);
+CREATE INDEX IF NOT EXISTS idx_import_presets_user ON import_presets(user_id);
+CREATE INDEX IF NOT EXISTS idx_import_presets_updated ON import_presets(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_account ON subscriptions(account_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_period_end ON subscriptions(current_period_end);
+CREATE INDEX IF NOT EXISTS idx_invoices_account ON invoices(account_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_subscription ON invoices(subscription_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
+CREATE INDEX IF NOT EXISTS idx_invoices_issued_at ON invoices(issued_at DESC);
+CREATE INDEX IF NOT EXISTS idx_system_alerts_account ON system_alerts(account_id);
+CREATE INDEX IF NOT EXISTS idx_system_alerts_status ON system_alerts(status);
+CREATE INDEX IF NOT EXISTS idx_system_alerts_severity ON system_alerts(severity);
+CREATE INDEX IF NOT EXISTS idx_system_alerts_created ON system_alerts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_analytics_metrics_account ON analytics_metrics(account_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_metrics_namespace ON analytics_metrics(metric_namespace);
+CREATE INDEX IF NOT EXISTS idx_analytics_metrics_bucket ON analytics_metrics(bucket_start, bucket_end);
+CREATE INDEX IF NOT EXISTS idx_alert_rules_account ON alert_rules(account_id);
+CREATE INDEX IF NOT EXISTS idx_alert_rules_enabled ON alert_rules(enabled);
+CREATE INDEX IF NOT EXISTS idx_alert_rules_metric ON alert_rules(metric_namespace, metric_name);
 
 -- Graph Indexes
 CREATE INDEX IF NOT EXISTS idx_nodes_kind ON nodes(kind);

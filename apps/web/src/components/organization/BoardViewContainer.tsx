@@ -1,20 +1,32 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { BoardView } from './BoardView';
 import { BoardNode, AnyNode } from '@keimenon/types';
 import { organizationService } from '@/services/organization-service';
+import { api } from '@/lib/api-client';
 import { Loader2, Plus } from 'lucide-react';
 import { Keimenon2D } from '../keimenon/Keimenon2D';
+import type { GraphEdge, GraphNode } from '@keimenon/graph';
+
+interface BoardGraphEdge {
+  id?: string;
+  kind?: string;
+  from?: string;
+  to?: string;
+  source?: string;
+  target?: string;
+}
 
 export function BoardViewContainer() {
   const [boards, setBoards] = useState<BoardNode[]>([]);
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [boardNodes, setBoardNodes] = useState<AnyNode[]>([]);
+  const [boardEdges, setBoardEdges] = useState<GraphEdge[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'kanban' | 'galaxy'>('kanban');
 
-  // Initial fetch of boards
   useEffect(() => {
     const fetchBoards = async () => {
       try {
@@ -31,50 +43,103 @@ export function BoardViewContainer() {
         setIsLoading(false);
       }
     };
+
     fetchBoards();
   }, []);
 
-  // Fetch board details when selection changes
   useEffect(() => {
-    if (!selectedBoardId) return;
+    if (!selectedBoardId) {
+      return;
+    }
 
     const fetchBoardGraph = async () => {
       try {
-        // We use the graph endpoint to get all nodes associated with this board
         const graphData = await organizationService.getBoardGraph(selectedBoardId);
-        // Cast to AnyNode[] - backend returns objects that match our node shapes
-        setBoardNodes(graphData.nodes as AnyNode[]);
+        const nodes = graphData.nodes as AnyNode[];
+        setBoardNodes(nodes);
+
+        const nodeIds = new Set(nodes.map((node) => node.id));
+        const normalizedEdges: GraphEdge[] = (graphData.edges || [])
+          .map((edge: BoardGraphEdge, index: number) => {
+            const source = edge.from || edge.source;
+            const target = edge.to || edge.target;
+            if (!source || !target) {
+              return null;
+            }
+
+            return {
+              id: edge.id || `board_edge_${index}`,
+              kind: edge.kind || 'CONTAINS',
+              source,
+              target,
+            } as GraphEdge;
+          })
+          .filter((edge): edge is GraphEdge => !!edge)
+          .filter((edge) => nodeIds.has(String(edge.source)) && nodeIds.has(String(edge.target)));
+
+        setBoardEdges(normalizedEdges);
       } catch (err: any) {
         console.error('Failed to fetch board graph:', err);
       }
     };
+
     fetchBoardGraph();
   }, [selectedBoardId]);
 
   const handleCreateBoard = async () => {
     try {
       const newBoard = await organizationService.createBoard('New Board', 'Created via Board View');
-      setBoards(prev => [newBoard, ...prev]);
+      setBoards((prev) => [newBoard, ...prev]);
       setSelectedBoardId(newBoard.id);
     } catch (err) {
       console.error('Failed to create board:', err);
     }
   };
 
-  const activeBoard = boards.find(b => b.id === selectedBoardId);
+  const activeBoard = boards.find((board) => board.id === selectedBoardId);
 
   const handleMoveNode = async (nodeId: string, columnId: string) => {
-     // Optimistic update
-     setBoardNodes(prev => prev.map(n => {
-       if (n.id === nodeId) {
-         return { ...n, metadata: { ...n.metadata, board_column: columnId } };
-       }
-       return n;
-     }));
+    setBoardNodes((prev) =>
+      prev.map((node) => {
+        if (node.id !== nodeId) {
+          return node;
+        }
 
-     // TODO: Call API to persist move
-     // await organizationService.updateNodeMetadata(nodeId, { board_column: columnId });
+        return {
+          ...node,
+          metadata: {
+            ...(node as any).metadata,
+            board_column: columnId,
+          },
+        };
+      })
+    );
+
+    const currentNode = boardNodes.find((node) => node.id === nodeId) as any;
+
+    try {
+      await api.put(`/nodes/${nodeId}`, {
+        metadata: {
+          ...(currentNode?.metadata || {}),
+          board_column: columnId,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to persist board node move:', err);
+    }
   };
+
+  const galaxyNodes = useMemo(() => {
+    return boardNodes.map((node) => {
+      const n = node as any;
+      return {
+        id: n.id,
+        kind: n.kind || 'Source',
+        x: typeof n.x === 'number' ? n.x : undefined,
+        y: typeof n.y === 'number' ? n.y : undefined,
+      } as GraphNode;
+    });
+  }, [boardNodes]);
 
   if (isLoading && boards.length === 0) {
     return (
@@ -89,7 +154,7 @@ export function BoardViewContainer() {
     return (
       <div className="h-full w-full bg-slate-950 flex flex-col items-center justify-center text-red-400">
         <p>Error: {error}</p>
-        <button 
+        <button
           onClick={() => window.location.reload()}
           className="mt-4 px-4 py-2 bg-slate-800 rounded hover:bg-slate-700 text-white"
         >
@@ -114,23 +179,21 @@ export function BoardViewContainer() {
     );
   }
 
-  const [viewMode, setViewMode] = useState<'kanban' | 'galaxy'>('kanban');
-
-  // ... (existing code)
-
   return (
     <div className="h-full w-full bg-slate-950 flex flex-col">
-      {/* Board Selector / Header */}
       <div className="h-12 border-b border-slate-800 flex items-center px-4 gap-4 bg-slate-900/50">
-        <select 
-          value={selectedBoardId || ''} 
+        <select
+          value={selectedBoardId || ''}
           onChange={(e) => setSelectedBoardId(e.target.value)}
           className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
-          {boards.map(b => (
-            <option key={b.id} value={b.id}>{b.name}</option>
+          {boards.map((board) => (
+            <option key={board.id} value={board.id}>
+              {board.name}
+            </option>
           ))}
         </select>
+
         <button
           onClick={handleCreateBoard}
           className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
@@ -138,19 +201,27 @@ export function BoardViewContainer() {
         >
           <Plus className="w-4 h-4" />
         </button>
-        
+
         <div className="h-6 w-px bg-slate-800 mx-2" />
-        
+
         <div className="flex bg-slate-800 rounded p-0.5">
           <button
             onClick={() => setViewMode('kanban')}
-            className={`px-3 py-1 text-xs rounded transition-colors ${viewMode === 'kanban' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+            className={`px-3 py-1 text-xs rounded transition-colors ${
+              viewMode === 'kanban'
+                ? 'bg-slate-700 text-white shadow'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
           >
             Kanban
           </button>
           <button
             onClick={() => setViewMode('galaxy')}
-            className={`px-3 py-1 text-xs rounded transition-colors ${viewMode === 'galaxy' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+            className={`px-3 py-1 text-xs rounded transition-colors ${
+              viewMode === 'galaxy'
+                ? 'bg-slate-700 text-white shadow'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
           >
             Galaxy
           </button>
@@ -158,33 +229,23 @@ export function BoardViewContainer() {
 
         <div className="flex-1" />
         <div className="text-xs text-slate-500">
-          {boardNodes.length} items
+          {boardNodes.length} items - {boardEdges.length} edges
         </div>
       </div>
 
       <div className="flex-1 overflow-hidden relative">
         {activeBoard ? (
           viewMode === 'kanban' ? (
-            <BoardView 
-              board={activeBoard}
-              nodes={boardNodes}
-              onMoveNode={handleMoveNode}
-            />
+            <BoardView board={activeBoard} nodes={boardNodes} onMoveNode={handleMoveNode} />
           ) : (
             <div className="h-full w-full">
-               {/* Galaxy View */}
-               <Keimenon2D
-                 nodes={boardNodes.map(n => ({ 
-                   ...n, 
-                   x: Math.random() * 800, // Placeholder layout
-                   y: Math.random() * 600, 
-                   neighbors: [] 
-                 })) as any} // Cast needed until GraphNode types are fully aligned
-                 edges={[]} // Edges would come from graphData in a real scenario
-                 width={1200} // Should be dynamic
-                 height={800} // Should be dynamic
-                 onNodeClick={(node: any) => console.log('Clicked', node)}
-               />
+              <Keimenon2D
+                nodes={galaxyNodes}
+                edges={boardEdges}
+                width={1200}
+                height={800}
+                onNodeClick={(node: any) => console.log('Clicked', node)}
+              />
             </div>
           )
         ) : (

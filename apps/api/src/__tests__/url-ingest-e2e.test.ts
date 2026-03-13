@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import express, { Express } from 'express';
-import ingestRouter from '../routes/ingest';
+import ingestRouter, { setAuthDependencies } from '../routes/ingest';
 import { URLFetcherService } from '../services/url-fetcher';
 import { ContentExtractorService } from '../services/content-extractor';
 
@@ -66,11 +66,12 @@ vi.mock('../services/local-document-store', () => ({
   })),
 }));
 
-// Mock the database client
-const mockDb = {
-  findNodeByContentHash: vi.fn().mockResolvedValue(null),
-  createNode: vi.fn().mockResolvedValue(undefined),
-};
+const { mockDb } = vi.hoisted(() => ({
+  mockDb: {
+    findNodeByContentHash: vi.fn().mockResolvedValue(null),
+    createNode: vi.fn().mockResolvedValue(undefined),
+  },
+}));
 
 vi.mock('../utils/get-db-client', () => ({
   getDbClient: vi.fn().mockResolvedValue(mockDb),
@@ -80,8 +81,17 @@ describe('URL Ingest E2E', () => {
   let app: Express;
 
   beforeAll(() => {
+    setAuthDependencies(null, null, null, null);
     app = express();
     app.use(express.json());
+    app.use((req, _res, next) => {
+      (req as any).user = {
+        userId: 'usr_test123',
+        accountId: 'acc_test123',
+        permissionLevel: 'senior',
+      };
+      next();
+    });
     app.use('/api/v1/ingest', ingestRouter);
   });
 
@@ -187,7 +197,9 @@ describe('URL Ingest E2E', () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.body.source.board_id).toBe('my_custom_board');
+      expect(response.body.source.metadata?.board_id ?? response.body.source.board_id).toBe(
+        'my_custom_board'
+      );
     });
   });
 });

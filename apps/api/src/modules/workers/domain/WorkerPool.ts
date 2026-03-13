@@ -598,12 +598,7 @@ export class WorkerPool {
 
   private async persistCleanupMetadata(job: Job, context: string): Promise<void> {
     try {
-      const stateData = JSON.stringify({
-        ...job.state,
-        progress: job.progress,
-        stats: job.stats,
-      });
-      await this.jobRepository.updateStateData(job.id, job.accountId, stateData);
+      await this.jobRepository.save(job);
       if (this.broadcaster) {
         this.broadcaster.broadcastJobUpdate(job);
       }

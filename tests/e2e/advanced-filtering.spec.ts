@@ -27,6 +27,7 @@ import fs from 'fs';
 
 test.describe('Advanced Filtering', () => {
   test.describe.configure({ tag: '@full' });
+  test.setTimeout(120000);
 
   const TEST_USER = {
     email: 'admin@admin.com',
@@ -94,53 +95,72 @@ test.describe('Advanced Filtering', () => {
     );
     const fileContent = fs.readFileSync(testFile);
 
-    const uploadResponse = await apiRequest.post('/api/v1/jobs/import', {
-      headers: { Authorization: `Bearer ${token}` },
-      multipart: {
-        files: {
-          name: filename,
-          mimeType: 'application/json',
-          buffer: fileContent,
-        },
-        config: JSON.stringify({
-          platform: 'chatgpt',
-          extractCode: true,
-          duplicateDetection: { enabled: true },
-          data_tag: 'test', // CRITICAL: Mark all test data for cleanup
-        }),
-      },
-    });
+    const maxJobAttempts = 2;
+    const maxPollAttempts = 60;
 
-    expect(uploadResponse.status()).toBe(201);
-    const uploadData = await uploadResponse.json();
-
-    // Wait for job to complete (poll status)
-    const jobId = uploadData.jobId;
-    let jobComplete = false;
-    let attempts = 0;
-    const maxAttempts = 30;
-
-    while (!jobComplete && attempts < maxAttempts) {
-      const jobResponse = await apiRequest.get(`/api/v1/jobs/${jobId}`, {
+    for (let jobAttempt = 1; jobAttempt <= maxJobAttempts; jobAttempt++) {
+      const uploadResponse = await apiRequest.post('/api/v1/jobs/import', {
         headers: { Authorization: `Bearer ${token}` },
+        multipart: {
+          files: {
+            name: filename,
+            mimeType: 'application/json',
+            buffer: fileContent,
+          },
+          config: JSON.stringify({
+            platform: 'chatgpt',
+            extractCode: true,
+            duplicateDetection: { enabled: true },
+            data_tag: 'test', // CRITICAL: Mark all test data for cleanup
+          }),
+        },
       });
 
-      const payload = await jobResponse.json();
-      const job = payload?.job ?? payload;
-      const status = job?.status;
+      expect(uploadResponse.status()).toBe(201);
+      const uploadData = await uploadResponse.json();
+      const jobId = uploadData.jobId;
 
-      if (status === 'succeeded' || status === 'completed') {
-        jobComplete = true;
-        return { jobId, nodeCount: job?.result?.nodesCreated || 0 };
-      } else if (status === 'failed' || status === 'canceled' || status === 'cancelled') {
-        throw new Error(`Import job failed: ${job?.error || status}`);
+      let attempts = 0;
+      let lastStatus = 'queued';
+
+      while (attempts < maxPollAttempts) {
+        const jobResponse = await apiRequest.get(`/api/v1/jobs/${jobId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const payload = await jobResponse.json();
+        const job = payload?.job ?? payload;
+        const status = job?.status;
+        lastStatus = typeof status === 'string' ? status : 'unknown';
+
+        if (status === 'succeeded' || status === 'completed') {
+          return { jobId, nodeCount: job?.result?.nodesCreated || 0 };
+        }
+
+        if (status === 'failed' || status === 'canceled' || status === 'cancelled') {
+          throw new Error(`Import job failed: ${job?.error || status}`);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        attempts++;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      attempts++;
+      if (jobAttempt < maxJobAttempts) {
+        await apiRequest
+          .post(`/api/v1/jobs/${jobId}/cancel`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          .catch(() => {});
+        await new Promise((resolve) => setTimeout(resolve, 1000 * jobAttempt));
+        continue;
+      }
+
+      throw new Error(
+        `Import job did not complete within ${maxPollAttempts} seconds (lastStatus=${lastStatus})`
+      );
     }
 
-    throw new Error(`Import job did not complete within ${maxAttempts} seconds`);
+    throw new Error('Import job retry loop exhausted unexpectedly');
   }
 
   function getNodes(payload: any): any[] {
@@ -157,24 +177,37 @@ test.describe('Advanced Filtering', () => {
   ): Promise<void> {
     const now = Date.now();
     const id = `grp_test_${now}_${Math.random().toString(36).slice(2, 9)}`;
+    let activeToken = token;
 
-    const response = await apiRequest.post('/api/v1/nodes/group', {
-      headers: { Authorization: `Bearer ${token}` },
-      data: {
-        id,
-        kind: 'Group',
-        name,
-        member_count: 0,
-        created_at: now,
-        updated_at: now,
-        metadata: {
-          data_tag: 'test',
-          ...metadata,
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const response = await apiRequest.post('/api/v1/nodes/group', {
+        headers: { Authorization: `Bearer ${activeToken}` },
+        data: {
+          id,
+          kind: 'Group',
+          name,
+          member_count: 0,
+          created_at: now,
+          updated_at: now,
+          metadata: {
+            data_tag: 'test',
+            ...metadata,
+          },
         },
-      },
-    });
+      });
 
-    expect(response.status()).toBe(201);
+      if (response.status() === 201) {
+        return;
+      }
+
+      if (response.status() === 401 && attempt < 2) {
+        activeToken = await loginWithRetry(apiRequest, TEST_USER);
+        authToken = activeToken;
+        continue;
+      }
+
+      expect(response.status()).toBe(201);
+    }
   }
 
   // ==================== ADVANCED FILTERING TESTS ====================

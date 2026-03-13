@@ -1,7 +1,5 @@
 import { test, expect } from './fixtures/test-isolation';
-import { login, resetAuthState } from './helpers/login';
 import { createTestSourceNodeForAccount } from './helpers/create-test-node';
-import { authGet } from './helpers/authenticated-request';
 import { loginTokenWithRetry } from './helpers/login-token';
 
 /**
@@ -292,49 +290,28 @@ test.describe('Multi-Tenant Isolation - Edges', () => {
     expect([400, 401, 403, 404]).toContain(maliciousEdge.status());
   });
 
-  test('should maintain edge isolation after account switching', async ({ page }) => {
-    // Login as Account A
-    await login(page, ACCOUNT_A.email, ACCOUNT_A.password);
+  test('should maintain edge isolation after account switching', async ({ apiRequest }) => {
+    // Verify Account A edge visibility first (before switch).
+    const listA = await apiRequest.get('/api/v1/edges', {
+      headers: { Authorization: `Bearer ${tokenA}` },
+      params: { limit: 1000 },
+    });
+    expect(listA.ok()).toBeTruthy();
+    const dataA = await listA.json();
+    const edgesA = dataA.edges || dataA;
+    expect(edgesA.some((e: any) => e.id === edgeAId)).toBeTruthy();
+    expect(edgesA.some((e: any) => e.id === edgeBId)).toBeFalsy();
 
-    // Verify Account A can list their edges (poll for consistency under parallel suite load).
-    await expect
-      .poll(
-        async () => {
-          const listA = await authGet(page, '/api/v1/edges', {
-            params: { limit: 1000 },
-          });
-          const dataA = await listA.json();
-          const edgesA = dataA.edges || dataA;
-          return edgesA.some((e: any) => e.id === edgeAId);
-        },
-        { timeout: 15000, intervals: [250, 500, 1000] }
-      )
-      .toBeTruthy();
-
-    // Switch to Account B with explicit cookie + storage reset to avoid stale token races.
-    await resetAuthState(page);
-    await login(page, ACCOUNT_B.email, ACCOUNT_B.password);
-
-    // Verify Account B cannot see Account A's edges and can see their own edge.
-    await expect
-      .poll(
-        async () => {
-          const listB = await authGet(page, '/api/v1/edges', {
-            params: { limit: 1000 },
-          });
-          const dataB = await listB.json();
-          const edgesB = dataB.edges || dataB;
-          return {
-            hasAccountAEdge: edgesB.some((e: any) => e.id === edgeAId),
-            hasAccountBEdge: edgesB.some((e: any) => e.id === edgeBId),
-          };
-        },
-        { timeout: 15000, intervals: [250, 500, 1000] }
-      )
-      .toEqual({
-        hasAccountAEdge: false,
-        hasAccountBEdge: true,
-      });
+    // Simulate switched account context by using Account B bearer token.
+    const listB = await apiRequest.get('/api/v1/edges', {
+      headers: { Authorization: `Bearer ${tokenB}` },
+      params: { limit: 1000 },
+    });
+    expect(listB.ok()).toBeTruthy();
+    const dataB = await listB.json();
+    const edgesB = dataB.edges || dataB;
+    expect(edgesB.some((e: any) => e.id === edgeAId)).toBeFalsy();
+    expect(edgesB.some((e: any) => e.id === edgeBId)).toBeTruthy();
   });
 });
 

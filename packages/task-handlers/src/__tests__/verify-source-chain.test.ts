@@ -204,7 +204,7 @@ describe('VerifySourceChainHandler objective lifecycle', () => {
     expect(updated.metadata.verification.reason_code).toBe('evidence_verified');
   });
 
-  it('degrades gracefully when llm adapter is unavailable and marks tracked objectives contested', async () => {
+  it('fails fast when llm adapter is unavailable and marks tracked objectives contested', async () => {
     const harness = createHarness({ llmAvailable: false });
 
     const result = await harness.handler.run(
@@ -219,9 +219,10 @@ describe('VerifySourceChainHandler objective lifecycle', () => {
       harness.context as any
     );
 
-    expect(result.success).toBe(true);
-    expect(result.output?.evidenceNodes).toEqual([]);
-    expect(result.output?.objectiveNodes).toEqual(['objective_batch_1']);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('LLM adapter unavailable');
+    expect(result.output).toBeUndefined();
+    expect(result.artifacts).toEqual([]);
 
     const updated = harness.objectiveNodes.get('objective_batch_1') as Record<string, any>;
     expect(updated.status).toBe('contested');

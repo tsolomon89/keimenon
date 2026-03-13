@@ -30,6 +30,9 @@ jobs:
       - name: Run Type Check
         run: npm run type-check
 
+      - name: Enforce Runtime Mock Ban
+        run: npm run ci:mock-ban:check
+
       - name: Run Test
         run: npm run test
 

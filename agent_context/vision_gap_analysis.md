@@ -1,88 +1,45 @@
-# Vision Gap Analysis (AGENTS-Aligned)
+# Vision Gap Analysis (AGENTS-Aligned, Rebased)
 
-Date: March 12, 2026
-Scope: active codebase against canonical `AGENTS.md` at repository root.
+Date: March 13, 2026
+Scope: current branch code against canonical `AGENTS.md`.
+This analysis is scoped against canonical `AGENTS.md` at repository root.
 
-## Baseline
+## Canonical Source
 
-- Root `AGENTS.md` is canonical truth.
-- `GEMINI.md` is a mirror.
-- `agent_context/AGENTS.md` is a pointer stub to prevent drift.
-- `docs/specs/*` are derived implementation artifacts.
+- `AGENTS.md` is authoritative.
+- `GEMINI.md`, `docs/specs/vision-contract-v1.md`, and `docs/specs/vision-traceability-matrix.md` are derived.
 
-## Contract Snapshot
+## Current Alignment Snapshot
 
-- Core similarity-first import and graph materialization are implemented.
-- Tiered entitlements are implemented and server-enforced.
-- Free now includes objective layer baseline; agent runtime remains disabled.
-- Import-time agent bootstrap is manual-by-default via `agent.bootstrap`.
-- Objective queueing requires entitlements + kill switch off + `agent.bootstrap=auto`.
-- Agent principal creation is entitlement-gated.
+1. Similarity-first + objective-layer baseline behavior remains aligned to AGENTS contract.
+2. Unified agent runtime lane remains in place for verification/analysis (`/api/v1/agent/*`).
+3. Legacy `/api/v1/ai/*` and `/api/v1/verification/*` runtime surface remains removed.
+4. Auth/session lifecycle hardening has been implemented for rotating, hashed session/reset tokens.
+5. Dedupe/worker closeout items are implemented: shared similarity utility, explicit strategies, parser selection matrix, checkpoint API cleanup.
+6. Legacy board/preview edge rendering parity and scope-builder wiring now exist in runtime UI paths.
+7. Runtime mock/debt static gate has been strengthened and currently passes.
 
-## What Was Cleaned Up
+## Remaining Delta
 
-- Removed transcript-style narrative drift from canonical AGENTS docs.
-- Rebased derived spec and traceability docs to AGENTS semantics.
-- Added bootstrap-aware worker gating and skip reasons.
-- Added tests for:
-  - entitlement manifest behavior,
-  - import contract bootstrap defaults,
-  - objective queue decision matrix,
-  - import service agent bootstrap gating,
-  - principals route entitlement enforcement.
+1. Execute and capture complete regression gate evidence on this branch:
+   - `e2e:smoke`
+   - full Chromium E2E
+   - `perf:lod:burnin`
+   - `ops:rollout-rollback:drill`
+   - `ops:gate-e:signoff`
+2. Re-run and capture `ops:branch-protection:verify` with valid GitHub auth context.
+3. Re-run `ops:vision-doc-sync:check` and keep derived artifacts in sync with AGENTS.
+4. Run staging dry-run and rollback rehearsal for migrations `034` and `035`, including backfill scripts.
 
-## Remaining Work (Operational, Not Product-Contract Gaps)
+## Notes
 
-1. Complete 14 consecutive green nightly Gate-E runs.
-   - Time-based completion dependent on scheduled CI history.
-2. Maintain zero unresolved critical rollout/rollback drill regressions through the streak window.
+- Full `npm run lint` currently fails due pre-existing unrelated lint violations outside this delta.
+- Targeted lint/type/test checks for modified closeout files pass.
 
-## Status Update (March 12, 2026)
+## Evidence Targets
 
-1. Branch protection required checks are now enforced on `main` for `tsolomon89/keimenon`.
-   - Apply + verify passed via `scripts/ops/apply-branch-protection.js`.
-   - Required checks present: `Full E2E (Chromium)`, `LOD Burn-in (10k/50k)`, `Rollout/Rollback Drill`.
-2. M0 baseline lock automation is implemented and executed.
-   - Full preflight battery + archival passed in one command:
-     - `npm run ops:gate-e:baseline-lock`
-   - Baseline archive created at:
-     - `test-results/ops/baselines/2026-03-12T10-46-21-058Z/`
-   - Baseline lock report:
-     - `test-results/ops/gate-e-baseline-lock-latest.json`
-   - Nightly validation and signoff helpers now generate machine-readable status:
-     - `test-results/ops/gate-e-nightly-validation-latest.json`
-     - `test-results/ops/gate-e-completion-signoff-latest.json`
-   - Nightly tracker and handoff bundle helpers now support daily operations and final artifact packaging:
-     - `scripts/ops/gate-e-nightly-tracker.js`
-     - `scripts/ops/gate-e-handoff-bundle.js`
-     - `test-results/ops/gate-e-nightly-tracker-latest.md`
-     - `test-results/ops/gate-e-handoff-bundle-latest.json`
-   - Nightly streak remains pending because schedule-only artifact is not yet present locally.
-
-## Hardening Complete Criteria
-
-1. 14 consecutive nightly Gate-E runs are green. (Pending)
-2. No unresolved critical rollout/rollback drill regressions. (In progress)
-3. Required checks are enforced on `main` branch protection. (Completed on March 12, 2026)
-
-## Evidence Sources
-
-1. `.github/workflows/gate-e-hardening.yml`
-2. `docs/ops/gate-e-rollout-rollback-playbook.md`
-3. `docs/ops/branch-protection-required-checks.md`
-4. `test-results/ops/rollout-rollback-drill-latest.json`
+1. `test-results/ops/gate-e-nightly-streak-latest.json`
+2. `test-results/ops/gate-e-completion-signoff-latest.json`
+3. `test-results/ops/gate-e-nightly-validation-latest.json`
+4. `test-results/ops/gate-e-evidence-latest.json`
 5. `test-results/perf/lod-burnin-latest.json`
-6. `test-results/ops/gate-e-evidence-latest.json`
-7. `test-results/ops/gate-e-nightly-streak-latest.json`
-8. `scripts/ops/apply-branch-protection.js`
-9. `scripts/ops/gate-e-baseline-lock.js`
-10. `scripts/ops/gate-e-nightly-validate.js`
-11. `scripts/ops/gate-e-signoff.js`
-12. `test-results/ops/gate-e-baseline-lock-latest.json`
-13. `scripts/ops/gate-e-nightly-tracker.js`
-14. `scripts/ops/gate-e-handoff-bundle.js`
-
-## Current Assessment
-
-Vision-to-implementation alignment is materially closed against `AGENTS.md`.
-Remaining items are external operational controls and time-based CI streak completion.

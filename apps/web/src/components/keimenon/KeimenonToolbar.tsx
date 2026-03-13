@@ -38,6 +38,8 @@ interface KeimenonToolbarProps {
   dashboardView: 'analytics' | 'storage';
   onDashboardViewChange: (view: 'analytics' | 'storage') => void;
   processingAvailable?: boolean;
+  autoSwitchToProcessingEnabled: boolean;
+  onAutoSwitchToProcessingChange: (enabled: boolean) => void;
 }
 
 export function KeimenonToolbar({
@@ -56,6 +58,8 @@ export function KeimenonToolbar({
   dashboardView,
   onDashboardViewChange,
   processingAvailable = false,
+  autoSwitchToProcessingEnabled,
+  onAutoSwitchToProcessingChange,
 }: KeimenonToolbarProps) {
   const { keimenonMode, setKeimenonMode } = useShell();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -215,6 +219,20 @@ export function KeimenonToolbar({
           </div>
 
           <div className="w-px h-6 bg-slate-700" />
+
+          <button
+            onClick={() => onAutoSwitchToProcessingChange(!autoSwitchToProcessingEnabled)}
+            type="button"
+            className={clsx(
+              'px-2.5 py-1.5 rounded text-xs font-medium border transition-colors',
+              autoSwitchToProcessingEnabled
+                ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40'
+                : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+            )}
+            title="Automatically switch to Processing view when imports start"
+          >
+            Auto-Processing {autoSwitchToProcessingEnabled ? 'On' : 'Off'}
+          </button>
 
           {/* Source Role Filter */}
           <div className="relative" ref={filterRef}>

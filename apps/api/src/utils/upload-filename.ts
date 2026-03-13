@@ -9,6 +9,18 @@ export interface SanitizedUploadFilename {
   original: string;
 }
 
+function stripControlCharacters(input: string): string {
+  let output = '';
+  for (let i = 0; i < input.length; i += 1) {
+    const code = input.charCodeAt(i);
+    const isControl = code <= 0x1f || code === 0x7f;
+    if (!isControl) {
+      output += input[i];
+    }
+  }
+  return output;
+}
+
 /**
  * Sanitize user-provided upload filenames for safe filesystem usage.
  *
@@ -29,7 +41,7 @@ export function sanitizeUploadFilename(raw: string | null | undefined): Sanitize
   }
 
   const base = path.basename(original);
-  const withoutControls = base.replace(/[\u0000-\u001F\u007F]/g, '').replace(/[\\/:"*?<>|]+/g, '_');
+  const withoutControls = stripControlCharacters(base).replace(/[\\/:"*?<>|]+/g, '_');
 
   const parsed = path.parse(withoutControls);
   const ext = parsed.ext.replace(/^\./, '');

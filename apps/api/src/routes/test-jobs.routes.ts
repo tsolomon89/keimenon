@@ -12,11 +12,6 @@ import { ulid } from 'ulid';
 
 const router = Router();
 
-// SECURITY: Only enable in test environment
-if (process.env.NODE_ENV !== 'test') {
-  throw new Error('test-jobs.routes should only be imported in test environment');
-}
-
 /**
  * POST /test/jobs/create - Create a test job
  *
@@ -37,6 +32,13 @@ if (process.env.NODE_ENV !== 'test') {
  * }
  */
 router.post('/create', (req: Request, res: Response) => {
+  if (process.env.NODE_ENV !== 'test') {
+    return res.status(404).json({
+      success: false,
+      error: 'Not found',
+    });
+  }
+
   try {
     const userId = (req as any).user?.userId;
     const accountId = (req as any).user?.accountId;

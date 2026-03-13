@@ -1078,6 +1078,14 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
     <div
       class="w-px h-6 bg-slate-700"
     />
+    <button
+      class="px-2.5 py-1.5 rounded text-xs font-medium border transition-colors bg-emerald-600/20 text-emerald-300 border-emerald-500/40"
+      title="Automatically switch to Processing view when imports start"
+      type="button"
+    >
+      Auto-Processing 
+      On
+    </button>
     <div
       class="relative"
     >
