@@ -2,14 +2,14 @@
  * Processing Keimenon View
  *
  * Full-screen visualization of active import operations showing:
- * - 7-stage pipeline progress (queued → reading → parsing → normalizing → indexing → linking → done)
+ * - 7-stage pipeline progress (queued -> reading -> parsing -> normalizing -> indexing -> linking -> done)
  * - Real-time minigraph visualization of nodes being created
  * - Live metrics (nodes, edges, sources, conversations)
  * - SSE-powered updates from backend
  *
  * Integration:
  * - Auto-shown when import job starts (KeimenonLayout.tsx:98)
- * - Receives graph updates via useJobStream hook (SSEBroadcaster → graph.update events)
+ * - Receives graph updates via useJobStream hook (SSEBroadcaster -> graph.update events)
  * - Displays ImportMiniGraph with force-directed layout and particle effects
  *
  * Related:
@@ -20,7 +20,7 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Activity, AlertTriangle, Loader2, PauseCircle, PlayCircle, XCircle } from 'lucide-react';
 import { useJobStream } from '@/hooks/useJobStream';
 import { ImportMiniGraph } from '@/components/import/ImportMiniGraph';
@@ -37,9 +37,13 @@ import {
   normalizeImportProgressPercent,
   type ImportUiStatus,
 } from '@/lib/import-job-progress';
+import type { NdProjectionConfig, RenderLens } from '@/lib/nd-projection';
+import { useElementSize } from '@/hooks/useElementSize';
 
 interface ProcessingKeimenonViewProps {
   operation: Operation | null;
+  renderLens?: RenderLens;
+  ndConfig?: NdProjectionConfig;
 }
 
 function formatPipelineError(jobUpdate: any, fallback?: string): string | undefined {
@@ -55,7 +59,13 @@ function formatPipelineError(jobUpdate: any, fallback?: string): string | undefi
   return fallback;
 }
 
-export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProps) {
+export function ProcessingKeimenonView({
+  operation,
+  renderLens = '2d',
+  ndConfig,
+}: ProcessingKeimenonViewProps) {
+  const miniGraphRef = useRef<HTMLDivElement>(null);
+  const miniGraphSize = useElementSize(miniGraphRef, { width: 960, height: 360 });
   const { jobs, graphUpdates, connected } = useJobStream();
   const jobUpdate = operation ? jobs.get(operation.id) : undefined;
   const [isCanceling, setIsCanceling] = useState(false);
@@ -343,14 +353,19 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
                 </div>
               </header>
               {recentNodes.length > 0 ? (
-                <div className="flex-1 min-h-[320px] rounded-lg border border-slate-800 bg-slate-950">
+                <div
+                  ref={miniGraphRef}
+                  className="flex-1 min-h-[320px] rounded-lg border border-slate-800 bg-slate-950"
+                >
                   <ImportMiniGraph
                     recentNodes={recentNodes.map((n) => ({
                       ...n,
                       label: n.label || n.kind || 'Node',
                     }))}
-                    width={960}
-                    height={360}
+                    width={miniGraphSize.width}
+                    height={miniGraphSize.height}
+                    renderLens={renderLens}
+                    ndConfig={ndConfig}
                   />
                 </div>
               ) : (
@@ -369,3 +384,4 @@ export function ProcessingKeimenonView({ operation }: ProcessingKeimenonViewProp
     </>
   );
 }
+

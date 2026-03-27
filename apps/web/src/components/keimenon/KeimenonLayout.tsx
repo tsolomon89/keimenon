@@ -31,6 +31,7 @@ import {
   type CoreProcessReimportStatus,
   updateSetting,
 } from '@/lib/api-client';
+import { DEFAULT_ND_CONFIG, type NdProjectionConfig, type RenderLens } from '@/lib/nd-projection';
 
 interface KeimenonLayoutProps {
   showUploadModal: boolean;
@@ -79,6 +80,11 @@ export function KeimenonLayout({
     null
   );
   const [autoSwitchProcessingView, setAutoSwitchProcessingView] = useState(true);
+  const [focusModeEnabled, setFocusModeEnabled] = useState(false);
+  const [includeConnectorNodes, setIncludeConnectorNodes] = useState(false);
+  const [pinnedNodeCount, setPinnedNodeCount] = useState(0);
+  const [renderLens, setRenderLens] = useState<RenderLens>('2d');
+  const [ndConfig, setNdConfig] = useState<NdProjectionConfig>(DEFAULT_ND_CONFIG);
   const previousRunningImportCountRef = useRef(0);
 
   const handleZoomToFilteredNodes = () => {
@@ -476,6 +482,18 @@ export function KeimenonLayout({
                 processingAvailable={processingAvailable}
                 autoSwitchToProcessingEnabled={autoSwitchProcessingView}
                 onAutoSwitchToProcessingChange={handleAutoSwitchProcessingViewChange}
+                focusModeEnabled={focusModeEnabled}
+                onFocusModeToggle={() => setFocusModeEnabled((previous) => !previous)}
+                includeConnectorNodes={includeConnectorNodes}
+                onConnectorVisibilityToggle={() =>
+                  setIncludeConnectorNodes((previous) => !previous)
+                }
+                pinnedNodeCount={pinnedNodeCount}
+                onClearPinnedNodes={() => keimenonViewportRef.current?.clearPinnedNodes()}
+                renderLens={renderLens}
+                onRenderLensChange={setRenderLens}
+                ndConfig={ndConfig}
+                onNdConfigChange={setNdConfig}
                 onZoomIn={() => keimenonViewportRef.current?.zoomIn()}
                 onZoomOut={() => keimenonViewportRef.current?.zoomOut()}
                 onCenterView={() => keimenonViewportRef.current?.centerView()}
@@ -508,13 +526,22 @@ export function KeimenonLayout({
                         ref={keimenonViewportRef}
                         onOpenUpload={handleOpenImportFlow}
                         onOpenChatImport={handleOpenImportFlow}
+                        renderLens={renderLens}
+                        ndConfig={ndConfig}
+                        focusModeEnabled={focusModeEnabled}
+                        includeConnectors={includeConnectorNodes}
+                        onPinnedNodeCountChange={setPinnedNodeCount}
                       />
                     ) : keimenonSurface === 'legacy' ? (
-                      <LegacyBoardPreview />
+                      <LegacyBoardPreview renderLens={renderLens} ndConfig={ndConfig} />
                     ) : keimenonSurface === 'processing' ? (
-                      <ProcessingKeimenonView operation={activeOperation} />
+                      <ProcessingKeimenonView
+                        operation={activeOperation}
+                        renderLens={renderLens}
+                        ndConfig={ndConfig}
+                      />
                     ) : (
-                      <BoardViewContainer />
+                      <BoardViewContainer renderLens={renderLens} ndConfig={ndConfig} />
                     ))}
 
                   {keimenonMode === 'dashboard' &&

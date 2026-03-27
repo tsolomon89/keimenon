@@ -917,6 +917,7 @@ export class EnhancedImportServiceV2 {
         kind: 'ObjectiveClaim',
         claim_text: claimText,
         type: 'definition',
+        archetype: 'definition_anchor',
         status: 'provisional',
         confidence,
         citations: cluster.memberSourceIds.map((sourceId) => ({ node_id: sourceId })),
@@ -932,10 +933,12 @@ export class EnhancedImportServiceV2 {
           cluster_mass: cluster.mass,
           member_source_count: cluster.memberSourceIds.length,
           member_source_ids: cluster.memberSourceIds,
+          objective_archetype: 'definition_anchor',
           objective_lifecycle: {
             state: 'provisional',
             next: 'verifying',
             reason: 'created_from_similarity_cluster',
+            archetype: 'definition_anchor',
           },
         },
       });
@@ -1336,6 +1339,8 @@ export class EnhancedImportServiceV2 {
       );
       const messageIds = streamMessages.map((message) => message.id);
       const combinedRawContent = streamMessages.map((message) => message.content).join('\n\n');
+      const rawContentHash = this.stableHash(combinedRawContent, 64);
+      const rawContentBytes = Buffer.byteLength(combinedRawContent, 'utf8');
 
       const derived = this.buildDerivedSourceContent(
         combinedRawContent,
@@ -1392,6 +1397,9 @@ export class EnhancedImportServiceV2 {
           importId: uploadHash,
           import_batch: uploadHash,
           parser_source: 'chat_export',
+          raw_content_hash: rawContentHash,
+          raw_content_bytes: rawContentBytes,
+          derived_content_hash: contentMeta.hash,
           derivation_chain: [
             'raw_message_persisted',
             'conversation_stream_materialized',

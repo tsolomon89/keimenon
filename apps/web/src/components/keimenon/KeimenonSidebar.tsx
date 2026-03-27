@@ -27,6 +27,7 @@ import { NavigationModelFactory } from '@keimenon/types/src/navigation.model';
 import { logDataEvent } from '@/lib/error-handler';
 import { sequesterNode } from '@/lib/api-client';
 import { errorCapture } from '@/services/error-capture.service';
+import { getNodeLabel, type LabelableNode } from '@/lib/node-labels';
 import type { Operation } from '@/contexts/BackgroundOperationsContext';
 import { DEBUG_IMPORT_SELECTOR } from '@/lib/env.config';
 
@@ -103,6 +104,7 @@ export function KeimenonSidebar({
     const setFilteredNodeIds = useKeimenonStore((s) => s.setFilteredNodeIds);
     const sidebarClearSelection = useKeimenonStore((s) => s.clearSelection);
     const sidebarSelectNode = useKeimenonStore((s) => s.selectNode);
+    const hydrateGraphSubset = useKeimenonStore((s) => s.hydrateGraphSubset);
 
     // Subscribe to keimenon selection for bidirectional sync (Keimenon → Navigation)
     const keimenonSelectedNodeIds = useKeimenonStore((state) => state.selectedNodeIds);
@@ -259,11 +261,16 @@ export function KeimenonSidebar({
         } else {
           // Group: fetch members, filter keimenon, and SELECT them
           try {
-            const memberIds = await fetchGroupMembers(node.id);
+            const groupMembers = await fetchGroupMembers(node.id);
+            const memberIds = groupMembers.nodeIds;
             logDataEvent('Fetched group members', 'keimenon.navigation.groupMembers', {
               groupId: node.id,
               memberCount: memberIds.length,
             });
+
+            if (groupMembers.nodes.length > 0 || groupMembers.edges.length > 0) {
+              hydrateGraphSubset(groupMembers.nodes, groupMembers.edges);
+            }
 
             // Filter keimenon nodes to show only group members
             setFilteredNodeIds(memberIds);
@@ -448,6 +455,17 @@ export function KeimenonSidebar({
     logDataEvent('Added node to scope', 'keimenon.scope.add', { nodeId });
   };
 
+  const resolveDisplayLabel = (node: KeimenonNode) =>
+    getNodeLabel(
+      {
+        id: node.id,
+        kind: node.kind || node.type,
+        label: node.data?.label,
+        ...(node.data?.metadata || {}),
+      } as LabelableNode,
+      48
+    );
+
   const removeNodeFromScope = (nodeId: string) => {
     setScopeNodeIds((prev) => prev.filter((id) => id !== nodeId));
   };
@@ -476,7 +494,7 @@ export function KeimenonSidebar({
     return {
       nodeId: node.id,
       type: typeMapping[node.type] || 'source_doc',
-      title: node.data.label || node.id.slice(0, 8),
+      title: resolveDisplayLabel(node),
       details: [
         { label: 'Type', value: node.type, type: 'badge' as const },
         { label: 'ID', value: node.id.slice(0, 12) + '...', type: 'text' as const },
@@ -600,7 +618,7 @@ export function KeimenonSidebar({
                       >
                         <div className="min-w-0">
                           <p className="text-xs text-slate-200 truncate">
-                            {node?.data?.label || nodeId}
+                            {node ? resolveDisplayLabel(node) : 'Node'}
                           </p>
                           <p className="text-[11px] text-slate-500 truncate">{nodeId}</p>
                         </div>

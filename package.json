@@ -15,6 +15,8 @@
     "setup": "npm install && npm run check-ports && npm run prepare && echo \n✅ Setup complete! Run 'npm run dev' to start.",
     "dev": "node scripts/run-with-node22.js \"node scripts/dev.js\"",
     "dev:clean": "node scripts/run-with-node22.js \"node scripts/dev.js --clean\"",
+    "dev:clean:browser": "node scripts/run-with-node22.js \"node scripts/dev-clean-browser.js\"",
+    "dev:clean:electron": "node scripts/run-with-node22.js \"node scripts/dev-clean-electron.js\"",
     "dev:stop": "node scripts/dev-stop.js",
     "cleanup:dev": "node scripts/cleanup-dev.js",
     "clean:legacy-artifacts": "node scripts/ops/clean-legacy-artifacts.js",

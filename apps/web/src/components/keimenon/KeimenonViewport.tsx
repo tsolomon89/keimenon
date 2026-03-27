@@ -18,10 +18,17 @@ import { GraphNode, GraphEdge } from '@keimenon/graph';
 import { useJobStream } from '@/hooks/useJobStream';
 import { logDataEvent } from '@/lib/error-handler';
 import type { LodPlanStats } from '@/lib/graph-lod';
+import type { NdProjectionConfig, RenderLens } from '@/lib/nd-projection';
+import { useElementSize } from '@/hooks/useElementSize';
 
 interface KeimenonViewportProps {
   onOpenUpload: () => void;
   onOpenChatImport: () => void;
+  focusModeEnabled?: boolean;
+  includeConnectors?: boolean;
+  renderLens?: RenderLens;
+  ndConfig?: NdProjectionConfig;
+  onPinnedNodeCountChange?: (count: number) => void;
 }
 
 export interface KeimenonViewportHandle {
@@ -30,13 +37,25 @@ export interface KeimenonViewportHandle {
   centerView: () => void;
   zoomToFitFilteredNodes: () => void;
   focusOnNode: (nodeId: string) => void;
+  clearPinnedNodes: () => void;
 }
 
 export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewportProps>(
-  ({ onOpenUpload, onOpenChatImport }, ref) => {
+  (
+    {
+      onOpenUpload,
+      onOpenChatImport,
+      focusModeEnabled = false,
+      includeConnectors = false,
+      renderLens = '2d',
+      ndConfig,
+      onPinnedNodeCountChange,
+    },
+    ref
+  ) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const keimenon2DRef = useRef<Keimenon2DHandle>(null);
-    const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+    const dimensions = useElementSize(containerRef);
 
     const nodes = useKeimenonStore((state) => state.nodes);
     const edges = useKeimenonStore((state) => state.edges);
@@ -69,6 +88,7 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
       position: { x: number; y: number };
     } | null>(null);
     const [lodStats, setLodStats] = useState<LodPlanStats | null>(null);
+    const [pinnedNodeIds, setPinnedNodeIds] = useState<string[]>([]);
 
     // Find active import job
     useEffect(() => {
@@ -112,6 +132,15 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
 
     const hasContent = displayNodes.length > 0;
 
+    useEffect(() => {
+      const validNodeIds = new Set(displayNodes.map((node) => node.id));
+      setPinnedNodeIds((previous) => previous.filter((nodeId) => validNodeIds.has(nodeId)));
+    }, [displayNodes]);
+
+    useEffect(() => {
+      onPinnedNodeCountChange?.(pinnedNodeIds.length);
+    }, [onPinnedNodeCountChange, pinnedNodeIds.length]);
+
     // Expose camera control methods to parent via ref.
     useImperativeHandle(
       ref,
@@ -122,38 +151,10 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
         zoomToFitFilteredNodes: () =>
           keimenon2DRef.current?.zoomToFitNodes(displayNodes.map((node) => node.id)),
         focusOnNode: (nodeId: string) => keimenon2DRef.current?.focusOnNode(nodeId, 1.6, 220),
+        clearPinnedNodes: () => setPinnedNodeIds([]),
       }),
       [displayNodes]
     );
-
-    // Update dimensions on mount and via ResizeObserver for robust viewport correction.
-    useEffect(() => {
-      const container = containerRef.current;
-      if (!container) return;
-
-      const updateDimensions = (width?: number, height?: number) => {
-        setDimensions({
-          width: Math.floor(width ?? container.clientWidth),
-          height: Math.floor(height ?? container.clientHeight),
-        });
-      };
-
-      updateDimensions();
-
-      if (typeof ResizeObserver !== 'undefined') {
-        const observer = new ResizeObserver((entries) => {
-          const entry = entries[0];
-          if (!entry) return;
-          updateDimensions(entry.contentRect.width, entry.contentRect.height);
-        });
-        observer.observe(container);
-        return () => observer.disconnect();
-      }
-
-      const onResize = () => updateDimensions();
-      window.addEventListener('resize', onResize);
-      return () => window.removeEventListener('resize', onResize);
-    }, []);
 
     // Transform filtered nodes to GraphNode format
     const graphNodes: GraphNode[] = useMemo(
@@ -291,7 +292,7 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
         {error && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center max-w-md">
-              <div className="text-red-500 text-5xl mb-4">⚠️</div>
+              <div className="text-red-500 text-5xl mb-4">!</div>
               <h3 className="text-xl font-semibold mb-2 text-white">Failed to load graph</h3>
               <p className="text-slate-400 mb-4">{error}</p>
               <button
@@ -313,11 +314,17 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
               edges={graphEdges}
               width={dimensions.width}
               height={dimensions.height}
+              renderLens={renderLens}
+              ndConfig={ndConfig}
+              focusModeEnabled={focusModeEnabled}
+              includeConnectors={includeConnectors}
+              pinnedNodeIds={pinnedNodeIds}
               onNodeClick={handleNodeClick}
               onNodeDoubleClick={handleNodeDoubleClick}
               onSelectionChange={handleSelectionChange}
               onEdgeHover={handleEdgeHover}
               onLodStats={setLodStats}
+              onPinnedNodeIdsChange={setPinnedNodeIds}
             />
 
             {/* Progress Visualization Overlay - Game Dev Techniques */}
@@ -325,6 +332,8 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
               width={dimensions.width}
               height={dimensions.height}
               jobId={activeImportJobId}
+              renderLens={renderLens}
+              ndConfig={ndConfig}
             />
 
             {/* Edge Tooltip */}
@@ -337,11 +346,14 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
             {lodStats && (
               <div className="absolute top-4 right-4 z-10 bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 shadow-lg">
                 <div className="font-semibold text-slate-100">
-                  {lodStats.level} · {lodStats.visibleNodeCount}/{lodStats.totalNodeCount} nodes
+                  {lodStats.level} - {lodStats.visibleNodeCount}/{lodStats.totalNodeCount} nodes
                 </div>
                 <div className="text-slate-400">
-                  {lodStats.visibleEdgeCount}/{lodStats.totalEdgeCount} edges · gate{' '}
+                  {lodStats.visibleEdgeCount}/{lodStats.totalEdgeCount} edges - gate{' '}
                   {lodStats.gate.pass ? 'pass' : 'warn'}
+                </div>
+                <div className="text-slate-500">
+                  focus {lodStats.focusMode ? 'on' : 'off'} - pinned {pinnedNodeIds.length}
                 </div>
                 <button
                   type="button"
@@ -424,3 +436,4 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
 );
 
 KeimenonViewport.displayName = 'KeimenonViewport';
+

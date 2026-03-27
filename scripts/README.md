@@ -7,6 +7,8 @@ Development and production helper scripts for Keimenon (local-only storage).
 ```bash
 npm run dev
 npm run dev:clean
+npm run dev:clean:browser
+npm run dev:clean:electron
 npm run validate
 npm run check-ports
 npm run kill-ports
@@ -69,6 +71,26 @@ Flow:
 4. Start API
 5. Wait for health endpoint
 6. Start web app
+
+### `dev-clean-browser.js`
+
+Hard-reset browser startup wrapper around `dev.js`.
+
+Flow:
+
+1. Force-kill processes on API/Web ports
+2. Verify ports are free
+3. Run ordered browser startup (`dev.js --clean`)
+
+### `dev-clean-electron.js`
+
+Hard-reset electron startup wrapper around `dev-desktop.js`.
+
+Flow:
+
+1. Force-kill processes on API/Web ports
+2. Kill stale Keimenon Electron processes
+3. Run ordered electron startup (`dev-desktop.js`)
 
 ### `dev-boot.js`
 
@@ -174,3 +196,7 @@ npm run dev
 ## Production Notes
 
 Development scripts are local workflow helpers. For production, use your deployment process (container orchestration, process manager, or platform runtime).
+
+For clean startup runbook details, see:
+
+- `docs/ops/clean-dev-startup.md`

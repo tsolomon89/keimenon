@@ -1,30 +1,37 @@
-# Keimenon Vision Gap Analysis (Closeout Baseline)
+# Keimenon Vision Gap Analysis (AGENTS-canonical Pass)
 
-Last updated: 2026-03-13.
+Last updated: 2026-03-27.
 
-Scope is implementation state versus the canonical `AGENTS.md` at repository root.
+Scope: current implementation state versus canonical `AGENTS.md` at repository root, with `agent_context/Kiemenon.md` retained as supplementary intent evidence.
+
+## Canonical references for this pass
+- `docs/specs/kiemenon-requirement-ledger.md`
+- `docs/specs/kiemenon-vision-traceability-matrix.md`
+- `docs/specs/kiemenon-data-trust-contract.md`
 
 ## Current Status
+- Requirement inventory: 39
+- Implemented: 39
+- Partial: 0
+- Conflict (vision drift): 0
 
-1. Functional backlog is closed for the AGENTS vision contract.
-2. Runtime lane is unified on `/api/v1/agent/*` for verification/analysis.
-3. Remaining deltas are operational and hygiene closeout tasks, not feature design gaps.
+## Vision drift resolved in this pass
+1. `KV-UX-004` + `KV-FEAT-003`: canvas renderer is Three.js-canonical with explicit `2D`/`3D`/`ND` lens controls and ND slice semantics.
+2. `KV-IMPORT-008`: duplicate review now enforces complete per-candidate decisions and provides merge preview assistance.
+3. `KV-IMPORT-009`: `agent.bootstrap` is explicit in UI, propagated through upload rails, and entitlement-downgraded to manual when runtime is unavailable.
+4. `KV-UX-004` + `KV-FEAT-003`: toolbar/viewport now expose explicit camera + LOD semantics with focus-mode and pinned-subgraph culling survival.
+5. `KV-UX-008`: label resolver now drives inspector/selection/navigation paths instead of ID-first titling.
+6. `KV-FEAT-002`: objective layer now carries explicit archetype typing with lifecycle/provenance transitions.
+7. `KV-DATA-001`: raw-content immutability assertions now validate raw-content hashes remain invariant while derived hashes vary by processing mode.
+8. `KV-OPS-001`: deterministic account-switch isolation utility and tests now cover store reset, cache/session cleanup, and post-switch graph isolation.
+9. `KV-TIER-002` + `KV-TIER-003`: local-custody egress policy and business account/user permission boundaries now have explicit route/runtime test coverage.
+10. `KV-UX-009`: edge-inspection hover now provides deterministic tooltip metadata from edge payloads.
+11. `KV-UX-010`: marquee selection now supports replace/add/toggle modifier semantics.
+12. `KV-UX-011`: node drag behavior now supports lens-consistent 2D/3D/ND semantics.
+13. `KV-UX-012`: toolbar now follows desktop-full canvas controls with compact reduced controls for smaller breakpoints.
+14. `KV-FEAT-005`: graph surfaces now share renderer interaction contracts and responsive sizing behavior.
 
-## Active Blockers
-
-1. Gate-E nightly streak target is still time-gated until `14/14` is reached.
-2. Repo hygiene pass must stay enforced in CI to prevent debug/runtime residue regressions.
-
-## Closeout Focus
-
-1. Keep all derived docs synchronized to root `AGENTS.md`.
-2. Keep runtime free of debug password-reset and debug env surfaces.
-3. Keep tracked desktop bundle (`apps/desktop/resources/web-dist`) refreshed and verified deterministically.
-4. Keep root artifact debt from re-entering tracked history.
-
-## Acceptance Snapshot
-
-1. Vision doc sync check passes.
-2. Runtime mock/debug marker checks pass.
-3. Hygiene checks pass (root artifact ban + desktop bundle verification).
-4. Gate-E strict signoff remains blocked only by nightly streak until `14/14` is achieved.
+## Notes
+- Root `AGENTS.md` is canonical for this analysis pass.
+- Supplementary source `agent_context/Kiemenon.md` remained immutable in this pass (SHA256: `048CBAA28C54CB7824DD555A8EB4A1037F71877440D37A43D2DDB446E79D9393`).
+- Derived artifacts must not present contradictory status/evidence claims relative to the active traceability matrix.

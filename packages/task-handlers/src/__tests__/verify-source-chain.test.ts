@@ -14,6 +14,7 @@ function createHarness(options?: { llmAvailable?: boolean; webAvailable?: boolea
     account_id: 'acc_test',
     claim_text: 'Provisional objective for batch',
     type: 'definition',
+    archetype: 'definition_anchor',
     status: 'provisional',
     confidence: 0.4,
     citations: [],
@@ -198,10 +199,19 @@ describe('VerifySourceChainHandler objective lifecycle', () => {
     const updated = harness.objectiveNodes.get('objective_batch_1') as Record<string, any>;
     expect(updated).toBeDefined();
     expect(updated.status).toBe('verified');
+    expect(updated.archetype).toBe('definition_anchor');
     expect(updated.metadata.objective_lifecycle.state).toBe('verified');
     expect(updated.metadata.objective_lifecycle.previous).toBe('verifying');
     expect(updated.metadata.objective_lifecycle.reason).toBe('evidence_verified');
+    expect(updated.metadata.objective_lifecycle.archetype).toBe('definition_anchor');
     expect(updated.metadata.verification.reason_code).toBe('evidence_verified');
+    expect(updated.metadata.verification.archetype).toBe('definition_anchor');
+
+    const generatedClaims = harness.createdNodes.filter(
+      (node) => node.kind === 'ObjectiveClaim' && node.id !== 'objective_batch_1'
+    ) as Array<Record<string, any>>;
+    expect(generatedClaims.length).toBeGreaterThan(0);
+    expect(generatedClaims.every((node) => typeof node.archetype === 'string')).toBe(true);
   });
 
   it('fails fast when llm adapter is unavailable and marks tracked objectives contested', async () => {

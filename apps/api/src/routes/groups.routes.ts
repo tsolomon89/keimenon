@@ -19,6 +19,16 @@ import { randomUUID } from 'crypto';
 export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): Router {
   const router = Router();
 
+  const resolveTreeLabel = (kind: string, props: Record<string, unknown>): string => {
+    const candidates = [props.name, props.title, props.label, props.display_name];
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+    return kind === 'Folder' ? 'Untitled Folder' : 'Untitled Group';
+  };
+
   /**
    * GET /api/v1/groups
    * List root folders and groups (tenant-scoped)
@@ -86,7 +96,7 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
 
         return {
           id: row.id,
-          label: props.name || props.title || row.id,
+          label: resolveTreeLabel(row.kind, props),
           kind: row.kind,
           group_kind: isFolder ? undefined : groupKind,
           icon,
@@ -193,7 +203,7 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
 
           return {
             id: row.id,
-            label: childProps.name || childProps.title || row.id,
+            label: resolveTreeLabel(row.kind, childProps),
             kind: row.kind,
             group_kind: isChildFolder ? undefined : groupKind,
             icon,
@@ -357,6 +367,15 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
         nodeIds = descendants.map((d) => d.node_id);
       }
 
+      const safeParseJson = (value: unknown) => {
+        if (typeof value !== 'string' || value.length === 0) return {};
+        try {
+          return JSON.parse(value);
+        } catch {
+          return {};
+        }
+      };
+
       // CRITICAL FIX #16: Fetch full node data, not just IDs
       const nodes =
         nodeIds.length > 0
@@ -374,12 +393,44 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
       // Parse properties field for each node
       const parsedNodes = nodes.map((n) => ({
         ...n,
-        properties: JSON.parse(n.properties),
+        properties: safeParseJson(n.properties),
       }));
+
+      // Include subgraph edges between group members so UI can hydrate scoped view without extra calls.
+      let parsedEdges: any[] = [];
+      const MAX_EDGE_HYDRATION_NODE_IDS = 900;
+
+      if (nodeIds.length > 1 && nodeIds.length <= MAX_EDGE_HYDRATION_NODE_IDS) {
+        const valuesClause = nodeIds.map(() => '(?)').join(', ');
+        const edgeRows = database
+          .prepare(
+            `
+          WITH selected_nodes(id) AS (VALUES ${valuesClause})
+          SELECT e.id, e.kind, e.from_id, e.to_id, e.properties, e.created_at
+          FROM edges e
+          JOIN selected_nodes sn_from ON sn_from.id = e.from_id
+          JOIN selected_nodes sn_to ON sn_to.id = e.to_id
+          WHERE e.account_id = ?
+          ORDER BY e.created_at DESC
+          LIMIT 50000
+        `
+          )
+          .all(...nodeIds, accountId) as any[];
+
+        parsedEdges = edgeRows.map((e) => ({
+          id: e.id,
+          kind: e.kind,
+          from: e.from_id,
+          to: e.to_id,
+          created_at: e.created_at,
+          properties: safeParseJson(e.properties),
+        }));
+      }
 
       return res.json({
         success: true,
         nodes: parsedNodes, // Return full nodes with parsed properties
+        edges: parsedEdges,
         node_ids: nodeIds, // Keep node_ids for backward compatibility
         count: nodeIds.length,
       });

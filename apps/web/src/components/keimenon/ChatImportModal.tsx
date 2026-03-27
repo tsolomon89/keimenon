@@ -88,6 +88,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
   const [presetsLoading, setPresetsLoading] = useState(false);
   const [presetBusy, setPresetBusy] = useState(false);
   const [presetError, setPresetError] = useState<string | null>(null);
+  const [agentRuntimeEnabled, setAgentRuntimeEnabled] = useState(false);
 
   const clearCoreProcessReimportGate = useCallback(async () => {
     try {
@@ -101,6 +102,35 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       console.log('[ChatImportModal] Core process reimport marked complete');
     } catch (error) {
       console.warn('[ChatImportModal] Failed to clear core process reimport gate:', error);
+    }
+  }, []);
+
+  const refreshFeatureManifest = useCallback(async () => {
+    try {
+      const featureManifest = await getMyFeatures();
+      const runtimeEnabled = Boolean(featureManifest.features.agent_runtime);
+      setAgentRuntimeEnabled(runtimeEnabled);
+
+      // Enforce manual bootstrap when runtime entitlement is absent.
+      if (!runtimeEnabled) {
+        setConfig((previous) =>
+          previous.agent.bootstrap === 'manual'
+            ? previous
+            : {
+                ...previous,
+                agent: {
+                  ...previous.agent,
+                  bootstrap: 'manual',
+                },
+              }
+        );
+      }
+
+      return featureManifest;
+    } catch (error) {
+      console.warn('[ChatImportModal] Failed to fetch feature manifest:', error);
+      setAgentRuntimeEnabled(false);
+      return null;
     }
   }, []);
 
@@ -139,7 +169,8 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       return;
     }
     void loadImportPresets();
-  }, [stage, loadImportPresets]);
+    void refreshFeatureManifest();
+  }, [stage, loadImportPresets, refreshFeatureManifest]);
 
   const applySelectedPreset = useCallback(() => {
     if (!selectedPresetId) {
@@ -152,10 +183,18 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       return;
     }
 
-    setConfig(preset.config);
+    const presetConfig: ChatImportConfig =
+      !agentRuntimeEnabled && preset.config.agent.bootstrap === 'auto'
+        ? {
+            ...preset.config,
+            agent: { ...preset.config.agent, bootstrap: 'manual' as const },
+          }
+        : preset.config;
+
+    setConfig(presetConfig);
     setPresetName(preset.name);
     setPresetError(null);
-  }, [importPresets, selectedPresetId]);
+  }, [agentRuntimeEnabled, importPresets, selectedPresetId]);
 
   const handleCreatePreset = useCallback(async () => {
     const trimmedName = presetName.trim();
@@ -499,6 +538,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
   const submitMultiFileImports = useCallback(
     async (
       filesToImport: File[],
+      importConfig: ChatImportConfig,
       detectedPlatform?: 'chatgpt' | 'claude' | 'gemini' | 'generic'
     ): Promise<string[]> => {
       const concurrency = Math.min(3, filesToImport.length);
@@ -529,7 +569,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
           );
 
           try {
-            const result = await importChatFilesAsJob([file], config, detectedPlatform);
+            const result = await importChatFilesAsJob([file], importConfig, detectedPlatform);
             submittedJobIds.push(result.jobId);
 
             setMultiFileImports((previous) =>
@@ -566,7 +606,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       await Promise.all(workers);
       return submittedJobIds;
     },
-    [config]
+    []
   );
 
   const handleImport = async () => {
@@ -582,14 +622,29 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         return;
       }
 
-      try {
-        const featureManifest = await getMyFeatures();
-        if (!featureManifest.features.auto_graph) {
-          alert('Your current account tier does not allow automatic graph import.');
-          return;
-        }
-      } catch (featureError) {
-        console.warn('[ChatImportModal] Failed to fetch feature manifest:', featureError);
+      let runtimeEnabled = agentRuntimeEnabled;
+      const featureManifest = await refreshFeatureManifest();
+      if (featureManifest && !featureManifest.features.auto_graph) {
+        alert('Your current account tier does not allow automatic graph import.');
+        return;
+      }
+      if (featureManifest) {
+        runtimeEnabled = Boolean(featureManifest.features.agent_runtime);
+      }
+
+      const effectiveImportConfig: ChatImportConfig = {
+        ...config,
+        agent: {
+          ...config.agent,
+          bootstrap: runtimeEnabled ? config.agent.bootstrap : 'manual',
+        },
+      };
+
+      if (!runtimeEnabled && config.agent.bootstrap === 'auto') {
+        setConfig(effectiveImportConfig);
+        alert(
+          'Agent bootstrap was set to manual because this account does not have agent runtime entitlement.'
+        );
       }
 
       // Set importing state and show loading
@@ -608,14 +663,15 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       console.log('[ChatImportModal] Detected platform:', platformDetection?.platform);
 
       // Prepare import config to be stored with upload session
-      const importConfig = {
+      const chunkedImportConfig = {
         platform: platformDetection?.platform || 'generic',
-        ...config,
+        ...effectiveImportConfig,
       };
 
       if (files.length > 1) {
         const submittedJobIds = await submitMultiFileImports(
           files,
+          effectiveImportConfig,
           platformDetection?.platform as 'chatgpt' | 'claude' | 'gemini' | 'generic' | undefined
         );
 
@@ -652,7 +708,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       );
 
       // Upload with chunked upload hook
-      const uploadResult = await chunkedUpload.upload(file, importConfig);
+      const uploadResult = await chunkedUpload.upload(file, chunkedImportConfig);
 
       if (!uploadResult.success || !uploadResult.jobId) {
         console.error('[ChatImportModal] Chunked upload failed:', uploadResult.error);
@@ -989,6 +1045,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
                   onConfigChange={setConfig}
                   platformDetection={platformDetection}
                   analysis={analysis}
+                  agentRuntimeEnabled={agentRuntimeEnabled}
                 />
               </div>
             )}

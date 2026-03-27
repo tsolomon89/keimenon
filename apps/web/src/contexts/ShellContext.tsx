@@ -64,22 +64,37 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
 
   const [shellMode, setShellModeState] = useState<ShellMode>(getDefaultShellMode());
   const [keimenonMode, setKeimenonModeState] = useState<KeimenonMode>('keimenon');
-  const initializedRef = useRef(false);
+  const syncedUserKeyRef = useRef<string | null>(null);
 
-  // Lock shell mode to account type when user loads
-  // ShellMode automatically syncs with user.accountType
+  // Lock shell mode to account type and resync when account context changes.
   useEffect(() => {
-    if (user && !initializedRef.current) {
-      const shellMode = user.accountType === 'admin' ? 'admin' : 'client';
+    if (!user) {
+      syncedUserKeyRef.current = null;
+      setShellModeState('client');
+      setKeimenonModeState('keimenon');
+      return;
+    }
+
+    const userKey = `${user.accountId}:${user.accountType}`;
+    if (syncedUserKeyRef.current !== userKey) {
+      const nextShellMode = user.accountType === 'admin' ? 'admin' : 'client';
       const defaultKeimenonMode = user.accountType === 'admin' ? 'dashboard' : 'keimenon';
 
-      setShellModeState(shellMode);
+      setShellModeState(nextShellMode);
       setKeimenonModeState(defaultKeimenonMode);
+      syncedUserKeyRef.current = userKey;
 
-      initializedRef.current = true;
-      console.log('Shell locked to account type:', { shellMode, accountType: user.accountType });
+      console.log('Shell locked to account type:', {
+        shellMode: nextShellMode,
+        accountType: user.accountType,
+      });
+      return;
     }
-  }, [user]); // Run when user loads
+
+    if (user.accountType !== 'admin' && keimenonMode === 'dashboard') {
+      setKeimenonModeState('keimenon');
+    }
+  }, [user, keimenonMode]);
 
   /**
    * Check if user can access Portal shell
@@ -126,9 +141,13 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
    * Set keimenon mode (page within shell)
    */
   const setKeimenonMode = useCallback((mode: KeimenonMode) => {
-    setKeimenonModeState(mode);
-    console.log('Keimenon mode changed:', mode);
-  }, []);
+    const nextMode = mode === 'dashboard' && user?.accountType !== 'admin' ? 'keimenon' : mode;
+    if (mode === 'dashboard' && user?.accountType !== 'admin') {
+      console.warn('Dashboard mode is restricted to admin accounts. Falling back to keimenon mode.');
+    }
+    setKeimenonModeState(nextMode);
+    console.log('Keimenon mode changed:', nextMode);
+  }, [user?.accountType]);
 
   const value: ShellContextType = {
     shellMode,

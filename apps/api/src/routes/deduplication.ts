@@ -3,7 +3,7 @@
  *
  * Endpoints for content-addressable storage deduplication features:
  * - GET /stats - Get deduplication statistics for an account
- * - POST /merge - Merge duplicate nodes
+ * - POST /merge - Consolidate duplicate nodes (non-destructive)
  * - POST /analyze - Analyze potential duplicates
  * - GET /duplicates - List duplicate nodes
  *
@@ -88,7 +88,8 @@ export function createDeduplicationRoutes(db: SQLiteClient, authService: AuthSer
   /**
    * POST /api/deduplication/merge
    *
-   * Merge duplicate nodes with the same content hash
+   * Consolidate duplicate nodes with the same content hash.
+   * Raw nodes are preserved; duplicates are relinked/marked, not deleted.
    *
    * Body:
    * {
@@ -100,7 +101,9 @@ export function createDeduplicationRoutes(db: SQLiteClient, authService: AuthSer
    * {
    *   mergedCount: number,
    *   edgesRelinked: number,
-   *   duplicatesRemoved: number,
+   *   duplicatesRemoved: number, // legacy compatibility field
+   *   duplicatesConsolidated: number,
+   *   nonDestructive: true,
    *   errors: string[]
    * }
    */
@@ -130,6 +133,8 @@ export function createDeduplicationRoutes(db: SQLiteClient, authService: AuthSer
           mergedCount: 0,
           edgesRelinked: 0,
           duplicatesRemoved: 0,
+          duplicatesConsolidated: 0,
+          nonDestructive: true,
           errors: [],
           message: 'No duplicates found to merge',
         });
@@ -141,6 +146,7 @@ export function createDeduplicationRoutes(db: SQLiteClient, authService: AuthSer
           dryRun: true,
           duplicateGroups: duplicateHashes.length,
           estimatedMerges: duplicateHashes.reduce((sum, group) => sum + group.count - 1, 0),
+          nonDestructive: true,
           message: 'Dry run - no changes made',
         });
       }
@@ -177,13 +183,15 @@ export function createDeduplicationRoutes(db: SQLiteClient, authService: AuthSer
         mergedCount,
         edgesRelinked,
         duplicatesRemoved,
+        duplicatesConsolidated: duplicatesRemoved,
+        nonDestructive: true,
         errors,
         success: errors.length === 0,
       });
     } catch (error) {
       console.error('Error merging duplicates:', error);
       return res.status(500).json({
-        error: 'Failed to merge duplicates',
+        error: 'Failed to consolidate duplicates',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
     }

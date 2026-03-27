@@ -86,6 +86,35 @@ function mapEdgeKindToType(kind: string): 'contains' | 'references' | 'derives' 
   }
 }
 
+function mapApiNodeToKeimenon(apiNode: APIGraphNode): KeimenonNode {
+  return {
+    id: apiNode.id,
+    type: mapNodeKindToType(apiNode.kind),
+    kind: apiNode.kind,
+    sourceRole: apiNode.properties?.source_role as SourceRole | undefined,
+    position: {
+      x: Math.random() * 800,
+      y: Math.random() * 600,
+    },
+    data: {
+      label: apiNode.properties?.title || apiNode.properties?.name || apiNode.id.slice(0, 8),
+      content: apiNode.properties?.content,
+      metadata: apiNode.properties,
+    },
+  };
+}
+
+function mapApiEdgeToKeimenon(apiEdge: APIGraphEdge): KeimenonEdge {
+  return {
+    id: apiEdge.id,
+    source: typeof apiEdge.from === 'string' ? apiEdge.from : apiEdge.from.id,
+    target: typeof apiEdge.to === 'string' ? apiEdge.to : apiEdge.to.id,
+    type: mapEdgeKindToType(apiEdge.kind),
+    kind: apiEdge.kind,
+    data: apiEdge.properties,
+  };
+}
+
 export type SourceRole = 'imported' | 'workspace' | 'brief' | 'agent_output' | 'research_bundle';
 
 export interface KeimenonNode {
@@ -152,6 +181,7 @@ interface KeimenonState {
   setNodes: (nodes: KeimenonNode[]) => void;
   setEdges: (edges: KeimenonEdge[]) => void;
   loadGraphData: () => Promise<void>;
+  hydrateGraphSubset: (nodes: APIGraphNode[], edges?: APIGraphEdge[]) => void;
   addNode: (node: KeimenonNode) => void;
   addEdge: (edge: KeimenonEdge) => void;
   updateNode: (id: string, updates: Partial<KeimenonNode>) => void;
@@ -231,7 +261,7 @@ export const useKeimenonStore = create<KeimenonState>()(
             try {
               [nodesResult, edgesResult] = await Promise.all([
                 getNodes({ limit: 100000 }),
-                getEdges({ limit: 200000 }),
+                getEdges({ limit: 200000, sort: 'created_at', order: 'desc' }),
               ]);
               break;
             } catch (error) {
@@ -250,22 +280,7 @@ export const useKeimenonStore = create<KeimenonState>()(
           }
 
           // Transform API nodes to Keimenon nodes
-          const allNodes: KeimenonNode[] = nodesResult.nodes.map((apiNode: APIGraphNode) => ({
-            id: apiNode.id,
-            type: mapNodeKindToType(apiNode.kind),
-            kind: apiNode.kind,
-            sourceRole: apiNode.properties?.source_role as SourceRole | undefined,
-            position: {
-              x: Math.random() * 800,
-              y: Math.random() * 600,
-            },
-            data: {
-              label:
-                apiNode.properties?.title || apiNode.properties?.name || apiNode.id.slice(0, 8),
-              content: apiNode.properties?.content,
-              metadata: apiNode.properties,
-            },
-          }));
+          const allNodes: KeimenonNode[] = nodesResult.nodes.map(mapApiNodeToKeimenon);
 
           // Performance: auto-filter to structural nodes when data volume is large
           // This prevents the D3 simulation from choking on 100K+ Lexeme/Phrase nodes
@@ -282,19 +297,10 @@ export const useKeimenonStore = create<KeimenonState>()(
 
           // Transform API edges, filtering out edges that reference hidden nodes
           const keimenonEdges: KeimenonEdge[] = edgesResult.edges
-            .filter((apiEdge: APIGraphEdge) => {
-              const fromId = typeof apiEdge.from === 'string' ? apiEdge.from : apiEdge.from.id;
-              const toId = typeof apiEdge.to === 'string' ? apiEdge.to : apiEdge.to.id;
-              return visibleNodeIds.has(fromId) && visibleNodeIds.has(toId);
-            })
-            .map((apiEdge: APIGraphEdge) => ({
-              id: apiEdge.id,
-              source: typeof apiEdge.from === 'string' ? apiEdge.from : apiEdge.from.id,
-              target: typeof apiEdge.to === 'string' ? apiEdge.to : apiEdge.to.id,
-              type: mapEdgeKindToType(apiEdge.kind),
-              kind: apiEdge.kind,
-              data: apiEdge.properties,
-            }));
+            .map(mapApiEdgeToKeimenon)
+            .filter(
+              (edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
+            );
 
           set({
             nodes: keimenonNodes,
@@ -311,14 +317,52 @@ export const useKeimenonStore = create<KeimenonState>()(
         }
       },
 
+      hydrateGraphSubset: (apiNodes, apiEdges = []) =>
+        set((state) => {
+          const mergedNodesById = new Map(state.nodes.map((node) => [node.id, node]));
+          for (const apiNode of apiNodes) {
+            const mapped = mapApiNodeToKeimenon(apiNode);
+            const existing = mergedNodesById.get(mapped.id);
+            if (existing) {
+              mergedNodesById.set(mapped.id, {
+                ...existing,
+                ...mapped,
+                position: existing.position,
+              });
+            } else {
+              mergedNodesById.set(mapped.id, mapped);
+            }
+          }
+
+          const mergedNodes = Array.from(mergedNodesById.values());
+          const visibleNodeIds = new Set(mergedNodes.map((node) => node.id));
+
+          const mergedEdgesById = new Map(state.edges.map((edge) => [edge.id, edge]));
+          for (const apiEdge of apiEdges) {
+            const mapped = mapApiEdgeToKeimenon(apiEdge);
+            if (visibleNodeIds.has(mapped.source) && visibleNodeIds.has(mapped.target)) {
+              mergedEdgesById.set(mapped.id, mapped);
+            }
+          }
+
+          return {
+            nodes: mergedNodes,
+            edges: Array.from(mergedEdgesById.values()),
+          };
+        }),
+
       addNode: (node) =>
         set((state) => ({
-          nodes: [...state.nodes, node],
+          nodes: state.nodes.some((existing) => existing.id === node.id)
+            ? state.nodes.map((existing) => (existing.id === node.id ? { ...existing, ...node } : existing))
+            : [...state.nodes, node],
         })),
 
       addEdge: (edge) =>
         set((state) => ({
-          edges: [...state.edges, edge],
+          edges: state.edges.some((existing) => existing.id === edge.id)
+            ? state.edges.map((existing) => (existing.id === edge.id ? { ...existing, ...edge } : existing))
+            : [...state.edges, edge],
         })),
 
       updateNode: (id, updates) =>
