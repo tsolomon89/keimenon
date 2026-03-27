@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BoardView } from './BoardView';
 import { BoardNode, AnyNode } from '@keimenon/types';
 import { organizationService } from '@/services/organization-service';
@@ -8,6 +8,8 @@ import { api } from '@/lib/api-client';
 import { Loader2, Plus } from 'lucide-react';
 import { Keimenon2D } from '../keimenon/Keimenon2D';
 import type { GraphEdge, GraphNode } from '@keimenon/graph';
+import type { NdProjectionConfig, RenderLens } from '@/lib/nd-projection';
+import { useElementSize } from '@/hooks/useElementSize';
 
 interface BoardGraphEdge {
   id?: string;
@@ -18,7 +20,14 @@ interface BoardGraphEdge {
   target?: string;
 }
 
-export function BoardViewContainer() {
+interface BoardViewContainerProps {
+  renderLens?: RenderLens;
+  ndConfig?: NdProjectionConfig;
+}
+
+export function BoardViewContainer({ renderLens = '2d', ndConfig }: BoardViewContainerProps) {
+  const galaxyRef = useRef<HTMLDivElement>(null);
+  const galaxySize = useElementSize(galaxyRef);
   const [boards, setBoards] = useState<BoardNode[]>([]);
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [boardNodes, setBoardNodes] = useState<AnyNode[]>([]);
@@ -238,13 +247,14 @@ export function BoardViewContainer() {
           viewMode === 'kanban' ? (
             <BoardView board={activeBoard} nodes={boardNodes} onMoveNode={handleMoveNode} />
           ) : (
-            <div className="h-full w-full">
+            <div ref={galaxyRef} className="h-full w-full">
               <Keimenon2D
                 nodes={galaxyNodes}
                 edges={boardEdges}
-                width={1200}
-                height={800}
-                onNodeClick={(node: any) => console.log('Clicked', node)}
+                width={galaxySize.width || 1200}
+                height={galaxySize.height || 800}
+                renderLens={renderLens}
+                ndConfig={ndConfig}
               />
             </div>
           )

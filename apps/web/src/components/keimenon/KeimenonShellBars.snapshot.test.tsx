@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { KeimenonHeader } from './KeimenonHeader';
 import { KeimenonToolbar } from './KeimenonToolbar';
 import { KeimenonFooter } from './KeimenonFooter';
@@ -146,10 +146,105 @@ describe('Keimenon shell bars snapshots', () => {
         processingAvailable={true}
         autoSwitchToProcessingEnabled={true}
         onAutoSwitchToProcessingChange={vi.fn()}
+        focusModeEnabled={false}
+        onFocusModeToggle={vi.fn()}
+        includeConnectorNodes={false}
+        onConnectorVisibilityToggle={vi.fn()}
+        pinnedNodeCount={0}
+        onClearPinnedNodes={vi.fn()}
+        renderLens="2d"
+        onRenderLensChange={vi.fn()}
+        ndConfig={{ dims: 8, axes: [0, 1, 2], sliceDim: 3, sliceCenter: 0, sliceWidth: 0.35 }}
+        onNdConfigChange={vi.fn()}
       />
     );
 
     expect(container.firstChild).toMatchSnapshot();
+  });
+
+  it('hides dashboard mode toggle for client accounts', () => {
+    render(
+      <KeimenonToolbar
+        onUploadClick={vi.fn()}
+        onLeftSidebarToggle={vi.fn()}
+        onRightSidebarToggle={vi.fn()}
+        onFooterToggle={vi.fn()}
+        leftSidebarVisible={true}
+        rightSidebarVisible={true}
+        footerVisible={false}
+        onZoomIn={vi.fn()}
+        onZoomOut={vi.fn()}
+        onCenterView={vi.fn()}
+        keimenonSurface="keimenon"
+        onKeimenonSurfaceChange={vi.fn()}
+        dashboardView="analytics"
+        onDashboardViewChange={vi.fn()}
+        processingAvailable={true}
+        autoSwitchToProcessingEnabled={true}
+        onAutoSwitchToProcessingChange={vi.fn()}
+        focusModeEnabled={false}
+        onFocusModeToggle={vi.fn()}
+        includeConnectorNodes={false}
+        onConnectorVisibilityToggle={vi.fn()}
+        pinnedNodeCount={0}
+        onClearPinnedNodes={vi.fn()}
+        renderLens="2d"
+        onRenderLensChange={vi.fn()}
+        ndConfig={{ dims: 8, axes: [0, 1, 2], sliceDim: 3, sliceCenter: 0, sliceWidth: 0.35 }}
+        onNdConfigChange={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByTitle('Dashboard')).toBeNull();
+  });
+
+  it('shows dashboard mode toggle for admin accounts', () => {
+    mockUseAuth.mockReturnValue({
+      user: {
+        accountId: 'acc_admin',
+        accountType: 'admin',
+        accountClass: 'business',
+        permissionLevel: 'admin',
+        email: 'admin@test.dev',
+        userId: 'admin_1',
+      },
+      logout: vi.fn(),
+      switchAccount: vi.fn(),
+    });
+
+    render(
+      <KeimenonToolbar
+        onUploadClick={vi.fn()}
+        onLeftSidebarToggle={vi.fn()}
+        onRightSidebarToggle={vi.fn()}
+        onFooterToggle={vi.fn()}
+        leftSidebarVisible={true}
+        rightSidebarVisible={true}
+        footerVisible={false}
+        onZoomIn={vi.fn()}
+        onZoomOut={vi.fn()}
+        onCenterView={vi.fn()}
+        keimenonSurface="keimenon"
+        onKeimenonSurfaceChange={vi.fn()}
+        dashboardView="analytics"
+        onDashboardViewChange={vi.fn()}
+        processingAvailable={true}
+        autoSwitchToProcessingEnabled={true}
+        onAutoSwitchToProcessingChange={vi.fn()}
+        focusModeEnabled={false}
+        onFocusModeToggle={vi.fn()}
+        includeConnectorNodes={false}
+        onConnectorVisibilityToggle={vi.fn()}
+        pinnedNodeCount={0}
+        onClearPinnedNodes={vi.fn()}
+        renderLens="2d"
+        onRenderLensChange={vi.fn()}
+        ndConfig={{ dims: 8, axes: [0, 1, 2], sliceDim: 3, sliceCenter: 0, sliceWidth: 0.35 }}
+        onNdConfigChange={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByTitle('Dashboard')).not.toBeNull();
   });
 
   it('matches console bar snapshot (collapsed and expanded)', () => {

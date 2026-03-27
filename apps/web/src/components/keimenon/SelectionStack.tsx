@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, X, Link, Eye, EyeOff, Trash2, Pin, PinOff } from 'lucide-react';
 import { KeimenonNode } from '@/store/keimenonStore';
+import { getNodeLabel, type LabelableNode } from '@/lib/node-labels';
 
 interface SelectionStackProps {
   selectedNodes: KeimenonNode[];
@@ -72,6 +73,17 @@ export function SelectionStack({
     }
   };
 
+  const resolveNodeLabel = (node: KeimenonNode) =>
+    getNodeLabel(
+      {
+        id: node.id,
+        kind: node.kind || node.type,
+        label: node.data?.label,
+        ...(node.data?.metadata || {}),
+      } as LabelableNode,
+      40
+    );
+
   return (
     <div className="h-full flex flex-col bg-slate-900/50">
       {/* Header */}
@@ -88,7 +100,7 @@ export function SelectionStack({
             Clear All
           </button>
         </div>
-        <p className="text-xs text-slate-500">Selected items • Click to expand details</p>
+        <p className="text-xs text-slate-500">Selected items - click to expand details</p>
       </div>
 
       {/* Cards list */}
@@ -121,7 +133,7 @@ export function SelectionStack({
                       {isPinned && <Pin className="w-3 h-3 text-purple-400" />}
                     </div>
                     <h4 className="text-sm font-medium text-slate-200 truncate">
-                      {node.data.label || node.id.slice(0, 8)}
+                      {resolveNodeLabel(node)}
                     </h4>
                     <p className="text-xs text-slate-500 truncate">{node.id.slice(0, 16)}...</p>
                   </div>
@@ -244,3 +256,4 @@ export function SelectionStack({
     </div>
   );
 }
+

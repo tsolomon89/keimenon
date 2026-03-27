@@ -1,14 +1,18 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { GraphNode, GraphEdge } from '@keimenon/graph';
 import { Keimenon2D } from './Keimenon2D';
 import { Loader2, Grid3x3 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/env.config';
+import type { NdProjectionConfig, RenderLens } from '@/lib/nd-projection';
+import { useElementSize } from '@/hooks/useElementSize';
 
 interface LegacyBoardPreviewProps {
   boardId?: string;
   height?: number;
+  renderLens?: RenderLens;
+  ndConfig?: NdProjectionConfig;
 }
 
 interface ApiNode {
@@ -25,7 +29,14 @@ interface ApiEdge {
   target?: string;
 }
 
-export function LegacyBoardPreview({ boardId = 'default_board', height }: LegacyBoardPreviewProps) {
+export function LegacyBoardPreview({
+  boardId = 'default_board',
+  height,
+  renderLens = '2d',
+  ndConfig,
+}: LegacyBoardPreviewProps) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const viewportSize = useElementSize(viewportRef);
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,7 +123,7 @@ export function LegacyBoardPreview({ boardId = 'default_board', height }: Legacy
         </div>
       </header>
 
-      <div className="relative flex-1">
+      <div ref={viewportRef} className="relative flex-1">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center text-slate-400">
@@ -141,8 +152,10 @@ export function LegacyBoardPreview({ boardId = 'default_board', height }: Legacy
           <Keimenon2D
             nodes={nodes}
             edges={edges}
-            width={typeof window !== 'undefined' ? window.innerWidth - 420 : 900}
-            height={keimenonHeight}
+            width={viewportSize.width || 900}
+            height={viewportSize.height || keimenonHeight}
+            renderLens={renderLens}
+            ndConfig={ndConfig}
             onSelectionChange={setSelectedNodeIds}
           />
         )}

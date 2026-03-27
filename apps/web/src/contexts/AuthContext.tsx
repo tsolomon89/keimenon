@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useRouter } from 'next/navigation';
 import { useKeimenonStore } from '@/store/keimenonStore';
 import { logApiEvent } from '@/lib/error-handler';
+import { clearAccountScopedRuntimeState } from './account-switch-isolation';
 
 interface AccountInfo {
   accountId: string;
@@ -482,37 +483,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Not authenticated');
       }
 
-      // CRITICAL FIX #1: Clear keimenon store BEFORE API call
-      // This prevents cached nodes/edges from Account A appearing in Account B
-      console.log('🧹 Clearing keimenon store before account switch...');
-      useKeimenonStore.getState().reset();
-
-      // CRITICAL FIX #2: Clear window globals that might cache account data
-      if (typeof window !== 'undefined') {
-        // Clear operating context globals
-        delete (window as any).__operatingAccount;
-        delete (window as any).__operatingMode;
-
-        // Clear any other cached window properties
-        delete (window as any).__cachedNodes;
-        delete (window as any).__cachedEdges;
-        delete (window as any).__cachedGroups;
-        delete (window as any).__cachedBoards;
-      }
-
-      // CRITICAL FIX #3: Clear sessionStorage (except sensitive data)
-      // sessionStorage can cache API responses that should be account-specific
-      if (typeof window !== 'undefined' && window.sessionStorage) {
-        const keysToRemove: string[] = [];
-        for (let i = 0; i < sessionStorage.length; i++) {
-          const key = sessionStorage.key(i);
-          if (key && !key.startsWith('__SENSITIVE__')) {
-            keysToRemove.push(key);
-          }
-        }
-        keysToRemove.forEach((key) => sessionStorage.removeItem(key));
-        console.log(`🧹 Cleared ${keysToRemove.length} sessionStorage items`);
-      }
+      // CRITICAL FIX #1/#2/#3: clear all account-scoped local state and caches BEFORE API call.
+      console.log('🧹 Clearing account-scoped runtime state before account switch...');
+      const isolationResult = clearAccountScopedRuntimeState();
+      console.log(`🧹 Cleared ${isolationResult.clearedSessionKeys.length} sessionStorage items`);
 
       // Make API call to switch account
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/switch-account`, {

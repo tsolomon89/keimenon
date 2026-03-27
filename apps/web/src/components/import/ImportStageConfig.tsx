@@ -9,12 +9,14 @@ import { ProcessingModeSection } from './sections/ProcessingModeSection';
 import { GroupsSection } from './sections/GroupsSection';
 import { DuplicateDetectionSection } from './sections/DuplicateDetectionSection';
 import { CodeExtractionSection } from './sections/CodeExtractionSection';
+import { AgentBootstrapSection } from './sections/AgentBootstrapSection';
 
 interface ImportStageConfigProps {
   config: ChatImportConfig;
   onConfigChange: (config: ChatImportConfig) => void;
   platformDetection: PlatformDetection | null;
   analysis: AnalysisResult | null;
+  agentRuntimeEnabled: boolean;
 }
 
 export function ImportStageConfig({
@@ -22,6 +24,7 @@ export function ImportStageConfig({
   onConfigChange,
   platformDetection,
   analysis,
+  agentRuntimeEnabled,
 }: ImportStageConfigProps) {
   return (
     <div className="space-y-6">
@@ -42,6 +45,12 @@ export function ImportStageConfig({
       <ProcessingModeSection config={config} onConfigChange={onConfigChange} />
 
       <GroupsSection config={config} onConfigChange={onConfigChange} />
+
+      <AgentBootstrapSection
+        config={config}
+        onConfigChange={onConfigChange}
+        agentRuntimeEnabled={agentRuntimeEnabled}
+      />
 
       <DuplicateDetectionSection config={config} onConfigChange={onConfigChange} />
 

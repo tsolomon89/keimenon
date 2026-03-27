@@ -670,6 +670,9 @@ export async function importChatFilesAsJob(
     minMessageLength: config.minMessageLength,
     processingMode: config.processingMode,
     branches: config.branches,
+    agent: {
+      bootstrap: config.agent?.bootstrap || 'manual',
+    },
     groups:
       config.processingMode === 'manual' || config.processingMode === 'hybrid' ? config.groups : [],
     extractCode: config.extractCode,
@@ -1894,12 +1897,20 @@ export async function getEdges(params?: {
   kind?: string;
   limit?: number;
   offset?: number;
+  skip?: number;
+  cursor?: string;
+  sort?: 'created_at' | 'updated_at';
+  order?: 'asc' | 'desc';
 }): Promise<{ edges: GraphEdge[]; total: number }> {
   try {
     const queryParams = new URLSearchParams();
     if (params?.kind) queryParams.append('kind', params.kind);
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.offset) queryParams.append('offset', params.offset.toString());
+    if (params?.skip !== undefined) queryParams.append('skip', params.skip.toString());
+    if (params?.cursor) queryParams.append('cursor', params.cursor);
+    if (params?.sort) queryParams.append('sort', params.sort);
+    if (params?.order) queryParams.append('order', params.order);
 
     const url = `${API_BASE_URL}/api/v1/edges${queryParams.toString() ? `?${queryParams}` : ''}`;
     const response = await fetch(url, {
@@ -1913,7 +1924,7 @@ export async function getEdges(params?: {
     const data = await response.json();
     return {
       edges: data.edges || [],
-      total: data.total || data.edges?.length || 0,
+      total: data.total || data.metadata?.total || data.edges?.length || 0,
     };
   } catch (error: any) {
     throw await handleApiError(error);

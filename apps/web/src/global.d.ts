@@ -20,6 +20,14 @@ declare global {
     __operatingMode?: 'native' | 'nested' | 'crm';
 
     /**
+     * Ephemeral client caches cleared on account switch to prevent bleed.
+     */
+    __cachedNodes?: unknown;
+    __cachedEdges?: unknown;
+    __cachedGroups?: unknown;
+    __cachedBoards?: unknown;
+
+    /**
      * Keyboard event reference (used for feature flag detection)
      * @deprecated Use proper event handling instead
      */

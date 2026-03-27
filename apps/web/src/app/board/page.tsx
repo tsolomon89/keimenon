@@ -7,6 +7,7 @@ import { Keimenon2D } from '@/components/keimenon/Keimenon2D';
 import { GraphNode, GraphEdge } from '@keimenon/graph';
 import { Grid3x3, Zap } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/env.config';
+import { DEFAULT_ND_CONFIG, type RenderLens } from '@/lib/nd-projection';
 
 interface ApiEdge {
   id: string;
@@ -26,6 +27,7 @@ function BoardContent() {
   const [loading, setLoading] = useState(true);
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [keimenonSize, setKeimenonSize] = useState({ width: 1200, height: 800 });
+  const [renderLens, setRenderLens] = useState<RenderLens>('2d');
 
   useEffect(() => {
     fetchBoardData();
@@ -123,7 +125,41 @@ function BoardContent() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-800 rounded-lg text-sm">
               <span className="text-slate-400">Lens:</span>
-              <span className="font-semibold">2D</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className={`px-2 py-0.5 rounded border text-xs ${
+                    renderLens === '2d'
+                      ? 'bg-slate-700 border-slate-600'
+                      : 'bg-slate-900 border-slate-700'
+                  }`}
+                  onClick={() => setRenderLens('2d')}
+                >
+                  2D
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-0.5 rounded border text-xs ${
+                    renderLens === '3d'
+                      ? 'bg-slate-700 border-slate-600'
+                      : 'bg-slate-900 border-slate-700'
+                  }`}
+                  onClick={() => setRenderLens('3d')}
+                >
+                  3D
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-0.5 rounded border text-xs ${
+                    renderLens === 'nd'
+                      ? 'bg-slate-700 border-slate-600'
+                      : 'bg-slate-900 border-slate-700'
+                  }`}
+                  onClick={() => setRenderLens('nd')}
+                >
+                  ND
+                </button>
+              </div>
             </div>
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-800 rounded-lg text-sm">
               <Zap className="w-4 h-4 text-purple-500" />
@@ -212,6 +248,8 @@ function BoardContent() {
             edges={edges}
             width={keimenonSize.width}
             height={keimenonSize.height}
+            renderLens={renderLens}
+            ndConfig={DEFAULT_ND_CONFIG}
             onNodeClick={handleNodeClick}
             onNodeDoubleClick={handleNodeDoubleClick}
             onSelectionChange={handleSelectionChange}
