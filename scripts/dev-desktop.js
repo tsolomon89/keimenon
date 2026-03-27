@@ -1,7 +1,8 @@
 const { spawn } = require('child_process');
 const net = require('net');
 
-const WEB_PORT = 3000;
+const WEB_PORT = Number(process.env.WEB_PORT || 3000);
+const API_PORT = Number(process.env.API_PORT || 4001);
 const CHECK_INTERVAL_MS = 1000;
 
 function log(prefix, data, isError = false) {
@@ -70,26 +71,35 @@ function runCommand(command, args, prefix, cwd = process.cwd(), extraEnv = {}) {
 
 async function start() {
   console.log('Starting Keimenon Hybrid Dev Mode...');
+  console.log(`Using ports: web=${WEB_PORT}, api=${API_PORT}`);
 
   // 1. Start Web Server
   console.log('Starting Next.js server...');
   const webProcess = runCommand(
-    'npm',
-    ['run', 'dev', '--workspace=@keimenon/web', '--', '-p', '3000', '-H', '127.0.0.1'],
+    'node',
+    [
+      'scripts/run-with-node22.js',
+      `npm run dev --workspace=@keimenon/web -- -p ${WEB_PORT} -H 127.0.0.1`,
+    ],
     'WEB',
     process.cwd(),
     { KEIMENON_ELECTRON_DEVTOOL: '1' }
   );
 
-  // 2. Wait for Port 3000
+  // 2. Wait for web port
   await waitForPort(WEB_PORT);
 
   // 3. Start Electron
   console.log('Starting Electron...');
   const electronProcess = runCommand(
-    'npm',
-    ['run', 'electron:dev', '--workspace=keimenon-desktop'],
-    'ELECTRON'
+    'node',
+    ['scripts/run-with-node22.js', 'npm run electron:dev --workspace=keimenon-desktop'],
+    'ELECTRON',
+    process.cwd(),
+    {
+      WEB_PORT: String(WEB_PORT),
+      API_PORT: String(API_PORT),
+    }
   );
 
   // Handle termination

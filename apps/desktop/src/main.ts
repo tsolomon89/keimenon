@@ -39,9 +39,11 @@ if (require('electron-squirrel-startup')) {
 }
 
 let mainWindow: BrowserWindow | null = null;
-let currentApiPort: number = 4001;
+const DEFAULT_WEB_PORT = Number(process.env.WEB_PORT || 3000);
+const DEFAULT_API_PORT = Number(process.env.API_PORT || 4001);
+let currentApiPort: number = DEFAULT_API_PORT;
 
-function createWindow(apiPort: number = 4001) {
+function createWindow(apiPort: number = DEFAULT_API_PORT) {
   currentApiPort = apiPort;
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -60,7 +62,7 @@ function createWindow(apiPort: number = 4001) {
   const isDev = !app.isPackaged && process.env.FORCE_BUNDLED !== 'true';
 
   if (isDev) {
-    mainWindow.loadURL(`http://127.0.0.1:3000?apiPort=${apiPort}`);
+    mainWindow.loadURL(`http://127.0.0.1:${DEFAULT_WEB_PORT}?apiPort=${apiPort}`);
     mainWindow.webContents.openDevTools();
   } else {
     // Determine the path to web-dist
@@ -158,8 +160,8 @@ async function startApp() {
   });
 
   const skipEmbeddedApi = process.env.KEIMENON_SKIP_EMBEDDED_API === 'true';
-  const configuredApiPort = Number(process.env.API_PORT || 4001);
-  const port = skipEmbeddedApi ? configuredApiPort : await runApiServer();
+  const configuredApiPort = DEFAULT_API_PORT;
+  const port = skipEmbeddedApi ? configuredApiPort : await runApiServer(configuredApiPort);
   createWindow(port || configuredApiPort);
 }
 startApp();
@@ -175,7 +177,7 @@ app.on('activate', () => {
     // If re-activating, we might not have the port handy easily unless stored global.
     // For simplicity, we assume the server is already running.
     // Ideally runApiServer is idempotent or we store the port.
-    createWindow(4001); // Fallback or store in a global var
+    createWindow(currentApiPort);
   }
 });
 
@@ -413,7 +415,7 @@ async function getAvailablePort(startPort: number): Promise<number> {
   });
 }
 
-async function runApiServer() {
+async function runApiServer(startPort: number) {
   try {
     const { start: startApiServer } = await import('@keimenon/api');
     const userDataPath = app.getPath('userData');
@@ -425,7 +427,7 @@ async function runApiServer() {
     if (!fs.existsSync(storagePath)) fs.mkdirSync(storagePath, { recursive: true });
 
     // Dynamic port selection
-    const apiPort = await getAvailablePort(4001);
+    const apiPort = await getAvailablePort(startPort);
 
     console.log('[Main] Starting Embedded API Server...', { dbPath, apiPort });
 
