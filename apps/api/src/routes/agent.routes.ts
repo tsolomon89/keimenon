@@ -16,7 +16,11 @@ import { Router, Request, Response, NextFunction } from 'express';
 import type { AuthServiceV2 } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { getAgentService, type CreateTaskRequest } from '../services/agent-service';
-import { featureManifestForAccountClass } from '@keimenon/types';
+import {
+  featureManifestForAccountClass,
+  type AccountClass,
+  type FeatureManifest,
+} from '@keimenon/types';
 import type { ToolStatus } from '@keimenon/agent-core';
 
 export function createAgentRoutes(authService?: AuthServiceV2): Router {
@@ -97,10 +101,7 @@ export function createAgentRoutes(authService?: AuthServiceV2): Router {
         return;
       }
 
-      const accountClass = (req.user?.accountClass || 'free') as
-        | 'free'
-        | 'professional'
-        | 'business';
+      const accountClass = getAccountClass(req);
       const features = featureManifestForAccountClass(accountClass);
 
       const { type, input, config } = req.body;
@@ -111,29 +112,9 @@ export function createAgentRoutes(authService?: AuthServiceV2): Router {
 
       const taskType = String(type);
 
-      if (!features.agent_runtime) {
-        res.status(403).json({
-          error: 'Agent runtime is not enabled for this account tier',
-          requiredFeature: 'agent_runtime',
-        });
-        return;
-      }
-
-      if (taskType === 'VERIFY_SOURCE_CHAIN' || taskType === 'VERIFY_TOPIC') {
-        if (!features.objective_layer || !features.external_research) {
-          res.status(403).json({
-            error: `${taskType} requires objective layer + external research entitlements`,
-            requiredFeatures: ['objective_layer', 'external_research'],
-          });
-          return;
-        }
-      }
-
-      if (taskType === 'VERIFY_TOPIC' && !features.proof_verification) {
-        res.status(403).json({
-          error: 'VERIFY_TOPIC requires proof verification entitlement',
-          requiredFeatures: ['proof_verification'],
-        });
+      const taskEntitlementError = getTaskEntitlementError(taskType, features);
+      if (taskEntitlementError) {
+        res.status(403).json(taskEntitlementError);
         return;
       }
 
@@ -196,8 +177,22 @@ export function createAgentRoutes(authService?: AuthServiceV2): Router {
         return;
       }
 
+      const accountClass = getAccountClass(req);
+      const features = featureManifestForAccountClass(accountClass);
       const { id } = req.params;
       const agentService = getAgentService();
+      const task = await agentService.getTask(id);
+      if (!task || task.account_id !== accountId) {
+        res.status(404).json({ error: 'Task not found' });
+        return;
+      }
+
+      const taskEntitlementError = getTaskEntitlementError(task.type, features);
+      if (taskEntitlementError) {
+        res.status(403).json(taskEntitlementError);
+        return;
+      }
+
       const result = await agentService.retryTask(id, accountId);
 
       res.status(202).json({
@@ -312,6 +307,54 @@ function getAccountId(req: Request): string | null {
     (req.query.account_id as string) ||
     null
   );
+}
+
+function getAccountClass(req: Request): AccountClass {
+  const rawAccountClass = req.user?.accountClass;
+  if (
+    rawAccountClass === 'free' ||
+    rawAccountClass === 'professional' ||
+    rawAccountClass === 'business'
+  ) {
+    return rawAccountClass;
+  }
+  return 'free';
+}
+
+function getTaskEntitlementError(
+  taskType: string,
+  features: FeatureManifest
+):
+  | {
+      error: string;
+      requiredFeature?: string;
+      requiredFeatures?: string[];
+    }
+  | null {
+  if (!features.agent_runtime) {
+    return {
+      error: 'Agent runtime is not enabled for this account tier',
+      requiredFeature: 'agent_runtime',
+    };
+  }
+
+  if (taskType === 'VERIFY_SOURCE_CHAIN' || taskType === 'VERIFY_TOPIC') {
+    if (!features.objective_layer || !features.external_research) {
+      return {
+        error: `${taskType} requires objective layer + external research entitlements`,
+        requiredFeatures: ['objective_layer', 'external_research'],
+      };
+    }
+  }
+
+  if (taskType === 'VERIFY_TOPIC' && !features.proof_verification) {
+    return {
+      error: 'VERIFY_TOPIC requires proof verification entitlement',
+      requiredFeatures: ['proof_verification'],
+    };
+  }
+
+  return null;
 }
 
 function getTaskTypeDescription(type: string): string {

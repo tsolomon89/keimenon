@@ -1991,8 +1991,8 @@ export class SQLiteClient {
   /**
    * Find all duplicate groups in an account
    *
-   * Returns content hashes that have multiple nodes (duplicates).
-   * Used by the merge endpoint to identify which content hashes need merging.
+   * Returns content hashes that have multiple unresolved canonical candidates.
+   * Groups already linked through original_node_id are excluded so merge is idempotent.
    *
    * @param accountId - Account ID
    * @returns Array of {contentHash, count} for hashes with count > 1
@@ -2012,7 +2012,10 @@ export class SQLiteClient {
         content_hash as contentHash,
         COUNT(*) as count
       FROM nodes
-      WHERE account_id = ? AND content_hash IS NOT NULL
+      WHERE account_id = ?
+        AND content_hash IS NOT NULL
+        AND COALESCE(is_duplicate, 0) = 0
+        AND original_node_id IS NULL
       GROUP BY content_hash
       HAVING count > 1
       ORDER BY count DESC
@@ -2032,7 +2035,7 @@ export class SQLiteClient {
    * 1. Query all nodes with this content hash
    * 2. Pick canonical (earliest created_at)
    * 3. Update all edges to point to canonical
-   * 4. Delete duplicate nodes
+   * 4. Mark duplicates with original_node_id (non-destructive)
    * 5. Return statistics
    *
    * All operations performed in a transaction for consistency.
@@ -2071,12 +2074,15 @@ export class SQLiteClient {
       const contentHash = arg1;
       const accountId = arg2;
 
-      // Find all nodes with this content hash in this account
+      // Find unresolved canonical candidates in this account.
       const nodes = this.db
         .prepare(
           `
         SELECT id, created_at FROM nodes
-        WHERE content_hash = ? AND account_id = ?
+        WHERE content_hash = ?
+          AND account_id = ?
+          AND COALESCE(is_duplicate, 0) = 0
+          AND original_node_id IS NULL
         ORDER BY created_at ASC, id ASC
       `
         )
@@ -2096,6 +2102,7 @@ export class SQLiteClient {
       // Perform merge in transaction
       const result = db.transaction(() => {
         let edgesRelinked = 0;
+        const now = Date.now();
 
         // Update edges where duplicate is the source
         const updateFrom = db.prepare(`UPDATE edges SET from_id = ? WHERE from_id = ?`);
@@ -2108,10 +2115,17 @@ export class SQLiteClient {
           edgesRelinked += fromChanges + toChanges;
         }
 
-        // Delete duplicate nodes
-        const deletePlaceholders = duplicateIds.map(() => '?').join(',');
-        const deleteStmt = db.prepare(`DELETE FROM nodes WHERE id IN (${deletePlaceholders})`);
-        deleteStmt.run(...duplicateIds);
+        // Mark canonical/duplicates instead of deleting raw nodes.
+        db.prepare(
+          `UPDATE nodes SET is_duplicate = 0, original_node_id = NULL, updated_at = ? WHERE id = ?`
+        ).run(now, canonicalId);
+
+        const duplicatePlaceholders = duplicateIds.map(() => '?').join(',');
+        db.prepare(
+          `UPDATE nodes
+           SET is_duplicate = 1, original_node_id = ?, updated_at = ?
+           WHERE id IN (${duplicatePlaceholders})`
+        ).run(canonicalId, now, ...duplicateIds);
 
         // Log merge operation if deduplication_log table exists
         try {
@@ -2139,7 +2153,7 @@ export class SQLiteClient {
             edgesRelinked,
             spaceSaved,
             'system', // Bug #31: Consider passing userId as parameter for better audit trail
-            Date.now()
+            now
           );
         } catch (error: any) {
           // Bug fix #30: Log warning instead of silent failure
@@ -2204,6 +2218,7 @@ export class SQLiteClient {
       // Perform merge in transaction
       const transaction = db.transaction((canonicalId: string, dupIds: string[]) => {
         const placeholders = dupIds.map(() => '?').join(',');
+        const now = Date.now();
 
         // Update edges where duplicate is the source
         const updateFromStmt = db.prepare(
@@ -2217,9 +2232,15 @@ export class SQLiteClient {
         );
         updateToStmt.run(canonicalId, ...dupIds);
 
-        // Delete duplicate nodes
-        const deleteStmt = db.prepare(`DELETE FROM nodes WHERE id IN (${placeholders})`);
-        deleteStmt.run(...dupIds);
+        // Preserve raw duplicate nodes and link them to canonical.
+        db.prepare(
+          `UPDATE nodes SET is_duplicate = 0, original_node_id = NULL, updated_at = ? WHERE id = ?`
+        ).run(now, canonicalId);
+        db.prepare(
+          `UPDATE nodes
+           SET is_duplicate = 1, original_node_id = ?, updated_at = ?
+           WHERE id IN (${placeholders})`
+        ).run(canonicalId, now, ...dupIds);
 
         // Log merge operation if deduplication_log table exists
         try {
@@ -2250,7 +2271,7 @@ export class SQLiteClient {
             edgeCount,
             spaceSaved,
             'system', // Bug #31: Consider passing userId as parameter for better audit trail
-            Date.now()
+            now
           );
         } catch (error: any) {
           // Bug fix #30: Log warning instead of silent failure

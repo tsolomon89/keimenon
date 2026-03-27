@@ -2,13 +2,16 @@ const DEFAULT_MAX_EGRESS_CHARS = 8_000;
 const EGRESS_SNIP_MARKER = '\n\n[...SNIP...]\n\n';
 
 export interface VerificationEgressPolicy {
+  /**
+   * Deprecated: full raw egress is disabled by policy and this flag is ignored.
+   */
   allowFullRawEgress?: boolean;
   maxExcerptChars?: number;
 }
 
 export interface VerificationEgressPayload {
   content: string;
-  mode: 'full_raw' | 'excerpt';
+  mode: 'excerpt';
   totalChars: number;
   egressChars: number;
   truncated: boolean;
@@ -29,16 +32,6 @@ export function buildVerificationEgressPayload(
   const source = typeof rawContent === 'string' ? rawContent : '';
   const totalChars = source.length;
   const maxChars = normalizeMaxChars(policy.maxExcerptChars);
-
-  if (policy.allowFullRawEgress) {
-    return {
-      content: source,
-      mode: 'full_raw',
-      totalChars,
-      egressChars: totalChars,
-      truncated: false,
-    };
-  }
 
   if (totalChars <= maxChars) {
     return {

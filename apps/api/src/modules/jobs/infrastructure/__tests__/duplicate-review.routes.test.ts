@@ -186,7 +186,7 @@ describe('Jobs Routes - Duplicate Review API', () => {
     );
   }
 
-  it('tracks duplicate-review stage transitions pending -> in_progress -> completed', async () => {
+  it('requires explicit decisions for all pending candidates before completion', async () => {
     const job = await createImportJobWithReview();
     insertNode('node_primary_a');
     insertNode('node_duplicate_a');
@@ -218,28 +218,33 @@ describe('Jobs Routes - Duplicate Review API', () => {
     expect(pendingStatus.body.status.pending_candidates).toBe(2);
     expect(pendingStatus.body.status.review_required).toBe(true);
 
-    await request(app)
+    const partialApply = await request(app)
       .post(`/api/v1/jobs/${job.id}/duplicate-review/apply`)
       .set('Authorization', 'Bearer valid-token')
       .send({
         decisions: [{ duplicateId: 'cand_a', action: 'keep-both', timestamp: 1700000001000 }],
       })
-      .expect(200);
+      .expect(400);
+    expect(partialApply.body.error).toBe('incomplete_duplicate_review_decisions');
+    expect(partialApply.body.missing_candidate_ids).toContain('cand_b');
 
-    const inProgressStatus = await request(app)
+    const stillPendingStatus = await request(app)
       .get(`/api/v1/jobs/${job.id}/duplicate-review/status`)
       .set('Authorization', 'Bearer valid-token')
       .expect(200);
-    expect(inProgressStatus.body.status.stage).toBe('in_progress');
-    expect(inProgressStatus.body.status.pending_candidates).toBe(1);
-    expect(inProgressStatus.body.status.decided_candidates).toBe(1);
-    expect(inProgressStatus.body.status.review_required).toBe(true);
+    expect(stillPendingStatus.body.status.stage).toBe('pending');
+    expect(stillPendingStatus.body.status.pending_candidates).toBe(2);
+    expect(stillPendingStatus.body.status.decided_candidates).toBe(0);
+    expect(stillPendingStatus.body.status.review_required).toBe(true);
 
     await request(app)
       .post(`/api/v1/jobs/${job.id}/duplicate-review/apply`)
       .set('Authorization', 'Bearer valid-token')
       .send({
-        decisions: [{ duplicateId: 'cand_b', action: 'keep-both', timestamp: 1700000002000 }],
+        decisions: [
+          { duplicateId: 'cand_a', action: 'keep-both', timestamp: 1700000002000 },
+          { duplicateId: 'cand_b', action: 'keep-both', timestamp: 1700000003000 },
+        ],
       })
       .expect(200);
 

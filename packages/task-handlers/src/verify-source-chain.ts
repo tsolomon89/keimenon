@@ -48,7 +48,8 @@ interface ObjectiveClaimNode {
   kind: 'ObjectiveClaim';
   account_id: string;
   claim_text: string;
-  type: 'fact' | 'endpoint' | 'parameter' | 'definition' | 'metric' | 'config';
+  type: ObjectiveClaimType;
+  archetype: ObjectiveArchetype;
   status: 'provisional' | 'verifying' | 'verified' | 'contested' | 'stale';
   confidence: number;
   citations: Array<{
@@ -67,6 +68,15 @@ interface ObjectiveClaimNode {
   };
 }
 
+type ObjectiveClaimType = 'fact' | 'endpoint' | 'parameter' | 'definition' | 'metric' | 'config';
+type ObjectiveArchetype =
+  | 'factual_claim'
+  | 'endpoint_contract'
+  | 'parameter_constraint'
+  | 'definition_anchor'
+  | 'metric_signal'
+  | 'configuration_rule';
+
 type ObjectiveLifecycleStatus = ObjectiveClaimNode['status'];
 
 interface ExistingObjectiveClaimNode extends Record<string, unknown> {
@@ -74,6 +84,8 @@ interface ExistingObjectiveClaimNode extends Record<string, unknown> {
   kind: 'ObjectiveClaim';
   account_id?: string;
   claim_text?: string;
+  type?: ObjectiveClaimType | string;
+  archetype?: ObjectiveArchetype | string;
   status?: ObjectiveLifecycleStatus | 'unverified' | string;
   confidence?: number;
   citations?: Array<{ node_id: string; span?: string }>;
@@ -274,10 +286,10 @@ export class VerifySourceChainHandler implements TaskHandler<
       }
 
       const maxEgressChars = Number(process.env.VERIFICATION_EGRESS_MAX_CHARS || 8000);
-      const allowFullRawEgress =
+      const fullRawOverrideRequested =
         (input.policy as Record<string, unknown>).allow_full_raw_egress === true;
       const egressPayload = buildVerificationEgressPayload(targetContent.content, {
-        allowFullRawEgress,
+        allowFullRawEgress: false,
         maxExcerptChars: Number.isFinite(maxEgressChars) ? maxEgressChars : 8000,
       });
 
@@ -402,6 +414,8 @@ export class VerifySourceChainHandler implements TaskHandler<
         const relatedEvidence = evidenceNodes.filter((e) =>
           result.sources.some((s) => s.url === e.url)
         );
+        const objectiveType = this.inferObjectiveType(result.claim);
+        const objectiveArchetype = this.resolveObjectiveArchetype(objectiveType);
 
         const avgCredibility =
           relatedEvidence.length > 0
@@ -418,7 +432,8 @@ export class VerifySourceChainHandler implements TaskHandler<
           kind: 'ObjectiveClaim',
           account_id: task.account_id,
           claim_text: result.claim,
-          type: 'fact',
+          type: objectiveType,
+          archetype: objectiveArchetype,
           status: objectiveStatus.status,
           confidence: avgCredibility,
           citations: relatedEvidence.map((evidence) => ({
@@ -432,10 +447,12 @@ export class VerifySourceChainHandler implements TaskHandler<
             agent_id: task.agent_id,
             task_id: task.id,
             target_id: input.targetId,
+            objective_archetype: objectiveArchetype,
             objective_lifecycle: {
               state: objectiveStatus.status,
               previous: 'verifying',
               reason: objectiveStatus.reasonCode,
+              archetype: objectiveArchetype,
               updated_at: now,
               task_id: task.id,
               run_id: run.id,
@@ -539,7 +556,8 @@ export class VerifySourceChainHandler implements TaskHandler<
               totalChars: egressPayload.totalChars,
               egressChars: egressPayload.egressChars,
               truncated: egressPayload.truncated,
-              allowFullRawEgress,
+              allowFullRawEgress: false,
+              fullRawOverrideRequested,
             },
             objectiveLifecycle: {
               trackedObjectives: trackedObjectiveClaims.length,
@@ -605,6 +623,81 @@ export class VerifySourceChainHandler implements TaskHandler<
       return { status: 'verified', reasonCode: 'evidence_verified' };
     }
     return { status: 'contested', reasonCode: 'low_confidence' };
+  }
+
+  private inferObjectiveType(claimText: string): ObjectiveClaimType {
+    const normalized = claimText.toLowerCase();
+
+    if (/\b(endpoint|api|route|path|http|https)\b/.test(normalized) || /\/[a-z0-9/_-]+/.test(normalized)) {
+      return 'endpoint';
+    }
+
+    if (/\b(parameter|param|argument|query|payload|option)\b/.test(normalized)) {
+      return 'parameter';
+    }
+
+    if (/\b(metric|latency|throughput|percent|ratio|count|score)\b/.test(normalized)) {
+      return 'metric';
+    }
+
+    if (/\b(config|configuration|setting|flag|env)\b/.test(normalized)) {
+      return 'config';
+    }
+
+    if (/\b(defined as|definition|means|refers to)\b/.test(normalized)) {
+      return 'definition';
+    }
+
+    return 'fact';
+  }
+
+  private normalizeObjectiveType(value: unknown): ObjectiveClaimType {
+    if (
+      value === 'fact' ||
+      value === 'endpoint' ||
+      value === 'parameter' ||
+      value === 'definition' ||
+      value === 'metric' ||
+      value === 'config'
+    ) {
+      return value;
+    }
+    return 'fact';
+  }
+
+  private resolveObjectiveArchetype(type: ObjectiveClaimType): ObjectiveArchetype {
+    switch (type) {
+      case 'endpoint':
+        return 'endpoint_contract';
+      case 'parameter':
+        return 'parameter_constraint';
+      case 'definition':
+        return 'definition_anchor';
+      case 'metric':
+        return 'metric_signal';
+      case 'config':
+        return 'configuration_rule';
+      case 'fact':
+      default:
+        return 'factual_claim';
+    }
+  }
+
+  private normalizeObjectiveArchetype(
+    value: unknown,
+    fallbackType: ObjectiveClaimType
+  ): ObjectiveArchetype {
+    if (
+      value === 'factual_claim' ||
+      value === 'endpoint_contract' ||
+      value === 'parameter_constraint' ||
+      value === 'definition_anchor' ||
+      value === 'metric_signal' ||
+      value === 'configuration_rule'
+    ) {
+      return value;
+    }
+    return this.resolveObjectiveArchetype(fallbackType);
   }
 
   private normalizeObjectiveStatus(value: unknown): ObjectiveLifecycleStatus {
@@ -698,6 +791,8 @@ export class VerifySourceChainHandler implements TaskHandler<
       const existingLifecycle = this.toRecord(metadata.objective_lifecycle);
       const existingVerification = this.toRecord(metadata.verification);
       const previousStatus = this.normalizeObjectiveStatus(claim.status);
+      const claimType = this.normalizeObjectiveType(claim.type);
+      const claimArchetype = this.normalizeObjectiveArchetype(claim.archetype, claimType);
       const mergedCitations = this.mergeCitations(claim.citations, input.evidenceNodeIds);
       const nextConfidence =
         typeof input.confidence === 'number'
@@ -709,6 +804,8 @@ export class VerifySourceChainHandler implements TaskHandler<
       const updatedNode: ExistingObjectiveClaimNode = {
         ...claim,
         kind: 'ObjectiveClaim',
+        type: claimType,
+        archetype: claimArchetype,
         status: input.status,
         confidence: nextConfidence,
         citations: mergedCitations,
@@ -720,6 +817,7 @@ export class VerifySourceChainHandler implements TaskHandler<
             state: input.status,
             previous: previousStatus,
             reason: input.reasonCode,
+            archetype: claimArchetype,
             updated_at: now,
             task_id: input.taskId,
             run_id: input.runId,
@@ -730,6 +828,7 @@ export class VerifySourceChainHandler implements TaskHandler<
             updated_at: now,
             task_id: input.taskId,
             run_id: input.runId,
+            archetype: claimArchetype,
             confidence: nextConfidence,
             evidence_count: input.evidenceNodeIds?.length ?? 0,
           },
@@ -738,6 +837,8 @@ export class VerifySourceChainHandler implements TaskHandler<
 
       await graph.createNode(updatedNode as any);
       claim.status = input.status;
+      claim.type = claimType;
+      claim.archetype = claimArchetype;
       claim.confidence = nextConfidence;
       claim.citations = mergedCitations;
       claim.updated_at = now;
@@ -752,7 +853,7 @@ export class VerifySourceChainHandler implements TaskHandler<
     const claimLines = objectiveClaimNodes.map((objectiveClaim, index) => {
       const pct = Math.round(objectiveClaim.confidence * 100);
       const status = objectiveClaim.status;
-      return `${index + 1}. ${objectiveClaim.claim_text} (confidence: ${pct}%, status: ${status})`;
+      return `${index + 1}. ${objectiveClaim.claim_text} (archetype: ${objectiveClaim.archetype}, confidence: ${pct}%, status: ${status})`;
     });
 
     const evidenceLines = evidenceNodes.map((evidence, index) => {

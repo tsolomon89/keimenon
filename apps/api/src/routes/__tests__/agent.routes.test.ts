@@ -119,6 +119,12 @@ describe('Agent Routes', () => {
 
   it('POST /tasks/:id/retry enqueues retry and returns 202', async () => {
     const app = buildApp();
+    mockAgentService.getTask.mockResolvedValue({
+      id: 'task_1',
+      account_id: 'acc_1',
+      type: 'DUPLICATE_SUGGEST',
+      status: 'failed',
+    });
     mockAgentService.retryTask.mockResolvedValue({
       task: {
         id: 'task_2',
@@ -131,6 +137,31 @@ describe('Agent Routes', () => {
     await request(app).post('/api/v1/agent/tasks/task_1/retry').send({}).expect(202);
 
     expect(mockAgentService.retryTask).toHaveBeenCalledWith('task_1', 'acc_1');
+  });
+
+  it('POST /tasks/:id/retry returns 403 when runtime entitlement is missing', async () => {
+    const app = express();
+    app.use(express.json());
+    app.use((req: any, _res, next) => {
+      req.user = {
+        accountId: 'acc_1',
+        accountClass: 'free',
+      };
+      next();
+    });
+    app.use('/api/v1/agent', createAgentRoutes());
+
+    mockAgentService.getTask.mockResolvedValue({
+      id: 'task_1',
+      account_id: 'acc_1',
+      type: 'DUPLICATE_SUGGEST',
+      status: 'failed',
+    });
+
+    const response = await request(app).post('/api/v1/agent/tasks/task_1/retry').send({}).expect(403);
+
+    expect(response.body.requiredFeature).toBe('agent_runtime');
+    expect(mockAgentService.retryTask).not.toHaveBeenCalled();
   });
 
   it('GET /tasks returns task history for current account', async () => {
