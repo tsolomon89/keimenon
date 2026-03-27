@@ -1,10 +1,9 @@
-# Vision Traceability Matrix (Derived from `AGENTS.md`)
+# Kiemenon Vision Traceability Matrix (AGENTS-canonical)
 
 Status: Active
 Last updated: 2026-03-27
 
-This matrix is the canonical implementation traceability view derived from root `AGENTS.md`.
-On conflict with any other derived artifact, this file must stay aligned to `AGENTS.md`.
+This matrix maps each requirement from `kiemenon-requirement-ledger.md` to current implementation reality.
 
 Status summary: `implemented=39`, `partial=0`, `missing=0`, `conflict=0`.
 
@@ -48,4 +47,8 @@ Status summary: `implemented=39`, `partial=0`, `missing=0`, `conflict=0`.
 | KV-DATA-004    | Raw-content egress is explicit, bounded, auditable, and safe-by-default.                                                    | implemented    | packages/task-handlers/src/verification-egress.ts, packages/task-handlers/src/verify-source-chain.ts, packages/task-handlers/src/**tests**/verification-egress.test.ts                                                                                                                                                                                                                                            | Low    | none     | Keep excerpt-only egress tests and audit metadata validation.                                      |
 | KV-OPS-001     | Account switching clears cached state and prevents cross-account bleed.                                                     | implemented    | apps/web/src/contexts/AuthContext.tsx, apps/web/src/contexts/account-switch-isolation.ts, apps/web/src/contexts/account-switch-isolation.test.ts, apps/web/src/store/keimenonStore.ts                                                                                                                                                                                                                             | Low    | none     | Keep deterministic account-switch isolation tests for store and runtime cache cleanup.             |
 | KV-OPS-002     | Scoped data reset: own-canvas clear and admin all-client clear.                                                             | implemented    | apps/api/src/routes/data-management.ts, apps/web/src/components/settings/DataManagementCard.tsx                                                                                                                                                                                                                                                                                                                   | Low    | none     | Keep auth/role coverage for destructive settings operations.                                       |
-| KV-OPS-003     | Derived docs must stay AGENTS-canonical with no contradictory status/evidence claims.                                       | implemented    | AGENTS.md, docs/specs/kiemenon-requirement-ledger.md, docs/specs/kiemenon-vision-traceability-matrix.md, docs/specs/vision-traceability-matrix.md, agent_context/vision_gap_analysis.md                                                                                                                                                                                                                           | Low    | none     | Keep sync checks enforcing precedence and matrix-status parity.                                    |
+| KV-OPS-003     | Derived docs must stay AGENTS-canonical with no contradictory status/evidence claims.                                       | implemented    | AGENTS.md, docs/specs/kiemenon-requirement-ledger.md, docs/specs/kiemenon-vision-traceability-matrix.md, agent_context/vision_gap_analysis.md                                                                                                                                                                                                                                                                     | Low    | none     | Keep sync checks enforcing precedence and matrix-status parity.                                    |
+
+## Immediate Vision-Drift Hotspots
+
+- None currently open in this matrix revision.

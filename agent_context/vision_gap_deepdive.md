@@ -1,87 +1,24 @@
-# Keimenon Vision Gap Deep Dive (Final 2% Rebaseline)
+# Keimenon Vision Gap Deep Dive (AGENTS-canonical)
 
-Date: March 13, 2026
-Branch: `release/final-vision-bigbang`
-Scope: codebase and ops artifacts on current branch head against canonical `AGENTS.md`.
+Last updated: 2026-03-27.
 
-## Rebaseline Summary
+This deep dive reflects the AGENTS-canonical closure pass for the current repository state.
 
-Functional backlog is closed on this branch. Remaining work is operational signoff and hygiene only.
+## Source of truth for findings
 
-Only the blockers below remain open:
+- `docs/specs/kiemenon-vision-traceability-matrix.md`
+- `docs/specs/kiemenon-requirement-ledger.md`
 
-1. Branch-protection verification requires valid local GitHub auth (`GH_TOKEN` or `GITHUB_TOKEN`).
-2. Gate-E nightly streak is time-gated and currently below strict target (`14`).
-3. Local legacy artifact residue exists under `packages/agents` and must be cleaned and guardrailed.
+## Summary
 
-No additional product/runtime feature implementation is currently required for AGENTS conformance.
+- Requirement-level traceability is fully closed in this pass (`implemented=39`, `partial=0`).
+- Stage-2 closures now include import bootstrap controls, duplicate-review completion gating, objective archetype typing, raw immutability assertions, and deterministic account-switch isolation tests.
 
-## Open Blockers
+## Drift hotspots
 
-### 1) Branch Protection Verify (Hard Blocker)
+1. No open conflict-status hotspots in the current matrix revision.
 
-Current state:
+## Recommended next sequence
 
-- `ops:branch-protection:verify` fails without GitHub token in local environment.
-
-Required closeout:
-
-- Export valid token locally.
-- Run `npm run ops:branch-protection:verify`.
-- Persist evidence in:
-  - `test-results/ops/branch-protection-verify-latest.txt`
-  - `test-results/ops/branch-protection-verify-latest.json`
-
-Exit criteria:
-
-- Verification command passes on this branch and evidence files are updated.
-
-### 2) Nightly Streak (Hard Blocker, Time-Gated)
-
-Current state:
-
-- `test-results/ops/gate-e-nightly-streak-latest.json` reports streak below target.
-
-Required closeout:
-
-- Keep strict target `14` unchanged.
-- Use scheduled `gate-e-hardening.yml` runs as source of truth.
-- Validate each nightly update with:
-  - `npm run ops:gate-e:nightly:validate -- --require-streak`
-- Maintain tracker:
-  - `test-results/ops/gate-e-nightly-tracker-latest.md`
-
-Exit criteria:
-
-- Streak artifact shows `streak >= 14` and `meetsTarget: true`.
-
-### 3) Legacy `packages/agents` Artifact Hygiene
-
-Current state:
-
-- Local residue present:
-  - `packages/agents/.turbo/`
-  - `packages/agents/dist/`
-  - `packages/agents/node_modules/`
-  - `packages/agents/tsconfig.tsbuildinfo`
-
-Required closeout:
-
-- Remove residue from local tree.
-- Add/verify guardrails to prevent reintroduction in release evidence and CI.
-- Provide deterministic cleanup command for maintainers.
-
-Exit criteria:
-
-- Residue removed locally.
-- CI/runtime marker gate enforces no legacy artifact tracking/reference drift.
-
-## Acceptance Snapshot for This Rebaseline
-
-Closeout is complete only when all are true:
-
-1. `ops:vision-doc-sync:check` is green.
-2. Branch protection verification is green with evidence captured.
-3. Nightly streak target is met (`>= 14`).
-4. Legacy `packages/agents` residue is cleaned and guarded.
-5. `ops:gate-e:signoff` reports pass.
+1. Keep `ops:vision-doc-sync:check` and targeted regression tests in CI to prevent status drift.
+2. Add broader E2E scenarios for large imports and multi-account switching to complement unit/integration coverage.

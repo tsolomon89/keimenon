@@ -1,6 +1,6 @@
 # AGENTS Truth: Keimenon Vision Contract
 
-Last updated: 2026-03-11
+Last updated: 2026-03-27
 Status: Active, canonical, and implementation-directive.
 
 This file is the objective source of truth for product behavior and engineering decisions.
@@ -133,14 +133,36 @@ Actions may change model-scope inclusion/edges but do not physically delete raw 
 ## 7. Canvas Fidelity Contract
 
 1. Backend node-kind fidelity must be preserved to client stores and render layers.
-2. Multi-scale LOD is required:
+2. Three.js is the required canonical renderer for all keimenon graph canvas surfaces (main viewport, legacy preview, board galaxy, processing mini-graph, and progress overlays).
+3. Explicit dimensional lens behavior is required with toolbar-accessible controls:
+   - `2D` lens: planar graph navigation
+   - `3D` lens: depth-enabled graph navigation
+   - `ND` lens: deterministic projected N-dimensional lens with slice controls
+4. ND projection defaults are canonical unless explicitly changed by user controls:
+   - `dims = 8`
+   - `axes = [0,1,2]`
+   - `sliceDim = 3`
+   - `sliceCenter = 0`
+   - `sliceWidth = 0.35`
+5. Multi-scale LOD is required:
    - L0 galactic supernodes
    - L1 source/objective clusters
    - L2 phrase/topic detail
    - L3 atomic view
-3. Edges are ephemeral by depth, focus, and strength thresholds.
-4. Focus mode and pinned sub-galaxies are supported interaction patterns.
-5. Rendering must remain usable at large scale through culling and progressive detail.
+6. Edges are ephemeral by depth, focus, and strength thresholds.
+7. Focus mode and pinned sub-galaxies are supported interaction patterns and must survive culling across 2D/3D/ND lenses.
+8. Rendering must remain usable at large scale through culling and progressive detail.
+9. If WebGL initialization fails, the UI must show explicit unsupported-renderer messaging rather than silently falling back to legacy 2D canvas rendering.
+10. Edge inspection hover is required in canvas mode with stable tooltip metadata derived from edge-kind and edge-data payloads.
+11. Marquee multi-select is required with deterministic modifier semantics:
+    - plain drag replaces selection
+    - Shift drag adds to selection
+    - Ctrl/Cmd drag toggles marquee members in selection
+12. Node dragging is required in all lenses:
+    - `2D` drag uses XY plane semantics
+    - `3D` and `ND` drag use projected view-plane semantics while preserving camera usability
+13. Interaction semantics must be shared across all graph canvas surfaces (main viewport, legacy preview, board galaxy, processing mini-graph, and progress overlays) through one renderer interaction contract.
+14. Toolbar policy is desktop-full for canvas controls; smaller breakpoints use compact controls that are intentionally reduced and non-equivalent.
 
 ## 8. Operational and Privacy Guarantees
 
