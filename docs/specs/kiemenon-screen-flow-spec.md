@@ -4,7 +4,6 @@ Status: Active
 Last updated: 2026-03-27
 
 ## Screen template
-
 - `screen_id`
 - `actors`
 - `entry_conditions`
@@ -15,7 +14,6 @@ Last updated: 2026-03-27
 - `acceptance_checks`
 
 ## SCR-IMPORT-MODAL
-
 - Actors: `client_user`, `admin_user`
 - Entry conditions: user triggers import from toolbar/inspector
 - Controls: drag/drop, platform detection badge, extraction, branches, min length, processing mode, groups, duplicate detection, code extraction
@@ -27,7 +25,6 @@ Last updated: 2026-03-27
 Requirements: `KV-IMPORT-001` through `KV-IMPORT-008`
 
 ## SCR-DUPLICATE-REVIEW
-
 - Actors: `client_user`, `admin_user`
 - Entry conditions: import has review candidates and review is required
 - Controls: per-candidate decisions, bulk actions, apply decisions, scope-level approvals
@@ -39,7 +36,6 @@ Requirements: `KV-IMPORT-001` through `KV-IMPORT-008`
 Requirements: `KV-IMPORT-008`, `KV-DATA-003`
 
 ## SCR-CANVAS-WORKSPACE
-
 - Actors: `client_user`, `admin_user`
 - Entry conditions: user in keimenon mode
 - Controls: toolbar groups, lens controls (`2D`/`3D`/`ND`), camera + LOD controls, navigator tree, inspector content panes
@@ -51,7 +47,6 @@ Requirements: `KV-IMPORT-008`, `KV-DATA-003`
 Requirements: `KV-UX-001` through `KV-UX-008`, `KV-FEAT-003`
 
 ## SCR-DASHBOARD-AND-SETTINGS
-
 - Actors: `admin_user` primary, `client_user` restricted
 - Entry conditions: user switches mode from toolbar or shell defaults
 - Controls: dashboard surface toggles, settings sections, data management actions
@@ -63,7 +58,6 @@ Requirements: `KV-UX-001` through `KV-UX-008`, `KV-FEAT-003`
 Requirements: `KV-UX-005`, `KV-TIER-003`, `KV-OPS-002`
 
 ## SCR-ACCOUNT-SWITCH
-
 - Actors: multi-account users, admins in operating mode
 - Entry conditions: account switch selection event
 - Controls: account switcher, reload/refresh semantics

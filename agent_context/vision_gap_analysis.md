@@ -5,20 +5,17 @@ Last updated: 2026-03-27.
 Scope: current implementation state versus canonical `AGENTS.md` at repository root, with `agent_context/Kiemenon.md` retained as supplementary intent evidence.
 
 ## Canonical references for this pass
-
 - `docs/specs/kiemenon-requirement-ledger.md`
 - `docs/specs/kiemenon-vision-traceability-matrix.md`
 - `docs/specs/kiemenon-data-trust-contract.md`
 
 ## Current Status
-
 - Requirement inventory: 39
 - Implemented: 39
 - Partial: 0
 - Conflict (vision drift): 0
 
 ## Vision drift resolved in this pass
-
 1. `KV-UX-004` + `KV-FEAT-003`: canvas renderer is Three.js-canonical with explicit `2D`/`3D`/`ND` lens controls and ND slice semantics.
 2. `KV-IMPORT-008`: duplicate review now enforces complete per-candidate decisions and provides merge preview assistance.
 3. `KV-IMPORT-009`: `agent.bootstrap` is explicit in UI, propagated through upload rails, and entitlement-downgraded to manual when runtime is unavailable.
@@ -35,7 +32,6 @@ Scope: current implementation state versus canonical `AGENTS.md` at repository r
 14. `KV-FEAT-005`: graph surfaces now share renderer interaction contracts and responsive sizing behavior.
 
 ## Notes
-
 - Root `AGENTS.md` is canonical for this analysis pass.
 - Supplementary source `agent_context/Kiemenon.md` remained immutable in this pass (SHA256: `048CBAA28C54CB7824DD555A8EB4A1037F71877440D37A43D2DDB446E79D9393`).
 - Derived artifacts must not present contradictory status/evidence claims relative to the active traceability matrix.

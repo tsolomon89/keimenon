@@ -4,13 +4,11 @@ Status: Active
 Last updated: 2026-03-27
 
 ## Precedence for this reconstruction pass
-
 1. `AGENTS.md` at repository root (canonical source of truth)
 2. AGENTS-derived modular docs in this directory
 3. `agent_context/Kiemenon.md` as supplementary intent evidence only
 
 ## Core documents
-
 - `docs/specs/kiemenon-documentation-interfaces.md`
 - `docs/specs/kiemenon-requirement-ledger.md`
 - `docs/specs/kiemenon-ui-ux-architecture-spec.md`
@@ -21,7 +19,6 @@ Last updated: 2026-03-27
 - `docs/specs/kiemenon-vision-traceability-matrix.md`
 
 ## Source decomposition artifacts
-
 - `agent_context/vision_source/README.md`
 - `agent_context/vision_source/01-layout-and-shell.md`
 - `agent_context/vision_source/02-canvas-and-graph.md`

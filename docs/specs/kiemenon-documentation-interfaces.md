@@ -21,7 +21,6 @@ Each requirement row must include the following fields:
 ```
 
 ### ID prefixes
-
 - `KV-UX`
 - `KV-IMPORT`
 - `KV-FEAT`
@@ -60,7 +59,6 @@ Each requirement row must include the following fields:
 ```
 
 ## 4) Enforcement Rules
-
 - Every `requirement_id` in modular specs must exist in `kiemenon-requirement-ledger.md`.
 - Every matrix row must map to exactly one requirement ID.
 - Every requirement must include at least one `source_ref` to `agent_context/Kiemenon.md`.

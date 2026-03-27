@@ -1,7 +1,6 @@
 # Theme 03: Import and Review
 
 ## Canonical statements
-
 1. Import starts in a modal with drag/drop, processing feedback, and platform detection.
 2. Import configuration must expose:
    - extraction (user, assistant)
@@ -18,12 +17,10 @@
 7. Agent bootstrap at import-time is manual-by-default; auto requires explicit enablement.
 
 ## De-duplication resolution
-
 - The long repeated import prompt blocks were collapsed into a single import contract summary.
 - Latest detailed field list is preferred over earlier abbreviated descriptions.
 
 ## Source refs
-
 - `agent_context/Kiemenon.md:99`
 - `agent_context/Kiemenon.md:157`
 - `agent_context/Kiemenon.md:167`
