@@ -21,6 +21,14 @@ describe('Legacy runtime hard-break endpoints', () => {
     expect(response.body.error.code).toBe(404);
   });
 
+  it('returns 404 for removed legacy cluster/review/duplicates endpoints', async () => {
+    const { app } = createApp();
+
+    await request(app).get('/api/v1/cluster/status').expect(404);
+    await request(app).get('/api/v1/review-queue').expect(404);
+    await request(app).post('/api/v1/duplicates/resolve').send({}).expect(404);
+  });
+
   it('returns 404 for removed debug password reset endpoint', async () => {
     const authApp = express();
     authApp.use(express.json());

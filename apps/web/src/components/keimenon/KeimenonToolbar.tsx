@@ -16,8 +16,10 @@ import {
   Settings,
   Database,
   Activity,
+  Briefcase,
   Filter,
   Link2,
+  MessageSquare,
   Pin,
   Target,
 } from 'lucide-react';
@@ -40,8 +42,8 @@ interface KeimenonToolbarProps {
   onCenterView: () => void;
   keimenonSurface: 'keimenon' | 'legacy' | 'processing' | 'boards';
   onKeimenonSurfaceChange: (surface: 'keimenon' | 'legacy' | 'processing' | 'boards') => void;
-  dashboardView: 'analytics' | 'storage';
-  onDashboardViewChange: (view: 'analytics' | 'storage') => void;
+  dashboardView: 'analytics' | 'storage' | 'workspaces' | 'conversations';
+  onDashboardViewChange: (view: 'analytics' | 'storage' | 'workspaces' | 'conversations') => void;
   processingAvailable?: boolean;
   autoSwitchToProcessingEnabled: boolean;
   onAutoSwitchToProcessingChange: (enabled: boolean) => void;
@@ -534,6 +536,22 @@ export function KeimenonToolbar({
               title="Storage Statistics"
             >
               <Database className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onDashboardViewChange('workspaces')}
+              type="button"
+              className={surfaceButtonClass(dashboardView === 'workspaces')}
+              title="Workspace Browser"
+            >
+              <Briefcase className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onDashboardViewChange('conversations')}
+              type="button"
+              className={surfaceButtonClass(dashboardView === 'conversations')}
+              title="Conversation Browser"
+            >
+              <MessageSquare className="w-4 h-4" />
             </button>
           </div>
         </div>

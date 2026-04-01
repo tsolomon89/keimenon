@@ -2,7 +2,7 @@
  * Groups Navigation Routes
  *
  * UI-focused routes for folder/group navigation with multi-tenant isolation.
- * Separate from auto-grouping jobs in groups.ts.
+ * Auto-grouping behavior is handled by the jobs/import pipeline.
  *
  * Contracts:
  * - Folder: hierarchical container (can contain folders or groups)

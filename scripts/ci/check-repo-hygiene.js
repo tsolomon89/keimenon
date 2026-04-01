@@ -51,6 +51,29 @@ const DISALLOWED_TRACKED_ROOT_ARTIFACTS = [
   'verify_db.js',
 ];
 
+const FORBIDDEN_RUNTIME_FILES = [
+  'apps/api/src/routes/cluster.routes.ts',
+  'apps/api/src/routes/review-queue.routes.ts',
+  'apps/api/src/routes/duplicates.ts',
+  'apps/api/src/routes/groups.ts',
+  'apps/api/src/services/AccountWriteQueueManager.ts',
+  'apps/api/src/services/OptimisticLockService.ts',
+  'apps/api/src/services/llm.service.ts',
+  'apps/api/src/services/organization-service.ts',
+  'apps/api/src/services/similarity-engine.ts',
+  'apps/api/src/services/sources-builder.ts',
+  'apps/api/src/services/sources-service.ts',
+  'apps/api/src/services/code-extractor.ts',
+  'apps/web/src/components/keimenon/BatchActionsToolbar.tsx',
+  'apps/web/src/components/keimenon/GraphControls.tsx',
+  'apps/web/src/components/keimenon/GroupCard.tsx',
+  'apps/web/src/components/keimenon/SourceTreeView.tsx',
+  'apps/web/src/components/primitives/index.ts',
+  'apps/web/src/components/tokens/design-tokens.ts',
+];
+
+const API_ROUTE_UNMOUNTED_ALLOWLIST = new Set([]);
+
 const RUNTIME_DEBUG_MARKERS = [
   { name: 'reset-password-debug', regex: /reset-password-debug/g },
   { name: 'Forgot password? (debug)', regex: /Forgot password\? \(debug\)/g },
@@ -82,6 +105,54 @@ function listTrackedArtifacts() {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+function listTrackedFiles(paths) {
+  const result = spawnSync('git', ['ls-files', '--', ...paths], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  if (typeof result.status !== 'number' || result.status !== 0) {
+    const stderr = String(result.stderr || '').trim();
+    throw new Error(`git ls-files failed: ${stderr || 'unknown git error'}`);
+  }
+
+  return String(result.stdout || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function listUnmountedApiRouteFiles() {
+  const routesDir = path.resolve('apps/api/src/routes');
+  const appFilePath = path.resolve('apps/api/src/app.ts');
+
+  if (!fs.existsSync(routesDir) || !fs.existsSync(appFilePath)) {
+    return [];
+  }
+
+  const appFile = fs.readFileSync(appFilePath, 'utf8');
+  const importRegex = /from '\.\/routes\/([^']+)'/g;
+  const mountedRouteModules = new Set();
+  let match;
+  while ((match = importRegex.exec(appFile)) !== null) {
+    mountedRouteModules.add(match[1]);
+  }
+
+  const routeFiles = fs
+    .readdirSync(routesDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
+    .map((entry) => entry.name)
+    .filter((name) => !name.endsWith('.test.ts') && !name.endsWith('.spec.ts'));
+
+  return routeFiles
+    .filter((fileName) => !API_ROUTE_UNMOUNTED_ALLOWLIST.has(fileName))
+    .filter((fileName) => {
+      const moduleName = fileName.replace(/\.ts$/, '');
+      return !mountedRouteModules.has(moduleName);
+    })
+    .map((fileName) => `apps/api/src/routes/${fileName}`);
 }
 
 function collectFiles(startDir, output) {
@@ -149,6 +220,28 @@ function main() {
     );
     for (const artifact of trackedArtifacts) {
       console.error(`- ${artifact}`);
+    }
+    process.exit(1);
+  }
+
+  const forbiddenRuntimeFiles = listTrackedFiles(FORBIDDEN_RUNTIME_FILES);
+  if (forbiddenRuntimeFiles.length > 0) {
+    console.error(
+      `[repo-hygiene] FAIL forbidden legacy runtime files detected (${forbiddenRuntimeFiles.length})`
+    );
+    for (const filePath of forbiddenRuntimeFiles) {
+      console.error(`- ${filePath}`);
+    }
+    process.exit(1);
+  }
+
+  const unmountedApiRoutes = listUnmountedApiRouteFiles();
+  if (unmountedApiRoutes.length > 0) {
+    console.error(
+      `[repo-hygiene] FAIL unmounted API route files detected (${unmountedApiRoutes.length})`
+    );
+    for (const routeFile of unmountedApiRoutes) {
+      console.error(`- ${routeFile}`);
     }
     process.exit(1);
   }

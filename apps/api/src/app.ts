@@ -20,9 +20,6 @@ import boardsRoutes, { setAuthDependencies as setBoardsAuthDeps } from './routes
 import edgesRoutes, { setAuthDependencies as setEdgesAuthDeps } from './routes/edges';
 import contentRoutes, { setAuthDependencies as setContentAuthDeps } from './routes/content';
 import configRoutes from './routes/config';
-import { createDuplicatesRoutes } from './routes/duplicates';
-import reviewQueueRoutes from './routes/review-queue.routes';
-import clusterRoutes from './routes/cluster.routes';
 import { createAuthRoutes } from './routes/auth.routes';
 import { createAccountsRoutes } from './routes/accounts.routes';
 import { createUsersRoutes } from './routes/users.routes';
@@ -230,7 +227,6 @@ export function createApp(): { app: Express; context: AppContext } {
   let adminRoutes: any = null;
   let dataManagementRoutes: any = null;
   let deduplicationRoutes: any = null;
-  let duplicatesRoutes: any = null;
   let jobsRoutes: any = null;
   let streamRoutes: any = null;
   let jobBasedImportRoutes: any = null;
@@ -271,7 +267,6 @@ export function createApp(): { app: Express; context: AppContext } {
     adminRoutes = createAdminRoutes(dbClient, authService);
     dataManagementRoutes = createDataManagementRoutes(dbClient, authService);
     deduplicationRoutes = createDeduplicationRoutes(dbClient, authService);
-    duplicatesRoutes = createDuplicatesRoutes(dbClient, authService);
     jobsRoutes = createJobsRoutes(authService, dbClient.db, sseBroadcaster, workerPool);
     streamRoutes = createStreamRoutes(authService, sseBroadcaster);
     jobBasedImportRoutes = createJobBasedImportRoutes(
@@ -462,23 +457,6 @@ export function createApp(): { app: Express; context: AppContext } {
     if (!context.authService)
       return res.status(503).json({ error: 'Auth service not initialized' });
     return configRoutes(req, res, next);
-  });
-
-  app.use('/api/v1/duplicates', (req, res, next) => {
-    if (duplicatesRoutes) return duplicatesRoutes(req, res, next);
-    return res.status(503).json({ error: 'Auth service not initialized' });
-  });
-
-  app.use('/api/v1/review-queue', (req, res, next) => {
-    if (!context.authService)
-      return res.status(503).json({ error: 'Auth service not initialized' });
-    return reviewQueueRoutes(req, res, next);
-  });
-
-  app.use('/api/v1/cluster', (req, res, next) => {
-    if (!context.authService)
-      return res.status(503).json({ error: 'Auth service not initialized' });
-    return clusterRoutes(req, res, next);
   });
 
   app.use('/api/v1/spine', (req, res, next) => {

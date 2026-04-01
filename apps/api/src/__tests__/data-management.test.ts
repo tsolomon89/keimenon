@@ -203,6 +203,27 @@ describe('Data Management API', () => {
       .run(nodeId, accountId, JSON.stringify({ title }), userId, now, now);
   };
 
+  const createExportEdge = (
+    accountId: string,
+    userId: string,
+    edgeId: string,
+    fromId: string,
+    toId: string
+  ) => {
+    const database = db.getDatabase();
+    const now = Date.now();
+
+    database
+      .prepare(
+        `
+      INSERT INTO edges (
+        id, kind, from_id, to_id, properties, account_id, created_by, created_at, data_tag
+      ) VALUES (?, 'CONTAINS', ?, ?, ?, ?, ?, ?, 'test')
+    `
+      )
+      .run(edgeId, fromId, toId, JSON.stringify({ weight: 1 }), accountId, userId, now);
+  };
+
   test('should create test data successfully', () => {
     // Verify we have required IDs
     assert.ok(adminAccountId, 'adminAccountId should be set');
@@ -318,9 +339,16 @@ describe('Data Management API', () => {
 
   test('should export CSV when format=csv', async () => {
     const database = db.getDatabase();
+    database.prepare('DELETE FROM edges WHERE account_id = ?').run(adminAccountId);
     database.prepare('DELETE FROM nodes WHERE account_id = ?').run(adminAccountId);
 
-    createExportNode(adminAccountId, adminUserId, `export_csv_${Date.now()}`, 'CSV Export Node');
+    const sourceNodeId = `export_csv_source_${Date.now()}`;
+    const targetNodeId = `export_csv_target_${Date.now()}`;
+    const edgeId = `export_csv_edge_${Date.now()}`;
+
+    createExportNode(adminAccountId, adminUserId, sourceNodeId, 'CSV Export Source');
+    createExportNode(adminAccountId, adminUserId, targetNodeId, 'CSV Export Target');
+    createExportEdge(adminAccountId, adminUserId, edgeId, sourceNodeId, targetNodeId);
 
     const response = await fetch(`${API_URL}/api/v1/data/export?format=csv`, {
       method: 'GET',
@@ -338,6 +366,11 @@ describe('Data Management API', () => {
     const csv = await response.text();
     assert.ok(csv.includes('record_type,id,kind,account_id'), 'CSV should include header row');
     assert.ok(csv.includes('node,'), 'CSV should include node records');
+    assert.ok(csv.includes('source_id,target_id'), 'CSV should include canonical edge columns');
+    assert.ok(
+      csv.includes(`edge,${edgeId},CONTAINS,${adminAccountId},${sourceNodeId},${targetNodeId}`),
+      'CSV edge rows should include non-empty source_id and target_id values'
+    );
   });
 
   test('should export GraphML when format=graphml', async () => {

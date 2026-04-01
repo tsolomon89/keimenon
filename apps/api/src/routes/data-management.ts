@@ -25,8 +25,8 @@ type ExportEdge = Record<string, any> & {
   id: string;
   kind: string;
   account_id: string;
-  from_node: string;
-  to_node: string;
+  from_id: string;
+  to_id: string;
   properties: Record<string, unknown>;
   metadata: Record<string, unknown>;
 };
@@ -133,8 +133,8 @@ function toCsv(nodes: ExportNode[], edges: ExportEdge[]): string {
       edge.id ?? '',
       edge.kind,
       edge.account_id,
-      edge.from_node ?? '',
-      edge.to_node ?? '',
+      edge.from_id ?? '',
+      edge.to_id ?? '',
       edge.created_by ?? '',
       edge.created_at ?? '',
       edge.updated_at ?? '',
@@ -204,7 +204,7 @@ function toGraphMl(nodes: ExportNode[], edges: ExportEdge[]): string {
 
   for (const edge of edges) {
     lines.push(
-      `    <edge id="${escapeXml(edge.id ?? `${edge.from_node}-${edge.to_node}`)}" source="${escapeXml(edge.from_node)}" target="${escapeXml(edge.to_node)}">`
+      `    <edge id="${escapeXml(edge.id ?? `${edge.from_id}-${edge.to_id}`)}" source="${escapeXml(edge.from_id)}" target="${escapeXml(edge.to_id)}">`
     );
     lines.push(graphmlData('edge_kind', edge.kind));
     lines.push(graphmlData('edge_account_id', edge.account_id));

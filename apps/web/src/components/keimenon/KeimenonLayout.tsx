@@ -13,10 +13,12 @@ import { ProcessingKeimenonView } from './ProcessingKeimenonView';
 import { BoardViewContainer } from '../organization/BoardViewContainer';
 import { PortalWrapper } from './PortalWrapper';
 import { SettingsPage } from '../settings/SettingsPage';
+import { ConversationBrowser } from '../conversations/ConversationBrowser';
 import { UploadModal } from './UploadModal';
 import { ChatImportModal } from './ChatImportModal';
 import { NodeDetailPanel } from './NodeDetailPanel';
 import { PrimitivesBody } from '../primitives/PrimitivesBody';
+import { WorkspaceBrowser } from '../workspace/WorkspaceBrowser';
 import { useShell } from '@/contexts/ShellContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOperating } from '@/contexts/OperatingContext';
@@ -68,7 +70,9 @@ export function KeimenonLayout({
   const [keimenonSurface, setKeimenonSurface] = useState<
     'keimenon' | 'legacy' | 'processing' | 'boards'
   >('keimenon');
-  const [dashboardView, setDashboardView] = useState<'analytics' | 'storage'>('analytics');
+  const [dashboardView, setDashboardView] = useState<
+    'analytics' | 'storage' | 'workspaces' | 'conversations'
+  >('analytics');
   const [selectedSettingsSectionId, setSelectedSettingsSectionId] = useState<string | undefined>(
     undefined
   );
@@ -547,8 +551,12 @@ export function KeimenonLayout({
                   {keimenonMode === 'dashboard' &&
                     (dashboardView === 'analytics' ? (
                       <CRMDashboard onJobSelect={focusOperationFromJob} />
-                    ) : (
+                    ) : dashboardView === 'storage' ? (
                       <StorageStatsDashboard />
+                    ) : dashboardView === 'workspaces' ? (
+                      <WorkspaceBrowser className="h-full" />
+                    ) : (
+                      <ConversationBrowser className="h-full" />
                     ))}
 
                   {keimenonMode === 'settings' && (
