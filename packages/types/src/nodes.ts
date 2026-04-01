@@ -275,6 +275,16 @@ export const ObjectiveClaimSchema = BaseNodeSchema.extend({
   kind: z.literal('ObjectiveClaim'),
   claim_text: z.string(),
   type: z.enum(['fact', 'endpoint', 'parameter', 'definition', 'metric', 'config']),
+  archetype: z
+    .enum([
+      'factual_claim',
+      'endpoint_contract',
+      'parameter_constraint',
+      'definition_anchor',
+      'metric_signal',
+      'configuration_rule',
+    ])
+    .default('factual_claim'),
   status: z
     .preprocess(
       (value) => (value === 'unverified' ? 'provisional' : value),

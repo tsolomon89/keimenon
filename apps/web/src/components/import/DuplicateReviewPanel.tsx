@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { DuplicateGroup, ReviewDecision } from '@/types/chat-import';
 import { DuplicateTreeView } from './DuplicateTreeView';
 import { DuplicateComparisonView } from './DuplicateComparisonView';
@@ -25,6 +25,29 @@ export function DuplicateReviewPanel({
   const [viewMode, setViewMode] = useState<'side-by-side' | 'unified'>('side-by-side');
 
   // Undo/Redo for decisions
+  const initialDecisions = useMemo(() => {
+    const entries: Array<[string, ReviewDecision]> = [];
+    groups.forEach((group) => {
+      group.candidates.forEach((candidate) => {
+        if (!candidate.decision) {
+          return;
+        }
+
+        entries.push([
+          candidate.id,
+          {
+            duplicateId: candidate.id,
+            action: candidate.decision,
+            timestamp: Date.now(),
+            primaryNodeId: candidate.primary.id,
+            duplicateNodeId: candidate.duplicate.id,
+          },
+        ]);
+      });
+    });
+    return new Map(entries);
+  }, [groups]);
+
   const {
     state: decisions,
     setState: setDecisions,
@@ -32,10 +55,18 @@ export function DuplicateReviewPanel({
     redo,
     canUndo,
     canRedo,
-  } = useUndoRedo<Map<string, ReviewDecision>>(new Map());
+  } = useUndoRedo<Map<string, ReviewDecision>>(initialDecisions);
+
+  useEffect(() => {
+    setDecisions(initialDecisions);
+  }, [initialDecisions, setDecisions]);
 
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
   const selectedCandidate = selectedGroup?.candidates.find((c) => c.id === selectedCandidateId);
+  const totalCandidates = groups.reduce((sum, g) => sum + g.candidates.length, 0);
+  const reviewedCount = decisions.size;
+  const progressPercent = totalCandidates > 0 ? (reviewedCount / totalCandidates) * 100 : 0;
+  const pendingCount = Math.max(totalCandidates - reviewedCount, 0);
 
   const handleDecision = (candidateId: string, action: ReviewDecision['action']) => {
     // Find the candidate to include canonical node IDs in apply payload.
@@ -73,6 +104,9 @@ export function DuplicateReviewPanel({
   };
 
   const handleComplete = () => {
+    if (decisions.size < totalCandidates) {
+      return;
+    }
     onReviewComplete(decisions);
   };
 
@@ -168,7 +202,9 @@ export function DuplicateReviewPanel({
         case 'Enter':
           if (e.ctrlKey || e.metaKey) {
             e.preventDefault();
-            handleComplete();
+            if (decisions.size >= totalCandidates) {
+              handleComplete();
+            }
           }
           break;
       }
@@ -176,7 +212,7 @@ export function DuplicateReviewPanel({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedCandidateId, selectedGroupId, groups, decisions, undo, redo]);
+  }, [selectedCandidateId, selectedGroupId, groups, decisions, undo, redo, totalCandidates]);
 
   const navigateCandidate = (direction: 'prev' | 'next') => {
     if (!selectedGroup || !selectedCandidateId) return;
@@ -207,10 +243,6 @@ export function DuplicateReviewPanel({
       }
     }
   };
-
-  const totalCandidates = groups.reduce((sum, g) => sum + g.candidates.length, 0);
-  const reviewedCount = decisions.size;
-  const progressPercent = totalCandidates > 0 ? (reviewedCount / totalCandidates) * 100 : 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -287,6 +319,11 @@ export function DuplicateReviewPanel({
             <div className="text-sm text-slate-400">
               {reviewedCount} / {totalCandidates} reviewed
             </div>
+            {pendingCount > 0 && (
+              <div className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-1 rounded">
+                {pendingCount} pending
+              </div>
+            )}
           </div>
         </div>
         <div className="w-full bg-slate-800 rounded-full h-2">
@@ -379,9 +416,10 @@ export function DuplicateReviewPanel({
         </div>
         <button
           onClick={handleComplete}
-          className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors"
+          disabled={pendingCount > 0}
+          className="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors"
         >
-          Complete Review
+          {pendingCount > 0 ? `Complete Review (${pendingCount} pending)` : 'Complete Review'}
         </button>
       </div>
     </div>

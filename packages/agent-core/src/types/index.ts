@@ -23,16 +23,15 @@ export type {
   DuplicateSuggestOutput,
   VerifySourceChainInput,
   VerifySourceChainOutput,
+  AnalyzeSourceInput,
+  AnalyzeSourceOutput,
+  VerifyTopicInput,
+  VerifyTopicOutput,
   TypedTask,
 } from './task.js';
 
 // Agent types
-export type {
-  AgentCapability,
-  AgentNode,
-  AgentMetadata,
-  AgentConfig,
-} from './agent.js';
+export type { AgentCapability, AgentNode, AgentMetadata, AgentConfig } from './agent.js';
 
 export { DEFAULT_AGENT_CONFIG, createAgentNode } from './agent.js';
 

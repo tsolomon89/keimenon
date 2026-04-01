@@ -13,6 +13,10 @@ const mocked = vi.hoisted(() => ({
   detectPlatformMock: vi.fn(),
   completeCoreProcessReimportMock: vi.fn(),
   getCoreProcessReimportStatusMock: vi.fn(),
+  listImportPresetsMock: vi.fn(),
+  createImportPresetMock: vi.fn(),
+  updateImportPresetMock: vi.fn(),
+  deleteImportPresetMock: vi.fn(),
   jobs: new Map<string, any>(),
 }));
 
@@ -52,6 +56,10 @@ vi.mock('@/lib/api-client', () => ({
   getMyFeatures: mocked.getMyFeaturesMock,
   completeCoreProcessReimport: mocked.completeCoreProcessReimportMock,
   getCoreProcessReimportStatus: mocked.getCoreProcessReimportStatusMock,
+  listImportPresets: mocked.listImportPresetsMock,
+  createImportPreset: mocked.createImportPresetMock,
+  updateImportPreset: mocked.updateImportPresetMock,
+  deleteImportPreset: mocked.deleteImportPresetMock,
 }));
 
 vi.mock('../import/ImportStageSelect', () => ({
@@ -146,6 +154,31 @@ describe('ChatImportModal duplicate review transitions', () => {
     mocked.analyzeFilesMock.mockResolvedValue({ total_conversations: 1, total_messages: 2 });
     mocked.getCoreProcessReimportStatusMock.mockResolvedValue({ requiresReimport: false });
     mocked.completeCoreProcessReimportMock.mockResolvedValue({ success: true });
+    mocked.listImportPresetsMock.mockResolvedValue({
+      success: true,
+      presets: [],
+    });
+    mocked.createImportPresetMock.mockResolvedValue({
+      success: true,
+      preset: {
+        id: 'preset_1',
+        name: 'Preset',
+        config: {},
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    });
+    mocked.updateImportPresetMock.mockResolvedValue({
+      success: true,
+      preset: {
+        id: 'preset_1',
+        name: 'Preset',
+        config: {},
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    });
+    mocked.deleteImportPresetMock.mockResolvedValue({ success: true });
   });
 
   afterEach(() => {

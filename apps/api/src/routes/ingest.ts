@@ -113,9 +113,12 @@ router.post('/files', upload.array('files', 10) as any, async (req: Request, res
         size_bytes: file.size,
         file_path: relativePath,
         title: file.originalname,
-        board_id: boardId,
         created_at: Date.now(),
         updated_at: Date.now(),
+        metadata: {
+          board_id: boardId,
+          workspace_id: workspaceId,
+        },
         // World Model V5: Full provenance tracking (WHO/HOW/FROM/VERIFIED)
         provenance: {
           origin_principal_id: req.user?.userId || 'anonymous', // WHO: User who uploaded
@@ -129,6 +132,8 @@ router.post('/files', upload.array('files', 10) as any, async (req: Request, res
           attested: false,
         },
       });
+      // Backward-compatible field retained for older clients while canonical storage is metadata.board_id.
+      (source as any).board_id = boardId;
 
       // Add account_id and created_by if auth is enabled
       if (req.user) {
@@ -155,6 +160,10 @@ router.post('/files', upload.array('files', 10) as any, async (req: Request, res
         purpose: suggestion.reason,
         member_count: suggestion.members.length,
         board_id: boardId,
+        metadata: {
+          board_id: boardId,
+          workspace_id: workspaceId,
+        },
         created_at: Date.now(),
         updated_at: Date.now(),
       };
@@ -352,10 +361,12 @@ router.post('/url', async (req: Request, res: Response) => {
       size_bytes: fetchResult.contentLength,
       title: extractedContent.title,
       content_location: documentStore.getStorageLocation(storageMetadata),
-      board_id: boardId,
       source_role: 'imported',
       created_at: Date.now(),
       updated_at: Date.now(),
+      metadata: {
+        board_id: boardId,
+      },
       // World Model V5: Full provenance tracking (WHO/HOW/FROM/VERIFIED)
       provenance: {
         origin_principal_id: req.user?.userId || 'anonymous', // WHO: User who fetched
@@ -370,6 +381,8 @@ router.post('/url', async (req: Request, res: Response) => {
         attested: false,
       },
     });
+    // Backward-compatible field retained for older clients while canonical storage is metadata.board_id.
+    (source as any).board_id = boardId;
 
     // Add account_id and created_by if auth is enabled
     if (req.user) {

@@ -7,6 +7,8 @@ export interface BuildLodPlanInput {
   edges: GraphEdge[];
   zoom: number;
   focusNodeId?: string | null;
+  focusMode?: boolean;
+  pinnedNodeIds?: string[];
   minMass?: number;
   includeConnectors?: boolean;
   optimizeLevel?: number;
@@ -30,6 +32,8 @@ export interface LodPlanStats {
   hiddenNodeCount: number;
   hiddenEdgeCount: number;
   focusNodeId: string | null;
+  focusMode: boolean;
+  pinnedNodeCount: number;
   gate: LodPerformanceGate;
 }
 
@@ -362,6 +366,8 @@ export function buildLodPlan(input: BuildLodPlanInput): LodPlan {
   const level = resolveLodLevel(input.zoom);
   const optimizeLevel = normalizeOptimizeLevel(input.optimizeLevel);
   const focusNodeId = input.focusNodeId || null;
+  const focusMode = input.focusMode === true;
+  const pinnedNodeIds = new Set((input.pinnedNodeIds || []).filter((value) => value.length > 0));
   const includeConnectors = input.includeConnectors === true;
   const minMass = Number.isFinite(input.minMass) ? Math.max(0, input.minMass as number) : 0;
   const massThreshold = resolveMassThreshold(level, minMass, optimizeLevel);
@@ -381,13 +387,38 @@ export function buildLodPlan(input: BuildLodPlanInput): LodPlan {
     });
   }
 
-  if (focusNodeId) {
+  if (focusNodeId && focusMode) {
     const neighborhood = buildNeighborhood(focusNodeId, input.edges, 2);
     visibleNodes = visibleNodes.filter((node) => neighborhood.has(node.id));
   }
 
+  const mustKeepNodeIds = new Set<string>(pinnedNodeIds);
+  if (focusNodeId) {
+    mustKeepNodeIds.add(focusNodeId);
+  }
+
+  if (mustKeepNodeIds.size > 0) {
+    const currentlyVisible = new Set(visibleNodes.map((node) => node.id));
+    for (const pinnedNodeId of mustKeepNodeIds) {
+      if (currentlyVisible.has(pinnedNodeId)) {
+        continue;
+      }
+
+      const pinnedNode = input.nodes.find((node) => node.id === pinnedNodeId);
+      if (!pinnedNode) {
+        continue;
+      }
+
+      visibleNodes.push(pinnedNode);
+      currentlyVisible.add(pinnedNodeId);
+    }
+  }
+
   if (visibleNodes.length > nodeBudget) {
-    visibleNodes = sortNodesByMass(visibleNodes).slice(0, nodeBudget);
+    const mustKeepNodes = visibleNodes.filter((node) => mustKeepNodeIds.has(node.id));
+    const optionalNodes = visibleNodes.filter((node) => !mustKeepNodeIds.has(node.id));
+    const remainingBudget = Math.max(0, nodeBudget - mustKeepNodes.length);
+    visibleNodes = [...mustKeepNodes, ...sortNodesByMass(optionalNodes).slice(0, remainingBudget)];
   }
 
   const visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
@@ -401,6 +432,10 @@ export function buildLodPlan(input: BuildLodPlanInput): LodPlan {
     }
 
     if (focusNodeId && (sourceId === focusNodeId || targetId === focusNodeId)) {
+      return true;
+    }
+
+    if (pinnedNodeIds.has(sourceId) || pinnedNodeIds.has(targetId)) {
       return true;
     }
 
@@ -434,6 +469,8 @@ export function buildLodPlan(input: BuildLodPlanInput): LodPlan {
       hiddenNodeCount: Math.max(0, input.nodes.length - visibleNodes.length),
       hiddenEdgeCount: Math.max(0, input.edges.length - visibleEdges.length),
       focusNodeId,
+      focusMode,
+      pinnedNodeCount: pinnedNodeIds.size,
       gate,
     },
   };

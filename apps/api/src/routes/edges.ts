@@ -40,6 +40,15 @@ export function setAuthDependencies(
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
+    const parseProperties = (raw: unknown): Record<string, unknown> => {
+      if (typeof raw !== 'string' || raw.length === 0) return {};
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return {};
+      }
+    };
+
     // Apply auth if available
     if (requireAuth && isolateByAccount) {
       await new Promise<void>((resolve, reject) => {
@@ -58,11 +67,18 @@ router.get('/', async (req: Request, res: Response) => {
     const fromNodeId = getQueryValue(req.query.from) ?? getQueryValue(req.query.from_id);
     const toNodeId = getQueryValue(req.query.to) ?? getQueryValue(req.query.to_id);
     const kind = getQueryValue(req.query.kind);
+    const sort = getQueryValue(req.query.sort) === 'updated_at' ? 'updated_at' : 'created_at';
+    const order = getQueryValue(req.query.order)?.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
     const limitRaw = getQueryValue(req.query.limit) ?? '100';
+    const offsetRaw = getQueryValue(req.query.offset);
+    const skipRaw = getQueryValue(req.query.skip) ?? '0';
+    const cursorRaw = getQueryValue(req.query.cursor);
     const db = await getDbClient(req);
 
     const parsedLimit = parseInt(limitRaw, 10);
+    const parsedOffset = parseInt(cursorRaw ?? offsetRaw ?? skipRaw, 10);
     const limitNum = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 100;
+    const offsetNum = Number.isFinite(parsedOffset) && parsedOffset > 0 ? parsedOffset : 0;
 
     // Build account filter
     const accountFilter = req.user && req.user.accountType !== 'admin' ? req.user.accountId : null;
@@ -93,24 +109,39 @@ router.get('/', async (req: Request, res: Response) => {
       params.push(kind);
     }
 
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
+    const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+    query += whereClause;
+    query += ` ORDER BY e.${sort} ${order} LIMIT ? OFFSET ?`;
 
-    query += ' LIMIT ?';
-    params.push(limitNum);
+    const dataParams = [...params, limitNum, offsetNum];
+    const countQuery = `SELECT COUNT(*) as count FROM edges e${
+      accountFilter
+        ? ' INNER JOIN nodes n1 ON e.from_id = n1.id INNER JOIN nodes n2 ON e.to_id = n2.id'
+        : ''
+    }${whereClause}`;
 
-    const result = await db.execute(query, params);
+    const [result, countResult] = await Promise.all([
+      db.execute(query, dataParams),
+      db.execute(countQuery, params),
+    ]);
     const edges = result.records.map((row: any) => ({
       id: row.id,
       from: row.from_id,
       to: row.to_id,
       kind: row.kind,
       created_at: row.created_at,
-      ...(row.properties ? JSON.parse(row.properties) : {}),
+      properties: parseProperties(row.properties),
     }));
+    const total = Number(countResult.records?.[0]?.count || 0);
+    const nextCursor =
+      offsetNum + edges.length < total ? String(offsetNum + edges.length) : undefined;
 
-    return res.json({ edges, count: edges.length });
+    return res.json({
+      edges,
+      count: edges.length,
+      total,
+      metadata: { total, next_cursor: nextCursor },
+    });
   } catch (error: any) {
     console.error('List edges error:', error);
     return res.status(500).json({

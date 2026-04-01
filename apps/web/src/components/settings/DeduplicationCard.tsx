@@ -128,15 +128,15 @@ export function DeduplicationCard() {
         clearInterval(checkInterval);
 
         // Show success message briefly before reload
-        setSuccess('Duplicates merged successfully! Reloading...');
+        setSuccess('Duplicates consolidated successfully! Reloading...');
 
         setTimeout(() => {
           window.location.reload();
         }, 1500);
       } else if (operation?.status === 'error') {
-        console.error('[DeduplicationCard] Merge failed:', operation);
+        console.error('[DeduplicationCard] Consolidation failed:', operation);
         clearInterval(checkInterval);
-        setError('Merge failed. Please check Background Operations for details.');
+        setError('Consolidation failed. Please check Background Operations for details.');
         setMerging(false);
         setMergingJobId(null);
       }
@@ -145,7 +145,7 @@ export function DeduplicationCard() {
     return () => clearInterval(checkInterval);
   }, [mergingJobId, getOperation]);
 
-  // Trigger merge duplicates operation
+  // Trigger duplicate consolidation operation (non-destructive)
   const handleMergeDuplicates = async () => {
     if (!user?.accountId) return;
 
@@ -170,8 +170,8 @@ export function DeduplicationCard() {
       id: operationId,
       type: 'export' as OperationType, // Using 'export' as closest match for deduplication
       status: 'processing' as OperationStatus,
-      title: 'Merging Duplicates',
-      description: 'Merging duplicate nodes...',
+      title: 'Consolidating Duplicates',
+      description: 'Relinking duplicate nodes to canonical entries...',
       progress: 0,
       startedAt: Date.now(),
       stats: {
@@ -196,37 +196,38 @@ export function DeduplicationCard() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to merge duplicates');
+        throw new Error(errorData.error || 'Failed to consolidate duplicates');
       }
 
       const result = await response.json();
+      const duplicatesConsolidated = result.duplicatesConsolidated ?? result.duplicatesRemoved ?? 0;
 
       // Log job success
       logJobEvent('dedup-merge', 'success', {
         accountId: user.accountId,
         mergedCount: result.mergedCount,
         edgesRelinked: result.edgesRelinked,
-        duplicatesRemoved: result.duplicatesRemoved,
+        duplicatesConsolidated,
       });
 
       // Update background operation
       updateOperation(operationId, {
         status: 'done' as OperationStatus,
-        description: `Merged ${result.mergedCount} duplicate groups`,
+        description: `Consolidated ${result.mergedCount} duplicate groups`,
         progress: 100,
         completedAt: Date.now(),
         stats: {
           mergedCount: result.mergedCount,
           edgesRelinked: result.edgesRelinked,
-          duplicatesRemoved: result.duplicatesRemoved,
+          duplicatesConsolidated,
         },
       });
 
       // Refresh stats after merge
       await fetchStats();
-      setSuccess(`Successfully merged ${result.mergedCount} duplicate groups`);
+      setSuccess(`Successfully consolidated ${result.mergedCount} duplicate groups`);
     } catch (err: any) {
-      console.error('Failed to merge duplicates:', err);
+      console.error('Failed to consolidate duplicates:', err);
 
       // Log job failure
       logJobEvent('dedup-merge', 'error', {
@@ -254,12 +255,12 @@ export function DeduplicationCard() {
       // Update background operation
       updateOperation(operationId, {
         status: 'error' as OperationStatus,
-        description: `Merge failed: ${err.message}`,
+        description: `Consolidation failed: ${err.message}`,
         error: err.message,
         completedAt: Date.now(),
       });
 
-      setError(err.message || 'Failed to merge duplicates');
+      setError(err.message || 'Failed to consolidate duplicates');
       setMerging(false);
       setMergingJobId(null);
     }
@@ -419,12 +420,12 @@ export function DeduplicationCard() {
                 {merging ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Merging...
+                    Consolidating...
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" />
-                    Merge Duplicates ({stats.duplicates})
+                    Consolidate Duplicates ({stats.duplicates})
                   </>
                 )}
               </button>
@@ -439,8 +440,8 @@ export function DeduplicationCard() {
 
             {stats.duplicates > 0 && (
               <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                Merging will consolidate duplicate nodes while preserving all relationships. This
-                action cannot be undone.
+                Consolidation relinks duplicate nodes to canonical originals while preserving raw
+                node content and relationships.
               </p>
             )}
           </div>
@@ -453,8 +454,8 @@ export function DeduplicationCard() {
         <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
           <li>• Content is automatically hashed using SHA-256</li>
           <li>• Identical content is detected regardless of metadata</li>
-          <li>• Duplicates are tracked but not automatically merged</li>
-          <li>• Merging preserves all edges and relationships</li>
+          <li>• Duplicates are tracked but not automatically consolidated</li>
+          <li>• Consolidation preserves edges and keeps raw nodes intact</li>
           <li>• All operations are reversible through version history</li>
         </ul>
       </div>
@@ -465,14 +466,14 @@ export function DeduplicationCard() {
         onClose={() => setShowMergeModal(false)}
         onConfirm={handleMergeDuplicates}
         variant="warning"
-        title="Merge Duplicate Nodes?"
-        message={`This will merge ${stats?.duplicates || 0} duplicate nodes into their original versions. All relationships will be preserved, but this action cannot be undone.`}
+        title="Consolidate Duplicate Nodes?"
+        message={`This will relink ${stats?.duplicates || 0} duplicate nodes to canonical originals. Raw nodes are preserved and relationships are retained.`}
         details={
           stats
             ? `${stats.duplicates} duplicates found across ${stats.totalNodes} total nodes`
             : undefined
         }
-        confirmText="Merge Duplicates"
+        confirmText="Consolidate Duplicates"
         cancelText="Cancel"
         isProcessing={merging}
         onMinimize={merging ? () => setShowMergeModal(false) : undefined}

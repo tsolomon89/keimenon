@@ -26,6 +26,7 @@ import {
   getDuplicateDetectionStrategy,
   getDuplicateDetectionLoggingConfig,
   getDuplicateDetectionPerformanceThresholds,
+  isEmbeddingsStrategyEnabled,
   type DuplicateDetectionStrategy,
 } from '../config/duplicate-detection.config';
 
@@ -40,7 +41,7 @@ import { CanonicalService, type EvidenceMetrics } from './canonical-service';
 export interface DuplicateDetectionResult {
   groups: DuplicateGroup[];
   metadata: {
-    strategy: 'fts5' | 'baseline' | 'lsh';
+    strategy: 'fts5' | 'baseline' | 'lsh' | 'embeddings';
     duration: number;
     messagesProcessed: number;
     comparisonsPerformed: number;
@@ -48,6 +49,7 @@ export interface DuplicateDetectionResult {
     fts5Available: boolean;
     fts5Enabled: boolean;
     lshEnabled: boolean;
+    embeddingsEnabled: boolean;
   };
 }
 
@@ -103,17 +105,21 @@ export class IntegratedDuplicateDetectionService {
     const fts5Available = this.isFTS5Available();
     const fts5Enabled = fts5Config.enabled;
     const lshEnabled = lshConfig.enabled;
+    const embeddingsEnabled = isEmbeddingsStrategyEnabled();
 
-    // TODO: Add 'lsh' to strategy enum in config if not already suitable
-    // For now we assume 'auto' picks LSH if enabled, then FTS5, then Baseline
-    let selectedStrategy: 'lsh' | 'fts5' | 'baseline' = 'baseline';
+    let selectedStrategy: 'lsh' | 'fts5' | 'baseline' | 'embeddings' = 'baseline';
 
-    if (lshEnabled) selectedStrategy = 'lsh';
-    else if (fts5Available && fts5Enabled) selectedStrategy = 'fts5';
-
-    // Explicit override
-    if (this.strategy === 'fts5' && fts5Available) selectedStrategy = 'fts5';
-    if (this.strategy === 'baseline') selectedStrategy = 'baseline';
+    if (this.strategy === 'baseline') {
+      selectedStrategy = 'baseline';
+    } else if (this.strategy === 'fts5') {
+      selectedStrategy = fts5Available && fts5Enabled ? 'fts5' : 'baseline';
+    } else if (this.strategy === 'lsh') {
+      selectedStrategy = lshEnabled ? 'lsh' : fts5Available && fts5Enabled ? 'fts5' : 'baseline';
+    } else if (this.strategy === 'embeddings') {
+      selectedStrategy = embeddingsEnabled ? 'embeddings' : 'baseline';
+    } else {
+      selectedStrategy = lshEnabled ? 'lsh' : fts5Available && fts5Enabled ? 'fts5' : 'baseline';
+    }
 
     if (this.loggingConfig.logPerformanceMetrics) {
       console.log(
@@ -130,6 +136,13 @@ export class IntegratedDuplicateDetectionService {
       groups = this.findDuplicatesLSH(messages, config);
       // Estimation: LSH is O(N * bands), but lets say effectively we compared candidates
       comparisonsPerformed = messages.length * lshConfig.bands; // Very rough proxy
+    } else if (selectedStrategy === 'embeddings') {
+      const conversations = this.convertToNormalizedConversations(messages);
+      groups = await this.baselineService.findDuplicates(conversations, {
+        ...config,
+        algorithm: 'embedding',
+      });
+      comparisonsPerformed = (messages.length * (messages.length - 1)) / 2;
     } else if (selectedStrategy === 'fts5') {
       // FTS5 PIPELINE
       groups = await this.fts5Service.findDuplicates(messages, config, fts5Config, accountId);
@@ -151,6 +164,7 @@ export class IntegratedDuplicateDetectionService {
 
     // Perform Canonicalization on Groups
     this.canonicalizeGroups(groups, messages);
+    this.persistDedupeEvidence(accountId, groups);
 
     return {
       groups,
@@ -163,6 +177,7 @@ export class IntegratedDuplicateDetectionService {
         fts5Available,
         fts5Enabled,
         lshEnabled,
+        embeddingsEnabled,
       },
     };
   }
@@ -175,6 +190,7 @@ export class IntegratedDuplicateDetectionService {
     fts5Available: boolean;
     fts5Enabled: boolean;
     lshEnabled: boolean;
+    embeddingsEnabled: boolean;
     strategy: DuplicateDetectionStrategy;
     fts5Stats: ReturnType<DuplicateDetectionFTS5Service['getStatistics']>;
     thresholds: ReturnType<typeof getDuplicateDetectionPerformanceThresholds>;
@@ -185,6 +201,7 @@ export class IntegratedDuplicateDetectionService {
       fts5Available: fts5Stats.fts5Available,
       fts5Enabled: getFTS5Config().enabled,
       lshEnabled: getLSHConfig().enabled,
+      embeddingsEnabled: isEmbeddingsStrategyEnabled(),
       strategy: this.strategy,
       fts5Stats,
       thresholds: this.thresholds,
@@ -337,11 +354,14 @@ export class IntegratedDuplicateDetectionService {
       // Calculate evidence for each unique message
       const contenders = Array.from(allIds).map((id) => {
         const original = msgMap.get(id);
-        // Mock metrics for now - real system would query DB
+        const role = this.resolveMessageRole(original);
+        const frequency =
+          group.candidates.filter((candidate) => candidate.primary.id === id).length +
+          group.candidates.filter((candidate) => candidate.duplicate.id === id).length;
         const metrics: EvidenceMetrics = {
-          frequency: 1,
-          blobDiversity: 1,
-          roleVariety: 1,
+          frequency: Math.max(1, frequency),
+          blobDiversity: Math.max(1, original?.content ? 1 : 0),
+          roleVariety: role ? 1 : 0,
           temporalSpan: 0,
           modalityCount: 1,
         };
@@ -374,6 +394,16 @@ export class IntegratedDuplicateDetectionService {
       hash: msg.content_hash || '',
       metadata: { ...msg.metadata, dbNodeId: msg.id },
     };
+  }
+
+  private resolveMessageRole(message?: MessageWithMetadata): string | undefined {
+    if (!message?.metadata) {
+      return undefined;
+    }
+
+    const role =
+      message.metadata.role || message.metadata.authorRole || message.metadata.senderRole || null;
+    return typeof role === 'string' ? role.toLowerCase() : undefined;
   }
 
   // ... (Keep existing helpers)
@@ -437,6 +467,86 @@ export class IntegratedDuplicateDetectionService {
     return stats.fts5Available;
   }
 
+  private persistDedupeEvidence(accountId: string, groups: DuplicateGroup[]): void {
+    if (groups.length === 0) {
+      return;
+    }
+
+    try {
+      const now = Date.now();
+      const upsert = this.db.prepare(
+        `
+        INSERT INTO dedupe_evidence (
+          id, account_id, primary_node_id, duplicate_node_id, similarity,
+          role_user_count, role_assistant_count, role_system_count, role_unknown_count,
+          created_at, updated_at, data_tag
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          similarity = excluded.similarity,
+          role_user_count = excluded.role_user_count,
+          role_assistant_count = excluded.role_assistant_count,
+          role_system_count = excluded.role_system_count,
+          role_unknown_count = excluded.role_unknown_count,
+          updated_at = excluded.updated_at,
+          data_tag = excluded.data_tag
+      `
+      );
+
+      const writeTransaction = this.db.transaction((inputGroups: DuplicateGroup[]) => {
+        for (const group of inputGroups) {
+          for (const candidate of group.candidates) {
+            const roleCounts = {
+              user: 0,
+              assistant: 0,
+              system: 0,
+              unknown: 0,
+            };
+            const primaryRole = this.resolveMessageRole({
+              metadata: candidate.primary.metadata,
+            } as any);
+            const duplicateRole = this.resolveMessageRole({
+              metadata: candidate.duplicate.metadata,
+            } as any);
+            for (const role of [primaryRole, duplicateRole]) {
+              if (role === 'user') {
+                roleCounts.user += 1;
+              } else if (role === 'assistant') {
+                roleCounts.assistant += 1;
+              } else if (role === 'system') {
+                roleCounts.system += 1;
+              } else {
+                roleCounts.unknown += 1;
+              }
+            }
+
+            upsert.run(
+              candidate.id,
+              accountId,
+              candidate.primary.id,
+              candidate.duplicate.id,
+              candidate.similarity,
+              roleCounts.user,
+              roleCounts.assistant,
+              roleCounts.system,
+              roleCounts.unknown,
+              now,
+              now,
+              'real'
+            );
+          }
+        }
+      });
+
+      writeTransaction(groups);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.toLowerCase().includes('no such table')) {
+        console.warn('[IntegratedDuplicateDetection] Failed to persist dedupe evidence:', message);
+      }
+    }
+  }
+
   private emptyResult(): DuplicateDetectionResult {
     return {
       groups: [],
@@ -449,6 +559,7 @@ export class IntegratedDuplicateDetectionService {
         fts5Available: this.isFTS5Available(),
         fts5Enabled: getFTS5Config().enabled,
         lshEnabled: getLSHConfig().enabled,
+        embeddingsEnabled: isEmbeddingsStrategyEnabled(),
       },
     };
   }

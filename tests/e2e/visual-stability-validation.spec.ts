@@ -1,5 +1,35 @@
 import { test, expect } from './fixtures/test-isolation';
-import { login } from './helpers/login';
+import { loginTokenWithRetry } from './helpers/login-token';
+
+const MOTION_STABILIZER_CSS = `
+*, *::before, *::after {
+  animation: none !important;
+  transition: none !important;
+  caret-color: transparent !important;
+}
+`;
+
+async function bootstrapAuthenticatedSession(
+  page: any,
+  apiRequest: any,
+  credentials: {
+    email: string;
+    password: string;
+  }
+) {
+  const token = await loginTokenWithRetry(apiRequest, credentials);
+
+  // Prime a same-origin document before writing localStorage.
+  await page.goto('/login', { waitUntil: 'commit' });
+  await page.evaluate((authToken: string) => {
+    localStorage.setItem('keimenon_token', authToken);
+    localStorage.removeItem('temp_auth_token');
+  }, token);
+
+  await page.goto('/keimenon', { waitUntil: 'domcontentloaded' });
+  await page.addStyleTag({ content: MOTION_STABILIZER_CSS });
+  await page.waitForSelector('header.h-14', { state: 'visible', timeout: 20000 });
+}
 
 /**
  * Visual Stability Validation
@@ -26,10 +56,8 @@ test.describe('Visual Stability Validation', () => {
   };
 
   test.describe('Authenticated States', () => {
-    test.beforeEach(async ({ page }) => {
-      await login(page, TEST_USER.email, TEST_USER.password);
-      await page.waitForLoadState('domcontentloaded');
-      await page.waitForSelector('header.h-14', { state: 'visible', timeout: 15000 });
+    test.beforeEach(async ({ page, apiRequest }) => {
+      await bootstrapAuthenticatedSession(page, apiRequest, TEST_USER);
     });
 
     test('visual-stability-01-canvas-initial', async ({ page }) => {
@@ -43,6 +71,7 @@ test.describe('Visual Stability Validation', () => {
 
       // Take snapshot of the entire page
       await expect(page).toHaveScreenshot('visual-stability-01-canvas-initial.png', {
+        animations: 'disabled',
         fullPage: false,
         maxDiffPixelRatio: 0.05, // Allow slight rendering differences
       });
@@ -54,6 +83,7 @@ test.describe('Visual Stability Validation', () => {
       await expect(header).toBeVisible({ timeout: 15000 });
 
       await expect(page).toHaveScreenshot('visual-stability-02-header-visible.png', {
+        animations: 'disabled',
         maxDiffPixelRatio: 0.05,
       });
     });
@@ -64,6 +94,7 @@ test.describe('Visual Stability Validation', () => {
       await expect(sidebar).toBeVisible({ timeout: 15000 });
 
       await expect(page).toHaveScreenshot('visual-stability-03-sidebar-present.png', {
+        animations: 'disabled',
         maxDiffPixelRatio: 0.05,
       });
     });
@@ -73,8 +104,10 @@ test.describe('Visual Stability Validation', () => {
     test('visual-stability-login-01-initial', async ({ page }) => {
       await page.goto('/login');
       await page.waitForLoadState('networkidle');
+      await page.addStyleTag({ content: MOTION_STABILIZER_CSS });
 
       await expect(page).toHaveScreenshot('visual-stability-login-01-initial.png', {
+        animations: 'disabled',
         maxDiffPixelRatio: 0.05,
       });
     });
@@ -83,8 +116,10 @@ test.describe('Visual Stability Validation', () => {
       await page.goto('/login');
       const form = page.locator('form');
       await expect(form).toBeVisible();
+      await page.addStyleTag({ content: MOTION_STABILIZER_CSS });
 
       await expect(page).toHaveScreenshot('visual-stability-login-02-form-visible.png', {
+        animations: 'disabled',
         maxDiffPixelRatio: 0.05,
       });
     });

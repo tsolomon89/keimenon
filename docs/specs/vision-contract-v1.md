@@ -1,6 +1,6 @@
 # Vision Contract v1 (Derived from AGENTS.md)
 
-Status: Active as of 2026-03-11.
+Status: Active as of 2026-03-27.
 
 This document is an implementation contract derived from root `AGENTS.md`.
 On conflict, `AGENTS.md` is authoritative.
@@ -113,13 +113,30 @@ Requirements:
 Minimum rendering behavior:
 
 1. Preserve backend node kind fidelity in client store and viewport mapping.
-2. Multi-scale LOD:
+2. Three.js is the required canonical renderer for all graph canvas surfaces.
+3. Explicit dimensional lens behavior is required with toolbar controls:
+   - `2D` planar lens
+   - `3D` depth lens
+   - `ND` deterministic projected lens with slice controls
+4. ND defaults unless user-modified:
+   - `dims = 8`
+   - `axes = [0,1,2]`
+   - `sliceDim = 3`
+   - `sliceCenter = 0`
+   - `sliceWidth = 0.35`
+5. Multi-scale LOD:
    - L0 galactic supernodes
    - L1 source/objective clusters
    - L2 phrase/topic detail
    - L3 atomic view
-3. Ephemeral edges by depth/strength/focus.
-4. Focus mode and pinned sub-galaxies for deep workflows.
+6. Ephemeral edges by depth/strength/focus.
+7. Focus mode and pinned sub-galaxies survive culling across 2D/3D/ND lenses.
+8. If WebGL is unavailable, show explicit unsupported-renderer messaging; no silent fallback to legacy 2D canvas.
+9. Edge inspection hover must produce stable edge metadata tooltips in canvas mode.
+10. Marquee multi-select must support replace/add/toggle semantics via plain/Shift/Ctrl(Cmd) drag modifiers.
+11. Node dragging must be available in all lenses with 2D XY drag and 3D/ND projected-plane drag.
+12. Interaction semantics must be shared across all graph canvas surfaces through a single renderer interaction contract.
+13. Toolbar policy is desktop-full for canvas controls with compact reduced controls at smaller breakpoints.
 
 ## 9) Acceptance Baseline
 
@@ -129,6 +146,6 @@ Implementation is acceptable only when all are true:
 2. Similarity-weighted grouping/edges/mass are visible.
 3. Raw content invariance and provenance are verifiable.
 4. Duplicate review is job-based, stable-ID, and non-destructive.
-5. Entitlement gating is server-enforced and mirrored client-side.
+5. Entitlement gating is server-enforced and client-aware.
 6. Node kind fidelity is preserved end-to-end in canvas rendering.
 7. Manual-by-default agent bootstrap is enforced.

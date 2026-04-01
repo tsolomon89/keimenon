@@ -1,5 +1,6 @@
 import { parentPort, workerData } from 'worker_threads';
 import * as fs from 'fs';
+import * as readline from 'readline';
 
 // @ts-ignore - Handle JSONStream types gracefully or ensure package installation
 import * as JSONStream from 'jsonstream';
@@ -18,8 +19,10 @@ interface WorkerMessage {
   data?: any;
 }
 
+type ParserMode = 'json_array' | 'json_object' | 'jsonl';
+
 // Config from parent
-const config = workerData as WorkerConfig;
+const config = (workerData || {}) as WorkerConfig;
 const BATCH_SIZE = config.batchSize || 100;
 const SKIP_COUNT = config.skipConversations || 0;
 
@@ -57,10 +60,59 @@ function isMalformedInputMessage(message: string): boolean {
   );
 }
 
+export function detectParserMode(filePath: string, mimeType?: string): ParserMode {
+  const lowerPath = filePath.toLowerCase();
+  const lowerMime = (mimeType || '').toLowerCase();
+
+  if (
+    lowerPath.endsWith('.jsonl') ||
+    lowerPath.endsWith('.ndjson') ||
+    lowerMime.includes('ndjson') ||
+    lowerMime.includes('jsonl')
+  ) {
+    return 'jsonl';
+  }
+
+  try {
+    const fd = fs.openSync(filePath, 'r');
+    const buffer = Buffer.alloc(4096);
+    const bytesRead = fs.readSync(fd, buffer, 0, buffer.length, 0);
+    fs.closeSync(fd);
+
+    const prefix = buffer.toString('utf8', 0, bytesRead).trimStart();
+    if (prefix.startsWith('[')) {
+      return 'json_array';
+    }
+    if (prefix.startsWith('{')) {
+      return 'json_object';
+    }
+  } catch (error) {
+    console.error('[import.worker] Failed to detect parser mode:', normalizeErrorMessage(error));
+  }
+
+  return 'json_array';
+}
+
+export function expandJsonObjectPayload(payload: any): any[] {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (payload && typeof payload === 'object') {
+    if (Array.isArray(payload.conversations)) {
+      return payload.conversations;
+    }
+    if (Array.isArray(payload.items)) {
+      return payload.items;
+    }
+    return [payload];
+  }
+  return [];
+}
+
 // Main execution
 (async () => {
-  if (!parentPort) {
-    throw new Error('This script must be run as a worker thread');
+  if (!parentPort || !config || typeof config.filePath !== 'string') {
+    return;
   }
 
   try {
@@ -69,17 +121,12 @@ function isMalformedInputMessage(message: string): boolean {
       data: { stage: 'starting', percent: 0, message: 'Worker started' },
     });
 
-    // Stream Setup
+    const parserMode = detectParserMode(config.filePath, config.mimeType);
     const stream = fs.createReadStream(config.filePath, { encoding: 'utf8' });
-
-    // Choose Parser based on file extension/mime (Simple logic for now: JSON Array or JSONL)
-    // TODO: Implement robust parser selection logic similar to `ParserRegistry` if needed here,
-    // or keep generic. For now, assuming standard JSON Array of conversations.
-    // Use JSONStream to parse every item in the root array
-    const parser = JSONStream.parse('*');
 
     let batch: any[] = [];
     let terminalErrorEmitted = false;
+
     const emitTerminalError = (errorMessage: string) => {
       if (terminalErrorEmitted) {
         return;
@@ -93,30 +140,43 @@ function isMalformedInputMessage(message: string): boolean {
       }
     };
 
-    // Log skip info if resuming
+    const currentProgressPercent = () => {
+      if (!config.fileSize || config.fileSize <= 0) {
+        return 0;
+      }
+      return Math.round((stream.bytesRead / config.fileSize) * 100);
+    };
+
+    const flushBatch = () => {
+      if (batch.length > 0) {
+        postMessage({ type: 'batch', data: batch });
+        batch = [];
+      }
+    };
+
+    const emitDone = () => {
+      if (terminalErrorEmitted) {
+        return;
+      }
+      flushBatch();
+      postMessage({ type: 'done', data: { total: conversationsProcessed } });
+    };
+
     if (SKIP_COUNT > 0) {
       console.log(`[import.worker] Resuming: will skip first ${SKIP_COUNT} conversations`);
     }
 
-    // Validating Stream Logic
-    stream.pipe(parser);
-
-    parser.on('data', (data: any) => {
+    const handleConversation = (rawData: any) => {
       conversationsProcessed++;
 
-      // Resume optimization: skip already-processed conversations
-      // This avoids IPC overhead of sending batches that will be discarded
       if (conversationsSkipped < SKIP_COUNT) {
         conversationsSkipped++;
-        // Still update progress during skip phase
         if (conversationsSkipped % 1000 === 0) {
-          const currentBytes = stream.bytesRead;
-          const progress = (currentBytes / config.fileSize) * 100;
           postMessage({
             type: 'progress',
             data: {
               stage: 'skipping',
-              percent: Math.round(progress),
+              percent: currentProgressPercent(),
               message: `Skipping ${conversationsSkipped}/${SKIP_COUNT} (resuming)`,
             },
           });
@@ -124,57 +184,104 @@ function isMalformedInputMessage(message: string): boolean {
         return;
       }
 
-      // Send RAW data to parent thread for proper parsing via ParserRegistry
-      // The parent (ImportWorker.ts) will use @keimenon/parsers to:
-      // - Auto-detect format (ChatGPT/Claude/Gemini)
-      // - Properly traverse ChatGPT mapping trees
-      // - Handle nested content structures
-      // - Normalize roles correctly
-      batch.push({ raw: data, index: conversationsProcessed });
-
-      // Update Progress (Bytes based)
-      // Note: `bytesRead` is from file stream, but `fs.ReadStream` updates it.
-      const currentBytes = stream.bytesRead;
-      const progress = (currentBytes / config.fileSize) * 100;
+      batch.push({ raw: rawData, index: conversationsProcessed });
 
       if (batch.length >= BATCH_SIZE) {
-        // Send Batch
-        postMessage({ type: 'batch', data: batch });
-        batch = [];
-
-        // Send Progress
+        flushBatch();
         const actualProcessed = conversationsProcessed - SKIP_COUNT;
         postMessage({
           type: 'progress',
           data: {
             stage: 'parsing',
-            percent: Math.round(progress),
+            percent: currentProgressPercent(),
             message: `Processed ${actualProcessed} conversations${SKIP_COUNT > 0 ? ` (resumed from ${SKIP_COUNT})` : ''}`,
           },
         });
       }
-    });
+    };
 
-    parser.on('error', (err: any) => {
-      const errorMessage = normalizeErrorMessage(err);
-      if (!isMalformedInputMessage(errorMessage)) {
-        console.error('[import.worker] Stream parser error:', errorMessage);
-      }
-      emitTerminalError(errorMessage);
-    });
+    if (parserMode === 'json_array') {
+      const parser = JSONStream.parse('*');
+      stream.pipe(parser);
 
-    parser.on('end', () => {
-      if (terminalErrorEmitted) {
-        return;
-      }
+      parser.on('data', (data: any) => {
+        handleConversation(data);
+      });
 
-      // Send remaining batch
-      if (batch.length > 0) {
-        postMessage({ type: 'batch', data: batch });
-      }
+      parser.on('error', (err: any) => {
+        const errorMessage = normalizeErrorMessage(err);
+        if (!isMalformedInputMessage(errorMessage)) {
+          console.error('[import.worker] Stream parser error:', errorMessage);
+        }
+        emitTerminalError(errorMessage);
+      });
 
-      postMessage({ type: 'done', data: { total: conversationsProcessed } });
-    });
+      parser.on('end', () => {
+        emitDone();
+      });
+    } else if (parserMode === 'jsonl') {
+      const rl = readline.createInterface({
+        input: stream,
+        crlfDelay: Infinity,
+      });
+
+      rl.on('line', (line: string) => {
+        if (terminalErrorEmitted) {
+          return;
+        }
+
+        const trimmed = line.trim();
+        if (!trimmed) {
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(trimmed);
+          handleConversation(parsed);
+        } catch (error) {
+          emitTerminalError(`Invalid JSONL line: ${normalizeErrorMessage(error)}`);
+        }
+      });
+
+      rl.on('close', () => {
+        emitDone();
+      });
+
+      rl.on('error', (err: any) => {
+        emitTerminalError(normalizeErrorMessage(err));
+      });
+    } else {
+      let jsonPayload = '';
+
+      stream.on('data', (chunk: string | Buffer) => {
+        jsonPayload += typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+      });
+
+      stream.on('end', () => {
+        if (terminalErrorEmitted) {
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(jsonPayload);
+          const items = expandJsonObjectPayload(parsed);
+          for (const item of items) {
+            handleConversation(item);
+          }
+          postMessage({
+            type: 'progress',
+            data: {
+              stage: 'parsing',
+              percent: 100,
+              message: `Processed ${Math.max(0, conversationsProcessed - SKIP_COUNT)} conversations`,
+            },
+          });
+          emitDone();
+        } catch (error) {
+          emitTerminalError(normalizeErrorMessage(error));
+        }
+      });
+    }
 
     stream.on('error', (err: any) => {
       const errorMessage = normalizeErrorMessage(err);

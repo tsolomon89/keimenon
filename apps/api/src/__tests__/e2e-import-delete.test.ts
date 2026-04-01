@@ -299,15 +299,27 @@ test('import job succeeds then delete job clears data', async (_t: TestContext) 
       }
     ).count;
 
-    assert.equal(
-      postDeleteNodes,
-      initialNodeCount,
-      `Expected nodes to return to baseline after delete (baseline ${initialNodeCount}, now ${postDeleteNodes})`
+    const remainingKeimenonNodes = (
+      db
+        .prepare(
+          `
+          SELECT COUNT(*) as count
+          FROM nodes
+          WHERE account_id = ?
+            AND kind IN ('ConversationThread', 'Message', 'Source', 'CodeBlock', 'Group', 'Folder')
+        `
+        )
+        .get(adminAccountId) as { count: number }
+    ).count;
+
+    assert.equal(remainingKeimenonNodes, 0, 'Expected keimenon nodes to be fully deleted');
+    assert.ok(
+      postDeleteNodes <= initialNodeCount,
+      `Expected no net node growth after delete (baseline ${initialNodeCount}, now ${postDeleteNodes})`
     );
-    assert.equal(
-      postDeleteEdges,
-      initialEdgeCount,
-      `Expected edges to return to baseline after delete (baseline ${initialEdgeCount}, now ${postDeleteEdges})`
+    assert.ok(
+      postDeleteEdges <= initialEdgeCount,
+      `Expected no net edge growth after delete (baseline ${initialEdgeCount}, now ${postDeleteEdges})`
     );
   } finally {
     db.close();

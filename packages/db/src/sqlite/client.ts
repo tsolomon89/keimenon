@@ -176,8 +176,13 @@ CREATE TABLE IF NOT EXISTS sessions (
   user_id TEXT NOT NULL,
   account_id TEXT NOT NULL,
   token TEXT NOT NULL UNIQUE,
+  token_hash TEXT NOT NULL UNIQUE,
+  token_family_id TEXT NOT NULL,
+  parent_session_id TEXT,
   expires_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
+  revoked_at INTEGER,
+  revoked_reason TEXT,
   operating_account_id TEXT,
   available_accounts TEXT,
   last_account_switch INTEGER,
@@ -226,6 +231,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   token TEXT NOT NULL UNIQUE,
+  token_hash TEXT NOT NULL UNIQUE,
   expires_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
   used_at INTEGER,
@@ -236,6 +242,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token_hash ON password_reset_tokens(token_hash);
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires ON password_reset_tokens(expires_at);
 
@@ -263,6 +270,128 @@ CREATE TABLE IF NOT EXISTS settings_changes (
   reason TEXT,
   data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual'))
 );
+
+-- Import presets table
+CREATE TABLE IF NOT EXISTS import_presets (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  config TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(user_id, name)
+);
+
+-- Analytics and billing support tables
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  plan TEXT NOT NULL CHECK(plan IN ('free', 'professional', 'business')),
+  status TEXT NOT NULL CHECK(status IN ('active', 'trialing', 'past_due', 'canceled')),
+  billing_period TEXT NOT NULL CHECK(billing_period IN ('monthly', 'yearly')),
+  amount_cents INTEGER NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'USD',
+  started_at INTEGER NOT NULL,
+  current_period_start INTEGER,
+  current_period_end INTEGER,
+  canceled_at INTEGER,
+  metadata TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS invoices (
+  id TEXT PRIMARY KEY,
+  subscription_id TEXT,
+  account_id TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'USD',
+  status TEXT NOT NULL CHECK(status IN ('draft', 'open', 'paid', 'void', 'uncollectible')),
+  issued_at INTEGER NOT NULL,
+  due_at INTEGER,
+  paid_at INTEGER,
+  metadata TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE SET NULL,
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS system_alerts (
+  id TEXT PRIMARY KEY,
+  account_id TEXT,
+  source TEXT NOT NULL,
+  type TEXT NOT NULL CHECK(type IN ('info', 'warning', 'error')),
+  severity TEXT NOT NULL CHECK(severity IN ('low', 'medium', 'high', 'critical')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'acknowledged', 'resolved')),
+  message TEXT NOT NULL,
+  metadata TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  resolved_at INTEGER,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS analytics_metrics (
+  id TEXT PRIMARY KEY,
+  account_id TEXT,
+  metric_namespace TEXT NOT NULL CHECK(metric_namespace IN ('processing', 'system', 'billing', 'imports')),
+  metric_name TEXT NOT NULL,
+  bucket_start INTEGER NOT NULL,
+  bucket_end INTEGER NOT NULL,
+  value REAL NOT NULL,
+  metadata TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  UNIQUE(account_id, metric_namespace, metric_name, bucket_start)
+);
+
+CREATE TABLE IF NOT EXISTS alert_rules (
+  id TEXT PRIMARY KEY,
+  account_id TEXT,
+  source TEXT NOT NULL,
+  metric_namespace TEXT NOT NULL CHECK(metric_namespace IN ('processing', 'system', 'billing', 'imports')),
+  metric_name TEXT NOT NULL,
+  comparison TEXT NOT NULL CHECK(comparison IN ('gt', 'gte', 'lt', 'lte', 'eq')),
+  threshold REAL NOT NULL,
+  severity TEXT NOT NULL CHECK(severity IN ('low', 'medium', 'high', 'critical')),
+  enabled INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS dedupe_evidence (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  primary_node_id TEXT NOT NULL,
+  duplicate_node_id TEXT NOT NULL,
+  similarity REAL NOT NULL,
+  role_user_count INTEGER NOT NULL DEFAULT 0,
+  role_assistant_count INTEGER NOT NULL DEFAULT 0,
+  role_system_count INTEGER NOT NULL DEFAULT 0,
+  role_unknown_count INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_dedupe_evidence_account ON dedupe_evidence(account_id);
+CREATE INDEX IF NOT EXISTS idx_dedupe_evidence_primary ON dedupe_evidence(primary_node_id);
+CREATE INDEX IF NOT EXISTS idx_dedupe_evidence_duplicate ON dedupe_evidence(duplicate_node_id);
+CREATE INDEX IF NOT EXISTS idx_dedupe_evidence_similarity ON dedupe_evidence(similarity DESC);
 
 -- =============================================================================
 -- GRAPH TABLES
@@ -390,6 +519,19 @@ CREATE TABLE IF NOT EXISTS job_items (
   FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS job_change_pages (
+  id TEXT PRIMARY KEY,
+  job_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  page_type TEXT NOT NULL CHECK(page_type IN ('nodesCreated', 'edgesCreated', 'nodesDeleted', 'edgesDeleted')),
+  page_index INTEGER NOT NULL,
+  ids_json TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  UNIQUE(job_id, page_type, page_index),
+  FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
 -- Upload sessions table (chunked file upload with resumability)
 CREATE TABLE IF NOT EXISTS upload_sessions (
   id TEXT PRIMARY KEY,
@@ -414,8 +556,7 @@ CREATE TABLE IF NOT EXISTS upload_sessions (
   data_tag TEXT DEFAULT 'real',
   metadata TEXT,
   FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_upload_sessions_account ON upload_sessions(account_id);
@@ -442,7 +583,10 @@ CREATE INDEX IF NOT EXISTS idx_user_accounts_status ON user_accounts(status);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash);
+CREATE INDEX IF NOT EXISTS idx_sessions_family ON sessions(token_family_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_revoked ON sessions(revoked_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_data_tag ON sessions(data_tag);
 CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts(email);
 CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip_address);
@@ -465,6 +609,26 @@ CREATE INDEX IF NOT EXISTS idx_settings_config_data_tag ON settings_config(data_
 CREATE INDEX IF NOT EXISTS idx_settings_changes_control ON settings_changes(control_id);
 CREATE INDEX IF NOT EXISTS idx_settings_changes_time ON settings_changes(changed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_settings_changes_data_tag ON settings_changes(data_tag);
+CREATE INDEX IF NOT EXISTS idx_import_presets_account ON import_presets(account_id);
+CREATE INDEX IF NOT EXISTS idx_import_presets_user ON import_presets(user_id);
+CREATE INDEX IF NOT EXISTS idx_import_presets_updated ON import_presets(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_account ON subscriptions(account_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_period_end ON subscriptions(current_period_end);
+CREATE INDEX IF NOT EXISTS idx_invoices_account ON invoices(account_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_subscription ON invoices(subscription_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
+CREATE INDEX IF NOT EXISTS idx_invoices_issued_at ON invoices(issued_at DESC);
+CREATE INDEX IF NOT EXISTS idx_system_alerts_account ON system_alerts(account_id);
+CREATE INDEX IF NOT EXISTS idx_system_alerts_status ON system_alerts(status);
+CREATE INDEX IF NOT EXISTS idx_system_alerts_severity ON system_alerts(severity);
+CREATE INDEX IF NOT EXISTS idx_system_alerts_created ON system_alerts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_analytics_metrics_account ON analytics_metrics(account_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_metrics_namespace ON analytics_metrics(metric_namespace);
+CREATE INDEX IF NOT EXISTS idx_analytics_metrics_bucket ON analytics_metrics(bucket_start, bucket_end);
+CREATE INDEX IF NOT EXISTS idx_alert_rules_account ON alert_rules(account_id);
+CREATE INDEX IF NOT EXISTS idx_alert_rules_enabled ON alert_rules(enabled);
+CREATE INDEX IF NOT EXISTS idx_alert_rules_metric ON alert_rules(metric_namespace, metric_name);
 
 -- Graph Indexes
 CREATE INDEX IF NOT EXISTS idx_nodes_kind ON nodes(kind);
@@ -513,6 +677,9 @@ CREATE INDEX IF NOT EXISTS idx_jobs_data_tag ON jobs(data_tag);
 CREATE INDEX IF NOT EXISTS idx_job_events_job ON job_events(job_id);
 CREATE INDEX IF NOT EXISTS idx_job_events_timestamp ON job_events(timestamp);
 CREATE INDEX IF NOT EXISTS idx_job_events_data_tag ON job_events(data_tag);
+CREATE INDEX IF NOT EXISTS idx_job_change_pages_job ON job_change_pages(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_change_pages_account ON job_change_pages(account_id);
+CREATE INDEX IF NOT EXISTS idx_job_change_pages_type ON job_change_pages(page_type);
 CREATE INDEX IF NOT EXISTS idx_job_items_job ON job_items(job_id);
 CREATE INDEX IF NOT EXISTS idx_job_items_status ON job_items(status);
 CREATE INDEX IF NOT EXISTS idx_job_items_data_tag ON job_items(data_tag);
@@ -591,6 +758,7 @@ INSERT OR REPLACE INTO schema_metadata (key, value) VALUES ('version', '3.0');
 INSERT OR REPLACE INTO schema_metadata (key, value) VALUES ('created_at', datetime('now'));
 INSERT OR REPLACE INTO schema_metadata (key, value) VALUES ('updated_at', datetime('now'));
 INSERT OR REPLACE INTO schema_metadata (key, value) VALUES ('features', 'clean_m2n_schema,audit_log,settings,jobs');
+
 `;
 
 /**
@@ -835,6 +1003,69 @@ export class SQLiteClient {
       this.ensureColumn('nodes', 'canonical_content', 'canonical_content TEXT');
       this.ensureColumn('nodes', 'is_duplicate', 'is_duplicate INTEGER DEFAULT 0');
       this.ensureColumn('nodes', 'original_node_id', 'original_node_id TEXT');
+    }
+
+    if (this.tableExists('sessions')) {
+      this.ensureColumn('sessions', 'token_hash', 'token_hash TEXT');
+      this.ensureColumn('sessions', 'token_family_id', 'token_family_id TEXT');
+      this.ensureColumn('sessions', 'parent_session_id', 'parent_session_id TEXT');
+      this.ensureColumn('sessions', 'revoked_at', 'revoked_at INTEGER');
+      this.ensureColumn('sessions', 'revoked_reason', 'revoked_reason TEXT');
+
+      if (
+        this.tableHasColumn('sessions', 'token_hash') &&
+        this.tableHasColumn('sessions', 'token')
+      ) {
+        this.db.exec(`
+          UPDATE sessions
+          SET token_hash = COALESCE(token_hash, token)
+          WHERE token_hash IS NULL
+        `);
+      }
+
+      if (this.tableHasColumn('sessions', 'token_family_id')) {
+        this.db.exec(`
+          UPDATE sessions
+          SET token_family_id = COALESCE(token_family_id, id)
+          WHERE token_family_id IS NULL OR token_family_id = ''
+        `);
+      }
+
+      if (this.tableHasColumn('sessions', 'token_hash')) {
+        this.db.exec(
+          `CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash)`
+        );
+      }
+
+      if (this.tableHasColumn('sessions', 'token_family_id')) {
+        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_family ON sessions(token_family_id)`);
+      }
+
+      if (this.tableHasColumn('sessions', 'revoked_at')) {
+        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_revoked ON sessions(revoked_at)`);
+      }
+    }
+
+    if (this.tableExists('password_reset_tokens')) {
+      this.ensureColumn('password_reset_tokens', 'token_hash', 'token_hash TEXT');
+
+      if (
+        this.tableHasColumn('password_reset_tokens', 'token_hash') &&
+        this.tableHasColumn('password_reset_tokens', 'token')
+      ) {
+        this.db.exec(`
+          UPDATE password_reset_tokens
+          SET token_hash = COALESCE(token_hash, token)
+          WHERE token_hash IS NULL
+        `);
+      }
+
+      if (this.tableHasColumn('password_reset_tokens', 'token_hash')) {
+        this.db.exec(`
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_password_reset_tokens_token_hash
+          ON password_reset_tokens(token_hash)
+        `);
+      }
     }
   }
 
@@ -1760,8 +1991,8 @@ export class SQLiteClient {
   /**
    * Find all duplicate groups in an account
    *
-   * Returns content hashes that have multiple nodes (duplicates).
-   * Used by the merge endpoint to identify which content hashes need merging.
+   * Returns content hashes that have multiple unresolved canonical candidates.
+   * Groups already linked through original_node_id are excluded so merge is idempotent.
    *
    * @param accountId - Account ID
    * @returns Array of {contentHash, count} for hashes with count > 1
@@ -1781,7 +2012,10 @@ export class SQLiteClient {
         content_hash as contentHash,
         COUNT(*) as count
       FROM nodes
-      WHERE account_id = ? AND content_hash IS NOT NULL
+      WHERE account_id = ?
+        AND content_hash IS NOT NULL
+        AND COALESCE(is_duplicate, 0) = 0
+        AND original_node_id IS NULL
       GROUP BY content_hash
       HAVING count > 1
       ORDER BY count DESC
@@ -1801,7 +2035,7 @@ export class SQLiteClient {
    * 1. Query all nodes with this content hash
    * 2. Pick canonical (earliest created_at)
    * 3. Update all edges to point to canonical
-   * 4. Delete duplicate nodes
+   * 4. Mark duplicates with original_node_id (non-destructive)
    * 5. Return statistics
    *
    * All operations performed in a transaction for consistency.
@@ -1840,12 +2074,15 @@ export class SQLiteClient {
       const contentHash = arg1;
       const accountId = arg2;
 
-      // Find all nodes with this content hash in this account
+      // Find unresolved canonical candidates in this account.
       const nodes = this.db
         .prepare(
           `
         SELECT id, created_at FROM nodes
-        WHERE content_hash = ? AND account_id = ?
+        WHERE content_hash = ?
+          AND account_id = ?
+          AND COALESCE(is_duplicate, 0) = 0
+          AND original_node_id IS NULL
         ORDER BY created_at ASC, id ASC
       `
         )
@@ -1865,6 +2102,7 @@ export class SQLiteClient {
       // Perform merge in transaction
       const result = db.transaction(() => {
         let edgesRelinked = 0;
+        const now = Date.now();
 
         // Update edges where duplicate is the source
         const updateFrom = db.prepare(`UPDATE edges SET from_id = ? WHERE from_id = ?`);
@@ -1877,10 +2115,17 @@ export class SQLiteClient {
           edgesRelinked += fromChanges + toChanges;
         }
 
-        // Delete duplicate nodes
-        const deletePlaceholders = duplicateIds.map(() => '?').join(',');
-        const deleteStmt = db.prepare(`DELETE FROM nodes WHERE id IN (${deletePlaceholders})`);
-        deleteStmt.run(...duplicateIds);
+        // Mark canonical/duplicates instead of deleting raw nodes.
+        db.prepare(
+          `UPDATE nodes SET is_duplicate = 0, original_node_id = NULL, updated_at = ? WHERE id = ?`
+        ).run(now, canonicalId);
+
+        const duplicatePlaceholders = duplicateIds.map(() => '?').join(',');
+        db.prepare(
+          `UPDATE nodes
+           SET is_duplicate = 1, original_node_id = ?, updated_at = ?
+           WHERE id IN (${duplicatePlaceholders})`
+        ).run(canonicalId, now, ...duplicateIds);
 
         // Log merge operation if deduplication_log table exists
         try {
@@ -1908,7 +2153,7 @@ export class SQLiteClient {
             edgesRelinked,
             spaceSaved,
             'system', // Bug #31: Consider passing userId as parameter for better audit trail
-            Date.now()
+            now
           );
         } catch (error: any) {
           // Bug fix #30: Log warning instead of silent failure
@@ -1973,6 +2218,7 @@ export class SQLiteClient {
       // Perform merge in transaction
       const transaction = db.transaction((canonicalId: string, dupIds: string[]) => {
         const placeholders = dupIds.map(() => '?').join(',');
+        const now = Date.now();
 
         // Update edges where duplicate is the source
         const updateFromStmt = db.prepare(
@@ -1986,9 +2232,15 @@ export class SQLiteClient {
         );
         updateToStmt.run(canonicalId, ...dupIds);
 
-        // Delete duplicate nodes
-        const deleteStmt = db.prepare(`DELETE FROM nodes WHERE id IN (${placeholders})`);
-        deleteStmt.run(...dupIds);
+        // Preserve raw duplicate nodes and link them to canonical.
+        db.prepare(
+          `UPDATE nodes SET is_duplicate = 0, original_node_id = NULL, updated_at = ? WHERE id = ?`
+        ).run(now, canonicalId);
+        db.prepare(
+          `UPDATE nodes
+           SET is_duplicate = 1, original_node_id = ?, updated_at = ?
+           WHERE id IN (${placeholders})`
+        ).run(canonicalId, now, ...dupIds);
 
         // Log merge operation if deduplication_log table exists
         try {
@@ -2019,7 +2271,7 @@ export class SQLiteClient {
             edgeCount,
             spaceSaved,
             'system', // Bug #31: Consider passing userId as parameter for better audit trail
-            Date.now()
+            now
           );
         } catch (error: any) {
           // Bug fix #30: Log warning instead of silent failure

@@ -5,7 +5,7 @@
  * Each task type has a corresponding handler implementation.
  */
 
-import type { Task, Run, TaskType, RunMetrics } from '../types/task.js';
+import type { ArtifactType, Task, Run, TaskType, RunMetrics } from '../types/task.js';
 import type { GraphRepo } from './graph-repo.js';
 import type { Storage } from './storage.js';
 import type { EventBus } from './event-bus.js';
@@ -57,8 +57,16 @@ export interface TaskResult<TOutput = unknown> {
   output?: TOutput;
   /** Error message (if failed) */
   error?: string;
-  /** Created artifact IDs */
-  artifacts: string[];
+  /** Created artifact references (storage hashes + optional metadata) */
+  artifacts: Array<
+    | string
+    | {
+        hash: string;
+        type?: ArtifactType;
+        path?: string;
+        metadata?: Record<string, unknown>;
+      }
+  >;
   /** Execution metrics (uses RunMetrics with index signature for custom metrics) */
   metrics?: RunMetrics;
 }
@@ -150,9 +158,7 @@ export interface HandlerRegistry {
   /**
    * Register a task handler
    */
-  register<TInput, TOutput>(
-    handler: TaskHandler<TInput, TOutput>
-  ): void;
+  register<TInput, TOutput>(handler: TaskHandler<TInput, TOutput>): void;
 
   /**
    * Get handler for a task type

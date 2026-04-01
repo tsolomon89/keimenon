@@ -60,6 +60,7 @@ type RunRow = {
   completed_at: number | null;
   error: string | null;
   metrics: string | null;
+  output: string | null;
 };
 
 type ArtifactRow = {
@@ -537,8 +538,8 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
       .prepare(
         `
           INSERT INTO agent_runs (
-            id, task_id, attempt, status, started_at, completed_at, error, metrics, data_tag
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'real')
+            id, task_id, attempt, status, started_at, completed_at, error, metrics, output, data_tag
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'real')
         `
       )
       .run(
@@ -549,7 +550,8 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
         run.started_at,
         run.completed_at ?? null,
         run.error ?? null,
-        JSON.stringify(run.metrics || { duration_ms: 0 })
+        JSON.stringify(run.metrics || { duration_ms: 0 }),
+        run.output ? JSON.stringify(run.output) : null
       );
 
     return run;
@@ -557,7 +559,7 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
 
   async updateRun(
     runId: string,
-    updates: Partial<Pick<Run, 'status' | 'completed_at' | 'error' | 'metrics'>>
+    updates: Partial<Pick<Run, 'status' | 'completed_at' | 'error' | 'metrics' | 'output'>>
   ): Promise<void> {
     this.db
       .prepare(
@@ -566,7 +568,8 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
           SET status = COALESCE(@status, status),
               completed_at = COALESCE(@completed_at, completed_at),
               error = COALESCE(@error, error),
-              metrics = COALESCE(@metrics, metrics)
+              metrics = COALESCE(@metrics, metrics),
+              output = COALESCE(@output, output)
           WHERE id = @runId
         `
       )
@@ -576,6 +579,7 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
         completed_at: updates.completed_at ?? null,
         error: updates.error ?? null,
         metrics: updates.metrics ? JSON.stringify(updates.metrics) : null,
+        output: updates.output ? JSON.stringify(updates.output) : null,
       });
   }
 
@@ -583,7 +587,7 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
     const rows = this.db
       .prepare(
         `
-          SELECT id, task_id, attempt, status, started_at, completed_at, error, metrics
+          SELECT id, task_id, attempt, status, started_at, completed_at, error, metrics, output
           FROM agent_runs
           WHERE task_id = ?
           ORDER BY attempt ASC
@@ -744,10 +748,12 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
   }
 
   private ensureAgentTables(): void {
+    this.migrateAgentTablesForBigBang();
+
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS agent_tasks (
         id TEXT PRIMARY KEY,
-        type TEXT NOT NULL CHECK(type IN ('GROUP_SUMMARY_BUILD', 'DUPLICATE_SUGGEST', 'VERIFY_SOURCE_CHAIN')),
+        type TEXT NOT NULL,
         account_id TEXT NOT NULL,
         agent_id TEXT NOT NULL,
         status TEXT NOT NULL CHECK(status IN ('pending', 'running', 'completed', 'failed', 'cancelled')),
@@ -775,6 +781,7 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
         completed_at INTEGER,
         error TEXT,
         metrics TEXT,
+        output TEXT,
         data_tag TEXT DEFAULT 'real'
       );
 
@@ -784,7 +791,7 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
       CREATE TABLE IF NOT EXISTS agent_artifacts (
         id TEXT PRIMARY KEY,
         run_id TEXT NOT NULL,
-        type TEXT NOT NULL CHECK(type IN ('canonical_doc', 'cluster_json', 'evidence_chain', 'diff', 'log')),
+        type TEXT NOT NULL,
         content_hash TEXT NOT NULL,
         storage_path TEXT NOT NULL,
         created_at INTEGER NOT NULL,
@@ -796,6 +803,90 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
       CREATE INDEX IF NOT EXISTS idx_agent_artifacts_hash ON agent_artifacts(content_hash);
       CREATE INDEX IF NOT EXISTS idx_agent_artifacts_type ON agent_artifacts(type);
     `);
+
+    const runColumns = this.db.prepare("PRAGMA table_info('agent_runs')").all() as Array<{
+      name: string;
+    }>;
+    const hasOutputColumn = runColumns.some((column) => column.name === 'output');
+    if (!hasOutputColumn) {
+      this.db.exec(`ALTER TABLE agent_runs ADD COLUMN output TEXT;`);
+    }
+  }
+
+  private migrateAgentTablesForBigBang(): void {
+    const tableSqlRows = this.db
+      .prepare(
+        `
+          SELECT name, sql
+          FROM sqlite_master
+          WHERE type = 'table'
+            AND name IN ('agent_tasks', 'agent_artifacts')
+        `
+      )
+      .all() as Array<{ name: string; sql: string | null }>;
+
+    const taskSql = tableSqlRows.find((row) => row.name === 'agent_tasks')?.sql || '';
+    if (
+      taskSql.includes(
+        "CHECK(type IN ('GROUP_SUMMARY_BUILD', 'DUPLICATE_SUGGEST', 'VERIFY_SOURCE_CHAIN'))"
+      )
+    ) {
+      this.db.exec(`
+        ALTER TABLE agent_tasks RENAME TO agent_tasks_legacy_bigbang;
+        CREATE TABLE agent_tasks (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          account_id TEXT NOT NULL,
+          agent_id TEXT NOT NULL,
+          status TEXT NOT NULL CHECK(status IN ('pending', 'running', 'completed', 'failed', 'cancelled')),
+          input TEXT NOT NULL,
+          config TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          started_at INTEGER,
+          completed_at INTEGER,
+          error TEXT,
+          metadata TEXT,
+          data_tag TEXT DEFAULT 'real'
+        );
+        INSERT INTO agent_tasks (
+          id, type, account_id, agent_id, status, input, config, created_at,
+          started_at, completed_at, error, metadata, data_tag
+        )
+        SELECT
+          id, type, account_id, agent_id, status, input, config, created_at,
+          started_at, completed_at, error, metadata, data_tag
+        FROM agent_tasks_legacy_bigbang;
+        DROP TABLE agent_tasks_legacy_bigbang;
+      `);
+    }
+
+    const artifactSql = tableSqlRows.find((row) => row.name === 'agent_artifacts')?.sql || '';
+    if (
+      artifactSql.includes(
+        "CHECK(type IN ('canonical_doc', 'cluster_json', 'evidence_chain', 'diff', 'log'))"
+      )
+    ) {
+      this.db.exec(`
+        ALTER TABLE agent_artifacts RENAME TO agent_artifacts_legacy_bigbang;
+        CREATE TABLE agent_artifacts (
+          id TEXT PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          type TEXT NOT NULL,
+          content_hash TEXT NOT NULL,
+          storage_path TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          metadata TEXT,
+          data_tag TEXT DEFAULT 'real'
+        );
+        INSERT INTO agent_artifacts (
+          id, run_id, type, content_hash, storage_path, created_at, metadata, data_tag
+        )
+        SELECT
+          id, run_id, type, content_hash, storage_path, created_at, metadata, data_tag
+        FROM agent_artifacts_legacy_bigbang;
+        DROP TABLE agent_artifacts_legacy_bigbang;
+      `);
+    }
   }
 
   private toGroupNode(row: NodeRow): GroupNode {
@@ -892,6 +983,7 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
       completed_at: row.completed_at ?? undefined,
       error: row.error ?? undefined,
       metrics: parseJson(row.metrics, { duration_ms: 0 }),
+      output: parseJson(row.output, undefined),
     };
   }
 

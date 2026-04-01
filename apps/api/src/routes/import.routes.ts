@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { SimilarityEngineV2, type SimilarityEngineDocument } from '@keimenon/parsers';
 import { normalizeImportOptions } from '@keimenon/types';
+import { randomUUID } from 'crypto';
 import { requireAuth } from '../middleware/auth.middleware';
 import type { AuthServiceV2 } from '../services/auth.service';
 import { isSemanticStageKillSwitchEnabled } from '../utils/gate-e-kill-switches';
@@ -21,6 +22,16 @@ type PreviewConversation = {
   id?: string;
   conversationId?: string;
   messages?: PreviewMessage[];
+};
+
+type StoredImportPresetConfig = Omit<ReturnType<typeof normalizeImportOptions>, 'platform'>;
+
+type ImportPresetRow = {
+  id: string;
+  name: string;
+  config: string;
+  created_at: number;
+  updated_at: number;
 };
 
 function normalizeText(text: string): string {
@@ -161,6 +172,78 @@ function parsePreviewMessages(payload: any): PreviewMessage[] {
   }
 
   return [];
+}
+
+function normalizePresetName(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > 64) {
+    return null;
+  }
+
+  return trimmed;
+}
+
+function toStoredPresetConfig(config: unknown): StoredImportPresetConfig {
+  const normalized = normalizeImportOptions(config);
+  const { platform: _platform, ...storedConfig } = normalized;
+  return storedConfig;
+}
+
+function parseStoredPresetConfig(rawConfig: string): StoredImportPresetConfig {
+  try {
+    const parsed = JSON.parse(rawConfig);
+    return toStoredPresetConfig(parsed);
+  } catch {
+    return toStoredPresetConfig(undefined);
+  }
+}
+
+function mapImportPresetRow(row: ImportPresetRow) {
+  return {
+    id: row.id,
+    name: row.name,
+    config: parseStoredPresetConfig(row.config),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function isUniqueConstraintError(error: any): boolean {
+  return typeof error?.message === 'string' && error.message.includes('UNIQUE constraint failed');
+}
+
+function parseStatsWindow(
+  value: unknown
+): { label: '24h' | '7d' | '30d'; durationMs: number } | null {
+  switch (value) {
+    case '24h':
+      return { label: '24h', durationMs: 24 * 60 * 60 * 1000 };
+    case '7d':
+      return { label: '7d', durationMs: 7 * 24 * 60 * 60 * 1000 };
+    case '30d':
+      return { label: '30d', durationMs: 30 * 24 * 60 * 60 * 1000 };
+    default:
+      return null;
+  }
+}
+
+function parseBucketCount(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(6, Math.min(120, Math.floor(value)));
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return Math.max(6, Math.min(120, Math.floor(parsed)));
+    }
+  }
+
+  return fallback;
 }
 
 function materializePreviewDocuments(
@@ -319,6 +402,377 @@ export function createImportRoutes(authService: AuthServiceV2): Router {
       return res.status(400).json({
         success: false,
         error: error?.message || 'Failed to generate similarity preview',
+      });
+    }
+  });
+
+  router.get('/presets', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const accountId = req.user?.accountId;
+      const userId = req.user?.userId;
+
+      if (!accountId || !userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+        });
+      }
+
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
+      const rows = database
+        .prepare(
+          `
+        SELECT id, name, config, created_at, updated_at
+        FROM import_presets
+        WHERE account_id = ? AND user_id = ?
+        ORDER BY updated_at DESC, created_at DESC
+      `
+        )
+        .all(accountId, userId) as ImportPresetRow[];
+
+      return res.json({
+        success: true,
+        presets: rows.map(mapImportPresetRow),
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        error: error?.message || 'Failed to list import presets',
+      });
+    }
+  });
+
+  router.post('/presets', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const accountId = req.user?.accountId;
+      const userId = req.user?.userId;
+
+      if (!accountId || !userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+        });
+      }
+
+      const presetName = normalizePresetName(req.body?.name);
+      if (!presetName) {
+        return res.status(400).json({
+          success: false,
+          error: 'Preset name is required and must be between 1 and 64 characters',
+        });
+      }
+
+      const config = toStoredPresetConfig(req.body?.config);
+      const now = Date.now();
+      const id = randomUUID();
+
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
+      try {
+        database
+          .prepare(
+            `
+          INSERT INTO import_presets (
+            id, account_id, user_id, name, config, created_at, updated_at, data_tag
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'real')
+        `
+          )
+          .run(id, accountId, userId, presetName, JSON.stringify(config), now, now);
+      } catch (insertError: any) {
+        if (isUniqueConstraintError(insertError)) {
+          return res.status(409).json({
+            success: false,
+            error: 'A preset with this name already exists',
+            code: 'PRESET_NAME_EXISTS',
+          });
+        }
+        throw insertError;
+      }
+
+      return res.status(201).json({
+        success: true,
+        preset: {
+          id,
+          name: presetName,
+          config,
+          createdAt: now,
+          updatedAt: now,
+        },
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        error: error?.message || 'Failed to create import preset',
+      });
+    }
+  });
+
+  router.put('/presets/:id', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const accountId = req.user?.accountId;
+      const userId = req.user?.userId;
+      const presetId = req.params.id;
+
+      if (!accountId || !userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+        });
+      }
+
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
+      const existing = database
+        .prepare(
+          `
+        SELECT id, name, config, created_at, updated_at
+        FROM import_presets
+        WHERE id = ? AND account_id = ? AND user_id = ?
+      `
+        )
+        .get(presetId, accountId, userId) as ImportPresetRow | undefined;
+
+      if (!existing) {
+        return res.status(404).json({
+          success: false,
+          error: 'Import preset not found',
+        });
+      }
+
+      const hasName = typeof req.body?.name === 'string';
+      const hasConfig = typeof req.body?.config !== 'undefined';
+      if (!hasName && !hasConfig) {
+        return res.status(400).json({
+          success: false,
+          error: 'At least one of name or config must be provided',
+        });
+      }
+
+      const nextName = hasName ? normalizePresetName(req.body?.name) : existing.name;
+      if (!nextName) {
+        return res.status(400).json({
+          success: false,
+          error: 'Preset name is required and must be between 1 and 64 characters',
+        });
+      }
+
+      const nextConfig = hasConfig
+        ? toStoredPresetConfig(req.body?.config)
+        : parseStoredPresetConfig(existing.config);
+      const now = Date.now();
+
+      try {
+        database
+          .prepare(
+            `
+          UPDATE import_presets
+          SET name = ?, config = ?, updated_at = ?
+          WHERE id = ? AND account_id = ? AND user_id = ?
+        `
+          )
+          .run(nextName, JSON.stringify(nextConfig), now, presetId, accountId, userId);
+      } catch (updateError: any) {
+        if (isUniqueConstraintError(updateError)) {
+          return res.status(409).json({
+            success: false,
+            error: 'A preset with this name already exists',
+            code: 'PRESET_NAME_EXISTS',
+          });
+        }
+        throw updateError;
+      }
+
+      return res.json({
+        success: true,
+        preset: {
+          id: existing.id,
+          name: nextName,
+          config: nextConfig,
+          createdAt: existing.created_at,
+          updatedAt: now,
+        },
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        error: error?.message || 'Failed to update import preset',
+      });
+    }
+  });
+
+  router.delete('/presets/:id', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const accountId = req.user?.accountId;
+      const userId = req.user?.userId;
+      const presetId = req.params.id;
+
+      if (!accountId || !userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+        });
+      }
+
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
+      const result = database
+        .prepare(
+          `
+        DELETE FROM import_presets
+        WHERE id = ? AND account_id = ? AND user_id = ?
+      `
+        )
+        .run(presetId, accountId, userId);
+
+      if (result.changes === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Import preset not found',
+        });
+      }
+
+      return res.json({
+        success: true,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        error: error?.message || 'Failed to delete import preset',
+      });
+    }
+  });
+
+  router.get('/stats/series', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const accountId = req.user?.accountId;
+      if (!accountId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+        });
+      }
+
+      const windowConfig = parseStatsWindow(req.query.window);
+      if (!windowConfig) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid window parameter. Use one of: 24h, 7d, 30d',
+        });
+      }
+
+      const bucketCount = parseBucketCount(req.query.buckets, 12);
+      const bucketSizeMs = Math.max(1, Math.floor(windowConfig.durationMs / bucketCount));
+      const now = Date.now();
+      const start = now - windowConfig.durationMs;
+
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+
+      const rows = database
+        .prepare(
+          `
+        SELECT
+          CAST((created_at - ?) / ? AS INTEGER) AS bucket_index,
+          COUNT(*) AS imports_count,
+          SUM(
+            CASE
+              WHEN json_valid(state_data) THEN COALESCE(CAST(json_extract(state_data, '$.stats.conversationsProcessed') AS INTEGER), 0)
+              ELSE 0
+            END
+          ) AS conversations_processed,
+          SUM(
+            CASE
+              WHEN json_valid(state_data) THEN COALESCE(CAST(json_extract(state_data, '$.stats.messagesProcessed') AS INTEGER), 0)
+              ELSE 0
+            END
+          ) AS messages_processed,
+          SUM(
+            CASE
+              WHEN json_valid(state_data) THEN COALESCE(CAST(json_extract(state_data, '$.stats.sourcesCreated') AS INTEGER), 0)
+              ELSE 0
+            END
+          ) AS sources_created,
+          SUM(
+            CASE
+              WHEN json_valid(state_data) THEN COALESCE(CAST(json_extract(state_data, '$.stats.nodesCreated') AS INTEGER), 0)
+              ELSE 0
+            END
+          ) AS nodes_created,
+          SUM(
+            CASE
+              WHEN json_valid(state_data) THEN COALESCE(CAST(json_extract(state_data, '$.stats.edgesCreated') AS INTEGER), 0)
+              ELSE 0
+            END
+          ) AS edges_created
+        FROM jobs
+        WHERE account_id = ?
+          AND type = 'import'
+          AND created_at >= ?
+          AND created_at <= ?
+        GROUP BY bucket_index
+        ORDER BY bucket_index ASC
+      `
+        )
+        .all(start, bucketSizeMs, accountId, start, now) as Array<{
+        bucket_index: number;
+        imports_count: number;
+        conversations_processed: number;
+        messages_processed: number;
+        sources_created: number;
+        nodes_created: number;
+        edges_created: number;
+      }>;
+
+      const bucketMap = new Map<number, (typeof rows)[number]>();
+      for (const row of rows) {
+        if (row.bucket_index >= 0 && row.bucket_index < bucketCount) {
+          bucketMap.set(row.bucket_index, row);
+        }
+      }
+
+      const series = Array.from({ length: bucketCount }).map((_, index) => {
+        const row = bucketMap.get(index);
+        const bucketStart = start + index * bucketSizeMs;
+        const bucketEnd = Math.min(now, bucketStart + bucketSizeMs);
+
+        return {
+          index,
+          bucketStart,
+          bucketEnd,
+          imports: Number(row?.imports_count || 0),
+          conversations: Number(row?.conversations_processed || 0),
+          messages: Number(row?.messages_processed || 0),
+          sources: Number(row?.sources_created || 0),
+          nodes: Number(row?.nodes_created || 0),
+          edges: Number(row?.edges_created || 0),
+        };
+      });
+
+      return res.json({
+        success: true,
+        window: windowConfig.label,
+        bucketCount,
+        bucketSizeMs,
+        range: {
+          start,
+          end: now,
+        },
+        series,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        error: error?.message || 'Failed to load import stats series',
       });
     }
   });

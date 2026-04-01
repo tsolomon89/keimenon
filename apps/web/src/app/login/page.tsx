@@ -14,7 +14,6 @@ function LoginForm() {
   const { login, selectAccount, isAuthenticated, isLoading: authLoading } = useAuth(); // rename to avoid clash
   const [isLoading, setIsLoading] = useState(false);
 
-  console.log('[LoginPage] Render. AuthLoading:', authLoading, 'IsAuthenticated:', isAuthenticated);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -139,7 +138,7 @@ function LoginForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
                 className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder="admin@admin.com"
+                placeholder="name@example.com"
               />
             </div>
 
@@ -157,7 +156,7 @@ function LoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
                 className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder="any password"
+                placeholder="Enter your password"
               />
             </div>
           </div>
@@ -167,7 +166,7 @@ function LoginForm() {
               href="/forgot-password"
               className="text-sm text-purple-300 hover:text-purple-200 transition-colors"
             >
-              Forgot password? (debug)
+              Forgot password?
             </Link>
           </div>
 
@@ -256,7 +255,6 @@ function LoginForm() {
               Create one here
             </Link>
           </p>
-          <p className="mt-3 text-xs text-slate-500">Development: admin@admin.com (any password)</p>
         </div>
       </div>
 

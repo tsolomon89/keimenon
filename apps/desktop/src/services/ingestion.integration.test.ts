@@ -196,11 +196,15 @@ describe('FileIngestionService integration contract', () => {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let reading = true;
 
     try {
-      while (true) {
+      while (reading) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          reading = false;
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
         let separator = buffer.indexOf('\n\n');

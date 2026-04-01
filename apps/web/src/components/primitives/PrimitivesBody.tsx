@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useShell } from '@/contexts/ShellContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Bar, List, Tile, PrimitiveCard as Card, Text, Viewer } from '@keimenon/ui';
-import { UsersAdapter } from '../adapters/UsersAdapter';
 import { SETTINGS_SECTIONS } from '../specs/settings.spec';
-import { Settings, Users, Database, Building2 } from 'lucide-react';
+import { fetchSettings, getAnalyticsOverview } from '@/lib/api-client';
+import { Users, Database, Building2 } from 'lucide-react';
 
 /**
  * PrimitivesBody - New UI architecture using nine primitives
@@ -37,30 +37,46 @@ export function PrimitivesBody() {
   async function loadViewerData() {
     setViewerLoading(true);
     try {
-      if (keimenonMode === 'settings' && selectedSection) {
-        // Load settings data for selected section
+      if (keimenonMode === 'settings' && selectedSection && user?.accountId) {
+        const settingsPayload = await fetchSettings(user.accountId);
         const sectionConfig = Object.values(SETTINGS_SECTIONS).find(
           (s) => s.id === selectedSection
         );
-        if (sectionConfig) {
-          // Mock settings data
-          setViewerData({
-            [selectedSection]: {
-              // This would come from an actual settings API
-              example: 'Settings data would be loaded here',
-            },
-          });
-        }
+        const fieldKeys = sectionConfig?.fields || [];
+        const settings = settingsPayload?.settings || {};
+        const sectionData = fieldKeys.reduce((accumulator: Record<string, unknown>, key) => {
+          if (settings[key]) {
+            accumulator[key] = settings[key];
+          }
+          return accumulator;
+        }, {});
+
+        setViewerData({ [selectedSection]: sectionData });
       } else if (keimenonMode === 'dashboard') {
-        // Mock dashboard metrics
+        const overview = await getAnalyticsOverview();
         setViewerData([
-          { title: 'Total Users', value: '1,234', subtitle: '+12% this month' },
-          { title: 'Active Sessions', value: '456', subtitle: 'Currently online' },
-          { title: 'Storage Used', value: '78 GB', subtitle: '22 GB remaining' },
+          {
+            title: 'Active Accounts',
+            value: overview.accounts.active.toLocaleString(),
+            subtitle: `${overview.accounts.total_seats.toLocaleString()} seats`,
+          },
+          {
+            title: 'Active (7d)',
+            value: overview.user_activity.last_7_days.toLocaleString(),
+            subtitle: `${overview.user_activity.avg_session_time_minutes} min avg session`,
+          },
+          {
+            title: 'Nodes',
+            value: overview.storage.total_nodes.toLocaleString(),
+            subtitle: `${overview.storage.total_edges.toLocaleString()} edges`,
+          },
         ]);
+      } else {
+        setViewerData(null);
       }
     } catch (error) {
       console.error('Failed to load viewer data:', error);
+      setViewerData(null);
     } finally {
       setViewerLoading(false);
     }

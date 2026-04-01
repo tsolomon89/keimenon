@@ -29,6 +29,7 @@ import type {
   DuplicateCandidate,
   DuplicateGroup,
 } from './duplicate-detection';
+import { computeDuplicateSimilarity } from './duplicate-similarity';
 
 /**
  * FTS5 configuration options
@@ -363,7 +364,10 @@ export class DuplicateDetectionFTS5Service {
     try {
       // Prepare FTS5 MATCH query
       // Use first N words as search query (trigrams will handle partial matches)
-      const words = content.split(/\s+/).filter((w) => w.length > 0).slice(0, 20);
+      const words = content
+        .split(/\s+/)
+        .filter((w) => w.length > 0)
+        .slice(0, 20);
 
       if (words.length === 0) {
         return []; // No words to search
@@ -413,9 +417,6 @@ export class DuplicateDetectionFTS5Service {
    *
    * Reuses existing similarity algorithms from DuplicateDetectionService.
    * This is the same logic, just applied only to FTS5 candidates instead of all pairs.
-   *
-   * TODO: Extract this to a shared utility module to avoid duplication
-   * See: apps/api/src/services/duplicate-detection.ts:210
    */
   private checkDuplicate(
     contentA: string,
@@ -430,36 +431,7 @@ export class DuplicateDetectionFTS5Service {
       lengthRatio: number;
     };
   } {
-    // Import similarity functions from utils
-    // NOTE: This is a simplified implementation for Phase 2.1
-    // TODO: Refactor to use shared similarity utilities
-    // See: packages/shared/src/utils/similarity.ts (to be created)
-
-    // For now, use simple Jaccard similarity
-    const tokensA = new Set(contentA.toLowerCase().split(/\s+/));
-    const tokensB = new Set(contentB.toLowerCase().split(/\s+/));
-
-    const intersection = new Set(Array.from(tokensA).filter((x) => tokensB.has(x)));
-    const union = new Set([...Array.from(tokensA), ...Array.from(tokensB)]);
-
-    const jaccardSimilarity = union.size > 0 ? intersection.size / union.size : 0;
-
-    const lengthRatio =
-      Math.min(contentA.length, contentB.length) / Math.max(contentA.length, contentB.length);
-
-    const isDuplicate =
-      jaccardSimilarity >= config.similarityThreshold &&
-      lengthRatio >= 1 - config.lengthRatioTolerance;
-
-    return {
-      isDuplicate,
-      similarity: jaccardSimilarity,
-      metrics: {
-        tokenOverlap: intersection.size,
-        editDistance: 0, // TODO: Implement if needed
-        lengthRatio,
-      },
-    };
+    return computeDuplicateSimilarity(contentA, contentB, config);
   }
 
   /**
@@ -512,9 +484,9 @@ export class DuplicateDetectionFTS5Service {
   private verifyFTS5Available(): boolean {
     try {
       const result = this.db
-        .prepare<[]>(
-          `SELECT name FROM sqlite_master WHERE type='table' AND name='messages_fts_duplicate'`
-        )
+        .prepare<
+          []
+        >(`SELECT name FROM sqlite_master WHERE type='table' AND name='messages_fts_duplicate'`)
         .get();
 
       return !!result;
@@ -541,7 +513,9 @@ export class DuplicateDetectionFTS5Service {
     }
 
     try {
-      const countResult = this.db.prepare<[]>('SELECT COUNT(*) as count FROM messages_fts_duplicate').get() as { count: number };
+      const countResult = this.db
+        .prepare<[]>('SELECT COUNT(*) as count FROM messages_fts_duplicate')
+        .get() as { count: number };
 
       const sampleResults = this.db
         .prepare<[number]>('SELECT node_id, account_id FROM messages_fts_duplicate LIMIT ?')

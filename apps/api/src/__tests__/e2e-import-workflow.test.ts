@@ -443,7 +443,7 @@ describe('E2E Import Workflow', () => {
 
         const persistedJob = await getJob(jobId, adminToken);
         assert.strictEqual(persistedJob.config?.importOptions?.processingMode, 'automatic');
-        assert.strictEqual(persistedJob.config?.metadata?.importContractVersion, 'v2');
+        assert.strictEqual(persistedJob.config?.metadata?.importContractVersion, 'v3');
         assert.strictEqual(persistedJob.config?.metadata?.processingRail, 'multipart');
 
         const kinds = getNodesByKind(db, adminAccountId);
@@ -479,7 +479,7 @@ describe('E2E Import Workflow', () => {
         assert.strictEqual(completedJob.state.status, 'succeeded');
         const persistedJob = await getJob(jobId, adminToken);
         assert.strictEqual(persistedJob.config?.importOptions?.processingMode, 'manual');
-        assert.strictEqual(persistedJob.config?.metadata?.importContractVersion, 'v2');
+        assert.strictEqual(persistedJob.config?.metadata?.importContractVersion, 'v3');
         assert.strictEqual(persistedJob.config?.metadata?.processingRail, 'multipart');
       } finally {
         await fs.unlink(fixturePath).catch(() => undefined);

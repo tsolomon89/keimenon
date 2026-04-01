@@ -14,6 +14,8 @@ const { mockAgentService } = vi.hoisted(() => ({
     getTaskDetails: vi.fn(),
     getTask: vi.fn(),
     cancelTask: vi.fn(),
+    isTaskTypeAvailable: vi.fn(),
+    getToolStatus: vi.fn(),
   },
 }));
 
@@ -45,11 +47,23 @@ describe('Agent Routes', () => {
     mockAgentService.getAvailableTaskTypes.mockReturnValue([
       'GROUP_SUMMARY_BUILD',
       'DUPLICATE_SUGGEST',
+      'ANALYZE_SOURCE',
+      'VERIFY_TOPIC',
+    ]);
+    mockAgentService.isTaskTypeAvailable.mockReturnValue(true);
+    mockAgentService.getToolStatus.mockReturnValue([
+      { name: 'llm', available: true, provider: 'litellm' },
+      { name: 'web', available: true, provider: 'searxng' },
     ]);
     mockAgentService.getRunningTasks.mockReturnValue([]);
     mockAgentService.getHealth.mockResolvedValue({
       status: 'ok',
-      availableTypes: ['GROUP_SUMMARY_BUILD', 'DUPLICATE_SUGGEST'],
+      availableTypes: [
+        'GROUP_SUMMARY_BUILD',
+        'DUPLICATE_SUGGEST',
+        'ANALYZE_SOURCE',
+        'VERIFY_TOPIC',
+      ],
       runningTasks: 0,
       tools: [],
       degraded: false,
@@ -62,7 +76,12 @@ describe('Agent Routes', () => {
 
     const response = await request(app).get('/api/v1/agent/health').expect(200);
     expect(response.body.status).toBe('ok');
-    expect(response.body.availableTypes).toEqual(['GROUP_SUMMARY_BUILD', 'DUPLICATE_SUGGEST']);
+    expect(response.body.availableTypes).toEqual([
+      'GROUP_SUMMARY_BUILD',
+      'DUPLICATE_SUGGEST',
+      'ANALYZE_SOURCE',
+      'VERIFY_TOPIC',
+    ]);
   });
 
   it('GET /api/v1/agents/* legacy path is not exposed', async () => {
@@ -100,6 +119,12 @@ describe('Agent Routes', () => {
 
   it('POST /tasks/:id/retry enqueues retry and returns 202', async () => {
     const app = buildApp();
+    mockAgentService.getTask.mockResolvedValue({
+      id: 'task_1',
+      account_id: 'acc_1',
+      type: 'DUPLICATE_SUGGEST',
+      status: 'failed',
+    });
     mockAgentService.retryTask.mockResolvedValue({
       task: {
         id: 'task_2',
@@ -112,6 +137,34 @@ describe('Agent Routes', () => {
     await request(app).post('/api/v1/agent/tasks/task_1/retry').send({}).expect(202);
 
     expect(mockAgentService.retryTask).toHaveBeenCalledWith('task_1', 'acc_1');
+  });
+
+  it('POST /tasks/:id/retry returns 403 when runtime entitlement is missing', async () => {
+    const app = express();
+    app.use(express.json());
+    app.use((req: any, _res, next) => {
+      req.user = {
+        accountId: 'acc_1',
+        accountClass: 'free',
+      };
+      next();
+    });
+    app.use('/api/v1/agent', createAgentRoutes());
+
+    mockAgentService.getTask.mockResolvedValue({
+      id: 'task_1',
+      account_id: 'acc_1',
+      type: 'DUPLICATE_SUGGEST',
+      status: 'failed',
+    });
+
+    const response = await request(app)
+      .post('/api/v1/agent/tasks/task_1/retry')
+      .send({})
+      .expect(403);
+
+    expect(response.body.requiredFeature).toBe('agent_runtime');
+    expect(mockAgentService.retryTask).not.toHaveBeenCalled();
   });
 
   it('GET /tasks returns task history for current account', async () => {
@@ -167,5 +220,28 @@ describe('Agent Routes', () => {
       .post('/api/v1/agent/tasks')
       .send({ type: 'DUPLICATE_SUGGEST', input: { scope: 'group', scopeId: 'grp_1' } })
       .expect(401);
+  });
+
+  it('POST /tasks returns 503 when required providers are unavailable', async () => {
+    const app = buildApp();
+    mockAgentService.getToolStatus.mockReturnValue([
+      { name: 'llm', available: false, error: 'LiteLLM not configured' },
+      { name: 'web', available: true, provider: 'searxng' },
+    ]);
+
+    const response = await request(app)
+      .post('/api/v1/agent/tasks')
+      .send({
+        type: 'ANALYZE_SOURCE',
+        input: { sourceId: 'src_1' },
+      })
+      .expect(503);
+
+    expect(response.body.code).toBe('PROVIDER_UNAVAILABLE');
+    expect(response.body.taskType).toBe('ANALYZE_SOURCE');
+    expect(response.body.retryable).toBe(true);
+    expect(response.body.providers).toEqual(['llm']);
+    expect(response.body.provider).toBe('llm');
+    expect(mockAgentService.executeTask).not.toHaveBeenCalled();
   });
 });

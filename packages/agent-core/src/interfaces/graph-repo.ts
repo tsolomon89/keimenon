@@ -7,22 +7,12 @@
  * Key principle: Agents create NEW nodes, never edit existing sources.
  */
 
-import type {
-  Task,
-  Run,
-  Artifact,
-  AgentNode,
-} from '../types/index.js';
+import type { Task, Run, Artifact, AgentNode } from '../types/index.js';
 
 /**
  * Node status for agent-created nodes
  */
-export type NodeStatus =
-  | 'draft'
-  | 'pending_review'
-  | 'approved'
-  | 'rejected'
-  | 'archived';
+export type NodeStatus = 'draft' | 'pending_review' | 'approved' | 'rejected' | 'archived';
 
 /**
  * Source filters for querying
@@ -107,11 +97,7 @@ export interface GraphRepo {
   /**
    * List sources in a group
    */
-  listSources(
-    groupId: string,
-    accountId: string,
-    filters?: SourceFilters
-  ): Promise<SourceNode[]>;
+  listSources(groupId: string, accountId: string, filters?: SourceFilters): Promise<SourceNode[]>;
 
   /**
    * Get a single source with its content
@@ -132,10 +118,7 @@ export interface GraphRepo {
   /**
    * Get a node by ID
    */
-  getNode<T extends GraphNode = GraphNode>(
-    nodeId: string,
-    accountId: string
-  ): Promise<T | null>;
+  getNode<T extends GraphNode = GraphNode>(nodeId: string, accountId: string): Promise<T | null>;
 
   /**
    * Query nodes by kind
@@ -178,19 +161,13 @@ export interface GraphRepo {
   /**
    * Create multiple edges in a batch
    */
-  createEdges(
-    edges: Array<Omit<GraphEdge, 'id' | 'created_at'>>
-  ): Promise<GraphEdge[]>;
+  createEdges(edges: Array<Omit<GraphEdge, 'id' | 'created_at'>>): Promise<GraphEdge[]>;
 
   /**
    * Set status on an agent-created node
    * Only works for nodes created by agents (not user sources)
    */
-  setNodeStatus(
-    nodeId: string,
-    accountId: string,
-    status: NodeStatus
-  ): Promise<void>;
+  setNodeStatus(nodeId: string, accountId: string, status: NodeStatus): Promise<void>;
 
   // ============================================
   // Task/Run/Artifact Storage
@@ -204,11 +181,7 @@ export interface GraphRepo {
   /**
    * Update task status
    */
-  updateTaskStatus(
-    taskId: string,
-    status: Task['status'],
-    error?: string
-  ): Promise<void>;
+  updateTaskStatus(taskId: string, status: Task['status'], error?: string): Promise<void>;
 
   /**
    * Get a task by ID
@@ -233,7 +206,7 @@ export interface GraphRepo {
    */
   updateRun(
     runId: string,
-    updates: Partial<Pick<Run, 'status' | 'completed_at' | 'error' | 'metrics'>>
+    updates: Partial<Pick<Run, 'status' | 'completed_at' | 'error' | 'metrics' | 'output'>>
   ): Promise<void>;
 
   /**

@@ -14,14 +14,14 @@ This contract applies to both import upload rails:
 
 ## Processing Mode Semantics
 
-- `processingMode=automatic`: Full Pro Import pipeline with provenance-first graph output.
+- `processingMode=automatic`: similarity-first import pipeline with provenance-first graph output.
   - Canonical conversation reconstruction
   - Source span extraction
   - Mandatory atomic substrate (`char` + `trigram`)
   - Packet derivation + deterministic mass scoring
   - Layer linking (`Source -> SourceSpan -> Packet -> AtomicUnit`)
 - `processingMode=manual`: manual groups are applied first, then unmatched messages are auto-grouped.
-- `processingMode=hybrid`: aliased to manual-first + auto fallback for compatibility.
+- `processingMode=hybrid`: manual grouping and automatic grouping run in the same job with explicit coexistence.
 
 ## Compatibility and Backward Behavior
 

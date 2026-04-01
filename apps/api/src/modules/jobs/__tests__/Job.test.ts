@@ -304,6 +304,41 @@ describe('Job Domain Model', () => {
     });
   });
 
+  describe('State Mutation API', () => {
+    it('updates metadata through Job.updateState()', () => {
+      const spec: JobSpec = {
+        type: 'import',
+        accountId: 'acc_test',
+        createdBy: 'user_test',
+        config: { files: [] },
+      };
+
+      const job = Job.create(spec);
+      job.updateState({
+        metadata: {
+          checkpoint: { batch: 2 },
+        },
+      });
+
+      assert.strictEqual((job.state.metadata as any)?.checkpoint?.batch, 2);
+    });
+
+    it('normalizes date fields passed as ISO strings', () => {
+      const spec: JobSpec = {
+        type: 'import',
+        accountId: 'acc_test',
+        createdBy: 'user_test',
+        config: { files: [] },
+      };
+
+      const job = Job.create(spec);
+      const timestamp = new Date().toISOString();
+
+      job.updateState({ queuedAt: timestamp as any });
+      assert.ok(job.state.queuedAt instanceof Date);
+    });
+  });
+
   describe('Job Serialization', () => {
     it('should serialize to JSON correctly', () => {
       const spec: JobSpec = {

@@ -1,41 +1,70 @@
 import { Router, Request, Response } from 'express';
 import { SQLiteClient } from '@keimenon/db';
 import { AuthService } from '../services/auth.service';
-import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
+import { requireAuth } from '../middleware/auth.middleware';
 import Database from 'better-sqlite3';
 
-/**
- * Calculate estimated MRR based on account tiers
- * Note: This is a placeholder until proper subscription tracking is implemented
- */
-function calculateEstimatedMRR(database: Database.Database): number {
-  const accountsByTier = database
-    .prepare(
+type BillingSnapshotRow = {
+  mrr_cents: number | null;
+  active_subscriptions: number | null;
+  canceled_last_30d: number | null;
+};
+
+function computeBillingMetrics(
+  database: Database.Database,
+  options: { isSystemWideView: boolean; targetAccountId: string | null; sinceTimestamp: number }
+): { mrr: number; churnRate: number; customerLtv: number } {
+  const { isSystemWideView, targetAccountId, sinceTimestamp } = options;
+
+  const billingSnapshot = isSystemWideView
+    ? (database
+        .prepare(
+          `
+        SELECT
+          SUM(
+            CASE
+              WHEN status IN ('active', 'trialing') THEN
+                CASE billing_period WHEN 'yearly' THEN amount_cents / 12.0 ELSE amount_cents END
+              ELSE 0
+            END
+          ) AS mrr_cents,
+          SUM(CASE WHEN status IN ('active', 'trialing') THEN 1 ELSE 0 END) AS active_subscriptions,
+          SUM(CASE WHEN status = 'canceled' AND canceled_at >= ? THEN 1 ELSE 0 END) AS canceled_last_30d
+        FROM subscriptions
       `
-    SELECT
-      account_class,
-      COUNT(*) as count
-    FROM accounts
-    WHERE account_type = 'client'
-    GROUP BY account_class
-  `
-    )
-    .all() as any[];
+        )
+        .get(sinceTimestamp) as BillingSnapshotRow)
+    : (database
+        .prepare(
+          `
+        SELECT
+          SUM(
+            CASE
+              WHEN status IN ('active', 'trialing') THEN
+                CASE billing_period WHEN 'yearly' THEN amount_cents / 12.0 ELSE amount_cents END
+              ELSE 0
+            END
+          ) AS mrr_cents,
+          SUM(CASE WHEN status IN ('active', 'trialing') THEN 1 ELSE 0 END) AS active_subscriptions,
+          SUM(CASE WHEN status = 'canceled' AND canceled_at >= ? THEN 1 ELSE 0 END) AS canceled_last_30d
+        FROM subscriptions
+        WHERE account_id = ?
+      `
+        )
+        .get(sinceTimestamp, targetAccountId) as BillingSnapshotRow);
 
-  // Estimated pricing (replace with actual when subscriptions table exists)
-  const pricing: Record<string, number> = {
-    free: 0,
-    professional: 29,
-    business: 99,
-  };
+  const mrr = Number((Number(billingSnapshot?.mrr_cents || 0) / 100).toFixed(2));
+  const activeSubscriptions = Number(billingSnapshot?.active_subscriptions || 0);
+  const canceledLast30d = Number(billingSnapshot?.canceled_last_30d || 0);
 
-  let mrr = 0;
-  accountsByTier.forEach((tier) => {
-    const price = pricing[tier.account_class] || 0;
-    mrr += price * tier.count;
-  });
+  const churnRate =
+    activeSubscriptions > 0
+      ? Number(((canceledLast30d / activeSubscriptions) * 100).toFixed(2))
+      : 0;
+  const arpa = activeSubscriptions > 0 ? mrr / activeSubscriptions : 0;
+  const customerLtv = Number((churnRate > 0 ? arpa / (churnRate / 100) : arpa * 12).toFixed(2));
 
-  return mrr;
+  return { mrr, churnRate, customerLtv };
 }
 
 export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService): Router {
@@ -90,7 +119,6 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
           )
           .get() as any;
       } else {
-
         // Account-scoped view: single account stats
         const stats = database
           .prepare(
@@ -108,11 +136,11 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
           .get(targetAccountId) as any;
 
         accountStats = stats || {
-            total_accounts: 0,
-            client_accounts: 0,
-            free_tier: 0,
-            pro_tier: 0,
-            business_tier: 0
+          total_accounts: 0,
+          client_accounts: 0,
+          free_tier: 0,
+          pro_tier: 0,
+          business_tier: 0,
         };
 
         const seatsResult = database
@@ -125,7 +153,7 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
         `
           )
           .get(targetAccountId) as any;
-          
+
         totalSeats = seatsResult || { count: 0 };
       }
 
@@ -277,18 +305,134 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
 
       const storageSize = storageSizeResult?.total_bytes || 0;
 
-      // Processing Jobs (mock for now - would need jobs table)
-      const processingStats = {
-        active: 0,
-        completed_today: 0,
-        failed: 0,
-      };
+      // Processing metrics (persisted jobs table)
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const startOfTodayMs = startOfToday.getTime();
+      const last24HoursMs = now - 24 * 60 * 60 * 1000;
 
-      // System Health (mock for now - would need monitoring table)
+      const processingStats = isSystemWideView
+        ? (database
+            .prepare(
+              `
+            SELECT
+              SUM(CASE WHEN status IN ('queued', 'running', 'blocked') THEN 1 ELSE 0 END) as active,
+              SUM(CASE WHEN status = 'succeeded' AND updated_at >= ? THEN 1 ELSE 0 END) as completed_today,
+              SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+            FROM jobs
+          `
+            )
+            .get(startOfTodayMs) as any)
+        : (database
+            .prepare(
+              `
+            SELECT
+              SUM(CASE WHEN status IN ('queued', 'running', 'blocked') THEN 1 ELSE 0 END) as active,
+              SUM(CASE WHEN status = 'succeeded' AND updated_at >= ? THEN 1 ELSE 0 END) as completed_today,
+              SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+            FROM jobs
+            WHERE account_id = ?
+          `
+            )
+            .get(startOfTodayMs, targetAccountId) as any);
+
+      const throughputStats = isSystemWideView
+        ? (database
+            .prepare(
+              `
+            SELECT
+              SUM(CASE WHEN status = 'queued' THEN 1 ELSE 0 END) as queue_depth,
+              SUM(CASE WHEN status = 'running' THEN 1 ELSE 0 END) as running_jobs,
+              SUM(CASE WHEN status = 'succeeded' AND updated_at >= ? THEN 1 ELSE 0 END) as throughput_24h,
+              SUM(CASE WHEN status = 'failed' AND updated_at >= ? THEN 1 ELSE 0 END) as failures_24h
+            FROM jobs
+          `
+            )
+            .get(last24HoursMs, last24HoursMs) as any)
+        : (database
+            .prepare(
+              `
+            SELECT
+              SUM(CASE WHEN status = 'queued' THEN 1 ELSE 0 END) as queue_depth,
+              SUM(CASE WHEN status = 'running' THEN 1 ELSE 0 END) as running_jobs,
+              SUM(CASE WHEN status = 'succeeded' AND updated_at >= ? THEN 1 ELSE 0 END) as throughput_24h,
+              SUM(CASE WHEN status = 'failed' AND updated_at >= ? THEN 1 ELSE 0 END) as failures_24h
+            FROM jobs
+            WHERE account_id = ?
+          `
+            )
+            .get(last24HoursMs, last24HoursMs, targetAccountId) as any);
+
+      const lastHeartbeatResult = isSystemWideView
+        ? (database
+            .prepare(
+              `
+            SELECT MAX(timestamp) as last_heartbeat
+            FROM job_events
+            WHERE type = 'job.progress'
+          `
+            )
+            .get() as any)
+        : (database
+            .prepare(
+              `
+            SELECT MAX(timestamp) as last_heartbeat
+            FROM job_events
+            WHERE type = 'job.progress' AND account_id = ?
+          `
+            )
+            .get(targetAccountId) as any);
+
+      let apiLatencyMs = 0;
+      try {
+        const latencyQuery = isSystemWideView
+          ? database
+              .prepare(
+                `
+              SELECT AVG(CAST(json_extract(metadata, '$.durationMs') AS REAL)) as avg_latency
+              FROM audit_log
+              WHERE timestamp >= ?
+            `
+              )
+              .get(last24HoursMs)
+          : database
+              .prepare(
+                `
+              SELECT AVG(CAST(json_extract(metadata, '$.durationMs') AS REAL)) as avg_latency
+              FROM audit_log
+              WHERE timestamp >= ? AND actor_account_id = ?
+            `
+              )
+              .get(last24HoursMs, targetAccountId);
+
+        apiLatencyMs = Number(latencyQuery?.avg_latency || 0);
+      } catch {
+        apiLatencyMs = 0;
+      }
+
+      const throughput24h = Number(throughputStats?.throughput_24h || 0);
+      const failures24h = Number(throughputStats?.failures_24h || 0);
+      const errorRatePercent =
+        throughput24h + failures24h > 0 ? (failures24h / (throughput24h + failures24h)) * 100 : 0;
+      const lastHeartbeatTs = Number(lastHeartbeatResult?.last_heartbeat || 0);
+      const workerHeartbeatAgeMs = lastHeartbeatTs > 0 ? Math.max(0, now - lastHeartbeatTs) : null;
+      const uptimePercent = Math.max(0, Math.min(100, 100 - errorRatePercent));
+
+      const thirtyDaysAgoForBilling = now - 30 * 24 * 60 * 60 * 1000;
+      const billingMetrics = computeBillingMetrics(database, {
+        isSystemWideView,
+        targetAccountId: targetAccountId ?? null,
+        sinceTimestamp: thirtyDaysAgoForBilling,
+      });
+
       const systemHealth = {
-        api_latency_ms: 0,
-        error_rate: 0,
-        uptime_percent: 100,
+        api_latency_ms: Math.round(apiLatencyMs),
+        error_rate: Number(errorRatePercent.toFixed(2)),
+        uptime_percent: Number(uptimePercent.toFixed(2)),
+        queue_depth: Number(throughputStats?.queue_depth || 0),
+        running_jobs: Number(throughputStats?.running_jobs || 0),
+        throughput_24h: throughput24h,
+        worker_heartbeat_age_ms: workerHeartbeatAgeMs,
       };
 
       return res.json({
@@ -312,15 +456,15 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
           total_sources: storageStats.total_sources,
           storage_size_bytes: storageSize,
         },
-        processing: processingStats,
+        processing: {
+          active: Number(processingStats?.active || 0),
+          completed_today: Number(processingStats?.completed_today || 0),
+          failed: Number(processingStats?.failed || 0),
+        },
         billing: {
-          // TODO: Implement billing metrics using subscriptions table
-          // Related: packages/db/src/sqlite/schema.sql (add subscriptions table)
-          // See: docs/architecture/BILLING.md (needs creation)
-          // For now, calculate estimated value based on account classes
-          mrr: calculateEstimatedMRR(database),
-          churn_rate: 0, // Requires subscription history
-          customer_ltv: 0, // Requires subscription history
+          mrr: billingMetrics.mrr,
+          churn_rate: billingMetrics.churnRate,
+          customer_ltv: billingMetrics.customerLtv,
         },
         system_health: systemHealth,
       });
@@ -479,61 +623,86 @@ export function createAnalyticsRoutes(db: SQLiteClient, authService: AuthService
       const isAdmin = req.user?.accountType === 'admin';
       const targetAccountId = req.operating?.accountId || req.user?.accountId;
       const isSystemWideView = isAdmin && !req.operating;
-      const alerts: any[] = [];
+      const limit = Math.max(
+        1,
+        Math.min(200, Number.parseInt(String(req.query.limit ?? '100'), 10) || 100)
+      );
+      const statusFilter = req.query.status;
 
-      // Check for accounts approaching quota
-      let accountsNearQuota: any[];
+      const whereClauses: string[] = [];
+      const params: any[] = [];
 
-      if (isSystemWideView) {
-        // System-wide: check all client accounts
-        accountsNearQuota = database
-          .prepare(
-            `
-          SELECT
-            a.id, a.name, a.account_class,
-            COUNT(n.id) as node_count
-          FROM accounts a
-          LEFT JOIN nodes n ON n.account_id = a.id
-          WHERE a.account_type = 'client'
-          GROUP BY a.id
-          HAVING node_count > 8000
-        `
-          )
-          .all();
-      } else {
-        // Account-scoped: check only target account
-        accountsNearQuota = database
-          .prepare(
-            `
-          SELECT
-            a.id, a.name, a.account_class,
-            COUNT(n.id) as node_count
-          FROM accounts a
-          LEFT JOIN nodes n ON n.account_id = a.id
-          WHERE a.id = ?
-          GROUP BY a.id
-          HAVING node_count > 8000
-        `
-          )
-          .all(targetAccountId);
+      if (!isSystemWideView) {
+        whereClauses.push('(account_id = ? OR account_id IS NULL)');
+        params.push(targetAccountId);
       }
 
-      accountsNearQuota.forEach((account: any) => {
-        alerts.push({
-          id: `quota-${account.id}`,
-          type: 'warning',
-          severity: 'medium',
-          message: `Account "${account.name}" is approaching node limit (${account.node_count}/10000)`,
-          created_at: Date.now(),
-        });
-      });
+      if (
+        statusFilter === 'active' ||
+        statusFilter === 'acknowledged' ||
+        statusFilter === 'resolved'
+      ) {
+        whereClauses.push('status = ?');
+        params.push(statusFilter);
+      } else {
+        whereClauses.push("status <> 'resolved'");
+      }
 
-      // Check for failed jobs (would need jobs table)
-      // TODO: Add more alert types (failed imports, system errors, security incidents)
-      // Related: packages/db/src/sqlite/schema.sql (add system_alerts table)
-      // See: docs/features/MONITORING.md (needs creation)
+      const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+      const rows = database
+        .prepare(
+          `
+          SELECT
+            id,
+            account_id,
+            source,
+            type,
+            severity,
+            status,
+            message,
+            metadata,
+            created_at,
+            updated_at,
+            resolved_at
+          FROM system_alerts
+          ${whereSql}
+          ORDER BY
+            CASE severity
+              WHEN 'critical' THEN 4
+              WHEN 'high' THEN 3
+              WHEN 'medium' THEN 2
+              ELSE 1
+            END DESC,
+            created_at DESC
+          LIMIT ?
+        `
+        )
+        .all(...params, limit) as any[];
 
-      return res.json({ alerts });
+      const alerts = rows.map((row) => ({
+        id: row.id,
+        account_id: row.account_id,
+        source: row.source,
+        type: row.type,
+        severity: row.severity,
+        status: row.status,
+        message: row.message,
+        metadata: (() => {
+          if (typeof row.metadata !== 'string' || row.metadata.length === 0) {
+            return null;
+          }
+          try {
+            return JSON.parse(row.metadata);
+          } catch {
+            return null;
+          }
+        })(),
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        resolved_at: row.resolved_at,
+      }));
+
+      return res.json({ alerts, count: alerts.length });
     } catch (error: any) {
       console.error('Alerts error:', error);
       return res.status(500).json({ error: error.message || 'Failed to fetch alerts' });

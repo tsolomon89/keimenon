@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
+import { createHash } from 'crypto';
 import { normalizeImportOptions } from '@keimenon/types';
 import { EnhancedImportServiceV2, type ImportMessage } from './import-enhanced-v2';
 import type { Group } from './autogroup-enhanced';
@@ -26,10 +27,11 @@ function createHarness(): Harness {
 
   serviceAny.localStore = {
     async saveSource(id: string, content: string) {
+      const hash = createHash('sha256').update(content).digest('hex');
       return {
         id,
         type: 'source',
-        hash: `hash_${id}`,
+        hash,
         storagePath: `documents/sources/${id}.md`,
         size: Buffer.byteLength(content),
         createdAt: 1700000000000,
@@ -242,8 +244,12 @@ describe('EnhancedImportServiceV2 source materialization fidelity', () => {
 
       const keepSourceNode = keepInline.nodes.find((node) => node.kind === 'Source');
       const extractSourceNode = extractAndRemove.nodes.find((node) => node.kind === 'Source');
+      const extractRepeatSourceNode = extractAndRemoveRepeat.nodes.find(
+        (node) => node.kind === 'Source'
+      );
       expect(keepSourceNode).toBeDefined();
       expect(extractSourceNode).toBeDefined();
+      expect(extractRepeatSourceNode).toBeDefined();
       expect(
         ((keepSourceNode!.metadata as Record<string, unknown>)?.code_removed_ranges as unknown[]) ||
           []
@@ -254,6 +260,19 @@ describe('EnhancedImportServiceV2 source materialization fidelity', () => {
             ?.code_removed_ranges as unknown[]) || []
         ).length
       ).toBeGreaterThan(0);
+
+      const keepMetadata = keepSourceNode!.metadata as Record<string, unknown>;
+      const extractMetadata = extractSourceNode!.metadata as Record<string, unknown>;
+      const extractRepeatMetadata = extractRepeatSourceNode!.metadata as Record<string, unknown>;
+      expect(keepMetadata.raw_content_hash).toBe(extractMetadata.raw_content_hash);
+      expect(extractMetadata.raw_content_hash).toBe(extractRepeatMetadata.raw_content_hash);
+      expect(keepMetadata.raw_content_bytes).toBe(extractMetadata.raw_content_bytes);
+      expect(keepSourceNode!.fingerprint).toBe(extractSourceNode!.fingerprint);
+      expect(extractSourceNode!.fingerprint).toBe(extractRepeatSourceNode!.fingerprint);
+      expect(keepSourceNode!.content_hash).toBe(keepMetadata.derived_content_hash);
+      expect(extractSourceNode!.content_hash).toBe(extractMetadata.derived_content_hash);
+      expect(extractSourceNode!.content_hash).toBe(extractRepeatSourceNode!.content_hash);
+      expect(keepSourceNode!.content_hash).not.toBe(extractSourceNode!.content_hash);
 
       expect(baseMessages.map((message) => ({ id: message.id, content: message.content }))).toEqual(
         rawSnapshot

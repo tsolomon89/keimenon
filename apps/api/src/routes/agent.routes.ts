@@ -16,7 +16,12 @@ import { Router, Request, Response, NextFunction } from 'express';
 import type { AuthServiceV2 } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { getAgentService, type CreateTaskRequest } from '../services/agent-service';
-import { featureManifestForAccountClass } from '@keimenon/types';
+import {
+  featureManifestForAccountClass,
+  type AccountClass,
+  type FeatureManifest,
+} from '@keimenon/types';
+import type { ToolStatus } from '@keimenon/agent-core';
 
 export function createAgentRoutes(authService?: AuthServiceV2): Router {
   const router = Router();
@@ -35,16 +40,21 @@ export function createAgentRoutes(authService?: AuthServiceV2): Router {
     }
   });
 
-  router.get('/types', (_req: Request, res: Response) => {
-    const agentService = getAgentService();
-    const types = agentService.getAvailableTaskTypes();
+  router.get('/types', async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const agentService = getAgentService();
+      await agentService.getHealth();
+      const types = agentService.getAvailableTaskTypes();
 
-    res.json({
-      types: types.map((type) => ({
-        type,
-        description: getTaskTypeDescription(type),
-      })),
-    });
+      res.json({
+        types: types.map((type) => ({
+          type,
+          description: getTaskTypeDescription(type),
+        })),
+      });
+    } catch (error) {
+      next(error);
+    }
   });
 
   router.get('/events', (req: Request, res: Response) => {
@@ -91,44 +101,59 @@ export function createAgentRoutes(authService?: AuthServiceV2): Router {
         return;
       }
 
-      const accountClass = (req.user?.accountClass || 'free') as
-        | 'free'
-        | 'professional'
-        | 'business';
+      const accountClass = getAccountClass(req);
       const features = featureManifestForAccountClass(accountClass);
 
       const { type, input, config } = req.body;
-      if (!type || !input) {
+      if (!type || typeof input === 'undefined') {
         res.status(400).json({ error: 'type and input are required' });
         return;
       }
 
-      if (!features.agent_runtime) {
-        res.status(403).json({
-          error: 'Agent runtime is not enabled for this account tier',
-          requiredFeature: 'agent_runtime',
+      const taskType = String(type);
+
+      const taskEntitlementError = getTaskEntitlementError(taskType, features);
+      if (taskEntitlementError) {
+        res.status(403).json(taskEntitlementError);
+        return;
+      }
+
+      const agentService = getAgentService();
+      await agentService.getHealth();
+
+      if (!agentService.isTaskTypeAvailable(taskType)) {
+        res.status(400).json({ error: `Unknown task type: ${taskType}` });
+        return;
+      }
+
+      const requiredProviders = getRequiredProvidersForTask(taskType);
+      const unavailableProviders = getUnavailableProviders(
+        agentService.getToolStatus(),
+        requiredProviders
+      );
+      if (unavailableProviders.length > 0) {
+        const providers = unavailableProviders.map((provider) => provider.provider);
+        res.status(503).json({
+          error: 'Provider unavailable',
+          code: 'PROVIDER_UNAVAILABLE',
+          status: 503,
+          taskType,
+          retryable: true,
+          provider: providers.length === 1 ? providers[0] : undefined,
+          providers,
+          requiredProviders,
+          unavailableProviders,
         });
         return;
       }
 
-      if (String(type) === 'VERIFY_SOURCE_CHAIN') {
-        if (!features.objective_layer || !features.external_research) {
-          res.status(403).json({
-            error: 'VERIFY_SOURCE_CHAIN requires objective layer + external research entitlements',
-            requiredFeatures: ['objective_layer', 'external_research'],
-          });
-          return;
-        }
-      }
-
       const request: CreateTaskRequest = {
-        type,
+        type: taskType,
         accountId,
         input,
         config,
       };
 
-      const agentService = getAgentService();
       const result = await agentService.executeTask(request);
 
       res.status(202).json({
@@ -152,8 +177,22 @@ export function createAgentRoutes(authService?: AuthServiceV2): Router {
         return;
       }
 
+      const accountClass = getAccountClass(req);
+      const features = featureManifestForAccountClass(accountClass);
       const { id } = req.params;
       const agentService = getAgentService();
+      const task = await agentService.getTask(id);
+      if (!task || task.account_id !== accountId) {
+        res.status(404).json({ error: 'Task not found' });
+        return;
+      }
+
+      const taskEntitlementError = getTaskEntitlementError(task.type, features);
+      if (taskEntitlementError) {
+        res.status(403).json(taskEntitlementError);
+        return;
+      }
+
       const result = await agentService.retryTask(id, accountId);
 
       res.status(202).json({
@@ -270,13 +309,93 @@ function getAccountId(req: Request): string | null {
   );
 }
 
+function getAccountClass(req: Request): AccountClass {
+  const rawAccountClass = req.user?.accountClass;
+  if (
+    rawAccountClass === 'free' ||
+    rawAccountClass === 'professional' ||
+    rawAccountClass === 'business'
+  ) {
+    return rawAccountClass;
+  }
+  return 'free';
+}
+
+function getTaskEntitlementError(
+  taskType: string,
+  features: FeatureManifest
+): {
+  error: string;
+  requiredFeature?: string;
+  requiredFeatures?: string[];
+} | null {
+  if (!features.agent_runtime) {
+    return {
+      error: 'Agent runtime is not enabled for this account tier',
+      requiredFeature: 'agent_runtime',
+    };
+  }
+
+  if (taskType === 'VERIFY_SOURCE_CHAIN' || taskType === 'VERIFY_TOPIC') {
+    if (!features.objective_layer || !features.external_research) {
+      return {
+        error: `${taskType} requires objective layer + external research entitlements`,
+        requiredFeatures: ['objective_layer', 'external_research'],
+      };
+    }
+  }
+
+  if (taskType === 'VERIFY_TOPIC' && !features.proof_verification) {
+    return {
+      error: 'VERIFY_TOPIC requires proof verification entitlement',
+      requiredFeatures: ['proof_verification'],
+    };
+  }
+
+  return null;
+}
+
 function getTaskTypeDescription(type: string): string {
   const descriptions: Record<string, string> = {
     GROUP_SUMMARY_BUILD: 'Generate a canonical summary document from group sources',
     DUPLICATE_SUGGEST: 'Propose duplicate clusters with similarity scores (does not auto-merge)',
     VERIFY_SOURCE_CHAIN: 'Create evidence chains from web search (Pro+ feature)',
+    ANALYZE_SOURCE: 'Analyze a source with LLM and produce structured claims/tags',
+    VERIFY_TOPIC: 'Verify a topic with external evidence and credibility scoring',
   };
   return descriptions[type] || 'Unknown task type';
+}
+
+function getRequiredProvidersForTask(taskType: string): Array<'llm' | 'web'> {
+  switch (taskType) {
+    case 'GROUP_SUMMARY_BUILD':
+    case 'ANALYZE_SOURCE':
+      return ['llm'];
+    case 'VERIFY_SOURCE_CHAIN':
+    case 'VERIFY_TOPIC':
+      return ['llm', 'web'];
+    default:
+      return [];
+  }
+}
+
+function getUnavailableProviders(
+  toolStatus: ToolStatus[],
+  requiredProviders: Array<'llm' | 'web'>
+): Array<{ provider: 'llm' | 'web'; reason: string }> {
+  const unavailable: Array<{ provider: 'llm' | 'web'; reason: string }> = [];
+
+  for (const provider of requiredProviders) {
+    const status = toolStatus.find((tool) => tool.name === provider);
+    if (!status || !status.available) {
+      unavailable.push({
+        provider,
+        reason: status?.error || `${provider} provider unavailable`,
+      });
+    }
+  }
+
+  return unavailable;
 }
 
 export default createAgentRoutes();

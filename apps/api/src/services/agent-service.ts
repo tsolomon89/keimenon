@@ -40,12 +40,6 @@ type ToolAdaptersModule = {
   createProductionRegistry?: () => ToolRegistry;
 };
 
-const FALLBACK_TASK_TYPES: TaskType[] = [
-  'GROUP_SUMMARY_BUILD',
-  'DUPLICATE_SUGGEST',
-  'VERIFY_SOURCE_CHAIN',
-];
-
 class UnavailableToolRegistry implements ToolRegistry {
   constructor(private readonly reason: string = 'Tool adapters unavailable') {}
 
@@ -91,9 +85,9 @@ class UnavailableToolRegistry implements ToolRegistry {
   }
 }
 
-let taskHandlersModulePromise: Promise<TaskHandlersModule | null> | null = null;
+let taskHandlersModulePromise: Promise<TaskHandlersModule> | null = null;
 
-async function loadTaskHandlersModule(): Promise<TaskHandlersModule | null> {
+async function loadTaskHandlersModule(): Promise<TaskHandlersModule> {
   if (!taskHandlersModulePromise) {
     taskHandlersModulePromise = import('@keimenon/task-handlers')
       .then((module: any) => ({
@@ -101,8 +95,9 @@ async function loadTaskHandlersModule(): Promise<TaskHandlersModule | null> {
         getTaskHandlerTypes: module.getTaskHandlerTypes,
       }))
       .catch((error) => {
-        console.error('[AgentService] Failed to load @keimenon/task-handlers:', error);
-        return null;
+        throw new Error(
+          `[AgentService] Failed to load @keimenon/task-handlers: ${error instanceof Error ? error.message : String(error)}`
+        );
       });
   }
 
@@ -175,7 +170,7 @@ export class AgentService {
   private handlerRegistry: InMemoryHandlerRegistry | null = null;
   private taskRunner: TaskRunner | null = null;
   private runtimeInitPromise: Promise<void> | null = null;
-  private availableTaskTypes: TaskType[] = [...FALLBACK_TASK_TYPES];
+  private availableTaskTypes: TaskType[] = [];
   private runningTasks = new Set<string>();
 
   private constructor() {
@@ -386,21 +381,44 @@ export class AgentService {
       console.warn('[AgentService] Tool registry refresh failed:', error);
     }
 
+    if (process.env.NODE_ENV === 'production') {
+      const missingEnv: string[] = [];
+      if (!process.env.LITELLM_URL) missingEnv.push('LITELLM_URL');
+      if (!process.env.LITELLM_API_KEY) missingEnv.push('LITELLM_API_KEY');
+      if (!process.env.SEARXNG_URL) missingEnv.push('SEARXNG_URL');
+      if (missingEnv.length > 0) {
+        throw new Error(
+          `[AgentService] Missing required provider env configuration: ${missingEnv.join(', ')}`
+        );
+      }
+
+      const providerStatus = this.toolRegistry
+        .getStatus()
+        .filter((tool) => tool.name === 'llm' || tool.name === 'web');
+      const unavailable = providerStatus.filter((tool) => !tool.available);
+      if (unavailable.length > 0) {
+        const detail = unavailable
+          .map((tool) => `${tool.name}:${tool.error || 'unavailable'}`)
+          .join(', ');
+        throw new Error(`[AgentService] Required providers unavailable in production: ${detail}`);
+      }
+    }
+
     const handlerRegistry = new InMemoryHandlerRegistry();
     const taskHandlersModule = await loadTaskHandlersModule();
-    if (taskHandlersModule) {
-      const types = taskHandlersModule.getTaskHandlerTypes();
-      for (const type of types) {
-        const handler = taskHandlersModule.getTaskHandler(type);
-        if (handler) {
-          handlerRegistry.register(handler);
-        }
+    const types = taskHandlersModule.getTaskHandlerTypes();
+    for (const type of types) {
+      const handler = taskHandlersModule.getTaskHandler(type);
+      if (handler) {
+        handlerRegistry.register(handler);
       }
     }
 
     const registeredTypes = handlerRegistry.list();
-    this.availableTaskTypes =
-      registeredTypes.length > 0 ? registeredTypes : [...FALLBACK_TASK_TYPES];
+    if (registeredTypes.length === 0) {
+      throw new Error('[AgentService] No task handlers registered');
+    }
+    this.availableTaskTypes = registeredTypes;
 
     this.graphRepo = graphRepo;
     this.storage = storage;

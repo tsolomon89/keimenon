@@ -18,7 +18,6 @@
   },
   "dependencies": {
     "@keimenon/agent-core": "*",
-    "@keimenon/agents": "*",
     "@keimenon/db": "*",
     "@keimenon/parsers": "*",
     "@keimenon/task-handlers": "*",

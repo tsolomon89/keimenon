@@ -32,6 +32,7 @@ import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
 import bcrypt from 'bcrypt';
+import { createHash } from 'crypto';
 
 export class DatabaseSnapshotManager {
   private snapshotPath: string;
@@ -123,14 +124,30 @@ export class DatabaseSnapshotManager {
       console.log('   Creating test session...');
       const sessionId = 'sess_test_e2e';
       const testToken = 'test_jwt_token_e2e_main';
+      const testTokenHash = createHash('sha256').update(testToken).digest('hex');
       const expiresAt = now + 86400000; // 24 hours from now
 
       db.prepare(
         `
-        INSERT INTO sessions (id, user_id, account_id, token, created_at, expires_at, operating_account_id, data_tag, last_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'test', ?)
+        INSERT INTO sessions (
+          id, user_id, account_id, token, token_hash, token_family_id, parent_session_id,
+          created_at, expires_at, operating_account_id, data_tag, last_active
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'test', ?)
       `
-      ).run(sessionId, userId, accountId, testToken, now, expiresAt, accountId, now);
+      ).run(
+        sessionId,
+        userId,
+        accountId,
+        testTokenHash,
+        testTokenHash,
+        sessionId,
+        null,
+        now,
+        expiresAt,
+        accountId,
+        now
+      );
 
       console.log('   ✅ Test session created successfully');
 

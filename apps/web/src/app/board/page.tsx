@@ -7,6 +7,16 @@ import { Keimenon2D } from '@/components/keimenon/Keimenon2D';
 import { GraphNode, GraphEdge } from '@keimenon/graph';
 import { Grid3x3, Zap } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/env.config';
+import { DEFAULT_ND_CONFIG, type RenderLens } from '@/lib/nd-projection';
+
+interface ApiEdge {
+  id: string;
+  kind?: string;
+  from?: string;
+  to?: string;
+  source?: string;
+  target?: string;
+}
 
 function BoardContent() {
   const searchParams = useSearchParams();
@@ -17,13 +27,13 @@ function BoardContent() {
   const [loading, setLoading] = useState(true);
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [keimenonSize, setKeimenonSize] = useState({ width: 1200, height: 800 });
+  const [renderLens, setRenderLens] = useState<RenderLens>('2d');
 
-  // Fetch board data
   useEffect(() => {
     fetchBoardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardId]);
 
-  // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       const container = document.getElementById('keimenon-container');
@@ -44,27 +54,47 @@ function BoardContent() {
     try {
       setLoading(true);
 
-      // Fetch nodes
-      const nodesResponse = await fetch(`${API_BASE_URL}/api/v1/nodes?limit=1000`);
+      const [nodesResponse, edgesResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/v1/nodes?limit=1000`),
+        fetch(`${API_BASE_URL}/api/v1/edges?limit=5000`),
+      ]);
 
       if (!nodesResponse.ok) {
-        throw new Error('Failed to fetch nodes');
+        throw new Error(`Failed to fetch nodes (status ${nodesResponse.status})`);
+      }
+
+      if (!edgesResponse.ok) {
+        throw new Error(`Failed to fetch edges (status ${edgesResponse.status})`);
       }
 
       const nodesData = await nodesResponse.json();
+      const edgesData = await edgesResponse.json();
 
-      // Transform to GraphNode format
       const graphNodes: GraphNode[] = nodesData.nodes.map((node: any) => ({
         id: node.id,
         kind: node.kind,
       }));
+      const nodeIds = new Set(graphNodes.map((node) => node.id));
+
+      const graphEdges: GraphEdge[] = ((edgesData.edges || []) as ApiEdge[])
+        .map((edge) => {
+          const source = edge.from || edge.source;
+          const target = edge.to || edge.target;
+          if (!source || !target) {
+            return null;
+          }
+          return {
+            id: edge.id,
+            kind: edge.kind || 'CONTAINS',
+            source,
+            target,
+          } as GraphEdge;
+        })
+        .filter((edge): edge is GraphEdge => !!edge)
+        .filter((edge) => nodeIds.has(String(edge.source)) && nodeIds.has(String(edge.target)));
 
       setNodes(graphNodes);
-
-      // TODO: Fetch edges from API endpoint
-      // Related: apps/api/src/routes/edges.ts (needs implementation)
-      // See: docs/features/GRAPH_EDGES.md
-      setEdges([]);
+      setEdges(graphEdges);
     } catch (error) {
       console.error('Failed to load board:', error);
     } finally {
@@ -95,11 +125,47 @@ function BoardContent() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-800 rounded-lg text-sm">
               <span className="text-slate-400">Lens:</span>
-              <span className="font-semibold">2D</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className={`px-2 py-0.5 rounded border text-xs ${
+                    renderLens === '2d'
+                      ? 'bg-slate-700 border-slate-600'
+                      : 'bg-slate-900 border-slate-700'
+                  }`}
+                  onClick={() => setRenderLens('2d')}
+                >
+                  2D
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-0.5 rounded border text-xs ${
+                    renderLens === '3d'
+                      ? 'bg-slate-700 border-slate-600'
+                      : 'bg-slate-900 border-slate-700'
+                  }`}
+                  onClick={() => setRenderLens('3d')}
+                >
+                  3D
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-0.5 rounded border text-xs ${
+                    renderLens === 'nd'
+                      ? 'bg-slate-700 border-slate-600'
+                      : 'bg-slate-900 border-slate-700'
+                  }`}
+                  onClick={() => setRenderLens('nd')}
+                >
+                  ND
+                </button>
+              </div>
             </div>
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-800 rounded-lg text-sm">
               <Zap className="w-4 h-4 text-purple-500" />
-              <span>{nodes.length} nodes</span>
+              <span>
+                {nodes.length} nodes - {edges.length} edges
+              </span>
             </div>
           </div>
         </div>
@@ -182,6 +248,8 @@ function BoardContent() {
             edges={edges}
             width={keimenonSize.width}
             height={keimenonSize.height}
+            renderLens={renderLens}
+            ndConfig={DEFAULT_ND_CONFIG}
             onNodeClick={handleNodeClick}
             onNodeDoubleClick={handleNodeDoubleClick}
             onSelectionChange={handleSelectionChange}

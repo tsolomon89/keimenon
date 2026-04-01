@@ -19,6 +19,16 @@ import { randomUUID } from 'crypto';
 export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): Router {
   const router = Router();
 
+  const resolveTreeLabel = (kind: string, props: Record<string, unknown>): string => {
+    const candidates = [props.name, props.title, props.label, props.display_name];
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+    return kind === 'Folder' ? 'Untitled Folder' : 'Untitled Group';
+  };
+
   /**
    * GET /api/v1/groups
    * List root folders and groups (tenant-scoped)
@@ -86,7 +96,7 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
 
         return {
           id: row.id,
-          label: props.name || props.title || row.id,
+          label: resolveTreeLabel(row.kind, props),
           kind: row.kind,
           group_kind: isFolder ? undefined : groupKind,
           icon,
@@ -193,7 +203,7 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
 
           return {
             id: row.id,
-            label: childProps.name || childProps.title || row.id,
+            label: resolveTreeLabel(row.kind, childProps),
             kind: row.kind,
             group_kind: isChildFolder ? undefined : groupKind,
             icon,
@@ -357,6 +367,15 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
         nodeIds = descendants.map((d) => d.node_id);
       }
 
+      const safeParseJson = (value: unknown) => {
+        if (typeof value !== 'string' || value.length === 0) return {};
+        try {
+          return JSON.parse(value);
+        } catch {
+          return {};
+        }
+      };
+
       // CRITICAL FIX #16: Fetch full node data, not just IDs
       const nodes =
         nodeIds.length > 0
@@ -374,12 +393,44 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
       // Parse properties field for each node
       const parsedNodes = nodes.map((n) => ({
         ...n,
-        properties: JSON.parse(n.properties),
+        properties: safeParseJson(n.properties),
       }));
+
+      // Include subgraph edges between group members so UI can hydrate scoped view without extra calls.
+      let parsedEdges: any[] = [];
+      const MAX_EDGE_HYDRATION_NODE_IDS = 900;
+
+      if (nodeIds.length > 1 && nodeIds.length <= MAX_EDGE_HYDRATION_NODE_IDS) {
+        const valuesClause = nodeIds.map(() => '(?)').join(', ');
+        const edgeRows = database
+          .prepare(
+            `
+          WITH selected_nodes(id) AS (VALUES ${valuesClause})
+          SELECT e.id, e.kind, e.from_id, e.to_id, e.properties, e.created_at
+          FROM edges e
+          JOIN selected_nodes sn_from ON sn_from.id = e.from_id
+          JOIN selected_nodes sn_to ON sn_to.id = e.to_id
+          WHERE e.account_id = ?
+          ORDER BY e.created_at DESC
+          LIMIT 50000
+        `
+          )
+          .all(...nodeIds, accountId) as any[];
+
+        parsedEdges = edgeRows.map((e) => ({
+          id: e.id,
+          kind: e.kind,
+          from: e.from_id,
+          to: e.to_id,
+          created_at: e.created_at,
+          properties: safeParseJson(e.properties),
+        }));
+      }
 
       return res.json({
         success: true,
         nodes: parsedNodes, // Return full nodes with parsed properties
+        edges: parsedEdges,
         node_ids: nodeIds, // Keep node_ids for backward compatibility
         count: nodeIds.length,
       });
@@ -758,38 +809,35 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
    * OPTIMIZATION: Replaces O(n) individual API calls with single batched query
    * Body: { nodeIds: string[] }
    */
-  router.post(
-    '/nodes/batch',
-    requireAuth(authService),
-    async (req: Request, res: Response) => {
-      try {
-        // CRITICAL FIX #16-A: Get per-request database client for test isolation
-        const { getDbClient } = await import('../utils/get-db-client');
-        const dbClient = await getDbClient(req);
-        const database = dbClient.getDatabase();
+  router.post('/nodes/batch', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      // CRITICAL FIX #16-A: Get per-request database client for test isolation
+      const { getDbClient } = await import('../utils/get-db-client');
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
 
-        const { nodeIds } = req.body;
-        const accountId = (req as any).user.accountId;
+      const { nodeIds } = req.body;
+      const accountId = (req as any).user.accountId;
 
-        if (!Array.isArray(nodeIds) || nodeIds.length === 0) {
-          return res.status(400).json({ error: 'nodeIds must be a non-empty array' });
-        }
+      if (!Array.isArray(nodeIds) || nodeIds.length === 0) {
+        return res.status(400).json({ error: 'nodeIds must be a non-empty array' });
+      }
 
-        // Limit batch size to prevent abuse
-        const MAX_BATCH_SIZE = 100;
-        if (nodeIds.length > MAX_BATCH_SIZE) {
-          return res.status(400).json({
-            error: `Batch size exceeds maximum of ${MAX_BATCH_SIZE}`,
-          });
-        }
+      // Limit batch size to prevent abuse
+      const MAX_BATCH_SIZE = 100;
+      if (nodeIds.length > MAX_BATCH_SIZE) {
+        return res.status(400).json({
+          error: `Batch size exceeds maximum of ${MAX_BATCH_SIZE}`,
+        });
+      }
 
-        // Build placeholders for IN clause
-        const placeholders = nodeIds.map(() => '?').join(',');
+      // Build placeholders for IN clause
+      const placeholders = nodeIds.map(() => '?').join(',');
 
-        // Single query to get all groups for all nodes
-        const results = database
-          .prepare(
-            `
+      // Single query to get all groups for all nodes
+      const results = database
+        .prepare(
+          `
             SELECT
               e.from_id as node_id,
               g.id as group_id,
@@ -802,44 +850,43 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
               AND e.account_id = ?
               AND g.kind = 'Group'
           `
-          )
-          .all(...nodeIds, accountId) as any[];
+        )
+        .all(...nodeIds, accountId) as any[];
 
-        // Group results by node_id
-        const nodeToGroups = new Map<string, any[]>();
-        const allGroups = new Map<string, any>();
+      // Group results by node_id
+      const nodeToGroups = new Map<string, any[]>();
+      const allGroups = new Map<string, any>();
 
-        for (const row of results) {
-          const group = {
-            id: row.group_id,
-            kind: row.kind,
-            ...JSON.parse(row.properties),
-          };
+      for (const row of results) {
+        const group = {
+          id: row.group_id,
+          kind: row.kind,
+          ...JSON.parse(row.properties),
+        };
 
-          // Track unique groups
-          if (!allGroups.has(group.id)) {
-            allGroups.set(group.id, group);
-          }
-
-          // Map node to its groups
-          if (!nodeToGroups.has(row.node_id)) {
-            nodeToGroups.set(row.node_id, []);
-          }
-          nodeToGroups.get(row.node_id)!.push(group.id);
+        // Track unique groups
+        if (!allGroups.has(group.id)) {
+          allGroups.set(group.id, group);
         }
 
-        return res.json({
-          success: true,
-          nodeToGroups: Object.fromEntries(nodeToGroups),
-          groups: Array.from(allGroups.values()),
-          totalGroups: allGroups.size,
-        });
-      } catch (error: any) {
-        console.error('Batch node groups lookup error:', error);
-        return res.status(500).json({ error: error.message || 'Failed to batch lookup groups' });
+        // Map node to its groups
+        if (!nodeToGroups.has(row.node_id)) {
+          nodeToGroups.set(row.node_id, []);
+        }
+        nodeToGroups.get(row.node_id)!.push(group.id);
       }
+
+      return res.json({
+        success: true,
+        nodeToGroups: Object.fromEntries(nodeToGroups),
+        groups: Array.from(allGroups.values()),
+        totalGroups: allGroups.size,
+      });
+    } catch (error: any) {
+      console.error('Batch node groups lookup error:', error);
+      return res.status(500).json({ error: error.message || 'Failed to batch lookup groups' });
     }
-  );
+  });
 
   /**
    * POST /api/v1/groups/:id/members:batch

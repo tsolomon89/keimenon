@@ -157,4 +157,72 @@ describe('graph-lod', () => {
     expect(gate.nodeBudget).toBeGreaterThan(0);
     expect(gate.edgeBudget).toBeGreaterThan(0);
   });
+
+  it('preserves focused and pinned nodes through LOD culling', () => {
+    const nodes: GraphNode[] = [
+      createNode(1, 'Group', 0.9),
+      createNode(2, 'Source', 0.5),
+      createNode(3, 'Topic', 0.01),
+      createNode(4, 'Lexeme', 0.01),
+      createNode(5, 'Phrase', 0.02),
+    ];
+    const edges: GraphEdge[] = [
+      createEdge(1, 'node_1', 'node_2', 0.8),
+      createEdge(2, 'node_2', 'node_3', 0.8),
+      createEdge(3, 'node_3', 'node_4', 0.2),
+      createEdge(4, 'node_4', 'node_5', 0.2),
+    ];
+
+    const plan = buildLodPlan({
+      nodes,
+      edges,
+      zoom: 0.1,
+      focusNodeId: 'node_3',
+      focusMode: true,
+      pinnedNodeIds: ['node_4'],
+      optimizeLevel: 3,
+    });
+
+    expect(plan.level).toBe('L0');
+    expect(plan.visibleNodeIds.has('node_3')).toBe(true);
+    expect(plan.visibleNodeIds.has('node_4')).toBe(true);
+    expect(plan.stats.focusMode).toBe(true);
+    expect(plan.stats.pinnedNodeCount).toBe(1);
+  });
+
+  it('preserves focused and pinned nodes for 2D/3D/ND lens zoom profiles', () => {
+    const nodes: GraphNode[] = [
+      createNode(10, 'Group', 0.9),
+      createNode(11, 'Source', 0.6),
+      createNode(12, 'Topic', 0.1),
+      createNode(13, 'Lexeme', 0.05),
+    ];
+    const edges: GraphEdge[] = [
+      createEdge(10, 'node_10', 'node_11', 0.9),
+      createEdge(11, 'node_11', 'node_12', 0.7),
+      createEdge(12, 'node_12', 'node_13', 0.5),
+    ];
+
+    const lensZoomProfiles = [
+      { lens: '2D', zoom: 0.85 },
+      { lens: '3D', zoom: 0.65 },
+      { lens: 'ND', zoom: 0.42 },
+    ];
+
+    for (const profile of lensZoomProfiles) {
+      const plan = buildLodPlan({
+        nodes,
+        edges,
+        zoom: profile.zoom,
+        focusNodeId: 'node_12',
+        focusMode: true,
+        pinnedNodeIds: ['node_13'],
+      });
+
+      expect(plan.visibleNodeIds.has('node_12')).toBe(true);
+      expect(plan.visibleNodeIds.has('node_13')).toBe(true);
+      expect(plan.stats.focusMode).toBe(true);
+      expect(plan.stats.pinnedNodeCount).toBe(1);
+    }
+  });
 });

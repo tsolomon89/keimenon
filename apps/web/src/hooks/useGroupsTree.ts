@@ -4,6 +4,7 @@ import { TreeNode } from '@/components/common/NavigationBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { errorCapture } from '@/services/error-capture.service';
 import { API_BASE_URL } from '@/lib/env.config';
+import type { GraphNode, GraphEdge } from '@/lib/api-client';
 
 const TOKEN_KEY = 'keimenon_token';
 
@@ -17,6 +18,12 @@ interface GroupNode {
   badgeColor?: string;
   isLeaf?: boolean;
   metadata?: Record<string, any>;
+}
+
+export interface GroupMembersPayload {
+  nodeIds: string[];
+  nodes: GraphNode[];
+  edges: GraphEdge[];
 }
 
 /**
@@ -249,7 +256,10 @@ export async function fetchFolderChildren(folderId: string): Promise<TreeNode[]>
  * Fetch member node IDs from a group
  * Used when a group is clicked to display its members in Keimenon
  */
-export async function fetchGroupMembers(groupId: string, recursive = false): Promise<string[]> {
+export async function fetchGroupMembers(
+  groupId: string,
+  recursive = false
+): Promise<GroupMembersPayload> {
   try {
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) {
@@ -270,7 +280,11 @@ export async function fetchGroupMembers(groupId: string, recursive = false): Pro
     }
 
     const data = await response.json();
-    return data.node_ids || [];
+    return {
+      nodeIds: data.node_ids || [],
+      nodes: data.nodes || [],
+      edges: data.edges || [],
+    };
   } catch (error: any) {
     console.error('Failed to fetch group members:', error);
 

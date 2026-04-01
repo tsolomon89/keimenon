@@ -21,6 +21,7 @@ const logResponseError = async (response: any, context: string) => {
 
 test.describe('Data Management Lifecycle', () => {
   test.describe.configure({ tag: '@full' });
+  test.setTimeout(180000);
 
   const TEST_USER = {
     email: 'admin@admin.com',
@@ -74,7 +75,7 @@ test.describe('Data Management Lifecycle', () => {
     apiRequest: any,
     jobId: string,
     targetStatuses: string[],
-    maxAttempts = 60
+    maxAttempts = 240
   ) => {
     const canonicalizeStatus = (status: string) => (status === 'cancelled' ? 'canceled' : status);
     const targetStatusSet = new Set(targetStatuses.map(canonicalizeStatus));

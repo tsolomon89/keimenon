@@ -4,9 +4,8 @@ import { getToken } from '@/contexts/AuthContext';
 import { API_BASE_URL } from './env.config';
 import { normalizeImportOptions, type FeatureManifest } from '@keimenon/types';
 
-// TODO: Add token refresh endpoint support
-// Related: apps/api/src/routes/auth.routes.ts (needs refresh endpoint)
-// See: docs/features/AUTH_TOKEN_LIFECYCLE.md (needs creation)
+const AUTH_REFRESH_ENDPOINT = `${API_BASE_URL}/api/v1/auth/refresh`;
+let tokenRefreshPromise: Promise<string | null> | null = null;
 
 /**
  * Decode JWT payload (base64)
@@ -70,15 +69,9 @@ function handleTokenExpiration(reason: string = 'Token expired'): void {
 function getAuthHeaders(): HeadersInit {
   const headers: HeadersInit = {};
 
-  // Add auth token (with expiration check)
+  // Add auth token. Expiry is handled by refresh flow in fetch interceptor.
   const token = getToken();
   if (token) {
-    // Check if token is expired BEFORE making the API call
-    if (isTokenExpired(token)) {
-      handleTokenExpiration('Token expired');
-      throw new Error('Token expired. Please log in again.');
-    }
-
     headers['Authorization'] = `Bearer ${token}`;
   }
 
@@ -108,10 +101,36 @@ async function fetchWithAuthInterceptor(
   url: string | URL | Request,
   init?: RequestInit
 ): Promise<Response> {
-  const response = await fetch(url, init);
+  const requestUrl = String(url);
+  let effectiveInit = init;
+
+  const currentToken = getToken();
+  if (
+    currentToken &&
+    isTokenExpired(currentToken) &&
+    !requestUrl.includes('/api/v1/auth/refresh')
+  ) {
+    const refreshedToken = await refreshAccessToken();
+    if (refreshedToken) {
+      effectiveInit = withAuthorizationToken(init, refreshedToken);
+    }
+  }
+
+  let response = await fetch(url, effectiveInit);
 
   // Check for authentication errors
-  if (response.status === 401 || response.status === 403) {
+  if (
+    (response.status === 401 || response.status === 403) &&
+    !requestUrl.includes('/api/v1/auth/refresh')
+  ) {
+    const refreshedToken = await refreshAccessToken();
+    if (refreshedToken) {
+      response = await fetch(url, withAuthorizationToken(init, refreshedToken));
+      if (response.ok) {
+        return response;
+      }
+    }
+
     const errorData = await response.json().catch(() => ({}));
     const errorMessage = errorData.error || 'Authentication failed';
 
@@ -121,6 +140,61 @@ async function fetchWithAuthInterceptor(
   }
 
   return response;
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (tokenRefreshPromise) {
+    return tokenRefreshPromise;
+  }
+
+  tokenRefreshPromise = (async () => {
+    const token = getToken();
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const response = await fetch(AUTH_REFRESH_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json();
+      const refreshedToken = typeof data?.token === 'string' ? data.token : null;
+      if (!refreshedToken) {
+        return null;
+      }
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('keimenon_token', refreshedToken);
+      }
+
+      return refreshedToken;
+    } catch {
+      return null;
+    } finally {
+      tokenRefreshPromise = null;
+    }
+  })();
+
+  return tokenRefreshPromise;
+}
+
+function withAuthorizationToken(init: RequestInit | undefined, token: string): RequestInit {
+  const headers = new Headers(init?.headers || {});
+  headers.set('Authorization', `Bearer ${token}`);
+  return {
+    ...init,
+    headers,
+  };
 }
 
 export const api = {
@@ -247,6 +321,38 @@ export interface SimilarityPreviewSummary {
   generatedAt: number;
 }
 
+export interface ImportPreset {
+  id: string;
+  name: string;
+  config: ChatImportConfig;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ImportStatsSeriesPoint {
+  index: number;
+  bucketStart: number;
+  bucketEnd: number;
+  imports: number;
+  conversations: number;
+  messages: number;
+  sources: number;
+  nodes: number;
+  edges: number;
+}
+
+export interface ImportStatsSeriesResponse {
+  success: boolean;
+  window: '24h' | '7d' | '30d';
+  bucketCount: number;
+  bucketSizeMs: number;
+  range: {
+    start: number;
+    end: number;
+  };
+  series: ImportStatsSeriesPoint[];
+}
+
 export async function getSimilarityPreview(payload: {
   config: unknown;
   messages?: unknown[];
@@ -263,6 +369,116 @@ export async function getSimilarityPreview(payload: {
           ...getAuthHeaders(),
         },
         body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+export async function listImportPresets(): Promise<{ success: boolean; presets: ImportPreset[] }> {
+  try {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/import/presets`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+export async function createImportPreset(payload: {
+  name: string;
+  config: ChatImportConfig;
+}): Promise<{ success: boolean; preset: ImportPreset }> {
+  try {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/import/presets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+export async function updateImportPreset(
+  id: string,
+  payload: { name?: string; config?: ChatImportConfig }
+): Promise<{ success: boolean; preset: ImportPreset }> {
+  try {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/import/presets/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+export async function deleteImportPreset(id: string): Promise<{ success: boolean }> {
+  try {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/import/presets/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+export async function getImportStatsSeries(
+  window: '24h' | '7d' | '30d' = '24h',
+  buckets: number = 12
+): Promise<ImportStatsSeriesResponse> {
+  try {
+    const params = new URLSearchParams({
+      window,
+      buckets: String(buckets),
+    });
+
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/import/stats/series?${params.toString()}`,
+      {
+        method: 'GET',
+        headers: getAuthHeaders(),
       }
     );
 
@@ -454,6 +670,9 @@ export async function importChatFilesAsJob(
     minMessageLength: config.minMessageLength,
     processingMode: config.processingMode,
     branches: config.branches,
+    agent: {
+      bootstrap: config.agent?.bootstrap || 'manual',
+    },
     groups:
       config.processingMode === 'manual' || config.processingMode === 'hybrid' ? config.groups : [],
     extractCode: config.extractCode,
@@ -734,10 +953,7 @@ export async function analyzeFiles(files: File[]): Promise<{
       }
     } catch (error) {
       console.error('Error analyzing file:', file.name, error);
-      // TODO: Add user-facing error notification for file analysis failures
-      // Related: apps/web/src/components/common/Toast.tsx (create toast system)
-      // See: docs/features/ERROR_HANDLING.md (needs creation)
-      // If analysis fails, provide minimal estimate
+      // If analysis fails, provide a conservative estimate so the import UI remains usable.
       totalConversations += 1;
       totalMessages += 10;
     }
@@ -1681,12 +1897,20 @@ export async function getEdges(params?: {
   kind?: string;
   limit?: number;
   offset?: number;
+  skip?: number;
+  cursor?: string;
+  sort?: 'created_at' | 'updated_at';
+  order?: 'asc' | 'desc';
 }): Promise<{ edges: GraphEdge[]; total: number }> {
   try {
     const queryParams = new URLSearchParams();
     if (params?.kind) queryParams.append('kind', params.kind);
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.offset) queryParams.append('offset', params.offset.toString());
+    if (params?.skip !== undefined) queryParams.append('skip', params.skip.toString());
+    if (params?.cursor) queryParams.append('cursor', params.cursor);
+    if (params?.sort) queryParams.append('sort', params.sort);
+    if (params?.order) queryParams.append('order', params.order);
 
     const url = `${API_BASE_URL}/api/v1/edges${queryParams.toString() ? `?${queryParams}` : ''}`;
     const response = await fetch(url, {
@@ -1700,7 +1924,7 @@ export async function getEdges(params?: {
     const data = await response.json();
     return {
       edges: data.edges || [],
-      total: data.total || data.edges?.length || 0,
+      total: data.total || data.metadata?.total || data.edges?.length || 0,
     };
   } catch (error: any) {
     throw await handleApiError(error);
@@ -1857,6 +2081,10 @@ export interface AnalyticsOverview {
     api_latency_ms: number;
     error_rate: number;
     uptime_percent: number;
+    queue_depth?: number;
+    running_jobs?: number;
+    throughput_24h?: number;
+    worker_heartbeat_age_ms?: number | null;
   };
 }
 
@@ -1884,10 +2112,16 @@ export interface RecentActivity {
 
 export interface SystemAlert {
   id: string;
+  account_id?: string | null;
+  source?: string;
   type: 'info' | 'warning' | 'error';
-  severity: 'low' | 'medium' | 'high';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  status?: 'active' | 'acknowledged' | 'resolved';
   message: string;
+  metadata?: Record<string, any> | null;
   created_at: number;
+  updated_at?: number;
+  resolved_at?: number | null;
 }
 
 /**

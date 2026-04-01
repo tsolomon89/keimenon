@@ -149,6 +149,8 @@ export async function startTestServer(): Promise<void> {
       HOST: '127.0.0.1',
       NODE_ENV: 'test',
       DISABLE_RATE_LIMIT: '1',
+      HIBP_ENABLED: 'false',
+      AUTH_TEST_RELAX_SESSION_BINDING: '1',
       MAX_CONCURRENT_JOBS: '2',
       WORKER_POLL_INTERVAL_MS: '1000',
       DB_PATH: dbPath,

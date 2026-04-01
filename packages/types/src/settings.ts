@@ -651,6 +651,21 @@ export const SETTINGS_REGISTRY: SettingCategory[] = [
           },
         ],
       },
+      {
+        id: 'import_workflow',
+        label: 'Import Workflow',
+        order: 2,
+        controls: [
+          {
+            id: 'import_auto_switch_processing',
+            label: 'Auto-Switch to Processing View',
+            description: 'Automatically switch to Processing view when an import starts',
+            type: 'boolean',
+            defaultValue: true,
+            scope: 'user',
+          },
+        ],
+      },
     ],
   },
   {

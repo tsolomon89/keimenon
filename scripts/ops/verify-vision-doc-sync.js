@@ -9,6 +9,54 @@ function readNormalized(relativePath) {
   return raw.replace(/\r\n/g, '\n').trimEnd();
 }
 
+function parseStatusSummary(markdown, label) {
+  const match = markdown.match(
+    /Status summary:\s*`implemented=(\d+)`,\s*`partial=(\d+)`,\s*`missing=(\d+)`,\s*`conflict=(\d+)`\./i
+  );
+  if (!match) {
+    return { error: `${label} missing required status summary line.` };
+  }
+
+  return {
+    implemented: Number(match[1]),
+    partial: Number(match[2]),
+    missing: Number(match[3]),
+    conflict: Number(match[4]),
+  };
+}
+
+function parseRequirementStatuses(markdown, label) {
+  const rows = new Map();
+  const lines = markdown.split('\n');
+
+  for (const line of lines) {
+    if (!line.startsWith('| KV-')) {
+      continue;
+    }
+
+    const cells = line
+      .split('|')
+      .map((cell) => cell.trim())
+      .filter((cell) => cell.length > 0);
+
+    if (cells.length < 3) {
+      continue;
+    }
+
+    const requirementId = cells[0];
+    const expectedBehavior = cells[1];
+    const status = cells[2];
+    const implementationRefs = cells[3] || '';
+    rows.set(requirementId, { expectedBehavior, status, implementationRefs });
+  }
+
+  if (rows.size === 0) {
+    return { error: `${label} has no requirement status rows.` };
+  }
+
+  return { rows };
+}
+
 function main() {
   const errors = [];
 
@@ -17,6 +65,7 @@ function main() {
   const contextAgents = readNormalized('agent_context/AGENTS.md');
   const contract = readNormalized('docs/specs/vision-contract-v1.md');
   const traceability = readNormalized('docs/specs/vision-traceability-matrix.md');
+  const traceabilityMirror = readNormalized('docs/specs/kiemenon-vision-traceability-matrix.md');
   const gapAnalysis = readNormalized('agent_context/vision_gap_analysis.md');
 
   if (agents !== gemini) {
@@ -55,13 +104,161 @@ function main() {
   if (!contract.includes('On conflict, `AGENTS.md` is authoritative.')) {
     errors.push('vision-contract-v1.md must state AGENTS.md conflict precedence.');
   }
+  if (!/Three\.js is the required canonical renderer/i.test(agents)) {
+    errors.push('AGENTS.md must explicitly declare Three.js as canonical renderer.');
+  }
+  if (!/Three\.js is the required canonical renderer/i.test(contract)) {
+    errors.push('vision-contract-v1.md must declare Three.js as canonical renderer.');
+  }
+  const requiredCanvasClauses = [
+    /Edge inspection hover/i,
+    /Marquee multi-select/i,
+    /Node drag(ging)?/i,
+    /shared across all graph canvas surfaces/i,
+    /desktop-full/i,
+  ];
+  for (const clause of requiredCanvasClauses) {
+    if (!clause.test(agents)) {
+      errors.push(`AGENTS.md missing required canvas clause matching ${clause}.`);
+    }
+    if (!clause.test(contract)) {
+      errors.push(`vision-contract-v1.md missing required canvas clause matching ${clause}.`);
+    }
+  }
 
   if (!traceability.includes('Derived from `AGENTS.md`')) {
     errors.push('vision-traceability-matrix.md must declare AGENTS derivation.');
   }
 
+  const forbiddenPrecedencePatterns = [
+    /Kiemenon-first/i,
+    /Kiemenon first/i,
+    /conflicts?\s+with\s+AGENTS.*(drift|override)/i,
+    /AGENTS.*(secondary|non-canonical)/i,
+  ];
+  const derivedDocs = [
+    ['docs/specs/vision-contract-v1.md', contract],
+    ['docs/specs/vision-traceability-matrix.md', traceability],
+    ['docs/specs/kiemenon-vision-traceability-matrix.md', traceabilityMirror],
+    ['agent_context/vision_gap_analysis.md', gapAnalysis],
+  ];
+  const forbiddenRendererPatterns = [/2d-only/i, /2D-only/i, /2d only/i];
+  for (const [docPath, content] of derivedDocs) {
+    for (const pattern of forbiddenPrecedencePatterns) {
+      if (pattern.test(content)) {
+        errors.push(`${docPath} contains forbidden precedence text matching ${pattern}.`);
+      }
+    }
+    for (const pattern of forbiddenRendererPatterns) {
+      if (pattern.test(content)) {
+        errors.push(`${docPath} contains forbidden renderer wording matching ${pattern}.`);
+      }
+    }
+  }
+
   if (!gapAnalysis.includes('canonical `AGENTS.md` at repository root')) {
     errors.push('vision_gap_analysis.md must scope against canonical root AGENTS.md.');
+  }
+
+  const primarySummary = parseStatusSummary(traceability, 'vision-traceability-matrix.md');
+  const mirrorSummary = parseStatusSummary(
+    traceabilityMirror,
+    'kiemenon-vision-traceability-matrix.md'
+  );
+
+  if ('error' in primarySummary) {
+    errors.push(primarySummary.error);
+  }
+  if ('error' in mirrorSummary) {
+    errors.push(mirrorSummary.error);
+  }
+
+  if (!('error' in primarySummary) && !('error' in mirrorSummary)) {
+    const summaryKeys = ['implemented', 'partial', 'missing', 'conflict'];
+    for (const key of summaryKeys) {
+      if (primarySummary[key] !== mirrorSummary[key]) {
+        errors.push(
+          `Traceability summary mismatch for "${key}": vision=${primarySummary[key]} vs kiemenon=${mirrorSummary[key]}`
+        );
+      }
+    }
+  }
+
+  const primaryRows = parseRequirementStatuses(traceability, 'vision-traceability-matrix.md');
+  const mirrorRows = parseRequirementStatuses(
+    traceabilityMirror,
+    'kiemenon-vision-traceability-matrix.md'
+  );
+
+  if ('error' in primaryRows) {
+    errors.push(primaryRows.error);
+  }
+  if ('error' in mirrorRows) {
+    errors.push(mirrorRows.error);
+  }
+
+  if (!('error' in primaryRows) && !('error' in mirrorRows)) {
+    const lensRequirements = ['KV-UX-004', 'KV-FEAT-003'];
+    for (const requirementId of lensRequirements) {
+      const primary = primaryRows.rows.get(requirementId);
+      const mirror = mirrorRows.rows.get(requirementId);
+      if (!primary || !mirror) {
+        errors.push(`Missing required lens row in one or both matrices: ${requirementId}`);
+        continue;
+      }
+      const expectedText = `${primary.expectedBehavior} ${mirror.expectedBehavior}`;
+      if (!/2D/i.test(expectedText) || !/3D/i.test(expectedText) || !/ND/i.test(expectedText)) {
+        errors.push(`${requirementId} must reference 2D/3D/ND lens semantics in both matrices.`);
+      }
+    }
+
+    for (const [requirementId, primaryRow] of primaryRows.rows.entries()) {
+      const mirrorRow = mirrorRows.rows.get(requirementId);
+      if (!mirrorRow) {
+        errors.push(
+          `Missing requirement row in kiemenon-vision-traceability-matrix.md: ${requirementId}`
+        );
+        continue;
+      }
+      if (mirrorRow.status !== primaryRow.status) {
+        errors.push(
+          `Requirement status mismatch for ${requirementId}: vision=${primaryRow.status} vs kiemenon=${mirrorRow.status}`
+        );
+      }
+      if (primaryRow.status === 'implemented' && /^none$/i.test(primaryRow.implementationRefs)) {
+        errors.push(`Implemented row ${requirementId} must include implementation references.`);
+      }
+    }
+
+    for (const requirementId of mirrorRows.rows.keys()) {
+      if (!primaryRows.rows.has(requirementId)) {
+        errors.push(`Missing requirement row in vision-traceability-matrix.md: ${requirementId}`);
+      }
+    }
+
+    const requiredExtensionRows = [
+      'KV-UX-009',
+      'KV-UX-010',
+      'KV-UX-011',
+      'KV-UX-012',
+      'KV-FEAT-005',
+    ];
+    for (const requirementId of requiredExtensionRows) {
+      const primary = primaryRows.rows.get(requirementId);
+      const mirror = mirrorRows.rows.get(requirementId);
+      if (!primary || !mirror) {
+        errors.push(`Missing required extension traceability row: ${requirementId}`);
+        continue;
+      }
+      if (primary.status !== mirror.status) {
+        errors.push(
+          `Extension row status mismatch for ${requirementId}: vision=${primary.status} vs kiemenon=${mirror.status}`
+        );
+      }
+      if (!primary.expectedBehavior || !mirror.expectedBehavior) {
+        errors.push(`Extension row ${requirementId} must include expected behavior text.`);
+      }
+    }
   }
 
   if (errors.length > 0) {

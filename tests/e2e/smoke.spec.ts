@@ -10,19 +10,18 @@ import { test, expect } from './fixtures/test-isolation';
 test.describe('Smoke Tests', () => {
   test.describe.configure({ tag: '@smoke' });
 
-  test('should load the home page and redirect to login', async ({ page }) => {
+  test('should load the unauthenticated entrypoint with login controls', async ({ page }) => {
     // Navigate to home page
     await page.goto('/');
 
-    // Wait for page to load and redirect to complete
+    // Wait for page shell to load
     await page.waitForLoadState('domcontentloaded');
 
-    // Should redirect to login page (since not authenticated)
-    await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
-
-    // Verify key elements are visible
-    await expect(page.getByRole('heading', { name: /Keimenon/i })).toBeVisible();
-    await expect(page.getByText(/Sign in to your workspace/i)).toBeVisible();
+    // App may serve unauthenticated entrypoint from "/" or "/login" depending on routing mode.
+    await expect(page).toHaveURL(/\/($|login)/, { timeout: 15000 });
+    await expect(page.getByLabel(/email/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByLabel(/password/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible({ timeout: 15000 });
   });
 
   test('should have login form with email and password fields', async ({ page }) => {

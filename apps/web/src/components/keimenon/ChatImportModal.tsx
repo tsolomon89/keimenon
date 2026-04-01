@@ -18,12 +18,18 @@ import { DuplicateReviewPanel } from '../import/DuplicateReviewPanel';
 import {
   analyzeFiles,
   detectPlatform,
+  importChatFilesAsJob,
   applyDuplicateDecisions,
   getDuplicateReviewGroups,
   getDuplicateReviewStatus,
   getMyFeatures,
   completeCoreProcessReimport,
   getCoreProcessReimportStatus,
+  listImportPresets,
+  createImportPreset,
+  updateImportPreset,
+  deleteImportPreset,
+  type ImportPreset,
 } from '@/lib/api-client';
 import { useJobStream, type JobUpdate } from '@/hooks/useJobStream';
 import { useChunkedUpload } from '@/hooks/useChunkedUpload';
@@ -42,6 +48,15 @@ interface ChatImportModalProps {
 }
 
 type Stage = 'select' | 'processing' | 'config' | 'review' | 'complete';
+
+interface MultiFileImportProgress {
+  fileName: string;
+  jobId?: string;
+  status: 'queued' | 'submitting' | 'submitted' | 'running' | 'done' | 'error';
+  progress: number;
+  message: string;
+  error?: string;
+}
 
 export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
   // Auth and operating context
@@ -66,6 +81,14 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [postImportResolvedJobId, setPostImportResolvedJobId] = useState<string | null>(null);
+  const [multiFileImports, setMultiFileImports] = useState<MultiFileImportProgress[]>([]);
+  const [importPresets, setImportPresets] = useState<ImportPreset[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState('');
+  const [presetName, setPresetName] = useState('');
+  const [presetsLoading, setPresetsLoading] = useState(false);
+  const [presetBusy, setPresetBusy] = useState(false);
+  const [presetError, setPresetError] = useState<string | null>(null);
+  const [agentRuntimeEnabled, setAgentRuntimeEnabled] = useState(false);
 
   const clearCoreProcessReimportGate = useCallback(async () => {
     try {
@@ -81,6 +104,181 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       console.warn('[ChatImportModal] Failed to clear core process reimport gate:', error);
     }
   }, []);
+
+  const refreshFeatureManifest = useCallback(async () => {
+    try {
+      const featureManifest = await getMyFeatures();
+      const runtimeEnabled = Boolean(featureManifest.features.agent_runtime);
+      setAgentRuntimeEnabled(runtimeEnabled);
+
+      // Enforce manual bootstrap when runtime entitlement is absent.
+      if (!runtimeEnabled) {
+        setConfig((previous) =>
+          previous.agent.bootstrap === 'manual'
+            ? previous
+            : {
+                ...previous,
+                agent: {
+                  ...previous.agent,
+                  bootstrap: 'manual',
+                },
+              }
+        );
+      }
+
+      return featureManifest;
+    } catch (error) {
+      console.warn('[ChatImportModal] Failed to fetch feature manifest:', error);
+      setAgentRuntimeEnabled(false);
+      return null;
+    }
+  }, []);
+
+  const loadImportPresets = useCallback(
+    async (preferredPresetId?: string) => {
+      setPresetsLoading(true);
+      setPresetError(null);
+
+      try {
+        const response = await listImportPresets();
+        const presets = response.presets || [];
+        setImportPresets(presets);
+
+        const currentSelection =
+          preferredPresetId && presets.some((preset) => preset.id === preferredPresetId)
+            ? preferredPresetId
+            : selectedPresetId && presets.some((preset) => preset.id === selectedPresetId)
+              ? selectedPresetId
+              : presets[0]?.id || '';
+
+        setSelectedPresetId(currentSelection);
+        const selectedPreset = presets.find((preset) => preset.id === currentSelection);
+        setPresetName(selectedPreset?.name || '');
+      } catch (error) {
+        console.error('[ChatImportModal] Failed to load import presets:', error);
+        setPresetError(error instanceof Error ? error.message : 'Failed to load presets');
+      } finally {
+        setPresetsLoading(false);
+      }
+    },
+    [selectedPresetId]
+  );
+
+  useEffect(() => {
+    if (stage !== 'config') {
+      return;
+    }
+    void loadImportPresets();
+    void refreshFeatureManifest();
+  }, [stage, loadImportPresets, refreshFeatureManifest]);
+
+  const applySelectedPreset = useCallback(() => {
+    if (!selectedPresetId) {
+      return;
+    }
+
+    const preset = importPresets.find((candidate) => candidate.id === selectedPresetId);
+    if (!preset) {
+      setPresetError('Selected preset no longer exists.');
+      return;
+    }
+
+    const presetConfig: ChatImportConfig =
+      !agentRuntimeEnabled && preset.config.agent.bootstrap === 'auto'
+        ? {
+            ...preset.config,
+            agent: { ...preset.config.agent, bootstrap: 'manual' as const },
+          }
+        : preset.config;
+
+    setConfig(presetConfig);
+    setPresetName(preset.name);
+    setPresetError(null);
+  }, [agentRuntimeEnabled, importPresets, selectedPresetId]);
+
+  const handleCreatePreset = useCallback(async () => {
+    const trimmedName = presetName.trim();
+    if (!trimmedName) {
+      setPresetError('Preset name is required.');
+      return;
+    }
+
+    setPresetBusy(true);
+    setPresetError(null);
+
+    try {
+      const response = await createImportPreset({
+        name: trimmedName,
+        config,
+      });
+      await loadImportPresets(response.preset.id);
+    } catch (error) {
+      console.error('[ChatImportModal] Failed to create preset:', error);
+      setPresetError(error instanceof Error ? error.message : 'Failed to create preset');
+    } finally {
+      setPresetBusy(false);
+    }
+  }, [config, loadImportPresets, presetName]);
+
+  const handleUpdatePreset = useCallback(async () => {
+    if (!selectedPresetId) {
+      setPresetError('Select a preset to update.');
+      return;
+    }
+
+    const trimmedName = presetName.trim();
+    if (!trimmedName) {
+      setPresetError('Preset name is required.');
+      return;
+    }
+
+    setPresetBusy(true);
+    setPresetError(null);
+
+    try {
+      await updateImportPreset(selectedPresetId, {
+        name: trimmedName,
+        config,
+      });
+      await loadImportPresets(selectedPresetId);
+    } catch (error) {
+      console.error('[ChatImportModal] Failed to update preset:', error);
+      setPresetError(error instanceof Error ? error.message : 'Failed to update preset');
+    } finally {
+      setPresetBusy(false);
+    }
+  }, [config, loadImportPresets, presetName, selectedPresetId]);
+
+  const handleDeletePreset = useCallback(async () => {
+    if (!selectedPresetId) {
+      setPresetError('Select a preset to delete.');
+      return;
+    }
+
+    const preset = importPresets.find((candidate) => candidate.id === selectedPresetId);
+    if (!preset) {
+      setPresetError('Selected preset no longer exists.');
+      return;
+    }
+
+    const shouldDelete = window.confirm(`Delete preset "${preset.name}"?`);
+    if (!shouldDelete) {
+      return;
+    }
+
+    setPresetBusy(true);
+    setPresetError(null);
+
+    try {
+      await deleteImportPreset(selectedPresetId);
+      await loadImportPresets();
+    } catch (error) {
+      console.error('[ChatImportModal] Failed to delete preset:', error);
+      setPresetError(error instanceof Error ? error.message : 'Failed to delete preset');
+    } finally {
+      setPresetBusy(false);
+    }
+  }, [importPresets, loadImportPresets, selectedPresetId]);
 
   // Subscribe to job updates via SSE
   const { jobs, connected } = useJobStream();
@@ -194,6 +392,51 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
     }
   }, [currentJobId, jobs, clearCoreProcessReimportGate, postImportResolvedJobId]);
 
+  useEffect(() => {
+    if (multiFileImports.length === 0) {
+      return;
+    }
+
+    setMultiFileImports((previous) =>
+      previous.map((entry) => {
+        if (!entry.jobId) {
+          return entry;
+        }
+
+        const jobUpdate = jobs.get(entry.jobId);
+        if (!jobUpdate) {
+          return entry;
+        }
+
+        const derivedProgress = deriveImportProgress({
+          backendStatus: jobUpdate.status,
+          jobType: jobUpdate.type,
+          progress: { message: jobUpdate.progress.message, stage: jobUpdate.progress.stage },
+        });
+
+        const isError = jobUpdate.status === 'failed' || derivedProgress.status === 'error';
+        const isDone = jobUpdate.status === 'succeeded' || derivedProgress.status === 'done';
+
+        return {
+          ...entry,
+          status: isError ? 'error' : isDone ? 'done' : 'running',
+          progress: normalizeImportProgressPercent({
+            backendStatus: jobUpdate.status,
+            status: derivedProgress.status,
+            rawPercent: jobUpdate.progress.percent,
+            previousPercent: entry.progress,
+            stage: jobUpdate.progress.stage,
+            metadata: jobUpdate.progress.metadata,
+          }),
+          message: jobUpdate.progress.message || entry.message,
+          error: isError
+            ? jobUpdate.error?.message || jobUpdate.progress.message || entry.error
+            : undefined,
+        };
+      })
+    );
+  }, [jobs, multiFileImports.length]);
+
   // Track chunked upload progress
   useEffect(() => {
     const uploadProgress = chunkedUpload.progress;
@@ -285,10 +528,85 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
   const handleFilesSelected = useCallback(
     async (selectedFiles: File[]) => {
       setFiles(selectedFiles);
+      setMultiFileImports([]);
       setStage('processing');
       await processFiles(selectedFiles);
     },
     [processFiles]
+  );
+
+  const submitMultiFileImports = useCallback(
+    async (
+      filesToImport: File[],
+      importConfig: ChatImportConfig,
+      detectedPlatform?: 'chatgpt' | 'claude' | 'gemini' | 'generic'
+    ): Promise<string[]> => {
+      const concurrency = Math.min(3, filesToImport.length);
+      const submittedJobIds: string[] = [];
+      let cursor = 0;
+
+      setMultiFileImports(
+        filesToImport.map((file) => ({
+          fileName: file.name,
+          status: 'queued',
+          progress: 0,
+          message: 'Queued',
+        }))
+      );
+
+      const workers = Array.from({ length: concurrency }).map(async () => {
+        while (cursor < filesToImport.length) {
+          const currentIndex = cursor;
+          cursor += 1;
+          const file = filesToImport[currentIndex];
+
+          setMultiFileImports((previous) =>
+            previous.map((entry, index) =>
+              index === currentIndex
+                ? { ...entry, status: 'submitting', message: 'Uploading and creating job...' }
+                : entry
+            )
+          );
+
+          try {
+            const result = await importChatFilesAsJob([file], importConfig, detectedPlatform);
+            submittedJobIds.push(result.jobId);
+
+            setMultiFileImports((previous) =>
+              previous.map((entry, index) =>
+                index === currentIndex
+                  ? {
+                      ...entry,
+                      jobId: result.jobId,
+                      status: 'submitted',
+                      progress: 0,
+                      message: 'Job created',
+                    }
+                  : entry
+              )
+            );
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to submit import';
+            setMultiFileImports((previous) =>
+              previous.map((entry, index) =>
+                index === currentIndex
+                  ? {
+                      ...entry,
+                      status: 'error',
+                      message,
+                      error: message,
+                    }
+                  : entry
+              )
+            );
+          }
+        }
+      });
+
+      await Promise.all(workers);
+      return submittedJobIds;
+    },
+    []
   );
 
   const handleImport = async () => {
@@ -304,41 +622,93 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         return;
       }
 
-      try {
-        const featureManifest = await getMyFeatures();
-        if (!featureManifest.features.auto_graph) {
-          alert('Your current account tier does not allow automatic graph import.');
-          return;
-        }
-      } catch (featureError) {
-        console.warn('[ChatImportModal] Failed to fetch feature manifest:', featureError);
+      let runtimeEnabled = agentRuntimeEnabled;
+      const featureManifest = await refreshFeatureManifest();
+      if (featureManifest && !featureManifest.features.auto_graph) {
+        alert('Your current account tier does not allow automatic graph import.');
+        return;
+      }
+      if (featureManifest) {
+        runtimeEnabled = Boolean(featureManifest.features.agent_runtime);
+      }
+
+      const effectiveImportConfig: ChatImportConfig = {
+        ...config,
+        agent: {
+          ...config.agent,
+          bootstrap: runtimeEnabled ? config.agent.bootstrap : 'manual',
+        },
+      };
+
+      if (!runtimeEnabled && config.agent.bootstrap === 'auto') {
+        setConfig(effectiveImportConfig);
+        alert(
+          'Agent bootstrap was set to manual because this account does not have agent runtime entitlement.'
+        );
       }
 
       // Set importing state and show loading
       setIsImporting(true);
       setStage('processing');
-      setProgress({ stage: 'uploading', percent: 0, message: 'Initiating chunked upload...' });
+      setProgress({
+        stage: 'uploading',
+        percent: 0,
+        message:
+          files.length > 1
+            ? `Submitting ${files.length} files (max 3 concurrent uploads)...`
+            : 'Initiating chunked upload...',
+      });
 
       console.log('[ChatImportModal] Using chunked upload for large file support');
       console.log('[ChatImportModal] Detected platform:', platformDetection?.platform);
 
       // Prepare import config to be stored with upload session
-      const importConfig = {
+      const chunkedImportConfig = {
         platform: platformDetection?.platform || 'generic',
-        ...config,
+        ...effectiveImportConfig,
       };
 
-      // Upload files using chunked upload (supports multiple files)
-      // For now, we handle one file at a time (most imports are single file)
-      // TODO: Add support for parallel multi-file uploads if needed
-      const file = files[0]; // Start with first file
+      if (files.length > 1) {
+        const submittedJobIds = await submitMultiFileImports(
+          files,
+          effectiveImportConfig,
+          platformDetection?.platform as 'chatgpt' | 'claude' | 'gemini' | 'generic' | undefined
+        );
 
+        const successCount = submittedJobIds.length;
+        const failCount = files.length - successCount;
+        setIsImporting(false);
+
+        if (successCount === 0) {
+          setProgress({
+            stage: 'error',
+            percent: 0,
+            message: 'Failed to submit imports for all selected files.',
+          });
+          return;
+        }
+
+        setCurrentJobId(submittedJobIds[0]);
+        setPostImportResolvedJobId(null);
+        setProgress({
+          stage: 'ready',
+          percent: 100,
+          message:
+            failCount > 0
+              ? `${successCount} job(s) created, ${failCount} failed to submit`
+              : `${successCount} import job(s) created successfully`,
+        });
+        setStage('complete');
+        return;
+      }
+
+      const file = files[0];
       console.log(
         `[ChatImportModal] Uploading file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`
       );
 
       // Upload with chunked upload hook
-      const uploadResult = await chunkedUpload.upload(file, importConfig);
+      const uploadResult = await chunkedUpload.upload(file, chunkedImportConfig);
 
       if (!uploadResult.success || !uploadResult.jobId) {
         console.error('[ChatImportModal] Chunked upload failed:', uploadResult.error);
@@ -541,23 +911,143 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
             )}
 
             {stage === 'processing' && (
-              <ImportStageProcessing
-                platformDetection={platformDetection}
-                progress={progress}
-                runtimeStats={runtimeProcessingStats}
-                onPause={chunkedUpload.pause}
-                onResume={chunkedUpload.resume}
-                isPaused={chunkedUpload.isPaused}
-              />
+              <div className="space-y-4">
+                <ImportStageProcessing
+                  platformDetection={platformDetection}
+                  progress={progress}
+                  runtimeStats={runtimeProcessingStats}
+                  onPause={chunkedUpload.pause}
+                  onResume={chunkedUpload.resume}
+                  isPaused={chunkedUpload.isPaused}
+                />
+                {multiFileImports.length > 0 && (
+                  <div className="border border-slate-700 rounded-xl p-4 bg-slate-950/40">
+                    <h4 className="text-sm font-semibold text-slate-300 mb-3">
+                      Multi-file Uploads ({multiFileImports.length})
+                    </h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {multiFileImports.map((entry) => (
+                        <div
+                          key={entry.fileName}
+                          className="text-xs border border-slate-800 rounded-lg p-2 bg-slate-900/60"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-slate-200 truncate">{entry.fileName}</span>
+                            <span
+                              className={
+                                entry.status === 'error'
+                                  ? 'text-red-400'
+                                  : entry.status === 'done'
+                                    ? 'text-green-400'
+                                    : 'text-slate-400'
+                              }
+                            >
+                              {entry.status}
+                            </span>
+                          </div>
+                          <div className="mt-1 text-slate-400">{entry.message}</div>
+                          {(entry.status === 'running' || entry.status === 'done') && (
+                            <div className="mt-2 h-1.5 bg-slate-800 rounded">
+                              <div
+                                className="h-full bg-purple-500 rounded transition-all duration-300"
+                                style={{ width: `${entry.progress}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
             {stage === 'config' && (
-              <ImportStageConfig
-                config={config}
-                onConfigChange={setConfig}
-                platformDetection={platformDetection}
-                analysis={analysis}
-              />
+              <div className="space-y-4">
+                <div className="border border-slate-700 rounded-xl p-4 bg-slate-950/40 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-semibold text-slate-300">Import Presets</h4>
+                    {presetsLoading && <span className="text-xs text-slate-500">Loading...</span>}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="text-xs text-slate-400">Saved presets</label>
+                      <select
+                        value={selectedPresetId}
+                        onChange={(event) => {
+                          const presetId = event.target.value;
+                          setSelectedPresetId(presetId);
+                          const preset = importPresets.find(
+                            (candidate) => candidate.id === presetId
+                          );
+                          setPresetName(preset?.name || '');
+                        }}
+                        className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-slate-200"
+                      >
+                        <option value="">Select a preset</option>
+                        {importPresets.map((preset) => (
+                          <option key={preset.id} value={preset.id}>
+                            {preset.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs text-slate-400">Preset name</label>
+                      <input
+                        type="text"
+                        value={presetName}
+                        onChange={(event) => setPresetName(event.target.value)}
+                        placeholder="My default import"
+                        className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-slate-200 placeholder-slate-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={applySelectedPreset}
+                      disabled={!selectedPresetId || presetBusy}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-slate-200 transition-colors"
+                    >
+                      Load
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreatePreset}
+                      disabled={presetBusy}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-slate-200 transition-colors"
+                    >
+                      Create
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleUpdatePreset}
+                      disabled={!selectedPresetId || presetBusy}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-slate-200 transition-colors"
+                    >
+                      Update
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeletePreset}
+                      disabled={!selectedPresetId || presetBusy}
+                      className="px-3 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/30 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-red-300 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  {presetError && <p className="text-xs text-red-400">{presetError}</p>}
+                </div>
+
+                <ImportStageConfig
+                  config={config}
+                  onConfigChange={setConfig}
+                  platformDetection={platformDetection}
+                  analysis={analysis}
+                  agentRuntimeEnabled={agentRuntimeEnabled}
+                />
+              </div>
             )}
 
             {stage === 'complete' && (
@@ -619,14 +1109,17 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
-                      // TODO: Implement preset saving functionality
-                      // Related: apps/api/src/routes/presets.ts (create presets endpoint)
-                      // See: docs/features/IMPORT_PRESETS.md (needs creation)
+                      if (selectedPresetId) {
+                        void handleUpdatePreset();
+                      } else {
+                        void handleCreatePreset();
+                      }
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+                    disabled={presetBusy || presetName.trim().length === 0}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 rounded-lg transition-colors"
                   >
                     <Save className="w-4 h-4" />
-                    Save Preset
+                    {selectedPresetId ? 'Update Preset' : 'Save Preset'}
                   </button>
 
                   <button

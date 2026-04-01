@@ -703,6 +703,54 @@ export function createJobsRoutes(
       const database = dbClient.getDatabase();
       ensureDuplicateReviewTable(database);
 
+      const pendingRows = database
+        .prepare(
+          `
+          SELECT candidate_id
+          FROM job_duplicate_candidates
+          WHERE job_id = ? AND account_id = ? AND decision IS NULL
+          ORDER BY candidate_id ASC
+        `
+        )
+        .all(jobId, targetAccountId) as Array<{ candidate_id: string }>;
+      const pendingCandidateIds = pendingRows.map((row) => row.candidate_id);
+      const pendingCandidateSet = new Set(pendingCandidateIds);
+
+      const submittedDecisionsById = new Map<string, (typeof decisions)[number]>();
+      for (const decision of decisions) {
+        if (submittedDecisionsById.has(decision.duplicateId)) {
+          throw ErrorFactory.badRequest(
+            `Duplicate decision submission for candidate "${decision.duplicateId}"`,
+            'jobs.duplicateReviewApply'
+          );
+        }
+        submittedDecisionsById.set(decision.duplicateId, decision);
+      }
+
+      const missingCandidateIds = pendingCandidateIds.filter(
+        (candidateId) => !submittedDecisionsById.has(candidateId)
+      );
+      const unexpectedCandidateIds = Array.from(submittedDecisionsById.keys()).filter(
+        (candidateId) => !pendingCandidateSet.has(candidateId)
+      );
+
+      if (missingCandidateIds.length > 0 || unexpectedCandidateIds.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'incomplete_duplicate_review_decisions',
+          message:
+            'Duplicate review completion requires one explicit decision for each pending candidate in this job.',
+          pending_candidates: pendingCandidateIds.length,
+          submitted_candidates: submittedDecisionsById.size,
+          missing_candidate_ids: missingCandidateIds,
+          unexpected_candidate_ids: unexpectedCandidateIds,
+        });
+      }
+
+      const orderedDecisions = pendingCandidateIds
+        .map((candidateId) => submittedDecisionsById.get(candidateId))
+        .filter((decision): decision is (typeof decisions)[number] => Boolean(decision));
+
       const actionCounts = {
         'keep-primary': 0,
         'keep-duplicate': 0,
@@ -732,118 +780,120 @@ export function createJobsRoutes(
       let decisionsApplied = 0;
 
       try {
-        const transaction = database.transaction((submittedDecisions: typeof decisions) => {
-          for (const decision of submittedDecisions) {
-            actionCounts[decision.action] += 1;
+        const transaction = database.transaction(
+          (submittedDecisions: Array<(typeof decisions)[number]>) => {
+            for (const decision of submittedDecisions) {
+              actionCounts[decision.action] += 1;
 
-            const persistedCandidate = lookupCandidateStmt.get(
-              jobId,
-              targetAccountId,
-              decision.duplicateId
-            ) as { primary_node_id?: string; duplicate_node_id?: string } | undefined;
+              const persistedCandidate = lookupCandidateStmt.get(
+                jobId,
+                targetAccountId,
+                decision.duplicateId
+              ) as { primary_node_id?: string; duplicate_node_id?: string } | undefined;
 
-            const primaryNodeId = decision.primaryNodeId || persistedCandidate?.primary_node_id;
-            const duplicateNodeId =
-              decision.duplicateNodeId || persistedCandidate?.duplicate_node_id;
+              const primaryNodeId = decision.primaryNodeId || persistedCandidate?.primary_node_id;
+              const duplicateNodeId =
+                decision.duplicateNodeId || persistedCandidate?.duplicate_node_id;
 
-            if (!primaryNodeId || !duplicateNodeId) {
-              continue;
+              if (!primaryNodeId || !duplicateNodeId) {
+                continue;
+              }
+
+              const now = Date.now();
+              switch (decision.action) {
+                case 'keep-primary':
+                  nodesSequestered += setModelScopeExcluded(database, {
+                    nodeId: duplicateNodeId,
+                    accountId: targetAccountId,
+                    reason: 'keep-primary',
+                    actorUserId: userId,
+                    relatedNodeId: primaryNodeId,
+                  });
+                  edgesCreated += ensureEdge(database, {
+                    accountId: targetAccountId,
+                    createdBy: userId,
+                    kind: 'DUP_OF',
+                    fromId: duplicateNodeId,
+                    toId: primaryNodeId,
+                    properties: { source: 'duplicate_review' },
+                  })
+                    ? 1
+                    : 0;
+                  break;
+                case 'keep-duplicate':
+                  nodesSequestered += setModelScopeExcluded(database, {
+                    nodeId: primaryNodeId,
+                    accountId: targetAccountId,
+                    reason: 'keep-duplicate',
+                    actorUserId: userId,
+                    relatedNodeId: duplicateNodeId,
+                  });
+                  edgesCreated += ensureEdge(database, {
+                    accountId: targetAccountId,
+                    createdBy: userId,
+                    kind: 'DUP_OF',
+                    fromId: primaryNodeId,
+                    toId: duplicateNodeId,
+                    properties: { source: 'duplicate_review' },
+                  })
+                    ? 1
+                    : 0;
+                  break;
+                case 'keep-both':
+                  break;
+                case 'merge':
+                  nodesSequestered += setModelScopeExcluded(database, {
+                    nodeId: duplicateNodeId,
+                    accountId: targetAccountId,
+                    reason: 'merge',
+                    actorUserId: userId,
+                    relatedNodeId: primaryNodeId,
+                  });
+                  edgesCreated += ensureEdge(database, {
+                    accountId: targetAccountId,
+                    createdBy: userId,
+                    kind: 'EQUIVALENT_TO',
+                    fromId: duplicateNodeId,
+                    toId: primaryNodeId,
+                    properties: { source: 'duplicate_review', merged: true },
+                  })
+                    ? 1
+                    : 0;
+                  mergesRegistered += 1;
+                  break;
+                case 'sequester':
+                  nodesSequestered += setModelScopeExcluded(database, {
+                    nodeId: duplicateNodeId,
+                    accountId: targetAccountId,
+                    reason: 'sequester',
+                    actorUserId: userId,
+                    relatedNodeId: primaryNodeId,
+                  });
+                  break;
+              }
+
+              const decisionMeta = JSON.stringify({
+                appliedBy: userId,
+                appliedAt: now,
+                action: decision.action,
+                primaryNodeId,
+                duplicateNodeId,
+              });
+
+              updateDecisionStmt.run(
+                decision.action,
+                decisionMeta,
+                now,
+                jobId,
+                targetAccountId,
+                decision.duplicateId
+              );
+              decisionsApplied += 1;
             }
-
-            const now = Date.now();
-            switch (decision.action) {
-              case 'keep-primary':
-                nodesSequestered += setModelScopeExcluded(database, {
-                  nodeId: duplicateNodeId,
-                  accountId: targetAccountId,
-                  reason: 'keep-primary',
-                  actorUserId: userId,
-                  relatedNodeId: primaryNodeId,
-                });
-                edgesCreated += ensureEdge(database, {
-                  accountId: targetAccountId,
-                  createdBy: userId,
-                  kind: 'DUP_OF',
-                  fromId: duplicateNodeId,
-                  toId: primaryNodeId,
-                  properties: { source: 'duplicate_review' },
-                })
-                  ? 1
-                  : 0;
-                break;
-              case 'keep-duplicate':
-                nodesSequestered += setModelScopeExcluded(database, {
-                  nodeId: primaryNodeId,
-                  accountId: targetAccountId,
-                  reason: 'keep-duplicate',
-                  actorUserId: userId,
-                  relatedNodeId: duplicateNodeId,
-                });
-                edgesCreated += ensureEdge(database, {
-                  accountId: targetAccountId,
-                  createdBy: userId,
-                  kind: 'DUP_OF',
-                  fromId: primaryNodeId,
-                  toId: duplicateNodeId,
-                  properties: { source: 'duplicate_review' },
-                })
-                  ? 1
-                  : 0;
-                break;
-              case 'keep-both':
-                break;
-              case 'merge':
-                nodesSequestered += setModelScopeExcluded(database, {
-                  nodeId: duplicateNodeId,
-                  accountId: targetAccountId,
-                  reason: 'merge',
-                  actorUserId: userId,
-                  relatedNodeId: primaryNodeId,
-                });
-                edgesCreated += ensureEdge(database, {
-                  accountId: targetAccountId,
-                  createdBy: userId,
-                  kind: 'EQUIVALENT_TO',
-                  fromId: duplicateNodeId,
-                  toId: primaryNodeId,
-                  properties: { source: 'duplicate_review', merged: true },
-                })
-                  ? 1
-                  : 0;
-                mergesRegistered += 1;
-                break;
-              case 'sequester':
-                nodesSequestered += setModelScopeExcluded(database, {
-                  nodeId: duplicateNodeId,
-                  accountId: targetAccountId,
-                  reason: 'sequester',
-                  actorUserId: userId,
-                  relatedNodeId: primaryNodeId,
-                });
-                break;
-            }
-
-            const decisionMeta = JSON.stringify({
-              appliedBy: userId,
-              appliedAt: now,
-              action: decision.action,
-              primaryNodeId,
-              duplicateNodeId,
-            });
-
-            updateDecisionStmt.run(
-              decision.action,
-              decisionMeta,
-              now,
-              jobId,
-              targetAccountId,
-              decision.duplicateId
-            );
-            decisionsApplied += 1;
           }
-        });
+        );
 
-        transaction(decisions);
+        transaction(orderedDecisions);
       } catch (error: any) {
         throw ErrorFactory.database(
           `Failed to apply duplicate review decisions: ${error.message}`,
@@ -888,7 +938,7 @@ export function createJobsRoutes(
           nodes_merged: mergesRegistered,
           edges_created: edgesCreated,
           pending_candidates: pendingCandidates,
-          message: `Applied ${decisionsApplied} decisions`,
+          message: `Applied ${decisionsApplied} decisions and completed duplicate review`,
         },
       });
     })

@@ -22,6 +22,7 @@ test.describe('Authentication - Registration Flow', () => {
 
   // Generate unique email for each test run
   const generateTestEmail = () => `test-${Date.now()}@example.com`;
+  const generateStrongPassword = () => `Kei!A9z${Date.now().toString(36)}x`;
   const waitForAuthToken = async (page: any, timeoutMs = 15000): Promise<string> => {
     await expect
       .poll(async () => await page.evaluate(() => localStorage.getItem('keimenon_token')), {
@@ -48,7 +49,7 @@ test.describe('Authentication - Registration Flow', () => {
   // To fix: Debug why webkit doesn't redirect after successful registration, or increase timeout
   test('should register new user successfully with valid data', async ({ page }) => {
     const testEmail = generateTestEmail();
-    const testPassword = 'SecurePass123!';
+    const testPassword = generateStrongPassword();
 
     // Navigate to registration page
     await page.goto('/register');
@@ -83,7 +84,7 @@ test.describe('Authentication - Registration Flow', () => {
   // To fix: Resolve webkit redirect issue or skip webkit for this test
   test('should create account automatically for new user', async ({ page, request }) => {
     const testEmail = generateTestEmail();
-    const testPassword = 'SecurePass123!';
+    const testPassword = generateStrongPassword();
 
     // Register
     await page.goto('/register');
@@ -117,6 +118,7 @@ test.describe('Authentication - Registration Flow', () => {
 
   test('should reject registration with invalid email format', async ({ page }) => {
     await page.goto('/register');
+    const strongPassword = generateStrongPassword();
 
     // Try invalid email formats
     const invalidEmails = ['notanemail', 'missing@domain', '@nodomain.com', 'spaces in@email.com'];
@@ -124,8 +126,8 @@ test.describe('Authentication - Registration Flow', () => {
     for (const invalidEmail of invalidEmails) {
       await page.getByLabel(/full name|name/i).fill('Test User');
       await page.getByLabel(/email/i).fill(invalidEmail);
-      await page.getByLabel(/^password$/i).fill('ValidPass123!');
-      await page.getByLabel(/confirm password/i).fill('ValidPass123!');
+      await page.getByLabel(/^password$/i).fill(strongPassword);
+      await page.getByLabel(/confirm password/i).fill(strongPassword);
       await page.getByRole('button', { name: /sign up|register|create account/i }).click();
 
       // Should show validation error
@@ -185,11 +187,12 @@ test.describe('Authentication - Registration Flow', () => {
 
   test('should reject registration when passwords do not match', async ({ page }) => {
     const testEmail = generateTestEmail();
+    const strongPassword = generateStrongPassword();
 
     await page.goto('/register');
     await page.getByLabel(/full name|name/i).fill('Test User');
     await page.getByLabel(/email/i).fill(testEmail);
-    await page.getByLabel(/^password$/i).fill('SecurePass123!');
+    await page.getByLabel(/^password$/i).fill(strongPassword);
     await page.getByLabel(/confirm password/i).fill('DifferentPass123!');
 
     await page.getByRole('button', { name: /sign up|register|create account/i }).click();
@@ -206,7 +209,7 @@ test.describe('Authentication - Registration Flow', () => {
   // To fix: Same as other webkit registration issues
   test('should reject registration with existing email', async ({ page, request }) => {
     const testEmail = generateTestEmail();
-    const testPassword = 'SecurePass123!';
+    const testPassword = generateStrongPassword();
 
     // First registration - should succeed
     await page.goto('/register');
@@ -225,6 +228,9 @@ test.describe('Authentication - Registration Flow', () => {
       sessionStorage.clear();
     });
     await page.context().clearCookies();
+    // Force AuthContext to remount from clean storage so register page doesn't redirect
+    // based on stale in-memory auth state from the first registration.
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
 
     // Second registration with same email - should fail
     await page.goto('/register');
@@ -297,6 +303,7 @@ test.describe('Authentication - Registration Flow', () => {
 
   test('should show loading state during registration', async ({ page }) => {
     const testEmail = generateTestEmail();
+    const testPassword = generateStrongPassword();
 
     // Make registration response deterministic so loading state can be asserted reliably.
     await page.route('**/api/v1/auth/register', async (route) => {
@@ -307,8 +314,8 @@ test.describe('Authentication - Registration Flow', () => {
     await page.goto('/register');
     await page.getByLabel(/full name|name/i).fill('Test User');
     await page.getByLabel(/email/i).fill(testEmail);
-    await page.getByLabel(/^password$/i).fill('SecurePass123!');
-    await page.getByLabel(/confirm password/i).fill('SecurePass123!');
+    await page.getByLabel(/^password$/i).fill(testPassword);
+    await page.getByLabel(/confirm password/i).fill(testPassword);
 
     // Click register button
     const registerButton = page.locator('button[type="submit"]');

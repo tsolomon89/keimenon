@@ -64,32 +64,31 @@ export class ProgressiveCheckpoint {
    */
   async save(changeTracker: ChangeTracker, currentBatch: number): Promise<void> {
     try {
-      // Update job state with change tracker
-      const stateData = JSON.parse(JSON.stringify(this.job.state));
-      stateData.changeTracker = serializeChangeTracker(changeTracker);
-      stateData.checkpoint = {
+      const checkpoint = {
         batch: currentBatch,
         timestamp: new Date().toISOString(),
         nodesTracked: changeTracker.nodesCreated.length + changeTracker.nodesDeleted.length,
         edgesTracked: changeTracker.edgesCreated.length + changeTracker.edgesDeleted.length,
       };
 
-      // HACK: Update internal state directly (Job class doesn't expose setState)
-      // TODO: Add job.updateState(stateData) method to Job class
-      (this.job as any)._state = stateData;
+      const stateData = this.job.state as any;
+      this.job.updateState({
+        metadata: {
+          ...(stateData.metadata || {}),
+          checkpoint,
+          changeTracker: serializeChangeTracker(changeTracker),
+        },
+      });
 
-      // Persist to database
       await this.context.jobRepository.save(this.job);
-
       this.lastCheckpointBatch = currentBatch;
 
       const logger = this.options.logger || console.log;
       logger(
-        `   💾 Checkpoint saved at batch ${currentBatch} ` +
-          `(${stateData.checkpoint.nodesTracked} nodes, ${stateData.checkpoint.edgesTracked} edges tracked)`
+        `Checkpoint saved at batch ${currentBatch} (${checkpoint.nodesTracked} nodes, ${checkpoint.edgesTracked} edges tracked)`
       );
     } catch (error: any) {
-      // Non-fatal - log error but don't throw (checkpoint failure shouldn't stop the job)
+      // Non-fatal - checkpoint failures should not stop the running job.
       console.error(`[ProgressiveCheckpoint] Failed to save checkpoint:`, error.message);
     }
   }
@@ -136,15 +135,18 @@ export function loadCheckpoint(job: Job): {
 } | null {
   try {
     const stateData = job.state as any;
+    const metadata = stateData.metadata || {};
+    const checkpoint = stateData.checkpoint || metadata.checkpoint;
+    const changeTracker = stateData.changeTracker || metadata.changeTracker;
 
-    if (!stateData.checkpoint || !stateData.changeTracker) {
+    if (!checkpoint || !changeTracker) {
       return null;
     }
 
     return {
-      changeTracker: stateData.changeTracker,
-      batch: stateData.checkpoint.batch,
-      timestamp: stateData.checkpoint.timestamp,
+      changeTracker,
+      batch: checkpoint.batch,
+      timestamp: checkpoint.timestamp,
     };
   } catch (error: any) {
     console.error(`[ProgressiveCheckpoint] Failed to load checkpoint:`, error.message);

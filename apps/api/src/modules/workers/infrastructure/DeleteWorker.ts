@@ -273,11 +273,9 @@ Node Count Check: Starting...
     if (scope === 'keimenon') {
       // Only count keimenon data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
       // System nodes are excluded: UserNode, AccountNode, Board, Constellation
-      // Admin users: count ALL keimenon data across all accounts
-      const query = isAdmin
-        ? `SELECT COUNT(*) as count FROM nodes WHERE kind IN (${getKeimenonDataInClause()})`
-        : `SELECT COUNT(*) as count FROM nodes WHERE account_id = ? AND kind IN (${getKeimenonDataInClause()})`;
-      const params = isAdmin ? [] : [accountId];
+      // Scope is always account-bound, even for admin initiators.
+      const query = `SELECT COUNT(*) as count FROM nodes WHERE account_id = ? AND kind IN (${getKeimenonDataInClause()})`;
+      const params = [accountId];
       const result = await db.execute(query, params);
       if (!result?.records?.length) {
         console.warn(
@@ -364,12 +362,24 @@ Node Count Check: Starting...
       tracker = trackNodesDeleted(tracker, nodeIds);
 
       // Delete this batch (with CASCADE for edges)
-      const batchDeleted = await this.deleteBatch(db, nodeIds, accountId, isAdmin);
+      const batchDeleted = await this.deleteBatch(db, scope, nodeIds, accountId, isAdmin);
       totalDeleted += batchDeleted;
 
       console.log(
         `   Batch ${batchNumber}: Requested deletion of ${nodeIds.length} IDs. Database reported ${batchDeleted} changes. (${totalDeleted}/${totalNodes} total, ${((totalDeleted / totalNodes) * 100).toFixed(1)}%)`
       );
+
+      // Prevent infinite loops if selection/deletion predicates diverge.
+      if (batchDeleted === 0) {
+        const remaining = await this.countNodesToDelete(db, scope, accountId, isAdmin);
+        if (remaining === 0) {
+          break;
+        }
+
+        throw new Error(
+          `Delete worker stalled: zero deletions for non-empty batch (scope=${scope}, remaining=${remaining})`
+        );
+      }
 
       // Report progress to job system
       if (job && context) {
@@ -418,19 +428,12 @@ Node Count Check: Starting...
     if (scope === 'keimenon') {
       // Only delete keimenon data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
       // System nodes are preserved: UserNode, AccountNode, Board, Constellation
-      // Admin users: select from ALL accounts
-      if (isAdmin) {
-        query = `SELECT id FROM nodes
-                 WHERE kind IN (${getKeimenonDataInClause()})
-                 LIMIT ?`;
-        params = [batchSize];
-      } else {
-        query = `SELECT id FROM nodes
-                 WHERE account_id = ?
-                 AND kind IN (${getKeimenonDataInClause()})
-                 LIMIT ?`;
-        params = [accountId, batchSize];
-      }
+      // Scope is always account-bound, even for admin initiators.
+      query = `SELECT id FROM nodes
+               WHERE account_id = ?
+               AND kind IN (${getKeimenonDataInClause()})
+               LIMIT ?`;
+      params = [accountId, batchSize];
     } else if (scope === 'all-clients') {
       // Get client data nodes (exclude system nodes only)
       if (isAdmin) {
@@ -460,6 +463,7 @@ Node Count Check: Starting...
    */
   private async deleteBatch(
     db: DatabaseClient,
+    scope: string,
     nodeIds: string[],
     accountId: string,
     isAdmin = false
@@ -468,13 +472,12 @@ Node Count Check: Starting...
       return 0;
     }
 
-    // Build parameterized query with placeholders
     const placeholders = nodeIds.map(() => '?').join(',');
-    // Admin users: skip account_id filter (nodes already filtered by kind in getNodeIdBatch)
-    const query = isAdmin
+    const isGlobalAllClientsDelete = scope === 'all-clients' && isAdmin;
+    const query = isGlobalAllClientsDelete
       ? `DELETE FROM nodes WHERE id IN (${placeholders})`
       : `DELETE FROM nodes WHERE account_id = ? AND id IN (${placeholders})`;
-    const params = isAdmin ? nodeIds : [accountId, ...nodeIds];
+    const params = isGlobalAllClientsDelete ? nodeIds : [accountId, ...nodeIds];
     const sqliteDb = this.getSqliteDatabase(db);
     const stmt = sqliteDb.prepare(query);
     const result = stmt.run(...params);

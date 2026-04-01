@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Columns, List, Calendar, MessageSquare, Hash } from 'lucide-react';
 import { DuplicateCandidate } from '@/types/chat-import';
 
@@ -14,6 +15,46 @@ export function DuplicateComparisonView({
   viewMode,
   onViewModeChange,
 }: DuplicateComparisonViewProps) {
+  const mergePreview = useMemo(() => {
+    const toLines = (value: string) =>
+      value
+        .split('\n')
+        .map((line) => line.trimEnd())
+        .filter((line) => line.trim().length > 0);
+
+    const normalize = (value: string) => value.replace(/\s+/g, ' ').trim().toLowerCase();
+
+    const primaryLines = toLines(candidate.primary.content);
+    const duplicateLines = toLines(candidate.duplicate.content);
+    const primaryIndex = new Set(primaryLines.map(normalize));
+
+    const merged: string[] = [];
+    const seen = new Set<string>();
+    const appendUnique = (line: string) => {
+      const key = normalize(line);
+      if (!key || seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      merged.push(line);
+    };
+
+    primaryLines.forEach(appendUnique);
+    duplicateLines.forEach(appendUnique);
+
+    const overlapCount = duplicateLines.reduce(
+      (count, line) => (primaryIndex.has(normalize(line)) ? count + 1 : count),
+      0
+    );
+
+    return {
+      text: merged.join('\n'),
+      overlapCount,
+      totalPrimary: primaryLines.length,
+      totalDuplicate: duplicateLines.length,
+    };
+  }, [candidate.duplicate.content, candidate.primary.content]);
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleString();
   };
@@ -22,7 +63,9 @@ export function DuplicateComparisonView({
     return (
       <div
         className={`p-4 rounded-lg font-mono text-sm whitespace-pre-wrap ${
-          isNew ? 'bg-green-900/20 border-l-4 border-green-500' : 'bg-red-900/20 border-l-4 border-red-500'
+          isNew
+            ? 'bg-green-900/20 border-l-4 border-green-500'
+            : 'bg-red-900/20 border-l-4 border-red-500'
         }`}
       >
         {text}
@@ -81,6 +124,21 @@ export function DuplicateComparisonView({
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-4">
+        <div className="mb-4 p-3 rounded-lg border border-slate-700 bg-slate-900/60">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-semibold text-slate-200">Merge Preview Assistance</h4>
+            <span className="text-[11px] text-slate-400">
+              overlap {mergePreview.overlapCount}/{mergePreview.totalDuplicate} duplicate lines
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-400 mb-2">
+            Preview-only helper. Apply remains a single job-scoped decision action.
+          </p>
+          <pre className="max-h-40 overflow-auto text-xs whitespace-pre-wrap font-mono bg-slate-950/80 rounded p-2 border border-slate-800">
+            {mergePreview.text || candidate.primary.content}
+          </pre>
+        </div>
+
         {viewMode === 'side-by-side' ? (
           // Side-by-side view
           <div className="grid grid-cols-2 gap-4 h-full">

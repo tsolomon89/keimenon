@@ -71,6 +71,30 @@ function isolationWarn(message: string, error?: unknown): void {
 }
 
 /**
+ * Long-running async job suites can conflict with savepoint-based isolation because
+ * background workers may not observe uncommitted rows created inside savepoints.
+ * These suites already perform explicit cleanup and run on worker-isolated databases.
+ */
+function shouldBypassSavepoint(testInfo: { file: string }): boolean {
+  if (process.env.E2E_DISABLE_SAVEPOINTS === '1') {
+    return true;
+  }
+
+  const normalizedFile = testInfo.file.replace(/\\/g, '/');
+  const bypassPatterns = [
+    '/tests/e2e/chunked-upload-workflow.spec.ts',
+    '/tests/e2e/data-management-lifecycle.spec.ts',
+    '/tests/e2e/data-management-ui-updates.spec.ts',
+    '/tests/e2e/data-retrieval-workflow.spec.ts',
+    '/tests/e2e/graph-traversal.spec.ts',
+    '/tests/e2e/import-workflow.spec.ts',
+    '/tests/e2e/scenarios/huge-file-upload.spec.ts',
+  ];
+
+  return bypassPatterns.some((pattern) => normalizedFile.includes(pattern));
+}
+
+/**
  * Initialize worker-specific database
  * Copies template DB and updates test user to be worker-specific
  */
@@ -189,6 +213,16 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
 
     isolationLog(`[Test Isolation] API Request context created with baseURL: ${API_BASE_URL}`);
     isolationLog(`[Test Isolation] Auto-injecting X-Test-DB-Path: ${dbPath}`);
+
+    const bypassSavepoint = shouldBypassSavepoint(testInfo);
+    if (bypassSavepoint) {
+      isolationLog(
+        `[Test Isolation] Savepoint bypass enabled for API context (${path.basename(testInfo.file)})`
+      );
+      await use(apiContext);
+      await rawApiContext.dispose();
+      return;
+    }
 
     // Generate unique savepoint ID for this test
     const testId = `test_${testInfo.testId.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
@@ -349,6 +383,15 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
     }, dbPath);
 
     isolationLog(`[Test Isolation] Page configured with DB: ${path.basename(dbPath)}`);
+
+    const bypassSavepoint = shouldBypassSavepoint(testInfo);
+    if (bypassSavepoint) {
+      isolationLog(
+        `[Test Isolation] Savepoint bypass enabled for page context (${path.basename(testInfo.file)})`
+      );
+      await use(page);
+      return;
+    }
 
     // Generate unique savepoint ID for this test
     const testId = `test_${testInfo.testId.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;

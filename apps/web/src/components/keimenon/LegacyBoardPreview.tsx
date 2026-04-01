@@ -1,14 +1,18 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { GraphNode, GraphEdge } from '@keimenon/graph';
 import { Keimenon2D } from './Keimenon2D';
 import { Loader2, Grid3x3 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/env.config';
+import type { NdProjectionConfig, RenderLens } from '@/lib/nd-projection';
+import { useElementSize } from '@/hooks/useElementSize';
 
 interface LegacyBoardPreviewProps {
   boardId?: string;
   height?: number;
+  renderLens?: RenderLens;
+  ndConfig?: NdProjectionConfig;
 }
 
 interface ApiNode {
@@ -16,7 +20,23 @@ interface ApiNode {
   kind: string;
 }
 
-export function LegacyBoardPreview({ boardId = 'default_board', height }: LegacyBoardPreviewProps) {
+interface ApiEdge {
+  id: string;
+  kind: string;
+  from?: string;
+  to?: string;
+  source?: string;
+  target?: string;
+}
+
+export function LegacyBoardPreview({
+  boardId = 'default_board',
+  height,
+  renderLens = '2d',
+  ndConfig,
+}: LegacyBoardPreviewProps) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const viewportSize = useElementSize(viewportRef);
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,21 +50,48 @@ export function LegacyBoardPreview({ boardId = 'default_board', height }: Legacy
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/nodes?limit=1000`);
+      const [nodesResponse, edgesResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/v1/nodes?limit=1000`),
+        fetch(`${API_BASE_URL}/api/v1/edges?limit=5000`),
+      ]);
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch nodes (status ${response.status})`);
+      if (!nodesResponse.ok) {
+        throw new Error(`Failed to fetch nodes (status ${nodesResponse.status})`);
       }
 
-      const data = await response.json();
+      if (!edgesResponse.ok) {
+        throw new Error(`Failed to fetch edges (status ${edgesResponse.status})`);
+      }
 
-      const graphNodes: GraphNode[] = (data.nodes as ApiNode[]).map((node) => ({
+      const nodesData = await nodesResponse.json();
+      const edgesData = await edgesResponse.json();
+
+      const graphNodes: GraphNode[] = (nodesData.nodes as ApiNode[]).map((node) => ({
         id: node.id,
         kind: node.kind,
       }));
+      const nodeIdSet = new Set(graphNodes.map((node) => node.id));
+
+      const graphEdges: GraphEdge[] = ((edgesData.edges || []) as ApiEdge[])
+        .map((edge) => {
+          const source = edge.from || edge.source;
+          const target = edge.to || edge.target;
+          if (!source || !target) {
+            return null;
+          }
+
+          return {
+            id: edge.id,
+            kind: edge.kind || 'CONTAINS',
+            source,
+            target,
+          } as GraphEdge;
+        })
+        .filter((edge): edge is GraphEdge => !!edge)
+        .filter((edge) => nodeIdSet.has(String(edge.source)) && nodeIdSet.has(String(edge.target)));
 
       setNodes(graphNodes);
-      setEdges([]); // TODO: wire up edge endpoint when available
+      setEdges(graphEdges);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -71,15 +118,17 @@ export function LegacyBoardPreview({ boardId = 'default_board', height }: Legacy
             <p className="text-xs text-slate-500">Board ID: {boardId}</p>
           </div>
         </div>
-        <div className="text-xs text-slate-400">{nodeCount} nodes</div>
+        <div className="text-xs text-slate-400">
+          {nodeCount} nodes - {edges.length} edges
+        </div>
       </header>
 
-      <div className="relative flex-1">
+      <div ref={viewportRef} className="relative flex-1">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center text-slate-400">
               <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-              <p className="text-sm">Loading legacy board data…</p>
+              <p className="text-sm">Loading legacy board data...</p>
             </div>
           </div>
         )}
@@ -103,8 +152,10 @@ export function LegacyBoardPreview({ boardId = 'default_board', height }: Legacy
           <Keimenon2D
             nodes={nodes}
             edges={edges}
-            width={typeof window !== 'undefined' ? window.innerWidth - 420 : 900}
-            height={keimenonHeight}
+            width={viewportSize.width || 900}
+            height={viewportSize.height || keimenonHeight}
+            renderLens={renderLens}
+            ndConfig={ndConfig}
             onSelectionChange={setSelectedNodeIds}
           />
         )}
