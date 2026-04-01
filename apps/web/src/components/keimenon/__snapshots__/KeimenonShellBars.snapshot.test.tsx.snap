@@ -709,12 +709,14 @@ exports[`Keimenon shell bars snapshots > matches console bar snapshot (collapsed
 exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mode 1`] = `
 <div
   class="min-h-[48px] border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm flex items-center justify-between px-2 sm:px-3 gap-2 sm:gap-4"
+  data-testid="keimenon-toolbar"
 >
   <div
     class="flex items-center gap-0.5 sm:gap-1"
   >
     <button
       class="p-1.5 sm:p-2 rounded transition-colors text-slate-400 hover:text-white hover:bg-slate-800 bg-slate-800 text-white shadow-inner"
+      data-testid="toolbar-toggle-navigator"
       title="Toggle Navigator"
       type="button"
     >
@@ -747,6 +749,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
     </button>
     <button
       class="p-1.5 sm:p-2 rounded transition-colors text-slate-400 hover:text-white hover:bg-slate-800 bg-slate-800 text-white shadow-inner"
+      data-testid="toolbar-toggle-inspector"
       title="Toggle Inspector"
       type="button"
     >
@@ -779,6 +782,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
     </button>
     <button
       class="p-1.5 sm:p-2 rounded transition-colors text-slate-400 hover:text-white hover:bg-slate-800 hidden sm:flex"
+      data-testid="toolbar-toggle-console"
       title="Toggle Console"
       type="button"
     >
@@ -966,6 +970,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
       </span>
       <button
         class="px-2 py-1 rounded text-xs border transition-colors bg-slate-700 text-white border-slate-600"
+        data-testid="toolbar-lens-2d-desktop"
         title="Lens: 2D"
         type="button"
       >
@@ -973,6 +978,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
       </button>
       <button
         class="px-2 py-1 rounded text-xs border transition-colors bg-slate-900 text-slate-400 border-slate-700 hover:text-white"
+        data-testid="toolbar-lens-3d-desktop"
         title="Lens: 3D"
         type="button"
       >
@@ -980,6 +986,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
       </button>
       <button
         class="px-2 py-1 rounded text-xs border transition-colors bg-slate-900 text-slate-400 border-slate-700 hover:text-white"
+        data-testid="toolbar-lens-nd-desktop"
         title="Lens: ND"
         type="button"
       >
@@ -999,6 +1006,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
       </span>
       <button
         class="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
+        data-testid="toolbar-camera-zoom-in-desktop"
         title="Camera: Zoom In"
         type="button"
       >
@@ -1041,6 +1049,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
       </button>
       <button
         class="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
+        data-testid="toolbar-camera-zoom-out-desktop"
         title="Camera: Zoom Out"
         type="button"
       >
@@ -1077,6 +1086,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
       </button>
       <button
         class="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
+        data-testid="toolbar-camera-center-desktop"
         title="Camera: Center View"
         type="button"
       >
@@ -1126,6 +1136,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
       </span>
       <button
         class="p-2 rounded transition-colors text-slate-400 hover:text-white hover:bg-slate-800"
+        data-testid="toolbar-lod-focus-desktop"
         title="LOD: Focus mode keeps focused neighborhoods visible"
         type="button"
       >
@@ -1160,6 +1171,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
       </button>
       <button
         class="p-2 rounded transition-colors text-slate-400 hover:text-white hover:bg-slate-800"
+        data-testid="toolbar-lod-connectors-desktop"
         title="LOD: Toggle connector lexemes/phrases"
         type="button"
       >
@@ -1191,6 +1203,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
       </button>
       <button
         class="p-2 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+        data-testid="toolbar-lod-clear-pins-desktop"
         title="LOD: Clear pinned subgraph nodes"
         type="button"
       >
@@ -1267,6 +1280,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
   >
     <button
       class="px-2 py-1 rounded text-[11px] border transition-colors bg-slate-700 text-white border-slate-600"
+      data-testid="toolbar-lens-2d-mobile"
       title="Lens: 2D"
       type="button"
     >
@@ -1274,6 +1288,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
     </button>
     <button
       class="px-2 py-1 rounded text-[11px] border transition-colors bg-slate-900 text-slate-400 border-slate-700"
+      data-testid="toolbar-lens-3d-mobile"
       title="Lens: 3D"
       type="button"
     >
@@ -1281,6 +1296,7 @@ exports[`Keimenon shell bars snapshots > matches toolbar snapshot in keimenon mo
     </button>
     <button
       class="px-2 py-1 rounded text-[11px] border transition-colors bg-slate-900 text-slate-400 border-slate-700"
+      data-testid="toolbar-lens-nd-mobile"
       title="Lens: ND"
       type="button"
     >

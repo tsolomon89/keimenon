@@ -71,6 +71,24 @@ Each requirement row must include the following fields:
 
 ```json
 {
+  "GraphHierarchyNode": {
+    "id": "string",
+    "kind": "AccountNode|Principal|Source|Group|ObjectiveClaim|Derived",
+    "account_id": "string",
+    "parent_id": "string|null",
+    "hierarchy_role": "account|owner|admin|member|agent|contact|content"
+  },
+  "ConversationContextScope": {
+    "human_principal_id": "string",
+    "agent_principal_id": "string|null",
+    "context_spec": {
+      "source_ids": "string[]",
+      "group_ids": "string[]",
+      "workspace_id": "string|null",
+      "include_pinned": "boolean",
+      "expansion_rule": "none|neighbors|connected"
+    }
+  },
   "RenderLens": "2d|3d|nd",
   "NdProjectionConfig": {
     "dims": 8,
@@ -78,9 +96,18 @@ Each requirement row must include the following fields:
     "sliceDim": 3,
     "sliceCenter": 0,
     "sliceWidth": 0.35
+  },
+  "GraphInteractionContract": {
+    "pick": "GraphPickResult(node|edge|null)",
+    "selection": "replace|add|toggle semantics",
+    "drag": "2d XY + 3d/nd projected-plane semantics",
+    "hover": "edge tooltip metadata"
   }
 }
 ```
 
+- `GraphHierarchyNode` is the shared hierarchy visibility contract for account/principal/content graph rendering.
+- `ConversationContextScope` is the server-validated principal/context binding for conversation thread creation and updates.
 - `RenderLens` is the shared UI/runtime lens selector used across graph canvas surfaces.
 - `NdProjectionConfig` defines deterministic ND projection and slicing behavior.
+- `GraphInteractionContract` is shared across all graph canvas surfaces.

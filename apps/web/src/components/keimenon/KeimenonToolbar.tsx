@@ -147,11 +147,15 @@ export function KeimenonToolbar({
     );
 
   return (
-    <div className="min-h-[48px] border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm flex items-center justify-between px-2 sm:px-3 gap-2 sm:gap-4">
+    <div
+      data-testid="keimenon-toolbar"
+      className="min-h-[48px] border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm flex items-center justify-between px-2 sm:px-3 gap-2 sm:gap-4"
+    >
       <div className="flex items-center gap-0.5 sm:gap-1">
         <button
           onClick={onLeftSidebarToggle}
           type="button"
+          data-testid="toolbar-toggle-navigator"
           className={sidebarButtonClass(leftSidebarVisible)}
           title="Toggle Navigator"
         >
@@ -161,6 +165,7 @@ export function KeimenonToolbar({
         <button
           onClick={onRightSidebarToggle}
           type="button"
+          data-testid="toolbar-toggle-inspector"
           className={sidebarButtonClass(rightSidebarVisible)}
           title="Toggle Inspector"
         >
@@ -170,6 +175,7 @@ export function KeimenonToolbar({
         <button
           onClick={onFooterToggle}
           type="button"
+          data-testid="toolbar-toggle-console"
           className={sidebarButtonClass(footerVisible, 'hidden sm:flex')}
           title="Toggle Console"
         >
@@ -224,6 +230,7 @@ export function KeimenonToolbar({
             <button
               onClick={() => onRenderLensChange('2d')}
               type="button"
+              data-testid="toolbar-lens-2d-desktop"
               className={clsx(
                 'px-2 py-1 rounded text-xs border transition-colors',
                 renderLens === '2d'
@@ -237,6 +244,7 @@ export function KeimenonToolbar({
             <button
               onClick={() => onRenderLensChange('3d')}
               type="button"
+              data-testid="toolbar-lens-3d-desktop"
               className={clsx(
                 'px-2 py-1 rounded text-xs border transition-colors',
                 renderLens === '3d'
@@ -250,6 +258,7 @@ export function KeimenonToolbar({
             <button
               onClick={() => onRenderLensChange('nd')}
               type="button"
+              data-testid="toolbar-lens-nd-desktop"
               className={clsx(
                 'px-2 py-1 rounded text-xs border transition-colors',
                 renderLens === 'nd'
@@ -329,6 +338,7 @@ export function KeimenonToolbar({
             <button
               onClick={onZoomIn}
               type="button"
+              data-testid="toolbar-camera-zoom-in-desktop"
               className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
               title="Camera: Zoom In"
             >
@@ -338,6 +348,7 @@ export function KeimenonToolbar({
             <button
               onClick={onZoomOut}
               type="button"
+              data-testid="toolbar-camera-zoom-out-desktop"
               className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
               title="Camera: Zoom Out"
             >
@@ -347,6 +358,7 @@ export function KeimenonToolbar({
             <button
               onClick={onCenterView}
               type="button"
+              data-testid="toolbar-camera-center-desktop"
               className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
               title="Camera: Center View"
             >
@@ -361,6 +373,7 @@ export function KeimenonToolbar({
             <button
               onClick={onFocusModeToggle}
               type="button"
+              data-testid="toolbar-lod-focus-desktop"
               className={clsx(
                 'p-2 rounded transition-colors',
                 focusModeEnabled
@@ -374,6 +387,7 @@ export function KeimenonToolbar({
             <button
               onClick={onConnectorVisibilityToggle}
               type="button"
+              data-testid="toolbar-lod-connectors-desktop"
               className={clsx(
                 'p-2 rounded transition-colors',
                 includeConnectorNodes
@@ -387,6 +401,7 @@ export function KeimenonToolbar({
             <button
               onClick={onClearPinnedNodes}
               type="button"
+              data-testid="toolbar-lod-clear-pins-desktop"
               className="p-2 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               title="LOD: Clear pinned subgraph nodes"
             >
@@ -443,6 +458,7 @@ export function KeimenonToolbar({
           <button
             onClick={() => onRenderLensChange('2d')}
             type="button"
+            data-testid="toolbar-lens-2d-mobile"
             className={clsx(
               'px-2 py-1 rounded text-[11px] border transition-colors',
               renderLens === '2d'
@@ -456,6 +472,7 @@ export function KeimenonToolbar({
           <button
             onClick={() => onRenderLensChange('3d')}
             type="button"
+            data-testid="toolbar-lens-3d-mobile"
             className={clsx(
               'px-2 py-1 rounded text-[11px] border transition-colors',
               renderLens === '3d'
@@ -469,6 +486,7 @@ export function KeimenonToolbar({
           <button
             onClick={() => onRenderLensChange('nd')}
             type="button"
+            data-testid="toolbar-lens-nd-mobile"
             className={clsx(
               'px-2 py-1 rounded text-[11px] border transition-colors',
               renderLens === 'nd'

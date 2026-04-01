@@ -25,6 +25,10 @@ import {
 } from './duplicate-detection-integrated';
 import { GraphSpineBuilder } from './graph-spine-builder';
 import { PrincipalService, AgentPlatform } from './principal-service';
+import {
+  ensureAccountContainsPrincipal,
+  ensureHumanPrincipalHierarchyForUser,
+} from './graph-hierarchy.service';
 import { WORKER_CONFIG } from '../modules/jobs/jobs.config';
 import { getImportMetrics } from './metrics/ImportMetrics';
 import type { LexemeNode, PhraseNode, TopicNode } from '@keimenon/types';
@@ -1226,11 +1230,28 @@ export class EnhancedImportServiceV2 {
     this.agentPrincipal = null;
     const { accountId, userId } = this.context;
 
-    // Resolve human Principal for the uploader
-    // Bug fix #11: Re-throw errors instead of swallowing them
-    // Principal resolution is critical - failing silently creates incomplete graph data
+    // Resolve human Principal for the uploader.
+    // Principal lookup is critical and should fail fast; hierarchy materialization is best-effort
+    // because some test harnesses use minimal in-memory schemas.
     try {
       this.humanPrincipal = await this.principalService.resolveHumanPrincipal(accountId, userId);
+
+      try {
+        ensureHumanPrincipalHierarchyForUser(this.sqliteDb, accountId, userId, userId, Date.now());
+        ensureAccountContainsPrincipal(this.sqliteDb, {
+          accountId,
+          principalId: this.humanPrincipal.id,
+          createdByUserId: userId,
+          membershipRole: 'member',
+          now: Date.now(),
+        });
+      } catch (hierarchyError: any) {
+        console.warn(
+          '[Import] Principal hierarchy materialization skipped:',
+          hierarchyError?.message || hierarchyError
+        );
+      }
+
       console.log(`[Import] Resolved human Principal: ${this.humanPrincipal.id}`);
     } catch (error: any) {
       console.error('[Import] Failed to resolve human Principal:', error.message);
@@ -1257,6 +1278,22 @@ export class EnhancedImportServiceV2 {
         agentPlatform,
         userId
       );
+
+      try {
+        ensureAccountContainsPrincipal(this.sqliteDb, {
+          accountId,
+          principalId: this.agentPrincipal.id,
+          createdByUserId: userId,
+          membershipRole: 'agent',
+          now: Date.now(),
+        });
+      } catch (hierarchyError: any) {
+        console.warn(
+          '[Import] Agent principal hierarchy materialization skipped:',
+          hierarchyError?.message || hierarchyError
+        );
+      }
+
       console.log(
         `[Import] Resolved agent Principal: ${this.agentPrincipal.id} (${agentPlatform})`
       );

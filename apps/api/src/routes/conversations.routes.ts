@@ -23,9 +23,14 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { SQLiteClient } from '@keimenon/db';
+import { featureManifestForAccountClass } from '@keimenon/types';
 import { AuthService } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { getDbClient } from '../utils/get-db-client';
+import {
+  ensureAccountContainsPrincipal,
+  ensureHumanPrincipalHierarchyForUser,
+} from '../services/graph-hierarchy.service';
 
 // ============================================================================
 // Request Schemas
@@ -43,20 +48,136 @@ const CreateConversationSchema = z.object({
   title: z.string().min(1, 'Title required'),
   human_principal_id: z.string().optional(), // Defaults to current user's principal
   agent_principal_id: z.string().optional(),
-  purpose: z.enum(['summarize', 'cluster', 'draft', 'research', 'refactor', 'verify', 'general']).default('general'),
+  purpose: z
+    .enum(['summarize', 'cluster', 'draft', 'research', 'refactor', 'verify', 'general'])
+    .default('general'),
   context_spec: ContextSpecSchema.optional(),
   system_preamble: z.string().optional(),
-  persona: z.object({
-    name: z.string(),
-    model: z.string(),
-    tools_allowed: z.array(z.string()),
-  }).optional(),
+  persona: z
+    .object({
+      name: z.string(),
+      model: z.string(),
+      tools_allowed: z.array(z.string()),
+    })
+    .optional(),
   metadata: z.record(z.any()).optional(),
 });
 
 const UpdateContextSchema = z.object({
   context_spec: ContextSpecSchema,
 });
+
+type ContextSpec = z.infer<typeof ContextSpecSchema>;
+
+interface PrincipalRow {
+  id: string;
+  properties: string;
+}
+
+function parsePrincipalProperties(row: PrincipalRow): Record<string, any> {
+  try {
+    return JSON.parse(row.properties || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function getPrincipalRow(
+  database: any,
+  accountId: string,
+  principalId: string
+): PrincipalRow | null {
+  const row = database
+    .prepare(
+      `
+        SELECT id, properties
+        FROM nodes
+        WHERE id = ? AND kind = 'Principal' AND account_id = ?
+      `
+    )
+    .get(principalId, accountId) as PrincipalRow | undefined;
+  return row || null;
+}
+
+function assertNodeIdsInAccountByKinds(
+  database: any,
+  accountId: string,
+  nodeIds: string[],
+  kinds: string[],
+  label: string
+): void {
+  if (nodeIds.length === 0) {
+    return;
+  }
+
+  const placeholders = nodeIds.map(() => '?').join(', ');
+  const kindPlaceholders = kinds.map(() => '?').join(', ');
+  const rows = database
+    .prepare(
+      `
+        SELECT id
+        FROM nodes
+        WHERE account_id = ?
+          AND id IN (${placeholders})
+          AND kind IN (${kindPlaceholders})
+      `
+    )
+    .all(accountId, ...nodeIds, ...kinds) as Array<{ id: string }>;
+
+  const found = new Set(rows.map((row) => row.id));
+  const missing = nodeIds.filter((id) => !found.has(id));
+  if (missing.length > 0) {
+    throw new Error(`Invalid ${label} references for account scope: ${missing.join(', ')}`);
+  }
+}
+
+function normalizeContextSpec(input: unknown): ContextSpec {
+  const parsed = ContextSpecSchema.safeParse(input);
+  return parsed.success ? parsed.data : ContextSpecSchema.parse({});
+}
+
+function validateContextSpec(
+  database: any,
+  accountId: string,
+  contextSpec: ContextSpec
+): ContextSpec {
+  assertNodeIdsInAccountByKinds(
+    database,
+    accountId,
+    contextSpec.source_ids,
+    ['Source', 'SourceDoc', 'UnifiedDoc', 'VerifiedSource'],
+    'source_ids'
+  );
+  assertNodeIdsInAccountByKinds(
+    database,
+    accountId,
+    contextSpec.group_ids,
+    ['Group', 'Folder'],
+    'group_ids'
+  );
+  if (contextSpec.workspace_id) {
+    assertNodeIdsInAccountByKinds(
+      database,
+      accountId,
+      [contextSpec.workspace_id],
+      ['Source'],
+      'workspace_id'
+    );
+  }
+  return contextSpec;
+}
+
+function contextIndicators(contextSpecInput: unknown): Record<string, unknown> {
+  const contextSpec = normalizeContextSpec(contextSpecInput);
+  return {
+    source_count: contextSpec.source_ids.length,
+    group_count: contextSpec.group_ids.length,
+    has_workspace_scope: Boolean(contextSpec.workspace_id),
+    workspace_id: contextSpec.workspace_id || null,
+    include_pinned: contextSpec.include_pinned,
+    expansion_rule: contextSpec.expansion_rule,
+  };
+}
 
 // ============================================================================
 // Route Factory
@@ -78,78 +199,153 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
       const body = CreateConversationSchema.parse(req.body);
       const accountId = req.user!.accountId;
       const userId = req.user!.userId;
+      const accountClass = ((req.user as any)?.accountClass || 'free') as
+        | 'free'
+        | 'professional'
+        | 'business';
+      const features = featureManifestForAccountClass(accountClass);
 
       // Generate conversation ID
       const conversationId = `conv_${nanoid()}`;
       const now = Date.now();
 
-      // Default human_principal_id to current user if not specified
-      const humanPrincipalId = body.human_principal_id || userId;
+      // Resolve human principal: default to deterministic current-user principal when omitted.
+      let humanPrincipalId = body.human_principal_id;
+      if (!humanPrincipalId) {
+        const hierarchy = ensureHumanPrincipalHierarchyForUser(
+          database,
+          accountId,
+          userId,
+          userId,
+          now
+        );
+        humanPrincipalId = hierarchy.principalId;
+      }
+
+      const humanRow = getPrincipalRow(database, accountId, humanPrincipalId);
+      if (!humanRow) {
+        return res.status(400).json({
+          success: false,
+          error: `human_principal_id must resolve to an account-scoped Principal: ${humanPrincipalId}`,
+        });
+      }
+      const humanProps = parsePrincipalProperties(humanRow);
+      if (humanProps.principal_kind && humanProps.principal_kind !== 'human') {
+        return res.status(400).json({
+          success: false,
+          error: `human_principal_id must be a human principal: ${humanPrincipalId}`,
+        });
+      }
+      ensureAccountContainsPrincipal(database, {
+        accountId,
+        principalId: humanPrincipalId,
+        createdByUserId: userId,
+        membershipRole: 'member',
+        now,
+      });
+
+      // Resolve/validate agent principal when provided and enforce entitlement.
+      const agentPrincipalId: string | undefined = body.agent_principal_id;
+      let agentProps: Record<string, any> | null = null;
+      if (agentPrincipalId) {
+        if (!features.agent_runtime) {
+          return res.status(403).json({
+            success: false,
+            error: 'Agent participation requires agent runtime entitlement',
+            requiredFeature: 'agent_runtime',
+          });
+        }
+
+        const agentRow = getPrincipalRow(database, accountId, agentPrincipalId);
+        if (!agentRow) {
+          return res.status(400).json({
+            success: false,
+            error: `agent_principal_id must resolve to an account-scoped Principal: ${agentPrincipalId}`,
+          });
+        }
+
+        agentProps = parsePrincipalProperties(agentRow);
+        if (agentProps.principal_kind && agentProps.principal_kind !== 'agent') {
+          return res.status(400).json({
+            success: false,
+            error: `agent_principal_id must be an agent principal: ${agentPrincipalId}`,
+          });
+        }
+        ensureAccountContainsPrincipal(database, {
+          accountId,
+          principalId: agentPrincipalId,
+          createdByUserId: userId,
+          membershipRole: 'agent',
+          now,
+        });
+      }
+
+      const scopedContext = validateContextSpec(
+        database,
+        accountId,
+        normalizeContextSpec(body.context_spec)
+      );
 
       // Build properties JSON for the ConversationThread node
       const properties = JSON.stringify({
         title: body.title,
         human_principal_id: humanPrincipalId,
-        agent_principal_id: body.agent_principal_id,
+        agent_principal_id: agentPrincipalId,
         purpose: body.purpose,
-        context_spec: body.context_spec,
+        context_spec: scopedContext,
         system_preamble: body.system_preamble,
         persona: body.persona,
         metadata: body.metadata || {},
       });
 
       // Insert ConversationThread node
-      database.prepare(`
+      database
+        .prepare(
+          `
         INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
         VALUES (?, 'ConversationThread', ?, ?, ?, ?, ?)
-      `).run(conversationId, properties, accountId, userId, now, now);
+      `
+        )
+        .run(conversationId, properties, accountId, userId, now, now);
 
       // Create INITIATED_BY edge (ConversationThread -> Human Principal)
       const initiatedByEdgeId = `edge_initiated_${nanoid()}`;
-      database.prepare(`
+      database
+        .prepare(
+          `
         INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
         VALUES (?, 'INITIATED_BY', ?, ?, '{}', ?, ?, ?)
-      `).run(initiatedByEdgeId, conversationId, humanPrincipalId, accountId, userId, now);
+      `
+        )
+        .run(initiatedByEdgeId, conversationId, humanPrincipalId, accountId, userId, now);
 
       // Create PARTICIPATED_IN edge (Human Principal -> ConversationThread)
       const humanParticipatedEdgeId = `edge_participated_${nanoid()}`;
-      database.prepare(`
+      database
+        .prepare(
+          `
         INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
         VALUES (?, 'PARTICIPATED_IN', ?, ?, '{"role": "human"}', ?, ?, ?)
-      `).run(humanParticipatedEdgeId, humanPrincipalId, conversationId, accountId, userId, now);
+      `
+        )
+        .run(humanParticipatedEdgeId, humanPrincipalId, conversationId, accountId, userId, now);
 
       // If agent specified, create PARTICIPATED_IN edge for agent
-      if (body.agent_principal_id) {
+      if (agentPrincipalId) {
         const agentParticipatedEdgeId = `edge_participated_${nanoid()}`;
-        database.prepare(`
+        database
+          .prepare(
+            `
           INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
           VALUES (?, 'PARTICIPATED_IN', ?, ?, '{"role": "agent"}', ?, ?, ?)
-        `).run(agentParticipatedEdgeId, body.agent_principal_id, conversationId, accountId, userId, now);
+        `
+          )
+          .run(agentParticipatedEdgeId, agentPrincipalId, conversationId, accountId, userId, now);
       }
 
       // Resolve principal names for response (F4: Context-Set Legibility)
-      let humanName = 'Unknown';
-      let agentName: string | null = null;
-
-      // Try to get human principal name
-      const humanRow = database.prepare(`
-        SELECT properties FROM nodes WHERE id = ? AND account_id = ?
-      `).get(humanPrincipalId, accountId) as any;
-      if (humanRow) {
-        const humanProps = JSON.parse(humanRow.properties);
-        humanName = humanProps.display_name || humanProps.name || 'Unknown';
-      }
-
-      // Try to get agent principal name
-      if (body.agent_principal_id) {
-        const agentRow = database.prepare(`
-          SELECT properties FROM nodes WHERE id = ? AND account_id = ?
-        `).get(body.agent_principal_id, accountId) as any;
-        if (agentRow) {
-          const agentProps = JSON.parse(agentRow.properties);
-          agentName = agentProps.display_name || agentProps.name || 'Agent';
-        }
-      }
+      const humanName = humanProps.display_name || humanProps.name || 'Unknown';
+      const agentName = agentProps ? agentProps.display_name || agentProps.name || 'Agent' : null;
 
       // Return created conversation
       return res.status(201).json({
@@ -160,10 +356,11 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
           title: body.title,
           human_principal_id: humanPrincipalId,
           human_principal_name: humanName,
-          agent_principal_id: body.agent_principal_id,
+          agent_principal_id: agentPrincipalId,
           agent_principal_name: agentName,
           purpose: body.purpose,
-          context_spec: body.context_spec,
+          context_spec: scopedContext,
+          context_indicators: contextIndicators(scopedContext),
           system_preamble: body.system_preamble,
           persona: body.persona,
           account_id: accountId,
@@ -180,6 +377,12 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
           success: false,
           error: 'Validation failed',
           details: error.errors,
+        });
+      }
+      if (typeof error?.message === 'string' && error.message.startsWith('Invalid ')) {
+        return res.status(400).json({
+          success: false,
+          error: error.message,
         });
       }
 
@@ -231,47 +434,59 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
       const rows = database.prepare(sql).all(...params) as any[];
 
       // Parse properties and resolve principal names
-      const conversations = await Promise.all(rows.map(async (row) => {
-        const props = JSON.parse(row.properties);
+      const conversations = await Promise.all(
+        rows.map(async (row) => {
+          const props = JSON.parse(row.properties);
 
-        // Resolve human name
-        let humanName = 'Unknown';
-        if (props.human_principal_id) {
-          const humanRow = database.prepare(`
+          // Resolve human name
+          let humanName = 'Unknown';
+          if (props.human_principal_id) {
+            const humanRow = database
+              .prepare(
+                `
             SELECT properties FROM nodes WHERE id = ? AND account_id = ?
-          `).get(props.human_principal_id, accountId) as any;
-          if (humanRow) {
-            const humanProps = JSON.parse(humanRow.properties);
-            humanName = humanProps.display_name || humanProps.name || 'Unknown';
+          `
+              )
+              .get(props.human_principal_id, accountId) as any;
+            if (humanRow) {
+              const humanProps = JSON.parse(humanRow.properties);
+              humanName = humanProps.display_name || humanProps.name || 'Unknown';
+            }
           }
-        }
 
-        // Resolve agent name
-        let agentName: string | null = null;
-        if (props.agent_principal_id) {
-          const agentRow = database.prepare(`
+          // Resolve agent name
+          let agentName: string | null = null;
+          if (props.agent_principal_id) {
+            const agentRow = database
+              .prepare(
+                `
             SELECT properties FROM nodes WHERE id = ? AND account_id = ?
-          `).get(props.agent_principal_id, accountId) as any;
-          if (agentRow) {
-            const agentProps = JSON.parse(agentRow.properties);
-            agentName = agentProps.display_name || agentProps.name || 'Agent';
+          `
+              )
+              .get(props.agent_principal_id, accountId) as any;
+            if (agentRow) {
+              const agentProps = JSON.parse(agentRow.properties);
+              agentName = agentProps.display_name || agentProps.name || 'Agent';
+            }
           }
-        }
 
-        return {
-          id: row.id,
-          kind: row.kind,
-          title: props.title,
-          human_principal_id: props.human_principal_id,
-          human_principal_name: humanName,
-          agent_principal_id: props.agent_principal_id,
-          agent_principal_name: agentName,
-          purpose: props.purpose,
-          account_id: row.account_id,
-          created_at: row.created_at,
-          updated_at: row.updated_at,
-        };
-      }));
+          return {
+            id: row.id,
+            kind: row.kind,
+            title: props.title,
+            human_principal_id: props.human_principal_id,
+            human_principal_name: humanName,
+            agent_principal_id: props.agent_principal_id,
+            agent_principal_name: agentName,
+            purpose: props.purpose,
+            context_spec: props.context_spec,
+            context_indicators: contextIndicators(props.context_spec),
+            account_id: row.account_id,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+          };
+        })
+      );
 
       // Get total count
       let countSql = `SELECT COUNT(*) as count FROM nodes WHERE kind = 'ConversationThread' AND account_id = ?`;
@@ -321,10 +536,14 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
       const accountId = req.user!.accountId;
 
       // F2: Account Boundary
-      const row = database.prepare(`
+      const row = database
+        .prepare(
+          `
         SELECT * FROM nodes
         WHERE id = ? AND kind = 'ConversationThread' AND account_id = ?
-      `).get(id, accountId) as any;
+      `
+        )
+        .get(id, accountId) as any;
 
       if (!row) {
         return res.status(404).json({
@@ -338,9 +557,13 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
       // Resolve human principal
       let humanPrincipal: any = null;
       if (props.human_principal_id) {
-        const humanRow = database.prepare(`
+        const humanRow = database
+          .prepare(
+            `
           SELECT id, properties FROM nodes WHERE id = ? AND account_id = ?
-        `).get(props.human_principal_id, accountId) as any;
+        `
+          )
+          .get(props.human_principal_id, accountId) as any;
         if (humanRow) {
           const humanProps = JSON.parse(humanRow.properties);
           humanPrincipal = {
@@ -354,9 +577,13 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
       // Resolve agent principal
       let agentPrincipal: any = null;
       if (props.agent_principal_id) {
-        const agentRow = database.prepare(`
+        const agentRow = database
+          .prepare(
+            `
           SELECT id, properties FROM nodes WHERE id = ? AND account_id = ?
-        `).get(props.agent_principal_id, accountId) as any;
+        `
+          )
+          .get(props.agent_principal_id, accountId) as any;
         if (agentRow) {
           const agentProps = JSON.parse(agentRow.properties);
           agentPrincipal = {
@@ -369,17 +596,25 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
       }
 
       // Get participation edges
-      const participationEdges = database.prepare(`
+      const participationEdges = database
+        .prepare(
+          `
         SELECT * FROM edges
         WHERE kind = 'PARTICIPATED_IN' AND to_id = ? AND account_id = ?
-      `).all(id, accountId) as any[];
+      `
+        )
+        .all(id, accountId) as any[];
 
       // Get message count for this conversation
-      const messageCount = database.prepare(`
+      const messageCount = database
+        .prepare(
+          `
         SELECT COUNT(*) as count FROM nodes
         WHERE kind = 'Message' AND account_id = ?
           AND json_extract(properties, '$.thread_id') = ?
-      `).get(accountId, id) as any;
+      `
+        )
+        .get(accountId, id) as any;
 
       return res.json({
         success: true,
@@ -391,6 +626,7 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
           system_preamble: props.system_preamble,
           persona: props.persona,
           context_spec: props.context_spec,
+          context_indicators: contextIndicators(props.context_spec),
           metadata: props.metadata,
           account_id: row.account_id,
           created_by: row.created_by,
@@ -436,10 +672,14 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
       const body = UpdateContextSchema.parse(req.body);
 
       // F2: Account Boundary
-      const row = database.prepare(`
+      const row = database
+        .prepare(
+          `
         SELECT * FROM nodes
         WHERE id = ? AND kind = 'ConversationThread' AND account_id = ?
-      `).get(id, accountId) as any;
+      `
+        )
+        .get(id, accountId) as any;
 
       if (!row) {
         return res.status(404).json({
@@ -452,13 +692,17 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
       const now = Date.now();
 
       // Update context_spec
-      props.context_spec = body.context_spec;
+      props.context_spec = validateContextSpec(database, accountId, body.context_spec);
 
       // Save updated properties
-      database.prepare(`
+      database
+        .prepare(
+          `
         UPDATE nodes SET properties = ?, updated_at = ?
         WHERE id = ? AND account_id = ?
-      `).run(JSON.stringify(props), now, id, accountId);
+      `
+        )
+        .run(JSON.stringify(props), now, id, accountId);
 
       return res.json({
         success: true,
@@ -466,6 +710,7 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
           id: row.id,
           title: props.title,
           context_spec: props.context_spec,
+          context_indicators: contextIndicators(props.context_spec),
           updated_at: now,
         },
       });
@@ -477,6 +722,12 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
           success: false,
           error: 'Validation failed',
           details: error.errors,
+        });
+      }
+      if (typeof error?.message === 'string' && error.message.startsWith('Invalid ')) {
+        return res.status(400).json({
+          success: false,
+          error: error.message,
         });
       }
 
@@ -500,10 +751,14 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
       const accountId = req.user!.accountId;
 
       // F2: Account Boundary
-      const row = database.prepare(`
+      const row = database
+        .prepare(
+          `
         SELECT * FROM nodes
         WHERE id = ? AND kind = 'ConversationThread' AND account_id = ?
-      `).get(id, accountId) as any;
+      `
+        )
+        .get(id, accountId) as any;
 
       if (!row) {
         return res.status(404).json({
@@ -513,21 +768,33 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
       }
 
       // Delete associated edges
-      database.prepare(`
+      database
+        .prepare(
+          `
         DELETE FROM edges WHERE (from_id = ? OR to_id = ?) AND account_id = ?
-      `).run(id, id, accountId);
+      `
+        )
+        .run(id, id, accountId);
 
       // Delete messages in this conversation
-      database.prepare(`
+      database
+        .prepare(
+          `
         DELETE FROM nodes
         WHERE kind = 'Message' AND account_id = ?
           AND json_extract(properties, '$.thread_id') = ?
-      `).run(accountId, id);
+      `
+        )
+        .run(accountId, id);
 
       // Delete conversation node
-      database.prepare(`
+      database
+        .prepare(
+          `
         DELETE FROM nodes WHERE id = ? AND account_id = ?
-      `).run(id, accountId);
+      `
+        )
+        .run(id, accountId);
 
       return res.json({
         success: true,

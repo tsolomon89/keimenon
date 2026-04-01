@@ -1,6 +1,6 @@
 # AGENTS Truth: Keimenon Vision Contract
 
-Last updated: 2026-03-27
+Last updated: 2026-04-01
 Status: Active, canonical, and implementation-directive.
 
 This file is the objective source of truth for product behavior and engineering decisions.
@@ -35,6 +35,13 @@ Free/Pro single-user mode:
 - Principal semantics still apply.
 - Human principal is always present.
 - Agent principals are first-class when entitlement permits runtime creation/use.
+
+Hierarchy materialization requirements:
+
+- Every account has a visible `AccountNode` in graph space.
+- Every in-account principal is linked under its `AccountNode` in the primary hierarchy.
+- Sources, groups, objectives, and derived nodes remain account-scoped and principal-linked.
+- Legacy `UserNode`/`AgentNode` artifacts are compatibility-only and not primary hierarchy surfaces.
 
 ### 3.2 Objective Layer
 
@@ -129,6 +136,9 @@ Actions may change model-scope inclusion/edges but do not physically delete raw 
 2. Import-time agent participation is manual-by-default.
 3. Agent principal creation and execution must be blocked when runtime entitlement is absent.
 4. Verification and external research operations require relevant Pro/Business entitlements.
+5. Conversation creation must resolve/validate `human_principal_id` and `agent_principal_id` as account-scoped `Principal` nodes.
+6. Conversation `context_spec` references must be account-scoped and kind-valid (`source_ids`, `group_ids`, optional `workspace_id`).
+7. Conversation context_spec references must be account-scoped and kind-valid for all create/update operations.
 
 ## 7. Canvas Fidelity Contract
 
@@ -181,6 +191,8 @@ The implementation is acceptable only when all are true:
 5. Entitlement gating is server-enforced and client-aware.
 6. Node-kind fidelity is preserved end-to-end.
 7. Manual-by-default agent bootstrap is enforced at import/runtime boundaries.
+8. Account -> Principal -> Source/Group/Objective hierarchy is visible and non-blank after materialization.
+9. Conversation threads show principal identity plus scoped context indicators derived from validated context sets.
 
 ## 10. Derived Artifacts
 

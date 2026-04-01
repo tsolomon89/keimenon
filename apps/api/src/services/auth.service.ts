@@ -30,6 +30,7 @@ import {
   logPasswordChange,
   logAccountSwitch,
 } from '../utils/audit-logger';
+import { ensureHumanPrincipalHierarchyForUser } from './graph-hierarchy.service';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'keimenon-secret-change-in-production';
 const JWT_EXPIRES_IN = '7d'; // 7 days
@@ -542,6 +543,9 @@ export class AuthServiceV2 {
       joined_at: membershipRow.joined_at,
     };
 
+    // Keep graph hierarchy materialized for Account -> Principal visibility.
+    ensureHumanPrincipalHierarchyForUser(db, account.id, user.id, user.id, Date.now());
+
     // Create session and token
     // CRITICAL FIX #6: Pass database instance to createSession() for consistency
     // This ensures createSession() uses the same DB instance as selectAccount()
@@ -693,6 +697,9 @@ export class AuthServiceV2 {
     });
 
     const { userId, accountId } = transaction();
+
+    // Ensure newly registered owner appears in graph hierarchy immediately.
+    ensureHumanPrincipalHierarchyForUser(database, accountId, userId, userId, now);
 
     // Log registration
     logRegistration(database, userId, accountId, email, ipAddress, userAgent);

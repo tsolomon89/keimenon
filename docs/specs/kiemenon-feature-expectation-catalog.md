@@ -1,7 +1,7 @@
 # Kiemenon Feature Expectation Catalog (AGENTS-canonical)
 
 Status: Active
-Last updated: 2026-03-27
+Last updated: 2026-04-01
 
 ## 1) Ingestion and Graph Birth
 
@@ -29,6 +29,7 @@ Last updated: 2026-03-27
 ### Key requirements
 
 - `KV-UX-001` to `KV-UX-008`
+- `KV-UX-013`
 - `KV-FEAT-003`
 
 ## 3) Objective/Archetype Trust Layer
@@ -73,7 +74,7 @@ Last updated: 2026-03-27
 ### Key requirements
 
 - `KV-TIER-001` to `KV-TIER-003`
-- `KV-AGENT-001` to `KV-AGENT-003`
+- `KV-AGENT-001` to `KV-AGENT-004`
 
 ## 6) Operational Controls and Tenancy
 
@@ -86,4 +87,5 @@ Last updated: 2026-03-27
 ### Key requirements
 
 - `KV-OPS-001` to `KV-OPS-003`
+- `KV-FEAT-006`
 - `KV-UX-005`

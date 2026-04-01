@@ -1,6 +1,6 @@
 # Keimenon Vision Gap Analysis (AGENTS-canonical Pass)
 
-Last updated: 2026-03-27.
+Last updated: 2026-04-01.
 
 Scope: current implementation state versus canonical `AGENTS.md` at repository root, with `agent_context/Kiemenon.md` retained as supplementary intent evidence.
 
@@ -12,8 +12,8 @@ Scope: current implementation state versus canonical `AGENTS.md` at repository r
 
 ## Current Status
 
-- Requirement inventory: 39
-- Implemented: 39
+- Requirement inventory: 42
+- Implemented: 42
 - Partial: 0
 - Conflict (vision drift): 0
 
@@ -33,9 +33,12 @@ Scope: current implementation state versus canonical `AGENTS.md` at repository r
 12. `KV-UX-011`: node drag behavior now supports lens-consistent 2D/3D/ND semantics.
 13. `KV-UX-012`: toolbar now follows desktop-full canvas controls with compact reduced controls for smaller breakpoints.
 14. `KV-FEAT-005`: graph surfaces now share renderer interaction contracts and responsive sizing behavior.
+15. `KV-UX-013`: structural filtering and hierarchy materialization now preserve Account/Principal visibility in primary graph views.
+16. `KV-FEAT-006`: auth, account/user, principal, and import flows now materialize account/principal hierarchy links idempotently.
+17. `KV-AGENT-004`: conversation routes now enforce principal-scoped context validation and return explicit context indicators.
 
 ## Notes
 
 - Root `AGENTS.md` is canonical for this analysis pass.
-- Supplementary source `agent_context/Kiemenon.md` remained immutable in this pass (SHA256: `048CBAA28C54CB7824DD555A8EB4A1037F71877440D37A43D2DDB446E79D9393`).
+- Supplementary source `agent_context/Kiemenon.md` remained immutable in this pass (SHA256: `681EB475138BB034C93E5C585F9E96050D9C0A1DC45C88D5746C669FFDE14BE2`).
 - Derived artifacts must not present contradictory status/evidence claims relative to the active traceability matrix.

@@ -1,7 +1,7 @@
 # Kiemenon Acceptance Scenarios (AGENTS-canonical)
 
 Status: Active
-Last updated: 2026-03-27
+Last updated: 2026-04-01
 
 ## Scenario A1: First Import Creates Usable Board
 
@@ -93,3 +93,17 @@ Last updated: 2026-03-27
 - Steps: switch canvas lens across `2D`, `3D`, and `ND`; toggle focus mode and pin nodes
 - Expected: rendering remains Three.js/WebGL-backed in each lens; focus/pinned nodes remain visible through LOD and ND slicing
 - Requirements: `KV-UX-004`, `KV-FEAT-003`
+
+## Scenario A14: Principal-First Hierarchy Visibility
+
+- Preconditions: account has at least one human principal and one imported source
+- Steps: open navigator/canvas structural view and inspect hierarchy anchors
+- Expected: account node and principal nodes are visible and linked; source/group/objective nodes remain connected under principal/account scope
+- Requirements: `KV-UX-013`, `KV-FEAT-006`
+
+## Scenario A15: Principal-Scoped Conversation Context
+
+- Preconditions: account has valid principals and scoped source/group nodes
+- Steps: create conversation without `human_principal_id`; create/update context with valid and invalid scoped IDs
+- Expected: human principal resolves deterministically, invalid context references are rejected, and success responses include context indicators
+- Requirements: `KV-AGENT-004`, `KV-TIER-001`

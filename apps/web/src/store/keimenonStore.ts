@@ -6,12 +6,16 @@ import {
   GraphNode as APIGraphNode,
   GraphEdge as APIGraphEdge,
 } from '@/lib/api-client';
+import { getNodeLabel } from '@/lib/node-labels';
 
 const GRAPH_LOAD_RETRY_DELAYS_MS = [300, 900, 2100] as const;
 const SSR_VIEWPORT_FALLBACK = { width: 1280, height: 720 } as const;
 
 // Node kinds that represent top-level structure (always shown)
 const STRUCTURAL_KINDS = new Set([
+  'AccountNode',
+  'UserNode',
+  'AgentNode',
   'ChatThread',
   'Source',
   'SourceDoc',
@@ -25,6 +29,7 @@ const STRUCTURAL_KINDS = new Set([
   'VerifiedClaim',
   'CodeBlock',
   'Topic',
+  'Board',
 ]);
 
 // Threshold at which we auto-filter to structural nodes only
@@ -87,6 +92,25 @@ function mapEdgeKindToType(kind: string): 'contains' | 'references' | 'derives' 
 }
 
 function mapApiNodeToKeimenon(apiNode: APIGraphNode): KeimenonNode {
+  const metadata = apiNode.properties || {};
+  const metadataRecord = metadata as Record<string, unknown>;
+  const contactInfo =
+    typeof metadataRecord.contact_info === 'object' && metadataRecord.contact_info
+      ? (metadataRecord.contact_info as Record<string, unknown>)
+      : undefined;
+  const platform =
+    typeof contactInfo?.source_platform === 'string'
+      ? contactInfo.source_platform
+      : typeof metadataRecord.platform === 'string'
+        ? metadataRecord.platform
+        : undefined;
+  const label = getNodeLabel({
+    id: apiNode.id,
+    kind: apiNode.kind,
+    ...metadataRecord,
+    platform,
+  });
+
   return {
     id: apiNode.id,
     type: mapNodeKindToType(apiNode.kind),
@@ -97,7 +121,7 @@ function mapApiNodeToKeimenon(apiNode: APIGraphNode): KeimenonNode {
       y: Math.random() * 600,
     },
     data: {
-      label: apiNode.properties?.title || apiNode.properties?.name || apiNode.id.slice(0, 8),
+      label,
       content: apiNode.properties?.content,
       metadata: apiNode.properties,
     },

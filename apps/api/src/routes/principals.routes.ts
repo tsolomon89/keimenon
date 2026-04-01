@@ -25,6 +25,7 @@ import {
 } from '../services/auth.service';
 import { requireAuth, requirePermission, requireCapability } from '../middleware/auth.middleware';
 import { getDbClient } from '../utils/get-db-client';
+import { ensureAccountContainsPrincipal } from '../services/graph-hierarchy.service';
 
 // ============================================================================
 // Request Schemas
@@ -121,6 +122,19 @@ export function createPrincipalsRoutes(db: SQLiteClient, authService: AuthServic
       `
         )
         .run(principalId, properties, accountId, userId, now, now);
+
+      ensureAccountContainsPrincipal(database, {
+        accountId,
+        principalId,
+        createdByUserId: userId,
+        membershipRole:
+          body.principal_kind === 'agent'
+            ? 'agent'
+            : body.principal_kind === 'contact'
+              ? 'contact'
+              : 'member',
+        now,
+      });
 
       // Return created principal
       return res.status(201).json({

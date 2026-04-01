@@ -249,7 +249,7 @@ export function DuplicateReviewPanel({
       <div className="p-4 border-b border-slate-700 bg-slate-900">
         <div className="flex items-center justify-between mb-2">
           <div>
-            <h2 className="text-lg font-semibold">Review Duplicates</h2>
+            <h2 className="text-lg font-semibold">Review Similarity Conflicts</h2>
             <div className="text-xs text-slate-500 mt-1">
               Use up/down arrows to navigate, 1-5 for actions, Ctrl+Z/Y to undo/redo, Esc to cancel,
               Ctrl+Enter to complete
@@ -273,7 +273,7 @@ export function DuplicateReviewPanel({
                     onClick={() => handleBulkAction('keep-duplicate')}
                     className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors"
                   >
-                    Keep Duplicate for All
+                    Keep Alternate for All
                   </button>
                   <button
                     onClick={() => handleBulkAction('keep-both')}
@@ -285,7 +285,7 @@ export function DuplicateReviewPanel({
                     onClick={() => handleBulkAction('sequester')}
                     className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors"
                   >
-                    Sequester Duplicates for All
+                    Sequester Alternates for All
                   </button>
                   <div className="border-t border-slate-700 my-2"></div>
                   <div className="text-xs text-slate-400 mb-2 px-2">Apply to all groups:</div>
@@ -299,7 +299,7 @@ export function DuplicateReviewPanel({
                     onClick={() => handleBulkActionAll('keep-duplicate')}
                     className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors"
                   >
-                    Keep Duplicate Everywhere
+                    Keep Alternate Everywhere
                   </button>
                   <button
                     onClick={() => handleBulkActionAll('keep-both')}
@@ -311,7 +311,7 @@ export function DuplicateReviewPanel({
                     onClick={() => handleBulkActionAll('sequester')}
                     className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors"
                   >
-                    Sequester Duplicates Everywhere
+                    Sequester Alternates Everywhere
                   </button>
                 </div>
               </div>

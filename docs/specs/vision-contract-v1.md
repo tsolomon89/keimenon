@@ -1,6 +1,6 @@
 # Vision Contract v1 (Derived from AGENTS.md)
 
-Status: Active as of 2026-03-27.
+Status: Active as of 2026-04-01.
 
 This document is an implementation contract derived from root `AGENTS.md`.
 On conflict, `AGENTS.md` is authoritative.
@@ -107,6 +107,23 @@ Requirements:
 - Business: `Account -> Principal(human|agent|contact) -> Sources/Groups/Objectives`
 - Free/Pro single-user mode still uses principal semantics.
 - Agent principals are first-class only where entitlement allows runtime creation/use.
+- Hierarchy materialization is mandatory in graph space:
+  - every account has a visible `AccountNode`
+  - every in-account principal is linked under that account node
+  - source/group/objective nodes remain principal-linked and account-scoped
+- Legacy `UserNode`/`AgentNode` artifacts are compatibility-only and not primary hierarchy surfaces.
+
+## 7.1) Conversation Context Contract
+
+- Conversation creation must resolve/validate principal references as account-scoped `Principal` nodes.
+- `human_principal_id` and `agent_principal_id` must resolve to account-scoped `Principal` nodes.
+- Agent participation in conversations is entitlement-gated by `agent_runtime`.
+- Conversation context_spec references must be account-scoped and kind-valid for all create/update operations.
+- `context_spec` references must be validated by account scope and expected kind:
+  - `source_ids`: `Source|SourceDoc|UnifiedDoc|VerifiedSource`
+  - `group_ids`: `Group|Folder`
+  - `workspace_id` (optional): `Source`
+- Conversation responses must include principal identity and scoped context indicators.
 
 ## 8) Canvas Fidelity Contract
 
@@ -149,3 +166,5 @@ Implementation is acceptable only when all are true:
 5. Entitlement gating is server-enforced and client-aware.
 6. Node kind fidelity is preserved end-to-end in canvas rendering.
 7. Manual-by-default agent bootstrap is enforced.
+8. Account/principal hierarchy is visible in graph rendering after materialization.
+9. Conversation threads expose validated principal and context scope metadata.

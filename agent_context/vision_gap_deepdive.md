@@ -1,6 +1,6 @@
 # Keimenon Vision Gap Deep Dive (AGENTS-canonical)
 
-Last updated: 2026-03-27.
+Last updated: 2026-04-01.
 
 This deep dive reflects the AGENTS-canonical closure pass for the current repository state.
 
@@ -11,8 +11,8 @@ This deep dive reflects the AGENTS-canonical closure pass for the current reposi
 
 ## Summary
 
-- Requirement-level traceability is fully closed in this pass (`implemented=39`, `partial=0`).
-- Stage-2 closures now include import bootstrap controls, duplicate-review completion gating, objective archetype typing, raw immutability assertions, and deterministic account-switch isolation tests.
+- Requirement-level traceability is fully closed in this pass (`implemented=42`, `partial=0`).
+- Stage-2 closures include import bootstrap controls, duplicate-review completion gating, objective archetype typing, raw immutability assertions, deterministic account-switch isolation tests, principal-first hierarchy materialization, and principal-scoped conversation context validation.
 
 ## Drift hotspots
 

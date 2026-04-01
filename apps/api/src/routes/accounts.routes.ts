@@ -3,6 +3,7 @@ import { SQLiteClient } from '@keimenon/db';
 import { AuthService } from '../services/auth.service';
 import { requireAuth, requireAdmin, requirePermission } from '../middleware/auth.middleware';
 import { randomUUID } from 'crypto';
+import { ensureHumanPrincipalHierarchyForUser } from '../services/graph-hierarchy.service';
 
 export function createAccountsRoutes(db: SQLiteClient, authService: AuthService): Router {
   const router = Router();
@@ -244,6 +245,9 @@ export function createAccountsRoutes(db: SQLiteClient, authService: AuthService)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
           )
           .run(membershipId, userId, id, permission_level, roleRank, 'active', now, now, now);
+
+        // Principal-first hierarchy: Account -> Principal for newly added members.
+        ensureHumanPrincipalHierarchyForUser(database, id, userId, req.user!.userId, now);
 
         const user = database.prepare('SELECT * FROM users WHERE id = ?').get(userId);
 

@@ -1,7 +1,7 @@
 # Kiemenon Screen and Flow Spec (AGENTS-canonical)
 
 Status: Active
-Last updated: 2026-03-27
+Last updated: 2026-04-01
 
 ## Screen template
 
@@ -48,7 +48,19 @@ Requirements: `KV-IMPORT-008`, `KV-DATA-003`
 - Tier visibility: all
 - Acceptance checks: selection synchronization across navigator/canvas/inspector; usable at large scale across all three lenses
 
-Requirements: `KV-UX-001` through `KV-UX-008`, `KV-FEAT-003`
+Requirements: `KV-UX-001` through `KV-UX-008`, `KV-UX-013`, `KV-FEAT-003`, `KV-FEAT-006`
+
+## SCR-CONVERSATION-CONTEXT
+
+- Actors: `client_user`, `admin_user`, `agent_principal` (entitled)
+- Entry conditions: user opens or creates a conversation thread in account context
+- Controls: principal selection, optional agent attachment, context source/group/workspace selectors
+- States: `draft`, `validated`, `created`, `invalid_scope`, `entitlement_blocked`
+- Events: create thread, update context, validate principal/context scope
+- Tier visibility: all for human context; agent participation constrained by entitlement
+- Acceptance checks: invalid principal/context references are rejected; successful responses return context indicators and resolved principal identity
+
+Requirements: `KV-AGENT-004`, `KV-TIER-001`
 
 ## SCR-DASHBOARD-AND-SETTINGS
 

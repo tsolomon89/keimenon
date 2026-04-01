@@ -25,7 +25,7 @@ export function DuplicateDetectionSection({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Duplicate Detection</h3>
+        <h3 className="text-sm font-semibold">Similarity Grouping Review</h3>
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
           className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300"
@@ -53,7 +53,7 @@ export function DuplicateDetectionSection({
             onChange={(e) => updateDedupe({ enabled: e.target.checked })}
             className="rounded bg-slate-800 border-slate-700"
           />
-          <span className="text-sm">Enable duplicate detection</span>
+          <span className="text-sm">Enable similarity conflict detection (non-destructive)</span>
         </label>
 
         {config.duplicateDetection.enabled && (
@@ -65,13 +65,11 @@ export function DuplicateDetectionSection({
                 onChange={(e) => updateDedupe({ exactMatch: e.target.checked })}
                 className="rounded bg-slate-800 border-slate-700"
               />
-              <span className="text-sm">Detect exact duplicates (hash-based)</span>
+              <span className="text-sm">Detect exact matches (hash-based)</span>
             </label>
 
             <div>
-              <label className="block text-sm mb-2">
-                Near-duplicate similarity threshold
-              </label>
+              <label className="block text-sm mb-2">Near-duplicate similarity threshold</label>
               <div className="flex items-center gap-4">
                 <input
                   type="number"
@@ -87,8 +85,8 @@ export function DuplicateDetectionSection({
                 <span className="text-sm text-slate-400">(0 = different, 1 = identical)</span>
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                Messages with similarity above this threshold will be flagged as potential
-                duplicates
+                Messages with similarity above this threshold will be flagged as similarity
+                conflicts for review
               </p>
             </div>
 
@@ -99,7 +97,7 @@ export function DuplicateDetectionSection({
                 onChange={(e) => updateDedupe({ crossConversation: e.target.checked })}
                 className="rounded bg-slate-800 border-slate-700"
               />
-              <span className="text-sm">Detect duplicates across different conversations</span>
+              <span className="text-sm">Compare similarity across different conversations</span>
             </label>
           </div>
         )}
@@ -138,13 +136,11 @@ export function DuplicateDetectionSection({
               type="number"
               min={1}
               value={config.duplicateDetection.minTokenOverlap}
-              onChange={(e) =>
-                updateDedupe({ minTokenOverlap: parseInt(e.target.value) || 1 })
-              }
+              onChange={(e) => updateDedupe({ minTokenOverlap: parseInt(e.target.value) || 1 })}
               className="w-24 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:border-purple-500 outline-none"
             />
             <p className="text-xs text-slate-400 mt-1">
-              Require at least this many shared tokens to consider as duplicate
+              Require at least this many shared tokens to consider a similarity conflict
             </p>
           </div>
 

@@ -57,6 +57,24 @@ function parseRequirementStatuses(markdown, label) {
   return { rows };
 }
 
+function parseGapAnalysisCounts(markdown) {
+  const inventoryMatch = markdown.match(/Requirement inventory:\s*(\d+)/i);
+  const implementedMatch = markdown.match(/Implemented:\s*(\d+)/i);
+  const partialMatch = markdown.match(/Partial:\s*(\d+)/i);
+  const conflictMatch = markdown.match(/Conflict.*:\s*(\d+)/i);
+
+  if (!inventoryMatch || !implementedMatch || !partialMatch || !conflictMatch) {
+    return { error: 'vision_gap_analysis.md missing required status count lines.' };
+  }
+
+  return {
+    inventory: Number(inventoryMatch[1]),
+    implemented: Number(implementedMatch[1]),
+    partial: Number(partialMatch[1]),
+    conflict: Number(conflictMatch[1]),
+  };
+}
+
 function main() {
   const errors = [];
 
@@ -64,6 +82,7 @@ function main() {
   const gemini = readNormalized('GEMINI.md');
   const contextAgents = readNormalized('agent_context/AGENTS.md');
   const contract = readNormalized('docs/specs/vision-contract-v1.md');
+  const ledger = readNormalized('docs/specs/kiemenon-requirement-ledger.md');
   const traceability = readNormalized('docs/specs/vision-traceability-matrix.md');
   const traceabilityMirror = readNormalized('docs/specs/kiemenon-vision-traceability-matrix.md');
   const gapAnalysis = readNormalized('agent_context/vision_gap_analysis.md');
@@ -123,6 +142,22 @@ function main() {
     }
     if (!clause.test(contract)) {
       errors.push(`vision-contract-v1.md missing required canvas clause matching ${clause}.`);
+    }
+  }
+  const requiredHierarchyClauses = [
+    /AccountNode/i,
+    /Account\s*->\s*Principal/i,
+    /Conversation creation must resolve\/validate .*principal/i,
+    /context_spec references must be account-scoped/i,
+  ];
+  for (const clause of requiredHierarchyClauses) {
+    if (!clause.test(agents)) {
+      errors.push(`AGENTS.md missing required hierarchy/context clause matching ${clause}.`);
+    }
+    if (!clause.test(contract)) {
+      errors.push(
+        `vision-contract-v1.md missing required hierarchy/context clause matching ${clause}.`
+      );
     }
   }
 
@@ -189,6 +224,7 @@ function main() {
     traceabilityMirror,
     'kiemenon-vision-traceability-matrix.md'
   );
+  const ledgerRows = parseRequirementStatuses(ledger, 'kiemenon-requirement-ledger.md');
 
   if ('error' in primaryRows) {
     errors.push(primaryRows.error);
@@ -196,8 +232,11 @@ function main() {
   if ('error' in mirrorRows) {
     errors.push(mirrorRows.error);
   }
+  if ('error' in ledgerRows) {
+    errors.push(ledgerRows.error);
+  }
 
-  if (!('error' in primaryRows) && !('error' in mirrorRows)) {
+  if (!('error' in primaryRows) && !('error' in mirrorRows) && !('error' in ledgerRows)) {
     const lensRequirements = ['KV-UX-004', 'KV-FEAT-003'];
     for (const requirementId of lensRequirements) {
       const primary = primaryRows.rows.get(requirementId);
@@ -242,6 +281,9 @@ function main() {
       'KV-UX-011',
       'KV-UX-012',
       'KV-FEAT-005',
+      'KV-UX-013',
+      'KV-FEAT-006',
+      'KV-AGENT-004',
     ];
     for (const requirementId of requiredExtensionRows) {
       const primary = primaryRows.rows.get(requirementId);
@@ -258,6 +300,48 @@ function main() {
       if (!primary.expectedBehavior || !mirror.expectedBehavior) {
         errors.push(`Extension row ${requirementId} must include expected behavior text.`);
       }
+    }
+
+    for (const requirementId of primaryRows.rows.keys()) {
+      if (!ledgerRows.rows.has(requirementId)) {
+        errors.push(`Traceability requirement missing from ledger: ${requirementId}`);
+      }
+    }
+    for (const requirementId of ledgerRows.rows.keys()) {
+      if (!primaryRows.rows.has(requirementId)) {
+        errors.push(`Ledger requirement missing from traceability matrix: ${requirementId}`);
+      }
+    }
+  }
+
+  const gapCounts = parseGapAnalysisCounts(gapAnalysis);
+  if ('error' in gapCounts) {
+    errors.push(gapCounts.error);
+  } else if (!('error' in primarySummary)) {
+    const totalFromSummary =
+      primarySummary.implemented +
+      primarySummary.partial +
+      primarySummary.missing +
+      primarySummary.conflict;
+    if (gapCounts.inventory !== totalFromSummary) {
+      errors.push(
+        `Gap analysis inventory (${gapCounts.inventory}) must match matrix total (${totalFromSummary}).`
+      );
+    }
+    if (gapCounts.implemented !== primarySummary.implemented) {
+      errors.push(
+        `Gap analysis implemented count (${gapCounts.implemented}) must match matrix implemented count (${primarySummary.implemented}).`
+      );
+    }
+    if (gapCounts.partial !== primarySummary.partial) {
+      errors.push(
+        `Gap analysis partial count (${gapCounts.partial}) must match matrix partial count (${primarySummary.partial}).`
+      );
+    }
+    if (gapCounts.conflict !== primarySummary.conflict) {
+      errors.push(
+        `Gap analysis conflict count (${gapCounts.conflict}) must match matrix conflict count (${primarySummary.conflict}).`
+      );
     }
   }
 

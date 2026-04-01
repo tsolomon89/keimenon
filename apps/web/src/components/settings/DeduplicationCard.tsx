@@ -105,7 +105,7 @@ export function DeduplicationCard() {
         'error' // severity
       );
 
-      setError(err.message || 'Failed to load deduplication stats');
+      setError(err.message || 'Failed to load similarity review stats');
     } finally {
       setLoading(false);
     }
@@ -128,7 +128,7 @@ export function DeduplicationCard() {
         clearInterval(checkInterval);
 
         // Show success message briefly before reload
-        setSuccess('Duplicates consolidated successfully! Reloading...');
+        setSuccess('Similarity groups consolidated successfully. Reloading...');
 
         setTimeout(() => {
           window.location.reload();
@@ -136,7 +136,7 @@ export function DeduplicationCard() {
       } else if (operation?.status === 'error') {
         console.error('[DeduplicationCard] Consolidation failed:', operation);
         clearInterval(checkInterval);
-        setError('Consolidation failed. Please check Background Operations for details.');
+        setError('Consolidation failed. Check Background Operations for details.');
         setMerging(false);
         setMergingJobId(null);
       }
@@ -145,7 +145,7 @@ export function DeduplicationCard() {
     return () => clearInterval(checkInterval);
   }, [mergingJobId, getOperation]);
 
-  // Trigger duplicate consolidation operation (non-destructive)
+  // Trigger similarity-group consolidation operation (non-destructive)
   const handleMergeDuplicates = async () => {
     if (!user?.accountId) return;
 
@@ -170,8 +170,8 @@ export function DeduplicationCard() {
       id: operationId,
       type: 'export' as OperationType, // Using 'export' as closest match for deduplication
       status: 'processing' as OperationStatus,
-      title: 'Consolidating Duplicates',
-      description: 'Relinking duplicate nodes to canonical entries...',
+      title: 'Consolidating Similarity Groups',
+      description: 'Relinking overlapping nodes to canonical entries...',
       progress: 0,
       startedAt: Date.now(),
       stats: {
@@ -196,7 +196,7 @@ export function DeduplicationCard() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to consolidate duplicates');
+        throw new Error(errorData.error || 'Failed to consolidate similarity groups');
       }
 
       const result = await response.json();
@@ -213,7 +213,7 @@ export function DeduplicationCard() {
       // Update background operation
       updateOperation(operationId, {
         status: 'done' as OperationStatus,
-        description: `Consolidated ${result.mergedCount} duplicate groups`,
+        description: `Consolidated ${result.mergedCount} similarity groups`,
         progress: 100,
         completedAt: Date.now(),
         stats: {
@@ -225,9 +225,9 @@ export function DeduplicationCard() {
 
       // Refresh stats after merge
       await fetchStats();
-      setSuccess(`Successfully consolidated ${result.mergedCount} duplicate groups`);
+      setSuccess(`Successfully consolidated ${result.mergedCount} similarity groups`);
     } catch (err: any) {
-      console.error('Failed to consolidate duplicates:', err);
+      console.error('Failed to consolidate similarity groups:', err);
 
       // Log job failure
       logJobEvent('dedup-merge', 'error', {
@@ -260,7 +260,7 @@ export function DeduplicationCard() {
         completedAt: Date.now(),
       });
 
-      setError(err.message || 'Failed to consolidate duplicates');
+      setError(err.message || 'Failed to consolidate similarity groups');
       setMerging(false);
       setMergingJobId(null);
     }
@@ -293,10 +293,10 @@ export function DeduplicationCard() {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Content Deduplication
+                Similarity Group Consolidation
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Automatic duplicate detection and space optimization
+                Similarity-first overlap detection and non-destructive consolidation
               </p>
             </div>
           </div>
@@ -373,7 +373,7 @@ export function DeduplicationCard() {
             {/* Duplicates */}
             <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
               <div className="text-sm font-medium text-yellow-700 dark:text-yellow-400 mb-1">
-                Duplicates
+                Similarity Conflicts
               </div>
               <div className="text-2xl font-bold text-yellow-900 dark:text-yellow-300">
                 {stats.duplicates.toLocaleString()}
@@ -397,8 +397,8 @@ export function DeduplicationCard() {
           <div className="px-6 pb-4">
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
-                <span>Deduplication Efficiency</span>
-                <span>{deduplicationRate}% duplicates detected</span>
+                <span>Similarity Consolidation Potential</span>
+                <span>{deduplicationRate}% overlap detected</span>
               </div>
               <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
@@ -425,7 +425,7 @@ export function DeduplicationCard() {
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" />
-                    Consolidate Duplicates ({stats.duplicates})
+                    Consolidate Similarity Groups ({stats.duplicates})
                   </>
                 )}
               </button>
@@ -433,14 +433,14 @@ export function DeduplicationCard() {
               {stats.duplicates === 0 && (
                 <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                   <CheckCircle className="w-5 h-5" />
-                  <span className="text-sm font-medium">No duplicates found</span>
+                  <span className="text-sm font-medium">No similarity conflicts found</span>
                 </div>
               )}
             </div>
 
             {stats.duplicates > 0 && (
               <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                Consolidation relinks duplicate nodes to canonical originals while preserving raw
+                Consolidation relinks overlapping nodes to canonical originals while preserving raw
                 node content and relationships.
               </p>
             )}
@@ -452,11 +452,11 @@ export function DeduplicationCard() {
       <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/10">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">How it works</h3>
         <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-          <li>• Content is automatically hashed using SHA-256</li>
-          <li>• Identical content is detected regardless of metadata</li>
-          <li>• Duplicates are tracked but not automatically consolidated</li>
-          <li>• Consolidation preserves edges and keeps raw nodes intact</li>
-          <li>• All operations are reversible through version history</li>
+          <li>- Content is automatically hashed using SHA-256</li>
+          <li>- Identical content is detected regardless of metadata</li>
+          <li>- Similarity conflicts are tracked but not automatically consolidated</li>
+          <li>- Consolidation preserves edges and keeps raw nodes intact</li>
+          <li>- All operations are reversible through version history</li>
         </ul>
       </div>
 
@@ -466,14 +466,14 @@ export function DeduplicationCard() {
         onClose={() => setShowMergeModal(false)}
         onConfirm={handleMergeDuplicates}
         variant="warning"
-        title="Consolidate Duplicate Nodes?"
-        message={`This will relink ${stats?.duplicates || 0} duplicate nodes to canonical originals. Raw nodes are preserved and relationships are retained.`}
+        title="Consolidate Similarity Groups?"
+        message={`This will relink ${stats?.duplicates || 0} overlapping nodes to canonical originals. Raw nodes are preserved and relationships are retained.`}
         details={
           stats
-            ? `${stats.duplicates} duplicates found across ${stats.totalNodes} total nodes`
+            ? `${stats.duplicates} similarity conflicts found across ${stats.totalNodes} total nodes`
             : undefined
         }
-        confirmText="Consolidate Duplicates"
+        confirmText="Consolidate Groups"
         cancelText="Cancel"
         isProcessing={merging}
         onMinimize={merging ? () => setShowMergeModal(false) : undefined}

@@ -1,7 +1,7 @@
 # Kiemenon UI/UX Architecture Spec (AGENTS-canonical)
 
 Status: Active
-Last updated: 2026-03-27
+Last updated: 2026-04-01
 
 ## 1) Shell Architecture
 
@@ -92,7 +92,23 @@ Client-mode restrictions:
 
 Requirements: `KV-UX-005`, `KV-TIER-001`, `KV-TIER-003`
 
-## 6) Responsive Behavior
+## 6) Hierarchy Visibility Contract
+
+- Primary hierarchy in graph-facing UX is `Account -> Principal -> Source/Group/Objective`.
+- Account and principal anchors must remain visible in structural graph modes.
+- Agent principals are first-class peers to human principals in the same hierarchy model.
+
+Requirements: `KV-UX-013`, `KV-FEAT-006`
+
+## 7) Conversation Context Contract
+
+- Conversation creation resolves human/agent principal references as account-scoped principals.
+- Context sets are validated by account scope and expected node kinds.
+- Conversation surfaces expose explicit context indicators (sources/groups/workspace scope).
+
+Requirements: `KV-AGENT-004`
+
+## 8) Responsive Behavior
 
 - Mobile viewport may auto-collapse sidebars.
 - Desktop retains concurrent multi-panel workflows.
@@ -100,7 +116,7 @@ Requirements: `KV-UX-005`, `KV-TIER-001`, `KV-TIER-003`
 
 Requirements: `KV-UX-001`, `KV-UX-007`
 
-## 7) Drift Status
+## 9) Drift Status
 
 - No open AGENTS-canonical UI/UX drift items in this revision.
 - Traceability status and evidence are maintained in the canonical matrix artifacts.

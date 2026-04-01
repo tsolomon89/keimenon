@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { KeimenonLayout } from '@/components/keimenon/KeimenonLayout';
 import { FirstTimeUploadModal } from '@/components/keimenon/FirstTimeUploadModal';
@@ -23,6 +23,7 @@ export default function KeimenonPage() {
   const [showChatImportModal, setShowChatImportModal] = useState(false);
   const [showImportModule, setShowImportModule] = useState(false);
   const [restoredOperation, setRestoredOperation] = useState<Operation | null>(null);
+  const shiftPressedRef = useRef(false);
   const loadGraphData = useKeimenonStore((state) => state.loadGraphData);
 
   useEffect(() => {
@@ -43,6 +44,36 @@ export default function KeimenonPage() {
 
     loadGraphData();
   }, [isAuthenticated, isLoading, router, loadGraphData]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Shift') {
+        shiftPressedRef.current = true;
+      }
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === 'Shift') {
+        shiftPressedRef.current = false;
+      }
+    };
+    const resetShift = () => {
+      shiftPressedRef.current = false;
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', resetShift);
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', resetShift);
+    };
+  }, []);
 
   if (isLoading) {
     return (
@@ -67,11 +98,7 @@ export default function KeimenonPage() {
   const handleOpenUpload = () => {
     // Temporarily default to new local-first modal
     // Hold shift to use old modal for comparison
-    // TODO(agent:keimenon): Replace window.event with proper React event handling
-    // Related: apps/web/src/components/keimenon/KeimenonViewport.tsx (keyboard event handling)
-    // See: docs/features/CANVAS_KEYBOARD_SHORTCUTS.md (needs creation)
-    // Use: React synthetic events or window.addEventListener for keyboard shortcuts
-    if (typeof window !== 'undefined' && (window.event as KeyboardEvent | undefined)?.shiftKey) {
+    if (shiftPressedRef.current) {
       setShowUploadModal(true);
     } else {
       setShowImportModule(true);
