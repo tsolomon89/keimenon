@@ -2,14 +2,14 @@
   [710],
   {
     5881: function (e, t, s) {
-      Promise.resolve().then(s.bind(s, 1444));
+      Promise.resolve().then(s.bind(s, 3262));
     },
-    1444: function (e, t, s) {
+    3262: function (e, t, s) {
       'use strict';
       (s.r(t),
         s.d(t, {
           default: function () {
-            return aP;
+            return lf;
           },
         }));
       var a = s(7573),
@@ -28,9 +28,9 @@
         g = s(5330),
         b = s(2441),
         f = s(3989),
-        j = s(4823),
-        v = s(5729),
-        N = s(7070),
+        v = s(4823),
+        j = s(5729),
+        N = s(4175),
         y = s(7250);
       let w = (0, l.createContext)(void 0),
         k = {
@@ -117,13 +117,13 @@
       var S = s(7833),
         I = s(8837),
         E = s(1482);
-      let Z = { free: 'text-gray-600', professional: 'text-blue-600', business: 'text-purple-600' },
-        D = (e) => ('admin' === e ? m.Z : I.Z),
-        T = (e) => {
+      let M = { free: 'text-gray-600', professional: 'text-blue-600', business: 'text-purple-600' },
+        Z = (e) => ('admin' === e ? m.Z : I.Z),
+        D = (e) => {
           let t = e && 'accountType' in e ? e.accountType : void 0;
           return (null == t ? void 0 : t.toLowerCase()) === 'admin' ? 'admin' : 'client';
         };
-      function A(e) {
+      function T(e) {
         let { currentAccount: t, allAccounts: s, onSwitch: r, className: n = '' } = e,
           [i, o] = (0, l.useState)(!1),
           [c, d] = (0, l.useState)(!1),
@@ -157,8 +157,8 @@
               d(!1);
             }
           },
-          m = Z[t.accountClass],
-          p = D(t.accountType),
+          m = M[t.accountClass],
+          p = Z(t.accountType),
           h = s.filter((e) => e.accountId !== t.accountId);
         return (0, a.jsxs)('div', {
           className: n ? 'relative '.concat(n) : 'relative',
@@ -240,7 +240,7 @@
                     ? (0, a.jsx)('div', {
                         className: 'max-h-64 overflow-y-auto',
                         children: h.map((e) => {
-                          let t = D(T(e));
+                          let t = Z(D(e));
                           return (0, a.jsx)(
                             'button',
                             {
@@ -323,26 +323,26 @@
           ],
         });
       }
-      var M = s(4374),
+      var A = s(4374),
         _ = s(3291);
       function L() {
         var e, t;
         let s = (0, r.useRouter)(),
           { user: k, logout: C, switchAccount: I } = (0, N.aC)(),
           { isOperatingMode: E } = (0, y.B)(),
-          { progress: Z, openModal: D } = (function () {
+          { progress: M, openModal: Z } = (function () {
             let e = (0, l.useContext)(w);
             if (!e) throw Error('useImportProgress must be used within ImportProgressProvider');
             return e;
           })(),
-          { uiVersion: T, toggleUIVersion: L } = (0, S.O)(),
+          { uiVersion: D, toggleUIVersion: L } = (0, S.O)(),
           [F, P] = (0, l.useState)(!1),
           [O, z] = (0, l.useState)(!1),
           R = (0, l.useRef)(null),
           U = (0, l.useRef)(null),
           B = (null == k ? void 0 : k.accountType) === 'admin',
-          K = (null == k ? void 0 : k.allAccounts) && k.allAccounts.length > 1,
-          q = k
+          V = (null == k ? void 0 : k.allAccounts) && k.allAccounts.length > 1,
+          K = k
             ? {
                 accountId: k.accountId,
                 accountName:
@@ -356,15 +356,15 @@
                 permissionLevel: k.permissionLevel,
               }
             : null,
-          V =
-            'error' === Z.stage
+          q =
+            'error' === M.stage
               ? {
                   bg: 'bg-red-600/20',
                   border: 'border-red-500/30',
                   text: 'text-red-300',
                   icon: 'text-red-400',
                 }
-              : 'complete' === Z.stage
+              : 'complete' === M.stage
                 ? {
                     bg: 'bg-green-600/20',
                     border: 'border-green-500/30',
@@ -457,64 +457,64 @@
                   onClick: L,
                   className:
                     'flex items-center gap-2 px-3 py-1.5 border rounded-lg hover:opacity-80 transition-opacity '.concat(
-                      'primitives' === T
+                      'primitives' === D
                         ? 'bg-purple-600/20 border-purple-500/30'
                         : 'bg-blue-600/20 border-blue-500/30'
                     ),
-                  title: 'primitives' === T ? 'Switch back to classic UI' : 'Try new primitives UI',
+                  title: 'primitives' === D ? 'Switch back to classic UI' : 'Try new primitives UI',
                   children: [
                     (0, a.jsx)(o.Z, {
                       className: 'w-4 h-4 '.concat(
-                        'primitives' === T ? 'text-purple-400' : 'text-blue-400'
+                        'primitives' === D ? 'text-purple-400' : 'text-blue-400'
                       ),
                     }),
                     (0, a.jsx)('span', {
                       className: 'text-sm font-medium '.concat(
-                        'primitives' === T ? 'text-purple-300' : 'text-blue-300'
+                        'primitives' === D ? 'text-purple-300' : 'text-blue-300'
                       ),
-                      children: 'primitives' === T ? 'Classic UI' : 'New UI',
+                      children: 'primitives' === D ? 'Classic UI' : 'New UI',
                     }),
                   ],
                 }),
                 (0, a.jsx)('button', {
-                  onClick: () => M.O.getState().loadGraphData(),
+                  onClick: () => A.O.getState().loadGraphData(),
                   className:
                     'p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors',
                   title: 'Refresh graph data',
                   children: (0, a.jsx)(c.Z, { className: 'w-5 h-5' }),
                 }),
-                Z.isProcessing &&
+                M.isProcessing &&
                   (0, a.jsxs)('button', {
-                    onClick: D,
+                    onClick: Z,
                     className: 'flex items-center gap-2 px-3 py-1.5 '
-                      .concat(V.bg, ' border ')
+                      .concat(q.bg, ' border ')
                       .concat(
-                        V.border,
+                        q.border,
                         ' rounded-lg hover:opacity-80 transition-opacity cursor-pointer'
                       ),
                     title: 'Click to view import details',
                     children: [
-                      'error' === Z.stage
-                        ? (0, a.jsx)(d.Z, { className: 'w-4 h-4 '.concat(V.icon) })
-                        : 'complete' === Z.stage
-                          ? (0, a.jsx)(u.Z, { className: 'w-4 h-4 '.concat(V.icon) })
+                      'error' === M.stage
+                        ? (0, a.jsx)(d.Z, { className: 'w-4 h-4 '.concat(q.icon) })
+                        : 'complete' === M.stage
+                          ? (0, a.jsx)(u.Z, { className: 'w-4 h-4 '.concat(q.icon) })
                           : (0, a.jsx)(x.Z, {
-                              className: 'w-4 h-4 '.concat(V.icon, ' animate-spin'),
+                              className: 'w-4 h-4 '.concat(q.icon, ' animate-spin'),
                             }),
                       (0, a.jsx)('span', {
-                        className: 'text-sm font-medium '.concat(V.text),
-                        children: Z.message,
+                        className: 'text-sm font-medium '.concat(q.text),
+                        children: M.message,
                       }),
                       (0, a.jsxs)('span', {
-                        className: 'text-xs '.concat(V.text, ' opacity-75'),
-                        children: [Z.progress, '%'],
+                        className: 'text-xs '.concat(q.text, ' opacity-75'),
+                        children: [M.progress, '%'],
                       }),
                     ],
                   }),
-                K &&
-                  q &&
+                V &&
+                  K &&
                   (null == k ? void 0 : k.allAccounts) &&
-                  (0, a.jsx)(A, { currentAccount: q, allAccounts: k.allAccounts, onSwitch: I }),
+                  (0, a.jsx)(T, { currentAccount: K, allAccounts: k.allAccounts, onSwitch: I }),
                 B &&
                   E &&
                   (0, a.jsxs)('div', {
@@ -681,7 +681,7 @@
                                 className:
                                   'w-full px-4 py-2 text-left text-sm hover:bg-slate-700 transition-colors flex items-center gap-2',
                                 children: [
-                                  (0, a.jsx)(j.Z, { className: 'w-4 h-4 text-slate-400' }),
+                                  (0, a.jsx)(v.Z, { className: 'w-4 h-4 text-slate-400' }),
                                   (0, a.jsx)('span', { children: 'Settings' }),
                                 ],
                               }),
@@ -692,7 +692,7 @@
                                 className:
                                   'w-full px-4 py-2 text-left text-sm hover:bg-slate-700 transition-colors flex items-center gap-2 text-red-400',
                                 children: [
-                                  (0, a.jsx)(v.Z, { className: 'w-4 h-4' }),
+                                  (0, a.jsx)(j.Z, { className: 'w-4 h-4' }),
                                   (0, a.jsx)('span', { children: 'Logout' }),
                                 ],
                               }),
@@ -714,15 +714,20 @@
         R = s(4824),
         U = s(4197),
         B = s(9790),
-        K = s(3071),
-        q = s(2587),
-        V = s(4303),
+        V = s(3071),
+        K = s(2587),
+        q = s(4303),
         J = s(8153),
-        G = s(7124),
-        W = s(5965),
-        Y = s(6120),
-        H = s(6326);
-      let X = {
+        G = s(1095),
+        W = s(3890),
+        Y = s(9645),
+        H = s(7124),
+        X = s(5965),
+        Q = s(9886),
+        $ = s(2917),
+        ee = s(6120),
+        et = s(6326);
+      let es = {
           imported: { label: 'Imported', description: 'Chat imports, file uploads', color: 'blue' },
           workspace: { label: 'Workspace', description: 'Active working spaces', color: 'green' },
           brief: { label: 'Brief', description: 'Agent-generated summaries', color: 'purple' },
@@ -737,11 +742,11 @@
             color: 'red',
           },
         },
-        $ = ['imported', 'workspace', 'brief', 'agent_output', 'research_bundle'];
-      function Q() {
-        let e = (0, M.O)((e) => e.filters.sourceRoleFilter),
-          t = (0, M.O)((e) => e.setSourceRoleFilter),
-          s = (0, M.O)((e) => e.nodes),
+        ea = ['imported', 'workspace', 'brief', 'agent_output', 'research_bundle'];
+      function el() {
+        let e = (0, A.O)((e) => e.filters.sourceRoleFilter),
+          t = (0, A.O)((e) => e.setSourceRoleFilter),
+          s = (0, A.O)((e) => e.nodes),
           r = (0, l.useMemo)(() => {
             let e = { imported: 0, workspace: 0, brief: 0, agent_output: 0, research_bundle: 0 };
             return (
@@ -764,7 +769,7 @@
               className: 'flex items-center justify-between gap-2 pb-2 border-b border-slate-700',
               children: [
                 (0, a.jsx)('button', {
-                  onClick: () => t($),
+                  onClick: () => t(ea),
                   className: 'text-xs text-slate-400 hover:text-white transition-colors',
                   children: 'Show All',
                 }),
@@ -775,8 +780,8 @@
                 }),
               ],
             }),
-            $.map((t) => {
-              let s = X[t],
+            ea.map((t) => {
+              let s = es[t],
                 l = 0 === e.size || e.has(t),
                 i = r[t];
               return (0, a.jsxs)(
@@ -802,7 +807,7 @@
           ],
         });
       }
-      function ee(e) {
+      function er(e) {
         let {
             onUploadClick: t,
             onLeftSidebarToggle: s,
@@ -820,43 +825,56 @@
             onDashboardViewChange: g,
             processingAvailable: b = !1,
             autoSwitchToProcessingEnabled: f,
-            onAutoSwitchToProcessingChange: v,
+            onAutoSwitchToProcessingChange: j,
+            focusModeEnabled: y,
+            onFocusModeToggle: w,
+            includeConnectorNodes: k,
+            onConnectorVisibilityToggle: C,
+            pinnedNodeCount: S,
+            onClearPinnedNodes: I,
+            renderLens: E,
+            onRenderLensChange: M,
+            ndConfig: Z,
+            onNdConfigChange: D,
           } = e,
-          { keimenonMode: N, setKeimenonMode: y } = (0, H.St)(),
-          [w, k] = (0, l.useState)(!1),
-          C = (0, l.useRef)(null),
-          S = (0, M.O)((e) => e.filters.sourceRoleFilter),
-          I = 'keimenon' === N,
-          E = 'dashboard' === N,
-          Z = S.size > 0;
+          { user: T } = (0, N.aC)(),
+          { keimenonMode: _, setKeimenonMode: L } = (0, et.St)(),
+          [es, ea] = (0, l.useState)(!1),
+          er = (0, l.useRef)(null),
+          en = (0, A.O)((e) => e.filters.sourceRoleFilter),
+          ei = (null == T ? void 0 : T.accountType) === 'admin',
+          eo = 'keimenon' === _,
+          ec = ei && 'dashboard' === _,
+          ed = en.size > 0;
         (0, l.useEffect)(() => {
           function e(e) {
-            C.current && !C.current.contains(e.target) && k(!1);
+            er.current && !er.current.contains(e.target) && ea(!1);
           }
-          if (w)
+          if (es)
             return (
               document.addEventListener('mousedown', e),
               () => document.removeEventListener('mousedown', e)
             );
-        }, [w]);
-        let D = (e, t) =>
+        }, [es]);
+        let eu = (e, t) =>
             (0, F.Z)(
               'p-1.5 sm:p-2 rounded transition-colors text-slate-400 hover:text-white hover:bg-slate-800',
               e && 'bg-slate-800 text-white shadow-inner',
               t
             ),
-          T = (e, t) =>
+          ex = (e, t) =>
             (0, F.Z)(
               'p-2 rounded-md transition-all text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed',
               e && 'bg-slate-800 text-white shadow-inner border border-slate-700/60',
               t && 'opacity-40 cursor-not-allowed hover:text-slate-400 hover:bg-slate-800'
             ),
-          A = (e) =>
+          em = (e) =>
             (0, F.Z)(
               'p-2 rounded-md transition-all text-slate-400 hover:text-white hover:bg-slate-800',
               e && 'bg-slate-800 text-white shadow-inner border border-slate-700/60'
             );
         return (0, a.jsxs)('div', {
+          'data-testid': 'keimenon-toolbar',
           className:
             'min-h-[48px] border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm flex items-center justify-between px-2 sm:px-3 gap-2 sm:gap-4',
           children: [
@@ -866,29 +884,32 @@
                 (0, a.jsx)('button', {
                   onClick: s,
                   type: 'button',
-                  className: D(i),
+                  'data-testid': 'toolbar-toggle-navigator',
+                  className: eu(i),
                   title: 'Toggle Navigator',
                   children: (0, a.jsx)(P.Z, { className: 'w-4 h-4' }),
                 }),
                 (0, a.jsx)('button', {
                   onClick: r,
                   type: 'button',
-                  className: D(o),
+                  'data-testid': 'toolbar-toggle-inspector',
+                  className: eu(o),
                   title: 'Toggle Inspector',
                   children: (0, a.jsx)(O.Z, { className: 'w-4 h-4' }),
                 }),
                 (0, a.jsx)('button', {
                   onClick: n,
                   type: 'button',
-                  className: D(c, 'hidden sm:flex'),
+                  'data-testid': 'toolbar-toggle-console',
+                  className: eu(c, 'hidden sm:flex'),
                   title: 'Toggle Console',
                   children: (0, a.jsx)(z.Z, { className: 'w-4 h-4' }),
                 }),
               ],
             }),
-            I &&
+            eo &&
               (0, a.jsxs)('div', {
-                className: 'hidden md:flex items-center gap-2 lg:gap-3',
+                className: 'hidden lg:flex items-center gap-2 lg:gap-3',
                 children: [
                   (0, a.jsxs)('div', {
                     className:
@@ -897,14 +918,14 @@
                       (0, a.jsx)('button', {
                         onClick: () => p('keimenon'),
                         type: 'button',
-                        className: T('keimenon' === m),
+                        className: ex('keimenon' === m),
                         title: 'Keimenon View',
                         children: (0, a.jsx)(R.Z, { className: 'w-4 h-4' }),
                       }),
                       (0, a.jsx)('button', {
                         onClick: () => p('legacy'),
                         type: 'button',
-                        className: T('legacy' === m),
+                        className: ex('legacy' === m),
                         title: 'Legacy Board View',
                         children: (0, a.jsx)(U.Z, { className: 'w-4 h-4' }),
                       }),
@@ -912,16 +933,16 @@
                         onClick: () => p('processing'),
                         type: 'button',
                         disabled: !b,
-                        className: T('processing' === m, !b),
+                        className: ex('processing' === m, !b),
                         title: 'Processing View',
                         children: (0, a.jsx)(B.Z, { className: 'w-4 h-4' }),
                       }),
                       (0, a.jsx)('button', {
                         onClick: () => p('boards'),
                         type: 'button',
-                        className: T('boards' === m),
+                        className: ex('boards' === m),
                         title: 'Boards View',
-                        children: (0, a.jsx)(K.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(V.Z, { className: 'w-4 h-4' }),
                       }),
                     ],
                   }),
@@ -929,35 +950,193 @@
                   (0, a.jsxs)('div', {
                     className: 'flex items-center gap-1',
                     children: [
+                      (0, a.jsx)('span', {
+                        className: 'text-[11px] uppercase tracking-wide text-slate-500 px-1',
+                        children: 'Lens',
+                      }),
+                      (0, a.jsx)('button', {
+                        onClick: () => M('2d'),
+                        type: 'button',
+                        'data-testid': 'toolbar-lens-2d-desktop',
+                        className: (0, F.Z)(
+                          'px-2 py-1 rounded text-xs border transition-colors',
+                          '2d' === E
+                            ? 'bg-slate-700 text-white border-slate-600'
+                            : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white'
+                        ),
+                        title: 'Lens: 2D',
+                        children: '2D',
+                      }),
+                      (0, a.jsx)('button', {
+                        onClick: () => M('3d'),
+                        type: 'button',
+                        'data-testid': 'toolbar-lens-3d-desktop',
+                        className: (0, F.Z)(
+                          'px-2 py-1 rounded text-xs border transition-colors',
+                          '3d' === E
+                            ? 'bg-slate-700 text-white border-slate-600'
+                            : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white'
+                        ),
+                        title: 'Lens: 3D',
+                        children: '3D',
+                      }),
+                      (0, a.jsx)('button', {
+                        onClick: () => M('nd'),
+                        type: 'button',
+                        'data-testid': 'toolbar-lens-nd-desktop',
+                        className: (0, F.Z)(
+                          'px-2 py-1 rounded text-xs border transition-colors',
+                          'nd' === E
+                            ? 'bg-slate-700 text-white border-slate-600'
+                            : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white'
+                        ),
+                        title: 'Lens: ND',
+                        children: 'ND',
+                      }),
+                    ],
+                  }),
+                  'nd' === E &&
+                    (0, a.jsxs)(a.Fragment, {
+                      children: [
+                        (0, a.jsx)('div', { className: 'w-px h-6 bg-slate-700' }),
+                        (0, a.jsxs)('div', {
+                          className: 'flex items-center gap-1',
+                          children: [
+                            (0, a.jsx)('span', {
+                              className: 'text-[11px] uppercase tracking-wide text-slate-500 px-1',
+                              children: 'Slice',
+                            }),
+                            (0, a.jsx)('button', {
+                              type: 'button',
+                              className:
+                                'px-1.5 py-1 rounded text-xs bg-slate-800 text-slate-300 hover:text-white',
+                              title: 'ND Slice Center Down',
+                              onClick: () => D({ ...Z, sliceCenter: Z.sliceCenter - 0.05 }),
+                              children: '-',
+                            }),
+                            (0, a.jsx)('span', {
+                              className: 'text-[11px] text-slate-400 min-w-[42px] text-center',
+                              children: Z.sliceCenter.toFixed(2),
+                            }),
+                            (0, a.jsx)('button', {
+                              type: 'button',
+                              className:
+                                'px-1.5 py-1 rounded text-xs bg-slate-800 text-slate-300 hover:text-white',
+                              title: 'ND Slice Center Up',
+                              onClick: () => D({ ...Z, sliceCenter: Z.sliceCenter + 0.05 }),
+                              children: '+',
+                            }),
+                            (0, a.jsx)('button', {
+                              type: 'button',
+                              className:
+                                'px-1.5 py-1 rounded text-xs bg-slate-800 text-slate-300 hover:text-white',
+                              title: 'ND Slice Width Narrower',
+                              onClick: () =>
+                                D({ ...Z, sliceWidth: Math.max(0.05, Z.sliceWidth - 0.05) }),
+                              children: 'w-',
+                            }),
+                            (0, a.jsx)('button', {
+                              type: 'button',
+                              className:
+                                'px-1.5 py-1 rounded text-xs bg-slate-800 text-slate-300 hover:text-white',
+                              title: 'ND Slice Width Wider',
+                              onClick: () =>
+                                D({ ...Z, sliceWidth: Math.min(2, Z.sliceWidth + 0.05) }),
+                              children: 'w+',
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  (0, a.jsx)('div', { className: 'w-px h-6 bg-slate-700' }),
+                  (0, a.jsxs)('div', {
+                    className: 'flex items-center gap-1',
+                    children: [
+                      (0, a.jsx)('span', {
+                        className: 'text-[11px] uppercase tracking-wide text-slate-500 px-1',
+                        children: 'Camera',
+                      }),
                       (0, a.jsx)('button', {
                         onClick: d,
                         type: 'button',
+                        'data-testid': 'toolbar-camera-zoom-in-desktop',
                         className:
                           'p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors',
-                        title: 'Zoom In',
-                        children: (0, a.jsx)(q.Z, { className: 'w-4 h-4' }),
+                        title: 'Camera: Zoom In',
+                        children: (0, a.jsx)(K.Z, { className: 'w-4 h-4' }),
                       }),
                       (0, a.jsx)('button', {
                         onClick: u,
                         type: 'button',
+                        'data-testid': 'toolbar-camera-zoom-out-desktop',
                         className:
                           'p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors',
-                        title: 'Zoom Out',
-                        children: (0, a.jsx)(V.Z, { className: 'w-4 h-4' }),
+                        title: 'Camera: Zoom Out',
+                        children: (0, a.jsx)(q.Z, { className: 'w-4 h-4' }),
                       }),
                       (0, a.jsx)('button', {
                         onClick: x,
                         type: 'button',
+                        'data-testid': 'toolbar-camera-center-desktop',
                         className:
                           'p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors',
-                        title: 'Center View',
+                        title: 'Camera: Center View',
                         children: (0, a.jsx)(J.Z, { className: 'w-4 h-4' }),
                       }),
                     ],
                   }),
                   (0, a.jsx)('div', { className: 'w-px h-6 bg-slate-700' }),
+                  (0, a.jsxs)('div', {
+                    className: 'flex items-center gap-1',
+                    children: [
+                      (0, a.jsx)('span', {
+                        className: 'text-[11px] uppercase tracking-wide text-slate-500 px-1',
+                        children: 'LOD',
+                      }),
+                      (0, a.jsx)('button', {
+                        onClick: w,
+                        type: 'button',
+                        'data-testid': 'toolbar-lod-focus-desktop',
+                        className: (0, F.Z)(
+                          'p-2 rounded transition-colors',
+                          y
+                            ? 'bg-emerald-600/20 text-emerald-300'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                        ),
+                        title: 'LOD: Focus mode keeps focused neighborhoods visible',
+                        children: (0, a.jsx)(G.Z, { className: 'w-4 h-4' }),
+                      }),
+                      (0, a.jsx)('button', {
+                        onClick: C,
+                        type: 'button',
+                        'data-testid': 'toolbar-lod-connectors-desktop',
+                        className: (0, F.Z)(
+                          'p-2 rounded transition-colors',
+                          k
+                            ? 'bg-emerald-600/20 text-emerald-300'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                        ),
+                        title: 'LOD: Toggle connector lexemes/phrases',
+                        children: (0, a.jsx)(W.Z, { className: 'w-4 h-4' }),
+                      }),
+                      (0, a.jsx)('button', {
+                        onClick: I,
+                        type: 'button',
+                        'data-testid': 'toolbar-lod-clear-pins-desktop',
+                        className:
+                          'p-2 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors',
+                        title: 'LOD: Clear pinned subgraph nodes',
+                        children: (0, a.jsx)(Y.Z, { className: 'w-4 h-4' }),
+                      }),
+                      (0, a.jsxs)('span', {
+                        className: 'text-[11px] text-slate-500 min-w-[40px]',
+                        children: ['pins ', S],
+                      }),
+                    ],
+                  }),
+                  (0, a.jsx)('div', { className: 'w-px h-6 bg-slate-700' }),
                   (0, a.jsxs)('button', {
-                    onClick: () => v(!f),
+                    onClick: () => j(!f),
                     type: 'button',
                     className: (0, F.Z)(
                       'px-2.5 py-1.5 rounded text-xs font-medium border transition-colors',
@@ -970,38 +1149,97 @@
                   }),
                   (0, a.jsxs)('div', {
                     className: 'relative',
-                    ref: C,
+                    ref: er,
                     children: [
                       (0, a.jsxs)('button', {
-                        onClick: () => k(!w),
+                        onClick: () => ea(!es),
                         type: 'button',
                         className: (0, F.Z)(
                           'p-2 rounded transition-colors relative',
-                          w || Z
+                          es || ed
                             ? 'bg-slate-800 text-purple-400'
                             : 'text-slate-400 hover:text-white hover:bg-slate-800'
                         ),
                         title: 'Filter by Source Role',
                         children: [
-                          (0, a.jsx)(G.Z, { className: 'w-4 h-4' }),
-                          Z &&
+                          (0, a.jsx)(H.Z, { className: 'w-4 h-4' }),
+                          ed &&
                             (0, a.jsx)('span', {
                               className:
                                 'absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full',
                             }),
                         ],
                       }),
-                      w &&
+                      es &&
                         (0, a.jsx)('div', {
                           className:
                             'absolute top-full mt-1 right-0 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50',
-                          children: (0, a.jsx)(Q, {}),
+                          children: (0, a.jsx)(el, {}),
                         }),
                     ],
                   }),
                 ],
               }),
-            E &&
+            eo &&
+              (0, a.jsxs)('div', {
+                className: 'flex lg:hidden items-center gap-1.5 px-1',
+                children: [
+                  (0, a.jsx)('button', {
+                    onClick: () => M('2d'),
+                    type: 'button',
+                    'data-testid': 'toolbar-lens-2d-mobile',
+                    className: (0, F.Z)(
+                      'px-2 py-1 rounded text-[11px] border transition-colors',
+                      '2d' === E
+                        ? 'bg-slate-700 text-white border-slate-600'
+                        : 'bg-slate-900 text-slate-400 border-slate-700'
+                    ),
+                    title: 'Lens: 2D',
+                    children: '2D',
+                  }),
+                  (0, a.jsx)('button', {
+                    onClick: () => M('3d'),
+                    type: 'button',
+                    'data-testid': 'toolbar-lens-3d-mobile',
+                    className: (0, F.Z)(
+                      'px-2 py-1 rounded text-[11px] border transition-colors',
+                      '3d' === E
+                        ? 'bg-slate-700 text-white border-slate-600'
+                        : 'bg-slate-900 text-slate-400 border-slate-700'
+                    ),
+                    title: 'Lens: 3D',
+                    children: '3D',
+                  }),
+                  (0, a.jsx)('button', {
+                    onClick: () => M('nd'),
+                    type: 'button',
+                    'data-testid': 'toolbar-lens-nd-mobile',
+                    className: (0, F.Z)(
+                      'px-2 py-1 rounded text-[11px] border transition-colors',
+                      'nd' === E
+                        ? 'bg-slate-700 text-white border-slate-600'
+                        : 'bg-slate-900 text-slate-400 border-slate-700'
+                    ),
+                    title: 'Lens: ND',
+                    children: 'ND',
+                  }),
+                  (0, a.jsx)('button', {
+                    onClick: d,
+                    type: 'button',
+                    className: 'p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800',
+                    title: 'Camera: Zoom In',
+                    children: (0, a.jsx)(K.Z, { className: 'w-3.5 h-3.5' }),
+                  }),
+                  (0, a.jsx)('button', {
+                    onClick: x,
+                    type: 'button',
+                    className: 'p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800',
+                    title: 'Camera: Center View',
+                    children: (0, a.jsx)(J.Z, { className: 'w-3.5 h-3.5' }),
+                  }),
+                ],
+              }),
+            ec &&
               (0, a.jsx)('div', {
                 className: 'hidden md:flex items-center gap-2 lg:gap-3',
                 children: (0, a.jsxs)('div', {
@@ -1011,21 +1249,35 @@
                     (0, a.jsx)('button', {
                       onClick: () => g('analytics'),
                       type: 'button',
-                      className: T('analytics' === h),
+                      className: ex('analytics' === h),
                       title: 'Analytics Overview',
-                      children: (0, a.jsx)(K.Z, { className: 'w-4 h-4' }),
+                      children: (0, a.jsx)(V.Z, { className: 'w-4 h-4' }),
                     }),
                     (0, a.jsx)('button', {
                       onClick: () => g('storage'),
                       type: 'button',
-                      className: T('storage' === h),
+                      className: ex('storage' === h),
                       title: 'Storage Statistics',
-                      children: (0, a.jsx)(W.Z, { className: 'w-4 h-4' }),
+                      children: (0, a.jsx)(X.Z, { className: 'w-4 h-4' }),
+                    }),
+                    (0, a.jsx)('button', {
+                      onClick: () => g('workspaces'),
+                      type: 'button',
+                      className: ex('workspaces' === h),
+                      title: 'Workspace Browser',
+                      children: (0, a.jsx)(Q.Z, { className: 'w-4 h-4' }),
+                    }),
+                    (0, a.jsx)('button', {
+                      onClick: () => g('conversations'),
+                      type: 'button',
+                      className: ex('conversations' === h),
+                      title: 'Conversation Browser',
+                      children: (0, a.jsx)($.Z, { className: 'w-4 h-4' }),
                     }),
                   ],
                 }),
               }),
-            !I && !E && (0, a.jsx)('div', { className: 'flex-1' }),
+            !eo && !ec && (0, a.jsx)('div', { className: 'flex-1' }),
             (0, a.jsxs)('div', {
               className: 'flex items-center gap-2',
               children: [
@@ -1035,30 +1287,31 @@
                   children: [
                     (0, a.jsx)('button', {
                       onClick: () => {
-                        (y('keimenon'), p('keimenon'));
+                        (L('keimenon'), p('keimenon'));
                       },
                       type: 'button',
-                      className: A('keimenon' === N),
+                      className: em('keimenon' === _),
                       title: 'Keimenon',
                       children: (0, a.jsx)(R.Z, { className: 'w-4 h-4' }),
                     }),
+                    ei &&
+                      (0, a.jsx)('button', {
+                        onClick: () => {
+                          ei && (L('dashboard'), g('analytics'));
+                        },
+                        type: 'button',
+                        className: em('dashboard' === _),
+                        title: 'Dashboard',
+                        children: (0, a.jsx)(V.Z, { className: 'w-4 h-4' }),
+                      }),
                     (0, a.jsx)('button', {
                       onClick: () => {
-                        (y('dashboard'), g('analytics'));
+                        L('settings');
                       },
                       type: 'button',
-                      className: A('dashboard' === N),
-                      title: 'Dashboard',
-                      children: (0, a.jsx)(K.Z, { className: 'w-4 h-4' }),
-                    }),
-                    (0, a.jsx)('button', {
-                      onClick: () => {
-                        y('settings');
-                      },
-                      type: 'button',
-                      className: A('settings' === N),
+                      className: em('settings' === _),
                       title: 'Settings',
-                      children: (0, a.jsx)(j.Z, { className: 'w-4 h-4' }),
+                      children: (0, a.jsx)(v.Z, { className: 'w-4 h-4' }),
                     }),
                   ],
                 }),
@@ -1069,18 +1322,18 @@
                   className:
                     'p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors',
                   title: 'Upload Sources',
-                  children: (0, a.jsx)(Y.Z, { className: 'w-4 h-4' }),
+                  children: (0, a.jsx)(ee.Z, { className: 'w-4 h-4' }),
                 }),
               ],
             }),
           ],
         });
       }
-      var et = s(8410),
-        es = s(3172),
-        ea = s(3166),
-        el = s(269);
-      function er(e) {
+      var en = s(8410),
+        ei = s(3172),
+        eo = s(3166),
+        ec = s(269);
+      function ed(e) {
         let {
             mode: t,
             data: s,
@@ -1094,8 +1347,8 @@
             multiSelect: p = !1,
           } = e,
           [g, b] = (0, l.useState)(''),
-          [f, j] = (0, l.useState)(new Set()),
-          [v, N] = (0, l.useState)(!1),
+          [f, v] = (0, l.useState)(new Set()),
+          [j, N] = (0, l.useState)(!1),
           y = (0, l.useMemo)(() => {
             if (!g.trim()) return s;
             let e = g.toLowerCase(),
@@ -1111,7 +1364,7 @@
             return s.map(t).filter((e) => null !== e);
           }, [s, g]),
           w = (e) => {
-            j((t) => {
+            v((t) => {
               let s = new Set(t);
               return (s.has(e) ? s.delete(e) : s.add(e), s);
             });
@@ -1202,7 +1455,7 @@
                       onClick: () => b(''),
                       className:
                         'absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-700 rounded transition-colors',
-                      children: (0, a.jsx)(el.Z, { className: 'w-3 h-3 text-slate-500' }),
+                      children: (0, a.jsx)(ec.Z, { className: 'w-3 h-3 text-slate-500' }),
                     }),
                 ],
               }),
@@ -1213,23 +1466,23 @@
                 className: 'border-b border-slate-800',
                 children: [
                   (0, a.jsxs)('button', {
-                    onClick: () => N(!v),
+                    onClick: () => N(!j),
                     className:
                       'w-full flex items-center justify-between px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors',
                     children: [
                       (0, a.jsxs)('div', {
                         className: 'flex items-center gap-2',
                         children: [
-                          (0, a.jsx)(G.Z, { className: 'w-4 h-4' }),
+                          (0, a.jsx)(H.Z, { className: 'w-4 h-4' }),
                           (0, a.jsx)('span', { children: 'Filters' }),
                         ],
                       }),
                       (0, a.jsx)(n.Z, {
-                        className: 'w-4 h-4 transition-transform '.concat(v ? 'rotate-90' : ''),
+                        className: 'w-4 h-4 transition-transform '.concat(j ? 'rotate-90' : ''),
                       }),
                     ],
                   }),
-                  v &&
+                  j &&
                     (0, a.jsx)('div', {
                       className: 'px-3 py-2 space-y-2 bg-slate-900/30',
                       children: d.map((e) => {
@@ -1300,11 +1553,11 @@
           ],
         });
       }
-      var en = s(7126),
-        ei = s(4875),
-        eo = s(1755),
-        ec = s(5555);
-      function ed(e) {
+      var eu = s(7126),
+        ex = s(4875),
+        em = s(1755),
+        ep = s(5555);
+      function eh(e) {
         let { selectedControlId: t } = e,
           {
             control: s,
@@ -1325,8 +1578,8 @@
               [x, m] = (0, l.useState)(!1),
               [p, h] = (0, l.useState)([]),
               [g, b] = (0, l.useState)(!1),
-              [f, j] = (0, l.useState)(null);
-            function v() {
+              [f, v] = (0, l.useState)(null);
+            function j() {
               (s(null), r(null), i(null), c(!1), u(!1), m(!1), h([]));
             }
             return (
@@ -1334,11 +1587,11 @@
                 (async function () {
                   let t = (0, N.LP)();
                   if (!t || !e) {
-                    v();
+                    j();
                     return;
                   }
                   try {
-                    (b(!0), j(null));
+                    (b(!0), v(null));
                     let a = await fetch(''.concat(_.CT, '/api/v1/settings/').concat(e), {
                       headers: { Authorization: 'Bearer '.concat(t) },
                     });
@@ -1354,7 +1607,7 @@
                       h(l.history || []));
                   } catch (t) {
                     (console.error('Error fetching setting details:', t),
-                      j(
+                      v(
                         E.I.capture(
                           t,
                           {
@@ -1367,7 +1620,7 @@
                           t.message ||
                           'Failed to load setting'
                       ),
-                      v());
+                      j());
                   } finally {
                     b(!1);
                   }
@@ -1460,13 +1713,13 @@
                                       }),
                                       (0, a.jsxs)('span', {
                                         className: 'text-xs text-slate-400',
-                                        children: ['Source: ', eu(n || 'defaults')],
+                                        children: ['Source: ', eg(n || 'defaults')],
                                       }),
                                     ],
                                   }),
                                   (0, a.jsx)('div', {
                                     className: 'font-mono text-sm text-white',
-                                    children: ex(r, s.type),
+                                    children: eb(r, s.type),
                                   }),
                                   c &&
                                     (0, a.jsx)('div', {
@@ -1523,7 +1776,7 @@
                                       }),
                                       (0, a.jsx)('span', {
                                         className: 'text-slate-300',
-                                        children: eu(s.scope),
+                                        children: eg(s.scope),
                                       }),
                                     ],
                                   }),
@@ -1675,7 +1928,7 @@
                                 className:
                                   'flex items-center gap-2 px-3 py-2 bg-blue-600/10 border border-blue-500/30 rounded text-sm text-blue-300 hover:bg-blue-600/20 transition-colors',
                                 children: [
-                                  (0, a.jsx)(ei.Z, { className: 'w-4 h-4' }),
+                                  (0, a.jsx)(ex.Z, { className: 'w-4 h-4' }),
                                   (0, a.jsx)('span', { children: 'View Documentation' }),
                                 ],
                               }),
@@ -1688,7 +1941,7 @@
                                   className:
                                     'text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2',
                                   children: [
-                                    (0, a.jsx)(eo.Z, { className: 'w-3 h-3' }),
+                                    (0, a.jsx)(em.Z, { className: 'w-3 h-3' }),
                                     'Change History',
                                   ],
                                 }),
@@ -1716,7 +1969,7 @@
                                               (0, a.jsxs)('div', {
                                                 className: 'flex items-center gap-1 text-slate-500',
                                                 children: [
-                                                  (0, a.jsx)(ec.Z, { className: 'w-3 h-3' }),
+                                                  (0, a.jsx)(ep.Z, { className: 'w-3 h-3' }),
                                                   (0, a.jsx)('span', {
                                                     children: (function (e) {
                                                       let t = new Date(e),
@@ -1751,7 +2004,7 @@
                                                   }),
                                                   (0, a.jsx)('span', {
                                                     className: 'font-mono text-red-400',
-                                                    children: ex(e.oldValue, s.type),
+                                                    children: eb(e.oldValue, s.type),
                                                   }),
                                                 ],
                                               }),
@@ -1764,7 +2017,7 @@
                                                   }),
                                                   (0, a.jsx)('span', {
                                                     className: 'font-mono text-green-400',
-                                                    children: ex(e.newValue, s.type),
+                                                    children: eb(e.newValue, s.type),
                                                   }),
                                                 ],
                                               }),
@@ -1850,7 +2103,7 @@
                         className:
                           'flex items-start gap-3 p-4 bg-blue-600/10 border border-blue-500/30 rounded-lg',
                         children: [
-                          (0, a.jsx)(en.Z, {
+                          (0, a.jsx)(eu.Z, {
                             className: 'w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5',
                           }),
                           (0, a.jsxs)('div', {
@@ -1974,7 +2227,7 @@
               ],
             });
       }
-      function eu(e) {
+      function eg(e) {
         return (
           {
             defaults: 'System Default',
@@ -1987,7 +2240,7 @@
           }[e] || e
         );
       }
-      function ex(e, t) {
+      function eb(e, t) {
         if (null == e) return 'null';
         switch (t) {
           case 'boolean':
@@ -2000,14 +2253,13 @@
             return String(e);
         }
       }
-      var em = s(2917),
-        ep = s(4527),
-        eh = s(8333),
-        eg = s(3727),
-        eb = s(2750),
-        ef = s(1856),
-        ej = s(997);
-      function ev(e) {
+      var ef = s(4527),
+        ev = s(8333),
+        ej = s(3727),
+        eN = s(2750),
+        ey = s(1856),
+        ew = s(997);
+      function ek(e) {
         let { data: t, onAction: s, onViewFullDetails: r } = e,
           [i, o] = (0, l.useState)(new Set(['details', 'metadata'])),
           c = (e) => {
@@ -2039,13 +2291,13 @@
                           children: ((e) => {
                             switch (e) {
                               case 'conversation':
-                                return (0, a.jsx)(em.Z, { className: 'w-5 h-5 text-purple-400' });
+                                return (0, a.jsx)($.Z, { className: 'w-5 h-5 text-purple-400' });
                               case 'source_doc':
-                                return (0, a.jsx)(ea.Z, { className: 'w-5 h-5 text-green-400' });
+                                return (0, a.jsx)(eo.Z, { className: 'w-5 h-5 text-green-400' });
                               case 'code_asset':
-                                return (0, a.jsx)(ep.Z, { className: 'w-5 h-5 text-orange-400' });
+                                return (0, a.jsx)(ef.Z, { className: 'w-5 h-5 text-orange-400' });
                               default:
-                                return (0, a.jsx)(ea.Z, { className: 'w-5 h-5 text-gray-400' });
+                                return (0, a.jsx)(eo.Z, { className: 'w-5 h-5 text-gray-400' });
                             }
                           })(t.type),
                         }),
@@ -2069,7 +2321,7 @@
                         onClick: r,
                         className:
                           'w-full px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors text-purple-400',
-                        children: [(0, a.jsx)(eh.Z, { className: 'w-4 h-4' }), 'View Full Details'],
+                        children: [(0, a.jsx)(ev.Z, { className: 'w-4 h-4' }), 'View Full Details'],
                       }),
                   ],
                 }),
@@ -2106,11 +2358,11 @@
                                       className: 'flex items-center gap-2 text-xs text-slate-400',
                                       children: [
                                         'Messages' === e.label &&
-                                          (0, a.jsx)(em.Z, { className: 'w-3 h-3' }),
+                                          (0, a.jsx)($.Z, { className: 'w-3 h-3' }),
                                         'Created' === e.label &&
-                                          (0, a.jsx)(eg.Z, { className: 'w-3 h-3' }),
+                                          (0, a.jsx)(ej.Z, { className: 'w-3 h-3' }),
                                         'Characters' === e.label &&
-                                          (0, a.jsx)(eb.Z, { className: 'w-3 h-3' }),
+                                          (0, a.jsx)(eN.Z, { className: 'w-3 h-3' }),
                                         (0, a.jsx)('span', { children: e.label }),
                                       ],
                                     }),
@@ -2197,11 +2449,11 @@
                                     'w-full px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm text-left flex items-center gap-2 transition-colors',
                                   children: [
                                     'copy' === e.icon &&
-                                      (0, a.jsx)(ef.Z, { className: 'w-4 h-4 text-slate-400' }),
+                                      (0, a.jsx)(ey.Z, { className: 'w-4 h-4 text-slate-400' }),
                                     'link' === e.icon &&
-                                      (0, a.jsx)(ei.Z, { className: 'w-4 h-4 text-slate-400' }),
+                                      (0, a.jsx)(ex.Z, { className: 'w-4 h-4 text-slate-400' }),
                                     'delete' === e.icon &&
-                                      (0, a.jsx)(ej.Z, { className: 'w-4 h-4 text-red-400' }),
+                                      (0, a.jsx)(ew.Z, { className: 'w-4 h-4 text-red-400' }),
                                     (0, a.jsx)('span', { children: e.label }),
                                   ],
                                 },
@@ -2219,7 +2471,7 @@
               className:
                 'flex flex-col items-center justify-center h-full text-center text-sm text-slate-500 px-6',
               children: [
-                (0, a.jsx)(ea.Z, { className: 'w-16 h-16 mb-4 text-slate-600' }),
+                (0, a.jsx)(eo.Z, { className: 'w-16 h-16 mb-4 text-slate-600' }),
                 (0, a.jsx)('p', { className: 'font-medium', children: 'No selection' }),
                 (0, a.jsx)('p', {
                   className: 'mt-2 text-xs',
@@ -2228,12 +2480,12 @@
               ],
             });
       }
-      var eN = s(9645),
-        ey = s(2871),
-        ew = s(4965),
-        ek = s(9026),
-        eC = s(844);
-      function eS(e) {
+      var eC = s(2871),
+        eS = s(4965),
+        eI = s(9026),
+        eE = s(844),
+        eM = s(1103);
+      function eZ(e) {
         let {
             selectedNodes: t,
             onRemoveFromSelection: s,
@@ -2274,6 +2526,18 @@
               default:
                 return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
             }
+          },
+          f = (e) => {
+            var t, s;
+            return (0, eM.F)(
+              {
+                id: e.id,
+                kind: e.kind || e.type,
+                label: null === (t = e.data) || void 0 === t ? void 0 : t.label,
+                ...((null === (s = e.data) || void 0 === s ? void 0 : s.metadata) || {}),
+              },
+              40
+            );
           };
         return (0, a.jsxs)('div', {
           className: 'h-full flex flex-col bg-slate-900/50',
@@ -2292,13 +2556,13 @@
                       onClick: r,
                       className:
                         'text-xs text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1',
-                      children: [(0, a.jsx)(ej.Z, { className: 'w-3 h-3' }), 'Clear All'],
+                      children: [(0, a.jsx)(ew.Z, { className: 'w-3 h-3' }), 'Clear All'],
                     }),
                   ],
                 }),
                 (0, a.jsx)('p', {
                   className: 'text-xs text-slate-500',
-                  children: 'Selected items • Click to expand details',
+                  children: 'Selected items - click to expand details',
                 }),
               ],
             }),
@@ -2333,12 +2597,12 @@
                                       ),
                                       children: e.type,
                                     }),
-                                    l && (0, a.jsx)(eN.Z, { className: 'w-3 h-3 text-purple-400' }),
+                                    l && (0, a.jsx)(Y.Z, { className: 'w-3 h-3 text-purple-400' }),
                                   ],
                                 }),
                                 (0, a.jsx)('h4', {
                                   className: 'text-sm font-medium text-slate-200 truncate',
-                                  children: e.data.label || e.id.slice(0, 8),
+                                  children: f(e),
                                 }),
                                 (0, a.jsxs)('p', {
                                   className: 'text-xs text-slate-500 truncate',
@@ -2355,22 +2619,22 @@
                                     'p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-purple-400 transition-colors',
                                   title: l ? 'Unpin' : 'Pin',
                                   children: l
-                                    ? (0, a.jsx)(ey.Z, { className: 'w-4 h-4' })
-                                    : (0, a.jsx)(eN.Z, { className: 'w-4 h-4' }),
+                                    ? (0, a.jsx)(eC.Z, { className: 'w-4 h-4' })
+                                    : (0, a.jsx)(Y.Z, { className: 'w-4 h-4' }),
                                 }),
                                 (0, a.jsx)('button', {
                                   onClick: () => m(e.id),
                                   className:
                                     'p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-200 transition-colors',
                                   children: t
-                                    ? (0, a.jsx)(ew.Z, { className: 'w-4 h-4' })
+                                    ? (0, a.jsx)(eS.Z, { className: 'w-4 h-4' })
                                     : (0, a.jsx)(h.Z, { className: 'w-4 h-4' }),
                                 }),
                                 (0, a.jsx)('button', {
                                   onClick: () => s(e.id),
                                   className:
                                     'p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400 transition-colors',
-                                  children: (0, a.jsx)(el.Z, { className: 'w-4 h-4' }),
+                                  children: (0, a.jsx)(ec.Z, { className: 'w-4 h-4' }),
                                 }),
                               ],
                             }),
@@ -2427,7 +2691,7 @@
                                     className:
                                       'flex items-center gap-1 px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded transition-colors text-slate-300',
                                     children: [
-                                      (0, a.jsx)(eh.Z, { className: 'w-3 h-3' }),
+                                      (0, a.jsx)(ev.Z, { className: 'w-3 h-3' }),
                                       'Details',
                                     ],
                                   }),
@@ -2437,7 +2701,7 @@
                                       className:
                                         'flex items-center gap-1 px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded transition-colors text-slate-300',
                                       children: [
-                                        (0, a.jsx)(ek.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)(eI.Z, { className: 'w-3 h-3' }),
                                         'Add to Scope',
                                       ],
                                     }),
@@ -2447,7 +2711,7 @@
                                       className:
                                         'flex items-center gap-1 px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded transition-colors text-slate-300',
                                       children: [
-                                        (0, a.jsx)(eC.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)(eE.Z, { className: 'w-3 h-3' }),
                                         'Sequester',
                                       ],
                                     }),
@@ -2479,7 +2743,7 @@
                         },
                         className:
                           'flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded transition-colors text-purple-400',
-                        children: [(0, a.jsx)(ek.Z, { className: 'w-3 h-3' }), 'Add All to Scope'],
+                        children: [(0, a.jsx)(eI.Z, { className: 'w-3 h-3' }), 'Add All to Scope'],
                       }),
                     o &&
                       (0, a.jsxs)('button', {
@@ -2488,7 +2752,7 @@
                         },
                         className:
                           'flex items-center gap-1 px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded transition-colors text-slate-300',
-                        children: [(0, a.jsx)(eC.Z, { className: 'w-3 h-3' }), 'Sequester All'],
+                        children: [(0, a.jsx)(eE.Z, { className: 'w-3 h-3' }), 'Sequester All'],
                       }),
                   ],
                 }),
@@ -2497,13 +2761,13 @@
           ],
         });
       }
-      var eI = s(2100),
-        eE = s(3349),
-        eZ = s(4099),
-        eD = s(1493);
-      function eT(e) {
+      var eD = s(2100),
+        eT = s(3349),
+        eA = s(4099),
+        e_ = s(1493);
+      function eL(e) {
         let { account: t, isMultiSelect: s = !1, onCreateUser: r } = e,
-          { setKeimenonMode: n } = (0, H.St)(),
+          { setKeimenonMode: n } = (0, et.St)(),
           [i, o] = (0, l.useState)(null),
           [c, d] = (0, l.useState)(!0);
         return (
@@ -2511,7 +2775,7 @@
             (async () => {
               try {
                 d(!0);
-                let e = await (0, eD.rT)(t.id);
+                let e = await (0, e_.rT)(t.id);
                 o(e);
               } catch (e) {
                 console.error('Failed to load account stats:', e);
@@ -2567,7 +2831,7 @@
                         (() => {
                           switch (t.account_class) {
                             case 'business':
-                              return (0, a.jsx)(eI.Z, { className: 'w-4 h-4' });
+                              return (0, a.jsx)(eD.Z, { className: 'w-4 h-4' });
                             case 'professional':
                               return (0, a.jsx)(p.Z, { className: 'w-4 h-4' });
                             default:
@@ -2664,7 +2928,7 @@
                           (0, a.jsxs)('div', {
                             className: 'bg-slate-800/50 rounded-lg p-3 text-center',
                             children: [
-                              (0, a.jsx)(W.Z, { className: 'w-4 h-4 text-blue-400 mx-auto mb-1' }),
+                              (0, a.jsx)(X.Z, { className: 'w-4 h-4 text-blue-400 mx-auto mb-1' }),
                               (0, a.jsx)('p', {
                                 className: 'text-xl font-bold text-white',
                                 children: i.nodes,
@@ -2678,7 +2942,7 @@
                           (0, a.jsxs)('div', {
                             className: 'bg-slate-800/50 rounded-lg p-3 text-center',
                             children: [
-                              (0, a.jsx)(eE.Z, {
+                              (0, a.jsx)(eT.Z, {
                                 className: 'w-4 h-4 text-purple-400 mx-auto mb-1',
                               }),
                               (0, a.jsx)('p', {
@@ -2716,7 +2980,7 @@
                         'w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors',
                       title: "View this account's keimenon",
                       children: [
-                        (0, a.jsx)(eE.Z, { className: 'w-4 h-4' }),
+                        (0, a.jsx)(eT.Z, { className: 'w-4 h-4' }),
                         (0, a.jsx)('span', { children: 'View Keimenon' }),
                       ],
                     }),
@@ -2726,7 +2990,7 @@
                         'w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors',
                       title: 'Add user to this account',
                       children: [
-                        (0, a.jsx)(eZ.Z, { className: 'w-4 h-4' }),
+                        (0, a.jsx)(eA.Z, { className: 'w-4 h-4' }),
                         (0, a.jsx)('span', { children: 'Add User' }),
                       ],
                     }),
@@ -2746,11 +3010,135 @@
           })
         );
       }
-      var eA = s(6673),
-        eM = s(6991),
-        e_ = s(7271),
-        eL = s(1913);
-      function eF(e) {
+      var eF = s(6673),
+        eP = s(6991),
+        eO = s(7271);
+      function ez(e) {
+        let { onFilesSelected: t, acceptedTypes: s = [] } = e,
+          [r, n] = (0, l.useState)(!1),
+          i = (0, l.useCallback)(
+            (e) => {
+              (e.preventDefault(), n(!1));
+              let a = Array.from(e.dataTransfer.files),
+                l = a.filter((e) => 0 === s.length || s.includes(e.type));
+              (l.length > 0 && t(l),
+                l.length < a.length &&
+                  alert(
+                    ''.concat(a.length - l.length, ' file(s) were rejected due to invalid type')
+                  ));
+            },
+            [t, s]
+          ),
+          o = (0, l.useCallback)((e) => {
+            (e.preventDefault(), n(!0));
+          }, []),
+          c = (0, l.useCallback)(() => {
+            n(!1);
+          }, []),
+          d = (0, l.useCallback)(
+            (e) => {
+              let s = Array.from(e.target.files || []);
+              (s.length > 0 && t(s), (e.target.value = ''));
+            },
+            [t]
+          );
+        return (0, a.jsxs)('div', {
+          onDrop: i,
+          onDragOver: o,
+          onDragLeave: c,
+          className:
+            '\n        border-3 border-dashed rounded-xl p-12 text-center cursor-pointer\n        transition-all duration-300\n        '.concat(
+              r
+                ? 'border-purple-500 bg-purple-500/10 scale-105'
+                : 'border-slate-700 hover:border-slate-600 hover:bg-slate-800/50',
+              '\n      '
+            ),
+          onClick: () => {
+            var e;
+            return null === (e = document.getElementById('file-input')) || void 0 === e
+              ? void 0
+              : e.click();
+          },
+          children: [
+            (0, a.jsx)('input', {
+              id: 'file-input',
+              type: 'file',
+              multiple: !0,
+              accept: s.join(','),
+              onChange: d,
+              className: 'hidden',
+            }),
+            (0, a.jsxs)('div', {
+              className: 'flex flex-col items-center gap-4',
+              children: [
+                (0, a.jsx)('div', {
+                  className: '\n          p-4 rounded-full transition-colors\n          '.concat(
+                    r ? 'bg-purple-500/20' : 'bg-slate-800',
+                    '\n        '
+                  ),
+                  children: r
+                    ? (0, a.jsx)(eF.Z, { className: 'w-12 h-12 text-purple-400' })
+                    : (0, a.jsx)(ee.Z, { className: 'w-12 h-12 text-slate-400' }),
+                }),
+                (0, a.jsxs)('div', {
+                  children: [
+                    (0, a.jsx)('p', {
+                      className: 'text-lg font-semibold mb-2',
+                      children: r ? 'Drop files here' : 'Drag & drop files here',
+                    }),
+                    (0, a.jsx)('p', {
+                      className: 'text-sm text-slate-400',
+                      children: 'or click to browse your computer',
+                    }),
+                  ],
+                }),
+                s.length > 0 &&
+                  (0, a.jsxs)('div', {
+                    className: 'mt-4',
+                    children: [
+                      (0, a.jsx)('p', {
+                        className: 'text-xs text-slate-500 mb-2',
+                        children: 'Accepted file types:',
+                      }),
+                      (0, a.jsx)('div', {
+                        className: 'flex flex-wrap gap-2 justify-center',
+                        children: (function (e) {
+                          let t = {
+                            'application/pdf': 'PDF',
+                            'text/plain': 'TXT',
+                            'text/markdown': 'Markdown',
+                            'image/png': 'PNG',
+                            'image/jpeg': 'JPEG',
+                            'application/json': 'JSON',
+                            'text/csv': 'CSV',
+                          };
+                          return e.map((e) => t[e] || e);
+                        })(s).map((e) =>
+                          (0, a.jsx)(
+                            'span',
+                            {
+                              className: 'px-2 py-1 bg-slate-800 text-slate-400 text-xs rounded',
+                              children: e,
+                            },
+                            e
+                          )
+                        ),
+                      }),
+                    ],
+                  }),
+                (0, a.jsxs)('div', {
+                  className: 'mt-4 text-xs text-slate-500',
+                  children: [
+                    (0, a.jsx)('p', { children: 'Maximum file size: 10 MB' }),
+                    (0, a.jsx)('p', { children: 'Maximum files per upload: 10' }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        });
+      }
+      function eR(e) {
         let { onFilesSelected: t, files: s } = e;
         return (0, a.jsxs)('div', {
           className: 'space-y-4',
@@ -2761,7 +3149,7 @@
                   className: 'text-sm font-semibold mb-3',
                   children: 'Select Chat Export Files',
                 }),
-                (0, a.jsx)(eL.d, {
+                (0, a.jsx)(ez, {
                   onFilesSelected: t,
                   acceptedTypes: ['application/json', '.jsonl'],
                 }),
@@ -2786,7 +3174,7 @@
                         className:
                           'flex items-center gap-2 text-sm text-slate-300 bg-slate-800/50 px-3 py-2 rounded',
                         children: [
-                          (0, a.jsx)(eA.Z, { className: 'w-4 h-4' }),
+                          (0, a.jsx)(eF.Z, { className: 'w-4 h-4' }),
                           (0, a.jsx)('span', { children: e.name }),
                           (0, a.jsxs)('span', {
                             className: 'text-slate-500',
@@ -2802,10 +3190,10 @@
           ],
         });
       }
-      var eP = s(2377),
-        eO = s(1990),
-        ez = s(7066);
-      function eR(e) {
+      var eU = s(2377),
+        eB = s(1990),
+        eV = s(7066);
+      function eK(e) {
         var t, s, l, r;
         let { detection: n, runtimeStats: i } = e,
           o = null !== (t = null == i ? void 0 : i.conversationsProcessed) && void 0 !== t ? t : 0,
@@ -2820,10 +3208,10 @@
             (0, a.jsxs)('div', {
               className: 'flex items-center gap-2',
               children: [
-                (0, a.jsx)(ez.Z, { className: 'w-5 h-5 text-green-500' }),
+                (0, a.jsx)(eV.Z, { className: 'w-5 h-5 text-green-500' }),
                 (0, a.jsx)('div', {
                   className: 'p-2 bg-purple-600/20 rounded',
-                  children: (n.platform, (0, a.jsx)(eA.Z, { className: 'w-5 h-5' })),
+                  children: (n.platform, (0, a.jsx)(eF.Z, { className: 'w-5 h-5' })),
                 }),
               ],
             }),
@@ -2901,7 +3289,7 @@
           ],
         });
       }
-      function eU(e) {
+      function eq(e) {
         let { progress: t } = e;
         return (0, a.jsxs)('div', {
           className: 'space-y-2',
@@ -2962,10 +3350,10 @@
           ],
         });
       }
-      var eB = s(2439),
-        eK = s(977),
-        eq = s(9991);
-      function eV(e) {
+      var eJ = s(2439),
+        eG = s(977),
+        eW = s(9991);
+      function eY(e) {
         let { value: t, duration: s = 500 } = e,
           [r, n] = (0, l.useState)(0),
           i = (0, l.useRef)(0),
@@ -2993,7 +3381,7 @@
           (0, a.jsx)('span', { children: r.toLocaleString() })
         );
       }
-      function eJ(e) {
+      function eH(e) {
         let { color: t, values: s } = e,
           l = s.length > 0 ? s : [0],
           r = Math.max(...l, 1),
@@ -3017,7 +3405,7 @@
           }),
         });
       }
-      function eG(e) {
+      function eX(e) {
         let { label: t, value: s, icon: l, color: r, sparklineValues: n, animated: i = !0 } = e;
         return (0, a.jsxs)('div', {
           className:
@@ -3032,7 +3420,7 @@
                 }),
                 (0, a.jsx)('div', {
                   className: 'flex items-center gap-1 text-xs text-green-400',
-                  children: (0, a.jsx)(eB.Z, { className: 'w-3 h-3' }),
+                  children: (0, a.jsx)(eJ.Z, { className: 'w-3 h-3' }),
                 }),
               ],
             }),
@@ -3041,16 +3429,16 @@
               children: [
                 (0, a.jsx)('div', {
                   className: 'text-3xl font-bold text-white',
-                  children: i ? (0, a.jsx)(eV, { value: s }) : s.toLocaleString(),
+                  children: i ? (0, a.jsx)(eY, { value: s }) : s.toLocaleString(),
                 }),
                 (0, a.jsx)('div', { className: 'text-xs text-slate-400 font-medium', children: t }),
               ],
             }),
-            (0, a.jsx)(eJ, { color: r, values: n }),
+            (0, a.jsx)(eH, { color: r, values: n }),
           ],
         });
       }
-      function eW(e) {
+      function eQ(e) {
         let {
             stats: t,
             animated: s = !0,
@@ -3069,7 +3457,7 @@
             return (
               (async () => {
                 try {
-                  let t = await (0, eD.qF)(i, 12);
+                  let t = await (0, e_.qF)(i, 12);
                   e || d(t.series);
                 } catch (t) {
                   (e || d([]),
@@ -3087,7 +3475,7 @@
             {
               label: 'Conversations',
               value: t.conversationsProcessed,
-              icon: em.Z,
+              icon: $.Z,
               color: 'from-blue-500 to-blue-600',
               sparklineValues: u('conversations'),
             },
@@ -3101,28 +3489,28 @@
             {
               label: 'Sources',
               value: t.sourcesCreated,
-              icon: eA.Z,
+              icon: eF.Z,
               color: 'from-green-500 to-green-600',
               sparklineValues: u('sources'),
             },
             {
               label: 'Code Blocks',
               value: t.nodesCreated,
-              icon: eK.Z,
+              icon: eG.Z,
               color: 'from-orange-500 to-orange-600',
               sparklineValues: u('nodes'),
             },
             {
               label: 'Nodes Created',
               value: t.nodesCreated,
-              icon: eq.Z,
+              icon: eW.Z,
               color: 'from-pink-500 to-pink-600',
               sparklineValues: u('nodes'),
             },
             {
               label: 'Edges Created',
               value: t.edgesCreated,
-              icon: eq.Z,
+              icon: eW.Z,
               color: 'from-cyan-500 to-cyan-600',
               sparklineValues: u('edges'),
             },
@@ -3134,7 +3522,7 @@
               : 'flex flex-wrap gap-4',
           children: x.map((e) =>
             (0, a.jsx)(
-              eG,
+              eX,
               {
                 label: e.label,
                 value: e.value,
@@ -3148,7 +3536,7 @@
           ),
         });
       }
-      function eY(e) {
+      function e$(e) {
         var t, s, l, r, n;
         let {
             platformDetection: i,
@@ -3162,10 +3550,10 @@
         return (0, a.jsxs)('div', {
           className: 'space-y-4',
           children: [
-            i && (0, a.jsx)(eR, { detection: i, runtimeStats: c }),
-            (0, a.jsx)(eU, { progress: o }),
+            i && (0, a.jsx)(eK, { detection: i, runtimeStats: c }),
+            (0, a.jsx)(eq, { progress: o }),
             c &&
-              (0, a.jsx)(eW, {
+              (0, a.jsx)(eQ, {
                 stats: {
                   conversationsProcessed:
                     null !== (t = c.conversationsProcessed) && void 0 !== t ? t : 0,
@@ -3187,20 +3575,20 @@
                       disabled: !u,
                       className:
                         'flex items-center gap-2 px-3 py-1.5 text-sm bg-green-600/20 text-green-400 hover:bg-green-600/30 rounded-md transition-colors',
-                      children: [(0, a.jsx)(eO.Z, { className: 'w-4 h-4' }), 'Resume Upload'],
+                      children: [(0, a.jsx)(eB.Z, { className: 'w-4 h-4' }), 'Resume Upload'],
                     })
                   : (0, a.jsxs)('button', {
                       onClick: d,
                       disabled: !d,
                       className:
                         'flex items-center gap-2 px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 rounded-md transition-colors',
-                      children: [(0, a.jsx)(eP.Z, { className: 'w-4 h-4' }), 'Pause Upload'],
+                      children: [(0, a.jsx)(eU.Z, { className: 'w-4 h-4' }), 'Pause Upload'],
                     }),
               }),
           ],
         });
       }
-      function eH(e) {
+      function e0(e) {
         let { config: t, onConfigChange: s } = e,
           l = (e) => {
             s({ ...t, extraction: { ...t.extraction, includeUser: e } });
@@ -3213,7 +3601,7 @@
           children: [
             (0, a.jsxs)('h3', {
               className: 'text-sm font-semibold flex items-center gap-2',
-              children: [(0, a.jsx)(j.Z, { className: 'w-4 h-4' }), 'Extraction'],
+              children: [(0, a.jsx)(v.Z, { className: 'w-4 h-4' }), 'Extraction'],
             }),
             (0, a.jsxs)('div', {
               className: 'space-y-2',
@@ -3251,7 +3639,7 @@
           ],
         });
       }
-      function eX(e) {
+      function e4(e) {
         let { config: t, onConfigChange: s } = e,
           l = (e) => {
             s({ ...t, branches: e });
@@ -3303,7 +3691,7 @@
                 children: (0, a.jsxs)('div', {
                   className: 'flex gap-2',
                   children: [
-                    (0, a.jsx)(en.Z, { className: 'w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5' }),
+                    (0, a.jsx)(eu.Z, { className: 'w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5' }),
                     (0, a.jsx)('p', {
                       className: 'text-xs text-blue-300',
                       children:
@@ -3315,8 +3703,8 @@
           ],
         });
       }
-      var e$ = s(3512);
-      function eQ(e) {
+      var e1 = s(3512);
+      function e2(e) {
         let { config: t, onConfigChange: s, analysis: l } = e,
           r = (e) => {
             s({ ...t, minMessageLength: e });
@@ -3363,7 +3751,7 @@
                   (0, a.jsxs)('div', {
                     className: 'flex items-center gap-2 text-sm',
                     children: [
-                      (0, a.jsx)(e$.Z, { className: 'w-4 h-4 text-red-500' }),
+                      (0, a.jsx)(e1.Z, { className: 'w-4 h-4 text-red-500' }),
                       (0, a.jsxs)('span', {
                         className: 'text-red-400',
                         children: [
@@ -3378,7 +3766,7 @@
           ],
         });
       }
-      function e0(e) {
+      function e5(e) {
         let { config: t, onConfigChange: s } = e,
           l = (e) => {
             s({ ...t, processingMode: e });
@@ -3426,7 +3814,7 @@
                     (0, a.jsxs)('div', {
                       className: 'flex items-center gap-2',
                       children: [
-                        (0, a.jsx)(j.Z, { className: 'w-4 h-4' }),
+                        (0, a.jsx)(v.Z, { className: 'w-4 h-4' }),
                         (0, a.jsx)('span', {
                           className: 'font-medium text-sm',
                           children: 'Manual',
@@ -3450,7 +3838,7 @@
                     (0, a.jsxs)('div', {
                       className: 'flex items-center gap-2',
                       children: [
-                        (0, a.jsx)(j.Z, { className: 'w-4 h-4' }),
+                        (0, a.jsx)(v.Z, { className: 'w-4 h-4' }),
                         (0, a.jsx)('span', {
                           className: 'font-medium text-sm',
                           children: 'Hybrid',
@@ -3468,8 +3856,8 @@
           ],
         });
       }
-      var e4 = s(9051);
-      function e2(e) {
+      var e3 = s(9051);
+      function e6(e) {
         let { tags: t, onTagsChange: s, placeholder: r, className: n } = e,
           [i, o] = (0, l.useState)(''),
           c = (e) => {
@@ -3493,7 +3881,7 @@
                       type: 'button',
                       onClick: () => c(t),
                       className: 'hover:bg-purple-600/30 rounded p-0.5 transition-colors',
-                      children: (0, a.jsx)(el.Z, { className: 'w-3 h-3' }),
+                      children: (0, a.jsx)(ec.Z, { className: 'w-3 h-3' }),
                     }),
                   ],
                 },
@@ -3516,7 +3904,7 @@
           ],
         });
       }
-      function e1(e) {
+      function e8(e) {
         let { config: t, onConfigChange: s } = e,
           l = (e) => {
             s({ ...t, groups: t.groups.filter((t, s) => s !== e) });
@@ -3550,7 +3938,7 @@
                       },
                       className:
                         'flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded text-xs font-medium transition-colors',
-                      children: [(0, a.jsx)(es.Z, { className: 'w-3 h-3' }), 'Add Group'],
+                      children: [(0, a.jsx)(ei.Z, { className: 'w-3 h-3' }), 'Add Group'],
                     }),
                   ],
                 }),
@@ -3596,11 +3984,11 @@
                                     onClick: () => l(t),
                                     className:
                                       'p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-red-400',
-                                    children: (0, a.jsx)(e4.Z, { className: 'w-4 h-4' }),
+                                    children: (0, a.jsx)(e3.Z, { className: 'w-4 h-4' }),
                                   }),
                                 ],
                               }),
-                              (0, a.jsx)(e2, {
+                              (0, a.jsx)(e6, {
                                 tags: e.keywords,
                                 onTagsChange: (e) => n(t, e),
                                 placeholder: 'Add keywords (press Enter)',
@@ -3619,7 +4007,7 @@
               ],
             });
       }
-      function e5(e) {
+      function e7(e) {
         let { config: t, onConfigChange: s } = e,
           [r, i] = (0, l.useState)(!1),
           o = (e) => {
@@ -3633,7 +4021,7 @@
               children: [
                 (0, a.jsx)('h3', {
                   className: 'text-sm font-semibold',
-                  children: 'Duplicate Detection',
+                  children: 'Similarity Grouping Review',
                 }),
                 (0, a.jsx)('button', {
                   onClick: () => i(!r),
@@ -3663,7 +4051,7 @@
                     }),
                     (0, a.jsx)('span', {
                       className: 'text-sm',
-                      children: 'Enable duplicate detection',
+                      children: 'Enable similarity conflict detection (non-destructive)',
                     }),
                   ],
                 }),
@@ -3682,7 +4070,7 @@
                           }),
                           (0, a.jsx)('span', {
                             className: 'text-sm',
-                            children: 'Detect exact duplicates (hash-based)',
+                            children: 'Detect exact matches (hash-based)',
                           }),
                         ],
                       }),
@@ -3715,7 +4103,7 @@
                           (0, a.jsx)('p', {
                             className: 'text-xs text-slate-400 mt-1',
                             children:
-                              'Messages with similarity above this threshold will be flagged as potential duplicates',
+                              'Messages with similarity above this threshold will be flagged as similarity conflicts for review',
                           }),
                         ],
                       }),
@@ -3730,7 +4118,7 @@
                           }),
                           (0, a.jsx)('span', {
                             className: 'text-sm',
-                            children: 'Detect duplicates across different conversations',
+                            children: 'Compare similarity across different conversations',
                           }),
                         ],
                       }),
@@ -3807,7 +4195,7 @@
                       (0, a.jsx)('p', {
                         className: 'text-xs text-slate-400 mt-1',
                         children:
-                          'Require at least this many shared tokens to consider as duplicate',
+                          'Require at least this many shared tokens to consider a similarity conflict',
                       }),
                     ],
                   }),
@@ -3879,7 +4267,7 @@
           ],
         });
       }
-      function e3(e) {
+      function e9(e) {
         let { config: t, onConfigChange: s } = e,
           [r, i] = (0, l.useState)(!1),
           o = (e) => {
@@ -3960,7 +4348,7 @@
                         className: 'block text-sm mb-2',
                         children: 'Filter by languages (leave empty for all)',
                       }),
-                      (0, a.jsx)(e2, {
+                      (0, a.jsx)(e6, {
                         tags: t.codeSettings.languages,
                         onTagsChange: (e) => c({ languages: e }),
                         placeholder: 'e.g., python, javascript, sql',
@@ -3976,9 +4364,9 @@
                       (0, a.jsx)('div', {
                         className: 'space-y-2',
                         children: [
-                          { value: 'language', icon: ep.Z, label: 'Programming language' },
-                          { value: 'conversation', icon: em.Z, label: 'Conversation' },
-                          { value: 'keyword', icon: ea.Z, label: 'Keywords (uses groups above)' },
+                          { value: 'language', icon: ef.Z, label: 'Programming language' },
+                          { value: 'conversation', icon: $.Z, label: 'Conversation' },
+                          { value: 'keyword', icon: eo.Z, label: 'Keywords (uses groups above)' },
                         ].map((e) => {
                           let { value: s, icon: l, label: r } = e;
                           return (0, a.jsxs)(
@@ -4089,7 +4477,7 @@
                     children: (0, a.jsxs)('div', {
                       className: 'flex gap-2',
                       children: [
-                        (0, a.jsx)(en.Z, {
+                        (0, a.jsx)(eu.Z, {
                           className: 'w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5',
                         }),
                         (0, a.jsx)('p', {
@@ -4105,24 +4493,110 @@
           ],
         });
       }
-      function e6(e) {
-        let { config: t, onConfigChange: s, platformDetection: l, analysis: r } = e;
+      var te = s(2914),
+        tt = s(6702);
+      function ts(e) {
+        var t, s;
+        let { config: l, onConfigChange: r, agentRuntimeEnabled: n } = e,
+          i =
+            null !== (s = null === (t = l.agent) || void 0 === t ? void 0 : t.bootstrap) &&
+            void 0 !== s
+              ? s
+              : 'manual',
+          o = (e) => {
+            r({ ...l, agent: { ...l.agent, bootstrap: e } });
+          };
         return (0, a.jsxs)('div', {
-          className: 'space-y-6',
+          className: 'space-y-3',
           children: [
-            l && (0, a.jsx)(eR, { detection: l }),
-            (0, a.jsx)(eH, { config: t, onConfigChange: s }),
-            (0, a.jsx)(eX, { config: t, onConfigChange: s }),
-            (0, a.jsx)(eQ, { config: t, onConfigChange: s, analysis: r || void 0 }),
-            (0, a.jsx)(e0, { config: t, onConfigChange: s }),
-            (0, a.jsx)(e1, { config: t, onConfigChange: s }),
-            (0, a.jsx)(e5, { config: t, onConfigChange: s }),
-            (0, a.jsx)(e3, { config: t, onConfigChange: s }),
+            (0, a.jsx)('h3', { className: 'text-sm font-semibold', children: 'Agent Bootstrap' }),
+            (0, a.jsxs)('div', {
+              className: 'grid grid-cols-1 md:grid-cols-2 gap-2',
+              children: [
+                (0, a.jsxs)('button', {
+                  type: 'button',
+                  onClick: () => o('manual'),
+                  className: 'p-3 rounded-lg border text-left transition-all '.concat(
+                    'manual' === i
+                      ? 'bg-purple-600/20 border-purple-500 text-white'
+                      : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:border-slate-600'
+                  ),
+                  children: [
+                    (0, a.jsx)('div', {
+                      className: 'font-medium text-sm',
+                      children: 'Manual (Default)',
+                    }),
+                    (0, a.jsx)('div', {
+                      className: 'text-xs text-slate-400 mt-1',
+                      children: 'Import completes without automatic objective queueing.',
+                    }),
+                  ],
+                }),
+                (0, a.jsxs)('button', {
+                  type: 'button',
+                  disabled: !n,
+                  onClick: () => o('auto'),
+                  className:
+                    'p-3 rounded-lg border text-left transition-all disabled:opacity-45 disabled:cursor-not-allowed '.concat(
+                      'auto' === i
+                        ? 'bg-purple-600/20 border-purple-500 text-white'
+                        : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:border-slate-600'
+                    ),
+                  children: [
+                    (0, a.jsxs)('div', {
+                      className: 'flex items-center gap-2 font-medium text-sm',
+                      children: [(0, a.jsx)(te.Z, { className: 'w-4 h-4' }), 'Auto Queue'],
+                    }),
+                    (0, a.jsx)('div', {
+                      className: 'text-xs text-slate-400 mt-1',
+                      children:
+                        'Queue objective verification automatically when entitlement checks pass.',
+                    }),
+                  ],
+                }),
+              ],
+            }),
+            !n &&
+              (0, a.jsxs)('div', {
+                className:
+                  'flex items-start gap-2 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-100',
+                children: [
+                  (0, a.jsx)(tt.Z, { className: 'w-4 h-4 mt-0.5 shrink-0' }),
+                  (0, a.jsx)('p', {
+                    className: 'text-xs',
+                    children:
+                      '`auto` bootstrap is disabled because this account does not have agent runtime entitlement.',
+                  }),
+                ],
+              }),
           ],
         });
       }
-      var e8 = s(5434);
-      function e7(e) {
+      function ta(e) {
+        let {
+          config: t,
+          onConfigChange: s,
+          platformDetection: l,
+          analysis: r,
+          agentRuntimeEnabled: n,
+        } = e;
+        return (0, a.jsxs)('div', {
+          className: 'space-y-6',
+          children: [
+            l && (0, a.jsx)(eK, { detection: l }),
+            (0, a.jsx)(e0, { config: t, onConfigChange: s }),
+            (0, a.jsx)(e4, { config: t, onConfigChange: s }),
+            (0, a.jsx)(e2, { config: t, onConfigChange: s, analysis: r || void 0 }),
+            (0, a.jsx)(e5, { config: t, onConfigChange: s }),
+            (0, a.jsx)(e8, { config: t, onConfigChange: s }),
+            (0, a.jsx)(ts, { config: t, onConfigChange: s, agentRuntimeEnabled: n }),
+            (0, a.jsx)(e7, { config: t, onConfigChange: s }),
+            (0, a.jsx)(e9, { config: t, onConfigChange: s }),
+          ],
+        });
+      }
+      var tl = s(5434);
+      function tr(e) {
         let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 400,
           [s, a] = (0, l.useState)(t);
         return (
@@ -4142,7 +4616,7 @@
           s
         );
       }
-      function e9(e) {
+      function tn(e) {
         let {
             index: t,
             style: s,
@@ -4234,7 +4708,7 @@
           });
         }
       }
-      function te(e) {
+      function ti(e) {
         let {
             groups: t,
             selectedGroupId: s,
@@ -4245,7 +4719,7 @@
           } = e,
           [c, x] = (0, l.useState)(new Set(t.map((e) => e.id))),
           m = (0, l.useRef)(null),
-          p = e7(m, 300),
+          p = tr(m, 300),
           h = (0, l.useCallback)((e) => {
             x((t) => {
               let s = new Set(t);
@@ -4267,7 +4741,7 @@
                 case 'sequester':
                   return (0, a.jsx)(u.Z, { className: 'w-4 h-4 text-amber-500' });
                 default:
-                  return (0, a.jsx)(e$.Z, { className: 'w-4 h-4 text-red-500' });
+                  return (0, a.jsx)(e1.Z, { className: 'w-4 h-4 text-red-500' });
               }
             },
             [n]
@@ -4289,7 +4763,7 @@
             }
             return e;
           }, [t, c]),
-          j = (0, l.useMemo)(
+          v = (0, l.useMemo)(
             () => ({
               flattenedNodes: f,
               selectedGroupId: s,
@@ -4312,21 +4786,46 @@
                   className: 'text-center text-sm text-slate-500 py-8',
                   children: 'No duplicate groups found',
                 })
-              : (0, a.jsx)(e8.aV, {
+              : (0, a.jsx)(tl.aV, {
                   style: { height: Math.min(56 * f.length, p) },
                   rowCount: f.length,
                   rowHeight: 56,
-                  rowComponent: e9,
-                  rowProps: j,
+                  rowComponent: tn,
+                  rowProps: v,
                 }),
         });
       }
-      var tt = s(1333),
-        ts = s(6295);
-      function ta(e) {
-        let { candidate: t, viewMode: s, onViewModeChange: l } = e,
-          r = (e) => new Date(e).toLocaleString(),
-          n = (e, t) =>
+      var to = s(1333),
+        tc = s(6295);
+      function td(e) {
+        let { candidate: t, viewMode: s, onViewModeChange: r } = e,
+          n = (0, l.useMemo)(() => {
+            let e = (e) =>
+                e
+                  .split('\n')
+                  .map((e) => e.trimEnd())
+                  .filter((e) => e.trim().length > 0),
+              s = (e) => e.replace(/\s+/g, ' ').trim().toLowerCase(),
+              a = e(t.primary.content),
+              l = e(t.duplicate.content),
+              r = new Set(a.map(s)),
+              n = [],
+              i = new Set(),
+              o = (e) => {
+                let t = s(e);
+                !t || i.has(t) || (i.add(t), n.push(e));
+              };
+            (a.forEach(o), l.forEach(o));
+            let c = l.reduce((e, t) => (r.has(s(t)) ? e + 1 : e), 0);
+            return {
+              text: n.join('\n'),
+              overlapCount: c,
+              totalPrimary: a.length,
+              totalDuplicate: l.length,
+            };
+          }, [t.duplicate.content, t.primary.content]),
+          i = (e) => new Date(e).toLocaleString(),
+          o = (e, t) =>
             (0, a.jsx)('div', {
               className: 'p-4 rounded-lg font-mono text-sm whitespace-pre-wrap '.concat(
                 t
@@ -4352,7 +4851,7 @@
                       className: 'flex gap-1 bg-slate-800 rounded-lg p-1',
                       children: [
                         (0, a.jsxs)('button', {
-                          onClick: () => l('side-by-side'),
+                          onClick: () => r('side-by-side'),
                           className:
                             '\n                flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-colors\n                '.concat(
                               'side-by-side' === s
@@ -4361,12 +4860,12 @@
                               '\n              '
                             ),
                           children: [
-                            (0, a.jsx)(tt.Z, { className: 'w-3.5 h-3.5' }),
+                            (0, a.jsx)(to.Z, { className: 'w-3.5 h-3.5' }),
                             'Side by Side',
                           ],
                         }),
                         (0, a.jsxs)('button', {
-                          onClick: () => l('unified'),
+                          onClick: () => r('unified'),
                           className:
                             '\n                flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-colors\n                '.concat(
                               'unified' === s
@@ -4374,7 +4873,7 @@
                                 : 'text-slate-400 hover:text-slate-300',
                               '\n              '
                             ),
-                          children: [(0, a.jsx)(ts.Z, { className: 'w-3.5 h-3.5' }), 'Unified'],
+                          children: [(0, a.jsx)(tc.Z, { className: 'w-3.5 h-3.5' }), 'Unified'],
                         }),
                       ],
                     }),
@@ -4386,7 +4885,7 @@
                     (0, a.jsxs)('div', {
                       className: 'flex items-center gap-1.5',
                       children: [
-                        (0, a.jsx)(eb.Z, { className: 'w-3.5 h-3.5' }),
+                        (0, a.jsx)(eN.Z, { className: 'w-3.5 h-3.5' }),
                         (0, a.jsxs)('span', {
                           children: ['Similarity: ', Math.round(100 * t.similarity), '%'],
                         }),
@@ -4395,7 +4894,7 @@
                     (0, a.jsxs)('div', {
                       className: 'flex items-center gap-1.5',
                       children: [
-                        (0, a.jsx)(em.Z, { className: 'w-3.5 h-3.5' }),
+                        (0, a.jsx)($.Z, { className: 'w-3.5 h-3.5' }),
                         (0, a.jsxs)('span', {
                           children: ['Token overlap: ', t.metrics.tokenOverlap],
                         }),
@@ -4404,7 +4903,7 @@
                     (0, a.jsxs)('div', {
                       className: 'flex items-center gap-1.5',
                       children: [
-                        (0, a.jsx)(eb.Z, { className: 'w-3.5 h-3.5' }),
+                        (0, a.jsx)(eN.Z, { className: 'w-3.5 h-3.5' }),
                         (0, a.jsxs)('span', {
                           children: ['Edit distance: ', t.metrics.editDistance],
                         }),
@@ -4414,9 +4913,43 @@
                 }),
               ],
             }),
-            (0, a.jsx)('div', {
+            (0, a.jsxs)('div', {
               className: 'flex-1 overflow-auto p-4',
-              children:
+              children: [
+                (0, a.jsxs)('div', {
+                  className: 'mb-4 p-3 rounded-lg border border-slate-700 bg-slate-900/60',
+                  children: [
+                    (0, a.jsxs)('div', {
+                      className: 'flex items-center justify-between mb-2',
+                      children: [
+                        (0, a.jsx)('h4', {
+                          className: 'text-xs font-semibold text-slate-200',
+                          children: 'Merge Preview Assistance',
+                        }),
+                        (0, a.jsxs)('span', {
+                          className: 'text-[11px] text-slate-400',
+                          children: [
+                            'overlap ',
+                            n.overlapCount,
+                            '/',
+                            n.totalDuplicate,
+                            ' duplicate lines',
+                          ],
+                        }),
+                      ],
+                    }),
+                    (0, a.jsx)('p', {
+                      className: 'text-[11px] text-slate-400 mb-2',
+                      children:
+                        'Preview-only helper. Apply remains a single job-scoped decision action.',
+                    }),
+                    (0, a.jsx)('pre', {
+                      className:
+                        'max-h-40 overflow-auto text-xs whitespace-pre-wrap font-mono bg-slate-950/80 rounded p-2 border border-slate-800',
+                      children: n.text || t.primary.content,
+                    }),
+                  ],
+                }),
                 'side-by-side' === s
                   ? (0, a.jsxs)('div', {
                       className: 'grid grid-cols-2 gap-4 h-full',
@@ -4445,7 +4978,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-center gap-1.5',
                                       children: [
-                                        (0, a.jsx)(em.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)($.Z, { className: 'w-3 h-3' }),
                                         (0, a.jsx)('span', {
                                           className: 'truncate',
                                           children: t.primary.conversationTitle,
@@ -4455,14 +4988,14 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-center gap-1.5',
                                       children: [
-                                        (0, a.jsx)(eg.Z, { className: 'w-3 h-3' }),
-                                        (0, a.jsx)('span', { children: r(t.primary.timestamp) }),
+                                        (0, a.jsx)(ej.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)('span', { children: i(t.primary.timestamp) }),
                                       ],
                                     }),
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-center gap-1.5',
                                       children: [
-                                        (0, a.jsx)(eb.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)(eN.Z, { className: 'w-3 h-3' }),
                                         (0, a.jsxs)('span', {
                                           children: [t.primary.charCount, ' characters'],
                                         }),
@@ -4505,7 +5038,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-center gap-1.5',
                                       children: [
-                                        (0, a.jsx)(em.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)($.Z, { className: 'w-3 h-3' }),
                                         (0, a.jsx)('span', {
                                           className: 'truncate',
                                           children: t.duplicate.conversationTitle,
@@ -4515,14 +5048,14 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-center gap-1.5',
                                       children: [
-                                        (0, a.jsx)(eg.Z, { className: 'w-3 h-3' }),
-                                        (0, a.jsx)('span', { children: r(t.duplicate.timestamp) }),
+                                        (0, a.jsx)(ej.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)('span', { children: i(t.duplicate.timestamp) }),
                                       ],
                                     }),
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-center gap-1.5',
                                       children: [
-                                        (0, a.jsx)(eb.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)(eN.Z, { className: 'w-3 h-3' }),
                                         (0, a.jsxs)('span', {
                                           children: [t.duplicate.charCount, ' characters'],
                                         }),
@@ -4558,7 +5091,7 @@
                                 }),
                               ],
                             }),
-                            n(t.primary.content, !1),
+                            o(t.primary.content, !1),
                           ],
                         }),
                         (0, a.jsxs)('div', {
@@ -4575,17 +5108,18 @@
                                 }),
                               ],
                             }),
-                            n(t.duplicate.content, !0),
+                            o(t.duplicate.content, !0),
                           ],
                         }),
                       ],
                     }),
+              ],
             }),
           ],
         });
       }
-      var tl = s(8627);
-      function tr(e) {
+      var tu = s(8627);
+      function tx(e) {
         var t;
         let { candidate: s, decision: l, onDecision: r } = e,
           n = [
@@ -4607,14 +5141,14 @@
               action: 'keep-both',
               label: 'Keep Both',
               description: 'Keep both messages as separate entries',
-              icon: (0, a.jsx)(ef.Z, { className: 'w-5 h-5' }),
+              icon: (0, a.jsx)(ey.Z, { className: 'w-5 h-5' }),
               color: 'green',
             },
             {
               action: 'merge',
               label: 'Merge',
               description: 'Combine both messages into one',
-              icon: (0, a.jsx)(tl.Z, { className: 'w-5 h-5' }),
+              icon: (0, a.jsx)(tu.Z, { className: 'w-5 h-5' }),
               color: 'purple',
             },
             {
@@ -4735,7 +5269,7 @@
                         (0, a.jsxs)('div', {
                           className: 'flex items-center gap-1.5 text-slate-400 mb-1',
                           children: [
-                            (0, a.jsx)(em.Z, { className: 'w-3 h-3' }),
+                            (0, a.jsx)($.Z, { className: 'w-3 h-3' }),
                             (0, a.jsx)('span', { children: 'Conversation' }),
                           ],
                         }),
@@ -4775,7 +5309,7 @@
                         (0, a.jsxs)('div', {
                           className: 'flex items-center gap-1.5 text-slate-400 mb-1',
                           children: [
-                            (0, a.jsx)(eg.Z, { className: 'w-3 h-3' }),
+                            (0, a.jsx)(ej.Z, { className: 'w-3 h-3' }),
                             (0, a.jsx)('span', { children: 'Date' }),
                           ],
                         }),
@@ -4813,7 +5347,7 @@
                         (0, a.jsxs)('div', {
                           className: 'flex items-center gap-1.5 text-slate-400 mb-1',
                           children: [
-                            (0, a.jsx)(eb.Z, { className: 'w-3 h-3' }),
+                            (0, a.jsx)(eN.Z, { className: 'w-3 h-3' }),
                             (0, a.jsx)('span', { children: 'Length' }),
                           ],
                         }),
@@ -4880,18 +5414,39 @@
           ],
         });
       }
-      function tn(e) {
+      function tm(e) {
         let { groups: t, onReviewComplete: s, onCancel: r } = e,
           [n, i] = (0, l.useState)(t.length > 0 ? t[0].id : null),
           [o, c] = (0, l.useState)(null),
           [d, u] = (0, l.useState)('side-by-side'),
+          x = (0, l.useMemo)(() => {
+            let e = [];
+            return (
+              t.forEach((t) => {
+                t.candidates.forEach((t) => {
+                  t.decision &&
+                    e.push([
+                      t.id,
+                      {
+                        duplicateId: t.id,
+                        action: t.decision,
+                        timestamp: Date.now(),
+                        primaryNodeId: t.primary.id,
+                        duplicateNodeId: t.duplicate.id,
+                      },
+                    ]);
+                });
+              }),
+              new Map(e)
+            );
+          }, [t]),
           {
-            state: x,
-            setState: m,
-            undo: p,
-            redo: h,
-            canUndo: g,
-            canRedo: b,
+            state: m,
+            setState: p,
+            undo: h,
+            redo: g,
+            canUndo: b,
+            canRedo: f,
           } = (function (e) {
             let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 50,
               [s, a] = (0, l.useState)({ past: [], present: e, future: [] }),
@@ -4936,16 +5491,23 @@
               clear: o,
               historySize: s.past.length + s.future.length + 1,
             };
-          })(new Map()),
-          f = t.find((e) => e.id === n),
-          j = null == f ? void 0 : f.candidates.find((e) => e.id === o),
-          v = (e, s) => {
-            let a = null == f ? void 0 : f.candidates.find((t) => t.id === e);
+          })(x);
+        (0, l.useEffect)(() => {
+          p(x);
+        }, [x, p]);
+        let v = t.find((e) => e.id === n),
+          j = null == v ? void 0 : v.candidates.find((e) => e.id === o),
+          N = t.reduce((e, t) => e + t.candidates.length, 0),
+          y = m.size,
+          w = N > 0 ? (y / N) * 100 : 0,
+          k = Math.max(N - y, 0),
+          C = (e, s) => {
+            let a = null == v ? void 0 : v.candidates.find((t) => t.id === e);
             if (!a) {
               console.error('Candidate not found:', e);
               return;
             }
-            let l = new Map(x);
+            let l = new Map(m);
             if (
               (l.set(e, {
                 duplicateId: e,
@@ -4954,11 +5516,11 @@
                 primaryNodeId: a.primary.id,
                 duplicateNodeId: a.duplicate.id,
               }),
-              m(l),
-              f)
+              p(l),
+              v)
             ) {
-              let s = f.candidates.findIndex((t) => t.id === e);
-              if (s < f.candidates.length - 1) c(f.candidates[s + 1].id);
+              let s = v.candidates.findIndex((t) => t.id === e);
+              if (s < v.candidates.length - 1) c(v.candidates[s + 1].id);
               else {
                 let e = t.findIndex((e) => e.id === n);
                 if (e < t.length - 1) {
@@ -4970,13 +5532,13 @@
               }
             }
           },
-          N = () => {
-            s(x);
+          S = () => {
+            m.size < N || s(m);
           },
-          y = (e) => {
-            let t = new Map(x);
-            f &&
-              (f.candidates.forEach((s) => {
+          I = (e) => {
+            let t = new Map(m);
+            v &&
+              (v.candidates.forEach((s) => {
                 t.set(s.id, {
                   duplicateId: s.id,
                   action: e,
@@ -4985,10 +5547,10 @@
                   duplicateNodeId: s.duplicate.id,
                 });
               }),
-              m(t));
+              p(t));
           },
-          w = (e) => {
-            let s = new Map(x);
+          E = (e) => {
+            let s = new Map(m);
             (t.forEach((t) => {
               t.candidates.forEach((t) => {
                 s.set(t.id, {
@@ -5000,7 +5562,7 @@
                 });
               });
             }),
-              m(s));
+              p(s));
           };
         (0, l.useEffect)(() => {
           let e = (e) => {
@@ -5010,73 +5572,70 @@
             )
               switch (e.key) {
                 case '1':
-                  (e.preventDefault(), v(o, 'keep-primary'));
+                  (e.preventDefault(), C(o, 'keep-primary'));
                   break;
                 case '2':
-                  (e.preventDefault(), v(o, 'keep-duplicate'));
+                  (e.preventDefault(), C(o, 'keep-duplicate'));
                   break;
                 case '3':
-                  (e.preventDefault(), v(o, 'keep-both'));
+                  (e.preventDefault(), C(o, 'keep-both'));
                   break;
                 case '4':
-                  (e.preventDefault(), v(o, 'merge'));
+                  (e.preventDefault(), C(o, 'merge'));
                   break;
                 case '5':
-                  (e.preventDefault(), v(o, 'sequester'));
+                  (e.preventDefault(), C(o, 'sequester'));
                   break;
                 case 'z':
-                  (e.ctrlKey || e.metaKey) && (e.preventDefault(), e.shiftKey ? h() : p());
+                  (e.ctrlKey || e.metaKey) && (e.preventDefault(), e.shiftKey ? g() : h());
                   break;
                 case 'y':
-                  (e.ctrlKey || e.metaKey) && (e.preventDefault(), h());
+                  (e.ctrlKey || e.metaKey) && (e.preventDefault(), g());
                   break;
                 case 'ArrowUp':
                 case 'ArrowDown':
-                  (e.preventDefault(), k('ArrowUp' === e.key ? 'prev' : 'next'));
+                  (e.preventDefault(), M('ArrowUp' === e.key ? 'prev' : 'next'));
                   break;
                 case 'Escape':
                   (e.preventDefault(), r());
                   break;
                 case 'Enter':
-                  (e.ctrlKey || e.metaKey) && (e.preventDefault(), N());
+                  (e.ctrlKey || e.metaKey) && (e.preventDefault(), m.size >= N && S());
               }
           };
           return (
             window.addEventListener('keydown', e),
             () => window.removeEventListener('keydown', e)
           );
-        }, [o, n, t, x, p, h]);
-        let k = (e) => {
-            var s, a;
-            if (!f || !o) return;
-            let l = f.candidates.findIndex((e) => e.id === o);
-            if ('next' === e) {
-              if (l < f.candidates.length - 1) c(f.candidates[l + 1].id);
-              else {
-                let e = t.findIndex((e) => e.id === n);
-                if (e < t.length - 1) {
-                  let a = t[e + 1];
-                  (i(a.id),
-                    c((null === (s = a.candidates[0]) || void 0 === s ? void 0 : s.id) || null));
-                }
-              }
-            } else if (l > 0) c(f.candidates[l - 1].id);
+        }, [o, n, t, m, h, g, N]);
+        let M = (e) => {
+          var s, a;
+          if (!v || !o) return;
+          let l = v.candidates.findIndex((e) => e.id === o);
+          if ('next' === e) {
+            if (l < v.candidates.length - 1) c(v.candidates[l + 1].id);
             else {
               let e = t.findIndex((e) => e.id === n);
-              if (e > 0) {
-                let s = t[e - 1];
-                (i(s.id),
-                  c(
-                    (null === (a = s.candidates[s.candidates.length - 1]) || void 0 === a
-                      ? void 0
-                      : a.id) || null
-                  ));
+              if (e < t.length - 1) {
+                let a = t[e + 1];
+                (i(a.id),
+                  c((null === (s = a.candidates[0]) || void 0 === s ? void 0 : s.id) || null));
               }
             }
-          },
-          C = t.reduce((e, t) => e + t.candidates.length, 0),
-          S = x.size,
-          I = C > 0 ? (S / C) * 100 : 0;
+          } else if (l > 0) c(v.candidates[l - 1].id);
+          else {
+            let e = t.findIndex((e) => e.id === n);
+            if (e > 0) {
+              let s = t[e - 1];
+              (i(s.id),
+                c(
+                  (null === (a = s.candidates[s.candidates.length - 1]) || void 0 === a
+                    ? void 0
+                    : a.id) || null
+                ));
+            }
+          }
+        };
         return (0, a.jsxs)('div', {
           className: 'flex flex-col h-full',
           children: [
@@ -5090,7 +5649,7 @@
                       children: [
                         (0, a.jsx)('h2', {
                           className: 'text-lg font-semibold',
-                          children: 'Review Duplicates',
+                          children: 'Review Similarity Conflicts',
                         }),
                         (0, a.jsx)('div', {
                           className: 'text-xs text-slate-500 mt-1',
@@ -5121,28 +5680,28 @@
                                     children: 'Apply to current group:',
                                   }),
                                   (0, a.jsx)('button', {
-                                    onClick: () => y('keep-primary'),
+                                    onClick: () => I('keep-primary'),
                                     className:
                                       'w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors',
                                     children: 'Keep Primary for All',
                                   }),
                                   (0, a.jsx)('button', {
-                                    onClick: () => y('keep-duplicate'),
+                                    onClick: () => I('keep-duplicate'),
                                     className:
                                       'w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors',
-                                    children: 'Keep Duplicate for All',
+                                    children: 'Keep Alternate for All',
                                   }),
                                   (0, a.jsx)('button', {
-                                    onClick: () => y('keep-both'),
+                                    onClick: () => I('keep-both'),
                                     className:
                                       'w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors',
                                     children: 'Keep Both for All',
                                   }),
                                   (0, a.jsx)('button', {
-                                    onClick: () => y('sequester'),
+                                    onClick: () => I('sequester'),
                                     className:
                                       'w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors',
-                                    children: 'Sequester Duplicates for All',
+                                    children: 'Sequester Alternates for All',
                                   }),
                                   (0, a.jsx)('div', {
                                     className: 'border-t border-slate-700 my-2',
@@ -5152,28 +5711,28 @@
                                     children: 'Apply to all groups:',
                                   }),
                                   (0, a.jsx)('button', {
-                                    onClick: () => w('keep-primary'),
+                                    onClick: () => E('keep-primary'),
                                     className:
                                       'w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors',
                                     children: 'Keep Primary Everywhere',
                                   }),
                                   (0, a.jsx)('button', {
-                                    onClick: () => w('keep-duplicate'),
+                                    onClick: () => E('keep-duplicate'),
                                     className:
                                       'w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors',
-                                    children: 'Keep Duplicate Everywhere',
+                                    children: 'Keep Alternate Everywhere',
                                   }),
                                   (0, a.jsx)('button', {
-                                    onClick: () => w('keep-both'),
+                                    onClick: () => E('keep-both'),
                                     className:
                                       'w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors',
                                     children: 'Keep Both Everywhere',
                                   }),
                                   (0, a.jsx)('button', {
-                                    onClick: () => w('sequester'),
+                                    onClick: () => E('sequester'),
                                     className:
                                       'w-full text-left px-3 py-2 text-xs hover:bg-slate-700 rounded transition-colors',
-                                    children: 'Sequester Duplicates Everywhere',
+                                    children: 'Sequester Alternates Everywhere',
                                   }),
                                 ],
                               }),
@@ -5182,8 +5741,14 @@
                         }),
                         (0, a.jsxs)('div', {
                           className: 'text-sm text-slate-400',
-                          children: [S, ' / ', C, ' reviewed'],
+                          children: [y, ' / ', N, ' reviewed'],
                         }),
+                        k > 0 &&
+                          (0, a.jsxs)('div', {
+                            className:
+                              'text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-1 rounded',
+                            children: [k, ' pending'],
+                          }),
                       ],
                     }),
                   ],
@@ -5192,7 +5757,7 @@
                   className: 'w-full bg-slate-800 rounded-full h-2',
                   children: (0, a.jsx)('div', {
                     className: 'bg-purple-600 h-2 rounded-full transition-all duration-300',
-                    style: { width: ''.concat(I, '%') },
+                    style: { width: ''.concat(w, '%') },
                   }),
                 }),
               ],
@@ -5202,11 +5767,11 @@
               children: [
                 (0, a.jsx)('div', {
                   className: 'w-80 border-r border-slate-700 overflow-y-auto bg-slate-900/50',
-                  children: (0, a.jsx)(te, {
+                  children: (0, a.jsx)(ti, {
                     groups: t,
                     selectedGroupId: n,
                     selectedCandidateId: o,
-                    decisions: x,
+                    decisions: m,
                     onGroupSelect: i,
                     onCandidateSelect: c,
                   }),
@@ -5214,7 +5779,7 @@
                 (0, a.jsx)('div', {
                   className: 'flex-1 overflow-y-auto',
                   children: j
-                    ? (0, a.jsx)(ta, { candidate: j, viewMode: d, onViewModeChange: u })
+                    ? (0, a.jsx)(td, { candidate: j, viewMode: d, onViewModeChange: u })
                     : (0, a.jsx)('div', {
                         className: 'flex items-center justify-center h-full text-slate-400',
                         children: (0, a.jsx)('p', {
@@ -5226,10 +5791,10 @@
                   className: 'w-80 border-l border-slate-700 overflow-y-auto bg-slate-900/50',
                   children:
                     j &&
-                    (0, a.jsx)(tr, {
+                    (0, a.jsx)(tx, {
                       candidate: j,
-                      decision: o ? x.get(o) : void 0,
-                      onDecision: (e) => o && v(o, e),
+                      decision: o ? m.get(o) : void 0,
+                      onDecision: (e) => o && C(o, e),
                     }),
                 }),
               ],
@@ -5250,8 +5815,8 @@
                       className: 'flex items-center gap-1 ml-4',
                       children: [
                         (0, a.jsx)('button', {
-                          onClick: p,
-                          disabled: !g,
+                          onClick: h,
+                          disabled: !b,
                           className:
                             'p-2 text-slate-400 hover:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors',
                           title: 'Undo (Ctrl+Z)',
@@ -5269,8 +5834,8 @@
                           }),
                         }),
                         (0, a.jsx)('button', {
-                          onClick: h,
-                          disabled: !b,
+                          onClick: g,
+                          disabled: !f,
                           className:
                             'p-2 text-slate-400 hover:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors',
                           title: 'Redo (Ctrl+Y)',
@@ -5292,17 +5857,18 @@
                   ],
                 }),
                 (0, a.jsx)('button', {
-                  onClick: N,
+                  onClick: S,
+                  disabled: k > 0,
                   className:
-                    'px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors',
-                  children: 'Complete Review',
+                    'px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors',
+                  children: k > 0 ? 'Complete Review ('.concat(k, ' pending)') : 'Complete Review',
                 }),
               ],
             }),
           ],
         });
       }
-      function ti(e) {
+      function tp(e) {
         let [t, s] = (0, l.useState)(new Map()),
           [a, r] = (0, l.useState)([]),
           [n, i] = (0, l.useState)(!1),
@@ -5567,11 +6133,11 @@
           }
         );
       }
-      let to = 'chunked_upload_';
-      var tc = s(2844);
-      let td = new Set(['reading', 'parsing', 'normalizing', 'indexing', 'linking', 'processing']),
-        tu = ['queued', 'reading', 'parsing', 'normalizing', 'indexing', 'linking', 'done'],
-        tx = {
+      let th = 'chunked_upload_';
+      var tg = s(2844);
+      let tb = new Set(['reading', 'parsing', 'normalizing', 'indexing', 'linking', 'processing']),
+        tf = ['queued', 'reading', 'parsing', 'normalizing', 'indexing', 'linking', 'done'],
+        tv = {
           queued: 0,
           reading: 3,
           parsing: 10,
@@ -5580,13 +6146,13 @@
           linking: 90,
           done: 100,
         };
-      function tm(e) {
-        return e ? tu.indexOf(e) : -1;
+      function tj(e) {
+        return e ? tf.indexOf(e) : -1;
       }
-      function tp(e) {
+      function tN(e) {
         return Number.isFinite(e) ? Math.max(0, Math.min(100, Math.round(e))) : 0;
       }
-      function th(e, t) {
+      function ty(e, t) {
         switch (e) {
           case 'queued':
             return 'queued';
@@ -5607,7 +6173,7 @@
             return t;
         }
       }
-      function tg(e) {
+      function tw(e) {
         var t, s, a;
         let { backendStatus: l, jobType: r = 'import', progress: n, previousStatus: i } = e,
           o = 'import' === r,
@@ -5618,37 +6184,37 @@
                   (t = (function (e) {
                     if (!e) return null;
                     switch (String(e).toUpperCase()) {
-                      case e_.F7.PARSE:
+                      case eO.F7.PARSE:
                         return 'parsing';
-                      case e_.F7.CANONICALIZE:
+                      case eO.F7.CANONICALIZE:
                         return 'normalizing';
-                      case e_.F7.SPAN_EXTRACT:
+                      case eO.F7.SPAN_EXTRACT:
                         return 'parsing';
-                      case e_.F7.NORMALIZE:
+                      case eO.F7.NORMALIZE:
                         return 'normalizing';
-                      case e_.F7.ATOMIC_EXTRACT:
-                      case e_.F7.PACKET_DERIVE:
-                      case e_.F7.MASS_SCORE:
+                      case eO.F7.ATOMIC_EXTRACT:
+                      case eO.F7.PACKET_DERIVE:
+                      case eO.F7.MASS_SCORE:
                         return 'indexing';
-                      case e_.F7.LAYER_LINK:
-                      case e_.F7.DEDUPE:
-                      case e_.F7.AWAIT_DECISIONS:
-                      case e_.F7.APPLY_DECISIONS:
+                      case eO.F7.LAYER_LINK:
+                      case eO.F7.DEDUPE:
+                      case eO.F7.AWAIT_DECISIONS:
+                      case eO.F7.APPLY_DECISIONS:
                         return 'linking';
-                      case e_.F7.MATERIALIZE:
-                      case e_.F7.INDEXING:
+                      case eO.F7.MATERIALIZE:
+                      case eO.F7.INDEXING:
                         return 'indexing';
-                      case e_.F7.OBJECTIVE_QUEUE:
+                      case eO.F7.OBJECTIVE_QUEUE:
                         return 'linking';
-                      case e_.F7.OBJECTIVE_EXTRACT:
-                      case e_.F7.OBJECTIVE_VERIFY:
-                      case e_.F7.OBJECTIVE_PUBLISH:
+                      case eO.F7.OBJECTIVE_EXTRACT:
+                      case eO.F7.OBJECTIVE_VERIFY:
+                      case eO.F7.OBJECTIVE_PUBLISH:
                         return 'processing';
-                      case e_.F7.OBJECTIVE_DONE:
-                      case e_.F7.SUCCEEDED:
+                      case eO.F7.OBJECTIVE_DONE:
+                      case eO.F7.SUCCEEDED:
                         return 'done';
-                      case e_.F7.FAILED:
-                      case e_.F7.CANCELED:
+                      case eO.F7.FAILED:
+                      case eO.F7.CANCELED:
                         return 'error';
                       default:
                         return null;
@@ -5695,13 +6261,13 @@
               ? s
               : null,
           d =
-            null !== (a = i && td.has(i) ? th(i, 'parsing') : null) && void 0 !== a ? a : 'parsing';
+            null !== (a = i && tb.has(i) ? ty(i, 'parsing') : null) && void 0 !== a ? a : 'parsing';
         if ('succeeded' === l) return { status: 'done', stage: 'done' };
         if ('failed' === l || 'canceled' === l) return { status: 'error', stage: 'done' };
         if ('blocked' === l)
           return {
             status: 'blocked',
-            stage: th(
+            stage: ty(
               c && 'queued' !== c && 'blocked' !== c && 'done' !== c && 'error' !== c
                 ? c
                 : null != i
@@ -5716,17 +6282,17 @@
           let e =
               c && 'queued' !== c && 'blocked' !== c && 'done' !== c && 'error' !== c
                 ? c
-                : td.has(i)
+                : tb.has(i)
                   ? i
                   : 'parsing',
-            t = td.has(i) ? i : null,
-            s = t && tm(t) > tm(e) ? t : e;
-          return { status: s, stage: th(s, d) };
+            t = tb.has(i) ? i : null,
+            s = t && tj(t) > tj(e) ? t : e;
+          return { status: s, stage: ty(s, d) };
         }
         let u = o ? 'parsing' : 'processing';
-        return { status: u, stage: th(u, d) };
+        return { status: u, stage: ty(u, d) };
       }
-      function tb(e) {
+      function tk(e) {
         var t;
         let {
           backendStatus: s,
@@ -5737,8 +6303,8 @@
           metadata: i,
         } = e;
         if ('succeeded' === s || 'done' === a) return 100;
-        let o = tp(null !== (t = null != l ? l : r) && void 0 !== t ? t : 0),
-          c = tx[a];
+        let o = tN(null !== (t = null != l ? l : r) && void 0 !== t ? t : 0),
+          c = tv[a];
         if (
           (('running' === s || 'blocked' === s) &&
             ('number' == typeof c && (o = Math.max(o, c)), 'error' !== a && (o = Math.min(o, 99))),
@@ -5746,23 +6312,23 @@
             'succeeded' !== s &&
             'failed' !== s &&
             'canceled' !== s &&
-            (o = Math.max(o, tp(r))),
+            (o = Math.max(o, tN(r))),
           'running' === s || 'blocked' === s)
         ) {
           let e = n ? String(n).toUpperCase() : '',
             t = Number(null == i ? void 0 : i.elapsedMsInBatch);
           if (Number.isFinite(t) && t > 0) {
-            if (e === e_.F7.LAYER_LINK) {
+            if (e === eO.F7.LAYER_LINK) {
               let e = Math.max(o, 96);
               o = Math.min(99, Math.max(o, e + Math.min(3, Math.floor(t / 27e5))));
             } else
-              e === e_.F7.CANONICALIZE &&
+              e === eO.F7.CANONICALIZE &&
                 (o = Math.min(95, Math.max(o, o + Math.min(3, Math.floor(t / 6e5)))));
           }
         }
-        return tp(o);
+        return tN(o);
       }
-      function tf(e) {
+      function tC(e) {
         var t, s, r, n, i;
         let { onDismiss: o } = e,
           { user: c } = (0, N.aC)(),
@@ -5788,7 +6354,7 @@
               a = (0, l.useRef)(!1),
               r = (0, l.useRef)(!1),
               n = (0, l.useCallback)((e, t, s) => {
-                let a = ''.concat(to).concat(e),
+                let a = ''.concat(th).concat(e),
                   l = {
                     sessionId: e,
                     fileName: t.name,
@@ -5799,7 +6365,7 @@
                 localStorage.setItem(a, JSON.stringify(l));
               }, []);
             (0, l.useCallback)((e) => {
-              let t = ''.concat(to).concat(e),
+              let t = ''.concat(th).concat(e),
                 s = localStorage.getItem(t);
               if (!s) return null;
               try {
@@ -5810,7 +6376,7 @@
               }
             }, []);
             let i = (0, l.useCallback)((e) => {
-                let t = ''.concat(to).concat(e);
+                let t = ''.concat(th).concat(e);
                 localStorage.removeItem(t);
               }, []),
               o = (0, l.useCallback)(async function (e, t, l) {
@@ -5935,7 +6501,7 @@
               d = (0, l.useCallback)(
                 async (s, l) => {
                   try {
-                    let n = (0, e_.p$)(l);
+                    let n = (0, eO.p$)(l);
                     (console.log(
                       '\uD83D\uDCE4 Starting chunked upload: '
                         .concat(s.name, ' (')
@@ -5961,7 +6527,7 @@
                         startTime: Date.now(),
                         bytesUploadedAtStart: 0,
                       }));
-                    let o = await eD.x1.post('/api/v1/uploads/initiate', {
+                    let o = await e_.x1.post('/api/v1/uploads/initiate', {
                       fileName: s.name,
                       fileSize: s.size,
                       mimeType: s.type || 'application/json',
@@ -6021,7 +6587,7 @@
               resume: (0, l.useCallback)(async () => {
                 if (!e.sessionId || !e.file) throw Error('No active upload session to resume');
                 console.log('Resuming upload...');
-                let s = await eD.x1.get('/api/v1/uploads/'.concat(e.sessionId));
+                let s = await e_.x1.get('/api/v1/uploads/'.concat(e.sessionId));
                 if (!s.data.success) throw Error(s.data.error || 'Failed to get upload status');
                 let l = s.data.session;
                 (console.log(
@@ -6050,7 +6616,7 @@
                     s.current.forEach((e) => e.abort()),
                     s.current.clear());
                   try {
-                    (await eD.x1.delete('/api/v1/uploads/'.concat(e.sessionId)), i(e.sessionId));
+                    (await e_.x1.delete('/api/v1/uploads/'.concat(e.sessionId)), i(e.sessionId));
                   } catch (e) {
                     console.error('Failed to cancel upload session:', e);
                   }
@@ -6065,38 +6631,61 @@
             };
           })(),
           [m, p] = (0, l.useState)('select'),
-          [h, g] = (0, l.useState)(e_.r3),
+          [h, g] = (0, l.useState)(eO.r3),
           [b, f] = (0, l.useState)([]),
-          [j, v] = (0, l.useState)(!1),
+          [v, j] = (0, l.useState)(!1),
           [w, k] = (0, l.useState)(null),
           [C, S] = (0, l.useState)({ stage: 'uploading', percent: 0, message: '' }),
           [I, E] = (0, l.useState)(null),
-          [Z, D] = (0, l.useState)([]),
-          [T, A] = (0, l.useState)(null),
-          [M, L] = (0, l.useState)(null),
+          [M, Z] = (0, l.useState)([]),
+          [D, T] = (0, l.useState)(null),
+          [A, L] = (0, l.useState)(null),
           [F, P] = (0, l.useState)([]),
           [O, z] = (0, l.useState)([]),
           [R, U] = (0, l.useState)(''),
-          [B, K] = (0, l.useState)(''),
-          [q, V] = (0, l.useState)(!1),
+          [B, V] = (0, l.useState)(''),
+          [K, q] = (0, l.useState)(!1),
           [J, G] = (0, l.useState)(!1),
-          [W, H] = (0, l.useState)(null),
-          X = (0, l.useCallback)(async () => {
+          [W, Y] = (0, l.useState)(null),
+          [H, X] = (0, l.useState)(!1),
+          Q = (0, l.useCallback)(async () => {
             try {
-              if (!(await (0, eD.e_)()).requiresReimport) return;
-              (await (0, eD.SK)(),
+              if (!(await (0, e_.e_)()).requiresReimport) return;
+              (await (0, e_.SK)(),
                 window.dispatchEvent(new CustomEvent('core-process-reimport-complete')),
                 console.log('[ChatImportModal] Core process reimport marked complete'));
             } catch (e) {
               console.warn('[ChatImportModal] Failed to clear core process reimport gate:', e);
             }
           }, []),
-          $ = (0, l.useCallback)(
+          $ = (0, l.useCallback)(async () => {
+            try {
+              let e = await (0, e_.E0)(),
+                t = !!e.features.agent_runtime;
+              return (
+                X(t),
+                t ||
+                  g((e) =>
+                    'manual' === e.agent.bootstrap
+                      ? e
+                      : { ...e, agent: { ...e.agent, bootstrap: 'manual' } }
+                  ),
+                e
+              );
+            } catch (e) {
+              return (
+                console.warn('[ChatImportModal] Failed to fetch feature manifest:', e),
+                X(!1),
+                null
+              );
+            }
+          }, []),
+          et = (0, l.useCallback)(
             async (e) => {
-              (V(!0), H(null));
+              (q(!0), Y(null));
               try {
                 var t;
-                let s = (await (0, eD.d)()).presets || [];
+                let s = (await (0, e_.d)()).presets || [];
                 z(s);
                 let a =
                   e && s.some((t) => t.id === e)
@@ -6106,106 +6695,112 @@
                       : (null === (t = s[0]) || void 0 === t ? void 0 : t.id) || '';
                 U(a);
                 let l = s.find((e) => e.id === a);
-                K((null == l ? void 0 : l.name) || '');
+                V((null == l ? void 0 : l.name) || '');
               } catch (e) {
                 (console.error('[ChatImportModal] Failed to load import presets:', e),
-                  H(e instanceof Error ? e.message : 'Failed to load presets'));
+                  Y(e instanceof Error ? e.message : 'Failed to load presets'));
               } finally {
-                V(!1);
+                q(!1);
               }
             },
             [R]
           );
         (0, l.useEffect)(() => {
-          'config' === m && $();
-        }, [m, $]);
-        let Q = (0, l.useCallback)(() => {
+          'config' === m && (et(), $());
+        }, [m, et, $]);
+        let es = (0, l.useCallback)(() => {
             if (!R) return;
             let e = O.find((e) => e.id === R);
             if (!e) {
-              H('Selected preset no longer exists.');
+              Y('Selected preset no longer exists.');
               return;
             }
-            (g(e.config), K(e.name), H(null));
-          }, [O, R]),
-          ee = (0, l.useCallback)(async () => {
+            (g(
+              H || 'auto' !== e.config.agent.bootstrap
+                ? e.config
+                : { ...e.config, agent: { ...e.config.agent, bootstrap: 'manual' } }
+            ),
+              V(e.name),
+              Y(null));
+          }, [H, O, R]),
+          ea = (0, l.useCallback)(async () => {
             let e = B.trim();
             if (!e) {
-              H('Preset name is required.');
+              Y('Preset name is required.');
               return;
             }
-            (G(!0), H(null));
+            (G(!0), Y(null));
             try {
-              let t = await (0, eD.W9)({ name: e, config: h });
-              await $(t.preset.id);
+              let t = await (0, e_.W9)({ name: e, config: h });
+              await et(t.preset.id);
             } catch (e) {
               (console.error('[ChatImportModal] Failed to create preset:', e),
-                H(e instanceof Error ? e.message : 'Failed to create preset'));
+                Y(e instanceof Error ? e.message : 'Failed to create preset'));
             } finally {
               G(!1);
             }
-          }, [h, $, B]),
-          et = (0, l.useCallback)(async () => {
+          }, [h, et, B]),
+          el = (0, l.useCallback)(async () => {
             if (!R) {
-              H('Select a preset to update.');
+              Y('Select a preset to update.');
               return;
             }
             let e = B.trim();
             if (!e) {
-              H('Preset name is required.');
+              Y('Preset name is required.');
               return;
             }
-            (G(!0), H(null));
+            (G(!0), Y(null));
             try {
-              (await (0, eD.lq)(R, { name: e, config: h }), await $(R));
+              (await (0, e_.lq)(R, { name: e, config: h }), await et(R));
             } catch (e) {
               (console.error('[ChatImportModal] Failed to update preset:', e),
-                H(e instanceof Error ? e.message : 'Failed to update preset'));
+                Y(e instanceof Error ? e.message : 'Failed to update preset'));
             } finally {
               G(!1);
             }
-          }, [h, $, B, R]),
-          es = (0, l.useCallback)(async () => {
+          }, [h, et, B, R]),
+          er = (0, l.useCallback)(async () => {
             if (!R) {
-              H('Select a preset to delete.');
+              Y('Select a preset to delete.');
               return;
             }
             let e = O.find((e) => e.id === R);
             if (!e) {
-              H('Selected preset no longer exists.');
+              Y('Selected preset no longer exists.');
               return;
             }
             if (window.confirm('Delete preset "'.concat(e.name, '"?'))) {
-              (G(!0), H(null));
+              (G(!0), Y(null));
               try {
-                (await (0, eD.oI)(R), await $());
+                (await (0, e_.oI)(R), await et());
               } catch (e) {
                 (console.error('[ChatImportModal] Failed to delete preset:', e),
-                  H(e instanceof Error ? e.message : 'Failed to delete preset'));
+                  Y(e instanceof Error ? e.message : 'Failed to delete preset'));
               } finally {
                 G(!1);
               }
             }
-          }, [O, $, R]),
-          { jobs: ea, connected: er } = ti(),
-          en = T ? ea.get(T) : void 0,
-          ei = (null == en ? void 0 : en.stats)
+          }, [O, et, R]),
+          { jobs: en, connected: ei } = tp(),
+          eo = D ? en.get(D) : void 0,
+          ed = (null == eo ? void 0 : eo.stats)
             ? {
                 conversationsProcessed:
-                  null !== (t = en.stats.conversationsProcessed) && void 0 !== t ? t : 0,
+                  null !== (t = eo.stats.conversationsProcessed) && void 0 !== t ? t : 0,
                 messagesProcessed:
-                  null !== (s = en.stats.messagesProcessed) && void 0 !== s ? s : 0,
-                nodesCreated: null !== (r = en.stats.nodesCreated) && void 0 !== r ? r : 0,
-                edgesCreated: null !== (n = en.stats.edgesCreated) && void 0 !== n ? n : 0,
-                sourcesCreated: null !== (i = en.stats.sourcesCreated) && void 0 !== i ? i : 0,
+                  null !== (s = eo.stats.messagesProcessed) && void 0 !== s ? s : 0,
+                nodesCreated: null !== (r = eo.stats.nodesCreated) && void 0 !== r ? r : 0,
+                edgesCreated: null !== (n = eo.stats.edgesCreated) && void 0 !== n ? n : 0,
+                sourcesCreated: null !== (i = eo.stats.sourcesCreated) && void 0 !== i ? i : 0,
               }
             : null;
         ((0, l.useEffect)(() => {
-          if (!T) return;
-          let e = ea.get(T);
+          if (!D) return;
+          let e = en.get(D);
           if (!e) return;
           console.log('[ChatImportModal] Job update received:', e);
-          let t = tg({
+          let t = tw({
               backendStatus: e.status,
               jobType: e.type,
               progress: { message: e.progress.message, stage: e.progress.stage },
@@ -6229,7 +6824,7 @@
           if (
             (S((l) => ({
               stage: s,
-              percent: tb({
+              percent: tk({
                 backendStatus: e.status,
                 status: t.status,
                 rawPercent: e.progress.percent,
@@ -6241,17 +6836,17 @@
             })),
             'succeeded' === e.status)
           ) {
-            if (M === T) return;
-            (L(T),
-              v(!1),
+            if (A === D) return;
+            (L(D),
+              j(!1),
               console.log('[ChatImportModal] Import job completed successfully'),
               (async () => {
                 try {
-                  let e = await (0, eD.FE)(T);
+                  let e = await (0, e_.FE)(D);
                   if (e.status.review_required) {
-                    let t = await (0, eD.tl)(T);
+                    let t = await (0, e_.tl)(D);
                     if (t.total_candidates > 0) {
-                      (D(t.groups),
+                      (Z(t.groups),
                         S({
                           stage: 'ready',
                           percent: 100,
@@ -6267,15 +6862,15 @@
                 } catch (e) {
                   console.warn('[ChatImportModal] Failed to load duplicate review status:', e);
                 }
-                (p('complete'), X());
+                (p('complete'), Q());
               })(),
-              (0, tc.Vo)('Import completed successfully', 'import.jobCompleted', {
-                jobId: T,
+              (0, tg.Vo)('Import completed successfully', 'import.jobCompleted', {
+                jobId: D,
                 progress: e.progress.percent,
               }));
           } else if ('failed' === e.status) {
             var l, r, n, i;
-            v(!1);
+            j(!1);
             let t = (null === (l = e.error) || void 0 === l ? void 0 : l.code) || 'FAILED',
               s = (null === (r = e.progress) || void 0 === r ? void 0 : r.stage)
                 ? String(e.progress.stage)
@@ -6293,24 +6888,24 @@
               percent: Math.max(0, a),
               message: ''.concat(t, ' at ').concat(s, ' (').concat(a, '%): ').concat(o),
             }),
-              (0, tc.Vo)('Import job failed', 'import.jobFailed', {
-                jobId: T,
+              (0, tg.Vo)('Import job failed', 'import.jobFailed', {
+                jobId: D,
                 message: o,
                 code: t,
                 stage: s,
                 percent: a,
               }));
           }
-        }, [T, ea, X, M]),
+        }, [D, en, Q, A]),
           (0, l.useEffect)(() => {
             0 !== F.length &&
               P((e) =>
                 e.map((e) => {
                   var t;
                   if (!e.jobId) return e;
-                  let s = ea.get(e.jobId);
+                  let s = en.get(e.jobId);
                   if (!s) return e;
-                  let a = tg({
+                  let a = tw({
                       backendStatus: s.status,
                       jobType: s.type,
                       progress: { message: s.progress.message, stage: s.progress.stage },
@@ -6320,7 +6915,7 @@
                   return {
                     ...e,
                     status: l ? 'error' : r ? 'done' : 'running',
-                    progress: tb({
+                    progress: tk({
                       backendStatus: s.status,
                       status: a.status,
                       rawPercent: s.progress.percent,
@@ -6337,7 +6932,7 @@
                   };
                 })
               );
-          }, [ea, F.length]),
+          }, [en, F.length]),
           (0, l.useEffect)(() => {
             let e = x.progress;
             'uploading' === e.status
@@ -6352,16 +6947,16 @@
               : 'completed' === e.status
                 ? console.log('[ChatImportModal] Chunked upload completed, import job created')
                 : 'failed' === e.status &&
-                  (S({ stage: 'error', percent: 0, message: e.error || 'Upload failed' }), v(!1));
+                  (S({ stage: 'error', percent: 0, message: e.error || 'Upload failed' }), j(!1));
           }, [x.progress]));
-        let eo = async (e) => {
+        let eu = async (e) => {
             try {
               (S({ stage: 'uploading', percent: 10, message: 'Uploading files...' }),
-                await ec(300),
+                await ex(300),
                 S({ stage: 'detecting', percent: 30, message: 'Detecting platform...' }));
               let t = null;
               if (e.length > 0) {
-                let s = await (0, eD.tz)(e[0]);
+                let s = await (0, e_.tz)(e[0]);
                 ((t = {
                   platform: s.platform,
                   conversationCount: 0,
@@ -6371,7 +6966,7 @@
                   k(t));
               }
               S({ stage: 'analyzing', percent: 60, message: 'Analyzing content...' });
-              let s = await (0, eD.NT)(e);
+              let s = await (0, e_.NT)(e);
               if (t) {
                 let e = {
                   ...t,
@@ -6389,7 +6984,7 @@
                 filteredMessageCount: Math.floor(0.6 * s.total_messages),
               }),
                 S({ stage: 'ready', percent: 100, message: 'Ready for configuration' }),
-                await ec(300),
+                await ex(300),
                 p('config'));
             } catch (e) {
               (console.error('Error processing files:', e),
@@ -6400,69 +6995,59 @@
                 }));
             }
           },
-          ec = (e) => new Promise((t) => setTimeout(t, e)),
-          ed = (0, l.useCallback)(
+          ex = (e) => new Promise((t) => setTimeout(t, e)),
+          em = (0, l.useCallback)(
             async (e) => {
-              (f(e), P([]), p('processing'), await eo(e));
+              (f(e), P([]), p('processing'), await eu(e));
             },
-            [eo]
+            [eu]
           ),
-          eu = (0, l.useCallback)(
-            async (e, t) => {
-              let s = Math.min(3, e.length),
-                a = [],
-                l = 0;
-              P(
-                e.map((e) => ({
-                  fileName: e.name,
-                  status: 'queued',
-                  progress: 0,
-                  message: 'Queued',
-                }))
-              );
-              let r = Array.from({ length: s }).map(async () => {
-                for (; l < e.length; ) {
-                  let s = l;
-                  l += 1;
-                  let r = e[s];
-                  P((e) =>
-                    e.map((e, t) =>
-                      t === s
-                        ? { ...e, status: 'submitting', message: 'Uploading and creating job...' }
-                        : e
-                    )
-                  );
-                  try {
-                    let e = await (0, eD.NU)([r], h, t);
-                    (a.push(e.jobId),
-                      P((t) =>
-                        t.map((t, a) =>
-                          a === s
-                            ? {
-                                ...t,
-                                jobId: e.jobId,
-                                status: 'submitted',
-                                progress: 0,
-                                message: 'Job created',
-                              }
-                            : t
-                        )
-                      ));
-                  } catch (t) {
-                    let e = t instanceof Error ? t.message : 'Failed to submit import';
+          ep = (0, l.useCallback)(async (e, t, s) => {
+            let a = Math.min(3, e.length),
+              l = [],
+              r = 0;
+            P(
+              e.map((e) => ({ fileName: e.name, status: 'queued', progress: 0, message: 'Queued' }))
+            );
+            let n = Array.from({ length: a }).map(async () => {
+              for (; r < e.length; ) {
+                let a = r;
+                r += 1;
+                let n = e[a];
+                P((e) =>
+                  e.map((e, t) =>
+                    t === a
+                      ? { ...e, status: 'submitting', message: 'Uploading and creating job...' }
+                      : e
+                  )
+                );
+                try {
+                  let e = await (0, e_.NU)([n], t, s);
+                  (l.push(e.jobId),
                     P((t) =>
-                      t.map((t, a) =>
-                        a === s ? { ...t, status: 'error', message: e, error: e } : t
+                      t.map((t, s) =>
+                        s === a
+                          ? {
+                              ...t,
+                              jobId: e.jobId,
+                              status: 'submitted',
+                              progress: 0,
+                              message: 'Job created',
+                            }
+                          : t
                       )
-                    );
-                  }
+                    ));
+                } catch (t) {
+                  let e = t instanceof Error ? t.message : 'Failed to submit import';
+                  P((t) =>
+                    t.map((t, s) => (s === a ? { ...t, status: 'error', message: e, error: e } : t))
+                  );
                 }
-              });
-              return (await Promise.all(r), a);
-            },
-            [h]
-          ),
-          ex = async () => {
+              }
+            });
+            return (await Promise.all(n), l);
+          }, []),
+          eh = async () => {
             try {
               if (
                 (console.log('[ChatImportModal] Starting chunked upload with config:', h),
@@ -6475,15 +7060,21 @@
                 alert('Please select files to import');
                 return;
               }
-              try {
-                if (!(await (0, eD.E0)()).features.auto_graph) {
-                  alert('Your current account tier does not allow automatic graph import.');
-                  return;
-                }
-              } catch (e) {
-                console.warn('[ChatImportModal] Failed to fetch feature manifest:', e);
+              let e = H,
+                t = await $();
+              if (t && !t.features.auto_graph) {
+                alert('Your current account tier does not allow automatic graph import.');
+                return;
               }
-              (v(!0),
+              t && (e = !!t.features.agent_runtime);
+              let s = { ...h, agent: { ...h.agent, bootstrap: e ? h.agent.bootstrap : 'manual' } };
+              (e ||
+                'auto' !== h.agent.bootstrap ||
+                (g(s),
+                alert(
+                  'Agent bootstrap was set to manual because this account does not have agent runtime entitlement.'
+                )),
+                j(!0),
                 p('processing'),
                 S({
                   stage: 'uploading',
@@ -6498,12 +7089,12 @@
                   '[ChatImportModal] Detected platform:',
                   null == w ? void 0 : w.platform
                 ));
-              let e = { platform: (null == w ? void 0 : w.platform) || 'generic', ...h };
+              let a = { platform: (null == w ? void 0 : w.platform) || 'generic', ...s };
               if (b.length > 1) {
-                let e = await eu(b, null == w ? void 0 : w.platform),
+                let e = await ep(b, s, null == w ? void 0 : w.platform),
                   t = e.length,
-                  s = b.length - t;
-                if ((v(!1), 0 === t)) {
+                  a = b.length - t;
+                if ((j(!1), 0 === t)) {
                   S({
                     stage: 'error',
                     percent: 0,
@@ -6511,46 +7102,46 @@
                   });
                   return;
                 }
-                (A(e[0]),
+                (T(e[0]),
                   L(null),
                   S({
                     stage: 'ready',
                     percent: 100,
                     message:
-                      s > 0
-                        ? ''.concat(t, ' job(s) created, ').concat(s, ' failed to submit')
+                      a > 0
+                        ? ''.concat(t, ' job(s) created, ').concat(a, ' failed to submit')
                         : ''.concat(t, ' import job(s) created successfully'),
                   }),
                   p('complete'));
                 return;
               }
-              let t = b[0];
+              let l = b[0];
               console.log(
                 '[ChatImportModal] Uploading file: '
-                  .concat(t.name, ' (')
-                  .concat((t.size / 1024 / 1024).toFixed(2), ' MB)')
+                  .concat(l.name, ' (')
+                  .concat((l.size / 1024 / 1024).toFixed(2), ' MB)')
               );
-              let s = await x.upload(t, e);
-              if (!s.success || !s.jobId) {
-                (console.error('[ChatImportModal] Chunked upload failed:', s.error),
-                  v(!1),
-                  alert('Failed to upload file: '.concat(s.error || 'Unknown error')));
+              let r = await x.upload(l, a);
+              if (!r.success || !r.jobId) {
+                (console.error('[ChatImportModal] Chunked upload failed:', r.error),
+                  j(!1),
+                  alert('Failed to upload file: '.concat(r.error || 'Unknown error')));
                 return;
               }
               (console.log(
                 '[ChatImportModal] Chunked upload complete, import job created:',
-                s.jobId
+                r.jobId
               ),
-                A(s.jobId),
+                T(r.jobId),
                 L(null),
-                (0, tc.Vo)(
-                  'Import job created via chunked upload: '.concat(t.name),
+                (0, tg.Vo)(
+                  'Import job created via chunked upload: '.concat(l.name),
                   'import.jobCreated',
-                  { jobId: s.jobId, fileName: t.name, fileSize: t.size, uploadMethod: 'chunked' }
+                  { jobId: r.jobId, fileName: l.name, fileSize: l.size, uploadMethod: 'chunked' }
                 ),
                 console.log(
                   '[ChatImportModal] Import job '.concat(
-                    s.jobId,
+                    r.jobId,
                     ' created. Tracking progress via SSE...'
                   )
                 ),
@@ -6558,13 +7149,13 @@
                   stage: 'analyzing',
                   percent: 10,
                   message: 'Chunked upload complete. Import processing started... (Job ID: '.concat(
-                    s.jobId.substring(0, 8),
+                    r.jobId.substring(0, 8),
                     '...)'
                   ),
                 }));
             } catch (e) {
               (console.error('[ChatImportModal] Import error:', e),
-                v(!1),
+                j(!1),
                 S({
                   stage: 'error',
                   percent: 0,
@@ -6573,7 +7164,7 @@
                 alert('Import failed: '.concat(e instanceof Error ? e.message : 'Unknown error')));
             }
           },
-          em = async (e) => {
+          eg = async (e) => {
             try {
               console.log('[ChatImportModal] Applying duplicate decisions:', e);
               let t = Array.from(e.entries()).map((e) => {
@@ -6596,13 +7187,13 @@
                   percent: 90,
                   message: 'Applying '.concat(t.length, ' duplicate decisions...'),
                 }),
-                !T)
+                !D)
               )
                 throw Error('Cannot apply duplicate decisions without an active import job ID');
-              let s = await (0, eD.tN)(t, T);
+              let s = await (0, e_.tN)(t, D);
               if (
                 (console.log('[ChatImportModal] Decisions applied:', s),
-                (0, tc.Et)('Applied '.concat(s.result.applied_decisions, ' duplicate decisions'), {
+                (0, tg.Et)('Applied '.concat(s.result.applied_decisions, ' duplicate decisions'), {
                   domain: 'import',
                   operation: 'duplicateDecisionsApplied',
                   metadata: {
@@ -6612,10 +7203,10 @@
                     actionCounts: s.result.action_counts,
                   },
                 }),
-                s.result.pending_candidates > 0 && T)
+                s.result.pending_candidates > 0 && D)
               ) {
-                let e = await (0, eD.tl)(T);
-                (D(e.groups),
+                let e = await (0, e_.tl)(D);
+                (Z(e.groups),
                   S({
                     stage: 'ready',
                     percent: 100,
@@ -6627,7 +7218,7 @@
                   p('review'));
                 return;
               }
-              (await X(),
+              (await Q(),
                 S({ stage: 'ready', percent: 100, message: s.result.message }),
                 p('complete'),
                 setTimeout(() => {
@@ -6668,7 +7259,7 @@
                     children: [
                       (0, a.jsx)('div', {
                         className: 'p-2 bg-purple-600/20 rounded-lg',
-                        children: (0, a.jsx)(eA.Z, { className: 'w-6 h-6 text-purple-400' }),
+                        children: (0, a.jsx)(eF.Z, { className: 'w-6 h-6 text-purple-400' }),
                       }),
                       (0, a.jsxs)('div', {
                         children: [
@@ -6685,7 +7276,7 @@
                                 case 'select':
                                   return 'Select chat export files to import';
                                 case 'processing':
-                                  return T
+                                  return D
                                     ? 'Import job in progress...'
                                     : 'Processing your files...';
                                 case 'config':
@@ -6707,27 +7298,27 @@
                     onClick: o,
                     className: 'p-2 hover:bg-slate-800 rounded-lg transition-colors',
                     'aria-label': 'Close import modal',
-                    children: (0, a.jsx)(el.Z, { className: 'w-5 h-5 text-slate-400' }),
+                    children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5 text-slate-400' }),
                   }),
                 ],
               }),
               'review' === m
                 ? (0, a.jsx)('div', {
                     className: 'flex-1 flex flex-col min-h-0',
-                    children: (0, a.jsx)(tn, { groups: Z, onReviewComplete: em, onCancel: o }),
+                    children: (0, a.jsx)(tm, { groups: M, onReviewComplete: eg, onCancel: o }),
                   })
                 : (0, a.jsxs)('div', {
                     className: 'p-6',
                     children: [
-                      'select' === m && (0, a.jsx)(eF, { onFilesSelected: ed, files: b }),
+                      'select' === m && (0, a.jsx)(eR, { onFilesSelected: em, files: b }),
                       'processing' === m &&
                         (0, a.jsxs)('div', {
                           className: 'space-y-4',
                           children: [
-                            (0, a.jsx)(eY, {
+                            (0, a.jsx)(e$, {
                               platformDetection: w,
                               progress: C,
-                              runtimeStats: ei,
+                              runtimeStats: ed,
                               onPause: x.pause,
                               onResume: x.resume,
                               isPaused: x.isPaused,
@@ -6805,7 +7396,7 @@
                                       className: 'text-sm font-semibold text-slate-300',
                                       children: 'Import Presets',
                                     }),
-                                    q &&
+                                    K &&
                                       (0, a.jsx)('span', {
                                         className: 'text-xs text-slate-500',
                                         children: 'Loading...',
@@ -6828,7 +7419,7 @@
                                             let t = e.target.value;
                                             U(t);
                                             let s = O.find((e) => e.id === t);
-                                            K((null == s ? void 0 : s.name) || '');
+                                            V((null == s ? void 0 : s.name) || '');
                                           },
                                           className:
                                             'w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-slate-200',
@@ -6858,7 +7449,7 @@
                                         (0, a.jsx)('input', {
                                           type: 'text',
                                           value: B,
-                                          onChange: (e) => K(e.target.value),
+                                          onChange: (e) => V(e.target.value),
                                           placeholder: 'My default import',
                                           className:
                                             'w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-slate-200 placeholder-slate-500',
@@ -6872,7 +7463,7 @@
                                   children: [
                                     (0, a.jsx)('button', {
                                       type: 'button',
-                                      onClick: Q,
+                                      onClick: es,
                                       disabled: !R || J,
                                       className:
                                         'px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-slate-200 transition-colors',
@@ -6880,7 +7471,7 @@
                                     }),
                                     (0, a.jsx)('button', {
                                       type: 'button',
-                                      onClick: ee,
+                                      onClick: ea,
                                       disabled: J,
                                       className:
                                         'px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-slate-200 transition-colors',
@@ -6888,7 +7479,7 @@
                                     }),
                                     (0, a.jsx)('button', {
                                       type: 'button',
-                                      onClick: et,
+                                      onClick: el,
                                       disabled: !R || J,
                                       className:
                                         'px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-slate-200 transition-colors',
@@ -6896,7 +7487,7 @@
                                     }),
                                     (0, a.jsx)('button', {
                                       type: 'button',
-                                      onClick: es,
+                                      onClick: er,
                                       disabled: !R || J,
                                       className:
                                         'px-3 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/30 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-red-300 transition-colors',
@@ -6911,11 +7502,12 @@
                                   }),
                               ],
                             }),
-                            (0, a.jsx)(e6, {
+                            (0, a.jsx)(ta, {
                               config: h,
                               onConfigChange: g,
                               platformDetection: w,
                               analysis: I,
+                              agentRuntimeEnabled: H,
                             }),
                           ],
                         }),
@@ -6943,7 +7535,7 @@
                                 ' table on the dashboard.',
                               ],
                             }),
-                            T &&
+                            D &&
                               (0, a.jsxs)('div', {
                                 className:
                                   'bg-slate-800 border border-slate-700 rounded-lg p-4 mb-6',
@@ -6954,7 +7546,7 @@
                                   }),
                                   (0, a.jsx)('code', {
                                     className: 'text-sm text-purple-400 font-mono',
-                                    children: T,
+                                    children: D,
                                   }),
                                 ],
                               }),
@@ -7021,22 +7613,22 @@
                             children: [
                               (0, a.jsxs)('button', {
                                 onClick: () => {
-                                  R ? et() : ee();
+                                  R ? el() : ea();
                                 },
                                 disabled: J || 0 === B.trim().length,
                                 className:
                                   'flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 rounded-lg transition-colors',
                                 children: [
-                                  (0, a.jsx)(eM.Z, { className: 'w-4 h-4' }),
+                                  (0, a.jsx)(eP.Z, { className: 'w-4 h-4' }),
                                   R ? 'Update Preset' : 'Save Preset',
                                 ],
                               }),
                               (0, a.jsx)('button', {
-                                onClick: ex,
-                                disabled: j,
+                                onClick: eh,
+                                disabled: v,
                                 className:
                                   'flex items-center gap-2 px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors',
-                                children: j
+                                children: v
                                   ? (0, a.jsxs)(a.Fragment, {
                                       children: [
                                         (0, a.jsx)('div', {
@@ -7048,7 +7640,7 @@
                                     })
                                   : (0, a.jsxs)(a.Fragment, {
                                       children: [
-                                        (0, a.jsx)(Y.Z, { className: 'w-4 h-4' }),
+                                        (0, a.jsx)(ee.Z, { className: 'w-4 h-4' }),
                                         'Import & Review',
                                       ],
                                     }),
@@ -7063,8 +7655,8 @@
           }),
         });
       }
-      var tj = s(3250);
-      function tv(e) {
+      var tS = s(3250);
+      function tI(e) {
         let { onSuccess: t, onError: s, boardId: r } = e,
           [n, i] = (0, l.useState)(''),
           [o, c] = (0, l.useState)('idle'),
@@ -7094,17 +7686,17 @@
             }
             (c('loading'), h(null), m(null));
             try {
-              let e = await (0, eD.$P)(n, r);
+              let e = await (0, e_.$P)(n, r);
               (m(e), c('success'), null == t || t(e));
             } catch (t) {
               let e = t instanceof Error ? t.message : 'Failed to ingest URL';
               (h(e), c('error'), null == s || s(t instanceof Error ? t : Error(e)));
             }
           }, [n, r, g, t, s]),
-          j = (0, l.useCallback)(() => {
+          v = (0, l.useCallback)(() => {
             (i(''), c('idle'), m(null), h(null));
           }, []),
-          v = (0, l.useCallback)(
+          j = (0, l.useCallback)(
             (e) => {
               'Enter' === e.key && g(n) && f();
             },
@@ -7120,7 +7712,7 @@
               children: [
                 (0, a.jsx)('div', {
                   className: 'p-4 rounded-full bg-green-500/20',
-                  children: (0, a.jsx)(ez.Z, { className: 'w-12 h-12 text-green-400' }),
+                  children: (0, a.jsx)(eV.Z, { className: 'w-12 h-12 text-green-400' }),
                 }),
                 (0, a.jsxs)('div', {
                   children: [
@@ -7233,7 +7825,7 @@
                     ],
                   }),
                 (0, a.jsx)('button', {
-                  onClick: j,
+                  onClick: v,
                   className:
                     'mt-4 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors',
                   children: 'Ingest Another URL',
@@ -7288,7 +7880,7 @@
                     children:
                       'error' === o
                         ? (0, a.jsx)(d.Z, { className: 'w-12 h-12 text-red-400' })
-                        : (0, a.jsx)(ek.Z, { className: 'w-12 h-12 text-slate-400' }),
+                        : (0, a.jsx)(eI.Z, { className: 'w-12 h-12 text-slate-400' }),
                   }),
                   (0, a.jsxs)('div', {
                     children: [
@@ -7317,7 +7909,7 @@
                                 onChange: (e) => {
                                   (i(e.target.value), 'error' === o && c('idle'));
                                 },
-                                onKeyDown: v,
+                                onKeyDown: j,
                                 placeholder: 'https://example.com/article',
                                 className:
                                   '\n                  w-full px-4 py-3 bg-slate-900 border rounded-lg text-sm\n                  placeholder-slate-500 focus:outline-none focus:ring-2\n                  '.concat(
@@ -7332,7 +7924,7 @@
                                 className:
                                   'absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-slate-700 rounded transition-colors',
                                 title: 'Paste from clipboard',
-                                children: (0, a.jsx)(tj.Z, { className: 'w-4 h-4 text-slate-400' }),
+                                children: (0, a.jsx)(tS.Z, { className: 'w-4 h-4 text-slate-400' }),
                               }),
                             ],
                           }),
@@ -7341,7 +7933,7 @@
                             disabled: !n.trim(),
                             className:
                               'px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors flex items-center gap-2',
-                            children: [(0, a.jsx)(ei.Z, { className: 'w-4 h-4' }), 'Fetch'],
+                            children: [(0, a.jsx)(ex.Z, { className: 'w-4 h-4' }), 'Fetch'],
                           }),
                         ],
                       }),
@@ -7366,7 +7958,7 @@
               }),
             });
       }
-      function tN(e) {
+      function tE(e) {
         var t;
         let { onClose: s } = e,
           [r, n] = (0, l.useState)('files'),
@@ -7399,10 +7991,10 @@
               }
             }
           },
-          j = (e) => {
+          v = (e) => {
             ('upload' === c || 'configuration' === c) && (n(e), o([]), d('upload'), b(null));
           },
-          v =
+          j =
             'url' === r
               ? ['input', 'processing', 'confirm']
               : ['upload', 'configuration', 'processing', 'confirm'],
@@ -7427,7 +8019,7 @@
                       (0, a.jsxs)('div', {
                         className: 'flex items-center gap-3',
                         children: [
-                          (0, a.jsx)(Y.Z, { className: 'w-6 h-6 text-purple-500' }),
+                          (0, a.jsx)(ee.Z, { className: 'w-6 h-6 text-purple-500' }),
                           (0, a.jsx)('h2', {
                             id: 'upload-modal-title',
                             className: 'text-xl font-bold',
@@ -7439,7 +8031,7 @@
                         onClick: s,
                         className: 'p-2 hover:bg-slate-800 rounded-lg transition-colors',
                         'aria-label': 'Close upload modal',
-                        children: (0, a.jsx)(el.Z, { className: 'w-5 h-5 text-slate-400' }),
+                        children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5 text-slate-400' }),
                       }),
                     ],
                   }),
@@ -7450,24 +8042,24 @@
                         className: 'flex gap-1',
                         children: [
                           (0, a.jsxs)('button', {
-                            onClick: () => j('files'),
+                            onClick: () => v('files'),
                             className:
                               'flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors '.concat(
                                 'files' === r
                                   ? 'bg-slate-800 text-white border-b-2 border-purple-500'
                                   : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                               ),
-                            children: [(0, a.jsx)(eA.Z, { className: 'w-4 h-4' }), 'Files'],
+                            children: [(0, a.jsx)(eF.Z, { className: 'w-4 h-4' }), 'Files'],
                           }),
                           (0, a.jsxs)('button', {
-                            onClick: () => j('url'),
+                            onClick: () => v('url'),
                             className:
                               'flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors '.concat(
                                 'url' === r
                                   ? 'bg-slate-800 text-white border-b-2 border-purple-500'
                                   : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                               ),
-                            children: [(0, a.jsx)(ek.Z, { className: 'w-4 h-4' }), 'URL'],
+                            children: [(0, a.jsx)(eI.Z, { className: 'w-4 h-4' }), 'URL'],
                           }),
                         ],
                       }),
@@ -7476,10 +8068,10 @@
                     className: 'px-6 py-4 border-b border-slate-800 bg-slate-950/30',
                     children: (0, a.jsx)('div', {
                       className: 'flex items-center justify-between max-w-2xl mx-auto',
-                      children: v.map((e, t) => {
+                      children: j.map((e, t) => {
                         let s = N === e,
-                          l = v.indexOf(N) > t,
-                          r = v.indexOf(N) >= t;
+                          l = j.indexOf(N) > t,
+                          r = j.indexOf(N) >= t;
                         return (0, a.jsxs)(
                           'div',
                           {
@@ -7498,7 +8090,7 @@
                                             : 'bg-slate-800 text-slate-500'
                                       ),
                                     children: l
-                                      ? (0, a.jsx)(ez.Z, { className: 'w-4 h-4' })
+                                      ? (0, a.jsx)(eV.Z, { className: 'w-4 h-4' })
                                       : t + 1,
                                   }),
                                   (0, a.jsx)('span', {
@@ -7509,7 +8101,7 @@
                                   }),
                                 ],
                               }),
-                              t < v.length - 1 &&
+                              t < j.length - 1 &&
                                 (0, a.jsx)('div', {
                                   className: 'flex-1 h-0.5 mx-2 '.concat(
                                     l ? 'bg-purple-600' : 'bg-slate-800'
@@ -7593,7 +8185,7 @@
                     ? (0, a.jsxs)('div', {
                         className: 'flex flex-col items-center justify-center py-12',
                         children: [
-                          (0, a.jsx)(ez.Z, { className: 'w-16 h-16 text-green-500 mb-4' }),
+                          (0, a.jsx)(eV.Z, { className: 'w-16 h-16 text-green-500 mb-4' }),
                           (0, a.jsx)('h3', {
                             className: 'text-xl font-semibold mb-2',
                             children: 'url' === r ? 'URL Ingested!' : 'Upload Complete!',
@@ -7637,7 +8229,7 @@
                           ],
                         })
                       : 'url' === r
-                        ? (0, a.jsx)(tv, {
+                        ? (0, a.jsx)(tI, {
                             onSuccess: (e) => {
                               (b(e),
                                 h(!0),
@@ -7679,7 +8271,7 @@
                                           className:
                                             'flex items-center gap-3 p-3 bg-slate-800/50 border border-slate-700 rounded-lg',
                                           children: [
-                                            (0, a.jsx)(eA.Z, {
+                                            (0, a.jsx)(eF.Z, {
                                               className: 'w-5 h-5 text-purple-400 flex-shrink-0',
                                             }),
                                             (0, a.jsxs)('div', {
@@ -7734,7 +8326,7 @@
                                       },
                                       className: 'hidden',
                                     }),
-                                    (0, a.jsx)(Y.Z, {
+                                    (0, a.jsx)(ee.Z, {
                                       className: 'w-12 h-12 text-slate-400 mx-auto mb-4',
                                     }),
                                     (0, a.jsx)('p', {
@@ -7784,7 +8376,7 @@
                                               className:
                                                 'flex items-center gap-3 p-3 bg-slate-800/50 border border-slate-700 rounded-lg',
                                               children: [
-                                                (0, a.jsx)(eA.Z, {
+                                                (0, a.jsx)(eF.Z, {
                                                   className:
                                                     'w-5 h-5 text-purple-400 flex-shrink-0',
                                                 }),
@@ -7806,7 +8398,7 @@
                                                     o((e) => e.filter((e, s) => s !== t)),
                                                   className:
                                                     'p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors',
-                                                  children: (0, a.jsx)(el.Z, {
+                                                  children: (0, a.jsx)(ec.Z, {
                                                     className: 'w-4 h-4',
                                                   }),
                                                 }),
@@ -7860,7 +8452,7 @@
                           disabled: 0 === i.length || u,
                           className:
                             'px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors flex items-center gap-2',
-                          children: [(0, a.jsx)(Y.Z, { className: 'w-4 h-4' }), 'Start Upload'],
+                          children: [(0, a.jsx)(ee.Z, { className: 'w-4 h-4' }), 'Start Upload'],
                         }),
                       'processing' === c &&
                         (0, a.jsxs)('button', {
@@ -7880,7 +8472,7 @@
           }),
         });
       }
-      function ty(e) {
+      function tM(e) {
         let { onClose: t, onSuccess: s } = e,
           [r, n] = (0, l.useState)('job'),
           i = [
@@ -7963,8 +8555,8 @@
             (0, a.jsxs)('div', {
               className: 'flex-1 overflow-hidden',
               children: [
-                'job' === r && (0, a.jsx)(tf, { onDismiss: t }),
-                'ingest' === r && (0, a.jsx)(tN, { onClose: t }),
+                'job' === r && (0, a.jsx)(tC, { onDismiss: t }),
+                'ingest' === r && (0, a.jsx)(tE, { onClose: t }),
                 'hybrid' === r && null,
                 'local' === r && null,
               ],
@@ -7972,25 +8564,25 @@
           ],
         });
       }
-      var tw = s(4915),
-        tk = s(9323),
-        tC = s(1569);
-      function tS(e) {
+      var tZ = s(4915),
+        tD = s(9323),
+        tT = s(1569);
+      function tA(e) {
         let { user: t, onClose: s, onUpdate: r } = e,
           { user: n } = (0, N.aC)(),
-          { setKeimenonMode: i } = (0, H.St)(),
+          { setKeimenonMode: i } = (0, et.St)(),
           [o, c] = (0, l.useState)(!1),
           [u, x] = (0, l.useState)(!1),
           [p, h] = (0, l.useState)(null),
           [b, f] = (0, l.useState)(!1),
-          [j, v] = (0, l.useState)({
+          [v, j] = (0, l.useState)({
             name: t.name,
             email: t.email,
             permission_level: t.permission_level,
             is_active: t.is_active,
           });
         (0, l.useEffect)(() => {
-          (v({
+          (j({
             name: t.name,
             email: t.email,
             permission_level: t.permission_level,
@@ -8005,12 +8597,12 @@
             (null == n ? void 0 : n.userId) !== t.id,
           w = (null == n ? void 0 : n.userId) === t.id,
           k = (e, t) => {
-            (v((s) => ({ ...s, [e]: t })), h(null), f(!1));
+            (j((s) => ({ ...s, [e]: t })), h(null), f(!1));
           },
           C = async () => {
             (x(!0), h(null), f(!1));
             try {
-              let e = await (0, eD.Nq)(t.id, j);
+              let e = await (0, e_.Nq)(t.id, v);
               (f(!0), c(!1), null == r || r(e.user), setTimeout(() => f(!1), 3e3));
             } catch (e) {
               (console.error('Failed to update user:', e), h(e.message || 'Failed to update user'));
@@ -8045,7 +8637,7 @@
                         onClick: s,
                         className:
                           'p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-300 transition-colors',
-                        children: (0, a.jsx)(el.Z, { className: 'w-5 h-5' }),
+                        children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5' }),
                       }),
                   ],
                 }),
@@ -8057,7 +8649,7 @@
                       className:
                         'flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm',
                       title: "View this user's keimenon",
-                      children: [(0, a.jsx)(eE.Z, { className: 'w-4 h-4' }), 'View Keimenon'],
+                      children: [(0, a.jsx)(eT.Z, { className: 'w-4 h-4' }), 'View Keimenon'],
                     }),
                     y &&
                       !o &&
@@ -8065,7 +8657,7 @@
                         onClick: () => c(!0),
                         className:
                           'flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors text-sm',
-                        children: [(0, a.jsx)(tw.Z, { className: 'w-4 h-4' }), 'Edit User'],
+                        children: [(0, a.jsx)(tZ.Z, { className: 'w-4 h-4' }), 'Edit User'],
                       }),
                     y &&
                       o &&
@@ -8073,7 +8665,7 @@
                         children: [
                           (0, a.jsxs)('button', {
                             onClick: () => {
-                              (v({
+                              (j({
                                 name: t.name,
                                 email: t.email,
                                 permission_level: t.permission_level,
@@ -8086,7 +8678,7 @@
                             disabled: u,
                             className:
                               'flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors text-sm disabled:opacity-50',
-                            children: [(0, a.jsx)(el.Z, { className: 'w-4 h-4' }), 'Cancel'],
+                            children: [(0, a.jsx)(ec.Z, { className: 'w-4 h-4' }), 'Cancel'],
                           }),
                           (0, a.jsx)('button', {
                             onClick: C,
@@ -8096,13 +8688,13 @@
                             children: u
                               ? (0, a.jsxs)(a.Fragment, {
                                   children: [
-                                    (0, a.jsx)(tk.Z, { className: 'w-4 h-4 animate-spin' }),
+                                    (0, a.jsx)(tD.Z, { className: 'w-4 h-4 animate-spin' }),
                                     'Saving...',
                                   ],
                                 })
                               : (0, a.jsxs)(a.Fragment, {
                                   children: [
-                                    (0, a.jsx)(eM.Z, { className: 'w-4 h-4' }),
+                                    (0, a.jsx)(eP.Z, { className: 'w-4 h-4' }),
                                     'Save Changes',
                                   ],
                                 }),
@@ -8127,7 +8719,7 @@
                     children: (0, a.jsxs)('div', {
                       className: 'flex items-center gap-2 text-green-300',
                       children: [
-                        (0, a.jsx)(ez.Z, { className: 'w-5 h-5' }),
+                        (0, a.jsx)(eV.Z, { className: 'w-5 h-5' }),
                         (0, a.jsx)('span', {
                           className: 'font-medium',
                           children: 'User updated successfully',
@@ -8167,7 +8759,7 @@
                     o
                       ? (0, a.jsx)('input', {
                           type: 'text',
-                          value: j.name,
+                          value: v.name,
                           onChange: (e) => k('name', e.target.value),
                           className:
                             'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500',
@@ -8181,12 +8773,12 @@
                   children: [
                     (0, a.jsxs)('label', {
                       className: 'flex items-center gap-2 text-sm font-medium text-slate-400',
-                      children: [(0, a.jsx)(tC.Z, { className: 'w-4 h-4' }), 'Email'],
+                      children: [(0, a.jsx)(tT.Z, { className: 'w-4 h-4' }), 'Email'],
                     }),
                     o
                       ? (0, a.jsx)('input', {
                           type: 'email',
-                          value: j.email,
+                          value: v.email,
                           onChange: (e) => k('email', e.target.value),
                           className:
                             'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500',
@@ -8204,7 +8796,7 @@
                     }),
                     o
                       ? (0, a.jsxs)('select', {
-                          value: j.permission_level,
+                          value: v.permission_level,
                           onChange: (e) => k('permission_level', e.target.value),
                           className:
                             'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500',
@@ -8245,9 +8837,9 @@
                     (0, a.jsxs)('label', {
                       className: 'flex items-center gap-2 text-sm font-medium text-slate-400',
                       children: [
-                        j.is_active
-                          ? (0, a.jsx)(eh.Z, { className: 'w-4 h-4' })
-                          : (0, a.jsx)(eC.Z, { className: 'w-4 h-4' }),
+                        v.is_active
+                          ? (0, a.jsx)(ev.Z, { className: 'w-4 h-4' })
+                          : (0, a.jsx)(eE.Z, { className: 'w-4 h-4' }),
                         'Status',
                       ],
                     }),
@@ -8257,7 +8849,7 @@
                           children: [
                             (0, a.jsx)('input', {
                               type: 'checkbox',
-                              checked: j.is_active,
+                              checked: v.is_active,
                               onChange: (e) => k('is_active', e.target.checked),
                               className:
                                 'w-5 h-5 rounded bg-slate-800 border-slate-700 text-purple-600 focus:ring-2 focus:ring-purple-500',
@@ -8277,10 +8869,10 @@
                             ),
                           children: t.is_active
                             ? (0, a.jsxs)(a.Fragment, {
-                                children: [(0, a.jsx)(ez.Z, { className: 'w-4 h-4' }), 'Active'],
+                                children: [(0, a.jsx)(eV.Z, { className: 'w-4 h-4' }), 'Active'],
                               })
                             : (0, a.jsxs)(a.Fragment, {
-                                children: [(0, a.jsx)(el.Z, { className: 'w-4 h-4' }), 'Inactive'],
+                                children: [(0, a.jsx)(ec.Z, { className: 'w-4 h-4' }), 'Inactive'],
                               }),
                         }),
                     (0, a.jsx)('p', {
@@ -8340,7 +8932,7 @@
                       children: [
                         (0, a.jsxs)('span', {
                           className: 'text-sm text-slate-500 flex items-center gap-2',
-                          children: [(0, a.jsx)(eg.Z, { className: 'w-4 h-4' }), 'Created'],
+                          children: [(0, a.jsx)(ej.Z, { className: 'w-4 h-4' }), 'Created'],
                         }),
                         (0, a.jsx)('span', {
                           className: 'text-sm text-white',
@@ -8431,7 +9023,7 @@
           ],
         });
       }
-      function tI(e) {
+      function t_(e) {
         let { onClose: t, onSuccess: s } = e,
           [r, n] = (0, l.useState)(!1),
           [i, o] = (0, l.useState)(null),
@@ -8519,7 +9111,7 @@
                     className: 'p-2 hover:bg-slate-800 rounded-lg transition-colors',
                     disabled: r,
                     'aria-label': 'Close create account modal',
-                    children: (0, a.jsx)(el.Z, { className: 'w-5 h-5 text-slate-400' }),
+                    children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5 text-slate-400' }),
                   }),
                 ],
               }),
@@ -8761,7 +9353,7 @@
           }),
         });
       }
-      function tE(e) {
+      function tL(e) {
         let { account: t, accounts: s = [], onClose: r, onSuccess: n } = e,
           [i, o] = (0, l.useState)({
             name: '',
@@ -8777,14 +9369,14 @@
             (e.preventDefault(), u(null), m(!0));
             try {
               let e = p ? i.accountId : t.id,
-                s = await (0, eD.r4)(e, {
+                s = await (0, e_.r4)(e, {
                   name: i.name,
                   email: i.email,
                   password: i.password,
                   permission_level: i.permissionLevel,
                   user_class: 'person',
                 });
-              ((0, tc.Et)('User created: '.concat(i.name, ' (').concat(i.email, ')'), {
+              ((0, tg.Et)('User created: '.concat(i.name, ' (').concat(i.email, ')'), {
                 domain: 'api',
                 operation: 'users.create',
                 metadata: { accountId: e, userId: s.user.id, permissionLevel: i.permissionLevel },
@@ -8819,7 +9411,7 @@
                     className:
                       'p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors',
                     'aria-label': 'Close add user modal',
-                    children: (0, a.jsx)(el.Z, { className: 'w-5 h-5' }),
+                    children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5' }),
                   }),
                 ],
               }),
@@ -8975,8 +9567,8 @@
           }),
         });
       }
-      var tZ = s(7051);
-      function tD() {
+      var tF = s(7051);
+      function tP() {
         let { user: e } = (0, N.aC)(),
           [t, s] = (0, l.useState)([]),
           [a, r] = (0, l.useState)(!0),
@@ -8990,7 +9582,7 @@
             (async () => {
               try {
                 (r(!0), i(null));
-                let { accounts: e } = await (0, eD.T8)(),
+                let { accounts: e } = await (0, e_.T8)(),
                   t = e.filter((e) => 'client' === e.account_type && !e.mode_service),
                   a = e.filter((e) => !0 === e.mode_service),
                   l = [
@@ -9000,15 +9592,15 @@
                       icon: b.Z,
                       badge: t.length,
                       badgeColor: 'blue',
-                      children: t.map((e) => tT(e)),
+                      children: t.map((e) => tO(e)),
                     },
                     {
                       id: 'debug-accounts',
                       label: 'Debug Accounts',
-                      icon: tZ.Z,
+                      icon: tF.Z,
                       badge: a.length,
                       badgeColor: 'yellow',
-                      children: a.map((e) => tT(e)),
+                      children: a.map((e) => tO(e)),
                     },
                   ];
                 s(l);
@@ -9040,10 +9632,10 @@
           { treeData: t, loading: a, error: n }
         );
       }
-      function tT(e) {
+      function tO(e) {
         let t = b.Z;
         'business' === e.account_class
-          ? (t = eI.Z)
+          ? (t = eD.Z)
           : 'professional' === e.account_class && (t = p.Z);
         let s = 'slate';
         return (
@@ -9081,14 +9673,14 @@
           }
         );
       }
-      var tA = s(7022);
-      let tM = 'keimenon_token';
-      function t_(e) {
-        let t = ea.Z;
+      var tz = s(7022);
+      let tR = 'keimenon_token';
+      function tU(e) {
+        let t = eo.Z;
         'Folder' === e.kind
-          ? (t = tA.Z)
+          ? (t = tz.Z)
           : 'smart' === e.group_kind
-            ? (t = G.Z)
+            ? (t = H.Z)
             : 'cluster' === e.group_kind && (t = R.Z);
         let s = 'slate';
         return (
@@ -9103,9 +9695,9 @@
           }
         );
       }
-      async function tL(e) {
+      async function tB(e) {
         try {
-          let t = localStorage.getItem(tM);
+          let t = localStorage.getItem(tR);
           if (!t) throw Error('Not authenticated');
           let s = await fetch(''.concat(_.CT, '/api/v1/groups/').concat(e), {
             headers: { Authorization: 'Bearer '.concat(t), 'Content-Type': 'application/json' },
@@ -9114,7 +9706,7 @@
             let e = await s.json().catch(() => ({}));
             throw Error(e.error || 'HTTP '.concat(s.status));
           }
-          return ((await s.json()).children || []).map((e) => t_(e));
+          return ((await s.json()).children || []).map((e) => tU(e));
         } catch (t) {
           throw (
             console.error('Failed to fetch folder children:', t),
@@ -9135,10 +9727,10 @@
           );
         }
       }
-      async function tF(e) {
+      async function tV(e) {
         let t = arguments.length > 1 && void 0 !== arguments[1] && arguments[1];
         try {
-          let s = localStorage.getItem(tM);
+          let s = localStorage.getItem(tR);
           if (!s) throw Error('Not authenticated');
           let a = ''
               .concat(_.CT, '/api/v1/groups/')
@@ -9151,7 +9743,8 @@
             let e = await l.json().catch(() => ({}));
             throw Error(e.error || 'HTTP '.concat(l.status));
           }
-          return (await l.json()).node_ids || [];
+          let r = await l.json();
+          return { nodeIds: r.node_ids || [], nodes: r.nodes || [], edges: r.edges || [] };
         } catch (s) {
           throw (
             console.error('Failed to fetch group members:', s),
@@ -9173,44 +9766,44 @@
           );
         }
       }
-      var tP = s(3502),
-        tO = s(113),
-        tz = s(9419),
-        tR = s(1026),
-        tU = s(1733),
-        tB = s(6085),
-        tK = s(3447),
-        tq = s(4078),
-        tV = s(324),
-        tJ = s(670);
-      function tG(e) {
+      var tK = s(3502),
+        tq = s(113),
+        tJ = s(9419),
+        tG = s(1026),
+        tW = s(1733),
+        tY = s(6085),
+        tH = s(3447),
+        tX = s(4078),
+        tQ = s(324),
+        t$ = s(670);
+      function t0(e) {
         return (
           {
-            Settings: j.Z,
-            Palette: tP.Z,
-            LayoutGrid: tO.Z,
+            Settings: v.Z,
+            Palette: tK.Z,
+            LayoutGrid: tq.Z,
             Building2: b.Z,
-            Database: W.Z,
-            Plug: tz.Z,
-            Bell: tR.Z,
+            Database: X.Z,
+            Plug: tJ.Z,
+            Bell: tG.Z,
             Shield: m.Z,
-            Download: tU.Z,
-            Wrench: tZ.Z,
+            Download: tW.Z,
+            Wrench: tF.Z,
             User: g.Z,
             Users: f.Z,
-            Lock: tB.Z,
-            Key: tK.Z,
-            Mail: tC.Z,
-            Globe: tq.Z,
+            Lock: tY.Z,
+            Key: tH.Z,
+            Mail: tT.Z,
+            Globe: tX.Z,
             Zap: p.Z,
-            Clock: ec.Z,
-            File: tV.Z,
-            Folder: tA.Z,
-            FolderOpen: tJ.Z,
-          }[e] || j.Z
+            Clock: ep.Z,
+            File: tQ.Z,
+            Folder: tz.Z,
+            FolderOpen: t$.Z,
+          }[e] || v.Z
         );
       }
-      class tW {
+      class t4 {
         static get(e) {
           return 'settings' === e.keimenonMode
             ? this.getSettingsModel(e)
@@ -9262,7 +9855,7 @@
           };
         }
       }
-      function tY(e) {
+      function t1(e) {
         var t, s;
         let {
             side: r,
@@ -9287,13 +9880,13 @@
             children:
               'left' === r
                 ? (0, a.jsx)(n.Z, { className: 'w-4 h-4 text-slate-500' })
-                : (0, a.jsx)(et.Z, { className: 'w-4 h-4 text-slate-500' }),
+                : (0, a.jsx)(en.Z, { className: 'w-4 h-4 text-slate-500' }),
           });
         if ('left' === r) {
           let { user: e } = (0, N.aC)(),
-            { shellMode: t, keimenonMode: s } = (0, H.St)(),
+            { shellMode: t, keimenonMode: s } = (0, et.St)(),
             { operating: r, switchAccount: n } = (0, y.B)(),
-            { treeData: d, loading: u } = tD(),
+            { treeData: d, loading: u } = tP(),
             { treeData: x, loading: m } = (function () {
               let { user: e } = (0, N.aC)(),
                 [t, s] = (0, l.useState)([]),
@@ -9308,7 +9901,7 @@
                   (async () => {
                     try {
                       (r(!0), i(null));
-                      let e = localStorage.getItem(tM);
+                      let e = localStorage.getItem(tR);
                       if (!e) throw Error('Not authenticated');
                       let t = await fetch(''.concat(_.CT, '/api/v1/groups'), {
                         headers: {
@@ -9320,7 +9913,7 @@
                         let e = await t.json().catch(() => ({}));
                         throw Error(e.error || 'HTTP '.concat(t.status));
                       }
-                      let a = ((await t.json()).groups || []).map((e) => t_(e));
+                      let a = ((await t.json()).groups || []).map((e) => tU(e));
                       s(a);
                     } catch (t) {
                       (console.error('Failed to fetch groups tree:', t),
@@ -9353,7 +9946,7 @@
                     if (e)
                       try {
                         (r(!0), i(null));
-                        let e = localStorage.getItem(tM);
+                        let e = localStorage.getItem(tR);
                         if (!e) throw Error('Not authenticated');
                         let t = await fetch(''.concat(_.CT, '/api/v1/groups'), {
                           headers: {
@@ -9365,7 +9958,7 @@
                           let e = await t.json().catch(() => ({}));
                           throw Error(e.error || 'HTTP '.concat(t.status));
                         }
-                        let a = ((await t.json()).groups || []).map((e) => t_(e));
+                        let a = ((await t.json()).groups || []).map((e) => tU(e));
                         s(a);
                       } catch (t) {
                         (console.error('Failed to refetch groups tree:', t),
@@ -9411,13 +10004,13 @@
                     }
                     try {
                       (a(!0), n(null));
-                      let { data: e } = await eD.x1.get('/api/v1/settings/registry/all');
+                      let { data: e } = await e_.x1.get('/api/v1/settings/registry/all');
                       if (!e.success || !e.registry) throw Error('Invalid registry response');
                       let s = e.registry
                         .sort((e, t) => e.order - t.order)
                         .map((e) =>
                           (function (e) {
-                            let t = tG(e.icon);
+                            let t = t0(e.icon);
                             return {
                               id: 'category_'.concat(e.id),
                               label: e.label,
@@ -9426,7 +10019,7 @@
                                 .sort((e, t) => e.order - t.order)
                                 .map((t) =>
                                   (function e(t, s) {
-                                    let a = t.icon ? tG(t.icon) : void 0;
+                                    let a = t.icon ? t0(t.icon) : void 0;
                                     return t.subsections && t.subsections.length > 0
                                       ? {
                                           id: 'section_'.concat(s, '_').concat(t.id),
@@ -9508,15 +10101,16 @@
                 { tree: e, loading: s, error: r }
               );
             })(),
-            [j, v] = (0, l.useState)(x),
+            [v, j] = (0, l.useState)(x),
             [w, k] = (0, l.useState)(new Set()),
             [C, S] = (0, l.useState)(!1),
-            [I, Z] = (0, l.useState)(new Set()),
-            [D, T] = (0, l.useState)(null),
-            A = (0, M.O)((e) => e.setFilteredNodeIds),
-            L = (0, M.O)((e) => e.clearSelection),
-            F = (0, M.O)((e) => e.selectNode),
-            { groupIds: P } = (function (e) {
+            [I, M] = (0, l.useState)(new Set()),
+            [Z, D] = (0, l.useState)(null),
+            T = (0, A.O)((e) => e.setFilteredNodeIds),
+            L = (0, A.O)((e) => e.clearSelection),
+            F = (0, A.O)((e) => e.selectNode),
+            P = (0, A.O)((e) => e.hydrateGraphSubset),
+            { groupIds: O } = (function (e) {
               let [t, s] = (0, l.useState)(new Set()),
                 [a, r] = (0, l.useState)([]),
                 [n, i] = (0, l.useState)(!1),
@@ -9559,15 +10153,15 @@
                 }, [d]),
                 { groupIds: t, groups: a, loading: n, error: o }
               );
-            })(Array.from((0, M.O)((e) => e.selectedNodeIds))),
+            })(Array.from((0, A.O)((e) => e.selectedNodeIds))),
             {
-              mode: O,
-              title: z,
-              searchPlaceholder: R,
-              emptyMessage: U,
-              data: B,
+              mode: z,
+              title: R,
+              searchPlaceholder: U,
+              emptyMessage: B,
+              data: V,
               showCreateButton: K,
-            } = tW.get({
+            } = t4.get({
               shellMode: t,
               keimenonMode: s,
               operatingMode: r.mode,
@@ -9583,26 +10177,26 @@
             q = async (e, s) => {
               var a, l, r;
               if (
-                ((0, tc.bK)('Navigation item selected', 'keimenon.navigation.select', {
+                ((0, tg.bK)('Navigation item selected', 'keimenon.navigation.select', {
                   nodeId: e.id,
-                  navMode: O,
+                  navMode: z,
                   shellMode: t,
                 }),
-                'accounts' === O &&
+                'accounts' === z &&
                   (null === (a = e.metadata) || void 0 === a ? void 0 : a.accountId))
               ) {
                 let t = e.metadata.accountId,
                   a = e.metadata.accountType,
                   l = e.metadata.serviceMode;
                 if (s && (s.ctrlKey || s.metaKey)) {
-                  (Z((t) => {
+                  (M((t) => {
                     let s = new Set(t);
                     return (s.has(e.id) ? s.delete(e.id) : s.add(e.id), s);
                   }),
-                    T(e.id));
+                    D(e.id));
                   return;
                 }
-                if (s && s.shiftKey && D) {
+                if (s && s.shiftKey && Z) {
                   let t = [],
                     s = (e) => {
                       e.forEach((e) => {
@@ -9613,21 +10207,21 @@
                       });
                     };
                   s(d);
-                  let a = t.findIndex((e) => e.id === D),
+                  let a = t.findIndex((e) => e.id === Z),
                     l = t.findIndex((t) => t.id === e.id);
                   -1 !== a &&
                     -1 !== l &&
-                    Z(new Set(t.slice(Math.min(a, l), Math.max(a, l) + 1).map((e) => e.id)));
+                    M(new Set(t.slice(Math.min(a, l), Math.max(a, l) + 1).map((e) => e.id)));
                   return;
                 }
-                (Z(new Set()),
-                  T(e.id),
+                (M(new Set()),
+                  D(e.id),
                   n(t, 'crm', { accountType: a, accountName: e.label, serviceMode: l }));
               }
               if (
-                ('settings' === O &&
+                ('settings' === z &&
                   (c && c(e.id),
-                  (0, tc.bK)(
+                  (0, tg.bK)(
                     'Settings navigation item selected',
                     'keimenon.navigation.settingsSection',
                     {
@@ -9635,13 +10229,13 @@
                       sectionId: null === (l = e.metadata) || void 0 === l ? void 0 : l.sectionId,
                     }
                   )),
-                'groups' === O)
+                'groups' === z)
               ) {
                 if ((null === (r = e.metadata) || void 0 === r ? void 0 : r.kind) === 'Folder') {
                   if (!e.children || 0 === e.children.length) {
                     k((t) => new Set(t).add(e.id));
                     try {
-                      let t = await tL(e.id),
+                      let t = await tB(e.id),
                         s = (a) =>
                           a.map((a) =>
                             a.id === e.id
@@ -9650,7 +10244,7 @@
                                 ? { ...a, children: s(a.children) }
                                 : a
                           );
-                      v(s(j));
+                      j(s(v));
                     } catch (s) {
                       let t = s instanceof Error ? s : Error(String(s));
                       E.I.capture(t, {
@@ -9667,14 +10261,16 @@
                   }
                 } else
                   try {
-                    let t = await tF(e.id);
-                    ((0, tc.bK)('Fetched group members', 'keimenon.navigation.groupMembers', {
+                    let t = await tV(e.id),
+                      s = t.nodeIds;
+                    ((0, tg.bK)('Fetched group members', 'keimenon.navigation.groupMembers', {
                       groupId: e.id,
-                      memberCount: t.length,
+                      memberCount: s.length,
                     }),
-                      A(t),
+                      (t.nodes.length > 0 || t.edges.length > 0) && P(t.nodes, t.edges),
+                      T(s),
                       L(),
-                      t.forEach((e) => F(e, !0)),
+                      s.forEach((e) => F(e, !0)),
                       window.setTimeout(() => {
                         null == b || b();
                       }, 0));
@@ -9705,42 +10301,42 @@
                         children: [
                           (0, a.jsx)('h2', {
                             className: 'text-sm font-semibold text-slate-300',
-                            children: z,
+                            children: R,
                           }),
                           (0, a.jsxs)('div', {
                             className: 'flex items-center gap-1',
                             children: [
                               K &&
-                                'accounts' === O &&
+                                'accounts' === z &&
                                 (0, a.jsx)('button', {
                                   onClick: () => S(!0),
                                   className:
                                     'p-1 hover:bg-slate-800 rounded text-purple-400 hover:text-purple-300',
                                   title: 'Create Account',
-                                  children: (0, a.jsx)(es.Z, { className: 'w-4 h-4' }),
+                                  children: (0, a.jsx)(ei.Z, { className: 'w-4 h-4' }),
                                 }),
                               (0, a.jsx)('button', {
                                 onClick: o,
                                 className:
                                   'p-1 hover:bg-slate-800 rounded text-slate-500 hover:text-slate-300',
-                                children: (0, a.jsx)(et.Z, { className: 'w-4 h-4' }),
+                                children: (0, a.jsx)(en.Z, { className: 'w-4 h-4' }),
                               }),
                             ],
                           }),
                         ],
                       }),
-                      (0, a.jsx)(er, {
-                        mode: O,
-                        data: B,
-                        selectedId: 'accounts' === O ? r.accountId : void 0,
-                        selectedIds: 'accounts' === O ? I : 'groups' === O ? P : void 0,
-                        multiSelect: 'accounts' === O || 'groups' === O,
+                      (0, a.jsx)(ed, {
+                        mode: z,
+                        data: V,
+                        selectedId: 'accounts' === z ? r.accountId : void 0,
+                        selectedIds: 'accounts' === z ? I : 'groups' === z ? O : void 0,
+                        multiSelect: 'accounts' === z || 'groups' === z,
                         onSelect: q,
-                        searchPlaceholder: R,
-                        emptyMessage: U,
+                        searchPlaceholder: U,
+                        emptyMessage: B,
                       }),
                       C &&
-                        (0, a.jsx)(tI, {
+                        (0, a.jsx)(t_, {
                           onClose: () => S(!1),
                           onSuccess: () => {
                             S(!1);
@@ -9752,25 +10348,25 @@
               })
             : f;
         }
-        let { keimenonMode: j, shellMode: v } = (0, H.St)(),
+        let { keimenonMode: v, shellMode: j } = (0, et.St)(),
           { operating: w } = (0, y.B)(),
-          { treeData: k } = tD(),
-          C = (0, M.O)((e) => e.selectedNode),
-          S = (0, M.O)((e) => e.selectedNodeIds),
-          I = (0, M.O)((e) => e.nodes),
-          Z = (0, M.O)((e) => e.deselectNode),
-          D = (0, M.O)((e) => e.clearSelection),
-          T = (0, M.O)((e) => e.openDetailPanel),
-          A = (0, M.O)((e) => e.setFilteredNodeIds),
+          { treeData: k } = tP(),
+          C = (0, A.O)((e) => e.selectedNode),
+          S = (0, A.O)((e) => e.selectedNodeIds),
+          I = (0, A.O)((e) => e.nodes),
+          M = (0, A.O)((e) => e.deselectNode),
+          Z = (0, A.O)((e) => e.clearSelection),
+          D = (0, A.O)((e) => e.openDetailPanel),
+          T = (0, A.O)((e) => e.setFilteredNodeIds),
           [L, F] = (0, l.useState)(!1),
           [P, O] = (0, l.useState)([]),
           [z, R] = (0, l.useState)(null),
           [U, B] = (0, l.useState)([]),
-          K = u || z,
-          q = (e) => {
-            (K && K !== e && B([...U, K]), x ? x(e) : R(e));
+          V = u || z,
+          K = (e) => {
+            (V && V !== e && B([...U, V]), x ? x(e) : R(e));
           },
-          V = w.accountId
+          q = w.accountId
             ? ((e) => {
                 let t = (s) => {
                   for (let l of s) {
@@ -9798,13 +10394,25 @@
                 return t(k);
               })(w.accountId)
             : null,
-          J = V ? [V] : [],
+          J = q ? [q] : [],
           G = (e) => {
             (O((t) => (t.includes(e) ? t : [...t, e])),
-              q('scope-builder'),
-              (0, tc.bK)('Added node to scope', 'keimenon.scope.add', { nodeId: e }));
+              K('scope-builder'),
+              (0, tg.bK)('Added node to scope', 'keimenon.scope.add', { nodeId: e }));
           },
           W = (e) => {
+            var t, s;
+            return (0, eM.F)(
+              {
+                id: e.id,
+                kind: e.kind || e.type,
+                label: null === (t = e.data) || void 0 === t ? void 0 : t.label,
+                ...((null === (s = e.data) || void 0 === s ? void 0 : s.metadata) || {}),
+              },
+              48
+            );
+          },
+          Y = (e) => {
             O((t) => t.filter((t) => t !== e));
           };
         return i
@@ -9837,18 +10445,18 @@
                     (0, a.jsx)('div', {
                       className: 'flex-1 overflow-hidden',
                       children:
-                        'user-detail' === K && m
-                          ? (0, a.jsx)(tS, {
+                        'user-detail' === V && m
+                          ? (0, a.jsx)(tA, {
                               user: m,
                               onClose: () => {
                                 (R(null), B([]), null == x || x(void 0));
                               },
                               onUpdate: p,
                             })
-                          : 'import-flow' === K
+                          : 'import-flow' === V
                             ? (0, a.jsx)(a.Fragment, {
                                 children: _.yD
-                                  ? (0, a.jsx)(ty, {
+                                  ? (0, a.jsx)(tM, {
                                       onClose: () => {
                                         (R(null), B([]), null == x || x(void 0));
                                       },
@@ -9856,13 +10464,13 @@
                                         null == g || g();
                                       },
                                     })
-                                  : (0, a.jsx)(tf, {
+                                  : (0, a.jsx)(tC, {
                                       onDismiss: () => {
                                         (R(null), B([]), null == x || x(void 0));
                                       },
                                     }),
                               })
-                            : 'scope-builder' === K
+                            : 'scope-builder' === V
                               ? (0, a.jsxs)('div', {
                                   className: 'h-full flex flex-col',
                                   children: [
@@ -9896,8 +10504,7 @@
                                                 'Add nodes from selection actions to build a scoped view.',
                                             })
                                           : P.map((e) => {
-                                              var t;
-                                              let s = I.find((t) => t.id === e);
+                                              let t = I.find((t) => t.id === e);
                                               return (0, a.jsxs)(
                                                 'div',
                                                 {
@@ -9910,13 +10517,7 @@
                                                         (0, a.jsx)('p', {
                                                           className:
                                                             'text-xs text-slate-200 truncate',
-                                                          children:
-                                                            (null == s
-                                                              ? void 0
-                                                              : null === (t = s.data) ||
-                                                                  void 0 === t
-                                                                ? void 0
-                                                                : t.label) || e,
+                                                          children: t ? W(t) : 'Node',
                                                         }),
                                                         (0, a.jsx)('p', {
                                                           className:
@@ -9926,7 +10527,7 @@
                                                       ],
                                                     }),
                                                     (0, a.jsx)('button', {
-                                                      onClick: () => W(e),
+                                                      onClick: () => Y(e),
                                                       className:
                                                         'text-xs text-slate-400 hover:text-red-300',
                                                       children: 'Remove',
@@ -9942,7 +10543,7 @@
                                       children: [
                                         (0, a.jsx)('button', {
                                           onClick: () => {
-                                            (A(P.length > 0 ? P : null),
+                                            (T(P.length > 0 ? P : null),
                                               P.length > 0 && (null == b || b()));
                                           },
                                           className:
@@ -9951,7 +10552,7 @@
                                         }),
                                         (0, a.jsx)('button', {
                                           onClick: () => {
-                                            (O([]), A(null));
+                                            (O([]), T(null));
                                           },
                                           className:
                                             'px-3 py-2 text-sm bg-slate-800 hover:bg-slate-700 text-slate-200 rounded',
@@ -9961,9 +10562,9 @@
                                     }),
                                   ],
                                 })
-                              : 'settings' === j
-                                ? (0, a.jsx)(ed, { selectedControlId: d || null })
-                                : 'admin' === v && J.length > 1
+                              : 'settings' === v
+                                ? (0, a.jsx)(eh, { selectedControlId: d || null })
+                                : 'admin' === j && J.length > 1
                                   ? (0, a.jsxs)(a.Fragment, {
                                       children: [
                                         (0, a.jsx)('div', {
@@ -10015,7 +10616,7 @@
                                           }),
                                         }),
                                         L &&
-                                          (0, a.jsx)(tE, {
+                                          (0, a.jsx)(tL, {
                                             account: J[0],
                                             accounts: J,
                                             onClose: () => F(!1),
@@ -10025,13 +10626,13 @@
                                           }),
                                       ],
                                     })
-                                  : 'admin' === v && V
+                                  : 'admin' === j && q
                                     ? (0, a.jsxs)(a.Fragment, {
                                         children: [
-                                          (0, a.jsx)(eT, { account: V, onCreateUser: () => F(!0) }),
+                                          (0, a.jsx)(eL, { account: q, onCreateUser: () => F(!0) }),
                                           L &&
-                                            (0, a.jsx)(tE, {
-                                              account: V,
+                                            (0, a.jsx)(tL, {
+                                              account: q,
                                               onClose: () => F(!1),
                                               onSuccess: () => {
                                                 F(!1);
@@ -10040,19 +10641,19 @@
                                         ],
                                       })
                                     : S.size > 1
-                                      ? (0, a.jsx)(eS, {
+                                      ? (0, a.jsx)(eZ, {
                                           selectedNodes: I.filter((e) => S.has(e.id)),
-                                          onRemoveFromSelection: (e) => Z(e),
-                                          onClearAll: () => D(),
-                                          onViewDetails: (e) => T(e),
+                                          onRemoveFromSelection: (e) => M(e),
+                                          onClearAll: () => Z(),
+                                          onViewDetails: (e) => D(e),
                                           onAddToScope: (e) => {
                                             G(e);
                                           },
                                           onSequester: (e) => {
                                             (async () => {
                                               try {
-                                                (await (0, eD.Bk)(e, { sequester: !0 }),
-                                                  (0, tc.bK)(
+                                                (await (0, e_.Bk)(e, { sequester: !0 }),
+                                                  (0, tg.bK)(
                                                     'Node sequestered',
                                                     'keimenon.scope.sequester',
                                                     { nodeId: e }
@@ -10069,7 +10670,7 @@
                                           },
                                         })
                                       : C
-                                        ? (0, a.jsx)(ev, {
+                                        ? (0, a.jsx)(ek, {
                                             data: {
                                               nodeId: C.id,
                                               type:
@@ -10079,7 +10680,7 @@
                                                   source: 'source_doc',
                                                   code: 'code_asset',
                                                 }[C.type] || 'source_doc',
-                                              title: C.data.label || C.id.slice(0, 8),
+                                              title: W(C),
                                               details: [
                                                 { label: 'Type', value: C.type, type: 'badge' },
                                                 {
@@ -10121,7 +10722,7 @@
                                                   icon: 'copy',
                                                   onClick: () => {
                                                     (navigator.clipboard.writeText(C.id),
-                                                      (0, tc.bK)(
+                                                      (0, tg.bK)(
                                                         'Copied node ID to clipboard',
                                                         'keimenon.node.copyId',
                                                         { nodeId: C.id }
@@ -10137,7 +10738,7 @@
                                                 },
                                               ],
                                             },
-                                            onViewFullDetails: () => T(C),
+                                            onViewFullDetails: () => D(C),
                                           })
                                         : (0, a.jsx)('div', {
                                             className:
@@ -10145,7 +10746,7 @@
                                             children: (0, a.jsxs)('div', {
                                               className: 'text-center text-sm text-slate-500',
                                               children: [
-                                                (0, a.jsx)(ea.Z, {
+                                                (0, a.jsx)(eo.Z, {
                                                   className:
                                                     'w-12 h-12 mb-4 text-slate-600 mx-auto',
                                                 }),
@@ -10153,7 +10754,7 @@
                                                 (0, a.jsx)('p', {
                                                   className: 'mt-2 text-xs',
                                                   children:
-                                                    'admin' === v
+                                                    'admin' === j
                                                       ? 'Select an account to inspect'
                                                       : 'Click nodes to inspect',
                                                 }),
@@ -10167,11 +10768,11 @@
             })
           : f;
       }
-      var tH = s(5797),
-        tX = s(4116),
-        t$ = s(54);
-      let tQ = (0, l.createContext)(void 0);
-      function t0(e) {
+      var t2 = s(5797),
+        t5 = s(4116),
+        t3 = s(54);
+      let t6 = (0, l.createContext)(void 0);
+      function t8(e) {
         let { children: t } = e,
           [s, r] = (0, l.useState)([]),
           [n, i] = (0, l.useState)({ error: 0, warn: 0, info: 0, debug: 0 }),
@@ -10238,7 +10839,7 @@
             [o]
           ),
           f = (0, l.useCallback)((e) => ('json' === e ? E.I.exportJSON(o) : E.I.exportCSV(o)), [o]);
-        return (0, a.jsx)(tQ.Provider, {
+        return (0, a.jsx)(t6.Provider, {
           value: {
             errors: s,
             errorCounts: n,
@@ -10256,12 +10857,12 @@
           children: t,
         });
       }
-      function t4() {
-        let e = (0, l.useContext)(tQ);
+      function t7() {
+        let e = (0, l.useContext)(t6);
         if (!e) throw Error('useConsole must be used within ConsoleProvider');
         return e;
       }
-      function t2(e) {
+      function t9(e) {
         let { isOpen: t } = e,
           {
             errors: s,
@@ -10271,7 +10872,7 @@
             exportErrors: o,
             activeTab: c,
             setActiveTab: d,
-          } = t4(),
+          } = t7(),
           [u, x] = (0, l.useState)(''),
           [m, p] = (0, l.useState)('all'),
           [h, g] = (0, l.useState)('all');
@@ -10312,7 +10913,7 @@
                                 : 'hover:bg-slate-800/50 text-slate-400'
                             ),
                           children: [
-                            (0, a.jsx)(tH.Z, { className: 'w-4 h-4' }),
+                            (0, a.jsx)(t2.Z, { className: 'w-4 h-4' }),
                             'Console',
                             r.error > 0 &&
                               (0, a.jsx)('span', {
@@ -10331,7 +10932,7 @@
                                 : 'hover:bg-slate-800/50 text-slate-400'
                             ),
                           children: [
-                            (0, a.jsx)(ec.Z, { className: 'w-4 h-4' }),
+                            (0, a.jsx)(ep.Z, { className: 'w-4 h-4' }),
                             'Logs',
                             s.length > 0 &&
                               (0, a.jsx)('span', {
@@ -10367,7 +10968,7 @@
                                 ? 'bg-slate-800 text-white'
                                 : 'hover:bg-slate-800/50 text-slate-400'
                             ),
-                          children: [(0, a.jsx)(tX.Z, { className: 'w-4 h-4' }), 'Shortcuts'],
+                          children: [(0, a.jsx)(t5.Z, { className: 'w-4 h-4' }), 'Shortcuts'],
                         }),
                       ],
                     }),
@@ -10382,14 +10983,14 @@
                               className:
                                 'p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors',
                               title: 'Export as JSON',
-                              children: (0, a.jsx)(tU.Z, { className: 'w-4 h-4' }),
+                              children: (0, a.jsx)(tW.Z, { className: 'w-4 h-4' }),
                             }),
                             (0, a.jsx)('button', {
                               onClick: i,
                               className:
                                 'p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-red-400 transition-colors',
                               title: 'Clear all',
-                              children: (0, a.jsx)(ej.Z, { className: 'w-4 h-4' }),
+                              children: (0, a.jsx)(ew.Z, { className: 'w-4 h-4' }),
                             }),
                           ],
                         }),
@@ -10401,7 +11002,7 @@
                     className:
                       'border-b border-slate-800 px-4 py-2 flex items-center gap-3 text-sm',
                     children: [
-                      (0, a.jsx)(G.Z, { className: 'w-4 h-4 text-slate-500' }),
+                      (0, a.jsx)(H.Z, { className: 'w-4 h-4 text-slate-500' }),
                       (0, a.jsxs)('select', {
                         value: m,
                         onChange: (e) => p(e.target.value),
@@ -10442,10 +11043,10 @@
                 (0, a.jsxs)('div', {
                   className: 'flex-1 overflow-y-auto',
                   children: [
-                    'console' === c && (0, a.jsx)(t1, { errors: s }),
-                    'logs' === c && (0, a.jsx)(t5, { errors: s }),
-                    'tasks' === c && (0, a.jsx)(t3, {}),
-                    'shortcuts' === c && (0, a.jsx)(t6, {}),
+                    'console' === c && (0, a.jsx)(se, { errors: s }),
+                    'logs' === c && (0, a.jsx)(st, { errors: s }),
+                    'tasks' === c && (0, a.jsx)(ss, {}),
+                    'shortcuts' === c && (0, a.jsx)(sa, {}),
                   ],
                 }),
               ],
@@ -10492,13 +11093,13 @@
               ],
             });
       }
-      function t1(e) {
+      function se(e) {
         let { errors: t } = e;
         return 0 === t.length
           ? (0, a.jsxs)('div', {
               className: 'p-8 text-center text-slate-500',
               children: [
-                (0, a.jsx)(tH.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
+                (0, a.jsx)(t2.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
                 (0, a.jsx)('p', { children: 'No errors captured' }),
                 (0, a.jsx)('p', {
                   className: 'text-xs mt-1',
@@ -10528,9 +11129,9 @@
                         'error' === e.severity &&
                           (0, a.jsx)(d.Z, { className: 'w-4 h-4 text-red-400 mt-0.5' }),
                         'warn' === e.severity &&
-                          (0, a.jsx)(t$.Z, { className: 'w-4 h-4 text-yellow-400 mt-0.5' }),
+                          (0, a.jsx)(t3.Z, { className: 'w-4 h-4 text-yellow-400 mt-0.5' }),
                         'info' === e.severity &&
-                          (0, a.jsx)(en.Z, { className: 'w-4 h-4 text-blue-400 mt-0.5' }),
+                          (0, a.jsx)(eu.Z, { className: 'w-4 h-4 text-blue-400 mt-0.5' }),
                         (0, a.jsxs)('div', {
                           className: 'flex-1',
                           children: [
@@ -10620,13 +11221,13 @@
               }),
             });
       }
-      function t5(e) {
+      function st(e) {
         let { errors: t } = e;
         return 0 === t.length
           ? (0, a.jsxs)('div', {
               className: 'p-8 text-center text-slate-500',
               children: [
-                (0, a.jsx)(ec.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
+                (0, a.jsx)(ep.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
                 (0, a.jsx)('p', { children: 'No logs recorded' }),
               ],
             })
@@ -10672,7 +11273,7 @@
               ),
             });
       }
-      function t3() {
+      function ss() {
         return (0, a.jsxs)('div', {
           className: 'p-8 text-center text-slate-500',
           children: [
@@ -10685,7 +11286,7 @@
           ],
         });
       }
-      function t6() {
+      function sa() {
         return (0, a.jsxs)('div', {
           className: 'p-4',
           children: [
@@ -10724,162 +11325,1531 @@
           ],
         });
       }
-      var t8 = s(2878),
-        t7 = s(757);
-      function t9(e) {
-        let { width: t, height: s, jobId: r } = e,
-          n = (0, l.useRef)(null),
-          i = (0, l.useRef)(),
-          o = (0, l.useRef)([]),
-          c = (0, l.useRef)(0),
-          { jobs: d } = ti(),
-          [u, x] = (0, l.useState)(0),
-          [m, p] = (0, l.useState)(!1),
-          [h, g] = (0, l.useState)({ nodesCreated: 0, totalNodes: 0 });
-        (0, l.useEffect)(() => {
-          if (!r) {
-            p(!1);
-            return;
-          }
-          let e = d.get(r);
-          e &&
-            ('import' === e.type && 'running' === e.status
-              ? (p(!0),
-                x(e.progress.percent),
-                g({ nodesCreated: e.progress.current || 0, totalNodes: e.progress.total || 100 }))
-              : ('succeeded' === e.status || 'failed' === e.status || 'canceled' === e.status) &&
-                setTimeout(() => p(!1), 2e3));
-        }, [r, d]);
-        let b = function (e, t) {
-            let s = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : 10,
-              a = [];
-            for (let l = 0; l < s; l++) {
-              let r = (2 * Math.PI * l) / s + 0.5 * Math.random(),
-                n = 2 + 3 * Math.random();
-              a.push({
-                x: e,
-                y: t,
-                vx: Math.cos(r) * n,
-                vy: Math.sin(r) * n,
-                life: 1,
-                maxLife: 1,
-                size: 3 + 4 * Math.random(),
-                color: 'hsl('.concat(270 + 30 * Math.random(), ', 70%, 60%)'),
-                alpha: 1,
-              });
+      var sl = s(2878),
+        sr = s(612),
+        sn = s(2929),
+        si = s(7878),
+        so = s(8813);
+      let sc = new Set([
+          'AccountNode',
+          'Principal',
+          'UserNode',
+          'AgentNode',
+          'Group',
+          'Folder',
+          'Constellation',
+          'ObjectiveClaim',
+          'UnifiedDoc',
+        ]),
+        sd = new Set([
+          ...sc,
+          'Source',
+          'SourceDoc',
+          'ChatThread',
+          'ConversationThread',
+          'VerifiedSource',
+          'VerifiedClaim',
+        ]),
+        su = new Set([...sd, 'Topic', 'Phrase', 'Packet', 'CodeBlock', 'Lexeme', 'SourceSpan']),
+        sx = new Set([
+          'the',
+          'a',
+          'an',
+          'and',
+          'or',
+          'to',
+          'of',
+          'in',
+          'is',
+          'are',
+          'for',
+          'on',
+          'with',
+          'it',
+          'this',
+          'that',
+        ]),
+        sm = { L0: 240, L1: 3200, L2: 14e3, L3: 6e4 },
+        sp = { L0: 1600, L1: 14e3, L2: 6e4, L3: 18e4 },
+        sh = { L0: 0.7, L1: 0.5, L2: 0.25, L3: 0 },
+        sg = { L0: 0.6, L1: 0.25, L2: 0.05, L3: 0 };
+      function sb(e) {
+        return 'string' == typeof e ? e : e.id;
+      }
+      function sf(e) {
+        var t, s, a, l;
+        for (let r of [
+          e.mass,
+          e.weightedMass,
+          e.weighted_mass,
+          e.strength,
+          e.importance,
+          null === (t = e.metadata) || void 0 === t ? void 0 : t.mass,
+          null === (s = e.metadata) || void 0 === s ? void 0 : s.weightedMass,
+          null === (a = e.metadata) || void 0 === a ? void 0 : a.weighted_mass,
+          null === (l = e.metadata) || void 0 === l ? void 0 : l.strength,
+        ]) {
+          let e = Number(r);
+          if (Number.isFinite(e) && e >= 0) return e;
+        }
+        return 1;
+      }
+      function sv(e) {
+        var t, s, a, l;
+        for (let r of [
+          e.strength,
+          e.weight,
+          null === (t = e.data) || void 0 === t ? void 0 : t.strength,
+          null === (s = e.data) || void 0 === s ? void 0 : s.score,
+          null === (a = e.data) || void 0 === a ? void 0 : a.similarity,
+          null === (l = e.data) || void 0 === l ? void 0 : l.weight,
+        ]) {
+          let e = Number(r);
+          if (Number.isFinite(e) && e >= 0) return e;
+        }
+        return 0.5;
+      }
+      let sj = { dims: 8, axes: [0, 1, 2], sliceDim: 3, sliceCenter: 0, sliceWidth: 0.35 };
+      function sN(e) {
+        return (
+          (function (e) {
+            let t = 2166136261;
+            for (let s = 0; s < e.length; s += 1)
+              ((t ^= e.charCodeAt(s)), (t = Math.imul(t, 16777619)));
+            return t >>> 0;
+          })(e) / 4294967295
+        );
+      }
+      function sy(e) {
+        return 'number' == typeof e && Number.isFinite(e);
+      }
+      function sw(e) {
+        let t = Math.sqrt(e.reduce((e, t) => e + t * t, 0));
+        return t <= 0 ? e : e.map((e) => e / t);
+      }
+      function sk(e, t) {
+        return Number.isFinite(e) ? Math.max(0, Math.min(t - 1, Math.floor(e))) : 0;
+      }
+      function sC(e, t) {
+        var s, a, l, r, n, i;
+        let o = Math.max(3, Math.floor(t)),
+          c = (function (e) {
+            var t, s;
+            for (let a of [
+              e.embedding,
+              e.vector,
+              null === (t = e.metadata) || void 0 === t ? void 0 : t.embedding,
+              null === (s = e.metadata) || void 0 === s ? void 0 : s.vector,
+            ]) {
+              if (!Array.isArray(a)) continue;
+              let e = a.filter(sy);
+              if (e.length > 0) return e;
             }
-            o.current.push(...a);
-          },
-          f = (e, a) => {
-            if (
-              (e.clearRect(0, 0, t, s),
-              (o.current = o.current.filter(
-                (t) => (
-                  (t.x += t.vx),
-                  (t.y += t.vy),
-                  (t.vy += 0.1),
-                  (t.life -= a / 1e3),
-                  (t.alpha = t.life / t.maxLife),
-                  !(t.life <= 0) &&
-                    (e.save(),
-                    (e.globalAlpha = t.alpha),
-                    (e.fillStyle = t.color),
-                    e.beginPath(),
-                    e.arc(t.x, t.y, t.size, 0, 2 * Math.PI),
-                    e.fill(),
-                    e.restore(),
-                    !0)
-                )
-              )),
-              m && u > 0 && u < 100)
-            ) {
-              let e = Date.now();
-              e - c.current > 200 &&
-                (b(0.2 * t + Math.random() * t * 0.6, 0.3 * s + Math.random() * s * 0.4, 5),
-                (c.current = e));
-            }
-            m && j(e);
-          },
-          j = (e) => {
-            let s = t - 80;
-            ((e.fillStyle = 'rgba(30, 41, 59, 0.8)'),
-              e.fillRect(35, 10, s + 10, 24),
-              (e.fillStyle = 'rgba(71, 85, 105, 0.5)'),
-              e.fillRect(40, 20, s, 4));
-            let a = (s * u) / 100,
-              l = e.createLinearGradient(40, 20, 40 + a, 20);
-            (l.addColorStop(0, '#a855f7'),
-              l.addColorStop(1, '#ec4899'),
-              (e.fillStyle = l),
-              e.fillRect(40, 20, a, 4),
-              e.save(),
-              (e.shadowColor = '#a855f7'),
-              (e.shadowBlur = 10),
-              (e.fillStyle = '#a855f7'),
-              e.fillRect(40, 20, a, 4),
-              e.restore(),
-              (e.fillStyle = '#e2e8f0'),
-              (e.font = '12px sans-serif'),
-              (e.textAlign = 'left'),
-              e.fillText(
-                'Importing: '
-                  .concat(u.toFixed(0), '% (')
-                  .concat(h.nodesCreated, '/')
-                  .concat(h.totalNodes, ' nodes)'),
-                40,
-                5
-              ));
-          };
-        return ((0, l.useEffect)(() => {
-          if (!m) return;
-          let e = n.current;
-          if (!e) return;
-          let t = e.getContext('2d');
-          if (!t) return;
-          let s = performance.now(),
-            a = (e) => {
-              let l = e - s;
-              ((s = e), f(t, l), (i.current = requestAnimationFrame(a)));
+            return null;
+          })(e);
+        if (c && c.length >= o) return sw(c.slice(0, o));
+        let d = [],
+          u = [
+            e.mass,
+            e.strength,
+            e.frequency,
+            e.importance,
+            e.created_at,
+            e.updated_at,
+            null === (s = e.metadata) || void 0 === s ? void 0 : s.mass,
+            null === (a = e.metadata) || void 0 === a ? void 0 : a.strength,
+            null === (l = e.metadata) || void 0 === l ? void 0 : l.frequency,
+            null === (r = e.metadata) || void 0 === r ? void 0 : r.importance,
+            null === (n = e.metadata) || void 0 === n ? void 0 : n.confidence,
+            null === (i = e.metadata) || void 0 === i ? void 0 : i.similarity,
+          ].filter(sy);
+        for (let e = 0; e < u.length && d.length < o; e += 1) d.push(Number(u[e]));
+        for (; d.length < o; ) {
+          let t = d.length,
+            s = ''.concat(e.id, ':').concat(t, ':').concat(e.kind);
+          d.push(2 * sN(s) - 1);
+        }
+        return sw(d.slice(0, o));
+      }
+      function sS(e) {
+        let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 1200,
+          s = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : 900;
+        return sy(e.x) && sy(e.y)
+          ? { x: e.x, y: e.y }
+          : {
+              x: sN(''.concat(e.id, ':x:').concat(e.kind)) * t,
+              y: sN(''.concat(e.id, ':y:').concat(e.kind)) * s,
             };
-          return (
-            (i.current = requestAnimationFrame(a)),
-            () => {
-              i.current && cancelAnimationFrame(i.current);
-            }
+      }
+      function sI(e) {
+        return Number.isFinite(e) ? e : 0;
+      }
+      function sE(e, t) {
+        let s = e.x - t.x,
+          a = e.y - t.y;
+        return s * s + a * a;
+      }
+      function sM(e) {
+        return '2d' === e ? 900 : 980;
+      }
+      function sZ(e) {
+        return 'string' == typeof e ? e : e.id;
+      }
+      function sD(e) {
+        if (0 === e.length) return [0, 0, 0];
+        let t = e.reduce((e, t) => [e[0] + t[0], e[1] + t[1], e[2] + t[2]], [0, 0, 0]);
+        return [t[0] / e.length, t[1] / e.length, t[2] / e.length];
+      }
+      function sT(e) {
+        let { edgePositions: t } = e;
+        return 0 === t.length
+          ? null
+          : (0, a.jsxs)('lineSegments', {
+              children: [
+                (0, a.jsx)('bufferGeometry', {
+                  children: (0, a.jsx)('bufferAttribute', {
+                    attach: 'attributes-position',
+                    args: [t, 3],
+                  }),
+                }),
+                (0, a.jsx)('lineBasicMaterial', {
+                  color: '#64748b',
+                  transparent: !0,
+                  opacity: 0.35,
+                }),
+              ],
+            });
+      }
+      function sA(e) {
+        let { renderNodes: t, onNodeClick: s, onNodePointerDown: l } = e;
+        return (0, a.jsx)(a.Fragment, {
+          children: t.map((e) =>
+            (0, a.jsxs)(
+              'mesh',
+              {
+                position: e.position,
+                onPointerDown: (t) => l(e.node.id, t.nativeEvent),
+                onClick: (t) => s(e.node.id, t.nativeEvent, !1),
+                onDoubleClick: (t) => s(e.node.id, t.nativeEvent, !0),
+                children: [
+                  (0, a.jsx)('sphereGeometry', { args: [e.radius, 16, 16] }),
+                  (0, a.jsx)('meshStandardMaterial', {
+                    color: e.color,
+                    emissive: e.isSelected ? '#cbd5e1' : '#111827',
+                    emissiveIntensity: e.isSelected ? 0.45 : 0.15,
+                    metalness: 0.12,
+                    roughness: 0.5,
+                  }),
+                ],
+              },
+              e.node.id
+            )
+          ),
+        });
+      }
+      function s_(e) {
+        let {
+            renderLens: t,
+            interactive: s,
+            interactionLocked: r,
+            edgePositions: n,
+            renderNodes: i,
+            renderEdges: o,
+            onNodeClickInternal: c,
+            onMissedClick: d,
+            onZoomSample: u,
+            registerController: x,
+            positionById: m,
+            onEdgePick: p,
+            onMarqueeSessionChange: h,
+            onMarqueeComplete: g,
+            onDragSessionChange: b,
+            onNodeDrag: f,
+          } = e,
+          v = (0, l.useRef)(null),
+          { camera: j, gl: N, size: y } = (0, sr.D)(),
+          w = (0, l.useRef)([0, 0, 0]),
+          k = (0, l.useRef)(sM(t)),
+          C = (0, l.useRef)(0),
+          S = (0, l.useRef)(new Map()),
+          I = (0, l.useRef)(null),
+          E = (0, l.useRef)(null),
+          M = (0, l.useRef)(0),
+          Z = (0, l.useRef)(null),
+          D = (0, l.useRef)(null),
+          T = (0, l.useRef)(0);
+        (0, l.useEffect)(() => {
+          let e = new Map();
+          for (let t of i) e.set(t.node.id, t.position);
+          S.current = e;
+        }, [i]);
+        let A = (0, l.useCallback)(
+            (e, t) => {
+              let s = N.domElement.getBoundingClientRect();
+              return { x: e - s.left, y: t - s.top };
+            },
+            [N]
+          ),
+          _ = (0, l.useCallback)(
+            (e) => {
+              let t = new so.Vector3(e[0], e[1], e[2]).project(j);
+              return { x: (0.5 * t.x + 0.5) * y.width, y: (-(0.5 * t.y) + 0.5) * y.height };
+            },
+            [j, y.height, y.width]
+          ),
+          L = (0, l.useCallback)(() => {
+            let e = w.current,
+              t = k.current;
+            (j.position.set(e[0], e[1], e[2] + t),
+              v.current
+                ? (v.current.target.set(e[0], e[1], e[2]), v.current.update())
+                : j.lookAt(e[0], e[1], e[2]));
+          }, [j]),
+          F = (0, l.useCallback)(
+            (e) => {
+              let t = e.map((e) => m.get(e)).filter((e) => !!e);
+              if (0 === t.length) return;
+              let s = sD(t),
+                a = 0;
+              for (let e of t) {
+                let t = e[0] - s[0],
+                  l = e[1] - s[1],
+                  r = e[2] - s[2];
+                a = Math.max(a, Math.sqrt(t * t + l * l + r * r));
+              }
+              ((w.current = s), (k.current = Math.max(160, 3.2 * a + 220)), L());
+            },
+            [L, m]
+          ),
+          P = (0, l.useCallback)(
+            (e, t) => {
+              let a = performance.now();
+              if (a - T.current < 24) return;
+              if (((T.current = a), !s || I.current || E.current)) {
+                D.current && ((D.current = null), p({ kind: 'none', screen: { x: e, y: t } }));
+                return;
+              }
+              let l = A(e, t),
+                r = [];
+              for (let e of o) {
+                let t = S.current.get(e.sourceId),
+                  s = S.current.get(e.targetId);
+                t &&
+                  s &&
+                  r.push({ edgeId: e.edge.id, source: _(t), target: _(s), metadata: e.edge.data });
+              }
+              let n = {
+                ...(function (e, t) {
+                  let s = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : 10,
+                    a = null,
+                    l = Number.POSITIVE_INFINITY;
+                  for (let s of t) {
+                    let t = (function (e, t, s) {
+                      let a = s.x - t.x,
+                        l = s.y - t.y,
+                        r = a * a + l * l;
+                      if (r <= 1e-6) return sE(e, t);
+                      let n = Math.max(0, Math.min(1, ((e.x - t.x) * a + (e.y - t.y) * l) / r));
+                      return sE(e, { x: t.x + n * a, y: t.y + n * l });
+                    })(e, s.source, s.target);
+                    t < l && ((l = t), (a = s));
+                  }
+                  return !a || l > Math.max(1, s) * Math.max(1, s)
+                    ? { kind: 'none', screen: { x: sI(e.x), y: sI(e.y) } }
+                    : {
+                        kind: 'edge',
+                        edgeId: a.edgeId,
+                        screen: { x: sI(e.x), y: sI(e.y) },
+                        metadata: a.metadata,
+                      };
+                })(l, r, 10),
+                screen: { x: e, y: t },
+              };
+              if ('edge' === n.kind) {
+                if (D.current !== n.edgeId) {
+                  var i;
+                  ((D.current = null !== (i = n.edgeId) && void 0 !== i ? i : null), p(n));
+                } else p(n);
+              } else D.current && ((D.current = null), p(n));
+            },
+            [s, p, o, A, _]
           );
-        }, [t, s, m]),
-        m)
-          ? (0, a.jsx)('canvas', {
-              ref: n,
-              width: t,
-              height: s,
-              className: 'absolute inset-0 pointer-events-none z-10',
-              style: { opacity: m ? 1 : 0, transition: 'opacity 0.5s ease-out' },
+        ((0, l.useEffect)(() => {
+          ((w.current = [0, 0, 0]), (k.current = sM(t)), L());
+        }, [L, t]),
+          (0, l.useEffect)(() => {
+            x({
+              zoomIn: () => {
+                ((k.current = Math.max(120, 0.82 * k.current)), L());
+              },
+              zoomOut: () => {
+                ((k.current = Math.min(6400, 1.2 * k.current)), L());
+              },
+              centerView: () => {
+                ((w.current = [0, 0, 0]), (k.current = sM(t)), L());
+              },
+              setTargetById: function (e) {
+                let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 1.6,
+                  s = m.get(e);
+                s && ((w.current = s), (k.current = Math.max(120, 640 / Math.max(0.4, t))), L());
+              },
+              zoomToFitNodes: F,
+            });
+          }, [L, m, x, t, F]),
+          (0, l.useEffect)(() => {
+            let e = (e) => {
+                let t = I.current;
+                if (t && t.pointerId === e.pointerId) {
+                  let s = A(e.clientX, e.clientY),
+                    a = s.x - t.lastScreen.x,
+                    l = s.y - t.lastScreen.y;
+                  ((M.current += Math.abs(a) + Math.abs(l)), (t.lastScreen = s));
+                  let r = j.position.distanceTo(
+                      new so.Vector3(t.currentWorld[0], t.currentWorld[1], t.currentWorld[2])
+                    ),
+                    n = new so.Vector3(1, 0, 0).applyQuaternion(j.quaternion).normalize(),
+                    i = new so.Vector3(0, 1, 0).applyQuaternion(j.quaternion).normalize(),
+                    o = (function (e, t, s, a, l) {
+                      let r = s.dx * a,
+                        n = s.dy * a;
+                      if ('2d' === t) return [e[0] + r, e[1] - n, 0];
+                      if (!l) return [e[0] + r, e[1] - n, e[2]];
+                      let i = l.right.x * r + -(l.up.x * n),
+                        o = l.right.y * r + -(l.up.y * n),
+                        c = l.right.z * r + -(l.up.z * n);
+                      return [e[0] + i, e[1] + o, e[2] + c];
+                    })(t.currentWorld, t.lens, { dx: a, dy: l }, Math.max(0.18, r / 900), {
+                      right: { x: n.x, y: n.y, z: n.z },
+                      up: { x: i.x, y: i.y, z: i.z },
+                    });
+                  ((t.currentWorld = o), f(t.nodeId, o), b({ ...t }));
+                  return;
+                }
+                let s = E.current;
+                if (s && s.active) {
+                  ((s.current = A(e.clientX, e.clientY)), h({ ...s }));
+                  return;
+                }
+                P(e.clientX, e.clientY);
+              },
+              t = (e) => {
+                let t = I.current;
+                if (t && t.pointerId === e.pointerId) {
+                  (M.current > 4 && (Z.current = t.nodeId),
+                    (I.current = null),
+                    (M.current = 0),
+                    b(null));
+                  return;
+                }
+                let s = E.current;
+                s &&
+                  s.active &&
+                  ((s.current = A(e.clientX, e.clientY)),
+                  g(
+                    (function (e, t) {
+                      var s, a;
+                      let l =
+                          ((s = t.start),
+                          (a = t.current),
+                          {
+                            left: Math.min(s.x, a.x),
+                            right: Math.max(s.x, a.x),
+                            top: Math.min(s.y, a.y),
+                            bottom: Math.max(s.y, a.y),
+                          }),
+                        r = e
+                          .filter(
+                            (e) =>
+                              e.point.x >= l.left &&
+                              e.point.x <= l.right &&
+                              e.point.y >= l.top &&
+                              e.point.y <= l.bottom
+                          )
+                          .map((e) => e.nodeId);
+                      return (r.sort((e, t) => e.localeCompare(t)), r);
+                    })(
+                      i
+                        .map((e) => ({ nodeId: e.node.id, point: _(e.position) }))
+                        .filter((e) => Number.isFinite(e.point.x) && Number.isFinite(e.point.y)),
+                      s
+                    ),
+                    s.modifiers
+                  ),
+                  (E.current = null),
+                  h(null));
+              };
+            return (
+              window.addEventListener('pointermove', e),
+              window.addEventListener('pointerup', t),
+              () => {
+                (window.removeEventListener('pointermove', e),
+                  window.removeEventListener('pointerup', t));
+              }
+            );
+          }, [j, P, b, g, h, f, i, A, _]));
+        let O = (0, l.useCallback)(
+            (e) => {
+              if (!s || 0 !== e.button || I.current) return;
+              let t = A(e.clientX, e.clientY),
+                a = {
+                  active: !0,
+                  start: t,
+                  current: t,
+                  modifiers: { shift: e.shiftKey, ctrlOrMeta: e.ctrlKey || e.metaKey },
+                };
+              ((E.current = a), h(a));
+            },
+            [s, h, A]
+          ),
+          z = (0, l.useCallback)(
+            (e, a) => {
+              if (!s || 0 !== a.button || a.altKey || a.shiftKey || a.ctrlKey || a.metaKey) return;
+              let l = S.current.get(e);
+              if (!l) return;
+              let r = A(a.clientX, a.clientY),
+                n = {
+                  nodeId: e,
+                  pointerId: a.pointerId,
+                  lens: t,
+                  startScreen: r,
+                  lastScreen: r,
+                  startWorld: [...l],
+                  currentWorld: [...l],
+                };
+              ((M.current = 0), (I.current = n), b(n));
+            },
+            [s, b, t, A]
+          ),
+          R = (0, l.useCallback)(
+            (e, t, s) => {
+              if (Z.current === e) {
+                Z.current = null;
+                return;
+              }
+              c(e, t, s);
+            },
+            [c]
+          );
+        return (
+          (0, sr.F)(() => {
+            if (!v.current) return;
+            let e = v.current.object.position.distanceTo(v.current.target);
+            k.current = e;
+            let t = Math.max(0.05, Math.min(6, 820 / Math.max(1, e)));
+            Math.abs(t - C.current) > 0.03 && ((C.current = t), u(t));
+          }),
+          (0, a.jsxs)(a.Fragment, {
+            children: [
+              (0, a.jsx)('ambientLight', { intensity: 0.45 }),
+              (0, a.jsx)('pointLight', { position: [260, 220, 450], intensity: 0.65 }),
+              (0, a.jsx)('pointLight', { position: [-260, -160, 260], intensity: 0.35 }),
+              (0, a.jsx)(sT, { edgePositions: n }),
+              (0, a.jsx)(sA, { renderNodes: i, onNodeClick: R, onNodePointerDown: z }),
+              (0, a.jsx)(si.z, {
+                ref: v,
+                enablePan: s && !r,
+                enableZoom: s && !r,
+                enableRotate: s && !r && '2d' !== t,
+                minPolarAngle: '2d' === t ? Math.PI / 2 : 0.2,
+                maxPolarAngle: '2d' === t ? Math.PI / 2 : Math.PI - 0.2,
+                zoomSpeed: 0.9,
+                rotateSpeed: 0.55,
+                panSpeed: 0.9,
+                makeDefault: !0,
+              }),
+              (0, a.jsxs)('mesh', {
+                position: [0, 0, -500],
+                onPointerDown: (e) => O(e.nativeEvent),
+                onClick: (e) => {
+                  (e.stopPropagation(), d());
+                },
+                children: [
+                  (0, a.jsx)('planeGeometry', { args: [8e3, 8e3] }),
+                  (0, a.jsx)('meshBasicMaterial', { transparent: !0, opacity: 0 }),
+                ],
+              }),
+            ],
+          })
+        );
+      }
+      let sL = (0, l.forwardRef)((e, t) => {
+        let {
+            nodes: s,
+            edges: r,
+            width: n,
+            height: i,
+            renderLens: o,
+            ndConfig: c = sj,
+            focusModeEnabled: d = !1,
+            includeConnectors: u = !1,
+            pinnedNodeIds: x = [],
+            interactive: m = !0,
+            onNodeClick: p,
+            onNodeDoubleClick: h,
+            onSelectionChange: g,
+            onEdgeHover: b,
+            onLodStats: f,
+            onPinnedNodeIdsChange: v,
+            onInteractionStateChange: j,
+          } = e,
+          [N, y] = (0, l.useState)(null),
+          [w, k] = (0, l.useState)([]),
+          [C, S] = (0, l.useState)(1),
+          [I, E] = (0, l.useState)(null),
+          [M, Z] = (0, l.useState)(null),
+          [D, T] = (0, l.useState)(null),
+          [A, _] = (0, l.useState)(new Map()),
+          L = (0, l.useRef)(null);
+        (0, l.useEffect)(() => {
+          y(
+            (function () {
+              try {
+                let e = document.createElement('canvas');
+                return !!(e.getContext('webgl2') || e.getContext('webgl'));
+              } catch (e) {
+                return !1;
+              }
+            })()
+          );
+        }, []);
+        let F = (0, l.useMemo)(
+            () =>
+              s.map((e) => {
+                var t, s;
+                let a = sS(e);
+                return {
+                  ...e,
+                  x: null !== (t = e.x) && void 0 !== t ? t : a.x,
+                  y: null !== (s = e.y) && void 0 !== s ? s : a.y,
+                };
+              }),
+            [s]
+          ),
+          P = (0, l.useMemo)(() => new Set(F.map((e) => e.id)), [F]),
+          O = (0, l.useMemo)(
+            () =>
+              r.filter((e) => {
+                let t = sZ(e.source),
+                  s = sZ(e.target);
+                return P.has(t) && P.has(s);
+              }),
+            [r, P]
+          ),
+          z = (0, l.useMemo)(() => {
+            let e = new Map();
+            for (let t of O) e.set(t.id, t);
+            return e;
+          }, [O]),
+          R = 1 === w.length ? w[0] : null,
+          U = (0, l.useMemo)(
+            () =>
+              (function (e) {
+                var t;
+                let s = (function (e) {
+                    let t = !Number.isFinite(e) || e <= 0 ? 0.1 : e;
+                    return t < 0.22 ? 'L0' : t < 0.55 ? 'L1' : t < 1.2 ? 'L2' : 'L3';
+                  })(e.zoom),
+                  a = Number.isFinite((t = e.optimizeLevel))
+                    ? Math.max(0, Math.min(3, Math.floor(t)))
+                    : 0,
+                  l = e.focusNodeId || null,
+                  r = !0 === e.focusMode,
+                  n = new Set((e.pinnedNodeIds || []).filter((e) => e.length > 0)),
+                  i = !0 === e.includeConnectors,
+                  o = Math.max(
+                    Number.isFinite(e.minMass) ? Math.max(0, e.minMass) : 0,
+                    sg[s] + 0.08 * a
+                  ),
+                  c = (function (e, t) {
+                    let s = sm[e];
+                    return 0 === t ? s : Math.max(60, Math.floor(s / (1 + 0.35 * t)));
+                  })(s, a),
+                  d = (function (e, t) {
+                    let s = sp[e];
+                    return 0 === t ? s : Math.max(200, Math.floor(s / (1 + 0.4 * t)));
+                  })(s, a),
+                  u = e.nodes.filter((e) => {
+                    var t;
+                    return (
+                      (t = e.kind),
+                      'L0' === s ? sc.has(t) : 'L1' === s ? sd.has(t) : 'L2' !== s || su.has(t)
+                    );
+                  });
+                if (
+                  ((u = u.filter((e) => sf(e) >= o)),
+                  i ||
+                    'L3' !== s ||
+                    (u = u.filter((e) => {
+                      if ('Lexeme' !== e.kind && 'Phrase' !== e.kind) return !0;
+                      let t = (function (e) {
+                        for (let t of [e.text, e.lemma, e.title, e.name, e.label])
+                          if ('string' == typeof t && t.trim().length > 0)
+                            return t.trim().toLowerCase();
+                        return null;
+                      })(e);
+                      return !t || !sx.has(t);
+                    })),
+                  l && r)
+                ) {
+                  let t = (function (e, t, s) {
+                    let a = new Map();
+                    for (let e of t) {
+                      var l, r;
+                      let t = sb(e.source),
+                        s = sb(e.target);
+                      (a.has(t) || a.set(t, new Set()),
+                        a.has(s) || a.set(s, new Set()),
+                        null === (l = a.get(t)) || void 0 === l || l.add(s),
+                        null === (r = a.get(s)) || void 0 === r || r.add(t));
+                    }
+                    let n = new Set([e]),
+                      i = new Set([e]);
+                    for (let e = 0; e < 2; e += 1) {
+                      let e = new Set();
+                      for (let t of i) {
+                        let s = a.get(t);
+                        if (s) for (let t of s) n.has(t) || (n.add(t), e.add(t));
+                      }
+                      if (0 === (i = e).size) break;
+                    }
+                    return n;
+                  })(l, e.edges, 0);
+                  u = u.filter((e) => t.has(e.id));
+                }
+                let x = new Set(n);
+                if ((l && x.add(l), x.size > 0)) {
+                  let t = new Set(u.map((e) => e.id));
+                  for (let s of x) {
+                    if (t.has(s)) continue;
+                    let a = e.nodes.find((e) => e.id === s);
+                    a && (u.push(a), t.add(s));
+                  }
+                }
+                if (u.length > c) {
+                  let e = u.filter((e) => x.has(e.id)),
+                    t = u.filter((e) => !x.has(e.id)),
+                    s = Math.max(0, c - e.length);
+                  u = [
+                    ...e,
+                    ...[...t]
+                      .sort((e, t) => {
+                        let s = sf(t) - sf(e);
+                        return 0 !== s ? s : e.id.localeCompare(t.id);
+                      })
+                      .slice(0, s),
+                  ];
+                }
+                let m = new Set(u.map((e) => e.id)),
+                  p = sh[s] + 0.05 * a,
+                  h = e.edges.filter((e) => {
+                    let t = sb(e.source),
+                      s = sb(e.target);
+                    return (
+                      !!(m.has(t) && m.has(s)) &&
+                      (!!((l && (t === l || s === l)) || n.has(t) || n.has(s)) || sv(e) >= p)
+                    );
+                  });
+                h.length > d &&
+                  (h = [...h]
+                    .sort((e, t) => {
+                      let s = sv(t) - sv(e);
+                      return 0 !== s ? s : e.id.localeCompare(t.id);
+                    })
+                    .slice(0, d));
+                let g = new Set(h.map((e) => e.id)),
+                  b = (function (e) {
+                    let t =
+                        e.totalNodeCount >= 5e4
+                          ? '50k'
+                          : e.totalNodeCount >= 1e4
+                            ? '10k'
+                            : 'default',
+                      s = Math.max(
+                        50,
+                        Math.floor(sm[e.level] * ('50k' === t ? 1.35 : '10k' === t ? 1.15 : 1))
+                      ),
+                      a = Math.max(
+                        200,
+                        Math.floor(sp[e.level] * ('50k' === t ? 1.4 : '10k' === t ? 1.2 : 1))
+                      );
+                    return {
+                      datasetTier: t,
+                      pass: e.visibleNodeCount <= s && e.visibleEdgeCount <= a,
+                      nodeBudget: s,
+                      edgeBudget: a,
+                      visibleNodes: e.visibleNodeCount,
+                      visibleEdges: e.visibleEdgeCount,
+                    };
+                  })({
+                    level: s,
+                    totalNodeCount: e.nodes.length,
+                    visibleNodeCount: u.length,
+                    visibleEdgeCount: h.length,
+                  });
+                return {
+                  level: s,
+                  visibleNodes: u,
+                  visibleEdges: h,
+                  visibleNodeIds: m,
+                  visibleEdgeIds: g,
+                  stats: {
+                    level: s,
+                    totalNodeCount: e.nodes.length,
+                    totalEdgeCount: e.edges.length,
+                    visibleNodeCount: u.length,
+                    visibleEdgeCount: h.length,
+                    hiddenNodeCount: Math.max(0, e.nodes.length - u.length),
+                    hiddenEdgeCount: Math.max(0, e.edges.length - h.length),
+                    focusNodeId: l,
+                    focusMode: r,
+                    pinnedNodeCount: n.size,
+                    gate: b,
+                  },
+                };
+              })({
+                nodes: F,
+                edges: O,
+                zoom: C,
+                focusNodeId: R,
+                focusMode: d,
+                pinnedNodeIds: x,
+                includeConnectors: u,
+              }),
+            [F, O, C, R, d, x, u]
+          );
+        (0, l.useEffect)(() => {
+          null == f || f(U.stats);
+        }, [U.stats, f]);
+        let B = (0, l.useMemo)(() => {
+            let e = new Map(),
+              t = Math.max(3, c.dims);
+            for (let s of U.visibleNodes) e.set(s.id, sC(s, t));
+            return e;
+          }, [U.visibleNodes, c.dims]),
+          V = (0, l.useMemo)(
+            () =>
+              R && d
+                ? (function (e, t) {
+                    let s = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : 2,
+                      a = new Set([e]),
+                      l = new Set([e]);
+                    for (let e = 0; e < s; e += 1) {
+                      let e = new Set();
+                      for (let s of t) {
+                        let t = sZ(s.source),
+                          r = sZ(s.target);
+                        l.has(t) && !a.has(r) ? e.add(r) : l.has(r) && !a.has(t) && e.add(t);
+                      }
+                      if ((e.forEach((e) => a.add(e)), 0 === (l = e).size)) break;
+                    }
+                    return a;
+                  })(R, U.visibleEdges, 2)
+                : new Set(),
+            [R, d, U.visibleEdges]
+          ),
+          K = (0, l.useMemo)(() => new Set(x), [x]),
+          q = (0, l.useMemo)(() => new Set(w), [w]),
+          J = (0, l.useMemo)(
+            () =>
+              'nd' !== o
+                ? U.visibleNodes
+                : U.visibleNodes.filter((e) => {
+                    if (K.has(e.id) || q.has(e.id) || V.has(e.id)) return !0;
+                    let t = B.get(e.id);
+                    return (
+                      !t ||
+                      (function (e, t) {
+                        var s;
+                        let a = Math.max(3, Math.floor(t.dims)),
+                          l = null !== (s = e[sk(t.sliceDim, a)]) && void 0 !== s ? s : 0,
+                          r = Math.max(1e-4, t.sliceWidth / 2);
+                        return Math.abs(l - t.sliceCenter) <= r;
+                      })(t, c)
+                    );
+                  }),
+            [o, U.visibleNodes, K, q, V, B, c]
+          ),
+          G = (0, l.useMemo)(() => new Set(J.map((e) => e.id)), [J]),
+          W = (0, l.useMemo)(
+            () =>
+              U.visibleEdges.filter((e) => {
+                let t = sZ(e.source),
+                  s = sZ(e.target);
+                return G.has(t) && G.has(s);
+              }),
+            [U.visibleEdges, G]
+          ),
+          Y = (0, l.useMemo)(() => {
+            let e = new Map(),
+              t = [];
+            for (let r of J) {
+              var s, a, l;
+              let n;
+              let i = sS(r, 1600, 1200);
+              if ('2d' === o) n = [i.x, -i.y, 0];
+              else if ('3d' === o) {
+                let e = null !== (s = B.get(r.id)) && void 0 !== s ? s : sC(r, c.dims);
+                n = [i.x, -i.y, (null !== (a = e[2]) && void 0 !== a ? a : 0) * 260];
+              } else {
+                let e = (function (e, t) {
+                  var s, a, l;
+                  let r = Math.max(3, Math.floor(t.dims)),
+                    n = sk(t.axes[0], r),
+                    i = sk(t.axes[1], r),
+                    o = sk(t.axes[2], r);
+                  return {
+                    x: (null !== (s = e[n]) && void 0 !== s ? s : 0) * 320,
+                    y: (null !== (a = e[i]) && void 0 !== a ? a : 0) * 320,
+                    z: (null !== (l = e[o]) && void 0 !== l ? l : 0) * 320,
+                  };
+                })(null !== (l = B.get(r.id)) && void 0 !== l ? l : sC(r, c.dims), c);
+                n = [e.x, e.y, e.z];
+              }
+              (t.push(n), e.set(r.id, n));
+            }
+            let r = sD(t);
+            for (let [t, s] of e.entries()) e.set(t, [s[0] - r[0], s[1] - r[1], s[2] - r[2]]);
+            return e;
+          }, [J, o, B, c]),
+          H = (0, l.useMemo)(() => {
+            let e = new Map(Y);
+            for (let [t, s] of A.entries()) e.has(t) && e.set(t, s);
+            return e;
+          }, [Y, A]);
+        (0, l.useEffect)(() => {
+          let e = new Set(J.map((e) => e.id));
+          _((t) => {
+            if (0 === t.size) return t;
+            let s = new Map();
+            for (let [a, l] of t.entries()) e.has(a) && s.set(a, l);
+            return s;
+          });
+        }, [J]);
+        let X = (0, l.useMemo)(
+            () =>
+              J.map((e) => {
+                var t;
+                let s = q.has(e.id),
+                  a = K.has(e.id);
+                return {
+                  node: e,
+                  position: null !== (t = H.get(e.id)) && void 0 !== t ? t : [0, 0, 0],
+                  radius: (function (e) {
+                    switch (e) {
+                      case 'Constellation':
+                        return 14;
+                      case 'Group':
+                      case 'Folder':
+                        return 11;
+                      case 'Principal':
+                      case 'UserNode':
+                        return 9;
+                      case 'Source':
+                      case 'SourceDoc':
+                      case 'VerifiedSource':
+                        return 7;
+                      case 'ObjectiveClaim':
+                      case 'VerifiedClaim':
+                        return 6;
+                      case 'Topic':
+                      default:
+                        return 5;
+                      case 'Phrase':
+                        return 4;
+                      case 'Lexeme':
+                        return 3;
+                    }
+                  })(e.kind),
+                  color: (function (e, t, s) {
+                    let a = e.kind;
+                    if (t) return '#f8fafc';
+                    if (s) return '#f59e0b';
+                    if ('Principal' === a)
+                      return 'human' === e.principal_kind
+                        ? '#ec4899'
+                        : 'agent' === e.principal_kind
+                          ? '#8b5cf6'
+                          : '#94a3b8';
+                    switch (a) {
+                      case 'Source':
+                        return '#38bdf8';
+                      case 'SourceDoc':
+                        return '#14b8a6';
+                      case 'Group':
+                        return '#a855f7';
+                      case 'Folder':
+                        return '#f59e0b';
+                      case 'ObjectiveClaim':
+                        return '#22c55e';
+                      case 'Constellation':
+                        return '#f97316';
+                      case 'Lexeme':
+                        return '#94a3b8';
+                      case 'Phrase':
+                        return '#fb923c';
+                      case 'Topic':
+                        return '#ef4444';
+                      case 'VerifiedSource':
+                        return '#10b981';
+                      case 'VerifiedClaim':
+                        return '#3b82f6';
+                      case 'ConversationThread':
+                      case 'ChatThread':
+                        return '#8b5cf6';
+                      default:
+                        return '#64748b';
+                    }
+                  })(e, s, a),
+                  isSelected: s,
+                  isPinned: a,
+                };
+              }),
+            [J, H, q, K]
+          ),
+          Q = (0, l.useMemo)(
+            () => W.map((e) => ({ edge: e, sourceId: sZ(e.source), targetId: sZ(e.target) })),
+            [W]
+          ),
+          $ = (0, l.useMemo)(() => {
+            let e = new Float32Array(6 * Q.length),
+              t = 0;
+            for (let s of Q) {
+              let a = H.get(s.sourceId),
+                l = H.get(s.targetId);
+              a &&
+                l &&
+                ((e[t] = a[0]),
+                (e[t + 1] = a[1]),
+                (e[t + 2] = a[2]),
+                (e[t + 3] = l[0]),
+                (e[t + 4] = l[1]),
+                (e[t + 5] = l[2]),
+                (t += 6));
+            }
+            return t === e.length ? e : e.slice(0, t);
+          }, [Q, H]),
+          ee = (0, l.useCallback)(
+            (e) => {
+              (k(e), null == g || g(e));
+            },
+            [g]
+          ),
+          et = (0, l.useCallback)(
+            (e) => {
+              let t = new Set(x);
+              (t.has(e) ? t.delete(e) : t.add(e), null == v || v(Array.from(t)));
+            },
+            [v, x]
+          ),
+          es = (0, l.useCallback)(
+            (e, t, s) => {
+              let a;
+              let l = F.find((t) => t.id === e);
+              if (l) {
+                if (t.altKey) {
+                  et(e);
+                  return;
+                }
+                if (t.shiftKey || t.ctrlKey || t.metaKey) {
+                  let t = new Set(w);
+                  (t.has(e) ? t.delete(e) : t.add(e), (a = Array.from(t)));
+                } else a = [e];
+                if ((ee(a), s)) {
+                  var r;
+                  (null == h || h(l),
+                    null === (r = L.current) || void 0 === r || r.setTargetById(l.id, 1.6));
+                } else null == p || p(l);
+              }
+            },
+            [F, p, h, w, et, ee]
+          ),
+          ea = (0, l.useCallback)(() => {
+            (w.length > 0 && ee([]), E(null), null == b || b(null, { x: 0, y: 0 }));
+          }, [b, w.length, ee]),
+          el = (0, l.useCallback)(
+            (e) => {
+              var t;
+              if ('edge' !== e.kind || !e.edgeId) {
+                (E(null), null == b || b(null, e.screen));
+                return;
+              }
+              let s = z.get(e.edgeId) || null;
+              (E(null !== (t = null == s ? void 0 : s.id) && void 0 !== t ? t : null),
+                null == b || b(s, e.screen));
+            },
+            [z, b]
+          ),
+          er = (0, l.useCallback)(
+            (e, t) => {
+              ee(
+                (function (e, t, s) {
+                  if (!s.shift && !s.ctrlOrMeta) return [...t];
+                  let a = new Set(e);
+                  if (s.ctrlOrMeta) {
+                    for (let e of t) a.has(e) ? a.delete(e) : a.add(e);
+                    return Array.from(a).sort((e, t) => e.localeCompare(t));
+                  }
+                  for (let e of t) a.add(e);
+                  return Array.from(a).sort((e, t) => e.localeCompare(t));
+                })(w, e, t)
+              );
+            },
+            [w, ee]
+          ),
+          en = (0, l.useCallback)((e, t) => {
+            _((s) => {
+              let a = new Map(s);
+              return (a.set(e, t), a);
+            });
+          }, []),
+          ei = (0, l.useMemo)(
+            () => ({ selectedNodeIds: w, hoveredEdgeId: I, marqueeSession: M, dragSession: D }),
+            [D, I, M, w]
+          );
+        (0, l.useEffect)(() => {
+          null == j || j(ei);
+        }, [ei, j]);
+        let eo = (0, l.useMemo)(() => {
+          if (!M) return null;
+          let e = Math.min(M.start.x, M.current.x);
+          return {
+            left: e,
+            top: Math.min(M.start.y, M.current.y),
+            width: Math.abs(M.current.x - M.start.x),
+            height: Math.abs(M.current.y - M.start.y),
+          };
+        }, [M]);
+        return ((0, l.useImperativeHandle)(
+          t,
+          () => ({
+            zoomIn: () => {
+              var e;
+              return null === (e = L.current) || void 0 === e ? void 0 : e.zoomIn();
+            },
+            zoomOut: () => {
+              var e;
+              return null === (e = L.current) || void 0 === e ? void 0 : e.zoomOut();
+            },
+            centerView: () => {
+              var e;
+              return null === (e = L.current) || void 0 === e ? void 0 : e.centerView();
+            },
+            focusOnNode: function (e) {
+              var t;
+              let s = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 1.6;
+              return null === (t = L.current) || void 0 === t ? void 0 : t.setTargetById(e, s);
+            },
+            zoomToFitNodes: (e) => {
+              var t;
+              return null === (t = L.current) || void 0 === t ? void 0 : t.zoomToFitNodes(e);
+            },
+            resetView: () => {
+              var e;
+              return null === (e = L.current) || void 0 === e ? void 0 : e.centerView();
+            },
+            optimizeView: () => {
+              var e;
+              return null === (e = L.current) || void 0 === e
+                ? void 0
+                : e.zoomToFitNodes(Array.from(G.values()));
+            },
+          }),
+          [G]
+        ),
+        null === N)
+          ? (0, a.jsx)('div', { className: 'w-full h-full bg-slate-950' })
+          : N
+            ? (0, a.jsxs)('div', {
+                className: 'w-full h-full relative',
+                style: { width: n, height: i },
+                children: [
+                  (0, a.jsx)(sn.Xz, {
+                    gl: { antialias: !0, alpha: !0 },
+                    dpr: [1, 2],
+                    camera: { position: [0, 0, 920], fov: 52, near: 0.1, far: 12e3 },
+                    onPointerMissed: ea,
+                    children: (0, a.jsx)(s_, {
+                      renderLens: o,
+                      interactive: m,
+                      interactionLocked: !!D || !!M,
+                      edgePositions: $,
+                      renderNodes: X,
+                      renderEdges: Q,
+                      onNodeClickInternal: es,
+                      onMissedClick: ea,
+                      onZoomSample: S,
+                      registerController: (e) => {
+                        L.current = e;
+                      },
+                      positionById: H,
+                      onEdgePick: el,
+                      onMarqueeSessionChange: Z,
+                      onMarqueeComplete: er,
+                      onDragSessionChange: T,
+                      onNodeDrag: en,
+                    }),
+                  }),
+                  eo &&
+                    (0, a.jsx)('div', {
+                      className:
+                        'absolute pointer-events-none border border-sky-300/80 bg-sky-500/10 rounded-sm',
+                      style: { left: eo.left, top: eo.top, width: eo.width, height: eo.height },
+                    }),
+                ],
+              })
+            : (0, a.jsx)('div', {
+                className:
+                  'w-full h-full flex items-center justify-center bg-slate-950 text-slate-200',
+                children: (0, a.jsxs)('div', {
+                  className: 'max-w-md text-center px-6',
+                  children: [
+                    (0, a.jsx)('p', {
+                      className: 'text-sm font-semibold mb-2',
+                      children: 'WebGL renderer unavailable',
+                    }),
+                    (0, a.jsx)('p', {
+                      className: 'text-xs text-slate-400',
+                      children:
+                        'Keimenon requires Three.js/WebGL for 2D, 3D, and ND canvas rendering.',
+                    }),
+                  ],
+                }),
+              });
+      });
+      sL.displayName = 'SharedThreeGraphRenderer';
+      let sF = (0, l.memo)(
+        (0, l.forwardRef)((e, t) => {
+          let {
+              nodes: s,
+              edges: r,
+              width: n,
+              height: i,
+              renderLens: o = '2d',
+              ndConfig: c,
+              focusModeEnabled: d = !1,
+              includeConnectors: u = !1,
+              pinnedNodeIds: x = [],
+              interactive: m = !0,
+              onNodeClick: p,
+              onNodeDoubleClick: h,
+              onSelectionChange: g,
+              onEdgeHover: b,
+              onLodStats: f,
+              onPinnedNodeIdsChange: v,
+              onInteractionStateChange: j,
+            } = e,
+            N = (0, l.useRef)(null);
+          return (
+            (0, l.useImperativeHandle)(t, () => ({
+              zoomIn: () => {
+                var e;
+                return null === (e = N.current) || void 0 === e ? void 0 : e.zoomIn();
+              },
+              zoomOut: () => {
+                var e;
+                return null === (e = N.current) || void 0 === e ? void 0 : e.zoomOut();
+              },
+              centerView: () => {
+                var e;
+                return null === (e = N.current) || void 0 === e ? void 0 : e.centerView();
+              },
+              focusOnNode: function (e) {
+                var t;
+                let s = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 1.6;
+                return null === (t = N.current) || void 0 === t ? void 0 : t.focusOnNode(e, s);
+              },
+              zoomToFitNodes: (e) => {
+                var t;
+                return null === (t = N.current) || void 0 === t ? void 0 : t.zoomToFitNodes(e);
+              },
+              resetView: () => {
+                var e;
+                return null === (e = N.current) || void 0 === e ? void 0 : e.resetView();
+              },
+              optimizeView: () => {
+                var e;
+                return null === (e = N.current) || void 0 === e ? void 0 : e.optimizeView();
+              },
+            })),
+            (0, a.jsx)(sL, {
+              ref: N,
+              nodes: s,
+              edges: r,
+              width: n,
+              height: i,
+              renderLens: o,
+              ndConfig: c,
+              focusModeEnabled: d,
+              includeConnectors: u,
+              pinnedNodeIds: x,
+              interactive: m,
+              onNodeClick: p,
+              onNodeDoubleClick: h,
+              onSelectionChange: g,
+              onEdgeHover: b,
+              onLodStats: f,
+              onPinnedNodeIdsChange: v,
+              onInteractionStateChange: j,
+            })
+          );
+        })
+      );
+      function sP(e) {
+        var t, s, r;
+        let { width: n, height: i, jobId: o, renderLens: c = '2d', ndConfig: d } = e,
+          { jobs: u } = tp(),
+          x = o ? u.get(o) : null,
+          m = Number.isFinite(
+            (r = Number(
+              null !==
+                (s =
+                  null == x
+                    ? void 0
+                    : null === (t = x.progress) || void 0 === t
+                      ? void 0
+                      : t.percent) && void 0 !== s
+                ? s
+                : 0
+            ))
+          )
+            ? Math.max(0, Math.min(100, r))
+            : 0,
+          p = (0, l.useMemo)(
+            () =>
+              (function (e, t, s) {
+                let a = Math.max(6, Math.floor(8 + s / 6)),
+                  l = Math.max(48, 0.15 * Math.min(e, t)),
+                  r = 0.82 * e,
+                  n = 0.18 * t;
+                return Array.from({ length: a }).map((e, t) => {
+                  let i = (t / a) * Math.PI * 2,
+                    o = 1 + (s / 100) * 0.35;
+                  return {
+                    id: 'progress_node_'.concat(t),
+                    kind: t < Math.ceil((s / 100) * a) ? 'VerifiedClaim' : 'Phrase',
+                    x: r + Math.cos(i) * l * o,
+                    y: n + Math.sin(i) * l * o,
+                    label: 'Progress '.concat(t + 1),
+                    title: 'Progress '.concat(t + 1),
+                  };
+                });
+              })(n, i, m),
+            [n, i, m]
+          ),
+          h = (0, l.useMemo)(
+            () =>
+              (function (e) {
+                let t = [];
+                for (let s = 0; s < e.length; s += 1) {
+                  let a = e[s],
+                    l = e[(s + 1) % e.length];
+                  t.push({
+                    id: 'progress_edge_'.concat(a.id, '_').concat(l.id),
+                    source: a.id,
+                    target: l.id,
+                    kind: 'CO_OCCURS_WITH',
+                  });
+                }
+                return t;
+              })(p),
+            [p]
+          );
+        return o && x && 'running' === x.status
+          ? (0, a.jsxs)('div', {
+              className: 'absolute inset-0 pointer-events-none',
+              children: [
+                (0, a.jsx)('div', {
+                  className: 'absolute inset-0 opacity-60',
+                  children: (0, a.jsx)(sL, {
+                    nodes: p,
+                    edges: h,
+                    width: n,
+                    height: i,
+                    renderLens: c,
+                    ndConfig: d,
+                    interactive: !1,
+                    focusModeEnabled: !1,
+                    includeConnectors: !0,
+                    pinnedNodeIds: [],
+                  }),
+                }),
+                (0, a.jsxs)('div', {
+                  className:
+                    'absolute top-4 left-4 z-20 bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 shadow-lg',
+                  children: [
+                    (0, a.jsxs)('div', {
+                      className: 'font-semibold text-slate-100',
+                      children: ['Processing ', m, '%'],
+                    }),
+                    (0, a.jsxs)('div', {
+                      className: 'text-slate-400 mt-1',
+                      children: ['Lens: ', c.toUpperCase()],
+                    }),
+                  ],
+                }),
+              ],
             })
           : null;
       }
-      var se = s(429);
-      function st(e) {
+      sF.displayName = 'Keimenon2D';
+      let sO = {
+          CONTAINS: {
+            color: 'rgba(59, 130, 246, 0.4)',
+            highlightColor: 'rgba(59, 130, 246, 0.8)',
+            label: 'Contains',
+            category: 'structural',
+          },
+          HAS_MESSAGE: {
+            color: 'rgba(59, 130, 246, 0.4)',
+            highlightColor: 'rgba(59, 130, 246, 0.8)',
+            label: 'Has Message',
+            category: 'structural',
+          },
+          DERIVES_FROM: {
+            color: 'rgba(168, 85, 247, 0.4)',
+            highlightColor: 'rgba(168, 85, 247, 0.8)',
+            label: 'Derives From',
+            category: 'structural',
+          },
+          EXTRACTED_FROM: {
+            color: 'rgba(168, 85, 247, 0.4)',
+            highlightColor: 'rgba(168, 85, 247, 0.8)',
+            label: 'Extracted From',
+            category: 'structural',
+          },
+          COMPILED_FROM: {
+            color: 'rgba(139, 92, 246, 0.4)',
+            highlightColor: 'rgba(139, 92, 246, 0.8)',
+            label: 'Compiled From',
+            category: 'structural',
+          },
+          STITCHED_FROM: {
+            color: 'rgba(139, 92, 246, 0.4)',
+            highlightColor: 'rgba(139, 92, 246, 0.8)',
+            label: 'Stitched From',
+            category: 'structural',
+          },
+          NEAR_DUP: {
+            color: 'rgba(251, 146, 60, 0.5)',
+            highlightColor: 'rgba(251, 146, 60, 0.9)',
+            label: 'Near Duplicate',
+            category: 'similarity',
+            dashArray: [4, 4],
+          },
+          EXACT_DUP: {
+            color: 'rgba(239, 68, 68, 0.5)',
+            highlightColor: 'rgba(239, 68, 68, 0.9)',
+            label: 'Exact Duplicate',
+            category: 'similarity',
+          },
+          EQUIVALENT_TO: {
+            color: 'rgba(234, 179, 8, 0.5)',
+            highlightColor: 'rgba(234, 179, 8, 0.9)',
+            label: 'Equivalent To',
+            category: 'similarity',
+          },
+          DUP_OF: {
+            color: 'rgba(251, 146, 60, 0.5)',
+            highlightColor: 'rgba(251, 146, 60, 0.9)',
+            label: 'Duplicate Of',
+            category: 'similarity',
+          },
+          SIMILAR_TO: {
+            color: 'rgba(251, 191, 36, 0.5)',
+            highlightColor: 'rgba(251, 191, 36, 0.9)',
+            label: 'Similar To',
+            category: 'similarity',
+            dashArray: [6, 3],
+          },
+          CLUSTER_MEMBER: {
+            color: 'rgba(245, 158, 11, 0.4)',
+            highlightColor: 'rgba(245, 158, 11, 0.8)',
+            label: 'Cluster Member',
+            category: 'similarity',
+            dashArray: [2, 2],
+          },
+          MENTIONS: {
+            color: 'rgba(148, 163, 184, 0.35)',
+            highlightColor: 'rgba(148, 163, 184, 0.75)',
+            label: 'Mentions',
+            category: 'semantic',
+          },
+          CO_OCCURS_WITH: {
+            color: 'rgba(16, 185, 129, 0.45)',
+            highlightColor: 'rgba(16, 185, 129, 0.85)',
+            label: 'Co-occurs With',
+            category: 'semantic',
+          },
+          BELONGS_TO_TOPIC: {
+            color: 'rgba(236, 72, 153, 0.45)',
+            highlightColor: 'rgba(236, 72, 153, 0.85)',
+            label: 'Belongs To Topic',
+            category: 'semantic',
+          },
+          ABOUT: {
+            color: 'rgba(139, 92, 246, 0.45)',
+            highlightColor: 'rgba(139, 92, 246, 0.85)',
+            label: 'About',
+            category: 'semantic',
+          },
+          IN_SCOPE_FOR: {
+            color: 'rgba(6, 182, 212, 0.4)',
+            highlightColor: 'rgba(6, 182, 212, 0.8)',
+            label: 'In Scope For',
+            category: 'semantic',
+          },
+          SUPPORTS: {
+            color: 'rgba(34, 197, 94, 0.55)',
+            highlightColor: 'rgba(34, 197, 94, 0.95)',
+            label: 'Supports',
+            category: 'verification',
+          },
+          REFUTES: {
+            color: 'rgba(239, 68, 68, 0.55)',
+            highlightColor: 'rgba(239, 68, 68, 0.95)',
+            label: 'Refutes',
+            category: 'verification',
+          },
+          VERIFIED_BY: {
+            color: 'rgba(6, 182, 212, 0.45)',
+            highlightColor: 'rgba(6, 182, 212, 0.85)',
+            label: 'Verified By',
+            category: 'verification',
+          },
+          SOURCED_FROM: {
+            color: 'rgba(20, 184, 166, 0.45)',
+            highlightColor: 'rgba(20, 184, 166, 0.85)',
+            label: 'Sourced From',
+            category: 'verification',
+          },
+        },
+        sz = {
+          color: 'rgba(100, 116, 139, 0.3)',
+          highlightColor: 'rgba(100, 116, 139, 0.6)',
+          label: 'Related',
+          category: 'structural',
+        };
+      function sR(e) {
         return 'number' == typeof e ? e : null;
       }
-      function ss(e) {
+      function sU(e) {
         return 'string' == typeof e ? e : null;
       }
-      function sa(e) {
+      function sB(e) {
         var t;
         let { edge: s, position: l, visible: r } = e;
         if (!r || !s) return null;
-        let n = (0, se.QI)(s.kind),
+        let n = sO[s.kind] || sz,
           i = s.data || {},
-          o = st(i.score),
-          c = st(i.count),
-          d = st(i.pmi),
-          u = st(i.weight),
-          x = st(i.strength),
-          m = st(i.rank),
-          p = st(i.confidence),
-          h = ss(i.algorithm),
-          g = ss(i.span),
+          o = sR(i.score),
+          c = sR(i.count),
+          d = sR(i.pmi),
+          u = sR(i.weight),
+          x = sR(i.strength),
+          m = sR(i.rank),
+          p = sR(i.confidence),
+          h = sU(i.algorithm),
+          g = sU(i.span),
           b =
             Array.isArray((t = i.features_used)) && t.every((e) => 'string' == typeof e) ? t : null;
         return (0, a.jsx)('div', {
@@ -11049,130 +13019,158 @@
           }),
         });
       }
-      let sl = (0, l.forwardRef)((e, t) => {
-        let { onOpenUpload: s, onOpenChatImport: r } = e,
-          n = (0, l.useRef)(null),
-          i = (0, l.useRef)(null),
-          [o, c] = (0, l.useState)({ width: 0, height: 0 }),
-          d = (0, M.O)((e) => e.nodes),
-          u = (0, M.O)((e) => e.edges),
-          x = (0, M.O)((e) => e.isLoading),
-          m = (0, M.O)((e) => e.error),
-          p = (0, M.O)((e) => e.filters),
-          h = (0, M.O)((e) => e.setSelectedNode),
-          g = (0, M.O)((e) => e.selectNode),
-          b = (0, M.O)((e) => e.clearSelection),
-          f = (0, M.O)((e) => e.loadGraphData),
-          { jobs: j } = ti({
+      function sV(e) {
+        let t =
+            arguments.length > 1 && void 0 !== arguments[1]
+              ? arguments[1]
+              : { width: 0, height: 0 },
+          [s, a] = (0, l.useState)(t);
+        return (
+          (0, l.useEffect)(() => {
+            let t = e.current;
+            if (!t) return;
+            let s = (e, s) => {
+              let l = Math.floor(null != e ? e : t.clientWidth),
+                r = Math.floor(null != s ? s : t.clientHeight);
+              l <= 0 || r <= 0 || a({ width: l, height: r });
+            };
+            if ((s(), 'undefined' != typeof ResizeObserver)) {
+              let e = new ResizeObserver((e) => {
+                let t = e[0];
+                t && s(t.contentRect.width, t.contentRect.height);
+              });
+              return (e.observe(t), () => e.disconnect());
+            }
+            let l = () => s();
+            return (
+              window.addEventListener('resize', l),
+              () => window.removeEventListener('resize', l)
+            );
+          }, [e]),
+          s
+        );
+      }
+      let sK = (0, l.forwardRef)((e, t) => {
+        let {
+            onOpenUpload: s,
+            onOpenChatImport: r,
+            focusModeEnabled: n = !1,
+            includeConnectors: i = !1,
+            renderLens: o = '2d',
+            ndConfig: c,
+            onPinnedNodeCountChange: d,
+          } = e,
+          u = (0, l.useRef)(null),
+          x = (0, l.useRef)(null),
+          m = sV(u),
+          p = (0, A.O)((e) => e.nodes),
+          h = (0, A.O)((e) => e.edges),
+          g = (0, A.O)((e) => e.isLoading),
+          b = (0, A.O)((e) => e.error),
+          f = (0, A.O)((e) => e.filters),
+          v = (0, A.O)((e) => e.setSelectedNode),
+          j = (0, A.O)((e) => e.selectNode),
+          N = (0, A.O)((e) => e.clearSelection),
+          y = (0, A.O)((e) => e.loadGraphData),
+          { jobs: w } = tp({
             onImportComplete: (0, l.useCallback)(
               (e) => {
-                ((0, tc.bK)('Import job completed, refreshing graph', 'keimenon.import.complete', {
+                ((0, tg.bK)('Import job completed, refreshing graph', 'keimenon.import.complete', {
                   jobId: e,
                 }),
-                  f());
+                  y());
               },
-              [f]
+              [y]
             ),
           }),
-          [v, N] = (0, l.useState)(null),
-          [y, w] = (0, l.useState)(null),
-          [k, C] = (0, l.useState)(null);
+          [k, C] = (0, l.useState)(null),
+          [S, I] = (0, l.useState)(null),
+          [E, M] = (0, l.useState)(null),
+          [Z, D] = (0, l.useState)([]);
         (0, l.useEffect)(() => {
           let e = null;
-          (j.forEach((t, s) => {
+          (w.forEach((t, s) => {
             'import' === t.type && 'running' === t.status && (e = s);
           }),
-            N(e));
-        }, [j]);
-        let S = (0, l.useMemo)(() => {
-            let e = d;
-            if (p.filteredNodeIds) {
-              let t = new Set(p.filteredNodeIds);
+            C(e));
+        }, [w]);
+        let T = (0, l.useMemo)(() => {
+            let e = p;
+            if (f.filteredNodeIds) {
+              let t = new Set(f.filteredNodeIds);
               e = e.filter((e) => t.has(e.id));
             }
             return (
-              p.sourceRoleFilter.size > 0 &&
+              f.sourceRoleFilter.size > 0 &&
                 (e = e.filter((e) => {
                   var t;
                   if ('source' !== e.type && 'Source' !== e.kind) return !0;
                   let s = null !== (t = e.sourceRole) && void 0 !== t ? t : 'imported';
-                  return p.sourceRoleFilter.has(s);
+                  return f.sourceRoleFilter.has(s);
                 })),
               e
             );
-          }, [d, p.filteredNodeIds, p.sourceRoleFilter]),
-          I = S.length > 0;
-        ((0, l.useImperativeHandle)(
-          t,
-          () => ({
-            zoomIn: () => {
-              var e;
-              return null === (e = i.current) || void 0 === e ? void 0 : e.zoomIn();
-            },
-            zoomOut: () => {
-              var e;
-              return null === (e = i.current) || void 0 === e ? void 0 : e.zoomOut();
-            },
-            centerView: () => {
-              var e;
-              return null === (e = i.current) || void 0 === e ? void 0 : e.centerView();
-            },
-            zoomToFitFilteredNodes: () => {
-              var e;
-              return null === (e = i.current) || void 0 === e
-                ? void 0
-                : e.zoomToFitNodes(S.map((e) => e.id));
-            },
-            focusOnNode: (e) => {
-              var t;
-              return null === (t = i.current) || void 0 === t ? void 0 : t.focusOnNode(e, 1.6, 220);
-            },
-          }),
-          [S]
-        ),
+          }, [p, f.filteredNodeIds, f.sourceRoleFilter]),
+          _ = T.length > 0;
+        ((0, l.useEffect)(() => {
+          let e = new Set(T.map((e) => e.id));
+          D((t) => t.filter((t) => e.has(t)));
+        }, [T]),
           (0, l.useEffect)(() => {
-            let e = n.current;
-            if (!e) return;
-            let t = (t, s) => {
-              c({
-                width: Math.floor(null != t ? t : e.clientWidth),
-                height: Math.floor(null != s ? s : e.clientHeight),
-              });
-            };
-            if ((t(), 'undefined' != typeof ResizeObserver)) {
-              let s = new ResizeObserver((e) => {
-                let s = e[0];
-                s && t(s.contentRect.width, s.contentRect.height);
-              });
-              return (s.observe(e), () => s.disconnect());
-            }
-            let s = () => t();
-            return (
-              window.addEventListener('resize', s),
-              () => window.removeEventListener('resize', s)
-            );
-          }, []));
-        let E = (0, l.useMemo)(
+            null == d || d(Z.length);
+          }, [d, Z.length]),
+          (0, l.useImperativeHandle)(
+            t,
+            () => ({
+              zoomIn: () => {
+                var e;
+                return null === (e = x.current) || void 0 === e ? void 0 : e.zoomIn();
+              },
+              zoomOut: () => {
+                var e;
+                return null === (e = x.current) || void 0 === e ? void 0 : e.zoomOut();
+              },
+              centerView: () => {
+                var e;
+                return null === (e = x.current) || void 0 === e ? void 0 : e.centerView();
+              },
+              zoomToFitFilteredNodes: () => {
+                var e;
+                return null === (e = x.current) || void 0 === e
+                  ? void 0
+                  : e.zoomToFitNodes(T.map((e) => e.id));
+              },
+              focusOnNode: (e) => {
+                var t;
+                return null === (t = x.current) || void 0 === t
+                  ? void 0
+                  : t.focusOnNode(e, 1.6, 220);
+              },
+              clearPinnedNodes: () => D([]),
+            }),
+            [T]
+          ));
+        let L = (0, l.useMemo)(
             () =>
-              S.map((e) => ({
+              T.map((e) => ({
                 id: e.id,
                 kind: e.kind || e.type,
                 x: e.position.x,
                 y: e.position.y,
                 ...e.data.metadata,
               })),
-            [S]
+            [T]
           ),
-          Z = (0, l.useMemo)(() => new Set(E.map((e) => e.id)), [E]),
-          D = (0, l.useMemo)(() => {
+          F = (0, l.useMemo)(() => new Set(L.map((e) => e.id)), [L]),
+          P = (0, l.useMemo)(() => {
             let e = new Map();
-            for (let t of S) e.set(t.id, t);
+            for (let t of T) e.set(t.id, t);
             return e;
-          }, [S]),
-          T = (0, l.useMemo)(
+          }, [T]),
+          O = (0, l.useMemo)(
             () =>
-              u
-                .filter((e) => Z.has(e.source) && Z.has(e.target))
+              h
+                .filter((e) => F.has(e.source) && F.has(e.target))
                 .map((e) => ({
                   id: e.id,
                   source: e.source,
@@ -11180,48 +13178,48 @@
                   kind: e.kind,
                   data: e.data,
                 })),
-            [u, Z]
+            [h, F]
           ),
-          A = (0, l.useCallback)(
+          z = (0, l.useCallback)(
             (e) => {
-              (0, tc.bK)('Keimenon node clicked', 'keimenon.node.click', {
+              (0, tg.bK)('Keimenon node clicked', 'keimenon.node.click', {
                 nodeId: e.id,
                 nodeKind: e.kind,
               });
-              let t = D.get(e.id);
-              t && h(t);
+              let t = P.get(e.id);
+              t && v(t);
             },
-            [D, h]
+            [P, v]
           ),
-          _ = (0, l.useCallback)((e) => {
+          R = (0, l.useCallback)((e) => {
             var t;
-            ((0, tc.bK)('Keimenon node double-clicked', 'keimenon.node.doubleClick', {
+            ((0, tg.bK)('Keimenon node double-clicked', 'keimenon.node.doubleClick', {
               nodeId: e.id,
               nodeKind: e.kind,
             }),
-              null === (t = i.current) || void 0 === t || t.focusOnNode(e.id, 1.6, 220));
+              null === (t = x.current) || void 0 === t || t.focusOnNode(e.id, 1.6, 220));
           }, []),
-          L = (0, l.useCallback)(
+          U = (0, l.useCallback)(
             (e) => {
               if (
-                ((0, tc.bK)('Keimenon selection changed', 'keimenon.selection.change', {
+                ((0, tg.bK)('Keimenon selection changed', 'keimenon.selection.change', {
                   selectionCount: e.length,
                 }),
                 0 === e.length)
               )
-                b();
+                N();
               else if (1 === e.length) {
-                let t = D.get(e[0]);
-                t && h(t);
-              } else (b(), e.forEach((e) => g(e, !0)));
+                let t = P.get(e[0]);
+                t && v(t);
+              } else (N(), e.forEach((e) => j(e, !0)));
             },
-            [D, h, b, g]
+            [P, v, N, j]
           ),
-          F = (0, l.useCallback)((e, t) => {
-            e ? w({ edge: { id: e.id, kind: e.kind, data: e.data }, position: t }) : w(null);
+          B = (0, l.useCallback)((e, t) => {
+            e ? I({ edge: { id: e.id, kind: e.kind, data: e.data }, position: t }) : I(null);
           }, []);
         return (0, a.jsxs)('div', {
-          ref: n,
+          ref: u,
           className: 'flex-1 bg-slate-950 relative overflow-hidden',
           children: [
             (0, a.jsx)('div', {
@@ -11232,7 +13230,7 @@
                 backgroundSize: '40px 40px',
               },
             }),
-            x &&
+            g &&
               (0, a.jsx)('div', {
                 className: 'absolute inset-0 flex items-center justify-center',
                 children: (0, a.jsxs)('div', {
@@ -11249,18 +13247,18 @@
                   ],
                 }),
               }),
-            m &&
+            b &&
               (0, a.jsx)('div', {
                 className: 'absolute inset-0 flex items-center justify-center',
                 children: (0, a.jsxs)('div', {
                   className: 'text-center max-w-md',
                   children: [
-                    (0, a.jsx)('div', { className: 'text-red-500 text-5xl mb-4', children: '⚠️' }),
+                    (0, a.jsx)('div', { className: 'text-red-500 text-5xl mb-4', children: '!' }),
                     (0, a.jsx)('h3', {
                       className: 'text-xl font-semibold mb-2 text-white',
                       children: 'Failed to load graph',
                     }),
-                    (0, a.jsx)('p', { className: 'text-slate-400 mb-4', children: m }),
+                    (0, a.jsx)('p', { className: 'text-slate-400 mb-4', children: b }),
                     (0, a.jsx)('button', {
                       onClick: () => window.location.reload(),
                       className:
@@ -11270,31 +13268,43 @@
                   ],
                 }),
               }),
-            !x &&
-              !m &&
-              I &&
-              o.width > 0 &&
+            !g &&
+              !b &&
+              _ &&
+              m.width > 0 &&
               (0, a.jsxs)(a.Fragment, {
                 children: [
-                  (0, a.jsx)(t7.s, {
-                    ref: i,
-                    nodes: E,
-                    edges: T,
-                    width: o.width,
-                    height: o.height,
-                    onNodeClick: A,
-                    onNodeDoubleClick: _,
-                    onSelectionChange: L,
-                    onEdgeHover: F,
-                    onLodStats: C,
+                  (0, a.jsx)(sF, {
+                    ref: x,
+                    nodes: L,
+                    edges: O,
+                    width: m.width,
+                    height: m.height,
+                    renderLens: o,
+                    ndConfig: c,
+                    focusModeEnabled: n,
+                    includeConnectors: i,
+                    pinnedNodeIds: Z,
+                    onNodeClick: z,
+                    onNodeDoubleClick: R,
+                    onSelectionChange: U,
+                    onEdgeHover: B,
+                    onLodStats: M,
+                    onPinnedNodeIdsChange: D,
                   }),
-                  (0, a.jsx)(t9, { width: o.width, height: o.height, jobId: v }),
-                  (0, a.jsx)(sa, {
-                    edge: (null == y ? void 0 : y.edge) || null,
-                    position: (null == y ? void 0 : y.position) || { x: 0, y: 0 },
-                    visible: !!y,
+                  (0, a.jsx)(sP, {
+                    width: m.width,
+                    height: m.height,
+                    jobId: k,
+                    renderLens: o,
+                    ndConfig: c,
                   }),
-                  k &&
+                  (0, a.jsx)(sB, {
+                    edge: (null == S ? void 0 : S.edge) || null,
+                    position: (null == S ? void 0 : S.position) || { x: 0, y: 0 },
+                    visible: !!S,
+                  }),
+                  E &&
                     (0, a.jsxs)('div', {
                       className:
                         'absolute top-4 right-4 z-10 bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 shadow-lg',
@@ -11302,24 +13312,28 @@
                         (0, a.jsxs)('div', {
                           className: 'font-semibold text-slate-100',
                           children: [
-                            k.level,
-                            ' \xb7 ',
-                            k.visibleNodeCount,
+                            E.level,
+                            ' - ',
+                            E.visibleNodeCount,
                             '/',
-                            k.totalNodeCount,
+                            E.totalNodeCount,
                             ' nodes',
                           ],
                         }),
                         (0, a.jsxs)('div', {
                           className: 'text-slate-400',
                           children: [
-                            k.visibleEdgeCount,
+                            E.visibleEdgeCount,
                             '/',
-                            k.totalEdgeCount,
-                            ' edges \xb7 gate',
+                            E.totalEdgeCount,
+                            ' edges - gate',
                             ' ',
-                            k.gate.pass ? 'pass' : 'warn',
+                            E.gate.pass ? 'pass' : 'warn',
                           ],
+                        }),
+                        (0, a.jsxs)('div', {
+                          className: 'text-slate-500',
+                          children: ['focus ', E.focusMode ? 'on' : 'off', ' - pinned ', Z.length],
                         }),
                         (0, a.jsx)('button', {
                           type: 'button',
@@ -11327,7 +13341,7 @@
                             'mt-2 px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 border border-slate-600',
                           onClick: () => {
                             var e;
-                            return null === (e = i.current) || void 0 === e
+                            return null === (e = x.current) || void 0 === e
                               ? void 0
                               : e.optimizeView();
                           },
@@ -11337,9 +13351,9 @@
                     }),
                 ],
               }),
-            !x &&
-              !m &&
-              !I &&
+            !g &&
+              !b &&
+              !_ &&
               (0, a.jsx)('div', {
                 className: 'absolute inset-0 flex items-center justify-center',
                 children: (0, a.jsxs)('div', {
@@ -11371,7 +13385,9 @@
                               (0, a.jsx)('div', {
                                 className:
                                   'p-3 bg-purple-600/20 rounded-lg group-hover:bg-purple-600/30 transition-colors',
-                                children: (0, a.jsx)(Y.Z, { className: 'w-6 h-6 text-purple-400' }),
+                                children: (0, a.jsx)(ee.Z, {
+                                  className: 'w-6 h-6 text-purple-400',
+                                }),
                               }),
                               (0, a.jsxs)('div', {
                                 className: 'flex-1',
@@ -11400,7 +13416,7 @@
                               (0, a.jsx)('div', {
                                 className:
                                   'p-3 bg-purple-600/20 rounded-lg group-hover:bg-purple-600/30 transition-colors',
-                                children: (0, a.jsx)(eA.Z, {
+                                children: (0, a.jsx)(eF.Z, {
                                   className: 'w-6 h-6 text-purple-400',
                                 }),
                               }),
@@ -11430,7 +13446,7 @@
                               (0, a.jsx)('div', {
                                 className:
                                   'p-3 bg-purple-600/20 rounded-lg group-hover:bg-purple-600/30 transition-colors',
-                                children: (0, a.jsx)(t8.Z, {
+                                children: (0, a.jsx)(sl.Z, {
                                   className: 'w-6 h-6 text-purple-400',
                                 }),
                               }),
@@ -11458,12 +13474,12 @@
           ],
         });
       });
-      sl.displayName = 'KeimenonViewport';
-      var sr = s(8163),
-        sn = s(8177),
-        si = s(7121);
-      let so = (0, l.createContext)(void 0);
-      function sc(e) {
+      sK.displayName = 'KeimenonViewport';
+      var sq = s(8163),
+        sJ = s(8177),
+        sG = s(7121);
+      let sW = (0, l.createContext)(void 0);
+      function sY(e) {
         switch (e) {
           case 'import':
             return 'import';
@@ -11475,7 +13491,7 @@
             return 'migration';
         }
       }
-      function sd(e, t) {
+      function sH(e, t) {
         var s, a;
         return (null == t ? void 0 : t.title)
           ? t.title
@@ -11491,7 +13507,7 @@
                 ? 'Export job'
                 : 'Job '.concat(e.jobId);
       }
-      function su(e, t) {
+      function sX(e, t) {
         var s, a;
         return (null == t ? void 0 : t.description)
           ? t.description
@@ -11505,10 +13521,10 @@
                 ? void 0
                 : t.description;
       }
-      function sx(e) {
+      function sQ(e) {
         let { children: t, onRestoreOperation: s } = e,
           [r, n] = (0, l.useState)(new Map()),
-          { jobs: i } = ti();
+          { jobs: i } = tp();
         (0, l.useEffect)(() => {
           0 !== i.size &&
             n((e) => {
@@ -11518,16 +13534,16 @@
                 i.forEach((e) => {
                   let a = s.get(e.jobId),
                     l = (function (e, t) {
-                      var s, a, l, r, n, i, o, c, d, u, x, m, p, h, g, b, f, j, v;
+                      var s, a, l, r, n, i, o, c, d, u, x, m, p, h, g, b, f, v, j;
                       if ('deleted' === e.status)
                         return {
                           id: e.jobId,
                           type:
                             null !== (c = null == t ? void 0 : t.type) && void 0 !== c
                               ? c
-                              : sc(e.type),
-                          title: sd(e, t),
-                          description: su(e, t),
+                              : sY(e.type),
+                          title: sH(e, t),
+                          description: sX(e, t),
                           fileName:
                             null !== (d = null == t ? void 0 : t.fileName) && void 0 !== d
                               ? d
@@ -11556,7 +13572,7 @@
                           state: null == t ? void 0 : t.state,
                         };
                       let N = null == t ? void 0 : t.status,
-                        y = tg({
+                        y = tw({
                           backendStatus: e.status,
                           jobType: e.type,
                           progress: {
@@ -11566,7 +13582,7 @@
                           previousStatus: N,
                         }),
                         w = y.status,
-                        k = tb({
+                        k = tk({
                           backendStatus: e.status,
                           status: y.status,
                           rawPercent:
@@ -11639,12 +13655,12 @@
                         type:
                           null !== (f = null == t ? void 0 : t.type) && void 0 !== f
                             ? f
-                            : sc(e.type),
-                        title: sd(e, t),
-                        description: su(e, t),
+                            : sY(e.type),
+                        title: sH(e, t),
+                        description: sX(e, t),
                         fileName:
-                          null !== (j = null == t ? void 0 : t.fileName) && void 0 !== j
-                            ? j
+                          null !== (v = null == t ? void 0 : t.fileName) && void 0 !== v
+                            ? v
                             : null === (i = e.config) || void 0 === i
                               ? void 0
                               : i.fileName,
@@ -11653,8 +13669,8 @@
                         status: w,
                         progress: k,
                         startedAt:
-                          null !== (v = null == t ? void 0 : t.startedAt) && void 0 !== v
-                            ? v
+                          null !== (j = null == t ? void 0 : t.startedAt) && void 0 !== j
+                            ? j
                             : Date.now(),
                         completedAt: C,
                         stats: I,
@@ -11761,7 +13777,7 @@
             }, 3e3);
             return () => clearInterval(e);
           }, []),
-          (0, a.jsx)(so.Provider, {
+          (0, a.jsx)(sW.Provider, {
             value: {
               operations: r,
               addOperation: o,
@@ -11777,13 +13793,13 @@
           })
         );
       }
-      function sm() {
-        let e = (0, l.useContext)(so);
+      function s$() {
+        let e = (0, l.useContext)(sW);
         if (!e)
           throw Error('useBackgroundOperations must be used within BackgroundOperationsProvider');
         return e;
       }
-      function sp(e) {
+      function s0(e) {
         var t, s, l, r;
         let {
             index: n,
@@ -11796,13 +13812,13 @@
           } = e,
           p = o[n],
           h = p.status,
-          g = sg[h],
+          g = s1[h],
           b = c.has(p.id),
           f = ['reading', 'parsing', 'normalizing', 'indexing', 'linking', 'processing'].includes(
             p.status
           ),
-          j = m(p),
-          v = 'deletion' === j ? ej.Z : eA.Z;
+          v = m(p),
+          j = 'deletion' === v ? ew.Z : eF.Z;
         return (0, a.jsxs)('div', {
           style: i,
           'data-testid': 'background-operation-row',
@@ -11819,9 +13835,9 @@
               children: (0, a.jsxs)('div', {
                 className: 'flex items-center gap-3',
                 children: [
-                  (0, a.jsx)(v, {
+                  (0, a.jsx)(j, {
                     className: 'w-4 h-4 flex-shrink-0 '.concat(
-                      'deletion' === j ? 'text-red-400' : 'text-slate-400'
+                      'deletion' === v ? 'text-red-400' : 'text-slate-400'
                     ),
                   }),
                   (0, a.jsxs)('div', {
@@ -11832,7 +13848,7 @@
                       }),
                       (0, a.jsx)('p', {
                         className: 'text-xs text-slate-500 capitalize',
-                        children: 'deletion' === j ? 'Data deletion' : p.platform || p.fileType,
+                        children: 'deletion' === v ? 'Data deletion' : p.platform || p.fileType,
                       }),
                     ],
                   }),
@@ -11844,9 +13860,9 @@
               children: (0, a.jsxs)('div', {
                 className:
                   'inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium '.concat(
-                    sh[h]
+                    s4[h]
                   ),
-                children: [(0, a.jsx)(g, { className: 'w-3 h-3' }), sb[h]],
+                children: [(0, a.jsx)(g, { className: 'w-3 h-3' }), s2[h]],
               }),
             }),
             (0, a.jsx)('div', {
@@ -11899,7 +13915,7 @@
                 className: 'text-xs text-slate-400 space-y-0.5',
                 children:
                   'done' === p.status
-                    ? 'deletion' === j
+                    ? 'deletion' === v
                       ? (0, a.jsxs)(a.Fragment, {
                           children: [
                             (0, a.jsxs)('div', {
@@ -11956,7 +13972,7 @@
                           title: p.error,
                           children: p.error || 'Failed',
                         })
-                      : 'deletion' === j
+                      : 'deletion' === v
                         ? (0, a.jsxs)('div', {
                             children: [
                               null !==
@@ -11987,7 +14003,7 @@
                 className: 'flex items-center gap-1 text-xs text-slate-400',
                 children: [
                   f && (0, a.jsx)(x.Z, { className: 'w-3 h-3 animate-spin' }),
-                  (0, a.jsx)(ec.Z, { className: 'w-3 h-3' }),
+                  (0, a.jsx)(ep.Z, { className: 'w-3 h-3' }),
                   (0, a.jsx)('span', { children: u(p.startedAt, p.completedAt) }),
                 ],
               }),
@@ -12000,13 +14016,13 @@
                 },
                 className: 'p-1.5 hover:bg-slate-600 rounded transition-colors',
                 title: 'View details',
-                children: (0, a.jsx)(eh.Z, { className: 'w-4 h-4 text-slate-400' }),
+                children: (0, a.jsx)(ev.Z, { className: 'w-4 h-4 text-slate-400' }),
               }),
             }),
           ],
         });
       }
-      let sh = {
+      let s4 = {
           queued: 'bg-slate-600/20 border-slate-500/30 text-slate-300',
           reading: 'bg-blue-600/20 border-blue-500/30 text-blue-300',
           parsing: 'bg-blue-600/20 border-blue-500/30 text-blue-300',
@@ -12018,19 +14034,19 @@
           done: 'bg-green-600/20 border-green-500/30 text-green-300',
           error: 'bg-red-600/20 border-red-500/30 text-red-300',
         },
-        sg = {
-          queued: ec.Z,
-          reading: eA.Z,
-          parsing: eA.Z,
-          normalizing: eB.Z,
-          indexing: Y.Z,
-          linking: Y.Z,
+        s1 = {
+          queued: ep.Z,
+          reading: eF.Z,
+          parsing: eF.Z,
+          normalizing: eJ.Z,
+          indexing: ee.Z,
+          linking: ee.Z,
           processing: x.Z,
-          blocked: si.Z,
+          blocked: sG.Z,
           done: u.Z,
-          error: e$.Z,
+          error: e1.Z,
         },
-        sb = {
+        s2 = {
           queued: 'Queued',
           reading: 'Reading',
           parsing: 'Parsing',
@@ -12042,7 +14058,7 @@
           done: 'Complete',
           error: 'Failed',
         };
-      function sf(e) {
+      function s5(e) {
         let { onJobSelect: t, onJobsMultiSelect: s } = e,
           [r, n] = (0, l.useState)([]),
           [i, o] = (0, l.useState)(new Set()),
@@ -12050,18 +14066,18 @@
           [m, p] = (0, l.useState)(!1),
           [h, g] = (0, l.useState)([]),
           [b, f] = (0, l.useState)(new Set()),
-          [j, v] = (0, l.useState)(!1),
+          [v, j] = (0, l.useState)(!1),
           [w, k] = (0, l.useState)(!1),
           { operating: C, isOperatingMode: S, operatingContextVersion: I } = (0, y.B)(),
           {
-            getAllOperations: Z,
-            getOperation: D,
-            restoreOperation: T,
-            removeOperationsByJobIds: A,
-          } = sm(),
+            getAllOperations: M,
+            getOperation: Z,
+            restoreOperation: D,
+            removeOperationsByJobIds: T,
+          } = s$(),
           L = (0, l.useRef)(null),
           F = (0, l.useRef)(null),
-          P = e7(F, 400),
+          P = tr(F, 400),
           O = (0, l.useRef)(new Set());
         (0, l.useEffect)(() => {
           try {
@@ -12074,7 +14090,7 @@
             console.error('[ImportsTable] Failed to load deleted jobs from session storage', e);
           }
         }, []);
-        let { jobs: z, connected: R, error: U, removeJobs: B } = ti();
+        let { jobs: z, connected: R, error: U, removeJobs: B } = tp();
         ((0, l.useEffect)(() => {
           if (0 === b.size) {
             p(!1);
@@ -12086,7 +14102,7 @@
               return t && ('queued' === t.status || 'running' === t.status);
             }) ||
               (console.log('[ImportsTable] All bulk operations complete via SSE'),
-              M.O.getState().loadGraphData(),
+              A.O.getState().loadGraphData(),
               p(!1),
               f(new Set())));
           let e = setTimeout(() => {
@@ -12106,11 +14122,11 @@
               p(!1),
               f(new Set()));
           }, []));
-        let K = (0, l.useMemo)(
+        let V = (0, l.useMemo)(
             () => 0 !== i.size && r.some((e) => i.has(e.id) && 'done' === e.status),
             [r, i]
           ),
-          q = (0, l.useCallback)((e) => {
+          K = (0, l.useCallback)((e) => {
             var t,
               s,
               a,
@@ -12129,8 +14145,8 @@
               g,
               b,
               f,
-              j,
               v,
+              j,
               N,
               y,
               w,
@@ -12139,11 +14155,11 @@
               S,
               I,
               E,
+              M,
               Z,
               D,
               T,
               A,
-              M,
               _,
               L,
               F,
@@ -12152,7 +14168,7 @@
               z,
               R,
               U;
-            let B = tg({
+            let B = tw({
                 backendStatus: e.status,
                 jobType: e.type,
                 progress: {
@@ -12170,7 +14186,7 @@
                         : a.stage,
                 },
               }),
-              K =
+              V =
                 e.fileName ||
                 (null === (i = e.config) || void 0 === i
                   ? void 0
@@ -12180,15 +14196,15 @@
                       ? void 0
                       : r.fileName) ||
                 'Job '.concat(e.id.substring(0, 8)),
-              q = null === (o = e.config) || void 0 === o ? void 0 : o.platform;
+              K = null === (o = e.config) || void 0 === o ? void 0 : o.platform;
             return {
               id: e.id,
               type: e.type,
-              fileName: K,
+              fileName: V,
               fileType: 'import' === e.type ? 'chat' : 'unknown',
-              platform: q,
+              platform: K,
               status: B.status,
-              progress: tb({
+              progress: tk({
                 backendStatus: e.status,
                 status: B.status,
                 rawPercent:
@@ -12220,17 +14236,17 @@
               completedAt: null === (b = e.state_data) || void 0 === b ? void 0 : b.completedAt,
               stats: {
                 nodesCreated:
-                  (null === (j = e.state_data) || void 0 === j
+                  (null === (v = e.state_data) || void 0 === v
                     ? void 0
-                    : null === (f = j.stats) || void 0 === f
+                    : null === (f = v.stats) || void 0 === f
                       ? void 0
                       : f.nodesCreated) || 0,
                 edgesCreated:
                   (null === (N = e.state_data) || void 0 === N
                     ? void 0
-                    : null === (v = N.stats) || void 0 === v
+                    : null === (j = N.stats) || void 0 === j
                       ? void 0
-                      : v.edgesCreated) || 0,
+                      : j.edgesCreated) || 0,
                 sourcesCreated:
                   (null === (w = e.state_data) || void 0 === w
                     ? void 0
@@ -12250,23 +14266,23 @@
                       ? void 0
                       : S.messagesProcessed) || 0,
                 spansCreated:
-                  (null === (Z = e.state_data) || void 0 === Z
+                  (null === (M = e.state_data) || void 0 === M
                     ? void 0
-                    : null === (E = Z.stats) || void 0 === E
+                    : null === (E = M.stats) || void 0 === E
                       ? void 0
                       : E.spansCreated) || 0,
                 packetsCreated:
-                  (null === (T = e.state_data) || void 0 === T
+                  (null === (D = e.state_data) || void 0 === D
                     ? void 0
-                    : null === (D = T.stats) || void 0 === D
+                    : null === (Z = D.stats) || void 0 === Z
                       ? void 0
-                      : D.packetsCreated) || 0,
+                      : Z.packetsCreated) || 0,
                 atomicUnitsCreated:
-                  (null === (M = e.state_data) || void 0 === M
+                  (null === (A = e.state_data) || void 0 === A
                     ? void 0
-                    : null === (A = M.stats) || void 0 === A
+                    : null === (T = A.stats) || void 0 === T
                       ? void 0
-                      : A.atomicUnitsCreated) || 0,
+                      : T.atomicUnitsCreated) || 0,
                 packetMassLinksCreated:
                   (null === (L = e.state_data) || void 0 === L
                     ? void 0
@@ -12294,7 +14310,7 @@
                     : R.message,
             };
           }, []),
-          V = (0, l.useCallback)((e, t) => {
+          q = (0, l.useCallback)((e, t) => {
             var s,
               a,
               l,
@@ -12312,8 +14328,8 @@
               g,
               b,
               f,
-              j,
               v,
+              j,
               N,
               y,
               w,
@@ -12322,11 +14338,11 @@
               S,
               I,
               E,
+              M,
               Z,
               D,
               T,
               A,
-              M,
               _,
               L,
               F,
@@ -12335,13 +14351,13 @@
               z,
               R;
             let U;
-            let B = tg({
+            let B = tw({
                 backendStatus: e.status,
                 jobType: e.type,
                 progress: { message: e.progress.message, stage: e.progress.stage },
                 previousStatus: null == t ? void 0 : t.status,
               }),
-              K =
+              V =
                 null !== (p = null == t ? void 0 : t.stats) && void 0 !== p
                   ? p
                   : {
@@ -12377,7 +14393,7 @@
                   null !== (g = null == t ? void 0 : t.fileType) && void 0 !== g ? g : 'unknown',
                 platform: null == t ? void 0 : t.platform,
                 status: B.status,
-                progress: tb({
+                progress: tk({
                   backendStatus: e.status,
                   status: B.status,
                   rawPercent: e.progress.percent,
@@ -12399,13 +14415,13 @@
                 stats: {
                   nodesCreated:
                     null !==
-                      (v =
+                      (j =
                         null !==
-                          (j = null === (a = e.stats) || void 0 === a ? void 0 : a.nodesCreated) &&
-                        void 0 !== j
-                          ? j
-                          : K.nodesCreated) && void 0 !== v
-                      ? v
+                          (v = null === (a = e.stats) || void 0 === a ? void 0 : a.nodesCreated) &&
+                        void 0 !== v
+                          ? v
+                          : V.nodesCreated) && void 0 !== j
+                      ? j
                       : 0,
                   edgesCreated:
                     null !==
@@ -12414,7 +14430,7 @@
                           (N = null === (l = e.stats) || void 0 === l ? void 0 : l.edgesCreated) &&
                         void 0 !== N
                           ? N
-                          : K.edgesCreated) && void 0 !== y
+                          : V.edgesCreated) && void 0 !== y
                       ? y
                       : 0,
                   sourcesCreated:
@@ -12425,7 +14441,7 @@
                             null === (r = e.stats) || void 0 === r ? void 0 : r.sourcesCreated) &&
                         void 0 !== w
                           ? w
-                          : K.sourcesCreated) && void 0 !== k
+                          : V.sourcesCreated) && void 0 !== k
                       ? k
                       : 0,
                   conversationsProcessed:
@@ -12437,7 +14453,7 @@
                               ? void 0
                               : n.conversationsProcessed) && void 0 !== C
                           ? C
-                          : K.conversationsProcessed) && void 0 !== S
+                          : V.conversationsProcessed) && void 0 !== S
                       ? S
                       : 0,
                   messagesProcessed:
@@ -12449,40 +14465,40 @@
                               ? void 0
                               : i.messagesProcessed) && void 0 !== I
                           ? I
-                          : K.messagesProcessed) && void 0 !== E
+                          : V.messagesProcessed) && void 0 !== E
                       ? E
                       : 0,
                   spansCreated:
                     null !==
-                      (D =
+                      (Z =
                         null !==
-                          (Z = null === (o = e.stats) || void 0 === o ? void 0 : o.spansCreated) &&
-                        void 0 !== Z
-                          ? Z
-                          : K.spansCreated) && void 0 !== D
-                      ? D
+                          (M = null === (o = e.stats) || void 0 === o ? void 0 : o.spansCreated) &&
+                        void 0 !== M
+                          ? M
+                          : V.spansCreated) && void 0 !== Z
+                      ? Z
                       : 0,
                   packetsCreated:
                     null !==
-                      (A =
+                      (T =
                         null !==
-                          (T =
+                          (D =
                             null === (c = e.stats) || void 0 === c ? void 0 : c.packetsCreated) &&
-                        void 0 !== T
-                          ? T
-                          : K.packetsCreated) && void 0 !== A
-                      ? A
+                        void 0 !== D
+                          ? D
+                          : V.packetsCreated) && void 0 !== T
+                      ? T
                       : 0,
                   atomicUnitsCreated:
                     null !==
                       (_ =
                         null !==
-                          (M =
+                          (A =
                             null === (d = e.stats) || void 0 === d
                               ? void 0
-                              : d.atomicUnitsCreated) && void 0 !== M
-                          ? M
-                          : K.atomicUnitsCreated) && void 0 !== _
+                              : d.atomicUnitsCreated) && void 0 !== A
+                          ? A
+                          : V.atomicUnitsCreated) && void 0 !== _
                       ? _
                       : 0,
                   packetMassLinksCreated:
@@ -12494,7 +14510,7 @@
                               ? void 0
                               : u.packetMassLinksCreated) && void 0 !== L
                           ? L
-                          : K.packetMassLinksCreated) && void 0 !== F
+                          : V.packetMassLinksCreated) && void 0 !== F
                       ? F
                       : 0,
                   nodesDeleted:
@@ -12504,7 +14520,7 @@
                           (P = null === (x = e.stats) || void 0 === x ? void 0 : x.nodesDeleted) &&
                         void 0 !== P
                           ? P
-                          : K.nodesDeleted) && void 0 !== O
+                          : V.nodesDeleted) && void 0 !== O
                       ? O
                       : 0,
                   edgesDeleted:
@@ -12514,7 +14530,7 @@
                           (z = null === (m = e.stats) || void 0 === m ? void 0 : m.edgesDeleted) &&
                         void 0 !== z
                           ? z
-                          : K.edgesDeleted) && void 0 !== R
+                          : V.edgesDeleted) && void 0 !== R
                       ? R
                       : 0,
                 },
@@ -12532,10 +14548,10 @@
             n((e) => {
               let t = new Map(e.map((e) => [e.id, e]));
               return Array.from(z.values())
-                .map((e) => V(e, t.get(e.jobId)))
+                .map((e) => q(e, t.get(e.jobId)))
                 .sort((e, t) => t.startedAt - e.startedAt);
             });
-        }, [z, V]),
+        }, [z, q]),
           (0, l.useCallback)((e, t) => {
             n((s) =>
               s.find((t) => t.id === e)
@@ -12576,7 +14592,7 @@
             );
           }, []));
         let J = (0, l.useCallback)(() => {
-          let e = Z(),
+          let e = M(),
             t = [...r];
           for (let s of e)
             r.some((e) => e.id === s.id) ||
@@ -12610,7 +14626,7 @@
               return !t || a;
             })
             .sort((e, t) => t.startedAt - e.startedAt);
-        }, [r, Z]);
+        }, [r, M]);
         ((0, l.useEffect)(
           () => (
             (async () => {
@@ -12633,7 +14649,7 @@
                   throw Error('HTTP '.concat(l.status, ': ').concat(l.statusText));
                 let r = await l.json();
                 if (r.success && r.jobs) {
-                  let e = r.jobs.map(q).filter((e) => !O.current.has(e.id));
+                  let e = r.jobs.map(K).filter((e) => !O.current.has(e.id));
                   n((t) => (JSON.stringify(t) === JSON.stringify(e) ? t : [...e]));
                   let t = e.filter((e) =>
                     [
@@ -12661,7 +14677,7 @@
               L.current && L.current.abort();
             }
           ),
-          [C, S, I, q]
+          [C, S, I, K]
         ),
           (0, l.useEffect)(() => {
             let e = async () => {
@@ -12682,7 +14698,7 @@
                   if ((clearTimeout(t), l.ok)) {
                     let e = await l.json();
                     if (e.success && e.jobs) {
-                      let t = e.jobs.map(q).filter((e) => !O.current.has(e.id));
+                      let t = e.jobs.map(K).filter((e) => !O.current.has(e.id));
                       n((e) => (JSON.stringify(e) === JSON.stringify(t) ? e : [...t]));
                     }
                   }
@@ -12696,7 +14712,7 @@
               document.addEventListener('visibilitychange', e),
               () => document.removeEventListener('visibilitychange', e)
             );
-          }, [C, S, q]));
+          }, [C, S, K]));
         let G = async () => {
             let e = new Set(i);
             (console.log('================================'),
@@ -12725,7 +14741,7 @@
             k(!1);
             let e = new Set(i);
             (console.log('[DELETE] User confirmed deletion via dialog, proceeding...'),
-              v(!0),
+              j(!0),
               console.log('[DELETE] State updated: isDeleting = true'));
             try {
               let t = (0, N.LP)(),
@@ -12895,7 +14911,7 @@
                 let t = new Set(e);
                 return (p.forEach((e) => t.delete(e)), t);
               }),
-                A(Array.from(p)),
+                T(Array.from(p)),
                 B(Array.from(p)),
                 o(new Set()));
             } catch (t) {
@@ -12907,11 +14923,11 @@
             } finally {
               (console.log('[DELETE] Finally block executing - resetting state'),
                 console.log('[DELETE] Setting isDeleting = false'),
-                v(!1),
+                j(!1),
                 console.log('[DELETE] Finally block complete - state should be reset'));
             }
           },
-          H = async () => {
+          Y = async () => {
             if (0 === i.size) return;
             let e = Array.from(i).filter((e) => b.has(e));
             if (e.length > 0) {
@@ -13017,7 +15033,7 @@
                 p(!1));
             }
           },
-          X = (0, l.useCallback)(
+          H = (0, l.useCallback)(
             (e, a) => {
               let l = e.id;
               a.ctrlKey || a.metaKey
@@ -13033,7 +15049,7 @@
             },
             [r, t, s]
           ),
-          $ = (0, l.useCallback)((e, t) => {
+          X = (0, l.useCallback)((e, t) => {
             if (!e || isNaN(e)) return '—';
             let s = Math.floor(((t || Date.now()) - e) / 1e3);
             return s < 0
@@ -13045,7 +15061,7 @@
                   : ''.concat(Math.floor(s / 3600), 'h ').concat(Math.floor((s % 3600) / 60), 'm');
           }, []),
           Q = J(),
-          ee = (0, l.useCallback)(
+          $ = (0, l.useCallback)(
             (e) => (e.id.startsWith('del_') || 'delete' === e.type ? 'deletion' : 'import'),
             []
           ),
@@ -13053,11 +15069,11 @@
             () => ({
               jobs: Q,
               selectedJobIds: i,
-              handleRowClick: X,
-              formatTimeElapsed: $,
-              getOperationType: ee,
+              handleRowClick: H,
+              formatTimeElapsed: X,
+              getOperationType: $,
             }),
-            [Q, i, X, $, ee]
+            [Q, i, H, X, $]
           );
         return ((0, l.useEffect)(() => {
           if (
@@ -13091,7 +15107,7 @@
                     (0, a.jsxs)('div', {
                       className: 'flex items-center gap-2',
                       children: [
-                        (0, a.jsx)(Y.Z, { className: 'w-5 h-5 text-slate-400' }),
+                        (0, a.jsx)(ee.Z, { className: 'w-5 h-5 text-slate-400' }),
                         (0, a.jsx)('h3', {
                           className: 'text-sm font-semibold text-slate-300',
                           children: 'Background Operations',
@@ -13126,11 +15142,11 @@
                             className: 'flex items-center gap-2',
                             children: [
                               (0, a.jsxs)('button', {
-                                onClick: H,
-                                disabled: m || K,
+                                onClick: Y,
+                                disabled: m || V,
                                 className:
                                   'flex items-center gap-1 px-2 py-1 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
-                                title: K ? 'Cannot retry succeeded jobs' : 'Retry selected jobs',
+                                title: V ? 'Cannot retry succeeded jobs' : 'Retry selected jobs',
                                 children: [
                                   m
                                     ? (0, a.jsx)(x.Z, { className: 'w-3 h-3 animate-spin' })
@@ -13149,14 +15165,14 @@
                                   }),
                                     G());
                                 },
-                                disabled: j,
+                                disabled: v,
                                 className:
                                   'flex items-center gap-1 px-2 py-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
                                 title: 'Delete selected jobs',
                                 children: [
-                                  j
+                                  v
                                     ? (0, a.jsx)(x.Z, { className: 'w-3 h-3 animate-spin' })
-                                    : (0, a.jsx)(ej.Z, { className: 'w-3 h-3' }),
+                                    : (0, a.jsx)(ew.Z, { className: 'w-3 h-3' }),
                                   'Delete',
                                 ],
                               }),
@@ -13182,7 +15198,7 @@
                         (0, a.jsxs)('div', {
                           className: 'flex items-center gap-3 text-amber-400',
                           children: [
-                            (0, a.jsx)(t$.Z, { className: 'w-6 h-6' }),
+                            (0, a.jsx)(t3.Z, { className: 'w-6 h-6' }),
                             (0, a.jsx)('h3', {
                               className: 'text-lg font-semibold text-slate-100',
                               children: 'Confirm Deletion',
@@ -13208,16 +15224,16 @@
                               onClick: () => k(!1),
                               className:
                                 'px-4 py-2 rounded hover:bg-slate-700 text-slate-300 transition-colors',
-                              disabled: j,
+                              disabled: v,
                               children: 'Cancel',
                             }),
                             (0, a.jsxs)('button', {
                               onClick: W,
                               className:
                                 'px-4 py-2 rounded bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center gap-2',
-                              disabled: j,
+                              disabled: v,
                               children: [
-                                j && (0, a.jsx)(x.Z, { className: 'w-4 h-4 animate-spin' }),
+                                v && (0, a.jsx)(x.Z, { className: 'w-4 h-4 animate-spin' }),
                                 'Confirm Delete',
                               ],
                             }),
@@ -13262,11 +15278,11 @@
                           ref: F,
                           className: 'flex-1',
                           style: { height: Math.min(68 * Q.length, 400) },
-                          children: (0, a.jsx)(e8.aV, {
+                          children: (0, a.jsx)(tl.aV, {
                             style: { height: Math.min(68 * Q.length, P) },
                             rowCount: Q.length,
                             rowHeight: 68,
-                            rowComponent: sp,
+                            rowComponent: s0,
                             rowProps: et,
                           }),
                         }),
@@ -13276,7 +15292,7 @@
                       className: 'p-8 text-center',
                       'data-testid': 'background-operations-empty-state',
                       children: [
-                        (0, a.jsx)(Y.Z, { className: 'w-12 h-12 text-slate-600 mx-auto mb-3' }),
+                        (0, a.jsx)(ee.Z, { className: 'w-12 h-12 text-slate-600 mx-auto mb-3' }),
                         (0, a.jsx)('p', {
                           className: 'text-sm text-slate-400 mb-1',
                           children: 'No active imports',
@@ -13290,7 +15306,7 @@
               ],
             });
       }
-      function sj(e) {
+      function s3(e) {
         let { title: t, value: s, subtitle: l, icon: r, trend: n, color: i = 'slate' } = e;
         return (0, a.jsxs)('div', {
           className:
@@ -13318,7 +15334,7 @@
                       n.positive ? 'text-green-400' : 'text-red-400'
                     ),
                     children: [
-                      (0, a.jsx)(eB.Z, {
+                      (0, a.jsx)(eJ.Z, {
                         className: 'w-3 h-3 '.concat(n.positive ? '' : 'rotate-180'),
                       }),
                       n.value,
@@ -13332,7 +15348,7 @@
           ],
         });
       }
-      function sv(e) {
+      function s6(e) {
         let { title: t, icon: s, children: l } = e;
         return (0, a.jsxs)('div', {
           children: [
@@ -13350,7 +15366,7 @@
           ],
         });
       }
-      function sN(e) {
+      function s8(e) {
         var t;
         let { onJobSelect: s } = e,
           [r, n] = (0, l.useState)(null),
@@ -13358,17 +15374,17 @@
           [c, d] = (0, l.useState)([]),
           [u, x] = (0, l.useState)([]),
           [m, h] = (0, l.useState)(!0),
-          [g, j] = (0, l.useState)(null);
+          [g, v] = (0, l.useState)(null);
         return (
           (0, l.useEffect)(() => {
             (async () => {
               try {
-                (h(!0), j(null));
+                (h(!0), v(null));
                 let [e, t, s, a] = await Promise.all([
-                  (0, eD.w3)(),
-                  (0, eD.T1)('usage', 10),
-                  (0, eD.J$)(20),
-                  (0, eD.PZ)(),
+                  (0, e_.w3)(),
+                  (0, e_.T1)('usage', 10),
+                  (0, e_.J$)(20),
+                  (0, e_.PZ)(),
                 ]);
                 (n(e), o(t.accounts), d(s.activity), x(a.alerts));
               } catch (s) {
@@ -13392,7 +15408,7 @@
                   ).userMessage ||
                   s.message ||
                   'Failed to load analytics data';
-                (console.error('[CRMDashboard] Setting error message:', t), j(t));
+                (console.error('[CRMDashboard] Setting error message:', t), v(t));
               } finally {
                 (console.log('[CRMDashboard] Fetch complete, setting loading = false'), h(!1));
               }
@@ -13415,7 +15431,7 @@
                     }),
                   ],
                 }),
-                (0, a.jsx)(sf, {
+                (0, a.jsx)(s5, {
                   onJobSelect: (e, t) => {
                     console.log('Import job selected:', e, t);
                   },
@@ -13429,7 +15445,7 @@
                     children: (0, a.jsxs)('div', {
                       className: 'text-center',
                       children: [
-                        (0, a.jsx)(tk.Z, {
+                        (0, a.jsx)(tD.Z, {
                           className: 'w-8 h-8 animate-spin text-purple-500 mx-auto mb-4',
                         }),
                         (0, a.jsx)('p', {
@@ -13446,7 +15462,7 @@
                     children: (0, a.jsxs)('div', {
                       className: 'text-center',
                       children: [
-                        (0, a.jsx)(t$.Z, { className: 'w-8 h-8 text-red-500 mx-auto mb-4' }),
+                        (0, a.jsx)(t3.Z, { className: 'w-8 h-8 text-red-500 mx-auto mb-4' }),
                         (0, a.jsx)('p', { className: 'text-sm text-red-400', children: g }),
                       ],
                     }),
@@ -13456,31 +15472,31 @@
                   r &&
                   (0, a.jsxs)(a.Fragment, {
                     children: [
-                      (0, a.jsx)(sv, {
+                      (0, a.jsx)(s6, {
                         title: 'Account Metrics',
                         icon: b.Z,
                         children: (0, a.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4',
                           children: [
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Active Accounts',
                               value: r.accounts.active,
                               icon: b.Z,
                               color: 'blue',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Total Seats',
                               value: r.accounts.total_seats,
                               icon: f.Z,
                               color: 'purple',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Free Tier',
                               value: r.accounts.tier_distribution.free,
                               icon: b.Z,
                               color: 'slate',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Business Tier',
                               value: r.accounts.tier_distribution.business,
                               icon: b.Z,
@@ -13489,63 +15505,63 @@
                           ],
                         }),
                       }),
-                      (0, a.jsx)(sv, {
+                      (0, a.jsx)(s6, {
                         title: 'User Activity',
                         icon: B.Z,
                         children: (0, a.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
                           children: [
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Last 7 Days',
                               value: r.user_activity.last_7_days,
                               subtitle: 'Active users',
                               icon: f.Z,
                               color: 'green',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Last 30 Days',
                               value: r.user_activity.last_30_days,
                               subtitle: 'Active users',
                               icon: f.Z,
                               color: 'green',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Avg Session Time',
                               value:
                                 (t = r.user_activity.avg_session_time_minutes) < 60
                                   ? ''.concat(Math.round(t), 'm')
                                   : ''.concat(Math.round(t / 60), 'h'),
-                              icon: ec.Z,
+                              icon: ep.Z,
                               color: 'purple',
                             }),
                           ],
                         }),
                       }),
-                      (0, a.jsx)(sv, {
+                      (0, a.jsx)(s6, {
                         title: 'Storage & Resources',
-                        icon: W.Z,
+                        icon: X.Z,
                         children: (0, a.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4',
                           children: [
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Total Nodes',
                               value: r.storage.total_nodes.toLocaleString(),
-                              icon: eE.Z,
+                              icon: eT.Z,
                               color: 'blue',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Total Edges',
                               value: r.storage.total_edges.toLocaleString(),
-                              icon: eE.Z,
+                              icon: eT.Z,
                               color: 'purple',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Total Sources',
                               value: r.storage.total_sources.toLocaleString(),
-                              icon: eA.Z,
+                              icon: eF.Z,
                               color: 'green',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Storage Used',
                               value: ((e) => {
                                 if (0 === e) return '0 B';
@@ -13556,87 +15572,87 @@
                                   ['B', 'KB', 'MB', 'GB'][t]
                                 );
                               })(r.storage.storage_size_bytes),
-                              icon: W.Z,
+                              icon: X.Z,
                               color: 'yellow',
                             }),
                           ],
                         }),
                       }),
-                      (0, a.jsx)(sv, {
+                      (0, a.jsx)(s6, {
                         title: 'Processing Jobs',
-                        icon: sr.Z,
+                        icon: sq.Z,
                         children: (0, a.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
                           children: [
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Active Jobs',
                               value: r.processing.active,
-                              icon: sr.Z,
+                              icon: sq.Z,
                               color: 'blue',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Completed Today',
                               value: r.processing.completed_today,
-                              icon: sr.Z,
+                              icon: sq.Z,
                               color: 'green',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Failed Jobs',
                               value: r.processing.failed,
-                              icon: t$.Z,
+                              icon: t3.Z,
                               color: 'red',
                             }),
                           ],
                         }),
                       }),
-                      (0, a.jsx)(sv, {
+                      (0, a.jsx)(s6, {
                         title: 'Billing & Revenue',
-                        icon: sn.Z,
+                        icon: sJ.Z,
                         children: (0, a.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
                           children: [
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Monthly Recurring Revenue',
                               value: '$'.concat(r.billing.mrr.toLocaleString()),
-                              icon: sn.Z,
+                              icon: sJ.Z,
                               color: 'green',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Churn Rate',
                               value: ''.concat(r.billing.churn_rate.toFixed(1), '%'),
-                              icon: eB.Z,
+                              icon: eJ.Z,
                               color: 'yellow',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Customer LTV',
                               value: '$'.concat(r.billing.customer_ltv.toLocaleString()),
-                              icon: sn.Z,
+                              icon: sJ.Z,
                               color: 'purple',
                             }),
                           ],
                         }),
                       }),
-                      (0, a.jsx)(sv, {
+                      (0, a.jsx)(s6, {
                         title: 'System Health',
                         icon: p.Z,
                         children: (0, a.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
                           children: [
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'API Latency',
                               value: ''.concat(r.system_health.api_latency_ms, 'ms'),
                               subtitle: 'Avg response time',
                               icon: p.Z,
                               color: 'blue',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Error Rate',
                               value: ''.concat(r.system_health.error_rate.toFixed(2), '%'),
                               subtitle: 'Last 24 hours',
-                              icon: t$.Z,
+                              icon: t3.Z,
                               color: 'green',
                             }),
-                            (0, a.jsx)(sj, {
+                            (0, a.jsx)(s3, {
                               title: 'Uptime',
                               value: ''.concat(r.system_health.uptime_percent.toFixed(1), '%'),
                               subtitle: 'Last 30 days',
@@ -13768,7 +15784,7 @@
                           (0, a.jsxs)('div', {
                             className: 'flex items-center gap-2 mb-4',
                             children: [
-                              (0, a.jsx)(t$.Z, { className: 'w-5 h-5 text-yellow-400' }),
+                              (0, a.jsx)(t3.Z, { className: 'w-5 h-5 text-yellow-400' }),
                               (0, a.jsx)('h3', {
                                 className: 'text-sm font-semibold text-slate-300',
                                 children: 'System Alerts',
@@ -13792,7 +15808,7 @@
                                       children: (0, a.jsxs)('div', {
                                         className: 'flex items-start gap-3',
                                         children: [
-                                          (0, a.jsx)(t$.Z, {
+                                          (0, a.jsx)(t3.Z, {
                                             className: 'w-5 h-5 flex-shrink-0 '.concat(
                                               'error' === e.type
                                                 ? 'text-red-400'
@@ -13834,7 +15850,7 @@
           })
         );
       }
-      function sy() {
+      function s7() {
         var e;
         let [t, s] = (0, l.useState)(null),
           [r, n] = (0, l.useState)(null),
@@ -13848,7 +15864,7 @@
         let p = async () => {
           (o(!0), d(null));
           try {
-            let e = await (0, eD.In)();
+            let e = await (0, e_.In)();
             s(e);
             try {
               let e = localStorage.getItem('keimenon_token'),
@@ -14005,7 +16021,7 @@
                                       }),
                                       (0, a.jsx)('span', {
                                         className: 'font-medium text-gray-900',
-                                        children: sw(t.local_storage.totalSize),
+                                        children: s9(t.local_storage.totalSize),
                                       }),
                                     ],
                                   }),
@@ -14043,7 +16059,7 @@
                                                 }),
                                                 (0, a.jsxs)('span', {
                                                   className: 'text-gray-900',
-                                                  children: [s.count, ' (', sw(s.size), ')'],
+                                                  children: [s.count, ' (', s9(s.size), ')'],
                                                 }),
                                               ],
                                             },
@@ -14175,7 +16191,7 @@
                                         }),
                                         (0, a.jsx)('span', {
                                           className: 'font-medium text-yellow-800',
-                                          children: sw(r.spaceSaved),
+                                          children: s9(r.spaceSaved),
                                         }),
                                       ],
                                     }),
@@ -14248,23 +16264,25 @@
               ],
             });
       }
-      function sw(e) {
+      function s9(e) {
         if (0 === e) return '0 Bytes';
         let t = Math.floor(Math.log(e) / Math.log(1024));
         return (
           Math.round((e / Math.pow(1024, t)) * 100) / 100 + ' ' + ['Bytes', 'KB', 'MB', 'GB'][t]
         );
       }
-      function sk(e) {
-        let { boardId: t = 'default_board', height: s } = e,
-          [r, n] = (0, l.useState)([]),
-          [i, o] = (0, l.useState)([]),
-          [c, d] = (0, l.useState)(!0),
-          [u, m] = (0, l.useState)(null),
-          [p, h] = (0, l.useState)([]),
-          g = (0, l.useCallback)(async () => {
+      function ae(e) {
+        let { boardId: t = 'default_board', height: s, renderLens: r = '2d', ndConfig: n } = e,
+          i = (0, l.useRef)(null),
+          o = sV(i),
+          [c, d] = (0, l.useState)([]),
+          [u, m] = (0, l.useState)([]),
+          [p, h] = (0, l.useState)(!0),
+          [g, b] = (0, l.useState)(null),
+          [f, v] = (0, l.useState)([]),
+          j = (0, l.useCallback)(async () => {
             try {
-              (d(!0), m(null));
+              (h(!0), b(null));
               let [e, t] = await Promise.all([
                 fetch(''.concat(_.CT, '/api/v1/nodes?limit=1000')),
                 fetch(''.concat(_.CT, '/api/v1/edges?limit=5000')),
@@ -14275,7 +16293,7 @@
                 a = await t.json(),
                 l = s.nodes.map((e) => ({ id: e.id, kind: e.kind })),
                 r = new Set(l.map((e) => e.id)),
-                i = (a.edges || [])
+                n = (a.edges || [])
                   .map((e) => {
                     let t = e.from || e.source,
                       s = e.to || e.target;
@@ -14285,17 +16303,17 @@
                   })
                   .filter((e) => !!e)
                   .filter((e) => r.has(String(e.source)) && r.has(String(e.target)));
-              (n(l), o(i));
+              (d(l), m(n));
             } catch (e) {
-              m(e instanceof Error ? e.message : String(e));
+              b(e instanceof Error ? e.message : String(e));
             } finally {
-              d(!1);
+              h(!1);
             }
           }, []);
         (0, l.useEffect)(() => {
-          g();
-        }, [g, t]);
-        let b = (0, l.useMemo)(() => r.length, [r]);
+          j();
+        }, [j, t]);
+        let N = (0, l.useMemo)(() => c.length, [c]);
         return (0, a.jsxs)('div', {
           className: 'flex-1 flex flex-col bg-slate-950/60 border border-slate-900 rounded-lg',
           children: [
@@ -14326,14 +16344,15 @@
                 }),
                 (0, a.jsxs)('div', {
                   className: 'text-xs text-slate-400',
-                  children: [b, ' nodes - ', i.length, ' edges'],
+                  children: [N, ' nodes - ', u.length, ' edges'],
                 }),
               ],
             }),
             (0, a.jsxs)('div', {
+              ref: i,
               className: 'relative flex-1',
               children: [
-                c &&
+                p &&
                   (0, a.jsx)('div', {
                     className: 'absolute inset-0 flex items-center justify-center',
                     children: (0, a.jsxs)('div', {
@@ -14347,7 +16366,7 @@
                       ],
                     }),
                   }),
-                u &&
+                g &&
                   (0, a.jsx)('div', {
                     className: 'absolute inset-0 flex items-center justify-center',
                     children: (0, a.jsxs)('div', {
@@ -14357,13 +16376,13 @@
                           className: 'text-sm text-red-300 font-medium',
                           children: 'Failed to load legacy board',
                         }),
-                        (0, a.jsx)('p', { className: 'text-xs text-red-400', children: u }),
+                        (0, a.jsx)('p', { className: 'text-xs text-red-400', children: g }),
                       ],
                     }),
                   }),
-                !c &&
-                  !u &&
-                  0 === r.length &&
+                !p &&
+                  !g &&
+                  0 === c.length &&
                   (0, a.jsx)('div', {
                     className: 'absolute inset-0 flex items-center justify-center',
                     children: (0, a.jsx)('p', {
@@ -14371,15 +16390,17 @@
                       children: 'No nodes available in the legacy dataset.',
                     }),
                   }),
-                !c &&
-                  !u &&
-                  r.length > 0 &&
-                  (0, a.jsx)(t7.s, {
-                    nodes: r,
-                    edges: i,
-                    width: window.innerWidth - 420,
-                    height: null != s ? s : 520,
-                    onSelectionChange: h,
+                !p &&
+                  !g &&
+                  c.length > 0 &&
+                  (0, a.jsx)(sF, {
+                    nodes: c,
+                    edges: u,
+                    width: o.width || 900,
+                    height: o.height || (null != s ? s : 520),
+                    renderLens: r,
+                    ndConfig: n,
+                    onSelectionChange: v,
                   }),
               ],
             }),
@@ -14387,11 +16408,11 @@
               className:
                 'px-4 py-3 border-t border-slate-900 bg-slate-950/80 text-xs text-slate-500',
               children:
-                p.length > 0
+                f.length > 0
                   ? (0, a.jsxs)('span', {
                       children: [
                         'Selected nodes: ',
-                        (0, a.jsx)('span', { className: 'text-slate-300', children: p.join(', ') }),
+                        (0, a.jsx)('span', { className: 'text-slate-300', children: f.join(', ') }),
                       ],
                     })
                   : (0, a.jsx)('span', {
@@ -14402,226 +16423,90 @@
           ],
         });
       }
-      var sC = s(1565);
-      let sS = {
-          ChatThread: '#8b5cf6',
-          Message: '#3b82f6',
-          Source: '#10b981',
-          CodeBlock: '#f59e0b',
-        },
-        sI = { ChatThread: 20, Message: 8, Source: 14, CodeBlock: 12 };
-      function sE(e) {
-        let { recentNodes: t = [], width: s = 400, height: r = 300 } = e,
-          n = (0, l.useRef)(null),
-          i = (0, l.useRef)([]),
-          o = (0, l.useRef)([]),
-          c = (0, l.useRef)(),
-          d = (0, l.useRef)(0);
-        (0, l.useEffect)(() => {
-          if (0 === t.length || !n.current) return;
-          let e = s / 2,
-            a = r / 2;
-          t.forEach((s, l) => {
-            if (i.current.find((e) => e.id === s.id)) return;
-            let r = (2 * Math.PI * l) / t.length,
-              n = {
-                id: s.id,
-                kind: s.kind,
-                label: s.label,
-                x: e + 50 * Math.cos(r),
-                y: a + 50 * Math.sin(r),
-                vx: (Math.random() - 0.5) * 2,
-                vy: (Math.random() - 0.5) * 2,
-                radius: sI[s.kind] || 10,
-                opacity: 0,
-                createdAt: Date.now(),
-              };
-            (i.current.push(n), u(n.x, n.y, sS[s.kind] || '#888'));
-          });
-        }, [t, s, r]);
-        let u = (e, t, s) => {
-          for (let a = 0; a < 20; a++) {
-            let a = Math.random() * Math.PI * 2,
-              l = 2 * Math.random() + 1;
-            o.current.push({
-              x: e,
-              y: t,
-              vx: Math.cos(a) * l,
-              vy: Math.sin(a) * l,
-              life: 0,
-              maxLife: 60 * Math.random() + 30,
-              size: 3 * Math.random() + 1,
-              color: s,
+      var at = s(1565);
+      function as(e) {
+        let {
+            recentNodes: t = [],
+            width: s = 400,
+            height: r = 300,
+            renderLens: n = '2d',
+            ndConfig: i,
+          } = e,
+          o = (0, l.useMemo)(
+            () =>
+              (function (e, t, s) {
+                if (0 === e.length) return [];
+                let a = t / 2,
+                  l = s / 2,
+                  r = Math.max(70, 0.34 * Math.min(t, s));
+                return e.map((t, s) => {
+                  let n = (s / Math.max(1, e.length)) * Math.PI * 2;
+                  return {
+                    id: t.id,
+                    kind: t.kind || 'Source',
+                    x: a + Math.cos(n) * r,
+                    y: l + Math.sin(n) * r,
+                    label: t.label,
+                    title: t.label,
+                  };
+                });
+              })(t, s, r),
+            [t, s, r]
+          ),
+          c = (0, l.useMemo)(
+            () =>
+              (function (e) {
+                let t = [];
+                for (let s = 1; s < e.length; s += 1)
+                  t.push({
+                    id: 'edge_'.concat(e[s - 1].id, '_').concat(e[s].id),
+                    source: e[s - 1].id,
+                    target: e[s].id,
+                    kind: 'DERIVES_FROM',
+                  });
+                return t;
+              })(o),
+            [o]
+          );
+        return 0 === o.length
+          ? (0, a.jsx)('div', {
+              className: 'w-full h-full flex items-center justify-center text-xs text-slate-500',
+              children: 'Waiting for graph activity...',
+            })
+          : (0, a.jsx)(sL, {
+              nodes: o,
+              edges: c,
+              width: s,
+              height: r,
+              renderLens: n,
+              ndConfig: i,
+              interactive: !1,
+              focusModeEnabled: !1,
+              includeConnectors: !0,
+              pinnedNodeIds: [],
             });
-          }
-        };
-        return (
-          (0, l.useEffect)(() => {
-            let e = n.current;
-            if (!e) return;
-            let t = e.getContext('2d');
-            if (!t) return;
-            ((e.width = s), (e.height = r));
-            let a = s / 2,
-              l = r / 2,
-              x = (e) => {
-                (d.current,
-                  (d.current = e),
-                  (t.fillStyle = 'rgba(15, 23, 42, 0.3)'),
-                  t.fillRect(0, 0, s, r),
-                  (o.current = o.current.filter((e) => {
-                    ((e.x += e.vx), (e.y += e.vy), (e.life += 1));
-                    let s = 1 - e.life / e.maxLife;
-                    return (
-                      !(s <= 0) &&
-                      ((t.globalAlpha = 0.6 * s),
-                      (t.fillStyle = e.color),
-                      t.beginPath(),
-                      t.arc(e.x, e.y, e.size, 0, 2 * Math.PI),
-                      t.fill(),
-                      !0)
-                    );
-                  })),
-                  (t.globalAlpha = 1),
-                  i.current.forEach((e) => {
-                    e.opacity < 1 && (e.opacity = Math.min(1, e.opacity + 0.02));
-                    let t = a - e.x,
-                      n = l - e.y,
-                      i = Math.sqrt(t * t + n * n);
-                    (i > 10 && ((e.vx += (t / i) * 0.001), (e.vy += (n / i) * 0.001)),
-                      (e.x += e.vx),
-                      (e.y += e.vy),
-                      (e.vx *= 0.98),
-                      (e.vy *= 0.98),
-                      e.x < e.radius && ((e.x = e.radius), (e.vx *= -0.8)),
-                      e.x > s - e.radius && ((e.x = s - e.radius), (e.vx *= -0.8)),
-                      e.y < e.radius && ((e.y = e.radius), (e.vy *= -0.8)),
-                      e.y > r - e.radius && ((e.y = r - e.radius), (e.vy *= -0.8)),
-                      0.02 > Math.random() && u(e.x, e.y, sS[e.kind] || '#888'));
-                  }),
-                  (t.globalAlpha = 0.1),
-                  (t.strokeStyle = '#64748b'),
-                  (t.lineWidth = 1),
-                  i.current.forEach((e, s) => {
-                    i.current.slice(s + 1).forEach((s) => {
-                      let a = s.x - e.x,
-                        l = s.y - e.y,
-                        r = Math.sqrt(a * a + l * l);
-                      r < 100 &&
-                        ((t.globalAlpha = (1 - r / 100) * 0.2),
-                        t.beginPath(),
-                        t.moveTo(e.x, e.y),
-                        t.lineTo(s.x, s.y),
-                        t.stroke());
-                    });
-                  }),
-                  (t.globalAlpha = 1),
-                  i.current.forEach((e) => {
-                    let s = sS[e.kind] || '#888888',
-                      a = t.createRadialGradient(e.x, e.y, 0, e.x, e.y, 2 * e.radius);
-                    (a.addColorStop(0, ''.concat(s, '80')),
-                      a.addColorStop(0.5, ''.concat(s, '40')),
-                      a.addColorStop(1, ''.concat(s, '00')),
-                      (t.globalAlpha = 0.5 * e.opacity),
-                      (t.fillStyle = a),
-                      t.beginPath(),
-                      t.arc(e.x, e.y, 2 * e.radius, 0, 2 * Math.PI),
-                      t.fill());
-                    let l = t.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.radius);
-                    (l.addColorStop(0, '#ffffff'),
-                      l.addColorStop(0.5, s),
-                      l.addColorStop(1, ''.concat(s, 'dd')),
-                      (t.globalAlpha = e.opacity),
-                      (t.fillStyle = l),
-                      t.beginPath(),
-                      t.arc(e.x, e.y, e.radius, 0, 2 * Math.PI),
-                      t.fill(),
-                      (t.strokeStyle = ''.concat(s, 'ff')),
-                      (t.lineWidth = 2),
-                      (t.globalAlpha = 0.8 * e.opacity),
-                      t.beginPath(),
-                      t.arc(e.x, e.y, e.radius - 1, 0, 2 * Math.PI),
-                      t.stroke());
-                  }),
-                  (t.globalAlpha = 1),
-                  (c.current = requestAnimationFrame(x)));
-              };
-            return (
-              (c.current = requestAnimationFrame(x)),
-              () => {
-                c.current && cancelAnimationFrame(c.current);
-              }
-            );
-          }, [s, r]),
-          (0, a.jsxs)('div', {
-            className: 'relative rounded-xl overflow-hidden border border-slate-700 bg-slate-900',
-            children: [
-              (0, a.jsx)('canvas', {
-                ref: n,
-                width: s,
-                height: r,
-                className: 'block',
-                style: { width: '100%', height: 'auto' },
-              }),
-              (0, a.jsx)('div', {
-                className: 'absolute bottom-3 left-3 flex gap-3 text-xs',
-                children: Object.entries(sS).map((e) => {
-                  let [t, s] = e;
-                  return (0, a.jsxs)(
-                    'div',
-                    {
-                      className:
-                        'flex items-center gap-1.5 bg-slate-900/80 backdrop-blur-sm px-2 py-1 rounded',
-                      children: [
-                        (0, a.jsx)('div', {
-                          className: 'w-2 h-2 rounded-full',
-                          style: { backgroundColor: s },
-                        }),
-                        (0, a.jsx)('span', { className: 'text-slate-300', children: t }),
-                      ],
-                    },
-                    t
-                  );
-                }),
-              }),
-              (0, a.jsxs)('div', {
-                className:
-                  'absolute top-3 right-3 bg-slate-900/80 backdrop-blur-sm px-3 py-1.5 rounded text-xs',
-                children: [
-                  (0, a.jsx)('span', { className: 'text-slate-400', children: 'Nodes:' }),
-                  ' ',
-                  (0, a.jsx)('span', {
-                    className: 'text-white font-semibold',
-                    children: i.current.length,
-                  }),
-                ],
-              }),
-            ],
-          })
-        );
       }
-      var sZ = s(3890);
-      let sD = [
-        { id: 'queued', label: 'Queued', icon: ec.Z, order: 0 },
-        { id: 'reading', label: 'Reading', icon: eA.Z, order: 1 },
-        { id: 'parsing', label: 'Parsing', icon: eK.Z, order: 2 },
-        { id: 'normalizing', label: 'Normalizing', icon: W.Z, order: 3 },
-        { id: 'indexing', label: 'Indexing', icon: eq.Z, order: 4 },
-        { id: 'linking', label: 'Linking', icon: sZ.Z, order: 5 },
+      let aa = [
+        { id: 'queued', label: 'Queued', icon: ep.Z, order: 0 },
+        { id: 'reading', label: 'Reading', icon: eF.Z, order: 1 },
+        { id: 'parsing', label: 'Parsing', icon: eG.Z, order: 2 },
+        { id: 'normalizing', label: 'Normalizing', icon: X.Z, order: 3 },
+        { id: 'indexing', label: 'Indexing', icon: eW.Z, order: 4 },
+        { id: 'linking', label: 'Linking', icon: W.Z, order: 5 },
         { id: 'done', label: 'Complete', icon: u.Z, order: 6 },
       ];
-      function sT(e) {
+      function al(e) {
         let { currentStage: t, progress: s, error: r } = e,
           n = (0, l.useMemo)(() => {
             var e, s;
             let a =
               null !==
                 (s =
-                  null === (e = sD.find((e) => e.id === t)) || void 0 === e ? void 0 : e.order) &&
+                  null === (e = aa.find((e) => e.id === t)) || void 0 === e ? void 0 : e.order) &&
               void 0 !== s
                 ? s
                 : -1;
-            return sD.map((e) =>
+            return aa.map((e) =>
               r && e.id === t
                 ? 'error'
                 : e.order < a
@@ -14645,7 +16530,7 @@
                     'absolute top-6 left-0 h-0.5 bg-gradient-to-r from-purple-500 to-blue-500 -z-10 transition-all duration-500',
                   style: { width: ''.concat((s / 100) * 100, '%') },
                 }),
-                sD.map((e, t) => {
+                aa.map((e, t) => {
                   let s = n[t],
                     l = e.icon;
                   return (0, a.jsxs)(
@@ -14734,19 +16619,21 @@
           ],
         });
       }
-      var sA = s(5955),
-        sM = s(3627);
-      function s_(e) {
+      var ar = s(5955),
+        an = s(3627);
+      function ai(e) {
         var t, s, r, n, i, o, c, d;
-        let { operation: u } = e,
-          { jobs: m, graphUpdates: p, connected: h } = ti(),
-          g = u ? m.get(u.id) : void 0,
-          [b, f] = (0, l.useState)(!1),
-          [j, v] = (0, l.useState)(!1),
+        let { operation: u, renderLens: m = '2d', ndConfig: p } = e,
+          h = (0, l.useRef)(null),
+          g = sV(h, { width: 960, height: 360 }),
+          { jobs: b, graphUpdates: f, connected: v } = tp(),
+          j = u ? b.get(u.id) : void 0,
           [N, y] = (0, l.useState)(!1),
-          w = (0, sA.p)(),
-          k =
-            null !== (o = null == g ? void 0 : g.status) && void 0 !== o
+          [w, k] = (0, l.useState)(!1),
+          [C, S] = (0, l.useState)(!1),
+          I = (0, ar.p)(),
+          E =
+            null !== (o = null == j ? void 0 : j.status) && void 0 !== o
               ? o
               : (null == u ? void 0 : u.status) === 'blocked'
                 ? 'blocked'
@@ -14757,38 +16644,38 @@
                     : (null == u ? void 0 : u.status) === 'queued'
                       ? 'queued'
                       : 'running',
-          C = (0, l.useMemo)(() => {
+          M = (0, l.useMemo)(() => {
             var e, t;
-            return tg({
-              backendStatus: k,
+            return tw({
+              backendStatus: E,
               jobType: 'import',
               progress: {
                 message:
-                  null == g
+                  null == j
                     ? void 0
-                    : null === (e = g.progress) || void 0 === e
+                    : null === (e = j.progress) || void 0 === e
                       ? void 0
                       : e.message,
                 stage:
-                  null == g ? void 0 : null === (t = g.progress) || void 0 === t ? void 0 : t.stage,
+                  null == j ? void 0 : null === (t = j.progress) || void 0 === t ? void 0 : t.stage,
               },
               previousStatus: null == u ? void 0 : u.status,
             });
           }, [
-            k,
-            null == g ? void 0 : null === (t = g.progress) || void 0 === t ? void 0 : t.message,
-            null == g ? void 0 : null === (s = g.progress) || void 0 === s ? void 0 : s.stage,
+            E,
+            null == j ? void 0 : null === (t = j.progress) || void 0 === t ? void 0 : t.message,
+            null == j ? void 0 : null === (s = j.progress) || void 0 === s ? void 0 : s.stage,
             null == u ? void 0 : u.status,
           ]),
-          S = tb({
-            backendStatus: k,
-            status: C.status,
+          Z = tk({
+            backendStatus: E,
+            status: M.status,
             rawPercent:
               null !==
                 (c =
-                  null == g
+                  null == j
                     ? void 0
-                    : null === (r = g.progress) || void 0 === r
+                    : null === (r = j.progress) || void 0 === r
                       ? void 0
                       : r.percent) && void 0 !== c
                 ? c
@@ -14797,13 +16684,13 @@
                   : u.progress,
             previousPercent: null == u ? void 0 : u.progress,
             stage:
-              null == g ? void 0 : null === (n = g.progress) || void 0 === n ? void 0 : n.stage,
+              null == j ? void 0 : null === (n = j.progress) || void 0 === n ? void 0 : n.stage,
             metadata:
-              null == g ? void 0 : null === (i = g.progress) || void 0 === i ? void 0 : i.metadata,
+              null == j ? void 0 : null === (i = j.progress) || void 0 === i ? void 0 : i.metadata,
           }),
-          I = C.status,
-          E =
-            'error' === C.status
+          D = M.status,
+          T =
+            'error' === M.status
               ? (function (e, t) {
                   var s, a, l, r;
                   if (
@@ -14831,76 +16718,76 @@
                     return ''.concat(s, ' at ').concat(a, ' (').concat(n, '%): ').concat(i);
                   }
                   return t;
-                })(g, null == u ? void 0 : u.error)
+                })(j, null == u ? void 0 : u.error)
               : void 0,
-          Z = async () => {
+          A = async () => {
             if (
               (null == u ? void 0 : u.id) &&
               window.confirm(
                 'Are you sure you want to cancel this import?\n\nThe job will stop at the next checkpoint. Any data already imported will remain in your keimenon.'
               )
             ) {
-              f(!0);
+              y(!0);
               try {
-                (await (0, eD.UU)(u.id),
-                  w.success(
+                (await (0, e_.UU)(u.id),
+                  I.success(
                     'Job cancellation requested',
                     'The job will stop processing at the next checkpoint.'
                   ));
               } catch (e) {
                 (console.error('Failed to cancel job:', e),
-                  w.error('Failed to cancel job', e.message || 'An unexpected error occurred.'));
+                  I.error('Failed to cancel job', e.message || 'An unexpected error occurred.'));
               } finally {
-                f(!1);
+                y(!1);
               }
             }
           },
-          D = async () => {
+          _ = async () => {
             if (
               (null == u ? void 0 : u.id) &&
               window.confirm(
                 'Pause this import?\n\nThe job will pause at the next checkpoint. When resumed, it will continue from the latest checkpoint.'
               )
             ) {
-              v(!0);
+              k(!0);
               try {
-                (await (0, eD.EZ)(u.id),
-                  w.success(
+                (await (0, e_.EZ)(u.id),
+                  I.success(
                     'Job paused successfully',
                     'Resume to continue from the latest checkpoint.'
                   ));
               } catch (e) {
                 (console.error('Failed to pause job:', e),
-                  w.error('Failed to pause job', e.message || 'An unexpected error occurred.'));
+                  I.error('Failed to pause job', e.message || 'An unexpected error occurred.'));
               } finally {
-                v(!1);
+                k(!1);
               }
             }
           },
-          T = async () => {
+          L = async () => {
             if (null == u ? void 0 : u.id) {
-              y(!0);
+              S(!0);
               try {
-                (await (0, eD.$Q)(u.id),
-                  w.success('Job resumed successfully', 'Continuing from the latest checkpoint.'));
+                (await (0, e_.$Q)(u.id),
+                  I.success('Job resumed successfully', 'Continuing from the latest checkpoint.'));
               } catch (e) {
                 (console.error('Failed to resume job:', e),
-                  w.error('Failed to resume job', e.message || 'An unexpected error occurred.'));
+                  I.error('Failed to resume job', e.message || 'An unexpected error occurred.'));
               } finally {
-                y(!1);
+                S(!1);
               }
             }
           },
-          A = p.length > 0 ? p[p.length - 1] : null,
-          M = null !== (d = null == A ? void 0 : A.recentNodes) && void 0 !== d ? d : [],
-          _ = C.stage,
-          L = (0, l.useMemo)(() => {
+          F = f.length > 0 ? f[f.length - 1] : null,
+          P = null !== (d = null == F ? void 0 : F.recentNodes) && void 0 !== d ? d : [],
+          O = M.stage,
+          z = (0, l.useMemo)(() => {
             var e, t, s, a, l, r, n;
             let i = {
                 ...(null !== (e = null == u ? void 0 : u.stats) && void 0 !== e ? e : {}),
-                ...(null !== (t = null == g ? void 0 : g.stats) && void 0 !== t ? t : {}),
+                ...(null !== (t = null == j ? void 0 : j.stats) && void 0 !== t ? t : {}),
               },
-              o = p.reduce(
+              o = f.reduce(
                 (e, t) => {
                   var s, a;
                   return {
@@ -14930,11 +16817,11 @@
                 value: null !== (n = i.messagesProcessed) && void 0 !== n ? n : 0,
               },
             ];
-          }, [u, null == g ? void 0 : g.stats, p]);
+          }, [u, null == j ? void 0 : j.stats, f]);
         return u
           ? (0, a.jsxs)(a.Fragment, {
               children: [
-                (0, a.jsx)(sM.Ix, { toasts: w.toasts, onClose: w.removeToast }),
+                (0, a.jsx)(an.Ix, { toasts: I.toasts, onClose: I.removeToast }),
                 (0, a.jsxs)('div', {
                   className: 'flex flex-col h-full bg-slate-950',
                   children: [
@@ -14955,7 +16842,7 @@
                               }),
                               (0, a.jsx)('p', {
                                 className: 'text-xs text-slate-500 mt-1',
-                                children: h
+                                children: v
                                   ? 'Live updates connected'
                                   : 'Reconnecting to job stream...',
                               }),
@@ -14972,7 +16859,7 @@
                                   }),
                                   (0, a.jsxs)('p', {
                                     className: 'text-sm font-semibold text-white',
-                                    children: [S, '%'],
+                                    children: [Z, '%'],
                                   }),
                                 ],
                               }),
@@ -14980,55 +16867,55 @@
                                 className: 'w-40 h-1.5 rounded-full bg-slate-900 overflow-hidden',
                                 children: (0, a.jsx)('div', {
                                   className: 'h-full bg-purple-500 transition-all duration-300',
-                                  style: { width: ''.concat(Math.min(Math.max(S, 0), 100), '%') },
+                                  style: { width: ''.concat(Math.min(Math.max(Z, 0), 100), '%') },
                                 }),
                               }),
                               (0, a.jsxs)('div', {
                                 className: 'flex items-center gap-2 text-xs text-slate-400',
                                 children: [
-                                  ['succeeded', 'failed', 'canceled', 'blocked'].includes(k)
-                                    ? (0, a.jsx)(si.Z, { className: 'w-4 h-4' })
+                                  ['succeeded', 'failed', 'canceled', 'blocked'].includes(E)
+                                    ? (0, a.jsx)(sG.Z, { className: 'w-4 h-4' })
                                     : (0, a.jsx)(x.Z, { className: 'w-4 h-4 animate-spin' }),
-                                  (0, a.jsx)('span', { className: 'capitalize', children: I }),
+                                  (0, a.jsx)('span', { className: 'capitalize', children: D }),
                                 ],
                               }),
                               (0, a.jsxs)('div', {
                                 className: 'flex items-center gap-2',
                                 children: [
-                                  'blocked' === k &&
+                                  'blocked' === E &&
                                     (0, a.jsxs)('button', {
-                                      onClick: T,
-                                      disabled: N,
+                                      onClick: L,
+                                      disabled: C,
                                       className:
                                         'px-3 py-1.5 rounded-lg border border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20 hover:border-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-medium flex items-center gap-1.5',
                                       title: 'Resume job from latest checkpoint',
                                       children: [
-                                        (0, a.jsx)(sC.Z, { className: 'w-3.5 h-3.5' }),
-                                        N ? 'Resuming...' : 'Resume',
+                                        (0, a.jsx)(at.Z, { className: 'w-3.5 h-3.5' }),
+                                        C ? 'Resuming...' : 'Resume',
                                       ],
                                     }),
-                                  'running' === k &&
+                                  'running' === E &&
                                     (0, a.jsxs)('button', {
-                                      onClick: D,
-                                      disabled: j,
+                                      onClick: _,
+                                      disabled: w,
                                       className:
                                         'px-3 py-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 hover:border-yellow-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-medium flex items-center gap-1.5',
                                       title: 'Pause job at next checkpoint',
                                       children: [
-                                        (0, a.jsx)(si.Z, { className: 'w-3.5 h-3.5' }),
-                                        j ? 'Pausing...' : 'Pause',
+                                        (0, a.jsx)(sG.Z, { className: 'w-3.5 h-3.5' }),
+                                        w ? 'Pausing...' : 'Pause',
                                       ],
                                     }),
-                                  ('queued' === k || 'running' === k) &&
+                                  ('queued' === E || 'running' === E) &&
                                     (0, a.jsxs)('button', {
-                                      onClick: Z,
-                                      disabled: b,
+                                      onClick: A,
+                                      disabled: N,
                                       className:
                                         'px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-medium flex items-center gap-1.5',
                                       title: 'Cancel job at next checkpoint',
                                       children: [
-                                        (0, a.jsx)(e$.Z, { className: 'w-3.5 h-3.5' }),
-                                        b ? 'Canceling...' : 'Cancel',
+                                        (0, a.jsx)(e1.Z, { className: 'w-3.5 h-3.5' }),
+                                        N ? 'Canceling...' : 'Cancel',
                                       ],
                                     }),
                                 ],
@@ -15043,7 +16930,7 @@
                       children: [
                         (0, a.jsx)('section', {
                           className: 'bg-slate-900/60 border border-slate-900 rounded-xl p-6',
-                          children: (0, a.jsx)(sT, { currentStage: _, progress: S, error: E }),
+                          children: (0, a.jsx)(al, { currentStage: O, progress: Z, error: T }),
                         }),
                         (0, a.jsxs)('div', {
                           className: 'flex-1 grid grid-cols-1 xl:grid-cols-3 gap-6 overflow-hidden',
@@ -15055,7 +16942,7 @@
                                 (0, a.jsxs)('header', {
                                   className: 'flex items-center gap-3',
                                   children: [
-                                    (0, a.jsx)(sC.Z, { className: 'w-5 h-5 text-purple-400' }),
+                                    (0, a.jsx)(at.Z, { className: 'w-5 h-5 text-purple-400' }),
                                     (0, a.jsxs)('div', {
                                       children: [
                                         (0, a.jsx)('h3', {
@@ -15072,7 +16959,7 @@
                                 }),
                                 (0, a.jsx)('div', {
                                   className: 'grid grid-cols-2 gap-3',
-                                  children: L.map((e) => {
+                                  children: z.map((e) => {
                                     var t, s, l;
                                     return (0, a.jsxs)(
                                       'div',
@@ -15129,24 +17016,27 @@
                                     }),
                                   ],
                                 }),
-                                M.length > 0
+                                P.length > 0
                                   ? (0, a.jsx)('div', {
+                                      ref: h,
                                       className:
                                         'flex-1 min-h-[320px] rounded-lg border border-slate-800 bg-slate-950',
-                                      children: (0, a.jsx)(sE, {
-                                        recentNodes: M.map((e) => ({
+                                      children: (0, a.jsx)(as, {
+                                        recentNodes: P.map((e) => ({
                                           ...e,
                                           label: e.label || e.kind || 'Node',
                                         })),
-                                        width: 960,
-                                        height: 360,
+                                        width: g.width,
+                                        height: g.height,
+                                        renderLens: m,
+                                        ndConfig: p,
                                       }),
                                     })
                                   : (0, a.jsxs)('div', {
                                       className:
                                         'flex-1 min-h-[320px] rounded-lg border border-slate-800 bg-slate-950/70 flex flex-col items-center justify-center gap-3 text-slate-500 text-sm',
                                       children: [
-                                        (0, a.jsx)(t$.Z, { className: 'w-6 h-6' }),
+                                        (0, a.jsx)(t3.Z, { className: 'w-6 h-6' }),
                                         (0, a.jsx)('p', {
                                           children: 'No recent graph updates yet.',
                                         }),
@@ -15188,8 +17078,8 @@
               ],
             });
       }
-      var sL = s(8055);
-      function sF(e) {
+      var ao = s(8055);
+      function ac(e) {
         let { board: t, nodes: s, onMoveNode: r, onAddColumn: n } = e,
           [i, o] = (0, l.useState)(null),
           c = t.columns.reduce(
@@ -15273,7 +17163,7 @@
                                 }),
                                 (0, a.jsx)('button', {
                                   className: 'text-slate-500 hover:text-white',
-                                  children: (0, a.jsx)(sL.Z, { className: 'w-4 h-4' }),
+                                  children: (0, a.jsx)(ao.Z, { className: 'w-4 h-4' }),
                                 }),
                               ],
                             }),
@@ -15290,7 +17180,7 @@
                                     {
                                       draggable: !0,
                                       onDragStart: (t) => d(t, e.id),
-                                      className: (0, sM.cn)(
+                                      className: (0, an.cn)(
                                         'p-3 bg-slate-800 border border-slate-700 rounded-lg shadow-sm cursor-grab hover:border-slate-500 transition-colors',
                                         i === e.id && 'opacity-50'
                                       ),
@@ -15322,7 +17212,7 @@
                     className:
                       'w-80 flex-shrink-0 h-[100px] border-2 border-dashed border-slate-800 rounded-xl flex items-center justify-center text-slate-500 hover:text-white hover:border-slate-600 transition-colors',
                     children: [
-                      (0, a.jsx)(es.Z, { className: 'w-6 h-6 mb-2' }),
+                      (0, a.jsx)(ei.Z, { className: 'w-6 h-6 mb-2' }),
                       (0, a.jsx)('span', { children: 'Add Column' }),
                     ],
                   }),
@@ -15331,54 +17221,65 @@
           ],
         });
       }
-      let sP = {
+      let ad = {
         getBoards: async function () {
           let e =
             arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : 'default_workspace';
-          return (await eD.hi.get('/boards?workspace_id='.concat(e))).data.boards;
+          return (await e_.hi.get('/boards?workspace_id='.concat(e))).data.boards;
         },
         getBoardGraph: async function (e) {
           let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 1e3;
-          return (await eD.hi.get('/boards/'.concat(e, '/graph?limit=').concat(t))).data;
+          return (await e_.hi.get('/boards/'.concat(e, '/graph?limit=').concat(t))).data;
         },
         createBoard: async function (e, t) {
           let s =
             arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : 'default_workspace';
-          return (await eD.hi.post('/boards', { name: e, description: t, workspace_id: s })).data
+          return (await e_.hi.post('/boards', { name: e, description: t, workspace_id: s })).data
             .board;
         },
+        listPrincipals: async () => (await e_.hi.get('/principals')).data.principals,
+        listWorkspaces: async () => (await e_.hi.get('/workspaces')).data.workspaces,
+        createWorkspace: async (e) => (await e_.hi.post('/workspaces', e)).data.workspace,
+        deleteWorkspace: async (e) => {
+          await e_.hi.delete('/workspaces/'.concat(e));
+        },
+        listConversations: async () => (await e_.hi.get('/conversations')).data.conversations,
+        createConversation: async (e) => (await e_.hi.post('/conversations', e)).data.conversation,
       };
-      function sO() {
-        let [e, t] = (0, l.useState)([]),
-          [s, r] = (0, l.useState)(null),
-          [n, i] = (0, l.useState)([]),
-          [o, c] = (0, l.useState)([]),
-          [d, u] = (0, l.useState)(!0),
-          [m, p] = (0, l.useState)(null),
-          [h, g] = (0, l.useState)('kanban');
+      function au(e) {
+        let { renderLens: t = '2d', ndConfig: s } = e,
+          r = (0, l.useRef)(null),
+          n = sV(r),
+          [i, o] = (0, l.useState)([]),
+          [c, d] = (0, l.useState)(null),
+          [u, m] = (0, l.useState)([]),
+          [p, h] = (0, l.useState)([]),
+          [g, b] = (0, l.useState)(!0),
+          [f, v] = (0, l.useState)(null),
+          [j, N] = (0, l.useState)('kanban');
         ((0, l.useEffect)(() => {
           (async () => {
             try {
-              u(!0);
-              let e = await sP.getBoards();
-              (t(e), e.length > 0 && r(e[0].id));
+              b(!0);
+              let e = await ad.getBoards();
+              (o(e), e.length > 0 && d(e[0].id));
             } catch (e) {
               (console.error('Failed to fetch boards:', e),
-                p(e.message || 'Failed to load boards'));
+                v(e.message || 'Failed to load boards'));
             } finally {
-              u(!1);
+              b(!1);
             }
           })();
         }, []),
           (0, l.useEffect)(() => {
-            s &&
+            c &&
               (async () => {
                 try {
-                  let e = await sP.getBoardGraph(s),
+                  let e = await ad.getBoardGraph(c),
                     t = e.nodes;
-                  i(t);
-                  let a = new Set(t.map((e) => e.id)),
-                    l = (e.edges || [])
+                  m(t);
+                  let s = new Set(t.map((e) => e.id)),
+                    a = (e.edges || [])
                       .map((e, t) => {
                         let s = e.from || e.source,
                           a = e.to || e.target;
@@ -15392,48 +17293,48 @@
                           : null;
                       })
                       .filter((e) => !!e)
-                      .filter((e) => a.has(String(e.source)) && a.has(String(e.target)));
-                  c(l);
+                      .filter((e) => s.has(String(e.source)) && s.has(String(e.target)));
+                  h(a);
                 } catch (e) {
                   console.error('Failed to fetch board graph:', e);
                 }
               })();
-          }, [s]));
-        let b = async () => {
+          }, [c]));
+        let y = async () => {
             try {
-              let e = await sP.createBoard('New Board', 'Created via Board View');
-              (t((t) => [e, ...t]), r(e.id));
+              let e = await ad.createBoard('New Board', 'Created via Board View');
+              (o((t) => [e, ...t]), d(e.id));
             } catch (e) {
               console.error('Failed to create board:', e);
             }
           },
-          f = e.find((e) => e.id === s),
-          j = async (e, t) => {
-            i((s) =>
+          w = i.find((e) => e.id === c),
+          k = async (e, t) => {
+            m((s) =>
               s.map((s) =>
                 s.id !== e ? s : { ...s, metadata: { ...s.metadata, board_column: t } }
               )
             );
-            let s = n.find((t) => t.id === e);
+            let s = u.find((t) => t.id === e);
             try {
-              await eD.hi.put('/nodes/'.concat(e), {
+              await e_.hi.put('/nodes/'.concat(e), {
                 metadata: { ...((null == s ? void 0 : s.metadata) || {}), board_column: t },
               });
             } catch (e) {
               console.error('Failed to persist board node move:', e);
             }
           },
-          v = (0, l.useMemo)(
+          C = (0, l.useMemo)(
             () =>
-              n.map((e) => ({
+              u.map((e) => ({
                 id: e.id,
                 kind: e.kind || 'Source',
                 x: 'number' == typeof e.x ? e.x : void 0,
                 y: 'number' == typeof e.y ? e.y : void 0,
               })),
-            [n]
+            [u]
           );
-        return d && 0 === e.length
+        return g && 0 === i.length
           ? (0, a.jsxs)('div', {
               className:
                 'h-full w-full bg-slate-950 flex items-center justify-center text-slate-400',
@@ -15442,12 +17343,12 @@
                 'Loading boards...',
               ],
             })
-          : m
+          : f
             ? (0, a.jsxs)('div', {
                 className:
                   'h-full w-full bg-slate-950 flex flex-col items-center justify-center text-red-400',
                 children: [
-                  (0, a.jsxs)('p', { children: ['Error: ', m] }),
+                  (0, a.jsxs)('p', { children: ['Error: ', f] }),
                   (0, a.jsx)('button', {
                     onClick: () => window.location.reload(),
                     className: 'mt-4 px-4 py-2 bg-slate-800 rounded hover:bg-slate-700 text-white',
@@ -15455,17 +17356,17 @@
                   }),
                 ],
               })
-            : 0 === e.length
+            : 0 === i.length
               ? (0, a.jsxs)('div', {
                   className:
                     'h-full w-full bg-slate-950 flex flex-col items-center justify-center text-slate-400',
                   children: [
                     (0, a.jsx)('p', { className: 'mb-4', children: 'No boards found.' }),
                     (0, a.jsxs)('button', {
-                      onClick: b,
+                      onClick: y,
                       className:
                         'flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors',
-                      children: [(0, a.jsx)(es.Z, { className: 'w-4 h-4' }), 'Create First Board'],
+                      children: [(0, a.jsx)(ei.Z, { className: 'w-4 h-4' }), 'Create First Board'],
                     }),
                   ],
                 })
@@ -15477,38 +17378,38 @@
                         'h-12 border-b border-slate-800 flex items-center px-4 gap-4 bg-slate-900/50',
                       children: [
                         (0, a.jsx)('select', {
-                          value: s || '',
-                          onChange: (e) => r(e.target.value),
+                          value: c || '',
+                          onChange: (e) => d(e.target.value),
                           className:
                             'bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500',
-                          children: e.map((e) =>
+                          children: i.map((e) =>
                             (0, a.jsx)('option', { value: e.id, children: e.name }, e.id)
                           ),
                         }),
                         (0, a.jsx)('button', {
-                          onClick: b,
+                          onClick: y,
                           className:
                             'p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white',
                           title: 'Create New Board',
-                          children: (0, a.jsx)(es.Z, { className: 'w-4 h-4' }),
+                          children: (0, a.jsx)(ei.Z, { className: 'w-4 h-4' }),
                         }),
                         (0, a.jsx)('div', { className: 'h-6 w-px bg-slate-800 mx-2' }),
                         (0, a.jsxs)('div', {
                           className: 'flex bg-slate-800 rounded p-0.5',
                           children: [
                             (0, a.jsx)('button', {
-                              onClick: () => g('kanban'),
+                              onClick: () => N('kanban'),
                               className: 'px-3 py-1 text-xs rounded transition-colors '.concat(
-                                'kanban' === h
+                                'kanban' === j
                                   ? 'bg-slate-700 text-white shadow'
                                   : 'text-slate-400 hover:text-slate-200'
                               ),
                               children: 'Kanban',
                             }),
                             (0, a.jsx)('button', {
-                              onClick: () => g('galaxy'),
+                              onClick: () => N('galaxy'),
                               className: 'px-3 py-1 text-xs rounded transition-colors '.concat(
-                                'galaxy' === h
+                                'galaxy' === j
                                   ? 'bg-slate-700 text-white shadow'
                                   : 'text-slate-400 hover:text-slate-200'
                               ),
@@ -15519,23 +17420,25 @@
                         (0, a.jsx)('div', { className: 'flex-1' }),
                         (0, a.jsxs)('div', {
                           className: 'text-xs text-slate-500',
-                          children: [n.length, ' items - ', o.length, ' edges'],
+                          children: [u.length, ' items - ', p.length, ' edges'],
                         }),
                       ],
                     }),
                     (0, a.jsx)('div', {
                       className: 'flex-1 overflow-hidden relative',
-                      children: f
-                        ? 'kanban' === h
-                          ? (0, a.jsx)(sF, { board: f, nodes: n, onMoveNode: j })
+                      children: w
+                        ? 'kanban' === j
+                          ? (0, a.jsx)(ac, { board: w, nodes: u, onMoveNode: k })
                           : (0, a.jsx)('div', {
+                              ref: r,
                               className: 'h-full w-full',
-                              children: (0, a.jsx)(t7.s, {
-                                nodes: v,
-                                edges: o,
-                                width: 1200,
-                                height: 800,
-                                onNodeClick: (e) => console.log('Clicked', e),
+                              children: (0, a.jsx)(sF, {
+                                nodes: C,
+                                edges: p,
+                                width: n.width || 1200,
+                                height: n.height || 800,
+                                renderLens: t,
+                                ndConfig: s,
                               }),
                             })
                         : (0, a.jsx)('div', {
@@ -15546,7 +17449,7 @@
                   ],
                 });
       }
-      function sz(e) {
+      function ax(e) {
         let { children: t } = e,
           { user: s } = (0, N.aC)(),
           { operating: r, switchAccount: n } = (0, y.B)(),
@@ -15615,7 +17518,7 @@
                               children: r.serviceMode
                                 ? (0, a.jsxs)(a.Fragment, {
                                     children: [
-                                      (0, a.jsx)(ez.Z, { className: 'w-3 h-3' }),
+                                      (0, a.jsx)(eV.Z, { className: 'w-3 h-3' }),
                                       (0, a.jsx)('span', { children: 'Service Mode' }),
                                     ],
                                   })
@@ -15631,7 +17534,7 @@
                               className:
                                 'p-1.5 hover:bg-purple-700/50 rounded text-purple-200 hover:text-white transition-colors',
                               title: 'Portal info',
-                              children: (0, a.jsx)(en.Z, { className: 'w-4 h-4' }),
+                              children: (0, a.jsx)(eu.Z, { className: 'w-4 h-4' }),
                             }),
                             (0, a.jsx)('button', {
                               onClick: () => {
@@ -15640,7 +17543,7 @@
                               className:
                                 'p-1.5 hover:bg-purple-700/50 rounded text-purple-200 hover:text-white transition-colors',
                               title: 'Exit Portal',
-                              children: (0, a.jsx)(el.Z, { className: 'w-4 h-4' }),
+                              children: (0, a.jsx)(ec.Z, { className: 'w-4 h-4' }),
                             }),
                           ],
                         }),
@@ -15655,7 +17558,7 @@
                             (0, a.jsxs)('div', {
                               className: 'flex items-start gap-2',
                               children: [
-                                (0, a.jsx)(en.Z, {
+                                (0, a.jsx)(eu.Z, {
                                   className: 'w-4 h-4 text-purple-300 mt-0.5 flex-shrink-0',
                                 }),
                                 (0, a.jsxs)('div', {
@@ -15679,7 +17582,7 @@
                               children: r.serviceMode
                                 ? (0, a.jsxs)(a.Fragment, {
                                     children: [
-                                      (0, a.jsx)(ez.Z, {
+                                      (0, a.jsx)(eV.Z, {
                                         className: 'w-4 h-4 text-green-400 mt-0.5 flex-shrink-0',
                                       }),
                                       (0, a.jsxs)('div', {
@@ -15700,7 +17603,7 @@
                                   })
                                 : (0, a.jsxs)(a.Fragment, {
                                     children: [
-                                      (0, a.jsx)(t$.Z, {
+                                      (0, a.jsx)(t3.Z, {
                                         className: 'w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0',
                                       }),
                                       (0, a.jsxs)('div', {
@@ -15734,9 +17637,9 @@
             })
           : (0, a.jsx)(a.Fragment, { children: t });
       }
-      var sR = s(3029),
-        sU = s(2461);
-      function sB(e) {
+      var am = s(3029),
+        ap = s(2461);
+      function ah(e) {
         var t;
         let { control: s, effectiveValue: r, onChange: n, onReset: i, disabled: o, error: c } = e,
           [u, x] = (0, l.useState)(r.value),
@@ -15747,7 +17650,7 @@
           g = r.canEdit && !o,
           b = r.canReset && !r.isDefault;
         return (0, a.jsxs)('div', {
-          className: (0, sM.cn)(
+          className: (0, an.cn)(
             'bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-slate-600 transition-colors'
           ),
           children: [
@@ -15766,7 +17669,7 @@
                         }),
                         s.required &&
                           (0, a.jsx)('span', { className: 'text-xs text-red-400', children: '*' }),
-                        !g && (0, a.jsx)(tB.Z, { className: 'w-3 h-3 text-slate-500' }),
+                        !g && (0, a.jsx)(tY.Z, { className: 'w-3 h-3 text-slate-500' }),
                       ],
                     }),
                     s.description &&
@@ -15780,16 +17683,16 @@
                   className: 'flex items-center gap-2',
                   children: [
                     s.helpUrl &&
-                      (0, a.jsx)(sM.zx, {
+                      (0, a.jsx)(an.zx, {
                         variant: 'ghost',
                         size: 'icon',
                         onClick: () => p(!m),
                         className: 'text-slate-400 hover:text-slate-300',
                         title: 'Show help',
-                        children: (0, a.jsx)(en.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(eu.Z, { className: 'w-4 h-4' }),
                       }),
                     b &&
-                      (0, a.jsx)(sM.zx, {
+                      (0, a.jsx)(an.zx, {
                         variant: 'ghost',
                         size: 'icon',
                         onClick: () => {
@@ -15798,7 +17701,7 @@
                         disabled: !g,
                         className: 'text-slate-400 hover:text-purple-400',
                         title: 'Reset to default',
-                        children: (0, a.jsx)(sU.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(ap.Z, { className: 'w-4 h-4' }),
                       }),
                   ],
                 }),
@@ -15820,9 +17723,9 @@
             (0, a.jsxs)('div', {
               className: 'mb-3',
               children: [
-                'boolean' === s.type && (0, a.jsx)(sK, { value: u, onChange: h, disabled: !g }),
+                'boolean' === s.type && (0, a.jsx)(ag, { value: u, onChange: h, disabled: !g }),
                 'string' === s.type &&
-                  (0, a.jsx)(sq, {
+                  (0, a.jsx)(ab, {
                     value: u,
                     onChange: h,
                     disabled: !g,
@@ -15830,7 +17733,7 @@
                     pattern: s.pattern,
                   }),
                 'number' === s.type &&
-                  (0, a.jsx)(sV, {
+                  (0, a.jsx)(af, {
                     value: u,
                     onChange: h,
                     disabled: !g,
@@ -15841,13 +17744,13 @@
                   }),
                 'select' === s.type &&
                   s.options &&
-                  (0, a.jsx)(sJ, { value: u, onChange: h, disabled: !g, options: s.options }),
+                  (0, a.jsx)(av, { value: u, onChange: h, disabled: !g, options: s.options }),
                 'multiselect' === s.type &&
                   s.options &&
-                  (0, a.jsx)(sG, { value: u, onChange: h, disabled: !g, options: s.options }),
-                'color' === s.type && (0, a.jsx)(sW, { value: u, onChange: h, disabled: !g }),
+                  (0, a.jsx)(aj, { value: u, onChange: h, disabled: !g, options: s.options }),
+                'color' === s.type && (0, a.jsx)(aN, { value: u, onChange: h, disabled: !g }),
                 'slider' === s.type &&
-                  (0, a.jsx)(sY, {
+                  (0, a.jsx)(ay, {
                     value: u,
                     onChange: h,
                     disabled: !g,
@@ -15856,7 +17759,7 @@
                     step: s.step || 1,
                     unit: s.unit,
                   }),
-                'json' === s.type && (0, a.jsx)(sH, { value: u, onChange: h, disabled: !g }),
+                'json' === s.type && (0, a.jsx)(aw, { value: u, onChange: h, disabled: !g }),
               ],
             }),
             c &&
@@ -15910,7 +17813,7 @@
           ],
         });
       }
-      function sK(e) {
+      function ag(e) {
         let { value: t, onChange: s, disabled: l } = e;
         return (0, a.jsxs)('label', {
           className: 'flex items-center gap-3 cursor-pointer',
@@ -15930,7 +17833,7 @@
           ],
         });
       }
-      function sq(e) {
+      function ab(e) {
         let { value: t, onChange: s, disabled: l, placeholder: r, pattern: n } = e;
         return (0, a.jsx)('input', {
           type: 'text',
@@ -15943,7 +17846,7 @@
             'w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50',
         });
       }
-      function sV(e) {
+      function af(e) {
         let { value: t, onChange: s, disabled: l, min: r, max: n, step: i, unit: o } = e;
         return (0, a.jsxs)('div', {
           className: 'flex items-center gap-2',
@@ -15963,7 +17866,7 @@
           ],
         });
       }
-      function sJ(e) {
+      function av(e) {
         let { value: t, onChange: s, disabled: l, options: r } = e;
         return (0, a.jsx)('select', {
           value: t,
@@ -15976,7 +17879,7 @@
           ),
         });
       }
-      function sG(e) {
+      function aj(e) {
         let { value: t, onChange: s, disabled: l, options: r } = e,
           n = (e) => {
             s(t.includes(e) ? t.filter((t) => t !== e) : [...t, e]);
@@ -16005,7 +17908,7 @@
           ),
         });
       }
-      function sW(e) {
+      function aN(e) {
         let { value: t, onChange: s, disabled: l } = e;
         return (0, a.jsxs)('div', {
           className: 'flex items-center gap-3',
@@ -16031,7 +17934,7 @@
           ],
         });
       }
-      function sY(e) {
+      function ay(e) {
         let { value: t, onChange: s, disabled: l, min: r, max: n, step: i, unit: o } = e;
         return (0, a.jsxs)('div', {
           className: 'space-y-2',
@@ -16058,7 +17961,7 @@
           ],
         });
       }
-      function sH(e) {
+      function aw(e) {
         let { value: t, onChange: s, disabled: r } = e,
           [n, i] = (0, l.useState)(JSON.stringify(t, null, 2)),
           [o, c] = (0, l.useState)(null),
@@ -16094,12 +17997,12 @@
           ],
         });
       }
-      let sX = {
+      let ak = {
         warning: {
           bg: 'bg-yellow-600/10',
           border: 'border-yellow-500/30',
           iconBg: 'bg-yellow-500/20',
-          icon: t$.Z,
+          icon: t3.Z,
           iconColor: 'text-yellow-400',
           titleColor: 'text-yellow-300',
           messageColor: 'text-yellow-200/80',
@@ -16121,7 +18024,7 @@
           bg: 'bg-blue-600/10',
           border: 'border-blue-500/30',
           iconBg: 'bg-blue-500/20',
-          icon: en.Z,
+          icon: eu.Z,
           iconColor: 'text-blue-400',
           titleColor: 'text-blue-300',
           messageColor: 'text-blue-200/80',
@@ -16132,7 +18035,7 @@
           bg: 'bg-green-600/10',
           border: 'border-green-500/30',
           iconBg: 'bg-green-500/20',
-          icon: ez.Z,
+          icon: eV.Z,
           iconColor: 'text-green-400',
           titleColor: 'text-green-300',
           messageColor: 'text-green-200/80',
@@ -16140,7 +18043,7 @@
           confirmText: 'text-white',
         },
       };
-      function s$(e) {
+      function aC(e) {
         let {
           isOpen: t,
           onClose: s,
@@ -16156,7 +18059,7 @@
           minimizeText: m = 'Minimize',
         } = e;
         if (!t) return null;
-        let p = sX[r],
+        let p = ak[r],
           h = p.icon,
           g = () => {
             d || s();
@@ -16215,7 +18118,7 @@
                             onClick: g,
                             className:
                               'flex-shrink-0 p-1 hover:bg-slate-800/50 rounded transition-colors',
-                            children: (0, a.jsx)(el.Z, { className: 'w-5 h-5 text-slate-400' }),
+                            children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5 text-slate-400' }),
                           }),
                       ],
                     }),
@@ -16275,17 +18178,17 @@
           })
         );
       }
-      function sQ() {
+      function aS() {
         let { user: e } = (0, N.aC)(),
-          { addOperation: t, updateOperation: s, getOperation: r } = sm(),
-          { jobs: n } = ti(),
+          { addOperation: t, updateOperation: s, getOperation: r } = s$(),
+          { jobs: n } = tp(),
           [i, o] = (0, l.useState)(!1),
           [c, d] = (0, l.useState)(!1),
           [u, m] = (0, l.useState)(null),
           [p, h] = (0, l.useState)(null),
           [g, b] = (0, l.useState)(!1),
-          [f, j] = (0, l.useState)(null),
-          [v, y] = (0, l.useState)(null),
+          [f, v] = (0, l.useState)(null),
+          [j, y] = (0, l.useState)(null),
           w = (0, l.useRef)(null),
           k = (0, l.useRef)(!1);
         ((0, l.useEffect)(() => {
@@ -16297,7 +18200,7 @@
           (null == e ? void 0 : e.status) === 'succeeded'
             ? (w.current && (clearTimeout(w.current), (w.current = null)),
               console.log('[DataManagementCard] Deletion complete via SSE'),
-              M.O.getState().loadGraphData(),
+              A.O.getState().loadGraphData(),
               y('Data cleared successfully! Keimenon is now empty.'),
               setTimeout(() => {
                 (m(null), d(!1), y(null));
@@ -16305,7 +18208,7 @@
             : (null == e ? void 0 : e.status) === 'failed'
               ? (w.current && (clearTimeout(w.current), (w.current = null)),
                 console.error('[DataManagementCard] Deletion failed via SSE:', e),
-                j('Deletion failed. Please check Background Operations for details.'),
+                v('Deletion failed. Please check Background Operations for details.'),
                 m(null),
                 d(!1))
               : e ||
@@ -16314,7 +18217,7 @@
                 (w.current = setTimeout(() => {
                   n.get(u) ||
                     (console.error('[DataManagementCard] Job not received via SSE after 10s'),
-                    j('Lost connection to server. Please refresh the page.'),
+                    v('Lost connection to server. Please refresh the page.'),
                     m(null),
                     d(!1));
                 }, 1e4)));
@@ -16327,7 +18230,7 @@
           ));
         let C = async () => {
             try {
-              (b(!0), j(null));
+              (b(!0), v(null));
               let e = localStorage.getItem('keimenon_token');
               if (!e) throw Error('Not authenticated');
               let t = await fetch(''.concat(_.CT, '/api/v1/data/stats'), {
@@ -16341,7 +18244,7 @@
               h(s.stats);
             } catch (t) {
               (console.error('Failed to load stats:', t),
-                j(
+                v(
                   E.I.capture(
                     t,
                     {
@@ -16363,7 +18266,7 @@
               !u &&
               (console.warn('[DataManagementCard] Resetting stuck isClearing state'),
               d(!1),
-              j(null));
+              v(null));
             try {
               await C();
             } catch (e) {
@@ -16404,22 +18307,22 @@
                   ? d
                   : 0,
               f = 'Clearing keimenon data',
-              j = 'Deleting '.concat(g, ' nodes and ').concat(b, ' edges'),
-              v = r(h),
+              v = 'Deleting '.concat(g, ' nodes and ').concat(b, ' edges'),
+              j = r(h),
               N = {
                 title: f,
-                description: j,
+                description: v,
                 status: 'processing',
-                progress: null !== (x = null == v ? void 0 : v.progress) && void 0 !== x ? x : 50,
+                progress: null !== (x = null == j ? void 0 : j.progress) && void 0 !== x ? x : 50,
                 stats: { nodesToDelete: g, edgesToDelete: b },
               };
-            (v
+            (j
               ? s(h, N)
               : t({
                   id: h,
                   type: 'deletion',
                   title: f,
-                  description: j,
+                  description: v,
                   status: 'processing',
                   progress: 50,
                   startedAt: Date.now(),
@@ -16429,10 +18332,10 @@
               console.log('[DataManagementCard] Minimized deletion:', h),
               o(!1));
           },
-          Z = async () => {
+          M = async () => {
             var t, s, a, l, r, n, i, c, u, x, g, b;
             try {
-              (d(!0), j(null));
+              (d(!0), v(null));
               let l = localStorage.getItem('keimenon_token');
               if (!l) throw Error('Not authenticated');
               let r =
@@ -16484,7 +18387,7 @@
                 console.warn('[DataManagementCard] Delete job created without jobId in response'),
                 m(x),
                 I(x, { nodeCount: r, edgeCount: n }),
-                (0, tc.Vo)(
+                (0, tg.Vo)(
                   'Delete job created: '.concat(r, ' nodes, ').concat(n, ' edges'),
                   'delete.jobCreated',
                   { jobId: x, nodeCount: r, edgeCount: n, scope: 'keimenon' }
@@ -16546,13 +18449,13 @@
                           ? void 0
                           : x.includes('fetch'))) &&
                       (t = 'Network error. Please check your connection and try again.'),
-                j(t));
+                v(t));
             } finally {
               d(!1);
             }
           },
-          D = c || !!u,
-          T = c ? 'Clearing Data...' : u ? 'Deletion in progress...' : 'Clear Keimenon Data';
+          Z = c || !!u,
+          D = c ? 'Clearing Data...' : u ? 'Deletion in progress...' : 'Clear Keimenon Data';
         return (0, a.jsxs)(a.Fragment, {
           children: [
             (0, a.jsxs)('div', {
@@ -16564,7 +18467,7 @@
                   children: [
                     (0, a.jsx)('div', {
                       className: 'flex-shrink-0 bg-red-500/20 rounded-lg p-3',
-                      children: (0, a.jsx)(ej.Z, { className: 'w-6 h-6 text-red-400' }),
+                      children: (0, a.jsx)(ew.Z, { className: 'w-6 h-6 text-red-400' }),
                     }),
                     (0, a.jsxs)('div', {
                       className: 'flex-1',
@@ -16582,11 +18485,11 @@
                     }),
                   ],
                 }),
-                v &&
+                j &&
                   (0, a.jsx)('div', {
                     className:
                       'mb-4 px-3 py-2 bg-green-600/10 border border-green-500/30 rounded text-xs text-green-300',
-                    children: v,
+                    children: j,
                   }),
                 f &&
                   (0, a.jsx)('div', {
@@ -16596,17 +18499,17 @@
                   }),
                 (0, a.jsxs)('button', {
                   onClick: S,
-                  disabled: D,
+                  disabled: Z,
                   className:
                     'w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2',
-                  title: D ? 'Deletion in progress, check Background Operations' : '',
-                  children: [D && (0, a.jsx)(x.Z, { className: 'w-4 h-4 animate-spin' }), T],
+                  title: Z ? 'Deletion in progress, check Background Operations' : '',
+                  children: [Z && (0, a.jsx)(x.Z, { className: 'w-4 h-4 animate-spin' }), D],
                 }),
                 (0, a.jsxs)('div', {
                   className:
                     'mt-4 flex items-start gap-2 px-3 py-2 bg-yellow-600/10 border border-yellow-500/30 rounded text-xs text-yellow-300',
                   children: [
-                    (0, a.jsx)(t$.Z, { className: 'w-4 h-4 flex-shrink-0 mt-0.5' }),
+                    (0, a.jsx)(t3.Z, { className: 'w-4 h-4 flex-shrink-0 mt-0.5' }),
                     (0, a.jsxs)('div', {
                       children: [
                         (0, a.jsx)('p', {
@@ -16624,10 +18527,10 @@
                 }),
               ],
             }),
-            (0, a.jsx)(s$, {
+            (0, a.jsx)(aC, {
               isOpen: i,
               onClose: () => o(!1),
-              onConfirm: Z,
+              onConfirm: M,
               variant: 'warning',
               title: 'Clear All Keimenon Data?',
               message:
@@ -16652,7 +18555,7 @@
           ],
         });
       }
-      function s0() {
+      function aI() {
         let { user: e } = (0, N.aC)(),
           [t, s] = (0, l.useState)(!1),
           [r, n] = (0, l.useState)(!1),
@@ -16758,7 +18661,7 @@
                   children: [
                     (0, a.jsx)('div', {
                       className: 'flex-shrink-0 bg-red-500/30 rounded-lg p-3',
-                      children: (0, a.jsx)(t$.Z, { className: 'w-6 h-6 text-red-400' }),
+                      children: (0, a.jsx)(t3.Z, { className: 'w-6 h-6 text-red-400' }),
                     }),
                     (0, a.jsxs)('div', {
                       className: 'flex-1',
@@ -16800,7 +18703,7 @@
                 }),
               ],
             }),
-            (0, a.jsx)(s$, {
+            (0, a.jsx)(aC, {
               isOpen: t,
               onClose: () => s(!1),
               onConfirm: u,
@@ -16815,7 +18718,7 @@
           ],
         });
       }
-      function s4(e) {
+      function aE(e) {
         let {
             index: t,
             style: s,
@@ -16898,7 +18801,7 @@
                           className:
                             'p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors',
                           title: 'Edit user',
-                          children: (0, a.jsx)(tw.Z, { className: 'w-4 h-4' }),
+                          children: (0, a.jsx)(tZ.Z, { className: 'w-4 h-4' }),
                         }),
                         r !== u.id &&
                           (0, a.jsx)('button', {
@@ -16911,8 +18814,8 @@
                             title: 'Delete user',
                             children:
                               i === u.id
-                                ? (0, a.jsx)(tk.Z, { className: 'w-4 h-4 animate-spin' })
-                                : (0, a.jsx)(ej.Z, { className: 'w-4 h-4' }),
+                                ? (0, a.jsx)(tD.Z, { className: 'w-4 h-4 animate-spin' })
+                                : (0, a.jsx)(ew.Z, { className: 'w-4 h-4' }),
                           }),
                       ],
                     }),
@@ -16922,7 +18825,7 @@
           }),
         });
       }
-      function s2(e) {
+      function aM(e) {
         let { onUserSelect: t, onCreateUser: s } = e,
           { user: r } = (0, N.aC)(),
           [n, o] = (0, l.useState)([]),
@@ -16930,16 +18833,16 @@
           [u, x] = (0, l.useState)(null),
           [m, p] = (0, l.useState)(''),
           [h, g] = (0, l.useState)(null),
-          [b, j] = (0, l.useState)(null),
-          [v, y] = (0, l.useState)(!1),
+          [b, v] = (0, l.useState)(null),
+          [j, y] = (0, l.useState)(!1),
           w = (0, l.useRef)(null),
-          k = e7(w, 400);
+          k = tr(w, 400);
         (0, l.useEffect)(() => {
           (async () => {
             if (r) {
               (d(!0), x(null));
               try {
-                let e = await (0, eD.TE)(r.accountId);
+                let e = await (0, e_.TE)(r.accountId);
                 o(e.users);
               } catch (t) {
                 let e = t instanceof Error ? t : Error(String(t));
@@ -16973,11 +18876,11 @@
                 )
               )
             ) {
-              (g(e), j(null));
+              (g(e), v(null));
               try {
-                (await (0, eD.h8)(e),
+                (await (0, e_.h8)(e),
                   o((t) => t.filter((t) => t.id !== e)),
-                  (0, tc.Et)('User deleted: '.concat(t), {
+                  (0, tg.Et)('User deleted: '.concat(t), {
                     domain: 'api',
                     operation: 'users.delete',
                     metadata: { userId: e, userName: t },
@@ -16989,13 +18892,13 @@
                   operation: 'settings.users.delete',
                   metadata: { userId: e },
                 }),
-                  j(t.message || 'Failed to delete user'));
+                  v(t.message || 'Failed to delete user'));
               } finally {
                 g(null);
               }
             }
           }, []),
-          Z = (0, l.useCallback)((e) => {
+          M = (0, l.useCallback)((e) => {
             switch (e) {
               case 'admin':
                 return 'text-purple-400 bg-purple-600/10 border-purple-500/30';
@@ -17007,18 +18910,18 @@
                 return 'text-slate-400 bg-slate-600/10 border-slate-500/30';
             }
           }, []),
-          D = (null == r ? void 0 : r.permissionLevel) === 'admin',
-          T = (0, l.useMemo)(
+          Z = (null == r ? void 0 : r.permissionLevel) === 'admin',
+          D = (0, l.useMemo)(
             () => ({
               users: C,
               currentUserId: null == r ? void 0 : r.userId,
-              canManageUsers: D,
+              canManageUsers: Z,
               deletingId: h,
               onUserSelect: t,
               handleDelete: S,
-              getPermissionColor: Z,
+              getPermissionColor: M,
             }),
-            [C, null == r ? void 0 : r.userId, D, h, t, S, Z]
+            [C, null == r ? void 0 : r.userId, Z, h, t, S, M]
           );
         return c
           ? (0, a.jsx)('div', {
@@ -17026,7 +18929,7 @@
               children: (0, a.jsxs)('div', {
                 className: 'text-center',
                 children: [
-                  (0, a.jsx)(tk.Z, {
+                  (0, a.jsx)(tD.Z, {
                     className: 'w-8 h-8 animate-spin text-purple-500 mx-auto mb-4',
                   }),
                   (0, a.jsx)('p', {
@@ -17042,7 +18945,7 @@
                 children: (0, a.jsxs)('div', {
                   className: 'flex items-start gap-3',
                   children: [
-                    (0, a.jsx)(el.Z, { className: 'w-5 h-5 text-red-400 flex-shrink-0 mt-0.5' }),
+                    (0, a.jsx)(ec.Z, { className: 'w-5 h-5 text-red-400 flex-shrink-0 mt-0.5' }),
                     (0, a.jsxs)('div', {
                       children: [
                         (0, a.jsx)('h3', {
@@ -17094,18 +18997,18 @@
                           }),
                         ],
                       }),
-                      D &&
+                      Z &&
                         (0, a.jsxs)('button', {
                           onClick: () => {
                             s ? s() : y(!0);
                           },
                           className:
                             'flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors',
-                          children: [(0, a.jsx)(es.Z, { className: 'w-4 h-4' }), 'Add User'],
+                          children: [(0, a.jsx)(ei.Z, { className: 'w-4 h-4' }), 'Add User'],
                         }),
                     ],
                   }),
-                  !D &&
+                  !Z &&
                     (0, a.jsx)('div', {
                       className: 'bg-blue-600/10 border border-blue-500/30 rounded-lg p-4',
                       children: (0, a.jsx)('p', {
@@ -17134,7 +19037,7 @@
                           onClick: () => p(''),
                           className:
                             'absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-700 rounded transition-colors',
-                          children: (0, a.jsx)(el.Z, { className: 'w-3 h-3 text-slate-500' }),
+                          children: (0, a.jsx)(ec.Z, { className: 'w-3 h-3 text-slate-500' }),
                         }),
                     ],
                   }),
@@ -17150,14 +19053,14 @@
                               ? 'No users found matching "'.concat(m, '"')
                               : 'No users found',
                           }),
-                          D &&
+                          Z &&
                             !m &&
                             (0, a.jsxs)('button', {
                               onClick: s,
                               className:
                                 'inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors',
                               children: [
-                                (0, a.jsx)(es.Z, { className: 'w-4 h-4' }),
+                                (0, a.jsx)(ei.Z, { className: 'w-4 h-4' }),
                                 'Add First User',
                               ],
                             }),
@@ -17166,12 +19069,12 @@
                     : (0, a.jsx)('div', {
                         ref: w,
                         style: { height: Math.min(120 * C.length, 400) },
-                        children: (0, a.jsx)(e8.aV, {
+                        children: (0, a.jsx)(tl.aV, {
                           style: { height: Math.min(120 * C.length, k) },
                           rowCount: C.length,
                           rowHeight: 120,
-                          rowComponent: s4,
-                          rowProps: T,
+                          rowComponent: aE,
+                          rowProps: D,
                         }),
                       }),
                   C.length > 0 &&
@@ -17191,9 +19094,9 @@
                         m && (0, a.jsxs)('span', { children: ['• Filtered by: "', m, '"'] }),
                       ],
                     }),
-                  v &&
+                  j &&
                     r &&
-                    (0, a.jsx)(tE, {
+                    (0, a.jsx)(tL, {
                       account: {
                         id: r.accountId,
                         name: 'Current Account',
@@ -17204,7 +19107,7 @@
                       onSuccess: () => {
                         (y(!1),
                           r &&
-                            (0, eD.TE)(r.accountId)
+                            (0, e_.TE)(r.accountId)
                               .then((e) => o(e.users))
                               .catch((e) => {
                                 let t = e instanceof Error ? e : Error(String(e));
@@ -17219,14 +19122,14 @@
                 ],
               });
       }
-      var s1 = s(7354),
-        s5 = s(8155);
-      function s3() {
+      var aZ = s(7354),
+        aD = s(8155);
+      function aT() {
         let [e, t] = (0, l.useState)(!1),
           [s, r] = (0, l.useState)(!1),
-          n = (0, s5.d4)();
+          n = (0, aD.d4)();
         return ((0, l.useEffect)(() => {
-          t((0, s5.h2)());
+          t((0, aD.h2)());
         }, []),
         n)
           ? (0, a.jsx)('div', {
@@ -17251,7 +19154,7 @@
                           (0, a.jsx)('button', {
                             onClick: () => {
                               let s = !e;
-                              ((0, s5.tN)(s), t(s), s && (0, s5.j6)());
+                              ((0, aD.tN)(s), t(s), s && (0, aD.j6)());
                             },
                             className:
                               'relative inline-flex h-6 w-11 items-center rounded-full transition-colors '.concat(
@@ -17296,7 +19199,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, a.jsx)(s1.Z, {
+                                        (0, a.jsx)(aZ.Z, {
                                           className: 'w-4 h-4 text-green-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, a.jsxs)('div', {
@@ -17317,7 +19220,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, a.jsx)(s1.Z, {
+                                        (0, a.jsx)(aZ.Z, {
                                           className: 'w-4 h-4 text-green-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, a.jsxs)('div', {
@@ -17339,7 +19242,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, a.jsx)(s1.Z, {
+                                        (0, a.jsx)(aZ.Z, {
                                           className: 'w-4 h-4 text-green-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, a.jsxs)('div', {
@@ -17360,7 +19263,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, a.jsx)(s1.Z, {
+                                        (0, a.jsx)(aZ.Z, {
                                           className: 'w-4 h-4 text-green-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, a.jsxs)('div', {
@@ -17391,7 +19294,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, a.jsx)(el.Z, {
+                                        (0, a.jsx)(ec.Z, {
                                           className: 'w-4 h-4 text-red-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, a.jsx)('div', {
@@ -17406,7 +19309,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, a.jsx)(el.Z, {
+                                        (0, a.jsx)(ec.Z, {
                                           className: 'w-4 h-4 text-red-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, a.jsx)('div', {
@@ -17421,7 +19324,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, a.jsx)(el.Z, {
+                                        (0, a.jsx)(ec.Z, {
                                           className: 'w-4 h-4 text-red-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, a.jsx)('div', {
@@ -17436,7 +19339,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, a.jsx)(el.Z, {
+                                        (0, a.jsx)(ec.Z, {
                                           className: 'w-4 h-4 text-red-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, a.jsx)('div', {
@@ -17537,9 +19440,8 @@
               }),
             });
       }
-      var s6 = s(6702),
-        s8 = s(3017);
-      let s7 = {
+      var aA = s(3017);
+      let a_ = {
           active: {
             label: 'Active',
             color: 'bg-green-500/15 text-green-300 border border-green-500/20',
@@ -17548,25 +19450,25 @@
           legacy: {
             label: 'Legacy',
             color: 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/20',
-            icon: (0, a.jsx)(tJ.Z, { className: 'w-3.5 h-3.5' }),
+            icon: (0, a.jsx)(t$.Z, { className: 'w-3.5 h-3.5' }),
           },
           quarantined: {
             label: 'Quarantined',
             color: 'bg-orange-500/15 text-orange-300 border border-orange-500/20',
-            icon: (0, a.jsx)(s6.Z, { className: 'w-3.5 h-3.5' }),
+            icon: (0, a.jsx)(tt.Z, { className: 'w-3.5 h-3.5' }),
           },
           orphaned: {
             label: 'Orphaned',
             color: 'bg-red-500/15 text-red-300 border border-red-500/20',
-            icon: (0, a.jsx)(s6.Z, { className: 'w-3.5 h-3.5' }),
+            icon: (0, a.jsx)(tt.Z, { className: 'w-3.5 h-3.5' }),
           },
           archived: {
             label: 'Archived',
             color: 'bg-slate-500/15 text-slate-300 border border-slate-500/20',
-            icon: (0, a.jsx)(s8.Z, { className: 'w-3.5 h-3.5' }),
+            icon: (0, a.jsx)(aA.Z, { className: 'w-3.5 h-3.5' }),
           },
         },
-        s9 = [
+        aL = [
           {
             name: 'CreateAccountModal',
             path: 'apps/web/src/components/modals/CreateAccountModal.tsx',
@@ -17632,11 +19534,11 @@
             integration: 'Stored for reference only; not imported anywhere.',
           },
         ];
-      function ae() {
+      function aF() {
         let { user: e } = (0, N.aC)(),
           t = (0, l.useMemo)(
             () =>
-              s9.reduce((e, t) => ((e[t.status] += 1), e), {
+              aL.reduce((e, t) => ((e[t.status] += 1), e), {
                 active: 0,
                 legacy: 0,
                 quarantined: 0,
@@ -17671,7 +19573,7 @@
                   className: 'grid grid-cols-2 md:grid-cols-4 gap-3',
                   children: Object.entries(t).map((e) => {
                     let [t, s] = e,
-                      l = s7[t];
+                      l = a_[t];
                     return (0, a.jsxs)(
                       'div',
                       {
@@ -17731,8 +19633,8 @@
                       }),
                       (0, a.jsx)('tbody', {
                         className: 'divide-y divide-slate-800',
-                        children: s9.map((e) => {
-                          let t = s7[e.status];
+                        children: aL.map((e) => {
+                          let t = a_[e.status];
                           return (0, a.jsxs)(
                             'tr',
                             {
@@ -17784,16 +19686,16 @@
               ],
             });
       }
-      var at = s(8248);
-      function as() {
+      var aP = s(8248);
+      function aO() {
         let { user: e } = (0, N.aC)(),
-          { addOperation: t, updateOperation: s, getOperation: r } = sm(),
+          { addOperation: t, updateOperation: s, getOperation: r } = s$(),
           [n, i] = (0, l.useState)(null),
           [o, u] = (0, l.useState)(!1),
           [m, p] = (0, l.useState)(null),
           [h, g] = (0, l.useState)(null),
           [b, f] = (0, l.useState)(!1),
-          [j, v] = (0, l.useState)(null),
+          [v, j] = (0, l.useState)(null),
           [y, w] = (0, l.useState)(null),
           [k, C] = (0, l.useState)(!1),
           S = async () => {
@@ -17828,7 +19730,7 @@
                     },
                     'error'
                   ),
-                  p(t.message || 'Failed to load deduplication stats'));
+                  p(t.message || 'Failed to load similarity review stats'));
               } finally {
                 u(!1);
               }
@@ -17838,76 +19740,85 @@
           S();
         }, [null == e ? void 0 : e.accountId]),
           (0, l.useEffect)(() => {
-            if (!j) return;
+            if (!v) return;
             let e = setInterval(() => {
-              let t = r(j);
+              let t = r(v);
               (null == t ? void 0 : t.status) === 'done'
                 ? (console.log('[DeduplicationCard] Merge complete, reloading stats...'),
                   clearInterval(e),
-                  g('Duplicates merged successfully! Reloading...'),
+                  g('Similarity groups consolidated successfully. Reloading...'),
                   setTimeout(() => {
                     window.location.reload();
                   }, 1500))
                 : (null == t ? void 0 : t.status) === 'error' &&
-                  (console.error('[DeduplicationCard] Merge failed:', t),
+                  (console.error('[DeduplicationCard] Consolidation failed:', t),
                   clearInterval(e),
-                  p('Merge failed. Please check Background Operations for details.'),
+                  p('Consolidation failed. Check Background Operations for details.'),
                   f(!1),
-                  v(null));
+                  j(null));
             }, 1e3);
             return () => clearInterval(e);
-          }, [j, r]));
+          }, [v, r]));
         let I = async () => {
             if (!(null == e ? void 0 : e.accountId)) return;
             (C(!1), f(!0), p(null), g(null));
             let a = 'dedup-merge-'.concat(Date.now());
-            (v(a),
-              (0, tc.Vo)('dedup-merge', 'start', { accountId: e.accountId, userId: e.userId }),
+            (j(a),
+              (0, tg.Vo)('dedup-merge', 'start', { accountId: e.accountId, userId: e.userId }),
               t({
                 id: a,
                 type: 'export',
                 status: 'processing',
-                title: 'Merging Duplicates',
-                description: 'Merging duplicate nodes...',
+                title: 'Consolidating Similarity Groups',
+                description: 'Relinking overlapping nodes to canonical entries...',
                 progress: 0,
                 startedAt: Date.now(),
                 stats: { duplicateCount: (null == n ? void 0 : n.duplicates) || 0 },
               }));
             try {
+              var l, r;
               let t = localStorage.getItem('keimenon_token');
               if (!t) throw Error('Not authenticated');
-              let l = await fetch(''.concat(_.CT, '/api/v1/deduplication/merge'), {
+              let n = await fetch(''.concat(_.CT, '/api/v1/deduplication/merge'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: 'Bearer '.concat(t) },
                 body: JSON.stringify({ accountId: e.accountId }),
               });
-              if (!l.ok) {
-                let e = await l.json().catch(() => ({}));
-                throw Error(e.error || 'Failed to merge duplicates');
+              if (!n.ok) {
+                let e = await n.json().catch(() => ({}));
+                throw Error(e.error || 'Failed to consolidate similarity groups');
               }
-              let r = await l.json();
-              ((0, tc.Vo)('dedup-merge', 'success', {
+              let i = await n.json(),
+                o =
+                  null !==
+                    (r =
+                      null !== (l = i.duplicatesConsolidated) && void 0 !== l
+                        ? l
+                        : i.duplicatesRemoved) && void 0 !== r
+                    ? r
+                    : 0;
+              ((0, tg.Vo)('dedup-merge', 'success', {
                 accountId: e.accountId,
-                mergedCount: r.mergedCount,
-                edgesRelinked: r.edgesRelinked,
-                duplicatesRemoved: r.duplicatesRemoved,
+                mergedCount: i.mergedCount,
+                edgesRelinked: i.edgesRelinked,
+                duplicatesConsolidated: o,
               }),
                 s(a, {
                   status: 'done',
-                  description: 'Merged '.concat(r.mergedCount, ' duplicate groups'),
+                  description: 'Consolidated '.concat(i.mergedCount, ' similarity groups'),
                   progress: 100,
                   completedAt: Date.now(),
                   stats: {
-                    mergedCount: r.mergedCount,
-                    edgesRelinked: r.edgesRelinked,
-                    duplicatesRemoved: r.duplicatesRemoved,
+                    mergedCount: i.mergedCount,
+                    edgesRelinked: i.edgesRelinked,
+                    duplicatesConsolidated: o,
                   },
                 }),
                 await S(),
-                g('Successfully merged '.concat(r.mergedCount, ' duplicate groups')));
+                g('Successfully consolidated '.concat(i.mergedCount, ' similarity groups')));
             } catch (t) {
-              (console.error('Failed to merge duplicates:', t),
-                (0, tc.Vo)('dedup-merge', 'error', { accountId: e.accountId, error: t.message }),
+              (console.error('Failed to consolidate similarity groups:', t),
+                (0, tg.Vo)('dedup-merge', 'error', { accountId: e.accountId, error: t.message }),
                 E.I.capture(
                   t,
                   {
@@ -17925,16 +19836,16 @@
                 ),
                 s(a, {
                   status: 'error',
-                  description: 'Merge failed: '.concat(t.message),
+                  description: 'Consolidation failed: '.concat(t.message),
                   error: t.message,
                   completedAt: Date.now(),
                 }),
-                p(t.message || 'Failed to merge duplicates'),
+                p(t.message || 'Failed to consolidate similarity groups'),
                 f(!1),
-                v(null));
+                j(null));
             }
           },
-          Z = n && n.totalNodes > 0 ? ((n.duplicates / n.totalNodes) * 100).toFixed(1) : '0.0';
+          M = n && n.totalNodes > 0 ? ((n.duplicates / n.totalNodes) * 100).toFixed(1) : '0.0';
         return (0, a.jsxs)('div', {
           className:
             'bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700',
@@ -17950,7 +19861,7 @@
                       children: [
                         (0, a.jsx)('div', {
                           className: 'p-2 bg-blue-100 dark:bg-blue-900 rounded-lg',
-                          children: (0, a.jsx)(W.Z, {
+                          children: (0, a.jsx)(X.Z, {
                             className: 'w-5 h-5 text-blue-600 dark:text-blue-400',
                           }),
                         }),
@@ -17958,11 +19869,12 @@
                           children: [
                             (0, a.jsx)('h2', {
                               className: 'text-lg font-semibold text-gray-900 dark:text-white',
-                              children: 'Content Deduplication',
+                              children: 'Similarity Group Consolidation',
                             }),
                             (0, a.jsx)('p', {
                               className: 'text-sm text-gray-500 dark:text-gray-400',
-                              children: 'Automatic duplicate detection and space optimization',
+                              children:
+                                'Similarity-first overlap detection and non-destructive consolidation',
                             }),
                           ],
                         }),
@@ -18007,7 +19919,7 @@
                 children: (0, a.jsxs)('div', {
                   className: 'flex items-center gap-2',
                   children: [
-                    (0, a.jsx)(ez.Z, { className: 'w-5 h-5 text-green-600 dark:text-green-400' }),
+                    (0, a.jsx)(eV.Z, { className: 'w-5 h-5 text-green-600 dark:text-green-400' }),
                     (0, a.jsx)('p', {
                       className: 'text-sm text-green-700 dark:text-green-300',
                       children: h,
@@ -18066,7 +19978,7 @@
                           (0, a.jsx)('div', {
                             className:
                               'text-sm font-medium text-yellow-700 dark:text-yellow-400 mb-1',
-                            children: 'Duplicates',
+                            children: 'Similarity Conflicts',
                           }),
                           (0, a.jsxs)('div', {
                             className: 'text-2xl font-bold text-yellow-900 dark:text-yellow-300',
@@ -18074,7 +19986,7 @@
                               n.duplicates.toLocaleString(),
                               (0, a.jsxs)('span', {
                                 className: 'text-sm font-normal ml-2',
-                                children: ['(', Z, '%)'],
+                                children: ['(', M, '%)'],
                               }),
                             ],
                           }),
@@ -18086,7 +19998,7 @@
                           (0, a.jsxs)('div', {
                             className:
                               'text-sm font-medium text-blue-700 dark:text-blue-400 mb-1 flex items-center gap-1',
-                            children: [(0, a.jsx)(at.Z, { className: 'w-4 h-4' }), 'Space Saved'],
+                            children: [(0, a.jsx)(aP.Z, { className: 'w-4 h-4' }), 'Space Saved'],
                           }),
                           (0, a.jsx)('div', {
                             className: 'text-2xl font-bold text-blue-900 dark:text-blue-300',
@@ -18113,8 +20025,8 @@
                           className:
                             'flex justify-between text-sm text-gray-600 dark:text-gray-400',
                           children: [
-                            (0, a.jsx)('span', { children: 'Deduplication Efficiency' }),
-                            (0, a.jsxs)('span', { children: [Z, '% duplicates detected'] }),
+                            (0, a.jsx)('span', { children: 'Similarity Consolidation Potential' }),
+                            (0, a.jsxs)('span', { children: [M, '% overlap detected'] }),
                           ],
                         }),
                         (0, a.jsx)('div', {
@@ -18123,7 +20035,7 @@
                           children: (0, a.jsx)('div', {
                             className:
                               'h-full bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-500',
-                            style: { width: ''.concat(Math.min(100, parseFloat(Z)), '%') },
+                            style: { width: ''.concat(Math.min(100, parseFloat(M)), '%') },
                           }),
                         }),
                       ],
@@ -18145,13 +20057,13 @@
                               ? (0, a.jsxs)(a.Fragment, {
                                   children: [
                                     (0, a.jsx)(x.Z, { className: 'w-4 h-4 animate-spin' }),
-                                    'Merging...',
+                                    'Consolidating...',
                                   ],
                                 })
                               : (0, a.jsxs)(a.Fragment, {
                                   children: [
-                                    (0, a.jsx)(ej.Z, { className: 'w-4 h-4' }),
-                                    'Merge Duplicates (',
+                                    (0, a.jsx)(ew.Z, { className: 'w-4 h-4' }),
+                                    'Consolidate Similarity Groups (',
                                     n.duplicates,
                                     ')',
                                   ],
@@ -18162,10 +20074,10 @@
                               className:
                                 'flex items-center gap-2 text-green-600 dark:text-green-400',
                               children: [
-                                (0, a.jsx)(ez.Z, { className: 'w-5 h-5' }),
+                                (0, a.jsx)(eV.Z, { className: 'w-5 h-5' }),
                                 (0, a.jsx)('span', {
                                   className: 'text-sm font-medium',
-                                  children: 'No duplicates found',
+                                  children: 'No similarity conflicts found',
                                 }),
                               ],
                             }),
@@ -18175,7 +20087,7 @@
                         (0, a.jsx)('p', {
                           className: 'mt-3 text-xs text-gray-500 dark:text-gray-400',
                           children:
-                            'Merging will consolidate duplicate nodes while preserving all relationships. This action cannot be undone.',
+                            'Consolidation relinks overlapping nodes to canonical originals while preserving raw node content and relationships.',
                         }),
                     ],
                   }),
@@ -18193,40 +20105,41 @@
                   className: 'text-sm text-gray-600 dark:text-gray-400 space-y-1',
                   children: [
                     (0, a.jsx)('li', {
-                      children: '• Content is automatically hashed using SHA-256',
+                      children: '- Content is automatically hashed using SHA-256',
                     }),
                     (0, a.jsx)('li', {
-                      children: '• Identical content is detected regardless of metadata',
+                      children: '- Identical content is detected regardless of metadata',
                     }),
                     (0, a.jsx)('li', {
-                      children: '• Duplicates are tracked but not automatically merged',
+                      children:
+                        '- Similarity conflicts are tracked but not automatically consolidated',
                     }),
                     (0, a.jsx)('li', {
-                      children: '• Merging preserves all edges and relationships',
+                      children: '- Consolidation preserves edges and keeps raw nodes intact',
                     }),
                     (0, a.jsx)('li', {
-                      children: '• All operations are reversible through version history',
+                      children: '- All operations are reversible through version history',
                     }),
                   ],
                 }),
               ],
             }),
-            (0, a.jsx)(s$, {
+            (0, a.jsx)(aC, {
               isOpen: k,
               onClose: () => C(!1),
               onConfirm: I,
               variant: 'warning',
-              title: 'Merge Duplicate Nodes?',
-              message: 'This will merge '.concat(
+              title: 'Consolidate Similarity Groups?',
+              message: 'This will relink '.concat(
                 (null == n ? void 0 : n.duplicates) || 0,
-                ' duplicate nodes into their original versions. All relationships will be preserved, but this action cannot be undone.'
+                ' overlapping nodes to canonical originals. Raw nodes are preserved and relationships are retained.'
               ),
               details: n
                 ? ''
-                    .concat(n.duplicates, ' duplicates found across ')
+                    .concat(n.duplicates, ' similarity conflicts found across ')
                     .concat(n.totalNodes, ' total nodes')
                 : void 0,
-              confirmText: 'Merge Duplicates',
+              confirmText: 'Consolidate Groups',
               cancelText: 'Cancel',
               isProcessing: b,
               onMinimize: b ? () => C(!1) : void 0,
@@ -18235,7 +20148,7 @@
           ],
         });
       }
-      function aa(e) {
+      function az(e) {
         let { exportFormat: t } = e,
           [s, r] = (0, l.useState)(!1),
           [n, i] = (0, l.useState)(null),
@@ -18306,7 +20219,7 @@
               children: [
                 (0, a.jsx)('div', {
                   className: 'flex-shrink-0 bg-blue-500/20 rounded-lg p-3',
-                  children: (0, a.jsx)(tU.Z, { className: 'w-6 h-6 text-blue-400' }),
+                  children: (0, a.jsx)(tW.Z, { className: 'w-6 h-6 text-blue-400' }),
                 }),
                 (0, a.jsxs)('div', {
                   className: 'flex-1',
@@ -18347,14 +20260,14 @@
           ],
         });
       }
-      var al = s(7113);
-      let ar = [
+      var aR = s(7113);
+      let aU = [
         { id: 'openai', name: 'OpenAI', description: 'Used for GPT-4 and Embeddings' },
         { id: 'anthropic', name: 'Anthropic', description: 'Used for Claude 3 Opus/Sonnet' },
         { id: 'google', name: 'Google Gemini', description: 'Used for Gemini Pro 1.5' },
         { id: 'groq', name: 'Groq', description: 'Used for fast Llama and Mixtral inference' },
       ];
-      function an() {
+      function aB() {
         let { user: e } = (0, N.aC)(),
           [t, s] = (0, l.useState)({}),
           [r, n] = (0, l.useState)({}),
@@ -18363,14 +20276,14 @@
           [m, p] = (0, l.useState)({}),
           [h, g] = (0, l.useState)({}),
           [b, f] = (0, l.useState)(null),
-          [j, v] = (0, l.useState)(!0),
+          [v, j] = (0, l.useState)(!0),
           y = () => localStorage.getItem('keimenon_token');
         (0, l.useEffect)(() => {
           w();
         }, []);
         let w = async () => {
             try {
-              (v(!0), f(null));
+              (j(!0), f(null));
               let e = y();
               if (!e) return;
               let t = await fetch(''.concat(_.CT, '/api/v1/settings/api-keys'), {
@@ -18385,7 +20298,7 @@
               (console.error('Failed to load API keys:', e),
                 f(e.message || 'Failed to load API keys'));
             } finally {
-              v(!1);
+              j(!1);
             }
           },
           k = async (e) => {
@@ -18483,7 +20396,7 @@
           I = (e) => {
             g((t) => ({ ...t, [e]: !t[e] }));
           };
-        return j
+        return v
           ? (0, a.jsx)('div', {
               className: 'flex items-center justify-center py-12',
               children: (0, a.jsxs)('div', {
@@ -18500,7 +20413,7 @@
                 (0, a.jsxs)('div', {
                   className: 'flex items-center gap-2 mb-6',
                   children: [
-                    (0, a.jsx)(tK.Z, { className: 'w-5 h-5 text-purple-400' }),
+                    (0, a.jsx)(tH.Z, { className: 'w-5 h-5 text-purple-400' }),
                     (0, a.jsx)('h2', {
                       className: 'text-lg font-semibold text-slate-100',
                       children: 'API Keys (BYOK)',
@@ -18521,7 +20434,7 @@
                   }),
                 (0, a.jsx)('div', {
                   className: 'grid gap-4',
-                  children: ar.map((e) => {
+                  children: aU.map((e) => {
                     let l = r[e.id],
                       n = m[e.id];
                     return (0, a.jsxs)(
@@ -18550,7 +20463,7 @@
                                     className:
                                       'flex items-center gap-1.5 px-2 py-1 bg-green-500/10 text-green-400 rounded text-xs font-medium border border-green-500/20',
                                     children: [
-                                      (0, a.jsx)(ez.Z, { className: 'w-3.5 h-3.5' }),
+                                      (0, a.jsx)(eV.Z, { className: 'w-3.5 h-3.5' }),
                                       (0, a.jsxs)('span', {
                                         children: ['Stored (••••', l.hint, ')'],
                                       }),
@@ -18577,7 +20490,7 @@
                               children: n.valid
                                 ? (0, a.jsxs)(a.Fragment, {
                                     children: [
-                                      (0, a.jsx)(ez.Z, { className: 'w-3.5 h-3.5 flex-shrink-0' }),
+                                      (0, a.jsx)(eV.Z, { className: 'w-3.5 h-3.5 flex-shrink-0' }),
                                       ' Key is valid',
                                     ],
                                   })
@@ -18610,8 +20523,8 @@
                                     className:
                                       'absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-300 transition-colors',
                                     children: h[e.id]
-                                      ? (0, a.jsx)(eC.Z, { className: 'w-4 h-4' })
-                                      : (0, a.jsx)(eh.Z, { className: 'w-4 h-4' }),
+                                      ? (0, a.jsx)(eE.Z, { className: 'w-4 h-4' })
+                                      : (0, a.jsx)(ev.Z, { className: 'w-4 h-4' }),
                                   }),
                                 ],
                               }),
@@ -18624,7 +20537,7 @@
                                 children: [
                                   c[e.id]
                                     ? (0, a.jsx)(x.Z, { className: 'w-4 h-4 animate-spin' })
-                                    : (0, a.jsx)(al.Z, { className: 'w-4 h-4' }),
+                                    : (0, a.jsx)(aR.Z, { className: 'w-4 h-4' }),
                                   'Test',
                                 ],
                               }),
@@ -18636,7 +20549,7 @@
                                 children: [
                                   i[e.id]
                                     ? (0, a.jsx)(x.Z, { className: 'w-4 h-4 animate-spin' })
-                                    : (0, a.jsx)(eM.Z, { className: 'w-4 h-4' }),
+                                    : (0, a.jsx)(eP.Z, { className: 'w-4 h-4' }),
                                   'Save',
                                 ],
                               }),
@@ -18647,7 +20560,7 @@
                                   className:
                                     'p-2 text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded transition-colors',
                                   title: 'Remove Key',
-                                  children: (0, a.jsx)(ej.Z, { className: 'w-4 h-4' }),
+                                  children: (0, a.jsx)(ew.Z, { className: 'w-4 h-4' }),
                                 }),
                             ],
                           }),
@@ -18660,8 +20573,8 @@
               ],
             });
       }
-      var ai = s(7864);
-      function ao(e) {
+      var aV = s(7864);
+      function aK(e) {
         var t;
         let { selectedSectionId: s, onControlSelect: r, onUserSelect: n } = e,
           {
@@ -18675,8 +20588,8 @@
             updateSetting: g,
             applyChanges: b,
             revertChanges: f,
-            resetSetting: j,
-            getEffectiveValue: v,
+            resetSetting: v,
+            getEffectiveValue: j,
             hasUnsavedChange: y,
           } = (function () {
             let [e, t] = (0, l.useState)({}),
@@ -18791,7 +20704,7 @@
               f = (0, l.useCallback)(() => {
                 d({});
               }, []),
-              j = (0, l.useCallback)(
+              v = (0, l.useCallback)(
                 async (e) => {
                   let t = (0, N.LP)();
                   if (t)
@@ -18829,7 +20742,7 @@
                 },
                 [p]
               ),
-              v = (0, l.useCallback)(
+              j = (0, l.useCallback)(
                 (t) => {
                   var s;
                   return t in c ? c[t] : null === (s = e[t]) || void 0 === s ? void 0 : s.value;
@@ -18849,8 +20762,8 @@
               updateSetting: g,
               applyChanges: b,
               revertChanges: f,
-              resetSetting: j,
-              getEffectiveValue: v,
+              resetSetting: v,
+              getEffectiveValue: j,
               hasUnsavedChange: y,
               refetch: p,
             };
@@ -18859,9 +20772,9 @@
           [k, C] = (0, l.useState)(!1),
           [S, I] = (0, l.useState)(null),
           {
-            history: Z,
-            loading: D,
-            error: T,
+            history: M,
+            loading: Z,
+            error: D,
           } = (function (e) {
             let [t, s] = (0, l.useState)([]),
               [a, r] = (0, l.useState)(!1),
@@ -18907,7 +20820,7 @@
               { history: t, loading: a, error: n }
             );
           })(k ? S : null),
-          { categoryId: A, sectionId: M } = (0, l.useMemo)(() => {
+          { categoryId: T, sectionId: A } = (0, l.useMemo)(() => {
             if (!s) return { categoryId: null, sectionId: null };
             let e = s.split('_');
             return 'section' === e[0] && e.length >= 3
@@ -18916,8 +20829,8 @@
                 ? { categoryId: e[1], sectionId: null }
                 : { categoryId: null, sectionId: null };
           }, [s]),
-          L = (0, l.useMemo)(() => (A ? ai.HR.find((e) => e.id === A) : null), [A]),
-          F = (0, l.useMemo)(() => (L && M ? L.sections.find((e) => e.id === M) : null), [L, M]),
+          L = (0, l.useMemo)(() => (T ? aV.HR.find((e) => e.id === T) : null), [T]),
+          F = (0, l.useMemo)(() => (L && A ? L.sections.find((e) => e.id === A) : null), [L, A]),
           P = (0, l.useMemo)(
             () => (F ? F.controls : L ? L.sections.flatMap((e) => e.controls) : []),
             [L, F]
@@ -18926,12 +20839,12 @@
             g(e, t);
           },
           z = (e) => {
-            j(e);
+            v(e);
           },
           R = async () => {
             await b();
           },
-          U = null !== (t = v('export_format')) && void 0 !== t ? t : 'json';
+          U = null !== (t = j('export_format')) && void 0 !== t ? t : 'json';
         return c
           ? (0, a.jsx)('div', {
               className: 'flex-1 flex items-center justify-center',
@@ -18971,8 +20884,8 @@
               })
             : (console.log('[SettingsPage] Debug state:', {
                   selectedSectionId: s,
-                  categoryId: A,
-                  sectionId: M,
+                  categoryId: T,
+                  sectionId: A,
                   selectedCategory: null == L ? void 0 : L.id,
                   selectedSection: null == F ? void 0 : F.id,
                   controlsLength: P.length,
@@ -19016,7 +20929,7 @@
                                 onClick: () => C(!k),
                                 className:
                                   'px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-sm font-medium flex items-center gap-2 transition-colors',
-                                children: [(0, a.jsx)(eo.Z, { className: 'w-4 h-4' }), 'History'],
+                                children: [(0, a.jsx)(em.Z, { className: 'w-4 h-4' }), 'History'],
                               }),
                             ],
                           }),
@@ -19052,7 +20965,7 @@
                                       className:
                                         'px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50',
                                       children: [
-                                        (0, a.jsx)(el.Z, { className: 'w-4 h-4' }),
+                                        (0, a.jsx)(ec.Z, { className: 'w-4 h-4' }),
                                         'Revert',
                                       ],
                                     }),
@@ -19073,7 +20986,7 @@
                                           })
                                         : (0, a.jsxs)(a.Fragment, {
                                             children: [
-                                              (0, a.jsx)(eM.Z, { className: 'w-4 h-4' }),
+                                              (0, a.jsx)(eP.Z, { className: 'w-4 h-4' }),
                                               'Apply Changes',
                                             ],
                                           }),
@@ -19091,36 +21004,36 @@
                         (0, a.jsxs)('div', {
                           className: 'max-w-5xl mx-auto space-y-4',
                           children: [
-                            'management' === M && 'data' === A && (0, a.jsx)(sQ, {}),
-                            'admin_management' === M &&
-                              'data' === A &&
+                            'management' === A && 'data' === T && (0, a.jsx)(aS, {}),
+                            'admin_management' === A &&
+                              'data' === T &&
                               (null == w ? void 0 : w.accountType) === 'admin' &&
-                              (0, a.jsx)(s0, {}),
-                            'users' === M && 'account' === A && (0, a.jsx)(s2, { onUserSelect: n }),
-                            'privacy' === M && 'security' === A && (0, a.jsx)(s3, {}),
-                            'deduplication' === M && 'data' === A && (0, a.jsx)(as, {}),
-                            'export' === M &&
-                              'import_export' === A &&
-                              (0, a.jsx)(aa, { exportFormat: U }),
-                            'api_keys' === M && 'integrations' === A && (0, a.jsx)(an, {}),
-                            'modals' === M &&
-                              'debug' === A &&
+                              (0, a.jsx)(aI, {}),
+                            'users' === A && 'account' === T && (0, a.jsx)(aM, { onUserSelect: n }),
+                            'privacy' === A && 'security' === T && (0, a.jsx)(aT, {}),
+                            'deduplication' === A && 'data' === T && (0, a.jsx)(aO, {}),
+                            'export' === A &&
+                              'import_export' === T &&
+                              (0, a.jsx)(az, { exportFormat: U }),
+                            'api_keys' === A && 'integrations' === T && (0, a.jsx)(aB, {}),
+                            'modals' === A &&
+                              'debug' === T &&
                               (null == w ? void 0 : w.accountType) === 'admin' &&
-                              (0, a.jsx)(ae, {}),
-                            'management' !== M &&
-                              'admin_management' !== M &&
-                              'users' !== M &&
-                              'privacy' !== M &&
-                              'deduplication' !== M &&
-                              'modals' !== M &&
-                              'api_keys' !== M &&
+                              (0, a.jsx)(aF, {}),
+                            'management' !== A &&
+                              'admin_management' !== A &&
+                              'users' !== A &&
+                              'privacy' !== A &&
+                              'deduplication' !== A &&
+                              'modals' !== A &&
+                              'api_keys' !== A &&
                               P.filter(
                                 (e) =>
                                   'clear_keimenon_data' !== e.id && 'clear_all_client_data' !== e.id
                               ).map((e) => {
                                 let t = h(e.id);
                                 if (!t) return null;
-                                let s = v(e.id),
+                                let s = j(e.id),
                                   l = y(e.id);
                                 return (0, a.jsx)(
                                   'div',
@@ -19129,7 +21042,7 @@
                                     onClick: () => {
                                       (null == r || r(e.id), k && I(e.id));
                                     },
-                                    children: (0, a.jsx)(sB, {
+                                    children: (0, a.jsx)(ah, {
                                       control: e,
                                       effectiveValue: { ...t, value: s },
                                       onChange: (t) => O(e.id, t),
@@ -19147,7 +21060,7 @@
                             className:
                               'flex items-start gap-2 px-4 py-3 bg-blue-600/10 border border-blue-500/30 rounded-lg text-sm text-blue-300',
                             children: [
-                              (0, a.jsx)(ez.Z, { className: 'w-4 h-4 flex-shrink-0 mt-0.5' }),
+                              (0, a.jsx)(eV.Z, { className: 'w-4 h-4 flex-shrink-0 mt-0.5' }),
                               (0, a.jsxs)('div', {
                                 children: [
                                   (0, a.jsx)('p', {
@@ -19184,7 +21097,7 @@
                                   onClick: () => C(!1),
                                   className:
                                     'p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-slate-300',
-                                  children: (0, a.jsx)(el.Z, { className: 'w-5 h-5' }),
+                                  children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5' }),
                                 }),
                               ],
                             }),
@@ -19224,7 +21137,7 @@
                                   )
                                 ),
                               }),
-                            D &&
+                            Z &&
                               S &&
                               (0, a.jsxs)('div', {
                                 className:
@@ -19237,7 +21150,7 @@
                                   }),
                                 ],
                               }),
-                            T &&
+                            D &&
                               (0, a.jsx)('div', {
                                 className:
                                   'bg-red-600/10 border border-red-500/30 rounded-lg p-3 mb-4',
@@ -19249,19 +21162,19 @@
                                     }),
                                     (0, a.jsx)('p', {
                                       className: 'text-sm text-red-400',
-                                      children: T,
+                                      children: D,
                                     }),
                                   ],
                                 }),
                               }),
-                            !D &&
-                              !T &&
+                            !Z &&
+                              !D &&
                               S &&
-                              0 === Z.length &&
+                              0 === M.length &&
                               (0, a.jsxs)('div', {
                                 className: 'text-center py-8',
                                 children: [
-                                  (0, a.jsx)(ec.Z, {
+                                  (0, a.jsx)(ep.Z, {
                                     className: 'w-8 h-8 text-slate-700 mx-auto mb-2',
                                   }),
                                   (0, a.jsx)('p', {
@@ -19275,11 +21188,11 @@
                                   }),
                                 ],
                               }),
-                            !D &&
-                              Z.length > 0 &&
+                            !Z &&
+                              M.length > 0 &&
                               (0, a.jsx)('div', {
                                 className: 'space-y-3',
-                                children: Z.map((e) =>
+                                children: M.map((e) =>
                                   (0, a.jsxs)(
                                     'div',
                                     {
@@ -19293,7 +21206,7 @@
                                               className:
                                                 'text-xs text-slate-500 flex items-center gap-1',
                                               children: [
-                                                (0, a.jsx)(ec.Z, { className: 'w-3 h-3' }),
+                                                (0, a.jsx)(ep.Z, { className: 'w-3 h-3' }),
                                                 new Date(e.changedAt).toLocaleString(),
                                               ],
                                             }),
@@ -19316,7 +21229,7 @@
                                                   ? '(default)'
                                                   : String(e.oldValue),
                                             }),
-                                            (0, a.jsx)(sR.Z, {
+                                            (0, a.jsx)(am.Z, {
                                               className: 'w-3 h-3 text-slate-600 flex-shrink-0',
                                             }),
                                             (0, a.jsx)('span', {
@@ -19371,8 +21284,8 @@
                             children: (0, a.jsx)('strong', { children: 'Debug Info:' }),
                           }),
                           (0, a.jsxs)('p', { children: ['Selected Section ID: ', s || 'none'] }),
-                          (0, a.jsxs)('p', { children: ['Category ID: ', A || 'none'] }),
-                          (0, a.jsxs)('p', { children: ['Section ID: ', M || 'none'] }),
+                          (0, a.jsxs)('p', { children: ['Category ID: ', T || 'none'] }),
+                          (0, a.jsxs)('p', { children: ['Section ID: ', A || 'none'] }),
                           (0, a.jsxs)('p', { children: ['Controls Count: ', P.length] }),
                         ],
                       }),
@@ -19380,28 +21293,491 @@
                   }),
                 }));
       }
-      var ac = s(6606),
-        ad = s(8340),
-        au = s(2914),
-        ax = s(5015),
-        am = s(1103);
-      let ap = new Set(['completed', 'failed', 'cancelled']);
-      async function ah(e) {
-        return (await eD.hi.post('/agent/tasks', e)).data.task;
+      var aq = s(6315),
+        aJ = s(4497),
+        aG = s(1296);
+      function aW(e) {
+        let {
+            index: t,
+            style: s,
+            conversations: l,
+            principals: r,
+            selectedConversationId: n,
+            handleConversationClick: i,
+          } = e,
+          o = l[t];
+        return (0, a.jsx)('div', {
+          style: s,
+          className: 'px-2 py-0.5',
+          children: (0, a.jsx)(aX, {
+            conversation: o,
+            humanPrincipal: r.get(o.human_principal_id),
+            agentPrincipal: o.agent_principal_id ? r.get(o.agent_principal_id) : void 0,
+            selected: o.id === n,
+            onClick: () => i(o),
+          }),
+        });
       }
-      async function ag(e) {
-        return (await eD.hi.get('/agent/tasks/'.concat(e))).data;
+      function aY(e) {
+        let { onConversationSelect: t, onCreateConversation: s, className: r = '' } = e,
+          [n, o] = (0, l.useState)([]),
+          [c, d] = (0, l.useState)(new Map()),
+          [u, m] = (0, l.useState)(!0),
+          [p, h] = (0, l.useState)(null),
+          [g, b] = (0, l.useState)(null),
+          [f, v] = (0, l.useState)(!1),
+          [j, N] = (0, l.useState)(''),
+          y = (0, l.useRef)(null),
+          w = tr(y, 300);
+        (0, l.useEffect)(() => {
+          k();
+        }, []);
+        let k = async () => {
+            try {
+              (m(!0), h(null));
+              let [e, t] = await Promise.all([ad.listConversations(), ad.listPrincipals()]);
+              o(e);
+              let s = new Map();
+              (t.forEach((e) => s.set(e.id, e)), d(s));
+            } catch (e) {
+              (console.error('Failed to load conversations:', e),
+                h('Failed to load conversations'));
+            } finally {
+              m(!1);
+            }
+          },
+          C = (0, l.useCallback)(
+            (e) => {
+              (b(e.id), null == t || t(e));
+            },
+            [t]
+          ),
+          S = () => {
+            s ? s() : v(!0);
+          },
+          I = n.filter((e) => e.title.toLowerCase().includes(j.toLowerCase())),
+          E = (0, l.useMemo)(
+            () => ({
+              conversations: I,
+              principals: c,
+              selectedConversationId: g,
+              handleConversationClick: C,
+            }),
+            [I, c, g, C]
+          );
+        return u
+          ? (0, a.jsx)('div', {
+              className: 'flex items-center justify-center p-8 '.concat(r),
+              children: (0, a.jsx)(x.Z, { className: 'w-6 h-6 text-purple-400 animate-spin' }),
+            })
+          : p
+            ? (0, a.jsx)('div', {
+                className: 'p-4 '.concat(r),
+                children: (0, a.jsxs)('div', {
+                  className: 'text-center text-red-400 text-sm',
+                  children: [
+                    (0, a.jsx)('p', { children: p }),
+                    (0, a.jsx)('button', {
+                      onClick: k,
+                      className: 'mt-2 text-purple-400 hover:text-purple-300 underline',
+                      children: 'Retry',
+                    }),
+                  ],
+                }),
+              })
+            : (0, a.jsxs)('div', {
+                className: 'flex flex-col h-full '.concat(r),
+                children: [
+                  (0, a.jsxs)('div', {
+                    className:
+                      'flex items-center justify-between px-4 py-3 border-b border-slate-800',
+                    children: [
+                      (0, a.jsxs)('div', {
+                        className: 'flex items-center gap-2',
+                        children: [
+                          (0, a.jsx)($.Z, { className: 'w-4 h-4 text-blue-400' }),
+                          (0, a.jsx)('h3', {
+                            className: 'text-sm font-semibold text-slate-200',
+                            children: 'Conversations',
+                          }),
+                          (0, a.jsxs)('span', {
+                            className: 'text-xs text-slate-500',
+                            children: ['(', n.length, ')'],
+                          }),
+                        ],
+                      }),
+                      (0, a.jsx)('button', {
+                        onClick: S,
+                        className:
+                          'p-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded transition-colors',
+                        title: 'Start New Conversation',
+                        children: (0, a.jsx)(ei.Z, { className: 'w-4 h-4' }),
+                      }),
+                    ],
+                  }),
+                  (0, a.jsx)('div', {
+                    className: 'px-4 py-2 border-b border-slate-800',
+                    children: (0, a.jsxs)('div', {
+                      className: 'relative',
+                      children: [
+                        (0, a.jsx)(i.Z, {
+                          className:
+                            'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500',
+                        }),
+                        (0, a.jsx)('input', {
+                          type: 'text',
+                          value: j,
+                          onChange: (e) => N(e.target.value),
+                          placeholder: 'Search conversations...',
+                          className:
+                            'w-full pl-9 pr-3 py-2 bg-slate-800/50 border border-slate-700 rounded text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500',
+                        }),
+                      ],
+                    }),
+                  }),
+                  (0, a.jsx)('div', {
+                    className: 'flex-1 overflow-y-auto',
+                    children:
+                      0 === I.length
+                        ? (0, a.jsxs)('div', {
+                            className:
+                              'flex flex-col items-center justify-center h-full p-6 text-center',
+                            children: [
+                              (0, a.jsx)($.Z, { className: 'w-12 h-12 text-slate-600 mb-4' }),
+                              (0, a.jsx)('p', {
+                                className: 'text-sm text-slate-400 mb-2',
+                                children: j ? 'No matching conversations' : 'No conversations yet',
+                              }),
+                              !j &&
+                                (0, a.jsxs)(a.Fragment, {
+                                  children: [
+                                    (0, a.jsx)('p', {
+                                      className: 'text-xs text-slate-500 mb-4',
+                                      children:
+                                        'Start a conversation with an agent to analyze your sources',
+                                    }),
+                                    (0, a.jsx)('button', {
+                                      onClick: S,
+                                      className:
+                                        'px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors',
+                                      children: 'Start Conversation',
+                                    }),
+                                  ],
+                                }),
+                            ],
+                          })
+                        : (0, a.jsx)('div', {
+                            ref: y,
+                            className: 'flex-1',
+                            children: (0, a.jsx)(tl.aV, {
+                              style: { height: Math.min(100 * I.length, w) },
+                              rowCount: I.length,
+                              rowHeight: 100,
+                              rowComponent: aW,
+                              rowProps: E,
+                            }),
+                          }),
+                  }),
+                  f &&
+                    (0, a.jsx)(aQ, {
+                      principals: Array.from(c.values()),
+                      onClose: () => v(!1),
+                      onCreate: async (e) => {
+                        try {
+                          let s = await ad.createConversation(e);
+                          (o((e) => [s, ...e]), v(!1), b(s.id), null == t || t(s));
+                        } catch (e) {
+                          (console.error('Failed to create conversation:', e),
+                            alert(
+                              'Failed to create conversation: '.concat(
+                                (null == e ? void 0 : e.message) || 'Unknown error'
+                              )
+                            ));
+                        }
+                      },
+                    }),
+                ],
+              });
       }
-      async function ab(e, t) {
+      let aH = {
+          summarize: {
+            icon: (0, a.jsx)(eF.Z, { className: 'w-3.5 h-3.5' }),
+            color: 'text-green-400 bg-green-500/10',
+            label: 'Summarize',
+          },
+          cluster: {
+            icon: (0, a.jsx)(c.Z, { className: 'w-3.5 h-3.5' }),
+            color: 'text-amber-400 bg-amber-500/10',
+            label: 'Cluster',
+          },
+          draft: {
+            icon: (0, a.jsx)(aq.Z, { className: 'w-3.5 h-3.5' }),
+            color: 'text-blue-400 bg-blue-500/10',
+            label: 'Draft',
+          },
+          research: {
+            icon: (0, a.jsx)(i.Z, { className: 'w-3.5 h-3.5' }),
+            color: 'text-purple-400 bg-purple-500/10',
+            label: 'Research',
+          },
+          refactor: {
+            icon: (0, a.jsx)(aJ.Z, { className: 'w-3.5 h-3.5' }),
+            color: 'text-orange-400 bg-orange-500/10',
+            label: 'Refactor',
+          },
+          verify: {
+            icon: (0, a.jsx)(eV.Z, { className: 'w-3.5 h-3.5' }),
+            color: 'text-emerald-400 bg-emerald-500/10',
+            label: 'Verify',
+          },
+          general: {
+            icon: (0, a.jsx)(aG.Z, { className: 'w-3.5 h-3.5' }),
+            color: 'text-slate-400 bg-slate-500/10',
+            label: 'General',
+          },
+        },
+        aX = (0, l.memo)(function (e) {
+          let {
+              conversation: t,
+              humanPrincipal: s,
+              agentPrincipal: l,
+              selected: r,
+              onClick: i,
+            } = e,
+            o = aH[t.purpose] || aH.general;
+          return (0, a.jsxs)('div', {
+            onClick: i,
+            className:
+              '\n        p-3 rounded-lg border cursor-pointer transition-all\n        '.concat(
+                r
+                  ? 'bg-blue-600/20 border-blue-500/50 shadow-lg shadow-blue-500/10'
+                  : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600',
+                '\n      '
+              ),
+            children: [
+              (0, a.jsxs)('div', {
+                className: 'flex items-start justify-between mb-2',
+                children: [
+                  (0, a.jsx)('h4', {
+                    className: 'text-sm font-medium text-slate-200 line-clamp-1 flex-1',
+                    children: t.title,
+                  }),
+                  (0, a.jsx)(n.Z, { className: 'w-4 h-4 text-slate-500 flex-shrink-0' }),
+                ],
+              }),
+              (0, a.jsxs)('div', {
+                className: 'flex items-center gap-3 mb-2',
+                children: [
+                  (0, a.jsxs)('div', {
+                    className: 'flex items-center gap-1.5 text-xs text-slate-400',
+                    children: [
+                      (0, a.jsx)(g.Z, { className: 'w-3.5 h-3.5 text-slate-500' }),
+                      (0, a.jsx)('span', {
+                        className: 'truncate max-w-[80px]',
+                        children: (null == s ? void 0 : s.display_name) || 'You',
+                      }),
+                    ],
+                  }),
+                  l &&
+                    (0, a.jsxs)(a.Fragment, {
+                      children: [
+                        (0, a.jsx)('span', { className: 'text-slate-600', children: '+' }),
+                        (0, a.jsxs)('div', {
+                          className: 'flex items-center gap-1.5 text-xs text-slate-400',
+                          children: [
+                            (0, a.jsx)(te.Z, { className: 'w-3.5 h-3.5 text-blue-400' }),
+                            (0, a.jsx)('span', {
+                              className: 'truncate max-w-[80px]',
+                              children: l.display_name,
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                ],
+              }),
+              (0, a.jsxs)('div', {
+                className: 'flex items-center justify-between text-xs',
+                children: [
+                  (0, a.jsxs)('span', {
+                    className: 'inline-flex items-center gap-1 px-2 py-0.5 rounded '.concat(
+                      o.color
+                    ),
+                    children: [o.icon, o.label],
+                  }),
+                  t.context_spec &&
+                    (0, a.jsxs)('span', {
+                      className: 'text-slate-500',
+                      children: [t.context_spec.source_ids.length, ' sources'],
+                    }),
+                  (0, a.jsx)('span', {
+                    className: 'text-slate-500',
+                    children: new Date(t.created_at).toLocaleDateString(),
+                  }),
+                ],
+              }),
+            ],
+          });
+        });
+      function aQ(e) {
+        let { principals: t, onClose: s, onCreate: r } = e,
+          [n, i] = (0, l.useState)(''),
+          [o, c] = (0, l.useState)('general'),
+          [d, u] = (0, l.useState)(''),
+          [m, p] = (0, l.useState)(!1),
+          h = t.filter((e) => 'agent' === e.principal_kind),
+          g = async (e) => {
+            if ((e.preventDefault(), n.trim())) {
+              p(!0);
+              try {
+                await r({ title: n.trim(), purpose: o, agent_principal_id: d || void 0 });
+              } finally {
+                p(!1);
+              }
+            }
+          };
+        return (0, a.jsx)('div', {
+          className: 'fixed inset-0 bg-black/50 flex items-center justify-center z-50',
+          children: (0, a.jsxs)('div', {
+            className:
+              'bg-slate-900 border border-slate-700 rounded-lg w-full max-w-md p-6 shadow-xl',
+            children: [
+              (0, a.jsx)('h2', {
+                className: 'text-lg font-semibold text-slate-200 mb-4',
+                children: 'Start New Conversation',
+              }),
+              (0, a.jsxs)('form', {
+                onSubmit: g,
+                children: [
+                  (0, a.jsxs)('div', {
+                    className: 'mb-4',
+                    children: [
+                      (0, a.jsx)('label', {
+                        className: 'block text-sm text-slate-400 mb-2',
+                        children: 'Title',
+                      }),
+                      (0, a.jsx)('input', {
+                        type: 'text',
+                        value: n,
+                        onChange: (e) => i(e.target.value),
+                        placeholder: 'Research on topic X',
+                        className:
+                          'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                        autoFocus: !0,
+                      }),
+                    ],
+                  }),
+                  (0, a.jsxs)('div', {
+                    className: 'mb-4',
+                    children: [
+                      (0, a.jsx)('label', {
+                        className: 'block text-sm text-slate-400 mb-2',
+                        children: 'Purpose',
+                      }),
+                      (0, a.jsx)('div', {
+                        className: 'grid grid-cols-4 gap-2',
+                        children: Object.entries(aH).map((e) => {
+                          let [t, s] = e;
+                          return (0, a.jsxs)(
+                            'button',
+                            {
+                              type: 'button',
+                              onClick: () => c(t),
+                              className:
+                                '\n                    p-2 rounded border text-center transition-all\n                    '.concat(
+                                  o === t
+                                    ? 'border-blue-500 bg-blue-500/20'
+                                    : 'border-slate-700 bg-slate-800/50 hover:border-slate-600',
+                                  '\n                  '
+                                ),
+                              children: [
+                                (0, a.jsx)('div', {
+                                  className: 'flex justify-center mb-1 '.concat(
+                                    s.color.split(' ')[0]
+                                  ),
+                                  children: s.icon,
+                                }),
+                                (0, a.jsx)('span', {
+                                  className: 'text-xs text-slate-300',
+                                  children: s.label,
+                                }),
+                              ],
+                            },
+                            t
+                          );
+                        }),
+                      }),
+                    ],
+                  }),
+                  (0, a.jsxs)('div', {
+                    className: 'mb-6',
+                    children: [
+                      (0, a.jsx)('label', {
+                        className: 'block text-sm text-slate-400 mb-2',
+                        children: 'Agent (optional)',
+                      }),
+                      (0, a.jsxs)('select', {
+                        value: d,
+                        onChange: (e) => u(e.target.value),
+                        className:
+                          'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                        children: [
+                          (0, a.jsx)('option', { value: '', children: 'No agent (notes only)' }),
+                          h.map((e) =>
+                            (0, a.jsx)('option', { value: e.id, children: e.display_name }, e.id)
+                          ),
+                        ],
+                      }),
+                    ],
+                  }),
+                  (0, a.jsxs)('div', {
+                    className: 'flex justify-end gap-3',
+                    children: [
+                      (0, a.jsx)('button', {
+                        type: 'button',
+                        onClick: s,
+                        className:
+                          'px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors',
+                        children: 'Cancel',
+                      }),
+                      (0, a.jsxs)('button', {
+                        type: 'submit',
+                        disabled: !n.trim() || m,
+                        className:
+                          'px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded transition-colors flex items-center gap-2',
+                        children: [
+                          m && (0, a.jsx)(x.Z, { className: 'w-4 h-4 animate-spin' }),
+                          'Start Conversation',
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        });
+      }
+      var a$ = s(6606),
+        a0 = s(8340),
+        a4 = s(5015);
+      let a1 = new Set(['completed', 'failed', 'cancelled']);
+      async function a2(e) {
+        return (await e_.hi.post('/agent/tasks', e)).data.task;
+      }
+      async function a5(e) {
+        return (await e_.hi.get('/agent/tasks/'.concat(e))).data;
+      }
+      async function a3(e, t) {
         var s, a, l;
         let r = null !== (s = null == t ? void 0 : t.timeoutMs) && void 0 !== s ? s : 12e4,
           n = null !== (a = null == t ? void 0 : t.pollIntervalMs) && void 0 !== a ? a : 1e3,
           i = Date.now();
         for (; Date.now() - i < r; ) {
-          let s = await ag(e);
+          let s = await a5(e);
           if (
             (null == t || null === (l = t.onUpdate) || void 0 === l || l.call(t, s),
-            ap.has(s.task.status))
+            a1.has(s.task.status))
           )
             return s;
           await (function (e) {
@@ -19410,10 +21786,10 @@
         }
         throw Error('Task '.concat(e, ' timed out after ').concat(r, 'ms'));
       }
-      function af() {
+      function a6() {
         var e, t, s, r, n, i;
-        let o = (0, M.O)((e) => e.detailPanelNode),
-          c = (0, M.O)((e) => e.closeDetailPanel),
+        let o = (0, A.O)((e) => e.detailPanelNode),
+          c = (0, A.O)((e) => e.closeDetailPanel),
           {
             loadContent: d,
             getContent: u,
@@ -19435,31 +21811,31 @@
                       let e;
                       switch (l) {
                         case 'message':
-                          e = await (0, eD.qp)(s);
+                          e = await (0, e_.qp)(s);
                           break;
                         case 'source':
-                          e = await (0, eD.Ni)(s);
+                          e = await (0, e_.Ni)(s);
                           break;
                         case 'code':
-                          e = await (0, eD.U0)(s);
+                          e = await (0, e_.U0)(s);
                           break;
                         case 'conversation':
-                          e = await (0, eD.Zo)(s);
+                          e = await (0, e_.Zo)(s);
                           break;
                         case 'lexeme':
-                          e = await (0, eD.u1)(s);
+                          e = await (0, e_.u1)(s);
                           break;
                         case 'phrase':
-                          e = await (0, eD._A)(s);
+                          e = await (0, e_._A)(s);
                           break;
                         case 'topic':
-                          e = await (0, eD.Zd)(s);
+                          e = await (0, e_.Zd)(s);
                           break;
                         case 'verified-source':
-                          e = await (0, eD.Nm)(s);
+                          e = await (0, e_.Nm)(s);
                           break;
                         case 'verified-claim':
-                          e = await (0, eD.IU)(s);
+                          e = await (0, e_.IU)(s);
                           break;
                         default:
                           throw Error('Unknown content type: '.concat(l));
@@ -19510,17 +21886,17 @@
             };
           })(),
           [g, b] = (0, l.useState)(!1),
-          [f, j] = (0, l.useState)(!1),
-          [v, N] = (0, l.useState)(null),
+          [f, v] = (0, l.useState)(!1),
+          [j, N] = (0, l.useState)(null),
           [y, w] = (0, l.useState)(null),
           [k, C] = (0, l.useState)(null),
           S = (0, l.useRef)(null),
           I = (0, l.useCallback)(async () => {
             if (o && 'Topic' === o.type) {
-              (j(!0), C(null), w(null), N(null));
+              (v(!0), C(null), w(null), N(null));
               try {
                 var e, t, s, a, l, r, n, i;
-                let c = await ah({
+                let c = await a2({
                   type: 'VERIFY_TOPIC',
                   input: {
                     topicId: o.id,
@@ -19547,7 +21923,7 @@
                   },
                 });
                 N(c.status);
-                let d = await ab(c.id, {
+                let d = await a3(c.id, {
                   timeoutMs: 18e4,
                   pollIntervalMs: 1200,
                   onUpdate: (e) => N(e.task.status),
@@ -19580,7 +21956,7 @@
               } catch (e) {
                 C(e.message || 'Verification failed');
               } finally {
-                j(!1);
+                v(!1);
               }
             }
           }, [o]),
@@ -19647,9 +22023,9 @@
           !o)
         )
           return null;
-        let Z = u(o.id),
-          D = p(o.id),
-          T = h(o.id);
+        let M = u(o.id),
+          Z = p(o.id),
+          D = h(o.id);
         return (0, a.jsxs)(a.Fragment, {
           children: [
             (0, a.jsx)('div', {
@@ -19690,8 +22066,8 @@
                               g,
                               b,
                               f,
-                              j,
                               v,
+                              j,
                               N,
                               y,
                               w,
@@ -19700,9 +22076,9 @@
                               S,
                               I,
                               E,
-                              Z,
-                              D;
-                            let T = {
+                              M,
+                              Z;
+                            let D = {
                               id: e.id,
                               kind: e.type,
                               label: null === (t = e.data) || void 0 === t ? void 0 : t.label,
@@ -19755,17 +22131,17 @@
                                     ? void 0
                                     : g.normalized_text,
                               display_name:
-                                null === (j = e.data) || void 0 === j
+                                null === (v = e.data) || void 0 === v
                                   ? void 0
-                                  : null === (f = j.metadata) || void 0 === f
+                                  : null === (f = v.metadata) || void 0 === f
                                     ? void 0
                                     : f.display_name,
                               principal_kind:
                                 null === (N = e.data) || void 0 === N
                                   ? void 0
-                                  : null === (v = N.metadata) || void 0 === v
+                                  : null === (j = N.metadata) || void 0 === j
                                     ? void 0
-                                    : v.principal_kind,
+                                    : j.principal_kind,
                               email:
                                 null === (w = e.data) || void 0 === w
                                   ? void 0
@@ -19787,13 +22163,13 @@
                                       : S.source_platform) ||
                                 void 0,
                               purpose:
-                                null === (D = e.data) || void 0 === D
+                                null === (Z = e.data) || void 0 === Z
                                   ? void 0
-                                  : null === (Z = D.metadata) || void 0 === Z
+                                  : null === (M = Z.metadata) || void 0 === M
                                     ? void 0
-                                    : Z.purpose,
+                                    : M.purpose,
                             };
-                            return (0, am.F)(T, 50);
+                            return (0, eM.F)(D, 50);
                           })(o),
                         }),
                         (0, a.jsx)('p', { className: 'text-sm text-slate-400', children: o.type }),
@@ -19804,7 +22180,7 @@
                       className:
                         'ml-3 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors',
                       'aria-label': 'Close panel',
-                      children: (0, a.jsx)(el.Z, { className: 'w-5 h-5' }),
+                      children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5' }),
                     }),
                   ],
                 }),
@@ -19850,7 +22226,7 @@
                               }),
                             ],
                           }),
-                        Z &&
+                        M &&
                           (0, a.jsxs)('div', {
                             className: 'flex justify-between items-start',
                             children: [
@@ -19862,12 +22238,12 @@
                                 children: (0, a.jsx)('span', {
                                   className:
                                     'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium '.concat(
-                                      'local' === Z.source
+                                      'local' === M.source
                                         ? 'bg-green-600/20 text-green-300 border border-green-500/30'
                                         : 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
                                     ),
                                   children:
-                                    'local' === Z.source ? '\uD83D\uDCC1 Local' : '??? Database',
+                                    'local' === M.source ? '\uD83D\uDCC1 Local' : '??? Database',
                                 }),
                               }),
                             ],
@@ -19880,13 +22256,13 @@
                   ? void 0
                   : null === (s = r.metadata) || void 0 === s
                     ? void 0
-                    : s.provenance) && (0, a.jsx)(aD, { provenance: o.data.metadata.provenance }),
+                    : s.provenance) && (0, a.jsx)(lo, { provenance: o.data.metadata.provenance }),
                 'Principal' === o.type &&
-                  (0, a.jsx)(aT, {
+                  (0, a.jsx)(lc, {
                     metadata: (null === (n = o.data) || void 0 === n ? void 0 : n.metadata) || {},
                   }),
                 'ConversationThread' === o.type &&
-                  (0, a.jsx)(aA, {
+                  (0, a.jsx)(ld, {
                     metadata: (null === (i = o.data) || void 0 === i ? void 0 : i.metadata) || {},
                   }),
                 'Topic' === o.type &&
@@ -19913,7 +22289,7 @@
                               children: [(0, a.jsx)(m.Z, { className: 'w-4 h-4' }), 'Verify Topic'],
                             }),
                       }),
-                      v &&
+                      j &&
                         f &&
                         (0, a.jsx)('div', {
                           className: 'mt-3 p-3 bg-slate-700/30 border border-slate-600 rounded-lg',
@@ -19922,7 +22298,7 @@
                             children: [
                               'Verification task status:',
                               ' ',
-                              (0, a.jsx)('span', { className: 'font-medium', children: v }),
+                              (0, a.jsx)('span', { className: 'font-medium', children: j }),
                             ],
                           }),
                         }),
@@ -20007,8 +22383,8 @@
                 (0, a.jsxs)('div', {
                   className: 'p-4',
                   children: [
-                    D && (0, a.jsx)(aj, {}),
-                    T &&
+                    Z && (0, a.jsx)(a8, {}),
+                    D &&
                       (0, a.jsx)('div', {
                         className: 'bg-red-600/10 border border-red-500/30 rounded-lg p-3',
                         children: (0, a.jsxs)('p', {
@@ -20019,14 +22395,14 @@
                               children: 'Error loading content:',
                             }),
                             ' ',
-                            T,
+                            D,
                           ],
                         }),
                       }),
-                    !D && !T && Z && (0, a.jsx)(av, { content: Z, nodeType: o.type }),
-                    !D &&
-                      !T &&
-                      !Z &&
+                    !Z && !D && M && (0, a.jsx)(a7, { content: M, nodeType: o.type }),
+                    !Z &&
+                      !D &&
+                      !M &&
                       (0, a.jsx)('div', {
                         className: 'text-center text-slate-500 py-8',
                         children: (0, a.jsx)('p', { children: 'No content available' }),
@@ -20038,7 +22414,7 @@
           ],
         });
       }
-      function aj() {
+      function a8() {
         return (0, a.jsxs)('div', {
           className: 'flex items-center justify-center py-8',
           children: [
@@ -20053,30 +22429,30 @@
           ],
         });
       }
-      function av(e) {
+      function a7(e) {
         let { content: t, nodeType: s } = e;
         switch (s) {
           case 'message':
-            return (0, a.jsx)(aN, { content: t });
+            return (0, a.jsx)(a9, { content: t });
           case 'source':
-            return (0, a.jsx)(ay, { content: t });
+            return (0, a.jsx)(le, { content: t });
           case 'code':
-            return (0, a.jsx)(aw, { content: t });
+            return (0, a.jsx)(lt, { content: t });
           case 'Lexeme':
-            return (0, a.jsx)(ak, { content: t });
+            return (0, a.jsx)(ls, { content: t });
           case 'Phrase':
-            return (0, a.jsx)(aC, { content: t });
+            return (0, a.jsx)(la, { content: t });
           case 'Topic':
-            return (0, a.jsx)(aS, { content: t });
+            return (0, a.jsx)(ll, { content: t });
           case 'VerifiedSource':
-            return (0, a.jsx)(aI, { content: t });
+            return (0, a.jsx)(lr, { content: t });
           case 'VerifiedClaim':
-            return (0, a.jsx)(aE, { content: t });
+            return (0, a.jsx)(ln, { content: t });
           default:
-            return (0, a.jsx)(aZ, { content: t });
+            return (0, a.jsx)(li, { content: t });
         }
       }
-      function aN(e) {
+      function a9(e) {
         let { content: t } = e;
         return (0, a.jsxs)('div', {
           children: [
@@ -20108,7 +22484,7 @@
           ],
         });
       }
-      function ay(e) {
+      function le(e) {
         let { content: t } = e;
         return (0, a.jsxs)('div', {
           children: [
@@ -20138,7 +22514,7 @@
                       .replace(/\*\*(.*)\*\*/gim, '<strong class="text-slate-100">$1</strong>')
                       .replace(/\*(.*)\*/gim, '<em class="text-slate-300">$1</em>')
                       .replace(/\n/gim, '<br />');
-                    return ac.Z.sanitize(t, {
+                    return a$.Z.sanitize(t, {
                       ALLOWED_TAGS: ['h1', 'h2', 'h3', 'strong', 'em', 'br'],
                       ALLOWED_ATTR: ['class'],
                     });
@@ -20149,7 +22525,7 @@
           ],
         });
       }
-      function aw(e) {
+      function lt(e) {
         var t;
         let { content: s } = e,
           [r, n] = (0, l.useState)(!1);
@@ -20171,10 +22547,10 @@
                     'text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1.5 px-2 py-1 hover:bg-slate-800 rounded transition-colors',
                   children: r
                     ? (0, a.jsxs)(a.Fragment, {
-                        children: [(0, a.jsx)(s1.Z, { className: 'w-3.5 h-3.5' }), 'Copied!'],
+                        children: [(0, a.jsx)(aZ.Z, { className: 'w-3.5 h-3.5' }), 'Copied!'],
                       })
                     : (0, a.jsxs)(a.Fragment, {
-                        children: [(0, a.jsx)(ef.Z, { className: 'w-3.5 h-3.5' }), 'Copy'],
+                        children: [(0, a.jsx)(ey.Z, { className: 'w-3.5 h-3.5' }), 'Copy'],
                       }),
                 }),
               ],
@@ -20197,7 +22573,7 @@
           ],
         });
       }
-      function ak(e) {
+      function ls(e) {
         let { content: t } = e;
         return (0, a.jsxs)('div', {
           children: [
@@ -20207,7 +22583,7 @@
                 (0, a.jsxs)('span', {
                   className:
                     'px-2 py-1 rounded text-xs font-medium bg-slate-700 text-slate-200 border border-slate-600 flex items-center gap-1',
-                  children: [(0, a.jsx)(eb.Z, { className: 'w-3 h-3' }), 'Lexeme'],
+                  children: [(0, a.jsx)(eN.Z, { className: 'w-3 h-3' }), 'Lexeme'],
                 }),
                 t.pos &&
                   (0, a.jsx)('span', {
@@ -20237,7 +22613,7 @@
           ],
         });
       }
-      function aC(e) {
+      function la(e) {
         let { content: t } = e;
         return (0, a.jsxs)('div', {
           children: [
@@ -20247,7 +22623,7 @@
                 (0, a.jsxs)('span', {
                   className:
                     'px-2 py-1 rounded text-xs font-medium bg-orange-600/20 text-orange-300 border border-orange-500/30 flex items-center gap-1',
-                  children: [(0, a.jsx)(ea.Z, { className: 'w-3 h-3' }), 'Phrase'],
+                  children: [(0, a.jsx)(eo.Z, { className: 'w-3 h-3' }), 'Phrase'],
                 }),
                 (0, a.jsx)('span', {
                   className: 'px-2 py-1 rounded text-xs font-medium border '.concat(
@@ -20307,7 +22683,7 @@
           ],
         });
       }
-      function aS(e) {
+      function ll(e) {
         let { content: t } = e,
           s = Math.round(100 * t.strength);
         return (0, a.jsxs)('div', {
@@ -20395,7 +22771,7 @@
           ],
         });
       }
-      function aI(e) {
+      function lr(e) {
         var t;
         let { content: s } = e,
           l = Math.round(100 * s.trust_score);
@@ -20445,7 +22821,7 @@
                       rel: 'noopener noreferrer',
                       className:
                         'text-purple-400 hover:text-purple-300 text-sm flex items-center gap-1 break-all',
-                      children: [(0, a.jsx)(sZ.Z, { className: 'w-3 h-3 flex-shrink-0' }), s.url],
+                      children: [(0, a.jsx)(W.Z, { className: 'w-3 h-3 flex-shrink-0' }), s.url],
                     }),
                   ],
                 }),
@@ -20513,7 +22889,7 @@
           ],
         });
       }
-      function aE(e) {
+      function ln(e) {
         let { content: t } = e,
           s = Math.round(100 * t.confidence),
           l = ((e) => {
@@ -20521,14 +22897,14 @@
               case 'verified':
                 return {
                   color: 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30',
-                  icon: ez.Z,
+                  icon: eV.Z,
                 };
               case 'disputed':
-                return { color: 'bg-amber-600/20 text-amber-300 border-amber-500/30', icon: t$.Z };
+                return { color: 'bg-amber-600/20 text-amber-300 border-amber-500/30', icon: t3.Z };
               case 'refuted':
-                return { color: 'bg-red-600/20 text-red-300 border-red-500/30', icon: el.Z };
+                return { color: 'bg-red-600/20 text-red-300 border-red-500/30', icon: ec.Z };
               default:
-                return { color: 'bg-slate-600/20 text-slate-300 border-slate-500/30', icon: eA.Z };
+                return { color: 'bg-slate-600/20 text-slate-300 border-slate-500/30', icon: eF.Z };
             }
           })(t.status),
           r = l.icon;
@@ -20540,7 +22916,7 @@
                 (0, a.jsxs)('span', {
                   className:
                     'px-2 py-1 rounded text-xs font-medium bg-blue-600/20 text-blue-300 border border-blue-500/30 flex items-center gap-1',
-                  children: [(0, a.jsx)(eA.Z, { className: 'w-3 h-3' }), 'Verified Claim'],
+                  children: [(0, a.jsx)(eF.Z, { className: 'w-3 h-3' }), 'Verified Claim'],
                 }),
                 (0, a.jsxs)('span', {
                   className:
@@ -20610,7 +22986,7 @@
           ],
         });
       }
-      function aZ(e) {
+      function li(e) {
         let { content: t } = e;
         return (0, a.jsx)('pre', {
           className:
@@ -20618,7 +22994,7 @@
           children: JSON.stringify(t, null, 2),
         });
       }
-      function aD(e) {
+      function lo(e) {
         var t;
         let { provenance: s } = e,
           l = s.origin_type || (s.origin ? 'migrated' : void 0),
@@ -20628,43 +23004,43 @@
               case 'user_upload':
                 return {
                   label: 'File Upload',
-                  icon: Y.Z,
+                  icon: ee.Z,
                   color: 'bg-blue-600/20 text-blue-300 border-blue-500/30',
                 };
               case 'chat_import':
                 return {
                   label: 'Chat Import',
-                  icon: em.Z,
+                  icon: $.Z,
                   color: 'bg-purple-600/20 text-purple-300 border-purple-500/30',
                 };
               case 'agent_import':
                 return {
                   label: 'Agent Import',
-                  icon: tq.Z,
+                  icon: tX.Z,
                   color: 'bg-amber-600/20 text-amber-300 border-amber-500/30',
                 };
               case 'agent_generated':
                 return {
                   label: 'AI Generated',
-                  icon: ad.Z,
+                  icon: a0.Z,
                   color: 'bg-pink-600/20 text-pink-300 border-pink-500/30',
                 };
               case 'system_seed':
                 return {
                   label: 'System',
-                  icon: W.Z,
+                  icon: X.Z,
                   color: 'bg-slate-600/20 text-slate-300 border-slate-500/30',
                 };
               case 'migrated':
                 return {
                   label: 'Migrated',
-                  icon: eA.Z,
+                  icon: eF.Z,
                   color: 'bg-slate-600/20 text-slate-300 border-slate-500/30',
                 };
               default:
                 return {
                   label: 'Unknown',
-                  icon: eA.Z,
+                  icon: eF.Z,
                   color: 'bg-slate-600/20 text-slate-300 border-slate-500/30',
                 };
             }
@@ -20681,7 +23057,7 @@
                 return {
                   label: 'Unverified',
                   color: 'bg-amber-600/20 text-amber-300 border-amber-500/30',
-                  icon: tq.Z,
+                  icon: tX.Z,
                 };
               case 'verified_source':
                 return {
@@ -20693,7 +23069,7 @@
                 return {
                   label: 'Unknown',
                   color: 'bg-slate-600/20 text-slate-300 border-slate-500/30',
-                  icon: eA.Z,
+                  icon: eF.Z,
                 };
             }
           })(r),
@@ -20747,7 +23123,7 @@
                     children: [
                       (0, a.jsxs)('dt', {
                         className: 'text-slate-400 flex items-center gap-1.5',
-                        children: [(0, a.jsx)(eA.Z, { className: 'w-3.5 h-3.5' }), 'Reference:'],
+                        children: [(0, a.jsx)(eF.Z, { className: 'w-3.5 h-3.5' }), 'Reference:'],
                       }),
                       (0, a.jsx)('dd', {
                         className: 'text-slate-200 font-mono text-xs truncate max-w-[180px]',
@@ -20802,7 +23178,7 @@
           ],
         });
       }
-      function aT(e) {
+      function lc(e) {
         var t;
         let { metadata: s } = e,
           l = (null == s ? void 0 : s.principal_kind) || 'unknown',
@@ -20823,7 +23199,7 @@
               case 'agent':
                 return {
                   color: 'bg-violet-600/20 text-violet-300 border-violet-500/30',
-                  icon: au.Z,
+                  icon: te.Z,
                   label: 'AI Agent',
                 };
               case 'contact':
@@ -20895,7 +23271,7 @@
                           className:
                             'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-600/20 text-purple-300 border border-purple-500/30',
                           children: [
-                            (0, a.jsx)(au.Z, { className: 'w-3 h-3' }),
+                            (0, a.jsx)(te.Z, { className: 'w-3 h-3' }),
                             {
                               chatgpt: 'ChatGPT',
                               claude: 'Claude',
@@ -20949,7 +23325,7 @@
           ],
         });
       }
-      function aA(e) {
+      function ld(e) {
         var t;
         let { metadata: s } = e;
         return (0, a.jsxs)('div', {
@@ -20958,7 +23334,7 @@
             (0, a.jsxs)('h3', {
               className: 'text-sm font-medium text-slate-300 mb-3 flex items-center gap-2',
               children: [
-                (0, a.jsx)(ax.Z, { className: 'w-4 h-4 text-purple-400' }),
+                (0, a.jsx)(a4.Z, { className: 'w-4 h-4 text-purple-400' }),
                 'Conversation Details',
               ],
             }),
@@ -21003,7 +23379,7 @@
                         children: (0, a.jsxs)('span', {
                           className:
                             'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-violet-600/20 text-violet-300 border border-violet-500/30',
-                          children: [(0, a.jsx)(au.Z, { className: 'w-3 h-3' }), s.platform],
+                          children: [(0, a.jsx)(te.Z, { className: 'w-3 h-3' }), s.platform],
                         }),
                       }),
                     ],
@@ -21028,7 +23404,7 @@
                     children: [
                       (0, a.jsxs)('dt', {
                         className: 'text-slate-400 flex items-center gap-1',
-                        children: [(0, a.jsx)(au.Z, { className: 'w-3 h-3' }), 'Agent:'],
+                        children: [(0, a.jsx)(te.Z, { className: 'w-3 h-3' }), 'Agent:'],
                       }),
                       (0, a.jsxs)('dd', {
                         className: 'text-slate-200 font-mono text-xs',
@@ -21089,41 +23465,41 @@
           ],
         });
       }
-      (W.Z, tq.Z, eh.Z, tR.Z, tP.Z, W.Z);
-      let aM = {
+      (X.Z, tX.Z, ev.Z, tG.Z, tK.Z, X.Z);
+      let lu = {
         general: {
           id: 'general',
           label: 'General',
-          icon: tq.Z,
+          icon: tX.Z,
           fields: ['language', 'timezone', 'dateFormat'],
         },
         privacy: {
           id: 'privacy',
           label: 'Privacy',
-          icon: eh.Z,
+          icon: ev.Z,
           fields: ['analytics', 'dataSharingOptIn', 'visibilityLevel'],
         },
         notifications: {
           id: 'notifications',
           label: 'Notifications',
-          icon: tR.Z,
+          icon: tG.Z,
           fields: ['emailNotifications', 'pushNotifications', 'notificationFrequency'],
         },
         appearance: {
           id: 'appearance',
           label: 'Appearance',
-          icon: tP.Z,
+          icon: tK.Z,
           fields: ['theme', 'primaryColor', 'fontSize'],
         },
         dataStorage: {
           id: 'dataStorage',
           label: 'Data & Storage',
-          icon: W.Z,
+          icon: X.Z,
           fields: ['autoSave', 'defaultFileFormat', 'cacheSize'],
         },
       };
-      function a_() {
-        let { shellMode: e, keimenonMode: t } = (0, H.St)(),
+      function lx() {
+        let { shellMode: e, keimenonMode: t } = (0, et.St)(),
           { user: s } = (0, N.aC)(),
           [r, n] = (0, l.useState)(null),
           [i, o] = (0, l.useState)(null),
@@ -21132,14 +23508,14 @@
           d(!0);
           try {
             if ('settings' === t && r && (null == s ? void 0 : s.accountId)) {
-              let e = await (0, eD.wv)(s.accountId),
-                t = Object.values(aM).find((e) => e.id === r),
+              let e = await (0, e_.wv)(s.accountId),
+                t = Object.values(lu).find((e) => e.id === r),
                 a = (null == t ? void 0 : t.fields) || [],
                 l = (null == e ? void 0 : e.settings) || {},
                 n = a.reduce((e, t) => (l[t] && (e[t] = l[t]), e), {});
               o({ [r]: n });
             } else if ('dashboard' === t) {
-              let e = await (0, eD.w3)();
+              let e = await (0, e_.w3)();
               o([
                 {
                   title: 'Active Accounts',
@@ -21171,7 +23547,7 @@
           (0, a.jsxs)('div', {
             className: 'flex-1 flex overflow-hidden',
             children: [
-              (0, a.jsx)(sM.$Q, {
+              (0, a.jsx)(an.$Q, {
                 mode: 'navigation',
                 position: 'left',
                 title:
@@ -21180,13 +23556,13 @@
                 children: (0, a.jsxs)('div', {
                   className: 'p-4',
                   children: [
-                    (0, a.jsx)(sM.aV, {
+                    (0, a.jsx)(an.aV, {
                       items:
                         'settings' === t
-                          ? Object.values(aM)
+                          ? Object.values(lu)
                           : 'dashboard' === t
                             ? [
-                                { id: 'overview', label: 'Overview', icon: W.Z },
+                                { id: 'overview', label: 'Overview', icon: X.Z },
                                 { id: 'users', label: 'Users', icon: f.Z },
                                 { id: 'accounts', label: 'Accounts', icon: b.Z },
                               ]
@@ -21194,7 +23570,7 @@
                       layout: 'vertical',
                       gap: 'sm',
                       renderItem: (e) =>
-                        (0, a.jsx)(sM.n9, {
+                        (0, a.jsx)(an.n9, {
                           title: e.label,
                           icon: e.icon,
                           iconColor: r === e.id ? 'purple' : 'slate',
@@ -21203,11 +23579,11 @@
                         }),
                       emptyState: { message: 'No navigation items available' },
                     }),
-                    (0, a.jsxs)(sM.i4, {
+                    (0, a.jsxs)(an.i4, {
                       variant: 'info',
                       className: 'mt-6',
                       children: [
-                        (0, a.jsx)(sM.xv, {
+                        (0, a.jsx)(an.xv, {
                           role: 'label',
                           className: 'mb-2',
                           children: 'Debug Info',
@@ -21215,9 +23591,9 @@
                         (0, a.jsxs)('div', {
                           className: 'space-y-1',
                           children: [
-                            (0, a.jsxs)(sM.xv, { role: 'hint', children: ['Shell: ', e] }),
-                            (0, a.jsxs)(sM.xv, { role: 'hint', children: ['Keimenon: ', t] }),
-                            (0, a.jsxs)(sM.xv, {
+                            (0, a.jsxs)(an.xv, { role: 'hint', children: ['Shell: ', e] }),
+                            (0, a.jsxs)(an.xv, { role: 'hint', children: ['Keimenon: ', t] }),
+                            (0, a.jsxs)(an.xv, {
                               role: 'hint',
                               children: ['Section: ', r || 'none'],
                             }),
@@ -21228,8 +23604,8 @@
                   ],
                 }),
               }),
-              (0, a.jsx)(sM.AE, { mode: t, data: i, loading: c }),
-              (0, a.jsx)(sM.$Q, {
+              (0, a.jsx)(an.AE, { mode: t, data: i, loading: c }),
+              (0, a.jsx)(an.$Q, {
                 mode: 'inspector',
                 position: 'right',
                 title: 'Details',
@@ -21237,20 +23613,20 @@
                 children: (0, a.jsx)('div', {
                   className: 'p-4',
                   children: r
-                    ? (0, a.jsxs)(sM.i4, {
+                    ? (0, a.jsxs)(an.i4, {
                         title: 'Selection',
                         children: [
-                          (0, a.jsx)(sM.xv, {
+                          (0, a.jsx)(an.xv, {
                             role: 'label',
                             className: 'mb-2',
                             children: 'Selected Section',
                           }),
-                          (0, a.jsx)(sM.xv, { role: 'value', children: r }),
+                          (0, a.jsx)(an.xv, { role: 'value', children: r }),
                         ],
                       })
-                    : (0, a.jsx)(sM.i4, {
+                    : (0, a.jsx)(an.i4, {
                         variant: 'subtle',
-                        children: (0, a.jsx)(sM.xv, {
+                        children: (0, a.jsx)(an.xv, {
                           role: 'hint',
                           mode: 'muted',
                           className: 'text-center',
@@ -21263,7 +23639,311 @@
           })
         );
       }
-      function aL(e) {
+      function lm(e) {
+        let { onWorkspaceSelect: t, onCreateWorkspace: s, className: r = '' } = e,
+          [n, i] = (0, l.useState)([]),
+          [o, c] = (0, l.useState)(!0),
+          [d, u] = (0, l.useState)(null),
+          [m, p] = (0, l.useState)(null),
+          [h, g] = (0, l.useState)(!1),
+          b = (0, A.O)((e) => e.selectedNodeIds);
+        (0, l.useEffect)(() => {
+          f();
+        }, []);
+        let f = async () => {
+            try {
+              (c(!0), u(null));
+              let e = await ad.listWorkspaces();
+              i(e);
+            } catch (e) {
+              (console.error('Failed to load workspaces:', e), u('Failed to load workspaces'));
+            } finally {
+              c(!1);
+            }
+          },
+          v = (e) => {
+            (p(e.id), null == t || t(e));
+          },
+          j = async (e, t) => {
+            if ((t.stopPropagation(), confirm('Are you sure you want to delete this workspace?')))
+              try {
+                (await ad.deleteWorkspace(e),
+                  i((t) => t.filter((t) => t.id !== e)),
+                  m === e && p(null));
+              } catch (e) {
+                console.error('Failed to delete workspace:', e);
+              }
+          },
+          N = () => {
+            s ? s() : g(!0);
+          };
+        return o
+          ? (0, a.jsx)('div', {
+              className: 'flex items-center justify-center p-8 '.concat(r),
+              children: (0, a.jsx)(x.Z, { className: 'w-6 h-6 text-purple-400 animate-spin' }),
+            })
+          : d
+            ? (0, a.jsx)('div', {
+                className: 'p-4 '.concat(r),
+                children: (0, a.jsxs)('div', {
+                  className: 'text-center text-red-400 text-sm',
+                  children: [
+                    (0, a.jsx)('p', { children: d }),
+                    (0, a.jsx)('button', {
+                      onClick: f,
+                      className: 'mt-2 text-purple-400 hover:text-purple-300 underline',
+                      children: 'Retry',
+                    }),
+                  ],
+                }),
+              })
+            : (0, a.jsxs)('div', {
+                className: 'flex flex-col h-full '.concat(r),
+                children: [
+                  (0, a.jsxs)('div', {
+                    className:
+                      'flex items-center justify-between px-4 py-3 border-b border-slate-800',
+                    children: [
+                      (0, a.jsxs)('div', {
+                        className: 'flex items-center gap-2',
+                        children: [
+                          (0, a.jsx)(Q.Z, { className: 'w-4 h-4 text-purple-400' }),
+                          (0, a.jsx)('h3', {
+                            className: 'text-sm font-semibold text-slate-200',
+                            children: 'Workspaces',
+                          }),
+                          (0, a.jsxs)('span', {
+                            className: 'text-xs text-slate-500',
+                            children: ['(', n.length, ')'],
+                          }),
+                        ],
+                      }),
+                      (0, a.jsx)('button', {
+                        onClick: N,
+                        className:
+                          'p-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded transition-colors',
+                        title: 'Create Workspace',
+                        children: (0, a.jsx)(ei.Z, { className: 'w-4 h-4' }),
+                      }),
+                    ],
+                  }),
+                  (0, a.jsx)('div', {
+                    className: 'flex-1 overflow-y-auto',
+                    children:
+                      0 === n.length
+                        ? (0, a.jsxs)('div', {
+                            className:
+                              'flex flex-col items-center justify-center h-full p-6 text-center',
+                            children: [
+                              (0, a.jsx)(t$.Z, { className: 'w-12 h-12 text-slate-600 mb-4' }),
+                              (0, a.jsx)('p', {
+                                className: 'text-sm text-slate-400 mb-2',
+                                children: 'No workspaces yet',
+                              }),
+                              (0, a.jsx)('p', {
+                                className: 'text-xs text-slate-500 mb-4',
+                                children:
+                                  'Select nodes in the graph and create a workspace to organize your work',
+                              }),
+                              (0, a.jsx)('button', {
+                                onClick: N,
+                                disabled: 0 === b.size,
+                                className:
+                                  'px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm rounded transition-colors',
+                                children:
+                                  b.size > 0
+                                    ? 'Create from '.concat(b.size, ' selected')
+                                    : 'Select nodes first',
+                              }),
+                            ],
+                          })
+                        : (0, a.jsx)('div', {
+                            className: 'p-2 space-y-1',
+                            children: n.map((e) =>
+                              (0, a.jsx)(
+                                lp,
+                                {
+                                  workspace: e,
+                                  selected: e.id === m,
+                                  onClick: () => v(e),
+                                  onDelete: (t) => j(e.id, t),
+                                },
+                                e.id
+                              )
+                            ),
+                          }),
+                  }),
+                  h &&
+                    (0, a.jsx)(lh, {
+                      selectedNodeIds: Array.from(b),
+                      onClose: () => g(!1),
+                      onCreate: async (e) => {
+                        try {
+                          let s = await ad.createWorkspace(e);
+                          (i((e) => [s, ...e]), g(!1), p(s.id), null == t || t(s));
+                        } catch (e) {
+                          console.error('Failed to create workspace:', e);
+                        }
+                      },
+                    }),
+                ],
+              });
+      }
+      function lp(e) {
+        let { workspace: t, selected: s, onClick: l, onDelete: r } = e;
+        return (0, a.jsxs)('div', {
+          onClick: l,
+          className:
+            '\n        p-3 rounded-lg border cursor-pointer transition-all\n        '.concat(
+              s
+                ? 'bg-purple-600/20 border-purple-500/50 shadow-lg shadow-purple-500/10'
+                : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600',
+              '\n      '
+            ),
+          children: [
+            (0, a.jsxs)('div', {
+              className: 'flex items-start justify-between mb-2',
+              children: [
+                (0, a.jsx)('h4', {
+                  className: 'text-sm font-medium text-slate-200 line-clamp-1',
+                  children: t.title,
+                }),
+                (0, a.jsxs)('div', {
+                  className: 'flex items-center gap-1',
+                  children: [
+                    (0, a.jsx)('button', {
+                      onClick: r,
+                      className:
+                        'p-1 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors',
+                      title: 'Delete workspace',
+                      children: (0, a.jsx)(ew.Z, { className: 'w-3.5 h-3.5' }),
+                    }),
+                    (0, a.jsx)(n.Z, { className: 'w-4 h-4 text-slate-500' }),
+                  ],
+                }),
+              ],
+            }),
+            (0, a.jsxs)('div', {
+              className: 'flex items-center gap-3 text-xs text-slate-500',
+              children: [
+                t.attached_agents &&
+                  t.attached_agents.length > 0 &&
+                  (0, a.jsxs)('div', {
+                    className: 'flex items-center gap-1',
+                    title: 'Attached agents',
+                    children: [
+                      (0, a.jsx)(te.Z, { className: 'w-3.5 h-3.5 text-blue-400' }),
+                      (0, a.jsx)('span', { children: t.attached_agents.length }),
+                    ],
+                  }),
+                t.context_pins &&
+                  t.context_pins.length > 0 &&
+                  (0, a.jsxs)('div', {
+                    className: 'flex items-center gap-1',
+                    title: 'Pinned context nodes',
+                    children: [
+                      (0, a.jsx)(Y.Z, { className: 'w-3.5 h-3.5 text-amber-400' }),
+                      (0, a.jsx)('span', { children: t.context_pins.length }),
+                    ],
+                  }),
+                (0, a.jsx)('span', {
+                  className: 'ml-auto',
+                  children: new Date(t.created_at).toLocaleDateString(),
+                }),
+              ],
+            }),
+          ],
+        });
+      }
+      function lh(e) {
+        let { selectedNodeIds: t, onClose: s, onCreate: r } = e,
+          [n, i] = (0, l.useState)(''),
+          [o, c] = (0, l.useState)(!1),
+          d = async (e) => {
+            if ((e.preventDefault(), n.trim())) {
+              c(!0);
+              try {
+                await r({ title: n.trim(), context_pins: t });
+              } finally {
+                c(!1);
+              }
+            }
+          };
+        return (0, a.jsx)('div', {
+          className: 'fixed inset-0 bg-black/50 flex items-center justify-center z-50',
+          children: (0, a.jsxs)('div', {
+            className:
+              'bg-slate-900 border border-slate-700 rounded-lg w-full max-w-md p-6 shadow-xl',
+            children: [
+              (0, a.jsx)('h2', {
+                className: 'text-lg font-semibold text-slate-200 mb-4',
+                children: 'Create Workspace',
+              }),
+              (0, a.jsxs)('form', {
+                onSubmit: d,
+                children: [
+                  (0, a.jsxs)('div', {
+                    className: 'mb-4',
+                    children: [
+                      (0, a.jsx)('label', {
+                        className: 'block text-sm text-slate-400 mb-2',
+                        children: 'Workspace Name',
+                      }),
+                      (0, a.jsx)('input', {
+                        type: 'text',
+                        value: n,
+                        onChange: (e) => i(e.target.value),
+                        placeholder: 'My Research Project',
+                        className:
+                          'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500',
+                        autoFocus: !0,
+                      }),
+                    ],
+                  }),
+                  (0, a.jsx)('div', {
+                    className: 'mb-6 p-3 bg-slate-800/50 rounded border border-slate-700',
+                    children: (0, a.jsxs)('div', {
+                      className: 'flex items-center gap-2 text-sm text-slate-400',
+                      children: [
+                        (0, a.jsx)(Y.Z, { className: 'w-4 h-4 text-amber-400' }),
+                        (0, a.jsx)('span', {
+                          children:
+                            t.length > 0
+                              ? ''.concat(t.length, ' nodes will be pinned as context')
+                              : 'No nodes selected - workspace will be empty',
+                        }),
+                      ],
+                    }),
+                  }),
+                  (0, a.jsxs)('div', {
+                    className: 'flex justify-end gap-3',
+                    children: [
+                      (0, a.jsx)('button', {
+                        type: 'button',
+                        onClick: s,
+                        className:
+                          'px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors',
+                        children: 'Cancel',
+                      }),
+                      (0, a.jsxs)('button', {
+                        type: 'submit',
+                        disabled: !n.trim() || o,
+                        className:
+                          'px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded transition-colors flex items-center gap-2',
+                        children: [
+                          o && (0, a.jsx)(x.Z, { className: 'w-4 h-4 animate-spin' }),
+                          'Create Workspace',
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        });
+      }
+      function lg(e) {
         let {
             showUploadModal: t,
             onShowUploadModal: s,
@@ -21275,33 +23955,38 @@
             onClearRestoredOperation: d,
           } = e,
           { user: u } = (0, N.aC)(),
-          { shellMode: x, keimenonMode: m } = (0, H.St)(),
+          { shellMode: x, keimenonMode: m } = (0, et.St)(),
           { operating: p } = (0, y.B)(),
           { uiVersion: h } = (0, S.O)(),
           {
             operations: g,
             getOperation: b,
             getActiveOperations: f,
-            addOperation: j,
-            updateOperation: v,
-          } = sm(),
-          { isOpen: w, setIsOpen: k } = t4(),
+            addOperation: v,
+            updateOperation: j,
+          } = s$(),
+          { isOpen: w, setIsOpen: k } = t7(),
           C = (0, l.useRef)(null),
           [I, E] = (0, l.useState)(!1),
-          [Z, D] = (0, l.useState)(!0),
-          [T, A] = (0, l.useState)(!0),
-          [M, _] = (0, l.useState)('keimenon'),
+          [M, Z] = (0, l.useState)(!0),
+          [D, T] = (0, l.useState)(!0),
+          [A, _] = (0, l.useState)('keimenon'),
           [F, P] = (0, l.useState)('analytics'),
           [O, z] = (0, l.useState)(void 0),
           [R, U] = (0, l.useState)(null),
-          [B, K] = (0, l.useState)(void 0),
-          [q, V] = (0, l.useState)(null),
+          [B, V] = (0, l.useState)(void 0),
+          [K, q] = (0, l.useState)(null),
           [J, G] = (0, l.useState)(null),
           [W, Y] = (0, l.useState)(null),
-          [X, $] = (0, l.useState)(!0),
-          Q = (0, l.useRef)(0);
+          [H, X] = (0, l.useState)(!0),
+          [Q, $] = (0, l.useState)(!1),
+          [ee, es] = (0, l.useState)(!1),
+          [ea, el] = (0, l.useState)(0),
+          [en, ei] = (0, l.useState)('2d'),
+          [eo, ec] = (0, l.useState)(sj),
+          ed = (0, l.useRef)(0);
         ((0, l.useEffect)(() => {
-          c && (G(c), K('import-flow'), A(!0), null == d || d());
+          c && (G(c), V('import-flow'), T(!0), null == d || d());
         }, [c, d]),
           (0, l.useEffect)(() => {
             let e = !1;
@@ -21310,7 +23995,7 @@
               return;
             }
             return (
-              (0, eD.e_)()
+              (0, e_.e_)()
                 .then((t) => {
                   e || Y(t);
                 })
@@ -21325,11 +24010,11 @@
           (0, l.useEffect)(() => {
             let e = !1;
             if (!(null == u ? void 0 : u.accountId)) {
-              $(!0);
+              X(!0);
               return;
             }
             return (
-              (0, eD.wv)(u.accountId)
+              (0, e_.wv)(u.accountId)
                 .then((t) => {
                   var s, a;
                   if (e) return;
@@ -21341,10 +24026,10 @@
                         : null === (s = a.import_auto_switch_processing) || void 0 === s
                           ? void 0
                           : s.value;
-                  $('boolean' != typeof l || l);
+                  X('boolean' != typeof l || l);
                 })
                 .catch(() => {
-                  e || $(!0);
+                  e || X(!0);
                 }),
               () => {
                 e = !0;
@@ -21390,29 +24075,29 @@
                   ].includes(e.status)
               ),
               t = e.length,
-              s = Q.current > 0;
-            (X &&
+              s = ed.current > 0;
+            (H &&
               'keimenon' === m &&
               !s &&
               t > 0 &&
-              'processing' !== M &&
+              'processing' !== A &&
               (console.debug('[KeimenonLayout] Auto-switching to processing view for import job'),
               _('processing'),
               (J && 'done' !== J.status && 'error' !== J.status) || G(e[0])),
-              (Q.current = t));
-          }, [g, m, M, J, X]));
-        let et = async (e) => {
-          $(e);
+              (ed.current = t));
+          }, [g, m, A, J, H]));
+        let eu = async (e) => {
+          X(e);
           try {
-            await (0, eD.m7)('import_auto_switch_processing', e);
+            await (0, e_.m7)('import_auto_switch_processing', e);
           } catch (e) {
             console.warn('[KeimenonLayout] Failed to persist auto-switch preference', e);
           }
         };
         (0, l.useEffect)(() => {
-          'processing' !== M || J || _('keimenon');
-        }, [M, J]);
-        let es =
+          'processing' !== A || J || _('keimenon');
+        }, [A, J]);
+        let ex =
             (0, l.useMemo)(
               () =>
                 Array.from(g.values()).some((e) =>
@@ -21429,13 +24114,13 @@
                 ),
               [g]
             ) || !!J,
-          ea = () => {
-            (K('import-flow'), A(!0));
+          em = () => {
+            (V('import-flow'), T(!0));
           },
-          el = async () => {
-            ea();
+          ep = async () => {
+            em();
           },
-          er = (e) =>
+          eh = (e) =>
             [
               'queued',
               'reading',
@@ -21450,15 +24135,15 @@
             ].includes(e)
               ? e
               : 'processing',
-          en = (null == u ? void 0 : u.accountType) === 'admin',
-          ei = 'native' === p.mode,
-          eo = p.accountId && 'native' !== p.mode;
+          eg = (null == u ? void 0 : u.accountType) === 'admin',
+          eb = 'native' === p.mode,
+          ef = p.accountId && 'native' !== p.mode;
         return (
           (0, l.useEffect)(() => {
             let e;
             let t = () => {
                 let e = window.innerWidth < 1024;
-                (E(e), e && (D(!1), A(!1)));
+                (E(e), e && (Z(!1), T(!1)));
               },
               s = () => {
                 (clearTimeout(e), (e = setTimeout(t, 150)));
@@ -21478,8 +24163,8 @@
             'dashboard' !== m && 'analytics' !== F && P('analytics');
           }, [m, F]),
           (0, l.useEffect)(() => {
-            'keimenon' !== m && 'keimenon' !== M && _('keimenon');
-          }, [m, M]),
+            'keimenon' !== m && 'keimenon' !== A && _('keimenon');
+          }, [m, A]),
           (0, a.jsxs)('div', {
             className: 'h-screen flex flex-col bg-slate-900 text-white overflow-hidden',
             children: [
@@ -21488,13 +24173,13 @@
                 className: 'flex-1 flex overflow-hidden',
                 children:
                   'primitives' === h
-                    ? (0, a.jsx)(a_, {})
+                    ? (0, a.jsx)(lx, {})
                     : (0, a.jsxs)(a.Fragment, {
                         children: [
-                          (0, a.jsx)(tY, {
+                          (0, a.jsx)(t1, {
                             side: 'left',
-                            isOpen: Z,
-                            onToggle: () => D(!Z),
+                            isOpen: M,
+                            onToggle: () => Z(!M),
                             onSettingsSectionSelect: z,
                             onZoomToFilteredNodes: () => {
                               var e;
@@ -21519,7 +24204,7 @@
                                           'Core process upgrade reset prior import artifacts. Start guided reimport to rebuild your workspace.',
                                       }),
                                       (0, a.jsx)('button', {
-                                        onClick: el,
+                                        onClick: ep,
                                         className:
                                           'px-3 py-1.5 rounded bg-amber-500 text-slate-900 text-sm font-semibold hover:bg-amber-400 transition-colors',
                                         children: 'Start Reimport',
@@ -21527,21 +24212,36 @@
                                     ],
                                   }),
                                 }),
-                              (0, a.jsx)(ee, {
-                                onUploadClick: ea,
-                                onLeftSidebarToggle: () => D(!Z),
-                                onRightSidebarToggle: () => A(!T),
+                              (0, a.jsx)(er, {
+                                onUploadClick: em,
+                                onLeftSidebarToggle: () => Z(!M),
+                                onRightSidebarToggle: () => T(!D),
                                 onFooterToggle: () => k(!w),
-                                leftSidebarVisible: Z,
-                                rightSidebarVisible: T,
+                                leftSidebarVisible: M,
+                                rightSidebarVisible: D,
                                 footerVisible: w,
-                                keimenonSurface: M,
+                                keimenonSurface: A,
                                 onKeimenonSurfaceChange: _,
                                 dashboardView: F,
                                 onDashboardViewChange: P,
-                                processingAvailable: es,
-                                autoSwitchToProcessingEnabled: X,
-                                onAutoSwitchToProcessingChange: et,
+                                processingAvailable: ex,
+                                autoSwitchToProcessingEnabled: H,
+                                onAutoSwitchToProcessingChange: eu,
+                                focusModeEnabled: Q,
+                                onFocusModeToggle: () => $((e) => !e),
+                                includeConnectorNodes: ee,
+                                onConnectorVisibilityToggle: () => es((e) => !e),
+                                pinnedNodeCount: ea,
+                                onClearPinnedNodes: () => {
+                                  var e;
+                                  return null === (e = C.current) || void 0 === e
+                                    ? void 0
+                                    : e.clearPinnedNodes();
+                                },
+                                renderLens: en,
+                                onRenderLensChange: ei,
+                                ndConfig: eo,
+                                onNdConfigChange: ec,
                                 onZoomIn: () => {
                                   var e;
                                   return null === (e = C.current) || void 0 === e
@@ -21561,27 +24261,36 @@
                                     : e.centerView();
                                 },
                               }),
-                              !(en && !ei) || eo || ei
-                                ? (0, a.jsxs)(sz, {
+                              !(eg && !eb) || ef || eb
+                                ? (0, a.jsxs)(ax, {
                                     children: [
                                       'keimenon' === m &&
-                                        ('keimenon' === M
-                                          ? (0, a.jsx)(sl, {
+                                        ('keimenon' === A
+                                          ? (0, a.jsx)(sK, {
                                               ref: C,
-                                              onOpenUpload: ea,
-                                              onOpenChatImport: ea,
+                                              onOpenUpload: em,
+                                              onOpenChatImport: em,
+                                              renderLens: en,
+                                              ndConfig: eo,
+                                              focusModeEnabled: Q,
+                                              includeConnectors: ee,
+                                              onPinnedNodeCountChange: el,
                                             })
-                                          : 'legacy' === M
-                                            ? (0, a.jsx)(sk, {})
-                                            : 'processing' === M
-                                              ? (0, a.jsx)(s_, { operation: J })
-                                              : (0, a.jsx)(sO, {})),
+                                          : 'legacy' === A
+                                            ? (0, a.jsx)(ae, { renderLens: en, ndConfig: eo })
+                                            : 'processing' === A
+                                              ? (0, a.jsx)(ai, {
+                                                  operation: J,
+                                                  renderLens: en,
+                                                  ndConfig: eo,
+                                                })
+                                              : (0, a.jsx)(au, { renderLens: en, ndConfig: eo })),
                                       'dashboard' === m &&
                                         ('analytics' === F
-                                          ? (0, a.jsx)(sN, {
+                                          ? (0, a.jsx)(s8, {
                                               onJobSelect: (e) => {
                                                 var t, s, a, l, r, n, i;
-                                                let o = er(e.status),
+                                                let o = eh(e.status),
                                                   c = {
                                                     nodesCreated: e.stats.nodesCreated,
                                                     edgesCreated: e.stats.edgesCreated,
@@ -21637,7 +24346,7 @@
                                                     stats: { ...d.stats, ...c },
                                                     state: { ...d.state, job: e },
                                                   };
-                                                  (v(e.id, t), G(t));
+                                                  (j(e.id, t), G(t));
                                                 } else {
                                                   let t = {
                                                     id: e.id,
@@ -21656,18 +24365,22 @@
                                                     stats: c,
                                                     state: { job: e },
                                                   };
-                                                  (j(t), G(t));
+                                                  (v(t), G(t));
                                                 }
-                                                (K('import-flow'), A(!0));
+                                                (V('import-flow'), T(!0));
                                               },
                                             })
-                                          : (0, a.jsx)(sy, {})),
+                                          : 'storage' === F
+                                            ? (0, a.jsx)(s7, {})
+                                            : 'workspaces' === F
+                                              ? (0, a.jsx)(lm, { className: 'h-full' })
+                                              : (0, a.jsx)(aY, { className: 'h-full' })),
                                       'settings' === m &&
-                                        (0, a.jsx)(ao, {
+                                        (0, a.jsx)(aK, {
                                           selectedSectionId: O,
                                           onControlSelect: U,
                                           onUserSelect: (e) => {
-                                            (V(e), K('user-detail'), A(!0));
+                                            (q(e), V('user-detail'), T(!0));
                                           },
                                         }),
                                     ],
@@ -21698,16 +24411,16 @@
                                   }),
                             ],
                           }),
-                          (0, a.jsx)(tY, {
+                          (0, a.jsx)(t1, {
                             side: 'right',
-                            isOpen: T,
-                            onToggle: () => A(!T),
+                            isOpen: D,
+                            onToggle: () => T(!D),
                             selectedSettingsControlId: R,
                             inspectorPanel: B,
-                            onInspectorPanelChange: K,
-                            selectedUser: q,
+                            onInspectorPanelChange: V,
+                            selectedUser: K,
                             onUserUpdate: (e) => {
-                              V(e);
+                              q(e);
                             },
                             activeOperation: J,
                             onViewProcessing: () => _('processing'),
@@ -21715,15 +24428,15 @@
                         ],
                       }),
               }),
-              (0, a.jsx)(t2, { isOpen: w }),
-              t && (0, a.jsx)(tN, { onClose: () => s(!1) }),
-              n && (0, a.jsx)(tf, { onDismiss: () => i(!1) }),
-              (0, a.jsx)(af, {}),
+              (0, a.jsx)(t9, { isOpen: w }),
+              t && (0, a.jsx)(tE, { onClose: () => s(!1) }),
+              n && (0, a.jsx)(tC, { onDismiss: () => i(!1) }),
+              (0, a.jsx)(a6, {}),
             ],
           })
         );
       }
-      function aF(e) {
+      function lb(e) {
         let { onDismiss: t, onOpenUpload: s, onOpenChatImport: l } = e;
         return (0, a.jsx)('div', {
           className:
@@ -21745,7 +24458,7 @@
                     className:
                       'absolute top-4 right-4 p-2 hover:bg-slate-800 rounded-lg transition-colors',
                     'aria-label': 'Close welcome modal',
-                    children: (0, a.jsx)(el.Z, { className: 'w-5 h-5 text-slate-400' }),
+                    children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5 text-slate-400' }),
                   }),
                   (0, a.jsxs)('div', {
                     className: 'flex items-start gap-4',
@@ -21788,7 +24501,7 @@
                           (0, a.jsx)('div', {
                             className:
                               'flex-shrink-0 w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center',
-                            children: (0, a.jsx)(Y.Z, { className: 'w-5 h-5 text-purple-400' }),
+                            children: (0, a.jsx)(ee.Z, { className: 'w-5 h-5 text-purple-400' }),
                           }),
                           (0, a.jsxs)('div', {
                             children: [
@@ -21815,7 +24528,7 @@
                           (0, a.jsx)('div', {
                             className:
                               'flex-shrink-0 w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center',
-                            children: (0, a.jsx)(eA.Z, { className: 'w-5 h-5 text-purple-400' }),
+                            children: (0, a.jsx)(eF.Z, { className: 'w-5 h-5 text-purple-400' }),
                           }),
                           (0, a.jsxs)('div', {
                             children: [
@@ -21875,7 +24588,7 @@
           }),
         });
       }
-      function aP() {
+      function lf() {
         let e = (0, r.useRouter)(),
           { isAuthenticated: t, isLoading: s } = (0, N.aC)(),
           [n, i] = (0, l.useState)(!1),
@@ -21883,7 +24596,8 @@
           [d, u] = (0, l.useState)(!1),
           [x, m] = (0, l.useState)(!1),
           [p, h] = (0, l.useState)(null),
-          g = (0, M.O)((e) => e.loadGraphData);
+          g = (0, l.useRef)(!1),
+          b = (0, A.O)((e) => e.loadGraphData);
         if (
           ((0, l.useEffect)(() => {
             if (!s) {
@@ -21891,9 +24605,30 @@
                 e.push('/login');
                 return;
               }
-              (localStorage.getItem('keimenon_welcome_shown') || _.pA || i(!0), g());
+              (localStorage.getItem('keimenon_welcome_shown') || _.pA || i(!0), b());
             }
-          }, [t, s, e, g]),
+          }, [t, s, e, b]),
+          (0, l.useEffect)(() => {
+            let e = (e) => {
+                'Shift' === e.key && (g.current = !0);
+              },
+              t = (e) => {
+                'Shift' === e.key && (g.current = !1);
+              },
+              s = () => {
+                g.current = !1;
+              };
+            return (
+              window.addEventListener('keydown', e),
+              window.addEventListener('keyup', t),
+              window.addEventListener('blur', s),
+              () => {
+                (window.removeEventListener('keydown', e),
+                  window.removeEventListener('keyup', t),
+                  window.removeEventListener('blur', s));
+              }
+            );
+          }, []),
           s)
         )
           return (0, a.jsx)('div', {
@@ -21910,414 +24645,44 @@
             }),
           });
         if (!t) return null;
-        let b = () => {
-            var e;
-            (null === (e = window.event) || void 0 === e ? void 0 : e.shiftKey) ? c(!0) : m(!0);
+        let f = () => {
+            g.current ? c(!0) : m(!0);
           },
-          f = () => {
+          v = () => {
             u(!0);
           };
-        return (0, a.jsx)(t0, {
-          children: (0, a.jsx)(sx, {
+        return (0, a.jsx)(t8, {
+          children: (0, a.jsx)(sQ, {
             onRestoreOperation: h,
             children: (0, a.jsxs)(C, {
               children: [
-                (0, a.jsx)(aL, {
+                (0, a.jsx)(lg, {
                   showUploadModal: o,
                   onShowUploadModal: c,
-                  onOpenUpload: b,
+                  onOpenUpload: f,
                   showChatImportModal: d,
                   onShowChatImportModal: u,
-                  onOpenChatImport: f,
+                  onOpenChatImport: v,
                   restoredOperation: p,
                   onClearRestoredOperation: () => h(null),
                 }),
                 n &&
-                  (0, a.jsx)(aF, {
+                  (0, a.jsx)(lb, {
                     onDismiss: () => {
                       (localStorage.setItem('keimenon_welcome_shown', 'true'), i(!1));
                     },
-                    onOpenUpload: b,
-                    onOpenChatImport: f,
+                    onOpenUpload: f,
+                    onOpenChatImport: v,
                   }),
               ],
             }),
           }),
         });
-      }
-    },
-    1913: function (e, t, s) {
-      'use strict';
-      s.d(t, {
-        d: function () {
-          return i;
-        },
-      });
-      var a = s(7573),
-        l = s(7653),
-        r = s(6673),
-        n = s(6120);
-      function i(e) {
-        let { onFilesSelected: t, acceptedTypes: s = [] } = e,
-          [i, o] = (0, l.useState)(!1),
-          c = (0, l.useCallback)(
-            (e) => {
-              (e.preventDefault(), o(!1));
-              let a = Array.from(e.dataTransfer.files),
-                l = a.filter((e) => 0 === s.length || s.includes(e.type));
-              (l.length > 0 && t(l),
-                l.length < a.length &&
-                  alert(
-                    ''.concat(a.length - l.length, ' file(s) were rejected due to invalid type')
-                  ));
-            },
-            [t, s]
-          ),
-          d = (0, l.useCallback)((e) => {
-            (e.preventDefault(), o(!0));
-          }, []),
-          u = (0, l.useCallback)(() => {
-            o(!1);
-          }, []),
-          x = (0, l.useCallback)(
-            (e) => {
-              let s = Array.from(e.target.files || []);
-              (s.length > 0 && t(s), (e.target.value = ''));
-            },
-            [t]
-          );
-        return (0, a.jsxs)('div', {
-          onDrop: c,
-          onDragOver: d,
-          onDragLeave: u,
-          className:
-            '\n        border-3 border-dashed rounded-xl p-12 text-center cursor-pointer\n        transition-all duration-300\n        '.concat(
-              i
-                ? 'border-purple-500 bg-purple-500/10 scale-105'
-                : 'border-slate-700 hover:border-slate-600 hover:bg-slate-800/50',
-              '\n      '
-            ),
-          onClick: () => {
-            var e;
-            return null === (e = document.getElementById('file-input')) || void 0 === e
-              ? void 0
-              : e.click();
-          },
-          children: [
-            (0, a.jsx)('input', {
-              id: 'file-input',
-              type: 'file',
-              multiple: !0,
-              accept: s.join(','),
-              onChange: x,
-              className: 'hidden',
-            }),
-            (0, a.jsxs)('div', {
-              className: 'flex flex-col items-center gap-4',
-              children: [
-                (0, a.jsx)('div', {
-                  className: '\n          p-4 rounded-full transition-colors\n          '.concat(
-                    i ? 'bg-purple-500/20' : 'bg-slate-800',
-                    '\n        '
-                  ),
-                  children: i
-                    ? (0, a.jsx)(r.Z, { className: 'w-12 h-12 text-purple-400' })
-                    : (0, a.jsx)(n.Z, { className: 'w-12 h-12 text-slate-400' }),
-                }),
-                (0, a.jsxs)('div', {
-                  children: [
-                    (0, a.jsx)('p', {
-                      className: 'text-lg font-semibold mb-2',
-                      children: i ? 'Drop files here' : 'Drag & drop files here',
-                    }),
-                    (0, a.jsx)('p', {
-                      className: 'text-sm text-slate-400',
-                      children: 'or click to browse your computer',
-                    }),
-                  ],
-                }),
-                s.length > 0 &&
-                  (0, a.jsxs)('div', {
-                    className: 'mt-4',
-                    children: [
-                      (0, a.jsx)('p', {
-                        className: 'text-xs text-slate-500 mb-2',
-                        children: 'Accepted file types:',
-                      }),
-                      (0, a.jsx)('div', {
-                        className: 'flex flex-wrap gap-2 justify-center',
-                        children: (function (e) {
-                          let t = {
-                            'application/pdf': 'PDF',
-                            'text/plain': 'TXT',
-                            'text/markdown': 'Markdown',
-                            'image/png': 'PNG',
-                            'image/jpeg': 'JPEG',
-                            'application/json': 'JSON',
-                            'text/csv': 'CSV',
-                          };
-                          return e.map((e) => t[e] || e);
-                        })(s).map((e) =>
-                          (0, a.jsx)(
-                            'span',
-                            {
-                              className: 'px-2 py-1 bg-slate-800 text-slate-400 text-xs rounded',
-                              children: e,
-                            },
-                            e
-                          )
-                        ),
-                      }),
-                    ],
-                  }),
-                (0, a.jsxs)('div', {
-                  className: 'mt-4 text-xs text-slate-500',
-                  children: [
-                    (0, a.jsx)('p', { children: 'Maximum file size: 10 MB' }),
-                    (0, a.jsx)('p', { children: 'Maximum files per upload: 10' }),
-                  ],
-                }),
-              ],
-            }),
-          ],
-        });
-      }
-    },
-    7250: function (e, t, s) {
-      'use strict';
-      s.d(t, {
-        B: function () {
-          return o;
-        },
-        OperatingProvider: function () {
-          return i;
-        },
-      });
-      var a = s(7573),
-        l = s(7653),
-        r = s(7070);
-      let n = (0, l.createContext)(void 0);
-      function i(e) {
-        let { children: t } = e,
-          { user: s } = (0, r.aC)(),
-          [i, o] = (0, l.useState)({
-            mode: 'native',
-            accountId: (null == s ? void 0 : s.accountId) || '',
-          }),
-          [c, d] = (0, l.useState)(0),
-          u = (0, l.useCallback)(
-            (e, t, a) => {
-              if (!s) {
-                console.error('Cannot switch account: not authenticated');
-                return;
-              }
-              if ('admin' !== s.accountType) {
-                console.error('Cannot switch account: user is not admin');
-                return;
-              }
-              ('nested' !== t ||
-                (null == a ? void 0 : a.serviceMode) ||
-                console.warn('Nested mode requires service mode enabled on target account'),
-                console.log('Switching to operating mode:', {
-                  mode: t,
-                  accountId: e,
-                  accountName: null == a ? void 0 : a.accountName,
-                }),
-                o({
-                  mode: t,
-                  accountId: e,
-                  accountType: null == a ? void 0 : a.accountType,
-                  accountName: null == a ? void 0 : a.accountName,
-                  serviceMode: null == a ? void 0 : a.serviceMode,
-                  parentAccountId: null == a ? void 0 : a.parentAccountId,
-                }),
-                d((e) => e + 1),
-                (window.__operatingAccount = e),
-                (window.__operatingMode = t));
-            },
-            [s]
-          ),
-          x = (0, l.useCallback)(() => {
-            s &&
-              (console.log('Exiting operating mode, returning to native'),
-              o({ mode: 'native', accountId: s.accountId }),
-              d((e) => e + 1),
-              delete window.__operatingAccount,
-              delete window.__operatingMode);
-          }, [s]),
-          m = (0, l.useCallback)(() => {
-            let e = {};
-            return (
-              'native' !== i.mode &&
-                i.accountId !== (null == s ? void 0 : s.accountId) &&
-                ((e['X-Operating-Account'] = i.accountId), (e['X-Operating-Mode'] = i.mode)),
-              e
-            );
-          }, [i, s]),
-          p = 'native' !== i.mode && i.accountId !== (null == s ? void 0 : s.accountId);
-        return (0, a.jsx)(n.Provider, {
-          value: {
-            operating: i,
-            switchAccount: u,
-            exitOperatingMode: x,
-            getOperatingHeaders: m,
-            isOperatingMode: p,
-            operatingContextVersion: c,
-          },
-          children: t,
-        });
-      }
-      function o() {
-        let e = (0, l.useContext)(n);
-        if (void 0 === e) throw Error('useOperating must be used within an OperatingProvider');
-        return e;
-      }
-    },
-    6326: function (e, t, s) {
-      'use strict';
-      s.d(t, {
-        ShellProvider: function () {
-          return i;
-        },
-        St: function () {
-          return o;
-        },
-      });
-      var a = s(7573),
-        l = s(7653),
-        r = s(7070);
-      let n = (0, l.createContext)(void 0);
-      function i(e) {
-        let { children: t } = e,
-          { user: s } = (0, r.aC)(),
-          [i, o] = (0, l.useState)(
-            (null == s ? void 0 : s.accountType) === 'admin' ? 'admin' : 'client'
-          ),
-          [c, d] = (0, l.useState)('keimenon'),
-          u = (0, l.useRef)(!1);
-        (0, l.useEffect)(() => {
-          if (s && !u.current) {
-            let e = 'admin' === s.accountType ? 'admin' : 'client',
-              t = 'admin' === s.accountType ? 'dashboard' : 'keimenon';
-            (o(e),
-              d(t),
-              (u.current = !0),
-              console.log('Shell locked to account type:', {
-                shellMode: e,
-                accountType: s.accountType,
-              }));
-          }
-        }, [s]);
-        let x = (0, l.useCallback)(() => !0, [s]),
-          m = (0, l.useCallback)(() => (null == s ? void 0 : s.accountType) === 'admin', [s]),
-          p = (0, l.useCallback)(
-            (e) => {
-              console.warn(
-                'setShellMode() called but ShellMode is locked to account type.',
-                'ShellMode cannot be manually changed. Ignoring request.',
-                { requestedMode: e, currentMode: i }
-              );
-            },
-            [i]
-          ),
-          h = (0, l.useCallback)((e) => {
-            (d(e), console.log('Keimenon mode changed:', e));
-          }, []);
-        return (0, a.jsx)(n.Provider, {
-          value: {
-            shellMode: i,
-            keimenonMode: c,
-            setShellMode: p,
-            setKeimenonMode: h,
-            canAccessPortal: x,
-            isAdminShell: m,
-          },
-          children: t,
-        });
-      }
-      function o() {
-        let e = (0, l.useContext)(n);
-        if (void 0 === e) throw Error('useShell must be used within a ShellProvider');
-        return e;
-      }
-    },
-    7833: function (e, t, s) {
-      'use strict';
-      s.d(t, {
-        O: function () {
-          return i;
-        },
-        UIVersionProvider: function () {
-          return n;
-        },
-      });
-      var a = s(7573),
-        l = s(7653);
-      let r = (0, l.createContext)(void 0);
-      function n(e) {
-        let { children: t } = e,
-          [s, n] = (0, l.useState)('legacy'),
-          i = (0, l.useCallback)((e) => {
-            (n(e), console.log('UI version changed:', e));
-          }, []),
-          o = (0, l.useCallback)(() => {
-            n((e) => {
-              let t = 'legacy' === e ? 'primitives' : 'legacy';
-              return (console.log('UI version toggled:', e, '→', t), t);
-            });
-          }, []),
-          c = (0, l.useCallback)(() => 'primitives' === s, [s]),
-          d = (0, l.useCallback)(() => 'legacy' === s, [s]);
-        return (0, a.jsx)(r.Provider, {
-          value: {
-            uiVersion: s,
-            setUIVersion: i,
-            toggleUIVersion: o,
-            isPrimitivesMode: c,
-            isLegacyMode: d,
-          },
-          children: t,
-        });
-      }
-      function i() {
-        let e = (0, l.useContext)(r);
-        if (void 0 === e) throw Error('useUIVersion must be used within a UIVersionProvider');
-        return e;
-      }
-    },
-    5955: function (e, t, s) {
-      'use strict';
-      s.d(t, {
-        p: function () {
-          return r;
-        },
-      });
-      var a = s(7653);
-      let l = 0;
-      function r() {
-        let [e, t] = (0, a.useState)([]),
-          s = (0, a.useCallback)((e, s, a, r) => {
-            let n = 'toast-'.concat(++l),
-              i = { id: n, type: e, message: s, description: a, duration: null != r ? r : 5e3 };
-            return (t((e) => [...e, i]), n);
-          }, []),
-          r = (0, a.useCallback)((e) => {
-            t((t) => t.filter((t) => t.id !== e));
-          }, []),
-          n = (0, a.useCallback)((e, t, a) => s('success', e, t, a), [s]);
-        return {
-          toasts: e,
-          success: n,
-          error: (0, a.useCallback)((e, t, a) => s('error', e, t, a), [s]),
-          info: (0, a.useCallback)((e, t, a) => s('info', e, t, a), [s]),
-          warning: (0, a.useCallback)((e, t, a) => s('warning', e, t, a), [s]),
-          removeToast: r,
-        };
       }
     },
   },
   function (e) {
-    (e.O(0, [44, 898, 195, 467, 444, 627, 757, 293, 528, 744], function () {
+    (e.O(0, [44, 898, 124, 195, 613, 630, 184, 293, 528, 744], function () {
       return e((e.s = 5881));
     }),
       (_N_E = e.O()));

@@ -1,34 +1,42 @@
 (self.webpackChunk_N_E = self.webpackChunk_N_E || []).push([
-  [444],
+  [630],
   {
     6031: function () {},
-    7070: function (e, t, a) {
+    4175: function (e, t, a) {
       'use strict';
       a.d(t, {
         AuthProvider: function () {
-          return h;
+          return g;
         },
         LP: function () {
-          return y;
+          return w;
         },
         aC: function () {
-          return g;
+          return y;
         },
       });
       var o = a(7573),
         n = a(7653),
         i = a(1695),
         r = a(4374),
-        s = a(2844),
-        l = a(3291);
-      let c = (0, n.createContext)(void 0),
-        d = 'keimenon_token',
-        u = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      function p() {
+        s = a(2844);
+      let l = [
+        '__operatingAccount',
+        '__operatingMode',
+        '__cachedNodes',
+        '__cachedEdges',
+        '__cachedGroups',
+        '__cachedBoards',
+      ];
+      var c = a(3291);
+      let d = (0, n.createContext)(void 0),
+        u = 'keimenon_token',
+        p = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      function m() {
         let e = {};
         return (window.__TEST_DB_PATH__ && (e['X-Test-DB-Path'] = window.__TEST_DB_PATH__), e);
       }
-      function m(e) {
+      function f(e) {
         try {
           let t = e.split('.')[1],
             a = atob(t);
@@ -37,14 +45,14 @@
           return (console.error('Failed to decode JWT:', e), null);
         }
       }
-      function f(e) {
-        let t = m(e);
+      function _(e) {
+        let t = f(e);
         if (!t || !t.exp) return !0;
         let a = Math.floor(Date.now() / 1e3);
         return t.exp < a;
       }
-      function _(e) {
-        let t = m(e);
+      function h(e) {
+        let t = f(e);
         return t
           ? {
               userId: t.userId,
@@ -60,17 +68,17 @@
             }
           : null;
       }
-      function h(e) {
+      function g(e) {
         let { children: t } = e,
-          [a, h] = (0, n.useState)(null),
-          [g, y] = (0, n.useState)(!0),
-          w = (0, i.useRouter)();
+          [a, g] = (0, n.useState)(null),
+          [y, w] = (0, n.useState)(!0),
+          v = (0, i.useRouter)();
         ((0, n.useEffect)(() => {
           let e = !1,
             t = async () => {
               var e;
               if (
-                (localStorage.removeItem(d),
+                (localStorage.removeItem(u),
                 null === (e = window.electronAPI) || void 0 === e ? void 0 : e.accounts)
               )
                 try {
@@ -81,21 +89,21 @@
             };
           return (
             (async () => {
-              let a = localStorage.getItem(d);
+              let a = localStorage.getItem(u);
               if ((console.log('[AuthContext] Init check. Token present:', !!a), !a)) {
-                e || y(!1);
+                e || w(!1);
                 return;
               }
-              if (f(a)) {
+              if (_(a)) {
                 (console.log('[AuthContext] Token expired on startup, clearing storage'),
                   await t(),
-                  e || (h(null), y(!1)));
+                  e || (g(null), w(!1)));
                 return;
               }
               try {
-                let o = await fetch(''.concat(l.CT, '/api/v1/auth/verify'), {
+                let o = await fetch(''.concat(c.CT, '/api/v1/auth/verify'), {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json', ...p() },
+                  headers: { 'Content-Type': 'application/json', ...m() },
                   body: JSON.stringify({ token: a }),
                 });
                 if (!o.ok) {
@@ -106,7 +114,7 @@
                     )
                   ),
                     await t(),
-                    e || (h(null), y(!1)));
+                    e || (g(null), w(!1)));
                   return;
                 }
               } catch (e) {
@@ -115,12 +123,12 @@
                   e
                 );
               }
-              let o = _(a);
+              let o = h(a);
               if (!o) {
-                (await t(), e || (h(null), y(!1)));
+                (await t(), e || (g(null), w(!1)));
                 return;
               }
-              e || (h(o), y(!1));
+              e || (g(o), w(!1));
             })(),
             () => {
               e = !0;
@@ -141,13 +149,13 @@
                 r.O.getState().setCurrentAccountId(a.accountId));
             }
           }, [null == a ? void 0 : a.accountId]));
-        let v = (0, n.useCallback)(
+        let b = (0, n.useCallback)(
             async (e, t) => {
-              y(!0);
+              w(!0);
               try {
-                let a = await fetch(''.concat(l.CT, '/api/v1/auth/login'), {
+                let a = await fetch(''.concat(c.CT, '/api/v1/auth/login'), {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json', ...p() },
+                  headers: { 'Content-Type': 'application/json', ...m() },
                   body: JSON.stringify({ email: e, password: t }),
                 });
                 if (!a.ok) {
@@ -157,7 +165,7 @@
                 let o = await a.json();
                 if (o.requiresAccountSelection)
                   return (
-                    y(!1),
+                    w(!1),
                     {
                       requiresAccountSelection: !0,
                       availableAccounts: o.availableAccounts,
@@ -166,39 +174,39 @@
                   );
                 let { token: n } = o;
                 if (!n) throw Error('No token received from server');
-                localStorage.setItem(d, n);
-                let i = _(n);
+                localStorage.setItem(u, n);
+                let i = h(n);
                 if (!i) throw Error('Failed to parse user from token');
-                (h(i),
-                  y(!1),
+                (g(i),
+                  w(!1),
                   console.log('Login successful:', {
                     email: i.email,
                     accountId: i.accountId,
                     rank: i.rank,
                     accountType: i.accountType,
                   }),
-                  w.push('/keimenon'));
+                  v.push('/keimenon'));
               } catch (e) {
-                throw (y(!1), console.error('Login error:', e), e);
+                throw (w(!1), console.error('Login error:', e), e);
               }
             },
-            [w]
+            [v]
           ),
-          b = (0, n.useCallback)(
+          x = (0, n.useCallback)(
             async function (e, t, a) {
               let o = arguments.length > 3 && void 0 !== arguments[3] ? arguments[3] : 'free',
                 n = a.trim();
               if (n.length < 2 || n.length > 120)
                 throw Error('Name must be between 2 and 120 characters');
-              if (!u.test(e)) throw Error('Please provide a valid email address');
+              if (!p.test(e)) throw Error('Please provide a valid email address');
               if (t.length < 8) throw Error('Password must be at least 8 characters');
               if (!/[a-zA-Z]/.test(t) || !/[0-9]/.test(t))
                 throw Error('Password must include both letters and numbers');
               if (!['free', 'professional', 'business'].includes(o))
                 throw Error('Invalid account class');
-              y(!0);
+              w(!0);
               try {
-                let a = await fetch(''.concat(l.CT, '/api/v1/auth/register'), {
+                let a = await fetch(''.concat(c.CT, '/api/v1/auth/register'), {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -215,20 +223,20 @@
                 }
                 let { token: i } = await a.json();
                 if (!i) throw Error('No token received from server');
-                localStorage.setItem(d, i);
-                let r = _(i);
+                localStorage.setItem(u, i);
+                let r = h(i);
                 if (!r) throw Error('Failed to parse user from token');
-                (h(r),
-                  y(!1),
+                (g(r),
+                  w(!1),
                   console.log('Registration successful:', {
                     email: r.email,
                     accountType: r.accountType,
                     accountClass: r.accountClass,
                   }),
-                  w.push('/keimenon'));
+                  v.push('/keimenon'));
               } catch (e) {
                 if (
-                  (y(!1),
+                  (w(!1),
                   console.error('Registration error:', e),
                   e instanceof TypeError &&
                     (e.message.includes('fetch') || e.message.includes('NetworkError')))
@@ -237,13 +245,13 @@
                 throw e;
               }
             },
-            [w]
+            [v]
           ),
-          x = (0, n.useCallback)(
+          E = (0, n.useCallback)(
             async (e, t, a) => {
-              y(!0);
+              w(!0);
               try {
-                let o = await fetch(''.concat(l.CT, '/api/v1/auth/select-account'), {
+                let o = await fetch(''.concat(c.CT, '/api/v1/auth/select-account'), {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ tempToken: e, accountId: t, accountPassword: a }),
@@ -254,106 +262,110 @@
                 }
                 let { token: n } = await o.json();
                 if (!n) throw Error('No token received from server');
-                localStorage.setItem(d, n);
-                let i = _(n);
+                localStorage.setItem(u, n);
+                let i = h(n);
                 if (!i) throw Error('Failed to parse user from token');
-                (h(i),
-                  y(!1),
+                (g(i),
+                  w(!1),
                   console.log('Account selected:', { accountId: i.accountId, email: i.email }),
-                  w.push('/keimenon'));
+                  v.push('/keimenon'));
               } catch (e) {
-                throw (y(!1), console.error('Account selection error:', e), e);
+                throw (w(!1), console.error('Account selection error:', e), e);
               }
             },
-            [w]
+            [v]
           ),
-          E = (0, n.useCallback)(async (e, t) => {
-            y(!0);
+          R = (0, n.useCallback)(async (e, t) => {
+            w(!0);
             try {
-              let a = localStorage.getItem(d);
+              let a = localStorage.getItem(u);
               if (!a) throw Error('Not authenticated');
-              if (
-                (console.log('\uD83E\uDDF9 Clearing keimenon store before account switch...'),
-                r.O.getState().reset(),
-                delete window.__operatingAccount,
-                delete window.__operatingMode,
-                delete window.__cachedNodes,
-                delete window.__cachedEdges,
-                delete window.__cachedGroups,
-                delete window.__cachedBoards,
-                window.sessionStorage)
-              ) {
-                let e = [];
-                for (let t = 0; t < sessionStorage.length; t++) {
-                  let a = sessionStorage.key(t);
-                  a && !a.startsWith('__SENSITIVE__') && e.push(a);
+              console.log(
+                '\uD83E\uDDF9 Clearing account-scoped runtime state before account switch...'
+              );
+              let o = (function () {
+                let e =
+                  arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : '__SENSITIVE__';
+                for (let e of (r.O.getState().reset(), l)) delete window[e];
+                let t = [];
+                if (window.sessionStorage) {
+                  let a = [];
+                  for (let e = 0; e < window.sessionStorage.length; e += 1) {
+                    let t = window.sessionStorage.key(e);
+                    t && a.push(t);
+                  }
+                  for (let o of a)
+                    (e.length > 0 && o.startsWith(e)) ||
+                      (window.sessionStorage.removeItem(o), t.push(o));
                 }
-                (e.forEach((e) => sessionStorage.removeItem(e)),
-                  console.log('\uD83E\uDDF9 Cleared '.concat(e.length, ' sessionStorage items')));
-              }
-              let o = await fetch(''.concat(l.CT, '/api/v1/auth/switch-account'), {
+                return { clearedSessionKeys: t };
+              })();
+              console.log(
+                '\uD83E\uDDF9 Cleared '.concat(o.clearedSessionKeys.length, ' sessionStorage items')
+              );
+              let n = await fetch(''.concat(c.CT, '/api/v1/auth/switch-account'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: 'Bearer '.concat(a) },
                 body: JSON.stringify({ accountId: e, accountPassword: t }),
               });
-              if (!o.ok) {
-                let e = await o.json();
+              if (!n.ok) {
+                let e = await n.json();
                 throw Error(e.error || 'Account switch failed');
               }
-              let n = (await o.json()).token;
-              if (!n) throw Error('No token received from server');
-              localStorage.setItem(d, n);
-              let i = _(n);
-              if (!i) throw Error('Failed to parse user from token');
-              (h(i),
-                (0, s.Et)('Switched to account: '.concat(i.accountId), {
+              let i = (await n.json()).token;
+              if (!i) throw Error('No token received from server');
+              localStorage.setItem(u, i);
+              let d = h(i);
+              if (!d) throw Error('Failed to parse user from token');
+              (g(d),
+                (0, s.Et)('Switched to account: '.concat(d.accountId), {
                   domain: 'api',
                   operation: 'auth.switchAccount',
                   metadata: {
-                    accountId: i.accountId,
-                    userId: i.userId,
-                    accountType: i.accountType,
+                    accountId: d.accountId,
+                    userId: d.userId,
+                    accountType: d.accountType,
                   },
                 }),
                 console.log('✅ Account switched successfully:', {
-                  accountId: i.accountId,
-                  email: i.email,
+                  accountId: d.accountId,
+                  email: d.email,
                 }),
-                y(!1),
+                w(!1),
                 console.log(
                   '\uD83D\uDD04 Performing hard reload to clear all application state...'
                 ),
                 window.location.reload());
             } catch (e) {
-              throw (y(!1), console.error('❌ Account switch error:', e), e);
+              throw (w(!1), console.error('❌ Account switch error:', e), e);
             }
           }, []),
-          R = (0, n.useCallback)(() => {
-            (localStorage.removeItem(d),
-              h(null),
+          T = (0, n.useCallback)(() => {
+            (localStorage.removeItem(u),
+              g(null),
               r.O.getState().reset(),
-              w.push('/login'),
+              v.push('/login'),
               console.log('Logged out'));
-          }, [w]),
-          T = (0, n.useCallback)(async () => {
-            let e = localStorage.getItem(d);
+          }, [v]),
+          k = (0, n.useCallback)(async () => {
+            let e = localStorage.getItem(u);
             if (!e) return !1;
             try {
-              let t = await fetch(''.concat(l.CT, '/api/v1/auth/refresh'), {
+              let t = await fetch(''.concat(c.CT, '/api/v1/auth/refresh'), {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   Authorization: 'Bearer '.concat(e),
-                  ...p(),
+                  ...m(),
                 },
                 body: JSON.stringify({ token: e }),
               });
               if (!t.ok) return !1;
               let a = await t.json();
               if (!(null == a ? void 0 : a.token) || 'string' != typeof a.token) return !1;
-              localStorage.setItem(d, a.token);
-              let o = _(a.token);
-              return (o && h(o), !0);
+              localStorage.setItem(u, a.token);
+              let o = h(a.token);
+              return (o && g(o), !0);
             } catch (e) {
               return !1;
             }
@@ -361,52 +373,52 @@
         (0, n.useEffect)(() => {
           if (!a) return;
           let e = setInterval(async () => {
-            let e = localStorage.getItem(d);
+            let e = localStorage.getItem(u);
             if (!e) return;
-            let t = m(e);
+            let t = f(e);
             if (!(null == t ? void 0 : t.exp)) return;
             let a = Math.floor(Date.now() / 1e3);
-            t.exp - a <= 120 && !(await T()) && f(e) && R();
+            t.exp - a <= 120 && !(await k()) && _(e) && T();
           }, 3e4);
           return () => clearInterval(e);
-        }, [a, T, R]);
+        }, [a, k, T]);
         let I = (0, n.useCallback)(() => {
-          let e = localStorage.getItem(d);
+          let e = localStorage.getItem(u);
           if (!e) {
-            h(null);
+            g(null);
             return;
           }
-          if (f(e)) {
-            T().then((e) => {
-              e || R();
+          if (_(e)) {
+            k().then((e) => {
+              e || T();
             });
             return;
           }
-          let t = _(e);
-          t ? h(t) : R();
-        }, [R, T]);
-        return (0, o.jsx)(c.Provider, {
+          let t = h(e);
+          t ? g(t) : T();
+        }, [T, k]);
+        return (0, o.jsx)(d.Provider, {
           value: {
             user: a,
             isAuthenticated: !!a,
-            isLoading: g,
-            login: v,
-            selectAccount: x,
-            switchAccount: E,
-            register: b,
-            logout: R,
+            isLoading: y,
+            login: b,
+            selectAccount: E,
+            switchAccount: R,
+            register: x,
+            logout: T,
             refreshUser: I,
           },
           children: t,
         });
       }
-      function g() {
-        let e = (0, n.useContext)(c);
+      function y() {
+        let e = (0, n.useContext)(d);
         if (void 0 === e) throw Error('useAuth must be used within an AuthProvider');
         return e;
       }
-      function y() {
-        return localStorage.getItem(d);
+      function w() {
+        return localStorage.getItem(u);
       }
     },
     1493: function (e, t, a) {
@@ -431,10 +443,10 @@
           return L;
         },
         IU: function () {
-          return D;
+          return P;
         },
         In: function () {
-          return P;
+          return D;
         },
         J$: function () {
           return K;
@@ -446,7 +458,7 @@
           return E;
         },
         Ni: function () {
-          return k;
+          return I;
         },
         Nm: function () {
           return N;
@@ -467,13 +479,13 @@
           return V;
         },
         T8: function () {
-          return X;
+          return U;
         },
         TE: function () {
           return q;
         },
         U0: function () {
-          return S;
+          return C;
         },
         UU: function () {
           return v;
@@ -488,10 +500,10 @@
           return Z;
         },
         Zo: function () {
-          return C;
+          return S;
         },
         _A: function () {
-          return A;
+          return O;
         },
         d: function () {
           return f;
@@ -500,7 +512,7 @@
           return ea;
         },
         h8: function () {
-          return Q;
+          return $;
         },
         hi: function () {
           return m;
@@ -518,13 +530,13 @@
           return y;
         },
         qp: function () {
-          return I;
+          return k;
         },
         r4: function () {
           return H;
         },
         rT: function () {
-          return U;
+          return X;
         },
         tN: function () {
           return j;
@@ -536,7 +548,7 @@
           return R;
         },
         u1: function () {
-          return O;
+          return A;
         },
         v$: function () {
           return M;
@@ -545,14 +557,14 @@
           return F;
         },
         wv: function () {
-          return $;
+          return Q;
         },
         x1: function () {
           return en;
         },
       });
       var o = a(2844),
-        n = a(7070),
+        n = a(4175),
         i = a(3291),
         r = a(7271);
       let s = ''.concat(i.CT, '/api/v1/auth/refresh'),
@@ -783,11 +795,12 @@
         return await t.json();
       }
       async function E(e, t, a) {
-        let n = new FormData();
+        var n;
+        let s = new FormData();
         e.forEach((e) => {
-          n.append('files', e);
+          s.append('files', e);
         });
-        let s = (0, r.p$)({
+        let l = (0, r.p$)({
           platform: a,
           extraction: {
             includeUser: t.extraction.includeUser,
@@ -796,6 +809,9 @@
           minMessageLength: t.minMessageLength,
           processingMode: t.processingMode,
           branches: t.branches,
+          agent: {
+            bootstrap: (null === (n = t.agent) || void 0 === n ? void 0 : n.bootstrap) || 'manual',
+          },
           groups: 'manual' === t.processingMode || 'hybrid' === t.processingMode ? t.groups : [],
           extractCode: t.extractCode,
           codeSettings: {
@@ -822,7 +838,7 @@
             autoMergeThreshold: t.duplicateDetection.autoMergeThreshold,
           },
         });
-        for (let t of (n.append('config', JSON.stringify(s)), e)) {
+        for (let t of (s.append('config', JSON.stringify(l)), e)) {
           if (!t.name.match(/\.(json|jsonl)$/i))
             throw new o.FE(
               'Invalid file type: '.concat(t.name, '. Only JSON and JSONL files are supported.')
@@ -834,7 +850,7 @@
               maxSize: 2147483648,
             });
         }
-        let l = ''.concat(i.CT, '/api/v1/jobs/import');
+        let u = ''.concat(i.CT, '/api/v1/jobs/import');
         console.log(
           'Creating import job for files:',
           e.map((e) => e.name)
@@ -843,24 +859,24 @@
           return await (0, o.JN)(
             async () => {
               var t;
-              (console.log('[importChatFilesAsJob] Sending POST to '.concat(l)),
+              (console.log('[importChatFilesAsJob] Sending POST to '.concat(u)),
                 console.log('[importChatFilesAsJob] FormData contains:', {
                   fileCount: e.length,
                   files: e.map((e) => ({ name: e.name, size: e.size, type: e.type })),
                   configSize:
-                    (null === (t = n.get('config')) || void 0 === t
+                    (null === (t = s.get('config')) || void 0 === t
                       ? void 0
                       : t.toString().length) || 0,
                 }));
               let a = new AbortController(),
-                i = setTimeout(() => {
+                n = setTimeout(() => {
                   (a.abort(),
                     console.error('[importChatFilesAsJob] Request timed out after 5 minutes'));
                 }, 3e5);
               try {
-                let e = await d(l, { method: 'POST', headers: c(), body: n, signal: a.signal });
+                let e = await d(u, { method: 'POST', headers: c(), body: s, signal: a.signal });
                 if (
-                  (clearTimeout(i),
+                  (clearTimeout(n),
                   console.log('[importChatFilesAsJob] Response status: '.concat(e.status)),
                   !e.ok)
                 ) {
@@ -875,7 +891,7 @@
                 let t = await e.json();
                 return (console.log('[importChatFilesAsJob] Success:', t), t);
               } catch (e) {
-                if ((clearTimeout(i), e instanceof Error && 'AbortError' === e.name))
+                if ((clearTimeout(n), e instanceof Error && 'AbortError' === e.name))
                   throw Error(
                     'Import job creation timed out after 5 minutes. The file may be too large or the server is not responding.'
                   );
@@ -997,7 +1013,7 @@
           platforms: t,
         };
       }
-      async function I(e) {
+      async function k(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/content/message/').concat(e), { headers: c() });
           return (t.ok || (await (0, o.zG)({ response: t })), await t.json());
@@ -1005,7 +1021,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function k(e) {
+      async function I(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/content/source/').concat(e), { headers: c() });
           return (t.ok || (await (0, o.zG)({ response: t })), await t.json());
@@ -1013,7 +1029,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function S(e) {
+      async function C(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/content/code/').concat(e), { headers: c() });
           return (t.ok || (await (0, o.zG)({ response: t })), await t.json());
@@ -1021,7 +1037,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function C(e) {
+      async function S(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/content/conversation/').concat(e), {
             headers: c(),
@@ -1031,7 +1047,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function O(e) {
+      async function A(e) {
         try {
           var t, a, n;
           let r = await d(''.concat(i.CT, '/api/v1/nodes/').concat(e), { headers: c() });
@@ -1052,7 +1068,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function A(e) {
+      async function O(e) {
         try {
           var t, a, n, r, s;
           let l = await d(''.concat(i.CT, '/api/v1/nodes/').concat(e), { headers: c() });
@@ -1136,7 +1152,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function D(e) {
+      async function P(e) {
         try {
           var t, a, n, r, s;
           let l = await d(''.concat(i.CT, '/api/v1/nodes/').concat(e), { headers: c() });
@@ -1169,7 +1185,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function P() {
+      async function D() {
         try {
           let e = await d(''.concat(i.CT, '/api/v1/content/stats'), { headers: c() });
           return (e.ok || (await (0, o.zG)({ response: e })), await e.json());
@@ -1236,18 +1252,26 @@
       }
       async function G(e) {
         try {
-          var t;
-          let a = new URLSearchParams();
-          ((null == e ? void 0 : e.kind) && a.append('kind', e.kind),
-            (null == e ? void 0 : e.limit) && a.append('limit', e.limit.toString()),
-            (null == e ? void 0 : e.offset) && a.append('offset', e.offset.toString()));
-          let n = ''.concat(i.CT, '/api/v1/edges').concat(a.toString() ? '?'.concat(a) : ''),
-            r = await fetch(n, { headers: c() });
-          r.ok || (await (0, o.zG)({ response: r }));
-          let s = await r.json();
+          var t, a;
+          let n = new URLSearchParams();
+          ((null == e ? void 0 : e.kind) && n.append('kind', e.kind),
+            (null == e ? void 0 : e.limit) && n.append('limit', e.limit.toString()),
+            (null == e ? void 0 : e.offset) && n.append('offset', e.offset.toString()),
+            (null == e ? void 0 : e.skip) !== void 0 && n.append('skip', e.skip.toString()),
+            (null == e ? void 0 : e.cursor) && n.append('cursor', e.cursor),
+            (null == e ? void 0 : e.sort) && n.append('sort', e.sort),
+            (null == e ? void 0 : e.order) && n.append('order', e.order));
+          let r = ''.concat(i.CT, '/api/v1/edges').concat(n.toString() ? '?'.concat(n) : ''),
+            s = await fetch(r, { headers: c() });
+          s.ok || (await (0, o.zG)({ response: s }));
+          let l = await s.json();
           return {
-            edges: s.edges || [],
-            total: s.total || (null === (t = s.edges) || void 0 === t ? void 0 : t.length) || 0,
+            edges: l.edges || [],
+            total:
+              l.total ||
+              (null === (t = l.metadata) || void 0 === t ? void 0 : t.total) ||
+              (null === (a = l.edges) || void 0 === a ? void 0 : a.length) ||
+              0,
           };
         } catch (e) {
           throw await (0, o.zG)(e);
@@ -1263,7 +1287,7 @@
           });
         return (n.ok || (await (0, o.zG)({ response: n })), n.json());
       }
-      async function X() {
+      async function U() {
         try {
           let e = await d(''.concat(i.CT, '/api/v1/accounts'), { headers: c() });
           return (e.ok || (await (0, o.zG)({ response: e })), await e.json());
@@ -1271,7 +1295,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function U(e) {
+      async function X(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/accounts/').concat(e, '/stats'), {
             headers: c(),
@@ -1367,7 +1391,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function Q(e) {
+      async function $(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/users/').concat(e), {
             method: 'DELETE',
@@ -1378,7 +1402,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function $(e) {
+      async function Q(e) {
         let t = await d(''.concat(i.CT, '/api/v1/settings?accountId=').concat(e), { headers: c() });
         return (t.ok || (await (0, o.zG)({ response: t })), t.json());
       }
@@ -1679,6 +1703,63 @@
       function m(e, t, a) {
         o.I.info(e, { domain: 'jobs', operation: t, metadata: a });
       }
+    },
+    1103: function (e, t, a) {
+      'use strict';
+      function o(e) {
+        var t, a, o;
+        let i = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 24;
+        return (o = e.label
+          ? e.label
+          : e.title
+            ? e.title
+            : e.name
+              ? e.name
+              : 'Lexeme' === e.kind && e.lemma
+                ? e.lemma
+                : 'Phrase' === e.kind && (e.text || e.normalized_text)
+                  ? e.text || e.normalized_text || ''
+                  : 'VerifiedClaim' === e.kind && e.claim_text
+                    ? e.claim_text
+                    : 'Principal' === e.kind
+                      ? e.display_name
+                        ? e.display_name
+                        : 'agent' === e.principal_kind && e.platform
+                          ? {
+                              chatgpt: 'ChatGPT',
+                              claude: 'Claude',
+                              gemini: 'Gemini',
+                              unknown: 'AI Assistant',
+                            }[(t = e.platform).toLowerCase()] || t
+                          : 'human' === e.principal_kind && e.email
+                            ? e.email
+                            : ((a = e.principal_kind) &&
+                                { human: 'User', agent: 'AI Assistant', contact: 'Contact' }[a]) ||
+                              'Principal'
+                      : 'ConversationThread' === e.kind
+                        ? e.title
+                          ? e.title
+                          : e.purpose
+                            ? ''.concat(n(e.purpose), ' thread')
+                            : 'Conversation'
+                        : e.role
+                          ? ''.concat(n(e.role), ' message')
+                          : e.language
+                            ? ''.concat(e.language, ' code')
+                            : e.kind
+                                .replace(/([a-z])([A-Z])/g, '$1 $2')
+                                .replace(/^./, (e) => e.toUpperCase())).length <= i
+          ? o
+          : o.slice(0, i - 1) + '…';
+      }
+      function n(e) {
+        return e.charAt(0).toUpperCase() + e.slice(1).toLowerCase();
+      }
+      a.d(t, {
+        F: function () {
+          return o;
+        },
+      });
     },
     1482: function (e, t, a) {
       'use strict';
@@ -2061,14 +2142,18 @@
       'use strict';
       a.d(t, {
         O: function () {
-          return c;
+          return p;
         },
       });
       var o = a(7582),
         n = a(4452),
-        i = a(1493);
-      let r = [300, 900, 2100],
-        s = new Set([
+        i = a(1493),
+        r = a(1103);
+      let s = [300, 900, 2100],
+        l = new Set([
+          'AccountNode',
+          'UserNode',
+          'AgentNode',
           'ChatThread',
           'Source',
           'SourceDoc',
@@ -2082,8 +2167,70 @@
           'VerifiedClaim',
           'CodeBlock',
           'Topic',
-        ]),
-        l = {
+          'Board',
+        ]);
+      function c(e) {
+        var t, a;
+        let o = e.properties || {},
+          n = 'object' == typeof o.contact_info && o.contact_info ? o.contact_info : void 0,
+          i =
+            'string' == typeof (null == n ? void 0 : n.source_platform)
+              ? n.source_platform
+              : 'string' == typeof o.platform
+                ? o.platform
+                : void 0,
+          s = (0, r.F)({ id: e.id, kind: e.kind, ...o, platform: i });
+        return {
+          id: e.id,
+          type: (function (e) {
+            switch (e) {
+              case 'ChatThread':
+                return 'conversation';
+              case 'Message':
+                return 'message';
+              case 'Source':
+                return 'source';
+              case 'CodeBlock':
+                return 'code';
+              default:
+                return e || 'source';
+            }
+          })(e.kind),
+          kind: e.kind,
+          sourceRole: null === (t = e.properties) || void 0 === t ? void 0 : t.source_role,
+          position: { x: 800 * Math.random(), y: 600 * Math.random() },
+          data: {
+            label: s,
+            content: null === (a = e.properties) || void 0 === a ? void 0 : a.content,
+            metadata: e.properties,
+          },
+        };
+      }
+      function d(e) {
+        return {
+          id: e.id,
+          source: 'string' == typeof e.from ? e.from : e.from.id,
+          target: 'string' == typeof e.to ? e.to : e.to.id,
+          type: (function (e) {
+            switch (e) {
+              case 'CONTAINS':
+              case 'HAS_MESSAGE':
+                return 'contains';
+              case 'DERIVES_FROM':
+              case 'EXTRACTED_FROM':
+                return 'derives';
+              case 'COMPILED_FROM':
+              case 'STITCHED_FROM':
+                return 'compiled';
+              default:
+                return 'references';
+            }
+          })(e.kind),
+          kind: e.kind,
+          data: e.properties,
+        };
+      }
+      let u = {
           nodes: [],
           edges: [],
           isLoading: !1,
@@ -2101,10 +2248,10 @@
           },
           currentAccountId: null,
         },
-        c = (0, o.Ue)()(
+        p = (0, o.Ue)()(
           (0, n.mW)(
             (e, t) => ({
-              ...l,
+              ...u,
               setNodes: (t) => e({ nodes: t }),
               setEdges: (t) => e({ edges: t }),
               loadGraphData: async () => {
@@ -2112,17 +2259,17 @@
                 try {
                   let t = null,
                     a = null;
-                  for (let e = 0; e <= r.length; e += 1)
+                  for (let e = 0; e <= s.length; e += 1)
                     try {
                       [t, a] = await Promise.all([
                         (0, i.v$)({ limit: 1e5 }),
-                        (0, i.W8)({ limit: 2e5 }),
+                        (0, i.W8)({ limit: 2e5, sort: 'created_at', order: 'desc' }),
                       ]);
                       break;
                     } catch (t) {
                       if (
                         !(
-                          e < r.length &&
+                          e < s.length &&
                           (function (e) {
                             let t = null == e ? void 0 : e.statusCode,
                               a = ((null == e ? void 0 : e.message) || '').toLowerCase();
@@ -2140,86 +2287,57 @@
                         throw t;
                       await (function (e) {
                         return new Promise((t) => setTimeout(t, e));
-                      })(r[e]);
+                      })(s[e]);
                     }
                   if (!t || !a) throw Error('Failed to load graph data after retries');
-                  let o = t.nodes.map((e) => {
-                      var t, a, o, n;
-                      return {
-                        id: e.id,
-                        type: (function (e) {
-                          switch (e) {
-                            case 'ChatThread':
-                              return 'conversation';
-                            case 'Message':
-                              return 'message';
-                            case 'Source':
-                              return 'source';
-                            case 'CodeBlock':
-                              return 'code';
-                            default:
-                              return e || 'source';
-                          }
-                        })(e.kind),
-                        kind: e.kind,
-                        sourceRole:
-                          null === (t = e.properties) || void 0 === t ? void 0 : t.source_role,
-                        position: { x: 800 * Math.random(), y: 600 * Math.random() },
-                        data: {
-                          label:
-                            (null === (a = e.properties) || void 0 === a ? void 0 : a.title) ||
-                            (null === (o = e.properties) || void 0 === o ? void 0 : o.name) ||
-                            e.id.slice(0, 8),
-                          content: null === (n = e.properties) || void 0 === n ? void 0 : n.content,
-                          metadata: e.properties,
-                        },
-                      };
-                    }),
+                  let o = t.nodes.map(c),
                     n = o;
                   o.length > 5e3 &&
-                    ((n = o.filter((e) => s.has(e.kind || e.type))),
+                    ((n = o.filter((e) => l.has(e.kind || e.type))),
                     console.info(
                       '[Keimenon] Smart filter: '
                         .concat(o.length, ' nodes → ')
                         .concat(n.length, ' structural nodes')
                     ));
-                  let l = new Set(n.map((e) => e.id)),
-                    c = a.edges
-                      .filter((e) => {
-                        let t = 'string' == typeof e.from ? e.from : e.from.id,
-                          a = 'string' == typeof e.to ? e.to : e.to.id;
-                        return l.has(t) && l.has(a);
-                      })
-                      .map((e) => ({
-                        id: e.id,
-                        source: 'string' == typeof e.from ? e.from : e.from.id,
-                        target: 'string' == typeof e.to ? e.to : e.to.id,
-                        type: (function (e) {
-                          switch (e) {
-                            case 'CONTAINS':
-                            case 'HAS_MESSAGE':
-                              return 'contains';
-                            case 'DERIVES_FROM':
-                            case 'EXTRACTED_FROM':
-                              return 'derives';
-                            case 'COMPILED_FROM':
-                            case 'STITCHED_FROM':
-                              return 'compiled';
-                            default:
-                              return 'references';
-                          }
-                        })(e.kind),
-                        kind: e.kind,
-                        data: e.properties,
-                      }));
-                  e({ nodes: n, edges: c, isLoading: !1, error: null });
+                  let r = new Set(n.map((e) => e.id)),
+                    u = a.edges.map(d).filter((e) => r.has(e.source) && r.has(e.target));
+                  e({ nodes: n, edges: u, isLoading: !1, error: null });
                 } catch (t) {
                   (console.error('Failed to load graph data:', t),
                     e({ isLoading: !1, error: t.message || 'Failed to load graph data' }));
                 }
               },
-              addNode: (t) => e((e) => ({ nodes: [...e.nodes, t] })),
-              addEdge: (t) => e((e) => ({ edges: [...e.edges, t] })),
+              hydrateGraphSubset: function (t) {
+                let a = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : [];
+                return e((e) => {
+                  let o = new Map(e.nodes.map((e) => [e.id, e]));
+                  for (let e of t) {
+                    let t = c(e),
+                      a = o.get(t.id);
+                    a ? o.set(t.id, { ...a, ...t, position: a.position }) : o.set(t.id, t);
+                  }
+                  let n = Array.from(o.values()),
+                    i = new Set(n.map((e) => e.id)),
+                    r = new Map(e.edges.map((e) => [e.id, e]));
+                  for (let e of a) {
+                    let t = d(e);
+                    i.has(t.source) && i.has(t.target) && r.set(t.id, t);
+                  }
+                  return { nodes: n, edges: Array.from(r.values()) };
+                });
+              },
+              addNode: (t) =>
+                e((e) => ({
+                  nodes: e.nodes.some((e) => e.id === t.id)
+                    ? e.nodes.map((e) => (e.id === t.id ? { ...e, ...t } : e))
+                    : [...e.nodes, t],
+                })),
+              addEdge: (t) =>
+                e((e) => ({
+                  edges: e.edges.some((e) => e.id === t.id)
+                    ? e.edges.map((e) => (e.id === t.id ? { ...e, ...t } : e))
+                    : [...e.edges, t],
+                })),
               updateNode: (t, a) =>
                 e((e) => ({ nodes: e.nodes.map((e) => (e.id === t ? { ...e, ...a } : e)) })),
               deleteNode: (t) =>
@@ -2315,7 +2433,7 @@
                 return (n.delete(e), a.filter((e) => n.has(e.id)));
               },
               setCurrentAccountId: (t) => e({ currentAccountId: t }),
-              reset: () => e(l),
+              reset: () => e(u),
             }),
             { name: 'KeimenonStore' }
           )
@@ -2471,6 +2589,16 @@
           kind: i.i0('ObjectiveClaim'),
           claim_text: i.Z_(),
           type: i.Km(['fact', 'endpoint', 'parameter', 'definition', 'metric', 'config']),
+          archetype: i
+            .Km([
+              'factual_claim',
+              'endpoint_contract',
+              'parameter_constraint',
+              'definition_anchor',
+              'metric_signal',
+              'configuration_rule',
+            ])
+            .default('factual_claim'),
           status: i
             .dj(
               (e) => ('unverified' === e ? 'provisional' : e),
@@ -3072,7 +3200,7 @@
           createReviewFolders: i.O7().default(!0),
           autoMergeSuggestions: i.O7().default(!1),
         }),
-        I = i.Ry({
+        k = i.Ry({
           enabled: i.O7().default(!1),
           extractLexemes: i.O7().default(!0),
           extractPhrases: i.O7().default(!0),
@@ -3080,20 +3208,20 @@
           minPhraseFrequency: i.Rx().min(1).default(2),
           minPhrasesPerTopic: i.Rx().min(1).default(3),
         }),
-        k = i.Ry({
+        I = i.Ry({
           storageMode: b.default('local'),
           allowExternalAPIs: i.O7().default(!1),
           apiKey: i.Z_().nullable().default(null),
         }),
-        S = i.Ry({
+        C = i.Ry({
           grouping: x,
           sources: E,
           code: R,
           duplicates: T,
-          privacy: k,
-          spine: I.optional(),
+          privacy: I,
+          spine: k.optional(),
         }),
-        C = i.G0([g, S]);
+        S = i.G0([g, C]);
       (i.Ry({
         version: i.Z_().default('1.0'),
         storageMode: b.default('local'),
@@ -3105,28 +3233,28 @@
           }),
         }),
         documentStore: i.Ry({ path: i.Z_(), enableDeduplication: i.O7().default(!0) }),
-        defaults: C.optional(),
+        defaults: S.optional(),
       }),
         v(),
         a(6031),
         a(9939),
         a(3902));
-      let O = i.Ry({
+      let A = i.Ry({
           tokens: i.Rx().optional(),
           cost_usd: i.Rx().optional(),
           timeout_ms: i.Rx().optional(),
         }),
-        A = i.Ry({ id: i.Z_(), url: i.Z_().optional() }),
+        O = i.Ry({ id: i.Z_(), url: i.Z_().optional() }),
         Z = i.Ry({ board_id: i.Z_(), snapshot_id: i.Z_() });
       (i.Ry({
         intent: i.Z_(),
-        seed_sources: i.IX(A),
-        budget: O.optional(),
+        seed_sources: i.IX(O),
+        budget: A.optional(),
         board_context: Z.optional(),
         planner_notes: i.Z_().optional(),
       }),
         i.Ry({ sources_pending: i.IX(u), notes: i.IX(i.Z_()) }),
-        i.Ry({ sources: i.IX(A), hints: i.IX(i.Z_()).optional() }));
+        i.Ry({ sources: i.IX(O), hints: i.IX(i.Z_()).optional() }));
       let N = i.Ry({
         heuristics_used: i.IX(i.Z_()),
         decisions: i.IX(
@@ -3144,14 +3272,14 @@
         equivalent_to_edges: i.IX(i.Ry({ from: i.Z_(), to: i.Z_() })),
         dedupe_report: N,
       });
-      let D = i.Ry({ plan_id: i.Z_(), checks: i.IX(i.Z_()) });
-      i.Ry({ verifier_plan: D, claim_ids: i.IX(i.Z_()).optional(), budget: O.optional() });
-      let P = i.Ry({
+      let P = i.Ry({ plan_id: i.Z_(), checks: i.IX(i.Z_()) });
+      i.Ry({ verifier_plan: P, claim_ids: i.IX(i.Z_()).optional(), budget: A.optional() });
+      let D = i.Ry({
         claim_id: i.Z_(),
         status: i.Km(['provisional', 'verifying', 'verified', 'contested', 'stale']),
         receipt_id: i.Z_(),
       });
-      (i.Ry({ verifier_run: _, claim_status_updates: i.IX(P), notes: i.IX(i.Z_()) }),
+      (i.Ry({ verifier_run: _, claim_status_updates: i.IX(D), notes: i.IX(i.Z_()) }),
         a(7864),
         ((o = n || (n = {})).PARSE = 'PARSE'),
         (o.NORMALIZE = 'NORMALIZE'),

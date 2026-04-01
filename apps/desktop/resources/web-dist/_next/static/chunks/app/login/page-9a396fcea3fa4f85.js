@@ -20,7 +20,7 @@
         o = s(5555),
         i = s(609),
         d = s(3029),
-        u = s(7070);
+        u = s(4175);
       let x = { admin: '\uD83D\uDEE1️', client: '\uD83D\uDCBC' },
         m = {
           free: { label: 'Free', color: 'bg-gray-100 text-gray-800' },
@@ -559,7 +559,7 @@
     },
   },
   function (e) {
-    (e.O(0, [44, 898, 195, 711, 444, 293, 528, 744], function () {
+    (e.O(0, [44, 898, 195, 711, 630, 293, 528, 744], function () {
       return e((e.s = 3106));
     }),
       (_N_E = e.O()));
