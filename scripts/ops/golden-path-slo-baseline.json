@@ -1,0 +1,12 @@
+{
+  "updatedAt": "2026-04-01T00:00:00.000Z",
+  "rolling7d": {
+    "runs": 50,
+    "failures": 0
+  },
+  "medians": {
+    "mediumImportMs": 600000,
+    "realGptImportMs": 1800000,
+    "similarityApplyMs": 45000
+  }
+}

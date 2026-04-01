@@ -222,6 +222,74 @@ export interface ImportGraphBirthMetadata {
   objectiveBuildTaskId?: string;
 }
 
+export interface GraphMaterializationSummary {
+  accountId: string;
+  uploadHash: string;
+  counts: {
+    accountNodes: number;
+    principals: number;
+    sources: number;
+    groups: number;
+  };
+  links: {
+    accountPrincipal: number;
+    sourcePrincipal: number;
+    sourceGroup: number;
+  };
+  createdInJob: {
+    sources: number;
+    groups: number;
+  };
+  passed: boolean;
+  missing: string[];
+}
+
+export type SimilarityReviewApplyPhase = 'pending' | 'ready' | 'applying' | 'completed' | 'failed';
+
+export type SimilarityReviewApplyReasonCode =
+  | 'REVIEW_APPLY_TIMEOUT'
+  | 'REVIEW_APPLY_CONFLICT'
+  | 'REVIEW_APPLY_FAILED';
+
+export interface SimilarityReviewApplySummary {
+  appliedDecisions: number;
+  actionCounts: Record<
+    'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge' | 'sequester',
+    number
+  >;
+  nodesSequestered: number;
+  nodesMerged: number;
+  edgesCreated: number;
+  pendingCandidates: number;
+}
+
+export interface SimilarityReviewApplyState {
+  phase: SimilarityReviewApplyPhase;
+  startedAt?: number;
+  completedAt?: number;
+  failedAt?: number;
+  reasonCode?: SimilarityReviewApplyReasonCode;
+  summary?: SimilarityReviewApplySummary;
+}
+
+export interface GoldenPathSloResult {
+  mode: 'pr' | 'nightly';
+  timestamp: string;
+  pass: boolean;
+  breaches: string[];
+  metrics: {
+    tinyImportMs?: number;
+    smallImportMs?: number;
+    mediumImportMs?: number;
+    realGptImportMs?: number;
+    similarityApplyMs?: number;
+    stalledJobsOver180s: number;
+    requiredScenarioFailures: number;
+    failureBudget7dPercent?: number;
+    regressionPercentVsMedian?: number;
+  };
+}
+
 export interface ObjectiveBuildTaskInput {
   importJobId: string;
   accountId: string;

@@ -1,5 +1,5 @@
 2:I[5428,[],"ClientPageRoot"]
-3:I[3262,["44","static/chunks/891cff7f-b345ed31983f3bd2.js","898","static/chunks/59c6eb5a-1d2781abfb0d1965.js","124","static/chunks/9d78c252-21fe6102ccf835c2.js","195","static/chunks/195-fe8b1ac930ce3c7a.js","613","static/chunks/613-f7724e12dd388a34.js","630","static/chunks/630-d81983eb9c3b942d.js","184","static/chunks/184-1351ee47d6894f99.js","710","static/chunks/app/keimenon/page-ddeea3321d809250.js"],"default",1]
+3:I[3262,["44","static/chunks/891cff7f-b345ed31983f3bd2.js","898","static/chunks/59c6eb5a-1d2781abfb0d1965.js","124","static/chunks/9d78c252-21fe6102ccf835c2.js","195","static/chunks/195-fe8b1ac930ce3c7a.js","613","static/chunks/613-f7724e12dd388a34.js","630","static/chunks/630-d81983eb9c3b942d.js","184","static/chunks/184-1351ee47d6894f99.js","710","static/chunks/app/keimenon/page-92baea98ea29db2c.js"],"default",1]
 4:I[5092,[],""]
 5:I[2023,[],""]
 6:I[521,["44","static/chunks/891cff7f-b345ed31983f3bd2.js","898","static/chunks/59c6eb5a-1d2781abfb0d1965.js","195","static/chunks/195-fe8b1ac930ce3c7a.js","630","static/chunks/630-d81983eb9c3b942d.js","184","static/chunks/184-1351ee47d6894f99.js","185","static/chunks/app/layout-d725ccfe66cb6a94.js"],"SentryProvider"]

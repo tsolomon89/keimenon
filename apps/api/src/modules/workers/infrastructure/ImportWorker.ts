@@ -22,6 +22,7 @@ import {
   ImportJobStage,
   IMPORT_STAGE_LABELS,
   featureManifestForAccountClass,
+  type GraphMaterializationSummary,
   type ImportGraphBirthMetadata,
   type ObjectiveBuildTaskInput,
   type NormalizedImportOptions,
@@ -138,6 +139,12 @@ export interface ParseQualityGateResult {
   };
 }
 
+export interface GraphMaterializationInvariantResult {
+  passed: boolean;
+  missing: string[];
+  message: string;
+}
+
 export interface ObjectiveQueueDecisionInput {
   objectiveLayerEnabled: boolean;
   agentRuntimeEnabled: boolean;
@@ -218,6 +225,49 @@ export function evaluateParseQualityGate(
   }
 
   return null;
+}
+
+export function evaluateGraphMaterializationInvariant(
+  summary: GraphMaterializationSummary
+): GraphMaterializationInvariantResult {
+  const missing: string[] = [];
+
+  if (summary.createdInJob.sources <= 0) {
+    missing.push('sources_created_in_job');
+  }
+  if (summary.createdInJob.groups <= 0) {
+    missing.push('groups_created_in_job');
+  }
+  if (summary.counts.accountNodes <= 0) {
+    missing.push('account_nodes');
+  }
+  if (summary.counts.principals <= 0) {
+    missing.push('principal_nodes');
+  }
+  if (summary.counts.sources <= 0) {
+    missing.push('source_nodes');
+  }
+  if (summary.counts.groups <= 0) {
+    missing.push('group_nodes');
+  }
+  if (summary.links.accountPrincipal <= 0) {
+    missing.push('account_principal_links');
+  }
+  if (summary.links.sourcePrincipal <= 0) {
+    missing.push('source_principal_links');
+  }
+  if (summary.links.sourceGroup <= 0) {
+    missing.push('source_group_links');
+  }
+
+  return {
+    passed: missing.length === 0,
+    missing,
+    message:
+      missing.length === 0
+        ? 'Graph materialization invariant satisfied.'
+        : `Graph materialization invariant failed: missing ${missing.join(', ')}`,
+  };
 }
 
 function normalizeErrorMessage(value: unknown): string {
@@ -1357,6 +1407,54 @@ export class ImportWorker extends BaseWorker {
         autoGroups: totalAutoGroups,
         sourcesCreated: totalSourcesCreated,
       });
+      const graphMaterialization = await this.collectGraphMaterializationSummary(
+        dbClient,
+        job.accountId,
+        uploadHash,
+        {
+          sources: totalSourcesCreated,
+          groups: totalManualGroups + totalAutoGroups,
+        }
+      );
+      const graphInvariant = evaluateGraphMaterializationInvariant(graphMaterialization);
+      const importTimeline = [
+        {
+          event: graphInvariant.passed
+            ? 'hierarchy_materialized'
+            : 'hierarchy_materialization_failed',
+          timestamp: Date.now(),
+          summary: graphMaterialization,
+        },
+      ];
+      if (!graphInvariant.passed) {
+        return {
+          success: false,
+          error: {
+            code: 'GRAPH_MATERIALIZATION_FAILED',
+            message: graphInvariant.message,
+            details: {
+              graphMaterialization,
+            },
+          },
+          metadata: {
+            uploadHash,
+            conversations: totalConversationsProcessed,
+            messages: totalMessagesProcessed,
+            checkpoint: finalCheckpoint,
+            changeTracker: serializeChangeTracker(changeTracker),
+            importGraphBirth,
+            graphMaterialization,
+            importTimeline,
+            parseErrors: {
+              count: parseErrorCount,
+              attempts: parseAttemptCount,
+              errorRate: parseErrorRate,
+              samples: parseErrorSamples,
+              hasMore: parseErrorCount > MAX_PARSE_ERROR_SAMPLES,
+            },
+          },
+        };
+      }
 
       let objectiveBuildTaskId: string | null = null;
       const objectiveQueueDecision = evaluateObjectiveQueueDecision({
@@ -1425,8 +1523,14 @@ export class ImportWorker extends BaseWorker {
         ...importGraphBirth,
         objectiveBuildTaskId: objectiveBuildTaskId || undefined,
       };
+      const existingMetadata = (job.state.metadata || {}) as Record<string, unknown>;
+      const existingTimeline = Array.isArray(existingMetadata.importTimeline)
+        ? (existingMetadata.importTimeline as unknown[])
+        : [];
       job.updateStateMetadata({
         importGraphBirth: graphBirthMetadata,
+        graphMaterialization,
+        importTimeline: [...existingTimeline, ...importTimeline],
         objectiveBuildTaskId: objectiveBuildTaskId || null,
       });
       await context.jobRepository.save(job);
@@ -1457,6 +1561,8 @@ export class ImportWorker extends BaseWorker {
           checkpoint: finalCheckpoint,
           changeTracker: serializeChangeTracker(changeTracker),
           importGraphBirth: graphBirthMetadata,
+          graphMaterialization,
+          importTimeline,
           parseErrors: {
             count: parseErrorCount,
             attempts: parseAttemptCount,
@@ -1570,6 +1676,93 @@ export class ImportWorker extends BaseWorker {
         max: edgeStrengthMean,
       },
     };
+  }
+
+  private async collectGraphMaterializationSummary(
+    dbClient: DatabaseClient,
+    accountId: string,
+    uploadHash: string,
+    createdInJob: { sources: number; groups: number }
+  ): Promise<GraphMaterializationSummary> {
+    const row = (
+      await dbClient.execute(
+        `
+          SELECT
+            (SELECT COUNT(*) FROM nodes WHERE account_id = @accountId AND kind = 'AccountNode') AS account_nodes,
+            (SELECT COUNT(*) FROM nodes WHERE account_id = @accountId AND kind = 'Principal') AS principal_nodes,
+            (SELECT COUNT(*) FROM nodes WHERE account_id = @accountId AND kind = 'Source') AS source_nodes,
+            (SELECT COUNT(*) FROM nodes WHERE account_id = @accountId AND kind = 'Group') AS group_nodes,
+            (
+              SELECT COUNT(*)
+              FROM edges e
+              JOIN nodes src ON src.id = e.from_id AND src.account_id = e.account_id
+              JOIN nodes dst ON dst.id = e.to_id AND dst.account_id = e.account_id
+              WHERE e.account_id = @accountId
+                AND e.kind = 'CONTAINS'
+                AND src.kind = 'AccountNode'
+                AND dst.kind = 'Principal'
+            ) AS account_principal_edges,
+            (
+              SELECT COUNT(*)
+              FROM edges e
+              JOIN nodes src ON src.id = e.from_id AND src.account_id = e.account_id
+              JOIN nodes dst ON dst.id = e.to_id AND dst.account_id = e.account_id
+              WHERE e.account_id = @accountId
+                AND e.kind = 'CREATED_BY'
+                AND src.kind = 'Source'
+                AND dst.kind = 'Principal'
+            ) AS source_principal_edges,
+            (
+              SELECT COUNT(*)
+              FROM edges e
+              JOIN nodes src ON src.id = e.from_id AND src.account_id = e.account_id
+              JOIN nodes dst ON dst.id = e.to_id AND dst.account_id = e.account_id
+              WHERE e.account_id = @accountId
+                AND e.kind = 'IN_GROUP'
+                AND src.kind = 'Source'
+                AND dst.kind = 'Group'
+            ) AS source_group_edges
+        `,
+        { accountId }
+      )
+    )?.records?.[0] as
+      | {
+          account_nodes?: number;
+          principal_nodes?: number;
+          source_nodes?: number;
+          group_nodes?: number;
+          account_principal_edges?: number;
+          source_principal_edges?: number;
+          source_group_edges?: number;
+        }
+      | undefined;
+
+    const summary: GraphMaterializationSummary = {
+      accountId,
+      uploadHash,
+      counts: {
+        accountNodes: Number(row?.account_nodes ?? 0),
+        principals: Number(row?.principal_nodes ?? 0),
+        sources: Number(row?.source_nodes ?? 0),
+        groups: Number(row?.group_nodes ?? 0),
+      },
+      links: {
+        accountPrincipal: Number(row?.account_principal_edges ?? 0),
+        sourcePrincipal: Number(row?.source_principal_edges ?? 0),
+        sourceGroup: Number(row?.source_group_edges ?? 0),
+      },
+      createdInJob: {
+        sources: Math.max(0, createdInJob.sources),
+        groups: Math.max(0, createdInJob.groups),
+      },
+      passed: false,
+      missing: [],
+    };
+
+    const invariant = evaluateGraphMaterializationInvariant(summary);
+    summary.passed = invariant.passed;
+    summary.missing = invariant.missing;
+    return summary;
   }
 
   private async enqueueObjectiveBuildTask(job: Job, importBatchId: string): Promise<string | null> {

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-01T12:47:59.772Z",
+  "generatedAt": "2026-04-01T17:51:40.871Z",
   "generatedBy": "scripts/desktop/refresh-web-dist.js",
   "buildProfile": "NEXT_OUTPUT_EXPORT=1",
-  "sourceFingerprint": "391504f4d94b11aefc84359493249ff322be329a84377d76f9907966e3623471",
+  "sourceFingerprint": "610a5eb9d44a3d3bd0b36f589d015654d9ae6d493ea6ab03a61ebd752b46c1e8",
   "sourceFileCount": 283
 }

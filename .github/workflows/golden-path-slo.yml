@@ -1,0 +1,70 @@
+name: Golden Path SLO
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  golden-path-slo:
+    name: Golden Path SLO
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: node scripts/run-with-node22.js "npx playwright install --with-deps chromium"
+
+      - name: Resolve SLO mode
+        id: slo_mode
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "mode=nightly" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=pr" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run golden-path SLO fixture flow
+        run: npm run e2e:golden-path:slo
+        env:
+          CI: 'true'
+          GOLDEN_SLO_MODE: ${{ steps.slo_mode.outputs.mode }}
+          BASE_URL: http://127.0.0.1:3211
+          API_BASE_URL: http://127.0.0.1:4001
+          TEST_USER_EMAIL: admin@admin.com
+          TEST_USER_PASSWORD: TestPass123!
+
+      - name: Evaluate SLO thresholds
+        run: >
+          npm run ops:golden-path:slo:eval --
+          --mode ${{ steps.slo_mode.outputs.mode }}
+          --metrics test-results/slo/golden-path-metrics.json
+          --baseline scripts/ops/golden-path-slo-baseline.json
+          --output test-results/slo/golden-path-slo-result.json
+
+      - name: Upload SLO artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-path-slo
+          path: |
+            test-results/slo/
+            playwright-report/

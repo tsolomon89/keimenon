@@ -257,6 +257,7 @@ describe('Jobs Routes - Duplicate Review API', () => {
     expect(completedStatus.body.status.decided_candidates).toBe(2);
     expect(completedStatus.body.status.completed).toBe(true);
     expect(completedStatus.body.status.review_required).toBe(false);
+    expect(completedStatus.body.status.apply_state.phase).toBe('completed');
   });
 
   it('applies sequester decisions non-destructively and preserves raw nodes', async () => {
@@ -333,5 +334,89 @@ describe('Jobs Routes - Duplicate Review API', () => {
       .expect(200);
     expect(statusResponse.body.status.stage).toBe('completed');
     expect(statusResponse.body.status.completed).toBe(true);
+    expect(statusResponse.body.status.apply_state.phase).toBe('completed');
+  });
+
+  it('returns idempotent success when apply is called after completion', async () => {
+    const job = await createImportJobWithReview();
+    insertNode('node_primary');
+    insertNode('node_duplicate');
+    insertCandidate({
+      id: 'row_idempotent',
+      jobId: job.id,
+      groupId: 'group_idempotent',
+      candidateId: 'cand_idempotent',
+      primaryNodeId: 'node_primary',
+      duplicateNodeId: 'node_duplicate',
+    });
+
+    await request(app)
+      .post(`/api/v1/jobs/${job.id}/duplicate-review/apply`)
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        decisions: [
+          {
+            duplicateId: 'cand_idempotent',
+            action: 'keep-both',
+            timestamp: 1700000004000,
+          },
+        ],
+      })
+      .expect(200);
+
+    const secondApply = await request(app)
+      .post(`/api/v1/jobs/${job.id}/duplicate-review/apply`)
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        decisions: [],
+      })
+      .expect(200);
+
+    expect(secondApply.body.success).toBe(true);
+    expect(secondApply.body.idempotent).toBe(true);
+    expect(secondApply.body.apply_state.phase).toBe('completed');
+    expect(secondApply.body.result.pending_candidates).toBe(0);
+  });
+
+  it('returns conflict when apply is already in progress', async () => {
+    const job = await createImportJobWithReview();
+    insertNode('node_primary_conflict');
+    insertNode('node_duplicate_conflict');
+    insertCandidate({
+      id: 'row_conflict',
+      jobId: job.id,
+      groupId: 'group_conflict',
+      candidateId: 'cand_conflict',
+      primaryNodeId: 'node_primary_conflict',
+      duplicateNodeId: 'node_duplicate_conflict',
+    });
+
+    job.updateStateMetadata({
+      duplicateReview: {
+        applyState: {
+          phase: 'applying',
+          startedAt: Date.now(),
+        },
+      },
+    });
+    await jobRepository.save(job);
+
+    const response = await request(app)
+      .post(`/api/v1/jobs/${job.id}/duplicate-review/apply`)
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        decisions: [
+          {
+            duplicateId: 'cand_conflict',
+            action: 'keep-both',
+            timestamp: 1700000005000,
+          },
+        ],
+      })
+      .expect(409);
+
+    expect(response.body.success).toBe(false);
+    expect(response.body.error).toBe('review_apply_conflict');
+    expect(response.body.reason_code).toBe('REVIEW_APPLY_CONFLICT');
   });
 });

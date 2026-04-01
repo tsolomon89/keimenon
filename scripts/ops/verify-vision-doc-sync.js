@@ -129,6 +129,16 @@ function main() {
   if (!/Three\.js is the required canonical renderer/i.test(contract)) {
     errors.push('vision-contract-v1.md must declare Three.js as canonical renderer.');
   }
+  if (!/objective creation\/enrichment is user-driven after import/i.test(agents)) {
+    errors.push(
+      'AGENTS.md must declare objective creation/enrichment as user-driven after import.'
+    );
+  }
+  if (!/objective creation\/enrichment is user-driven after import/i.test(contract)) {
+    errors.push(
+      'vision-contract-v1.md must declare objective creation/enrichment as user-driven after import.'
+    );
+  }
   const requiredCanvasClauses = [
     /Edge inspection hover/i,
     /Marquee multi-select/i,
@@ -178,6 +188,12 @@ function main() {
     ['agent_context/vision_gap_analysis.md', gapAnalysis],
   ];
   const forbiddenRendererPatterns = [/2d-only/i, /2D-only/i, /2d only/i];
+  const forbiddenObjectiveMaterializationPatterns = [
+    /objective baseline\/provisional/i,
+    /provisional objective layer (is|are) materialized/i,
+    /provisional objective nodes exist at import completion/i,
+    /objective auto-?materializ(es|ation)/i,
+  ];
   for (const [docPath, content] of derivedDocs) {
     for (const pattern of forbiddenPrecedencePatterns) {
       if (pattern.test(content)) {
@@ -187,6 +203,13 @@ function main() {
     for (const pattern of forbiddenRendererPatterns) {
       if (pattern.test(content)) {
         errors.push(`${docPath} contains forbidden renderer wording matching ${pattern}.`);
+      }
+    }
+    for (const pattern of forbiddenObjectiveMaterializationPatterns) {
+      if (pattern.test(content)) {
+        errors.push(
+          `${docPath} contains forbidden objective auto-materialization wording matching ${pattern}.`
+        );
       }
     }
   }

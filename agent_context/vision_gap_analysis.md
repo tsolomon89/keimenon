@@ -1,6 +1,6 @@
 # Keimenon Vision Gap Analysis (AGENTS-canonical Pass)
 
-Last updated: 2026-04-01.
+Last updated: 2026-04-01 (golden-path usability closure pass).
 
 Scope: current implementation state versus canonical `AGENTS.md` at repository root, with `agent_context/Kiemenon.md` retained as supplementary intent evidence.
 
@@ -36,6 +36,10 @@ Scope: current implementation state versus canonical `AGENTS.md` at repository r
 15. `KV-UX-013`: structural filtering and hierarchy materialization now preserve Account/Principal visibility in primary graph views.
 16. `KV-FEAT-006`: auth, account/user, principal, and import flows now materialize account/principal hierarchy links idempotently.
 17. `KV-AGENT-004`: conversation routes now enforce principal-scoped context validation and return explicit context indicators.
+18. Contract correction applied: import success now requires auto-materialized `Account -> Principal -> Source/Group`; objective/archetype creation remains user-driven post-import.
+19. Import worker now enforces golden-path graph materialization invariants and fails terminally with `GRAPH_MATERIALIZATION_FAILED` when hierarchy counts/links are missing.
+20. Duplicate review apply now uses deterministic state machine (`pending -> ready -> applying -> completed|failed`) with idempotent completion and explicit failure reason codes (`REVIEW_APPLY_TIMEOUT`, `REVIEW_APPLY_CONFLICT`).
+21. PR/nightly SLO gate infrastructure now emits/evaluates golden-path runtime artifacts via `tests/e2e/golden-path-slo.spec.ts` and `scripts/ops/evaluate-golden-path-slo.js`.
 
 ## Notes
 

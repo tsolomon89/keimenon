@@ -8,15 +8,15 @@ On conflict, `AGENTS.md` is authoritative.
 ## 1) Canonical Product Decisions
 
 1. Tier model:
-   - Free: automatic similarity graph plus objective baseline, manual refinement.
+   - Free: automatic similarity graph with `Account -> Principal -> Source/Group` materialization.
    - Pro: Free features plus agent runtime and verification capability.
    - Business: Pro features plus account-level multi-principal hierarchy.
 2. Raw personal content locality:
    - Raw content remains local-only in user-controlled storage/runtime.
    - Raw content is immutable once persisted for an import batch.
 3. Import completion semantics:
-   - Import completes when weighted graph and provisional objective layer are materialized.
-   - Deep verification can continue asynchronously through explicit lifecycle states.
+   - Import completes when weighted similarity graph plus `Account -> Principal -> Source/Group` hierarchy are materialized.
+   - Objective creation/enrichment is user-driven after import; deep verification can continue asynchronously through explicit lifecycle states.
 
 ## 2) Tier Entitlements (Server-Enforced)
 
@@ -63,7 +63,8 @@ Rules:
 
 ## 4) Objective Queue Contract
 
-Objective build queueing is allowed only when all are true:
+Import completion does not require objective node materialization.
+Objective build queueing is an optional post-import activation path, allowed only when all are true:
 
 - `objective_layer=true`
 - `agent_runtime=true`
@@ -98,7 +99,7 @@ Lifecycle states:
 
 Requirements:
 
-1. Provisional objective nodes exist at import completion for major clusters.
+1. Objective/archetype nodes are user-driven and may be created/activated after import completion.
 2. Verification artifacts preserve provenance and claim-evidence linkage.
 3. Verification adapters may degrade gracefully, but status remains explicit.
 

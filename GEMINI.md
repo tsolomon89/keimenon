@@ -61,8 +61,8 @@ They maintain claim-evidence linkage and provenance.
 
 Free behavior:
 
-- Similarity graph materializes at import completion.
-- Objective layer exists in baseline/provisional form.
+- Similarity graph materializes at import completion with `Account -> Principal -> Source/Group` hierarchy.
+- Objective capability is available, but objective creation/enrichment is user-driven after import.
 - No autonomous agent runtime.
 - No agent principal creation via runtime-facing user flows.
 
@@ -77,9 +77,10 @@ Free behavior:
 
 Pro behavior:
 
-- Same graph/objective baseline as Free.
+- Same graph/hierarchy baseline as Free.
 - Agent runtime is available.
 - Agent actions are manual-by-default at import time (no automatic activation).
+- Objective creation/enrichment remains user-driven; optional objective verification queueing can be explicitly activated.
 - User may explicitly create/activate agent workflows.
 
 ### 4.3 Business
@@ -114,7 +115,10 @@ Import must honor normalized options across UI/API/worker:
 
 Import builds weighted similarity relationships from language structure/mass and materializes grouped graph structure.
 
-### 5.4 Objective Queueing and Activation
+### 5.4 Objective Queueing and Optional Activation
+
+- Import completion does not require objective node materialization.
+- Objective queueing is an optional post-import activation path.
 
 Objective verification queueing requires all of:
 
@@ -129,6 +133,21 @@ If `agent.bootstrap == manual`, objective queueing is skipped with explicit reas
 
 Duplicate review is job-scoped and non-destructive.
 Actions may change model-scope inclusion/edges but do not physically delete raw nodes.
+
+### 5.6 Golden Path Materialization Invariant
+
+Import success requires non-empty hierarchy materialization for the target account:
+
+- at least one `AccountNode`
+- at least one `Principal`
+- at least one `Source`
+- at least one `Group`
+- account-to-principal hierarchy link(s)
+- principal-linked source lineage and source-group linkage
+
+If this invariant is not satisfied, import must terminate as failed with reason code
+`GRAPH_MATERIALIZATION_FAILED` and include actionable diagnostics.
+These checks are required for both multipart and chunked upload rails.
 
 ## 6. Agent Behavior Contract
 
@@ -191,8 +210,9 @@ The implementation is acceptable only when all are true:
 5. Entitlement gating is server-enforced and client-aware.
 6. Node-kind fidelity is preserved end-to-end.
 7. Manual-by-default agent bootstrap is enforced at import/runtime boundaries.
-8. Account -> Principal -> Source/Group/Objective hierarchy is visible and non-blank after materialization.
+8. Account -> Principal -> Source/Group hierarchy is visible and non-blank after materialization.
 9. Conversation threads show principal identity plus scoped context indicators derived from validated context sets.
+10. Objective/archetype nodes remain provenance-linked and user-driven after import completion.
 
 ## 10. Derived Artifacts
 

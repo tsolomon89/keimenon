@@ -48,6 +48,9 @@ export class ImportMetrics extends MetricsService {
     if (status === 'failed' && errorCode === 'WRITE_QUEUE_FAILURE') {
       this.incrementCounter('import_hard_zero_violation_total', { mode });
     }
+    if (status === 'failed' && errorCode === 'GRAPH_MATERIALIZATION_FAILED') {
+      this.incrementCounter('import_graph_materialization_failed_total', { mode });
+    }
   }
 
   recordSchemaMismatch(mode: string = 'unknown'): void {
