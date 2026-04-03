@@ -8,10 +8,10 @@
  */
 
 const path = require('path');
-const fs = require('fs');
 const { spawn } = require('child_process');
 const { killPorts } = require('./kill-port');
 const { checkPorts } = require('./check-port');
+const { loadApiEnv, resolveDevPorts } = require('./dev-runtime-config');
 
 const COLORS = {
   reset: '\x1b[0m',
@@ -22,21 +22,6 @@ const COLORS = {
   blue: '\x1b[34m',
   cyan: '\x1b[36m',
 };
-
-function loadApiEnv() {
-  const envPath = path.join(__dirname, '../apps/api/.env');
-  if (!fs.existsSync(envPath)) return;
-
-  const content = fs.readFileSync(envPath, 'utf8');
-  for (const line of content.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const match = trimmed.match(/^([^=]+)=(.*)$/);
-    if (match && !process.env[match[1]]) {
-      process.env[match[1]] = match[2].trim();
-    }
-  }
-}
 
 function printHeader() {
   console.log(`${COLORS.bright}${COLORS.cyan}`);
@@ -91,11 +76,10 @@ function startBrowserOrchestrator(extraArgs) {
 }
 
 async function main() {
-  loadApiEnv();
+  loadApiEnv({ overwrite: false });
   printHeader();
 
-  const apiPort = Number.parseInt(process.env.PORT || '4001', 10);
-  const webPort = Number.parseInt(process.env.WEB_PORT || '3000', 10);
+  const { apiPort, webPort } = resolveDevPorts({ loadApi: false });
   const extraArgs = process.argv.slice(2);
 
   await cleanPorts([apiPort, webPort]);

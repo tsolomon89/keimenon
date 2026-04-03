@@ -40,7 +40,10 @@ npm run sqlite:check
 
 ```bash
 npm run dev              # Orchestrated API + web startup
+npm run dev:boot         # Env/dependency boot helper, then dev startup
+npm run dev:check        # Check if API/web dev services are running
 npm run dev:clean        # Same as dev, with port cleanup
+npm run dev:reset        # Canonical reset (ports + local test DB cleanup)
 npm run validate         # Environment validation
 npm run doctor:runtime   # Verify Node 22 + better-sqlite3 runtime health
 npm run sqlite:check     # Run PRAGMA integrity_check on the configured DB

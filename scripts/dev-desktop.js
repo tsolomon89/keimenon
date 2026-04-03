@@ -1,9 +1,8 @@
-const { spawn } = require('child_process');
-const net = require('net');
+#!/usr/bin/env node
 
-const WEB_PORT = Number(process.env.WEB_PORT || 3000);
-const API_PORT = Number(process.env.API_PORT || 4001);
-const CHECK_INTERVAL_MS = 1000;
+const { spawn } = require('child_process');
+const { waitFor } = require('./wait-for');
+const { loadApiEnv, resolveDevPorts } = require('./dev-runtime-config');
 
 function log(prefix, data, isError = false) {
   const lines = data.toString().split('\n');
@@ -15,40 +14,8 @@ function log(prefix, data, isError = false) {
   });
 }
 
-function checkPort(port) {
-  return new Promise((resolve) => {
-    const socket = new net.Socket();
-    socket.setTimeout(500);
-    socket.on('connect', () => {
-      socket.destroy();
-      resolve(true);
-    });
-    socket.on('timeout', () => {
-      socket.destroy();
-      resolve(false);
-    });
-    socket.on('error', () => {
-      resolve(false);
-    });
-    socket.connect(port, '127.0.0.1');
-  });
-}
-
-async function waitForPort(port) {
-  console.log(`Waiting for port ${port} to be ready...`);
-  while (true) {
-    if (await checkPort(port)) {
-      console.log(`Port ${port} is ready!`);
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, CHECK_INTERVAL_MS));
-  }
-}
-
 function runCommand(command, args, prefix, cwd = process.cwd(), extraEnv = {}) {
-  // Clone env and remove ELECTRON_RUN_AS_NODE to allow Electron to work properly
-  // This env var is often set by VSCode or other Electron-based editors
-  const cleanEnv = { ...process.env, FORCE_COLOR: 'true', ...extraEnv };
+  const cleanEnv = { ...process.env, FORCE_COLOR: '1', ...extraEnv };
   delete cleanEnv.ELECTRON_RUN_AS_NODE;
 
   const child = spawn(command, args, {
@@ -61,57 +28,86 @@ function runCommand(command, args, prefix, cwd = process.cwd(), extraEnv = {}) {
   child.stdout.on('data', (data) => log(prefix, data));
   child.stderr.on('data', (data) => log(prefix, data, true));
 
-  child.on('close', (code) => {
-    console.log(`[${prefix}] Process exited with code ${code}`);
-    process.exit(code || 0);
-  });
-
   return child;
 }
 
 async function start() {
-  console.log('Starting Keimenon Hybrid Dev Mode...');
-  console.log(`Using ports: web=${WEB_PORT}, api=${API_PORT}`);
+  loadApiEnv({ overwrite: false });
+  const { webPort, apiPort } = resolveDevPorts({ loadApi: false });
 
-  // 1. Start Web Server
-  console.log('Starting Next.js server...');
+  console.log('Starting Keimenon hybrid desktop dev mode...');
+  console.log(`Using ports: web=${webPort}, api=${apiPort}`);
+
+  let shuttingDown = false;
+
   const webProcess = runCommand(
     'node',
     [
       'scripts/run-with-node22.js',
-      `npm run dev --workspace=@keimenon/web -- -p ${WEB_PORT} -H 127.0.0.1`,
+      `npm run dev --workspace=@keimenon/web -- -p ${webPort} -H 127.0.0.1`,
     ],
     'WEB',
     process.cwd(),
     { KEIMENON_ELECTRON_DEVTOOL: '1' }
   );
 
-  // 2. Wait for web port
-  await waitForPort(WEB_PORT);
+  try {
+    console.log(`Waiting for web readiness on http://127.0.0.1:${webPort} ...`);
+    await waitFor(`http://127.0.0.1:${webPort}`, {
+      timeout: 120000,
+      interval: 1000,
+      verbose: false,
+    });
+  } catch (error) {
+    webProcess.kill('SIGTERM');
+    throw new Error(`Web server failed readiness check: ${error.message}`);
+  }
 
-  // 3. Start Electron
-  console.log('Starting Electron...');
   const electronProcess = runCommand(
     'node',
     ['scripts/run-with-node22.js', 'npm run electron:dev --workspace=keimenon-desktop'],
     'ELECTRON',
     process.cwd(),
     {
-      WEB_PORT: String(WEB_PORT),
-      API_PORT: String(API_PORT),
+      WEB_PORT: String(webPort),
+      API_PORT: String(apiPort),
     }
   );
 
-  // Handle termination
-  const cleanup = () => {
-    console.log('Stopping processes...');
-    webProcess.kill();
-    electronProcess.kill();
-    process.exit();
+  const cleanup = (exitCode = 0) => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
+    console.log('Stopping desktop dev processes...');
+    webProcess.kill('SIGTERM');
+    electronProcess.kill('SIGTERM');
+    setTimeout(() => {
+      webProcess.kill('SIGKILL');
+      electronProcess.kill('SIGKILL');
+      process.exit(exitCode);
+    }, 1500).unref();
   };
 
-  process.on('SIGINT', cleanup);
-  process.on('SIGTERM', cleanup);
+  webProcess.on('close', (code) => {
+    if (!shuttingDown) {
+      console.error(`[WEB] Process exited with code ${code}`);
+      cleanup(code || 1);
+    }
+  });
+
+  electronProcess.on('close', (code) => {
+    if (!shuttingDown) {
+      console.error(`[ELECTRON] Process exited with code ${code}`);
+      cleanup(code || 1);
+    }
+  });
+
+  process.on('SIGINT', () => cleanup(0));
+  process.on('SIGTERM', () => cleanup(0));
 }
 
-start().catch(console.error);
+start().catch((error) => {
+  console.error(`[desktop-dev] ${error.message}`);
+  process.exit(1);
+});

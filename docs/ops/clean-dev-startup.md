@@ -74,5 +74,8 @@ Use clean-start when:
 ## Related Scripts
 
 1. `npm run dev` - normal startup
-2. `npm run dev:clean` - existing browser clean startup (`scripts/dev.js --clean`)
-3. `npm run dev:stop` - stop common dev ports
+2. `npm run dev:boot` - boot helper (env/deps) then normal startup
+3. `npm run dev:check` - check whether dev services are listening
+4. `npm run dev:reset` - canonical reset (ports + optional local test cleanup)
+5. `npm run dev:stop` - ports-only reset
+6. `npm run dev:clean` - existing browser clean startup (`scripts/dev.js --clean`)

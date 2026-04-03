@@ -12,13 +12,13 @@
     "packages/*"
   ],
   "scripts": {
-    "setup": "npm install && npm run check-ports && npm run prepare && echo \n✅ Setup complete! Run 'npm run dev' to start.",
+    "setup": "npm install && npm run check-ports && npm run prepare && echo Setup complete. Run 'npm run dev' to start.",
     "dev": "node scripts/run-with-node22.js \"node scripts/dev.js\"",
     "dev:clean": "node scripts/run-with-node22.js \"node scripts/dev.js --clean\"",
     "dev:clean:browser": "node scripts/run-with-node22.js \"node scripts/dev-clean-browser.js\"",
     "dev:clean:electron": "node scripts/run-with-node22.js \"node scripts/dev-clean-electron.js\"",
-    "dev:stop": "node scripts/dev-stop.js",
-    "cleanup:dev": "node scripts/cleanup-dev.js",
+    "dev:stop": "node scripts/run-with-node22.js \"node scripts/dev-stop.js\"",
+    "cleanup:dev": "node scripts/run-with-node22.js \"node scripts/cleanup-dev.js\"",
     "clean:legacy-artifacts": "node scripts/ops/clean-legacy-artifacts.js",
     "clean:repo-local": "node scripts/ops/clean-repo-local.js",
     "dev:desktop": "node scripts/run-with-node22.js \"node scripts/dev-desktop.js\"",
@@ -69,8 +69,8 @@
     "clean": "turbo run clean",
     "type-check": "node scripts/run-with-node22.js \"turbo run type-check --no-daemon\"",
     "validate": "node scripts/validate-env.js --verbose",
-    "kill-ports": "node scripts/kill-port.js 3000 4001",
-    "check-ports": "node scripts/check-port.js 3000 && node scripts/check-port.js 4001",
+    "kill-ports": "node scripts/kill-dev-ports.js",
+    "check-ports": "node scripts/check-dev-ports.js",
     "backup": "node scripts/run-with-node22.js \"node scripts/backup-db.js\"",
     "backup:compress": "node scripts/run-with-node22.js \"node scripts/backup-db.js --compress\"",
     "restore": "node scripts/run-with-node22.js \"node scripts/restore-db.js\"",
@@ -95,7 +95,11 @@
     "pretest": "node scripts/run-with-node22.js \"node scripts/check-node-version.js\"",
     "prebuild": "node scripts/run-with-node22.js \"node scripts/check-node-version.js\"",
     "prelint": "node scripts/run-with-node22.js \"node scripts/check-node-version.js\"",
-    "pretype-check": "node scripts/run-with-node22.js \"node scripts/check-node-version.js\""
+    "pretype-check": "node scripts/run-with-node22.js \"node scripts/check-node-version.js\"",
+    "dev:boot": "node scripts/run-with-node22.js \"node scripts/dev-boot.js\"",
+    "dev:check": "node scripts/run-with-node22.js \"node scripts/dev-check.js\"",
+    "dev:reset": "node scripts/run-with-node22.js \"node scripts/cleanup-dev.js\"",
+    "desktop:web-dist:sync": "node scripts/desktop/sync-web-dist.js"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",

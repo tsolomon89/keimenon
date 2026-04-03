@@ -1,154 +1,123 @@
+#!/usr/bin/env node
+
 /**
- * Development Environment Cleanup Script
- * Cross-platform Node.js version
+ * Development environment reset script.
  *
- * Performs comprehensive cleanup:
- * 1. Stops Node.js processes on dev ports (3000, 3001, 4001, 5173)
- * 2. Removes stale test databases
+ * Performs:
+ * 1) forced port cleanup for tracked dev ports
+ * 2) optional stale test database cleanup
  *
- * Usage: npm run cleanup:dev
+ * Usage:
+ *   npm run dev:reset
+ *   npm run dev:stop
+ *   node scripts/cleanup-dev.js --ports-only
  */
 
-const { exec, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
+const { killPorts } = require('./kill-port');
+const { checkPorts } = require('./check-port');
+const { loadApiEnv, resolveDevPorts } = require('./dev-runtime-config');
 
-const PORTS = [3000, 3001, 4001, 5173];
+const LEGACY_PORTS = [3001, 5173];
 const TEST_DB_DIR = path.join(__dirname, '..', '.test-dbs');
 
-console.log('\n====================================');
-console.log('   Dev Environment Cleanup');
-console.log('====================================\n');
+function getTrackedPorts() {
+  loadApiEnv({ overwrite: false });
+  const { apiPort, webPort } = resolveDevPorts({ loadApi: false });
 
-/**
- * Kill Node.js processes listening on dev ports
- * (Smarter than killing ALL node processes - avoids killing this script)
- */
-function killNodeProcesses() {
-  console.log('[1/3] Stopping Node.js processes on dev ports...');
-
-  const platform = os.platform();
-  let killedAny = false;
-
-  // Kill processes by port first (more targeted)
-  for (const port of PORTS) {
-    try {
-      if (platform === 'win32') {
-        const output = execSync(`netstat -ano | findstr :${port}`, {
-          encoding: 'utf8',
-          stdio: 'pipe',
-        });
-        const lines = output.split('\n').filter((line) => line.includes('LISTENING'));
-
-        for (const line of lines) {
-          const parts = line.trim().split(/\s+/);
-          const pid = parts[parts.length - 1];
-
-          if (pid && !isNaN(pid)) {
-            try {
-              execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
-              console.log(`  ✓ Stopped process on port ${port} (PID: ${pid})`);
-              killedAny = true;
-            } catch (e) {
-              // Process already dead
-            }
-          }
-        }
-      } else {
-        const output = execSync(`lsof -ti:${port}`, { encoding: 'utf8', stdio: 'pipe' });
-        const pids = output
-          .trim()
-          .split('\n')
-          .filter((pid) => pid);
-
-        for (const pid of pids) {
-          try {
-            execSync(`kill -9 ${pid}`, { stdio: 'ignore' });
-            console.log(`  ✓ Stopped process on port ${port} (PID: ${pid})`);
-            killedAny = true;
-          } catch (e) {
-            // Process already dead
-          }
-        }
-      }
-    } catch (error) {
-      // Port not in use - this is fine
-    }
-  }
-
-  if (!killedAny) {
-    console.log('  - No dev server processes found');
-  }
-
-  // Small delay to let processes terminate
-  if (killedAny) {
-    console.log('  - Waiting for processes to terminate...');
-    const start = Date.now();
-    while (Date.now() - start < 1500) {
-      // Busy wait for 1.5 seconds
-    }
-  }
+  const merged = new Set([apiPort, webPort, ...LEGACY_PORTS]);
+  return {
+    apiPort,
+    webPort,
+    ports: Array.from(merged),
+  };
 }
 
-/**
- * Clean up test databases
- */
-function cleanupTestDatabases() {
-  console.log('\n[2/2] Cleaning up test databases...');
+async function releasePorts(ports) {
+  console.log(`[reset] Releasing ports: ${ports.join(', ')}`);
+  await killPorts(ports, { force: true, timeout: 3000 });
 
+  const stillInUse = await checkPorts(ports);
+  if (stillInUse.size > 0) {
+    const detail = Array.from(stillInUse.entries())
+      .map(([port, info]) => `${port}(pid=${info.pid}, cmd=${info.command})`)
+      .join('; ');
+    throw new Error(`Ports still in use after cleanup: ${detail}`);
+  }
+
+  console.log('[reset] Port cleanup complete');
+}
+
+function cleanupTestDatabases() {
   if (!fs.existsSync(TEST_DB_DIR)) {
-    console.log('  - No test databases to clean');
+    console.log('[reset] No .test-dbs directory found, skipping DB cleanup');
+    return { deleted: 0 };
+  }
+
+  const files = fs.readdirSync(TEST_DB_DIR);
+  const targets = files.filter(
+    (file) =>
+      file.startsWith('worker-') &&
+      (file.endsWith('.db') || file.endsWith('.db-wal') || file.endsWith('.db-shm'))
+  );
+
+  if (targets.length === 0) {
+    console.log('[reset] No worker test DB files found, skipping DB cleanup');
+    return { deleted: 0 };
+  }
+
+  let deleted = 0;
+  for (const file of targets) {
+    const filePath = path.join(TEST_DB_DIR, file);
+    try {
+      fs.unlinkSync(filePath);
+      deleted += 1;
+      console.log(`[reset] Deleted ${file}`);
+    } catch (error) {
+      console.warn(`[reset] Failed to delete ${file}: ${error.message}`);
+    }
+  }
+
+  return { deleted };
+}
+
+async function resetDevEnvironment(options = {}) {
+  const { portsOnly = false } = options;
+  const tracked = getTrackedPorts();
+
+  console.log('====================================');
+  console.log('Keimenon Dev Reset');
+  console.log('====================================');
+  console.log(`[reset] Primary ports: api=${tracked.apiPort}, web=${tracked.webPort}`);
+
+  await releasePorts(tracked.ports);
+
+  if (portsOnly) {
+    console.log('[reset] Skipping test DB cleanup (--ports-only)');
     return;
   }
 
-  try {
-    const files = fs.readdirSync(TEST_DB_DIR);
-    const testDbFiles = files.filter(
-      (file) =>
-        file.startsWith('worker-') &&
-        (file.endsWith('.db') || file.endsWith('.db-wal') || file.endsWith('.db-shm'))
-    );
-
-    if (testDbFiles.length === 0) {
-      console.log('  - No test databases to clean');
-      return;
-    }
-
-    for (const file of testDbFiles) {
-      const filePath = path.join(TEST_DB_DIR, file);
-      try {
-        fs.unlinkSync(filePath);
-        console.log(`  ✓ Deleted ${file}`);
-      } catch (err) {
-        console.log(`  ✗ Failed to delete ${file}: ${err.message}`);
-      }
-    }
-  } catch (error) {
-    console.log(`  ✗ Error reading test database directory: ${error.message}`);
-  }
+  const { deleted } = cleanupTestDatabases();
+  console.log(`[reset] Test DB cleanup complete (deleted=${deleted})`);
 }
 
-/**
- * Main cleanup routine
- */
-function main() {
-  try {
-    killNodeProcesses();
-    cleanupTestDatabases();
+async function main() {
+  const args = process.argv.slice(2);
+  const portsOnly = args.includes('--ports-only');
 
-    console.log('\n====================================');
-    console.log('   Cleanup Complete!');
-    console.log('====================================\n');
-  } catch (error) {
-    console.error('\n✗ Cleanup failed:', error.message);
-    process.exit(1);
-  }
+  await resetDevEnvironment({ portsOnly });
+  console.log('[reset] Done');
 }
 
-// Run if called directly
 if (require.main === module) {
-  main();
+  main().catch((error) => {
+    console.error(`[reset] Failed: ${error.message}`);
+    process.exit(1);
+  });
 }
 
-module.exports = { killNodeProcesses, cleanupTestDatabases };
+module.exports = {
+  resetDevEnvironment,
+  cleanupTestDatabases,
+};

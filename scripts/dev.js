@@ -7,14 +7,14 @@
 
 const { spawn } = require('child_process');
 const path = require('path');
-const fs = require('fs');
 const { checkPorts } = require('./check-port');
 const { killPorts } = require('./kill-port');
 const { waitFor } = require('./wait-for');
 const { validateAll } = require('./validate-env');
+const { loadApiEnv, resolveDevPorts } = require('./dev-runtime-config');
 
-const PORTS = {
-  API: parseInt(process.env.PORT || '4001', 10),
+let PORTS = {
+  API: 4001,
   WEB: 3000,
 };
 
@@ -31,21 +31,6 @@ const COLORS = {
 
 const processes = [];
 let isShuttingDown = false;
-
-function loadEnv() {
-  const envPath = path.join(__dirname, '../apps/api/.env');
-  if (!fs.existsSync(envPath)) return;
-
-  const content = fs.readFileSync(envPath, 'utf8');
-  for (const line of content.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const match = trimmed.match(/^([^=]+)=(.*)$/);
-    if (match && !process.env[match[1]]) {
-      process.env[match[1]] = match[2].trim();
-    }
-  }
-}
 
 function printHeader() {
   console.log(`${COLORS.bright}${COLORS.cyan}`);
@@ -133,7 +118,7 @@ async function startAPI() {
     cwd: path.join(__dirname, '../apps/api'),
     stdio: ['ignore', 'pipe', 'pipe'],
     shell: true,
-    env: { ...process.env, FORCE_COLOR: '1' },
+    env: { ...process.env, FORCE_COLOR: '1', PORT: String(PORTS.API) },
   });
 
   processes.push({ name: 'API', process: apiProcess, port: PORTS.API });
@@ -164,15 +149,13 @@ async function startAPI() {
       cleanup().then(() => process.exit(1));
     }
   });
-
-  await new Promise((resolve) => setTimeout(resolve, 2000));
 }
 
 async function waitForAPIReady() {
   console.log(`${COLORS.blue}INFO${COLORS.reset} Waiting for API readiness...`);
 
   await waitFor(`http://127.0.0.1:${PORTS.API}/health`, {
-    timeout: 30000,
+    timeout: 60000,
     interval: 1000,
     verbose: false,
   });
@@ -222,8 +205,18 @@ async function startFrontend() {
       cleanup().then(() => process.exit(1));
     }
   });
+}
 
-  await new Promise((resolve) => setTimeout(resolve, 3000));
+async function waitForFrontendReady() {
+  console.log(`${COLORS.blue}INFO${COLORS.reset} Waiting for web readiness...`);
+
+  await waitFor(`http://127.0.0.1:${PORTS.WEB}`, {
+    timeout: 120000,
+    interval: 1000,
+    verbose: false,
+  });
+
+  console.log(`${COLORS.green}OK${COLORS.reset} Web ready (http://127.0.0.1:${PORTS.WEB})\n`);
 }
 
 function printReady() {
@@ -240,6 +233,7 @@ async function startServices() {
   await startAPI();
   await waitForAPIReady();
   await startFrontend();
+  await waitForFrontendReady();
   printReady();
 }
 
@@ -299,13 +293,26 @@ function keepAlive() {
   });
 }
 
+function applyResolvedPorts() {
+  const { apiPort, webPort } = resolveDevPorts({ loadApi: false });
+  PORTS = {
+    API: apiPort,
+    WEB: webPort,
+  };
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const clean = args.includes('--clean');
   const skipValidation = args.includes('--skip-validation');
 
-  loadEnv();
+  loadApiEnv({ overwrite: false });
+  applyResolvedPorts();
+
   printHeader();
+  console.log(
+    `${COLORS.blue}INFO${COLORS.reset} Ports configured: api=${PORTS.API}, web=${PORTS.WEB}\n`
+  );
 
   try {
     if (!skipValidation) {

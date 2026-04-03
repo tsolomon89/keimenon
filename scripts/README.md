@@ -6,9 +6,12 @@ Development and production helper scripts for Keimenon (local-only storage).
 
 ```bash
 npm run dev
+npm run dev:boot
+npm run dev:check
 npm run dev:clean
 npm run dev:clean:browser
 npm run dev:clean:electron
+npm run dev:reset
 npm run validate
 npm run check-ports
 npm run kill-ports
@@ -96,6 +99,20 @@ Flow:
 
 Boot helper that prepares env files/dependencies and then runs `dev.js`.
 
+### `dev-check.js`
+
+Checks whether API/web dev services are currently listening on the configured ports.
+
+### `cleanup-dev.js`
+
+Canonical reset entry point used by `dev:reset` and `dev:stop`.
+
+Behavior:
+
+1. Loads API env and resolves configured dev ports.
+2. Kills tracked dev ports (API/web + legacy helpers).
+3. Optionally cleans stale worker test DB files.
+
 ## Gate E Hardening Scripts
 
 ### `perf/lod-burnin.ts`
@@ -161,6 +178,14 @@ npm run ops:branch-protection:apply
 npm run ops:branch-protection:verify
 ```
 
+### `desktop/sync-web-dist.js`
+
+Runs desktop web bundle refresh and verification in one step.
+
+```bash
+npm run desktop:web-dist:sync
+```
+
 ## Port Reference
 
 | Port | Service | Protocol |
@@ -178,6 +203,8 @@ npm run kill-ports
 npm run dev:clean
 ```
 
+`check-ports`/`kill-ports` resolve ports from `apps/api/.env` (`PORT`) and `WEB_PORT`.
+
 ### Environment issues
 
 ```bash
@@ -189,7 +216,7 @@ cp apps/web/.env.example apps/web/.env.local
 ### Restart quickly
 
 ```bash
-npm run kill-ports
+npm run dev:reset
 npm run dev
 ```
 

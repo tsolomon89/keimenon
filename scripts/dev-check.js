@@ -1,81 +1,48 @@
 #!/usr/bin/env node
 
 /**
- * Check which development servers are currently running
+ * Check whether dev servers are listening on the configured ports.
  * Usage: npm run dev:check
  */
 
-const { exec } = require('child_process');
-const { promisify } = require('util');
-const execAsync = promisify(exec);
-
-const PORTS = {
-  api: 4001,
-  web: 3000,
-};
-
-async function checkPort(port) {
-  try {
-    if (process.platform === 'win32') {
-      const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
-      return stdout.trim().length > 0;
-    } else {
-      const { stdout } = await execAsync(`lsof -i :${port} | grep LISTEN`);
-      return stdout.trim().length > 0;
-    }
-  } catch (error) {
-    return false; // No process on this port
-  }
-}
-
-async function getProcessInfo(port) {
-  try {
-    if (process.platform === 'win32') {
-      const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
-      const lines = stdout.trim().split('\n');
-      const pids = lines.map(line => {
-        const parts = line.trim().split(/\s+/);
-        return parts[parts.length - 1];
-      }).filter((pid, index, self) => self.indexOf(pid) === index);
-      return pids;
-    } else {
-      const { stdout } = await execAsync(`lsof -ti :${port}`);
-      return stdout.trim().split('\n').filter(Boolean);
-    }
-  } catch (error) {
-    return [];
-  }
-}
+const { checkPorts } = require('./check-port');
+const { loadApiEnv, resolveDevPorts } = require('./dev-runtime-config');
 
 async function main() {
-  console.log('🔍 Checking development servers...\n');
+  loadApiEnv({ overwrite: false });
+  const { apiPort, webPort } = resolveDevPorts({ loadApi: false });
 
+  const ports = new Map([
+    ['api', apiPort],
+    ['web', webPort],
+  ]);
+
+  console.log(`Checking development servers (api=${apiPort}, web=${webPort})...\n`);
+
+  const conflicts = await checkPorts([apiPort, webPort]);
   let anyRunning = false;
 
-  for (const [name, port] of Object.entries(PORTS)) {
-    const isRunning = await checkPort(port);
-
-    if (isRunning) {
-      const pids = await getProcessInfo(port);
-      console.log(`✅ ${name.toUpperCase()} server is running on port ${port}`);
-      console.log(`   PIDs: ${pids.join(', ')}`);
+  for (const [name, port] of ports) {
+    const info = conflicts.get(port);
+    if (info) {
       anyRunning = true;
+      console.log(
+        `OK   ${name.toUpperCase()} listening on ${port} (pid=${info.pid}, cmd=${info.command})`
+      );
     } else {
-      console.log(`❌ ${name.toUpperCase()} server is NOT running (port ${port} free)`);
+      console.log(`MISS ${name.toUpperCase()} not listening on ${port}`);
     }
   }
 
-  if (!anyRunning) {
-    console.log('\n💡 No servers running. Start with:');
-    console.log('   npm run dev        (orchestrated startup)');
-    console.log('   cd apps/api && npm run dev   (API only)');
+  console.log('');
+  if (anyRunning) {
+    console.log('To stop dev services: npm run dev:stop');
   } else {
-    console.log('\n💡 To stop servers:');
-    console.log('   npm run dev:stop');
+    console.log('No tracked dev services are running. Start with: npm run dev');
   }
 }
 
-main().catch(error => {
-  console.error('Error checking servers:', error.message);
+main().catch((error) => {
+  console.error(`Error checking servers: ${error.message}`);
   process.exit(1);
 });
