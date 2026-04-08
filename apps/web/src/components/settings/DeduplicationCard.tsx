@@ -20,6 +20,7 @@ import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { errorCapture } from '@/services/error-capture.service';
 import { logJobEvent } from '@/lib/error-handler';
 import { API_BASE_URL } from '@/lib/env.config';
+import { authenticatedFetch } from '@/lib/api-client';
 
 interface DeduplicationStats {
   totalNodes: number;
@@ -64,18 +65,9 @@ export function DeduplicationCard() {
     setError(null);
 
     try {
-      const token = localStorage.getItem('keimenon_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${API_BASE_URL}/api/v1/deduplication/stats?accountId=${user.accountId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        {}
       );
 
       if (!response.ok) {
@@ -180,16 +172,10 @@ export function DeduplicationCard() {
     });
 
     try {
-      const token = localStorage.getItem('keimenon_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/v1/deduplication/merge`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/deduplication/merge`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ accountId: user.accountId }),
       });

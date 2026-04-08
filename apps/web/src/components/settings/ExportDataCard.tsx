@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Download, Loader2 } from 'lucide-react';
 import { errorCapture } from '@/services/error-capture.service';
 import { API_BASE_URL } from '@/lib/env.config';
+import { authenticatedFetch } from '@/lib/api-client';
 
 type ExportFormat = 'json' | 'csv' | 'graphml';
 
@@ -40,19 +41,10 @@ export function ExportDataCard({ exportFormat }: ExportDataCardProps) {
     try {
       setIsExporting(true);
       setError(null);
-
-      const token = localStorage.getItem('keimenon_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${API_BASE_URL}/api/v1/data/export?format=${encodeURIComponent(resolvedFormat)}`,
         {
           method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         }
       );
 

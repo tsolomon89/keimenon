@@ -74,6 +74,8 @@ export class DatabaseWriteQueue {
 
   private readonly FLUSH_INTERVAL_MS = 100;
   private readonly BATCH_SIZE_THRESHOLD = 50;
+  private readonly MAX_NODES_PER_FLUSH = 400;
+  private readonly MAX_EDGES_PER_FLUSH = 600;
 
   constructor(
     private db: DatabaseClient,
@@ -246,8 +248,8 @@ export class DatabaseWriteQueue {
       return;
     }
 
-    const nodes = this.nodeQueue.splice(0);
-    const edges = this.edgeQueue.splice(0);
+    const nodes = this.nodeQueue.splice(0, this.MAX_NODES_PER_FLUSH);
+    const edges = this.edgeQueue.splice(0, this.MAX_EDGES_PER_FLUSH);
     const startTime = Date.now();
 
     this.flushInProgress = true;
@@ -315,6 +317,16 @@ export class DatabaseWriteQueue {
       console.log(
         `[DatabaseWriteQueue] flushed ${flushResult.totalWritten}/${nodes.length + edges.length} items in ${durationMs}ms`
       );
+      if (flushResult.diagnostics?.sqlVariableSplit) {
+        const split = flushResult.diagnostics.sqlVariableSplit;
+        console.warn(
+          `[DatabaseWriteQueue] SQL variable split retry applied ` +
+            `(nodes=${split.nodesAttempted}, edges=${split.edgesAttempted}, ` +
+            `nodeChunks=${split.nodeChunksProcessed}, edgeChunks=${split.edgeChunksProcessed}, ` +
+            `splitRetries=${split.splitRetries}, nodeFallback=${split.nodeFallbackWrites}, ` +
+            `edgeFallback=${split.edgeFallbackWrites})`
+        );
+      }
 
       if (this.broadcaster && perAccount.size > 0) {
         const queueStats = {

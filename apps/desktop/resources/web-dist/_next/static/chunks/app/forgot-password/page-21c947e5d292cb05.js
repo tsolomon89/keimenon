@@ -29,12 +29,12 @@
           [p, f] = (0, s.useState)(''),
           [h, x] = (0, s.useState)(''),
           [_, E] = (0, s.useState)(''),
-          [N, w] = (0, s.useState)(!1),
-          [b, g] = (0, s.useState)(null),
+          [w, N] = (0, s.useState)(!1),
+          [g, b] = (0, s.useState)(null),
           [T, y] = (0, s.useState)(null),
           v = async (t) => {
-            if ((t.preventDefault(), w(!0), g(null), y(null), m && h !== _)) {
-              (w(!1), g('Passwords do not match.'));
+            if ((t.preventDefault(), N(!0), b(null), y(null), m && h !== _)) {
+              (N(!1), b('Passwords do not match.'));
               return;
             }
             try {
@@ -63,9 +63,9 @@
                   ),
                   f(''));
             } catch (e) {
-              (console.error('Forgot password error:', e), g(e.message || 'Something went wrong.'));
+              (console.error('Forgot password error:', e), b(e.message || 'Something went wrong.'));
             } finally {
-              w(!1);
+              N(!1);
             }
           };
         return (0, n.jsx)('div', {
@@ -94,7 +94,7 @@
                   }),
                 ],
               }),
-              b &&
+              g &&
                 (0, n.jsxs)('div', {
                   className:
                     'bg-red-900/20 border border-red-500/50 rounded-lg p-4 flex items-start gap-3',
@@ -106,7 +106,7 @@
                           className: 'text-sm font-medium text-red-300',
                           children: 'Reset failed',
                         }),
-                        (0, n.jsx)('p', { className: 'text-sm text-red-400 mt-1', children: b }),
+                        (0, n.jsx)('p', { className: 'text-sm text-red-400 mt-1', children: g }),
                       ],
                     }),
                   ],
@@ -155,7 +155,7 @@
                               required: !0,
                               value: p,
                               onChange: (e) => f(e.target.value),
-                              disabled: N,
+                              disabled: w,
                               className:
                                 'w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed',
                               placeholder: 'name@example.com',
@@ -180,7 +180,7 @@
                                   required: !0,
                                   value: h,
                                   onChange: (e) => x(e.target.value),
-                                  disabled: N,
+                                  disabled: w,
                                   className:
                                     'w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed',
                                   placeholder: 'Enter a strong password',
@@ -202,7 +202,7 @@
                                   required: !0,
                                   value: _,
                                   onChange: (e) => E(e.target.value),
-                                  disabled: N,
+                                  disabled: w,
                                   className:
                                     'w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed',
                                   placeholder: 'Repeat your new password',
@@ -215,10 +215,10 @@
                   }),
                   (0, n.jsx)('button', {
                     type: 'submit',
-                    disabled: N,
+                    disabled: w,
                     className:
                       'w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-all shadow-lg shadow-purple-500/30',
-                    children: N
+                    children: w
                       ? 'Submitting...'
                       : m
                         ? 'Reset password'
@@ -254,78 +254,91 @@
       'use strict';
       r.d(t, {
         Ar: function () {
-          return u;
+          return d;
         },
         CT: function () {
-          return l;
+          return i;
         },
         Ku: function () {
-          return _;
+          return E;
         },
         LS: function () {
           return N;
         },
         M6: function () {
-          return h;
-        },
-        OJ: function () {
-          return c;
-        },
-        Qn: function () {
           return x;
         },
+        OJ: function () {
+          return u;
+        },
+        Qn: function () {
+          return _;
+        },
         X8: function () {
-          return f;
+          return h;
         },
         nj: function () {
-          return i;
+          return c;
         },
         oj: function () {
-          return p;
+          return f;
         },
         pA: function () {
-          return m;
+          return p;
         },
         yD: function () {
-          return d;
+          return m;
         },
         zC: function () {
-          return E;
+          return w;
         },
       });
-      var n,
-        s = r(4859);
-      function o(e) {
+      var n = r(4859);
+      function s(e) {
         let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : '';
-        return (void 0 !== s && s.env && s.env[e]) || t;
+        return (void 0 !== n && n.env && n.env[e]) || t;
       }
-      o('INTERNAL_API_URL');
-      let a =
-          ((n = 'apiPort'),
-          window.location ? new URLSearchParams(window.location.search).get(n) : null),
-        l =
-          (a ? 'http://127.0.0.1:'.concat(a) : null) ||
-          o('NEXT_PUBLIC_API_URL', 'http://127.0.0.1:4001');
-      (console.log('[Config] API_BASE_URL resolved to:', l),
-        o('NEXT_PUBLIC_ENABLE_PRO_FEATURES'),
-        o('NEXT_PUBLIC_ENABLE_BUSINESS_FEATURES'));
-      let i = '1' === o('NEXT_PUBLIC_ENABLE_LEGACY_IMPORTS'),
-        c = '1' === o('NEXT_PUBLIC_ENABLE_HYBRID_LOCAL_FIRST'),
-        u = 'false' !== o('NEXT_PUBLIC_ENABLE_3D_RENDERER', 'true');
-      o('NEXT_PUBLIC_USE_DIRECT_SSE');
-      let d = '1' === o('NEXT_PUBLIC_DEBUG_IMPORT_SELECTOR'),
-        m = 'true' === o('NEXT_PUBLIC_E2E_TESTING');
-      (parseInt(o('NEXT_PUBLIC_JOB_POLL_INTERVAL_MS', '2000'), 10),
-        parseInt(o('NEXT_PUBLIC_SSE_RECONNECT_TIMEOUT_MS', '5000'), 10),
-        parseInt(o('NEXT_PUBLIC_MAX_JOB_WAIT_MS', '1500000'), 10));
-      let p = o('NEXT_PUBLIC_SENTRY_DSN'),
-        f = o('NEXT_PUBLIC_SENTRY_ENVIRONMENT', o('NODE_ENV', 'production')),
-        h = parseFloat(o('NEXT_PUBLIC_SENTRY_SAMPLE_RATE', '1.0')),
-        x = parseFloat(o('NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE', '0.1')),
-        _ = parseFloat(o('NEXT_PUBLIC_SENTRY_REPLAY_SESSION_SAMPLE_RATE', '0.1')),
-        E = parseFloat(o('NEXT_PUBLIC_SENTRY_REPLAY_ERROR_SAMPLE_RATE', '1.0')),
-        N = 'false' !== o('NEXT_PUBLIC_SENTRY_SCRUB_PII', 'true');
-      (o('NEXT_PUBLIC_AUTH_DOMAIN'), o('NEXT_PUBLIC_AUTH_CLIENT_ID'), o('NODE_ENV', 'production'));
+      s('INTERNAL_API_URL');
+      let o = { apiPort: 'keimenon.startup.apiPort', dev: 'keimenon.startup.dev' };
+      function a(e) {
+        let t = window.location ? new URLSearchParams(window.location.search).get(e) : null;
+        if (t && t.trim().length > 0) {
+          try {
+            window.sessionStorage.setItem(o[e], t);
+          } catch (e) {}
+          return t;
+        }
+        try {
+          let t = window.sessionStorage.getItem(o[e]);
+          if (t && t.trim().length > 0) return t;
+        } catch (e) {}
+        return null;
+      }
+      let l = a('apiPort'),
+        i =
+          (l ? 'http://127.0.0.1:'.concat(l) : null) ||
+          s('NEXT_PUBLIC_API_URL', 'http://127.0.0.1:4001');
+      (console.log('[Config] API_BASE_URL resolved to:', i),
+        s('NEXT_PUBLIC_ENABLE_PRO_FEATURES'),
+        s('NEXT_PUBLIC_ENABLE_BUSINESS_FEATURES'));
+      let c = '1' === s('NEXT_PUBLIC_ENABLE_LEGACY_IMPORTS'),
+        u = '1' === s('NEXT_PUBLIC_ENABLE_HYBRID_LOCAL_FIRST'),
+        d = 'false' !== s('NEXT_PUBLIC_ENABLE_3D_RENDERER', 'true');
+      s('NEXT_PUBLIC_USE_DIRECT_SSE');
+      let m = '1' === s('NEXT_PUBLIC_DEBUG_IMPORT_SELECTOR');
+      a('dev');
+      let p = 'true' === s('NEXT_PUBLIC_E2E_TESTING');
+      (parseInt(s('NEXT_PUBLIC_JOB_POLL_INTERVAL_MS', '2000'), 10),
+        parseInt(s('NEXT_PUBLIC_SSE_RECONNECT_TIMEOUT_MS', '5000'), 10),
+        parseInt(s('NEXT_PUBLIC_MAX_JOB_WAIT_MS', '1500000'), 10));
+      let f = s('NEXT_PUBLIC_SENTRY_DSN'),
+        h = s('NEXT_PUBLIC_SENTRY_ENVIRONMENT', s('NODE_ENV', 'production')),
+        x = parseFloat(s('NEXT_PUBLIC_SENTRY_SAMPLE_RATE', '1.0')),
+        _ = parseFloat(s('NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE', '0.1')),
+        E = parseFloat(s('NEXT_PUBLIC_SENTRY_REPLAY_SESSION_SAMPLE_RATE', '0.1')),
+        w = parseFloat(s('NEXT_PUBLIC_SENTRY_REPLAY_ERROR_SAMPLE_RATE', '1.0')),
+        N = 'false' !== s('NEXT_PUBLIC_SENTRY_SCRUB_PII', 'true');
+      (s('NEXT_PUBLIC_AUTH_DOMAIN'), s('NEXT_PUBLIC_AUTH_CLIENT_ID'), s('NODE_ENV', 'production'));
     },
     1883: function (e, t, r) {
       'use strict';

@@ -4,7 +4,7 @@
  * Clean electron-mode startup:
  * 1) hard-stop conflicting ports
  * 2) kill stale Keimenon Electron app processes
- * 3) start existing electron orchestrator in ordered mode (WEB -> Electron -> embedded API)
+ * 3) start existing electron orchestrator in ordered mode (API -> /ready -> WEB -> Electron)
  */
 
 const path = require('path');
@@ -104,7 +104,7 @@ function startElectronOrchestrator(extraArgs) {
   const target = path.join(__dirname, 'dev-desktop.js');
   console.log(`${COLORS.bright}--- Startup ---${COLORS.reset}`);
   console.log(
-    `${COLORS.blue}INFO${COLORS.reset} Starting ordered electron stack (WEB -> Electron -> embedded API)\n`
+    `${COLORS.blue}INFO${COLORS.reset} Starting ordered electron stack (API -> /ready -> WEB -> Electron)\n`
   );
 
   const child = spawn(process.execPath, [target, ...extraArgs], {

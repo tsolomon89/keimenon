@@ -12,11 +12,24 @@ export default function HomePage() {
     // Wait for auth to load
     if (isLoading) return;
 
+    const currentParams =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search)
+        : new URLSearchParams();
+    const startupParams = new URLSearchParams();
+    for (const key of ['apiPort', 'dev']) {
+      const value = currentParams.get(key);
+      if (value) {
+        startupParams.set(key, value);
+      }
+    }
+    const startupQuery = startupParams.toString();
+
     // Redirect based on auth status
     if (isAuthenticated) {
-      router.push('/keimenon');
+      router.push(startupQuery ? `/keimenon?${startupQuery}` : '/keimenon');
     } else {
-      router.push('/login');
+      router.push(startupQuery ? `/login?${startupQuery}` : '/login');
     }
   }, [isAuthenticated, isLoading, router]);
 

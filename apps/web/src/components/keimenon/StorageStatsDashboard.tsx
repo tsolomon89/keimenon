@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getStorageStats, StorageStats } from '@/lib/api-client';
+import { authenticatedFetch, getStorageStats, StorageStats } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/env.config';
 
 interface DeduplicationStats {
@@ -35,9 +35,8 @@ export function StorageStatsDashboard() {
 
       // Fetch deduplication stats (optional - won't fail if unavailable)
       try {
-        const token = localStorage.getItem('keimenon_token');
         const userStr = localStorage.getItem('keimenon_user');
-        if (token && userStr) {
+        if (userStr) {
           // Bug fix #26: Safe JSON parsing with null guard
           let user: { accountId?: string } | null = null;
           try {
@@ -49,13 +48,9 @@ export function StorageStatsDashboard() {
             console.log('No valid user found in localStorage');
             return;
           }
-          const response = await fetch(
+          const response = await authenticatedFetch(
             `${API_BASE_URL}/api/v1/deduplication/stats?accountId=${user.accountId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+            {}
           );
 
           if (response.ok) {
@@ -269,7 +264,7 @@ export function StorageStatsDashboard() {
                     href="/settings?category=data&section=deduplication"
                     className="block mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
                   >
-                    Manage duplicates →
+                    Manage duplicates
                   </a>
                 </div>
               </div>

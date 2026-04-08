@@ -151,6 +151,8 @@ export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult 
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectAttempts = useRef(0);
   const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
+  const activeConnectionIdRef = useRef(0);
+  const exhaustedRetriesReportedRef = useRef(false);
   const mountedRef = useRef(true);
   // Track which jobs we've already fired completion callbacks for
   const completedJobsRef = useRef<Set<string>>(new Set());
@@ -177,12 +179,14 @@ export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult 
         // Close existing connection
         if (eventSourceRef.current) {
           eventSourceRef.current.close();
+          eventSourceRef.current = null;
         }
 
         // Create new EventSource
         // Note: EventSource doesn't support custom headers, so we pass token as query param
         const url = new URL(`${API_BASE_URL}/api/v1/stream/jobs`);
         url.searchParams.set('token', token);
+        const connectionId = ++activeConnectionIdRef.current;
 
         // PERFORMANCE FIX: Removed blocking health check that delayed SSE connection by up to 15 seconds
         // EventSource handles reconnection natively - error handlers below manage failures
@@ -195,6 +199,7 @@ export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult 
 
         // Handle connection open
         eventSource.addEventListener('open', () => {
+          if (connectionId !== activeConnectionIdRef.current) return;
           errorCapture.info('Job stream connected', {
             domain: 'jobs',
             operation: 'jobStream.open',
@@ -205,6 +210,11 @@ export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult 
           setReconnecting(false);
           setError(null);
           reconnectAttempts.current = 0;
+          exhaustedRetriesReportedRef.current = false;
+          if (reconnectTimer.current) {
+            clearTimeout(reconnectTimer.current);
+            reconnectTimer.current = null;
+          }
         });
 
         // Handle connection event
@@ -215,6 +225,7 @@ export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult 
 
         // Handle jobs.update event
         eventSource.addEventListener('jobs.update', (event) => {
+          if (connectionId !== activeConnectionIdRef.current) return;
           if (!mountedRef.current) return;
 
           try {
@@ -311,6 +322,7 @@ export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult 
 
         // Handle graph.update event
         eventSource.addEventListener('graph.update', (event) => {
+          if (connectionId !== activeConnectionIdRef.current) return;
           if (!mountedRef.current) return;
 
           try {
@@ -339,11 +351,13 @@ export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult 
         // Note: Heartbeat logging removed to reduce console noise
         // Heartbeats occur every ~5 seconds and provide minimal diagnostic value
         eventSource.addEventListener('heartbeat', () => {
+          if (connectionId !== activeConnectionIdRef.current) return;
           // Silently acknowledge heartbeat - connection status tracked via 'connected' state
         });
 
         // Handle errors
         eventSource.addEventListener('error', (event) => {
+          if (connectionId !== activeConnectionIdRef.current) return;
           const connectionContext = reconnectAttempts.current > 0 ? 'reconnection' : 'connection';
           const readyState = eventSource.readyState;
           const detailedMessage = getEventSourceErrorMessage(
@@ -372,9 +386,18 @@ export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult 
 
           setConnected(false);
 
+          // Ensure we do not run EventSource native reconnection in parallel with our own backoff.
+          if (eventSourceRef.current === eventSource) {
+            eventSource.close();
+            eventSourceRef.current = null;
+          }
+
           // Attempt reconnection with exponential backoff
           if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
             setReconnecting(true);
+            if (reconnectTimer.current) {
+              return;
+            }
             reconnectAttempts.current++;
 
             const delay = RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts.current - 1);
@@ -383,6 +406,7 @@ export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult 
             // Debug logging removed to reduce noise
 
             reconnectTimer.current = setTimeout(() => {
+              reconnectTimer.current = null;
               if (mountedRef.current) {
                 connect();
               }
@@ -392,15 +416,18 @@ export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult 
             setError(finalError);
             setReconnecting(false);
 
-            errorCapture.error(finalError, {
-              domain: 'jobs',
-              operation: 'jobStream.exhaustedRetries',
-              metadata: {
-                attempts: reconnectAttempts.current,
-                lastReadyState: readyState,
-                url: urlForLogging,
-              },
-            });
+            if (!exhaustedRetriesReportedRef.current) {
+              exhaustedRetriesReportedRef.current = true;
+              errorCapture.error(finalError, {
+                domain: 'jobs',
+                operation: 'jobStream.exhaustedRetries',
+                metadata: {
+                  attempts: reconnectAttempts.current,
+                  lastReadyState: readyState,
+                  url: urlForLogging,
+                },
+              });
+            }
           }
         });
       } catch (err: any) {

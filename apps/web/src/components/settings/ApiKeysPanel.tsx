@@ -12,8 +12,8 @@ import {
   Loader2,
   FlaskConical,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import { API_BASE_URL } from '@/lib/env.config';
+import { authenticatedFetch } from '@/lib/api-client';
 
 const PROVIDERS = [
   { id: 'openai', name: 'OpenAI', description: 'Used for GPT-4 and Embeddings' },
@@ -30,7 +30,6 @@ interface StoredKey {
 }
 
 export function ApiKeysPanel() {
-  const { user } = useAuth();
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [storedKeys, setStoredKeys] = useState<Record<string, StoredKey>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
@@ -44,6 +43,23 @@ export function ApiKeysPanel() {
 
   const getToken = () => localStorage.getItem('keimenon_token');
 
+  const getResponseErrorMessage = async (response: Response, fallback: string) => {
+    const payload = await response.json().catch(() => ({}) as Record<string, unknown>);
+    const baseMessage =
+      typeof payload?.error === 'string' && payload.error.trim().length > 0
+        ? payload.error
+        : fallback;
+
+    if (payload?.code === 'SETTINGS_SCHEMA_DRIFT') {
+      const remediation = (payload as any)?.diagnostics?.remediation;
+      if (typeof remediation === 'string' && remediation.trim().length > 0) {
+        return `${baseMessage}. ${remediation}`;
+      }
+    }
+
+    return baseMessage;
+  };
+
   useEffect(() => {
     loadKeys();
   }, []);
@@ -55,12 +71,10 @@ export function ApiKeysPanel() {
       const token = getToken();
       if (!token) return;
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/settings/api-keys`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/settings/api-keys`);
 
       if (!response.ok) {
-        throw new Error('Failed to load API keys');
+        throw new Error(await getResponseErrorMessage(response, 'Failed to load API keys'));
       }
 
       const data = await response.json();
@@ -88,10 +102,9 @@ export function ApiKeysPanel() {
       const token = getToken();
       if (!token) throw new Error('Not authenticated');
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/settings/api-keys/test`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/settings/api-keys/test`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ provider: providerId, apiKey }),
@@ -121,18 +134,16 @@ export function ApiKeysPanel() {
       const token = getToken();
       if (!token) throw new Error('Not authenticated');
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/settings/api-keys`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/settings/api-keys`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ provider: providerId, apiKey, skipValidation: false }),
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to save API key');
+        throw new Error(await getResponseErrorMessage(response, 'Failed to save API key'));
       }
 
       const data = await response.json();
@@ -171,13 +182,15 @@ export function ApiKeysPanel() {
       const token = getToken();
       if (!token) throw new Error('Not authenticated');
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/settings/api-keys/${providerId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await authenticatedFetch(
+        `${API_BASE_URL}/api/v1/settings/api-keys/${providerId}`,
+        {
+          method: 'DELETE',
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to delete API key');
+        throw new Error(await getResponseErrorMessage(response, 'Failed to delete API key'));
       }
 
       setStoredKeys((prev) => {

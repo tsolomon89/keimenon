@@ -8,12 +8,12 @@ import { createServer } from 'net';
 import path from 'path';
 import fetch from 'node-fetch';
 
-// Use the repo's Node 22 runtime for API child processes even when the parent shell differs.
+// Use the repo's pinned Node runtime for API child processes.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { spawnNode22 } = require(
+const { spawnProjectNode } = require(
   path.resolve(__dirname, '../../../../../scripts/project-node-runtime.js')
 ) as {
-  spawnNode22: (nodeArgs: string[], options?: Record<string, unknown>) => ChildProcess;
+  spawnProjectNode: (nodeArgs: string[], options?: Record<string, unknown>) => ChildProcess;
 };
 
 let serverProcess: ChildProcess | null = null;
@@ -169,7 +169,7 @@ export async function startTestServer(): Promise<void> {
       detached: false,
     };
 
-    serverProcess = spawnNode22([tsxModulePath, serverPath], spawnOptions);
+    serverProcess = spawnProjectNode([tsxModulePath, serverPath], spawnOptions);
 
     if (serverProcess.stdout) {
       serverProcess.stdout.on('data', (data) => {

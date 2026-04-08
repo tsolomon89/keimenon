@@ -4,7 +4,7 @@ Local-first knowledge graph platform with account-isolated data and a monorepo w
 
 ## Prerequisites
 
-- Node.js `22.x`
+- Node.js `24.x`
 - npm `>=9`
 
 ## Quick Start
@@ -18,6 +18,7 @@ npm run dev
 Default endpoints:
 
 - API: `http://localhost:4001/api/v1`
+- API ready: `http://localhost:4001/ready`
 - API health: `http://localhost:4001/health`
 - Web: `http://localhost:3000`
 
@@ -45,11 +46,13 @@ npm run dev:check        # Check if API/web dev services are running
 npm run dev:clean        # Same as dev, with port cleanup
 npm run dev:reset        # Canonical reset (ports + local test DB cleanup)
 npm run validate         # Environment validation
-npm run doctor:runtime   # Verify Node 22 + better-sqlite3 runtime health
+npm run doctor:runtime   # Verify Node 24 + better-sqlite3 runtime health
 npm run sqlite:check     # Run PRAGMA integrity_check on the configured DB
 npm run sqlite:backup    # Create an online SQLite backup
 npm run check-ports      # Detect port conflicts
 npm run kill-ports       # Stop port conflicts
+npm run factory-reset    # Full fresh reset (preserves admin@admin.com)
+npm run factory-reset:db-only
 ```
 
 ## Storage And Configuration
@@ -88,7 +91,7 @@ Environment template:
 
 ### Node version failures
 
-Use Node 22 and re-run:
+Use Node 24 and re-run:
 
 ```bash
 npm run doctor:runtime

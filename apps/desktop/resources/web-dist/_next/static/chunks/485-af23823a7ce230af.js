@@ -1,5 +1,5 @@
 (self.webpackChunk_N_E = self.webpackChunk_N_E || []).push([
-  [613],
+  [485],
   {
     7878: function (e, t, n) {
       'use strict';
@@ -3539,37 +3539,6 @@
         ['path', { d: 'M7 16h10', key: 'wp8him' }],
         ['path', { d: 'M8 12h.01', key: 'czm47f' }],
         ['rect', { width: '20', height: '16', x: '2', y: '4', rx: '2', key: '18n3k1' }],
-      ]);
-    },
-    4197: function (e, t, n) {
-      'use strict';
-      n.d(t, {
-        Z: function () {
-          return r;
-        },
-      });
-      let r = (0, n(2389).Z)('Layers3', [
-        [
-          'path',
-          {
-            d: 'm12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z',
-            key: '8b97xw',
-          },
-        ],
-        [
-          'path',
-          {
-            d: 'm6.08 9.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59',
-            key: '1e5n1m',
-          },
-        ],
-        [
-          'path',
-          {
-            d: 'm6.08 14.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59',
-            key: '1iwflc',
-          },
-        ],
       ]);
     },
     3071: function (e, t, n) {

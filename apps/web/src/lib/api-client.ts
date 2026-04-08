@@ -54,7 +54,15 @@ function handleTokenExpiration(reason: string = 'Token expired'): void {
 
     // Redirect to login after a short delay to allow error display
     setTimeout(() => {
-      window.location.href = '/login?reason=expired';
+      const current = new URLSearchParams(window.location.search);
+      const params = new URLSearchParams({ reason: 'expired' });
+      for (const key of ['apiPort', 'dev']) {
+        const value = current.get(key);
+        if (value) {
+          params.set(key, value);
+        }
+      }
+      window.location.href = `/login?${params.toString()}`;
     }, 1000);
   }
 }
@@ -140,6 +148,24 @@ async function fetchWithAuthInterceptor(
   }
 
   return response;
+}
+
+export async function authenticatedFetch(
+  url: string | URL | Request,
+  init?: RequestInit
+): Promise<Response> {
+  const headers = new Headers(getAuthHeaders());
+  if (init?.headers) {
+    const overrideHeaders = new Headers(init.headers);
+    overrideHeaders.forEach((value, key) => {
+      headers.set(key, value);
+    });
+  }
+
+  return fetchWithAuthInterceptor(url, {
+    ...init,
+    headers,
+  });
 }
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -1514,9 +1540,7 @@ export async function getNodes(params?: {
     if (params?.search) queryParams.append('search', params.search);
 
     const url = `${API_BASE_URL}/api/v1/nodes${queryParams.toString() ? `?${queryParams}` : ''}`;
-    const response = await fetch(url, {
-      headers: getAuthHeaders(),
-    });
+    const response = await authenticatedFetch(url);
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -1556,9 +1580,7 @@ export async function getEdges(params?: {
     if (params?.order) queryParams.append('order', params.order);
 
     const url = `${API_BASE_URL}/api/v1/edges${queryParams.toString() ? `?${queryParams}` : ''}`;
-    const response = await fetch(url, {
-      headers: getAuthHeaders(),
-    });
+    const response = await authenticatedFetch(url);
 
     if (!response.ok) {
       await handleApiError({ response });
@@ -1794,11 +1816,9 @@ export async function getTopAccounts(
   limit: number = 10
 ): Promise<{ accounts: TopAccount[] }> {
   try {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${API_BASE_URL}/api/v1/analytics/top-accounts?metric=${metric}&limit=${limit}`,
-      {
-        headers: getAuthHeaders(),
-      }
+      {}
     );
 
     if (!response.ok) {
@@ -1818,11 +1838,9 @@ export async function getRecentActivity(
   limit: number = 50
 ): Promise<{ activity: RecentActivity[] }> {
   try {
-    const response = await fetch(
+    const response = await authenticatedFetch(
       `${API_BASE_URL}/api/v1/analytics/recent-activity?limit=${limit}`,
-      {
-        headers: getAuthHeaders(),
-      }
+      {}
     );
 
     if (!response.ok) {

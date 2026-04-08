@@ -26,6 +26,18 @@ export interface WriteQueueMetrics {
   partialSuccesses: number;
   deadLetterItems: number;
   deadLetterEnqueues: number;
+  sqlVariableSplitRetries: number;
+}
+
+export interface SqlVariableSplitDiagnostics {
+  stage: 'write_queue_flush';
+  nodesAttempted: number;
+  edgesAttempted: number;
+  nodeChunksProcessed: number;
+  edgeChunksProcessed: number;
+  splitRetries: number;
+  nodeFallbackWrites: number;
+  edgeFallbackWrites: number;
 }
 
 export interface FlushResult {
@@ -34,6 +46,9 @@ export interface FlushResult {
   edgesWritten: number;
   circuitOpen: boolean;
   deadLetterCount: number;
+  diagnostics?: {
+    sqlVariableSplit?: SqlVariableSplitDiagnostics;
+  };
 }
 
 export interface DeadLetterItem {
@@ -79,9 +94,11 @@ export class WriteQueueErrorHandler {
     partialSuccesses: 0,
     deadLetterItems: 0,
     deadLetterEnqueues: 0,
+    sqlVariableSplitRetries: 0,
   };
 
   private options: Required<WriteQueueErrorHandlerOptions>;
+  private readonly SQL_VARIABLE_SAFE_CHUNK_SIZE = 400;
 
   constructor(
     private db: DatabaseClient,
@@ -145,10 +162,23 @@ export class WriteQueueErrorHandler {
         deadLetterCount: this.deadLetterQueue.length,
       };
     } catch (error: any) {
+      const normalizedError = this.ensureError(error);
+      if (this.isSqlVariableLimitError(normalizedError)) {
+        const splitResult = await this.tryChunkedWritesForSqlVariableLimit(
+          nodes,
+          edges,
+          normalizedError
+        );
+        if (splitResult.totalWritten === nodes.length + edges.length) {
+          this.consecutiveFailures = 0;
+          return splitResult;
+        }
+      }
+
       this.consecutiveFailures++;
       console.error(
         `[WriteQueueErrorHandler] Batch write failed (${this.consecutiveFailures}/${this.options.maxConsecutiveFailures}):`,
-        error?.message || error
+        normalizedError?.message || normalizedError
       );
 
       if (
@@ -160,6 +190,197 @@ export class WriteQueueErrorHandler {
 
       return this.tryIndividualWrites(nodes, edges);
     }
+  }
+
+  private async tryChunkedWritesForSqlVariableLimit(
+    nodes: AnyNode[],
+    edges: AnyEdge[],
+    originalError: Error
+  ): Promise<FlushResult> {
+    const diagnostics: SqlVariableSplitDiagnostics = {
+      stage: 'write_queue_flush',
+      nodesAttempted: nodes.length,
+      edgesAttempted: edges.length,
+      nodeChunksProcessed: 0,
+      edgeChunksProcessed: 0,
+      splitRetries: 0,
+      nodeFallbackWrites: 0,
+      edgeFallbackWrites: 0,
+    };
+
+    console.warn(
+      `[WriteQueueErrorHandler] SQL variable limit hit during batch flush, applying adaptive chunk split ` +
+        `(nodes=${nodes.length}, edges=${edges.length}, message=${originalError.message})`
+    );
+
+    const nodeWriteResult = await this.processNodesWithAdaptiveChunking(nodes, diagnostics);
+    const edgeWriteResult = await this.processEdgesWithAdaptiveChunking(edges, diagnostics);
+    const successCount = nodeWriteResult + edgeWriteResult;
+
+    if (successCount > 0) {
+      this.metrics.partialSuccesses++;
+    }
+
+    return {
+      totalWritten: successCount,
+      nodesWritten: nodeWriteResult,
+      edgesWritten: edgeWriteResult,
+      circuitOpen: this.circuitOpen,
+      deadLetterCount: this.deadLetterQueue.length,
+      diagnostics: {
+        sqlVariableSplit: diagnostics,
+      },
+    };
+  }
+
+  private async processNodesWithAdaptiveChunking(
+    nodes: AnyNode[],
+    diagnostics: SqlVariableSplitDiagnostics
+  ): Promise<number> {
+    if (nodes.length === 0) {
+      return 0;
+    }
+
+    const writeChunk = async (chunk: AnyNode[]): Promise<number> => {
+      if (chunk.length === 0) {
+        return 0;
+      }
+
+      diagnostics.nodeChunksProcessed += 1;
+
+      try {
+        if (this.db.createNodes) {
+          await this.db.createNodes(chunk);
+        } else {
+          let fallbackWritten = 0;
+          for (const node of chunk) {
+            const success = await this.tryWriteNode(node, 0);
+            if (success) {
+              fallbackWritten++;
+              this.metrics.successfulWrites++;
+              this.metrics.successfulNodeWrites++;
+            } else {
+              this.metrics.failedWrites++;
+              this.metrics.failedNodeWrites++;
+            }
+          }
+          diagnostics.nodeFallbackWrites += chunk.length;
+          return fallbackWritten;
+        }
+
+        this.metrics.successfulWrites += chunk.length;
+        this.metrics.successfulNodeWrites += chunk.length;
+        return chunk.length;
+      } catch (error: any) {
+        const normalized = this.ensureError(error);
+        if (this.isSqlVariableLimitError(normalized) && chunk.length > 1) {
+          const midpoint = Math.floor(chunk.length / 2);
+          diagnostics.splitRetries += 1;
+          this.metrics.sqlVariableSplitRetries += 1;
+          const left = await writeChunk(chunk.slice(0, midpoint));
+          const right = await writeChunk(chunk.slice(midpoint));
+          return left + right;
+        }
+
+        let written = 0;
+        diagnostics.nodeFallbackWrites += chunk.length;
+        for (const node of chunk) {
+          const success = await this.tryWriteNode(node, 0);
+          if (success) {
+            written += 1;
+            this.metrics.successfulWrites++;
+            this.metrics.successfulNodeWrites++;
+          } else {
+            this.metrics.failedWrites++;
+            this.metrics.failedNodeWrites++;
+          }
+        }
+        return written;
+      }
+    };
+
+    let totalWritten = 0;
+    for (let index = 0; index < nodes.length; index += this.SQL_VARIABLE_SAFE_CHUNK_SIZE) {
+      const chunk = nodes.slice(index, index + this.SQL_VARIABLE_SAFE_CHUNK_SIZE);
+      totalWritten += await writeChunk(chunk);
+    }
+
+    return totalWritten;
+  }
+
+  private async processEdgesWithAdaptiveChunking(
+    edges: AnyEdge[],
+    diagnostics: SqlVariableSplitDiagnostics
+  ): Promise<number> {
+    if (edges.length === 0) {
+      return 0;
+    }
+
+    const writeChunk = async (chunk: AnyEdge[]): Promise<number> => {
+      if (chunk.length === 0) {
+        return 0;
+      }
+
+      diagnostics.edgeChunksProcessed += 1;
+
+      try {
+        if (this.db.createEdges) {
+          await this.db.createEdges(chunk);
+        } else {
+          let fallbackWritten = 0;
+          diagnostics.edgeFallbackWrites += chunk.length;
+          for (const edge of chunk) {
+            const result = await this.tryWriteEdge(edge, 0, false);
+            if (result.success) {
+              fallbackWritten++;
+              this.metrics.successfulWrites++;
+              this.metrics.successfulEdgeWrites++;
+            } else {
+              this.metrics.failedWrites++;
+              this.metrics.failedEdgeWrites++;
+            }
+          }
+          return fallbackWritten;
+        }
+
+        this.metrics.successfulWrites += chunk.length;
+        this.metrics.successfulEdgeWrites += chunk.length;
+        return chunk.length;
+      } catch (error: any) {
+        const normalized = this.ensureError(error);
+        if (this.isSqlVariableLimitError(normalized) && chunk.length > 1) {
+          const midpoint = Math.floor(chunk.length / 2);
+          diagnostics.splitRetries += 1;
+          this.metrics.sqlVariableSplitRetries += 1;
+          const left = await writeChunk(chunk.slice(0, midpoint));
+          const right = await writeChunk(chunk.slice(midpoint));
+          return left + right;
+        }
+
+        diagnostics.edgeFallbackWrites += chunk.length;
+        let fallbackWritten = 0;
+        for (const edge of chunk) {
+          const result = await this.tryWriteEdge(edge, 0, false);
+          if (result.success) {
+            fallbackWritten++;
+            this.metrics.successfulWrites++;
+            this.metrics.successfulEdgeWrites++;
+          } else {
+            this.metrics.failedWrites++;
+            this.metrics.failedEdgeWrites++;
+          }
+        }
+        return fallbackWritten;
+      }
+    };
+
+    let totalWritten = 0;
+    for (let index = 0; index < edges.length; index += this.SQL_VARIABLE_SAFE_CHUNK_SIZE) {
+      const chunk = edges.slice(index, index + this.SQL_VARIABLE_SAFE_CHUNK_SIZE);
+      totalWritten += await writeChunk(chunk);
+    }
+
+    return totalWritten;
   }
 
   /**
@@ -373,6 +594,7 @@ export class WriteQueueErrorHandler {
       partialSuccesses: 0,
       deadLetterItems: 0,
       deadLetterEnqueues: 0,
+      sqlVariableSplitRetries: 0,
     };
   }
 
@@ -382,6 +604,11 @@ export class WriteQueueErrorHandler {
       message.includes('SQLITE_CONSTRAINT_FOREIGNKEY') ||
       message.includes('FOREIGN KEY CONSTRAINT FAILED')
     );
+  }
+
+  private isSqlVariableLimitError(error: Error): boolean {
+    const message = String(error?.message || '').toLowerCase();
+    return message.includes('too many sql variables');
   }
 
   private ensureError(value: unknown): Error {

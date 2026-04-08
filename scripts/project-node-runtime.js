@@ -4,8 +4,6 @@ const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const { REQUIRED_NODE_MAJOR, REQUIRED_NODE_VERSION } = require('./node-version-config');
 
-const NODE_PACKAGE_SPEC = REQUIRED_NODE_VERSION || String(REQUIRED_NODE_MAJOR);
-
 function getCurrentNodeMajor(version = process.versions.node) {
   return Number.parseInt(version.split('.')[0], 10);
 }
@@ -14,42 +12,36 @@ function isRequiredNodeVersion(version = process.versions.node) {
   return getCurrentNodeMajor(version) === REQUIRED_NODE_MAJOR;
 }
 
-function getNodePackageSpec() {
-  return `node@${NODE_PACKAGE_SPEC}`;
-}
-
-function getNpxCommand() {
-  return process.platform === 'win32' ? 'npx.cmd' : 'npx';
-}
-
 function withProjectNodeEnv(extraEnv = {}) {
   return {
     ...process.env,
-    ...(isRequiredNodeVersion() ? {} : { KEIMENON_BYPASS_NODE_CHECK: '1' }),
     ...extraEnv,
   };
 }
 
-function resolveNode22NodeCommand(nodeArgs = [], extraEnv = {}) {
-  if (isRequiredNodeVersion()) {
-    return {
-      command: process.execPath,
-      args: nodeArgs,
-      env: withProjectNodeEnv(extraEnv),
-      shell: false,
-    };
-  }
+function getNodeVersionMismatchMessage(version = process.versions.node) {
+  const expected = REQUIRED_NODE_VERSION || `${REQUIRED_NODE_MAJOR}.x`;
+  return `Unsupported Node.js version v${version}. Required: v${expected}. Switch Node and retry.`;
+}
 
+function ensureRequiredNodeVersion(version = process.versions.node) {
+  if (!isRequiredNodeVersion(version)) {
+    throw new Error(getNodeVersionMismatchMessage(version));
+  }
+}
+
+function resolveProjectNodeCommand(nodeArgs = [], extraEnv = {}) {
+  ensureRequiredNodeVersion();
   return {
-    command: process.platform === 'win32' ? 'npx' : getNpxCommand(),
-    args: ['-y', '-p', getNodePackageSpec(), 'node', ...nodeArgs],
+    command: process.execPath,
+    args: nodeArgs,
     env: withProjectNodeEnv(extraEnv),
-    shell: process.platform === 'win32',
+    shell: false,
   };
 }
 
-function spawnNode22(nodeArgs = [], options = {}) {
-  const { command, args, env, shell } = resolveNode22NodeCommand(nodeArgs, options.env);
+function spawnProjectNode(nodeArgs = [], options = {}) {
+  const { command, args, env, shell } = resolveProjectNodeCommand(nodeArgs, options.env);
   return spawn(command, args, {
     ...options,
     env,
@@ -57,8 +49,8 @@ function spawnNode22(nodeArgs = [], options = {}) {
   });
 }
 
-function spawnNode22Sync(nodeArgs = [], options = {}) {
-  const { command, args, env, shell } = resolveNode22NodeCommand(nodeArgs, options.env);
+function spawnProjectNodeSync(nodeArgs = [], options = {}) {
+  const { command, args, env, shell } = resolveProjectNodeCommand(nodeArgs, options.env);
   return spawnSync(command, args, {
     ...options,
     env,
@@ -66,9 +58,10 @@ function spawnNode22Sync(nodeArgs = [], options = {}) {
   });
 }
 
-function runShellCommandUnderNode22(command, options = {}) {
-  const runnerPath = path.join(__dirname, 'node22-shell-runner.js');
-  return spawnNode22Sync([runnerPath, command], options);
+function runShellCommandUnderProjectNode(command, options = {}) {
+  ensureRequiredNodeVersion();
+  const runnerPath = path.join(__dirname, 'project-node-shell-runner.js');
+  return spawnProjectNodeSync([runnerPath, command], options);
 }
 
 module.exports = {
@@ -76,9 +69,11 @@ module.exports = {
   REQUIRED_NODE_VERSION,
   getCurrentNodeMajor,
   isRequiredNodeVersion,
-  resolveNode22NodeCommand,
-  spawnNode22,
-  spawnNode22Sync,
-  runShellCommandUnderNode22,
+  getNodeVersionMismatchMessage,
+  ensureRequiredNodeVersion,
+  resolveProjectNodeCommand,
+  spawnProjectNode,
+  spawnProjectNodeSync,
+  runShellCommandUnderProjectNode,
   withProjectNodeEnv,
 };

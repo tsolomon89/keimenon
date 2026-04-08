@@ -73,6 +73,18 @@ const FORBIDDEN_RUNTIME_FILES = [
 ];
 
 const API_ROUTE_UNMOUNTED_ALLOWLIST = new Set([]);
+const REQUIRED_NODE_PIN = '24.9.0';
+const REQUIRED_NODE_ENGINE = '24.x';
+const FORBIDDEN_LEGACY_RUNTIME_PATTERNS = [
+  /run-with-node22\.js/,
+  /node22-shell-runner\.js/,
+  /\bspawnNode22\b/,
+  /\brunShellCommandUnderNode22\b/,
+  /\bresolveNode22NodeCommand\b/,
+  /node-version:\s*22(\.x)?/i,
+  /Node\.js 22/i,
+];
+const LEGACY_RUNTIME_FILES = ['scripts/run-with-node22.js', 'scripts/node22-shell-runner.js'];
 
 const RUNTIME_DEBUG_MARKERS = [
   { name: 'reset-password-debug', regex: /reset-password-debug/g },
@@ -122,6 +134,93 @@ function listTrackedFiles(paths) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+function readJsonFile(filePath) {
+  return JSON.parse(fs.readFileSync(path.resolve(filePath), 'utf8'));
+}
+
+function readTrimmed(filePath) {
+  return fs.readFileSync(path.resolve(filePath), 'utf8').trim();
+}
+
+function verifyNodeRuntimeContract() {
+  const rootPackage = readJsonFile('package.json');
+  const desktopPackage = readJsonFile('apps/desktop/package.json');
+  const pinnedNode = rootPackage?.volta?.node;
+  const rootEngine = rootPackage?.engines?.node;
+  const desktopEngine = desktopPackage?.engines?.node;
+  const nvmrcVersion = readTrimmed('.nvmrc');
+  const nodeVersionFile = readTrimmed('.node-version');
+
+  const failures = [];
+
+  if (pinnedNode !== REQUIRED_NODE_PIN) {
+    failures.push(
+      `package.json volta.node must be ${REQUIRED_NODE_PIN} (found ${pinnedNode || 'unset'})`
+    );
+  }
+  if (rootEngine !== REQUIRED_NODE_ENGINE) {
+    failures.push(
+      `package.json engines.node must be ${REQUIRED_NODE_ENGINE} (found ${rootEngine || 'unset'})`
+    );
+  }
+  if (desktopEngine !== REQUIRED_NODE_ENGINE) {
+    failures.push(
+      `apps/desktop/package.json engines.node must be ${REQUIRED_NODE_ENGINE} (found ${desktopEngine || 'unset'})`
+    );
+  }
+  if (nvmrcVersion !== REQUIRED_NODE_PIN) {
+    failures.push(`.nvmrc must be ${REQUIRED_NODE_PIN} (found ${nvmrcVersion || 'unset'})`);
+  }
+  if (nodeVersionFile !== REQUIRED_NODE_PIN) {
+    failures.push(
+      `.node-version must be ${REQUIRED_NODE_PIN} (found ${nodeVersionFile || 'unset'})`
+    );
+  }
+
+  const legacyFilesPresent = LEGACY_RUNTIME_FILES.filter((filePath) =>
+    fs.existsSync(path.resolve(filePath))
+  );
+  if (legacyFilesPresent.length > 0) {
+    failures.push(`legacy runtime files still present: ${legacyFilesPresent.join(', ')}`);
+  }
+
+  const runtimeScanTargets = listTrackedFiles([
+    'package.json',
+    'apps/api/package.json',
+    'apps/desktop/package.json',
+    'scripts/dev.js',
+    'scripts/dev-desktop.js',
+    'scripts/dev-boot.js',
+    'scripts/project-node-runtime.js',
+    'scripts/run-with-project-node.js',
+    'tests/auth-suite.js',
+    'apps/api/src/__tests__/utils/test-server.ts',
+    '.github/workflows/ci.yml',
+    '.github/workflows/gate-e-hardening.yml',
+    '.github/workflows/golden-path-slo.yml',
+  ]);
+
+  const legacyRefs = [];
+  for (const relPath of runtimeScanTargets) {
+    const absolutePath = path.resolve(relPath);
+    if (!fs.existsSync(absolutePath)) {
+      continue;
+    }
+    const contents = fs.readFileSync(absolutePath, 'utf8');
+    for (const pattern of FORBIDDEN_LEGACY_RUNTIME_PATTERNS) {
+      if (pattern.test(contents)) {
+        legacyRefs.push(`${relPath} (${pattern})`);
+      }
+    }
+  }
+
+  if (legacyRefs.length > 0) {
+    failures.push(`legacy Node22 runtime references detected: ${legacyRefs.join('; ')}`);
+  }
+
+  return failures;
 }
 
 function listUnmountedApiRouteFiles() {
@@ -213,6 +312,17 @@ function scanFile(filePath) {
 }
 
 function main() {
+  const runtimeFailures = verifyNodeRuntimeContract();
+  if (runtimeFailures.length > 0) {
+    console.error(
+      `[repo-hygiene] FAIL runtime contract drift detected (${runtimeFailures.length})`
+    );
+    for (const failure of runtimeFailures) {
+      console.error(`- ${failure}`);
+    }
+    process.exit(1);
+  }
+
   const trackedArtifacts = listTrackedArtifacts();
   if (trackedArtifacts.length > 0) {
     console.error(

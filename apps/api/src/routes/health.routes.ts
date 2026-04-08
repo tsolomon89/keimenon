@@ -60,6 +60,15 @@ router.get('/modules', async (req: Request, res: Response) => {
       loaded: !!(global as any).jobRepository,
       error: null as string | null,
     },
+    settingsSchema: {
+      loaded: false,
+      responsive: false,
+      error: null as string | null,
+      details: null as {
+        missingTables: string[];
+        missingColumns: string[];
+      } | null,
+    },
   };
 
   // Test database connectivity
@@ -72,6 +81,48 @@ router.get('/modules', async (req: Request, res: Response) => {
     }
   } catch (error: any) {
     modules.database.error = error.message || 'Database connectivity test failed';
+  }
+
+  // Check settings/tooling schema objects for explicit diagnostics.
+  try {
+    const sqlite = (global.dbClient as any)?.getDatabase?.();
+    if (sqlite && typeof sqlite.prepare === 'function') {
+      const hasTable = (tableName: string) =>
+        !!sqlite
+          .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name = ?`)
+          .get(tableName);
+      const hasColumn = (tableName: string, columnName: string) => {
+        if (!hasTable(tableName)) return false;
+        const columns = sqlite.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{
+          name: string;
+        }>;
+        return columns.some((column) => column.name === columnName);
+      };
+
+      const requiredTables = ['account_api_keys', 'account_ai_settings'];
+      const missingTables = requiredTables.filter((tableName) => !hasTable(tableName));
+      const missingColumns: string[] = [];
+
+      if (hasTable('account_ai_settings') && !hasColumn('account_ai_settings', 'litellm_url')) {
+        missingColumns.push('account_ai_settings.litellm_url');
+      }
+      if (hasTable('account_ai_settings') && !hasColumn('account_ai_settings', 'searxng_url')) {
+        missingColumns.push('account_ai_settings.searxng_url');
+      }
+
+      modules.settingsSchema.details = { missingTables, missingColumns };
+      modules.settingsSchema.loaded = missingTables.length === 0 && missingColumns.length === 0;
+      modules.settingsSchema.responsive = modules.settingsSchema.loaded;
+
+      if (!modules.settingsSchema.loaded) {
+        modules.settingsSchema.error =
+          'Settings schema drift detected. Run npm run settings:schema:repair';
+      }
+    } else {
+      modules.settingsSchema.error = 'Database client does not expose SQLite handle';
+    }
+  } catch (error: any) {
+    modules.settingsSchema.error = error.message || 'Settings schema check failed';
   }
 
   // Determine overall health

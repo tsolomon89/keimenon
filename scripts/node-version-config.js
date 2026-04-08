@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const FALLBACK_NODE_MAJOR = 22;
+const FALLBACK_NODE_MAJOR = 24;
 
 function safeReadPackageJson() {
   try {

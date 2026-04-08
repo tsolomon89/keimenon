@@ -5,7 +5,7 @@ const { spawnSync } = require('child_process');
 const command = process.argv.slice(2).join(' ');
 
 if (!command) {
-  console.error('[node22-shell-runner] No command provided.');
+  console.error('[project-node-shell-runner] No command provided.');
   process.exit(1);
 }
 
@@ -20,7 +20,7 @@ if (typeof result.status === 'number') {
 }
 
 if (result.error) {
-  console.error(`[node22-shell-runner] Failed to run command: ${result.error.message}`);
+  console.error(`[project-node-shell-runner] Failed to run command: ${result.error.message}`);
 }
 
 process.exit(1);

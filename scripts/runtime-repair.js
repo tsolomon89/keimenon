@@ -26,19 +26,23 @@ function main() {
     console.error(
       `[runtime-repair] Node ${REQUIRED_NODE_MAJOR}.x is required. Active runtime: v${process.versions.node}`
     );
-    console.error('[runtime-repair] Switch to Node 22, then rerun this command.');
+    console.error(
+      `[runtime-repair] Switch to Node ${REQUIRED_NODE_MAJOR}, then rerun this command.`
+    );
     process.exit(1);
   }
 
   const skipDesktop = process.argv.includes('--skip-desktop');
 
-  console.log('[runtime-repair] Rebuilding better-sqlite3 for the active Node runtime...');
-  run('npm', ['rebuild', 'better-sqlite3']);
-
   if (!skipDesktop) {
     console.log('[runtime-repair] Rebuilding desktop Electron native dependencies...');
     run('npm', ['run', 'desktop:rebuild-native']);
   }
+
+  console.log(
+    '[runtime-repair] Rebuilding better-sqlite3 for the active Node runtime after desktop rebuild...'
+  );
+  run('npm', ['rebuild', 'better-sqlite3']);
 
   console.log('[runtime-repair] Verifying Node + SQLite runtime health...');
   run('npm', ['run', 'doctor:runtime']);

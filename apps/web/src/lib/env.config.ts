@@ -33,7 +33,39 @@ function getQueryParam(key: string): string | null {
   return null;
 }
 
-const dynamicPort = getQueryParam('apiPort');
+const STARTUP_STORAGE_KEYS = {
+  apiPort: 'keimenon.startup.apiPort',
+  dev: 'keimenon.startup.dev',
+};
+
+function getStartupContextValue(key: 'apiPort' | 'dev'): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const queryValue = getQueryParam(key);
+  if (queryValue && queryValue.trim().length > 0) {
+    try {
+      window.sessionStorage.setItem(STARTUP_STORAGE_KEYS[key], queryValue);
+    } catch {
+      // no-op
+    }
+    return queryValue;
+  }
+
+  try {
+    const stored = window.sessionStorage.getItem(STARTUP_STORAGE_KEYS[key]);
+    if (stored && stored.trim().length > 0) {
+      return stored;
+    }
+  } catch {
+    // no-op
+  }
+
+  return null;
+}
+
+const dynamicPort = getStartupContextValue('apiPort');
 const dynamicBaseUrl = dynamicPort ? `http://127.0.0.1:${dynamicPort}` : null;
 
 export const API_BASE_URL =
@@ -71,6 +103,7 @@ export const USE_DIRECT_SSE_SUBSCRIPTION = getEnv('NEXT_PUBLIC_USE_DIRECT_SSE') 
  * Debug flags
  */
 export const DEBUG_IMPORT_SELECTOR = getEnv('NEXT_PUBLIC_DEBUG_IMPORT_SELECTOR') === '1';
+export const STARTUP_DEV_HINT = getStartupContextValue('dev') === 'true';
 
 /**
  * Testing configuration

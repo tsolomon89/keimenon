@@ -1,28 +1,38 @@
 (self.webpackChunk_N_E = self.webpackChunk_N_E || []).push([
   [931],
   {
-    5303: function (e, n, t) {
-      Promise.resolve().then(t.bind(t, 1403));
+    5303: function (e, t, n) {
+      Promise.resolve().then(n.bind(n, 1403));
     },
-    1403: function (e, n, t) {
+    1403: function (e, t, n) {
       'use strict';
-      (t.r(n),
-        t.d(n, {
+      (n.r(t),
+        n.d(t, {
           default: function () {
-            return a;
+            return o;
           },
         }));
-      var r = t(7573),
-        s = t(7653),
-        i = t(1695),
-        u = t(4175);
-      function a() {
-        let e = (0, i.useRouter)(),
-          { isAuthenticated: n, isLoading: t } = (0, u.aC)();
+      var r = n(7573),
+        s = n(7653),
+        a = n(1695),
+        i = n(4175);
+      function o() {
+        let e = (0, a.useRouter)(),
+          { isAuthenticated: t, isLoading: n } = (0, i.aC)();
         return (
           (0, s.useEffect)(() => {
-            t || (n ? e.push('/keimenon') : e.push('/login'));
-          }, [n, t, e]),
+            if (n) return;
+            let r = new URLSearchParams(window.location.search),
+              s = new URLSearchParams();
+            for (let e of ['apiPort', 'dev']) {
+              let t = r.get(e);
+              t && s.set(e, t);
+            }
+            let a = s.toString();
+            t
+              ? e.push(a ? '/keimenon?'.concat(a) : '/keimenon')
+              : e.push(a ? '/login?'.concat(a) : '/login');
+          }, [t, n, e]),
           (0, r.jsx)('div', {
             className:
               'min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900',

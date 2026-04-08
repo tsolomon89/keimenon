@@ -8,7 +8,6 @@ import { KeimenonFooter } from './KeimenonFooter';
 import { KeimenonViewport, KeimenonViewportHandle } from './KeimenonViewport';
 import { CRMDashboard } from './CRMDashboard';
 import { StorageStatsDashboard } from './StorageStatsDashboard';
-import { LegacyBoardPreview } from './LegacyBoardPreview';
 import { ProcessingKeimenonView } from './ProcessingKeimenonView';
 import { BoardViewContainer } from '../organization/BoardViewContainer';
 import { PortalWrapper } from './PortalWrapper';
@@ -67,9 +66,9 @@ export function KeimenonLayout({
   const [isMobile, setIsMobile] = useState(false);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-  const [keimenonSurface, setKeimenonSurface] = useState<
-    'keimenon' | 'legacy' | 'processing' | 'boards'
-  >('keimenon');
+  const [keimenonSurface, setKeimenonSurface] = useState<'keimenon' | 'processing' | 'boards'>(
+    'keimenon'
+  );
   const [dashboardView, setDashboardView] = useState<
     'analytics' | 'storage' | 'workspaces' | 'conversations'
   >('analytics');
@@ -421,7 +420,7 @@ export function KeimenonLayout({
     }
   }, [keimenonMode, dashboardView]);
 
-  // Reset legacy view when switching away from keimenon mode
+  // Reset non-primary surface when switching away from keimenon mode.
   useEffect(() => {
     if (keimenonMode !== 'keimenon' && keimenonSurface !== 'keimenon') {
       setKeimenonSurface('keimenon');
@@ -536,8 +535,6 @@ export function KeimenonLayout({
                         includeConnectors={includeConnectorNodes}
                         onPinnedNodeCountChange={setPinnedNodeCount}
                       />
-                    ) : keimenonSurface === 'legacy' ? (
-                      <LegacyBoardPreview renderLens={renderLens} ndConfig={ndConfig} />
                     ) : keimenonSurface === 'processing' ? (
                       <ProcessingKeimenonView
                         operation={activeOperation}

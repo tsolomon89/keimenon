@@ -109,6 +109,31 @@ function isTokenExpired(token: string): boolean {
   return payload.exp < now;
 }
 
+function buildStartupAwarePath(basePath: string, extraParams: Record<string, string> = {}): string {
+  if (typeof window === 'undefined') {
+    return basePath;
+  }
+
+  const current = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams();
+
+  for (const key of ['apiPort', 'dev']) {
+    const value = current.get(key);
+    if (value) {
+      params.set(key, value);
+    }
+  }
+
+  for (const [key, value] of Object.entries(extraParams)) {
+    if (value) {
+      params.set(key, value);
+    }
+  }
+
+  const query = params.toString();
+  return query ? `${basePath}?${query}` : basePath;
+}
+
 /**
  * Parse user from JWT payload (M:N aware)
  */
@@ -156,72 +181,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const initializeAuth = async () => {
-      const token = localStorage.getItem(TOKEN_KEY);
-      console.log('[AuthContext] Init check. Token present:', !!token);
-
-      if (!token) {
+      const finishInitialization = (nextUser: User | null) => {
         if (!isCancelled) {
+          setUser(nextUser);
           setIsLoading(false);
         }
-        return;
-      }
-
-      if (isTokenExpired(token)) {
-        console.log('[AuthContext] Token expired on startup, clearing storage');
-        await clearPersistedAuthState();
-        if (!isCancelled) {
-          setUser(null);
-          setIsLoading(false);
-        }
-        return;
-      }
+      };
 
       try {
-        const verifyResponse = await fetch(`${API_BASE_URL}/api/v1/auth/verify`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...getTestHeaders(),
-          },
-          body: JSON.stringify({ token }),
-        });
+        const token = localStorage.getItem(TOKEN_KEY);
+        console.log('[AuthContext] Init check. Token present:', !!token);
 
-        if (!verifyResponse.ok) {
-          console.warn(
-            `[AuthContext] Stored token rejected by backend (${verifyResponse.status}), clearing auth state`
-          );
-          await clearPersistedAuthState();
-          if (!isCancelled) {
-            setUser(null);
-            setIsLoading(false);
-          }
+        if (!token) {
+          finishInitialization(null);
           return;
         }
-      } catch (error) {
-        // Keep backward-compatible behavior if API is temporarily unavailable at boot.
-        console.warn(
-          '[AuthContext] Token verification request failed, using local token parse:',
-          error
-        );
-      }
 
-      const parsedUser = parseUserFromToken(token);
-      if (!parsedUser) {
-        await clearPersistedAuthState();
-        if (!isCancelled) {
-          setUser(null);
-          setIsLoading(false);
+        if (isTokenExpired(token)) {
+          console.log('[AuthContext] Token expired on startup, clearing storage');
+          await clearPersistedAuthState();
+          finishInitialization(null);
+          return;
         }
-        return;
-      }
 
-      if (!isCancelled) {
-        setUser(parsedUser);
-        setIsLoading(false);
+        try {
+          const verifyResponse = await fetch(`${API_BASE_URL}/api/v1/auth/verify`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...getTestHeaders(),
+            },
+            body: JSON.stringify({ token }),
+          });
+
+          if (!verifyResponse.ok) {
+            console.warn(
+              `[AuthContext] Stored token rejected by backend (${verifyResponse.status}), clearing auth state`
+            );
+            await clearPersistedAuthState();
+            finishInitialization(null);
+            return;
+          }
+        } catch (error) {
+          // Keep backward-compatible behavior if API is temporarily unavailable at boot.
+          console.warn(
+            '[AuthContext] Token verification request failed, using local token parse:',
+            error
+          );
+        }
+
+        const parsedUser = parseUserFromToken(token);
+        if (!parsedUser) {
+          await clearPersistedAuthState();
+          finishInitialization(null);
+          return;
+        }
+
+        finishInitialization(parsedUser);
+      } catch (error) {
+        console.error('[AuthContext] initializeAuth failed:', error);
+        finishInitialization(null);
       }
     };
 
-    initializeAuth();
+    void initializeAuth();
 
     return () => {
       isCancelled = true;
@@ -310,7 +333,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         // Redirect to keimenon
-        router.push('/keimenon');
+        router.push(buildStartupAwarePath('/keimenon'));
       } catch (error: any) {
         setIsLoading(false);
         console.error('Login error:', error);
@@ -394,7 +417,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         // Redirect to keimenon
-        router.push('/keimenon');
+        router.push(buildStartupAwarePath('/keimenon'));
       } catch (error: any) {
         setIsLoading(false);
         console.error('Registration error:', error);
@@ -458,7 +481,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         // Redirect to keimenon
-        router.push('/keimenon');
+        router.push(buildStartupAwarePath('/keimenon'));
       } catch (error: any) {
         setIsLoading(false);
         console.error('Account selection error:', error);
@@ -565,7 +588,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useKeimenonStore.getState().reset();
 
     // Redirect to login
-    router.push('/login');
+    router.push(buildStartupAwarePath('/login'));
 
     console.log('Logged out');
   }, [router]);

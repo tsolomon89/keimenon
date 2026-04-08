@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, ArrowRight, AlertCircle, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AccountSelector, type UserAccount } from '@/components/auth/AccountSelector';
+import { useStartupReadiness } from '@/hooks/useStartupReadiness';
+import { StartupGate } from '@/components/startup/StartupGate';
 
 // Separate component for reading search params (must be wrapped in Suspense)
 function LoginForm() {
@@ -13,6 +15,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const { login, selectAccount, isAuthenticated, isLoading: authLoading } = useAuth(); // rename to avoid clash
   const [isLoading, setIsLoading] = useState(false);
+  const [startupGatePassed, setStartupGatePassed] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
@@ -23,15 +26,39 @@ function LoginForm() {
   const [availableAccounts, setAvailableAccounts] = useState<UserAccount[]>([]);
   const [tempToken, setTempToken] = useState<string | null>(null);
 
+  const startupQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    const apiPort = searchParams.get('apiPort');
+    const dev = searchParams.get('dev');
+    if (apiPort) params.set('apiPort', apiPort);
+    if (dev) params.set('dev', dev);
+    return params.toString();
+  }, [searchParams]);
+
+  const startupReadiness = useStartupReadiness({
+    enabled: !authLoading && !isAuthenticated && !startupGatePassed,
+  });
+
+  useEffect(() => {
+    if (
+      !authLoading &&
+      !isAuthenticated &&
+      startupReadiness.attempts > 0 &&
+      startupReadiness.phase === 'ready'
+    ) {
+      setStartupGatePassed(true);
+    }
+  }, [authLoading, isAuthenticated, startupReadiness.attempts, startupReadiness.phase]);
+
   // Check if user was redirected due to token expiration
   const isExpired = searchParams.get('reason') === 'expired';
 
   // Redirect if already authenticated (in useEffect to avoid render-time navigation)
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/keimenon');
+      router.push(startupQuery ? `/keimenon?${startupQuery}` : '/keimenon');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, startupQuery]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +111,15 @@ function LoginForm() {
       // Usually keep it open so they can try another account or retry password
     }
   };
+
+  if (
+    !authLoading &&
+    !isAuthenticated &&
+    !startupGatePassed &&
+    startupReadiness.phase !== 'ready'
+  ) {
+    return <StartupGate state={startupReadiness} onRetry={startupReadiness.retry} />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -224,7 +260,7 @@ function LoginForm() {
                   }}
                   className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-lg transition-colors border border-slate-600"
                 >
-                  🚀 Auto-Fill Dev
+                  Auto-fill Dev
                 </button>
                 <button
                   type="button"
@@ -238,7 +274,7 @@ function LoginForm() {
                   }}
                   className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-lg transition-colors border border-slate-600"
                 >
-                  📂 Open Data
+                  Open Data
                 </button>
               </div>
             </div>

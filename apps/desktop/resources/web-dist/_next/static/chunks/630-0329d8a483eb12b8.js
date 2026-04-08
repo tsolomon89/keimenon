@@ -6,13 +6,13 @@
       'use strict';
       a.d(t, {
         AuthProvider: function () {
-          return g;
+          return y;
         },
         LP: function () {
-          return w;
+          return v;
         },
         aC: function () {
-          return y;
+          return w;
         },
       });
       var o = a(7573),
@@ -52,6 +52,18 @@
         return t.exp < a;
       }
       function h(e) {
+        let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : {},
+          a = new URLSearchParams(window.location.search),
+          o = new URLSearchParams();
+        for (let e of ['apiPort', 'dev']) {
+          let t = a.get(e);
+          t && o.set(e, t);
+        }
+        for (let [e, a] of Object.entries(t)) a && o.set(e, a);
+        let n = o.toString();
+        return n ? ''.concat(e, '?').concat(n) : e;
+      }
+      function g(e) {
         let t = f(e);
         return t
           ? {
@@ -68,11 +80,11 @@
             }
           : null;
       }
-      function g(e) {
+      function y(e) {
         let { children: t } = e,
-          [a, g] = (0, n.useState)(null),
-          [y, w] = (0, n.useState)(!0),
-          v = (0, i.useRouter)();
+          [a, y] = (0, n.useState)(null),
+          [w, v] = (0, n.useState)(!0),
+          b = (0, i.useRouter)();
         ((0, n.useEffect)(() => {
           let e = !1,
             t = async () => {
@@ -89,46 +101,53 @@
             };
           return (
             (async () => {
-              let a = localStorage.getItem(u);
-              if ((console.log('[AuthContext] Init check. Token present:', !!a), !a)) {
-                e || w(!1);
-                return;
-              }
-              if (_(a)) {
-                (console.log('[AuthContext] Token expired on startup, clearing storage'),
-                  await t(),
-                  e || (g(null), w(!1)));
-                return;
-              }
+              let a = (t) => {
+                e || (y(t), v(!1));
+              };
               try {
-                let o = await fetch(''.concat(c.CT, '/api/v1/auth/verify'), {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', ...m() },
-                  body: JSON.stringify({ token: a }),
-                });
-                if (!o.ok) {
-                  (console.warn(
-                    '[AuthContext] Stored token rejected by backend ('.concat(
-                      o.status,
-                      '), clearing auth state'
-                    )
-                  ),
-                    await t(),
-                    e || (g(null), w(!1)));
+                let e = localStorage.getItem(u);
+                if ((console.log('[AuthContext] Init check. Token present:', !!e), !e)) {
+                  a(null);
                   return;
                 }
+                if (_(e)) {
+                  (console.log('[AuthContext] Token expired on startup, clearing storage'),
+                    await t(),
+                    a(null));
+                  return;
+                }
+                try {
+                  let o = await fetch(''.concat(c.CT, '/api/v1/auth/verify'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...m() },
+                    body: JSON.stringify({ token: e }),
+                  });
+                  if (!o.ok) {
+                    (console.warn(
+                      '[AuthContext] Stored token rejected by backend ('.concat(
+                        o.status,
+                        '), clearing auth state'
+                      )
+                    ),
+                      await t(),
+                      a(null));
+                    return;
+                  }
+                } catch (e) {
+                  console.warn(
+                    '[AuthContext] Token verification request failed, using local token parse:',
+                    e
+                  );
+                }
+                let o = g(e);
+                if (!o) {
+                  (await t(), a(null));
+                  return;
+                }
+                a(o);
               } catch (e) {
-                console.warn(
-                  '[AuthContext] Token verification request failed, using local token parse:',
-                  e
-                );
+                (console.error('[AuthContext] initializeAuth failed:', e), a(null));
               }
-              let o = h(a);
-              if (!o) {
-                (await t(), e || (g(null), w(!1)));
-                return;
-              }
-              e || (g(o), w(!1));
             })(),
             () => {
               e = !0;
@@ -149,9 +168,9 @@
                 r.O.getState().setCurrentAccountId(a.accountId));
             }
           }, [null == a ? void 0 : a.accountId]));
-        let b = (0, n.useCallback)(
+        let x = (0, n.useCallback)(
             async (e, t) => {
-              w(!0);
+              v(!0);
               try {
                 let a = await fetch(''.concat(c.CT, '/api/v1/auth/login'), {
                   method: 'POST',
@@ -165,7 +184,7 @@
                 let o = await a.json();
                 if (o.requiresAccountSelection)
                   return (
-                    w(!1),
+                    v(!1),
                     {
                       requiresAccountSelection: !0,
                       availableAccounts: o.availableAccounts,
@@ -175,24 +194,24 @@
                 let { token: n } = o;
                 if (!n) throw Error('No token received from server');
                 localStorage.setItem(u, n);
-                let i = h(n);
+                let i = g(n);
                 if (!i) throw Error('Failed to parse user from token');
-                (g(i),
-                  w(!1),
+                (y(i),
+                  v(!1),
                   console.log('Login successful:', {
                     email: i.email,
                     accountId: i.accountId,
                     rank: i.rank,
                     accountType: i.accountType,
                   }),
-                  v.push('/keimenon'));
+                  b.push(h('/keimenon')));
               } catch (e) {
-                throw (w(!1), console.error('Login error:', e), e);
+                throw (v(!1), console.error('Login error:', e), e);
               }
             },
-            [v]
+            [b]
           ),
-          x = (0, n.useCallback)(
+          R = (0, n.useCallback)(
             async function (e, t, a) {
               let o = arguments.length > 3 && void 0 !== arguments[3] ? arguments[3] : 'free',
                 n = a.trim();
@@ -204,7 +223,7 @@
                 throw Error('Password must include both letters and numbers');
               if (!['free', 'professional', 'business'].includes(o))
                 throw Error('Invalid account class');
-              w(!0);
+              v(!0);
               try {
                 let a = await fetch(''.concat(c.CT, '/api/v1/auth/register'), {
                   method: 'POST',
@@ -224,19 +243,19 @@
                 let { token: i } = await a.json();
                 if (!i) throw Error('No token received from server');
                 localStorage.setItem(u, i);
-                let r = h(i);
+                let r = g(i);
                 if (!r) throw Error('Failed to parse user from token');
-                (g(r),
-                  w(!1),
+                (y(r),
+                  v(!1),
                   console.log('Registration successful:', {
                     email: r.email,
                     accountType: r.accountType,
                     accountClass: r.accountClass,
                   }),
-                  v.push('/keimenon'));
+                  b.push(h('/keimenon')));
               } catch (e) {
                 if (
-                  (w(!1),
+                  (v(!1),
                   console.error('Registration error:', e),
                   e instanceof TypeError &&
                     (e.message.includes('fetch') || e.message.includes('NetworkError')))
@@ -245,11 +264,11 @@
                 throw e;
               }
             },
-            [v]
+            [b]
           ),
           E = (0, n.useCallback)(
             async (e, t, a) => {
-              w(!0);
+              v(!0);
               try {
                 let o = await fetch(''.concat(c.CT, '/api/v1/auth/select-account'), {
                   method: 'POST',
@@ -263,20 +282,20 @@
                 let { token: n } = await o.json();
                 if (!n) throw Error('No token received from server');
                 localStorage.setItem(u, n);
-                let i = h(n);
+                let i = g(n);
                 if (!i) throw Error('Failed to parse user from token');
-                (g(i),
-                  w(!1),
+                (y(i),
+                  v(!1),
                   console.log('Account selected:', { accountId: i.accountId, email: i.email }),
-                  v.push('/keimenon'));
+                  b.push(h('/keimenon')));
               } catch (e) {
-                throw (w(!1), console.error('Account selection error:', e), e);
+                throw (v(!1), console.error('Account selection error:', e), e);
               }
             },
-            [v]
+            [b]
           ),
-          R = (0, n.useCallback)(async (e, t) => {
-            w(!0);
+          T = (0, n.useCallback)(async (e, t) => {
+            v(!0);
             try {
               let a = localStorage.getItem(u);
               if (!a) throw Error('Not authenticated');
@@ -315,9 +334,9 @@
               let i = (await n.json()).token;
               if (!i) throw Error('No token received from server');
               localStorage.setItem(u, i);
-              let d = h(i);
+              let d = g(i);
               if (!d) throw Error('Failed to parse user from token');
-              (g(d),
+              (y(d),
                 (0, s.Et)('Switched to account: '.concat(d.accountId), {
                   domain: 'api',
                   operation: 'auth.switchAccount',
@@ -331,23 +350,23 @@
                   accountId: d.accountId,
                   email: d.email,
                 }),
-                w(!1),
+                v(!1),
                 console.log(
                   '\uD83D\uDD04 Performing hard reload to clear all application state...'
                 ),
                 window.location.reload());
             } catch (e) {
-              throw (w(!1), console.error('❌ Account switch error:', e), e);
+              throw (v(!1), console.error('❌ Account switch error:', e), e);
             }
           }, []),
-          T = (0, n.useCallback)(() => {
+          k = (0, n.useCallback)(() => {
             (localStorage.removeItem(u),
-              g(null),
+              y(null),
               r.O.getState().reset(),
-              v.push('/login'),
+              b.push(h('/login')),
               console.log('Logged out'));
-          }, [v]),
-          k = (0, n.useCallback)(async () => {
+          }, [b]),
+          I = (0, n.useCallback)(async () => {
             let e = localStorage.getItem(u);
             if (!e) return !1;
             try {
@@ -364,8 +383,8 @@
               let a = await t.json();
               if (!(null == a ? void 0 : a.token) || 'string' != typeof a.token) return !1;
               localStorage.setItem(u, a.token);
-              let o = h(a.token);
-              return (o && g(o), !0);
+              let o = g(a.token);
+              return (o && y(o), !0);
             } catch (e) {
               return !1;
             }
@@ -378,46 +397,46 @@
             let t = f(e);
             if (!(null == t ? void 0 : t.exp)) return;
             let a = Math.floor(Date.now() / 1e3);
-            t.exp - a <= 120 && !(await k()) && _(e) && T();
+            t.exp - a <= 120 && !(await I()) && _(e) && k();
           }, 3e4);
           return () => clearInterval(e);
-        }, [a, k, T]);
-        let I = (0, n.useCallback)(() => {
+        }, [a, I, k]);
+        let S = (0, n.useCallback)(() => {
           let e = localStorage.getItem(u);
           if (!e) {
-            g(null);
+            y(null);
             return;
           }
           if (_(e)) {
-            k().then((e) => {
-              e || T();
+            I().then((e) => {
+              e || k();
             });
             return;
           }
-          let t = h(e);
-          t ? g(t) : T();
-        }, [T, k]);
+          let t = g(e);
+          t ? y(t) : k();
+        }, [k, I]);
         return (0, o.jsx)(d.Provider, {
           value: {
             user: a,
             isAuthenticated: !!a,
-            isLoading: y,
-            login: b,
+            isLoading: w,
+            login: x,
             selectAccount: E,
-            switchAccount: R,
-            register: x,
-            logout: T,
-            refreshUser: I,
+            switchAccount: T,
+            register: R,
+            logout: k,
+            refreshUser: S,
           },
           children: t,
         });
       }
-      function y() {
+      function w() {
         let e = (0, n.useContext)(d);
         if (void 0 === e) throw Error('useAuth must be used within an AuthProvider');
         return e;
       }
-      function w() {
+      function v() {
         return localStorage.getItem(u);
       }
     },
@@ -425,142 +444,145 @@
       'use strict';
       a.d(t, {
         $P: function () {
-          return et;
+          return ea;
         },
         $Q: function () {
-          return x;
+          return R;
         },
         Bk: function () {
           return B;
         },
         E0: function () {
-          return w;
+          return v;
         },
         EZ: function () {
-          return b;
+          return x;
         },
         FE: function () {
-          return L;
+          return z;
         },
         IU: function () {
-          return P;
-        },
-        In: function () {
           return D;
         },
+        In: function () {
+          return L;
+        },
         J$: function () {
-          return K;
+          return J;
         },
         NT: function () {
-          return T;
+          return k;
         },
         NU: function () {
           return E;
         },
         Ni: function () {
-          return I;
+          return S;
         },
         Nm: function () {
-          return N;
+          return P;
         },
         Nq: function () {
-          return W;
+          return $;
         },
         PR: function () {
-          return Y;
+          return H;
         },
         PZ: function () {
-          return J;
+          return q;
         },
         SK: function () {
-          return eo;
+          return en;
         },
         T1: function () {
-          return V;
+          return K;
         },
         T8: function () {
-          return U;
+          return X;
         },
         TE: function () {
-          return q;
+          return Y;
         },
         U0: function () {
           return C;
         },
         UU: function () {
-          return v;
+          return b;
         },
         W8: function () {
-          return G;
+          return U;
         },
         W9: function () {
-          return _;
-        },
-        Zd: function () {
-          return Z;
-        },
-        Zo: function () {
-          return S;
-        },
-        _A: function () {
-          return O;
-        },
-        d: function () {
-          return f;
-        },
-        e_: function () {
-          return ea;
-        },
-        h8: function () {
-          return $;
-        },
-        hi: function () {
-          return m;
-        },
-        lq: function () {
           return h;
         },
-        m7: function () {
-          return ee;
+        Zd: function () {
+          return N;
         },
-        oI: function () {
+        Zo: function () {
+          return A;
+        },
+        _A: function () {
+          return Z;
+        },
+        ax: function () {
+          return u;
+        },
+        d: function () {
+          return _;
+        },
+        e_: function () {
+          return eo;
+        },
+        h8: function () {
+          return Q;
+        },
+        hi: function () {
+          return f;
+        },
+        lq: function () {
           return g;
         },
-        qF: function () {
+        m7: function () {
+          return et;
+        },
+        oI: function () {
           return y;
         },
+        qF: function () {
+          return w;
+        },
         qp: function () {
-          return k;
+          return I;
         },
         r4: function () {
-          return H;
+          return W;
         },
         rT: function () {
-          return X;
+          return F;
         },
         tN: function () {
           return j;
         },
         tl: function () {
-          return z;
-        },
-        tz: function () {
-          return R;
-        },
-        u1: function () {
-          return A;
-        },
-        v$: function () {
           return M;
         },
+        tz: function () {
+          return T;
+        },
+        u1: function () {
+          return O;
+        },
+        v$: function () {
+          return G;
+        },
         w3: function () {
-          return F;
+          return V;
         },
         wv: function () {
-          return Q;
+          return ee;
         },
         x1: function () {
-          return en;
+          return ei;
         },
       });
       var o = a(2844),
@@ -602,13 +624,13 @@
           })(i) &&
           !a.includes('/api/v1/auth/refresh')
         ) {
-          let e = await u();
-          e && (o = p(t, e));
+          let e = await p();
+          e && (o = m(t, e));
         }
         let r = await fetch(e, o);
         if ((401 === r.status || 403 === r.status) && !a.includes('/api/v1/auth/refresh')) {
-          let a = await u();
-          if (a && (r = await fetch(e, p(t, a))).ok) return r;
+          let a = await p();
+          if (a && (r = await fetch(e, m(t, a))).ok) return r;
           let o = (await r.json().catch(() => ({}))).error || 'Authentication failed';
           throw (
             !(function () {
@@ -620,7 +642,13 @@
                 let t = new CustomEvent('auth:token-expired', { detail: { reason: e } });
                 (window.dispatchEvent(t),
                   setTimeout(() => {
-                    window.location.href = '/login?reason=expired';
+                    let e = new URLSearchParams(window.location.search),
+                      t = new URLSearchParams({ reason: 'expired' });
+                    for (let a of ['apiPort', 'dev']) {
+                      let o = e.get(a);
+                      o && t.set(a, o);
+                    }
+                    window.location.href = '/login?'.concat(t.toString());
                   }, 1e3));
               }
             })(o),
@@ -629,7 +657,17 @@
         }
         return r;
       }
-      async function u() {
+      async function u(e, t) {
+        let a = new Headers(c());
+        return (
+          (null == t ? void 0 : t.headers) &&
+            new Headers(t.headers).forEach((e, t) => {
+              a.set(t, e);
+            }),
+          d(e, { ...t, headers: a })
+        );
+      }
+      async function p() {
         return (
           l ||
           (l = (async () => {
@@ -654,11 +692,11 @@
           })())
         );
       }
-      function p(e, t) {
+      function m(e, t) {
         let a = new Headers((null == e ? void 0 : e.headers) || {});
         return (a.set('Authorization', 'Bearer '.concat(t)), { ...e, headers: a });
       }
-      let m = {
+      let f = {
         get: async (e) => {
           let t = await d(''.concat(i.CT, '/api/v1').concat(e));
           if (!t.ok) throw Error(t.statusText);
@@ -691,7 +729,7 @@
           return { data: await t.json().catch(() => ({})) };
         },
       };
-      async function f() {
+      async function _() {
         try {
           let e = await d(''.concat(i.CT, '/api/v1/import/presets'), {
             method: 'GET',
@@ -702,7 +740,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function _(e) {
+      async function h(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/import/presets'), {
             method: 'POST',
@@ -714,7 +752,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function h(e, t) {
+      async function g(e, t) {
         try {
           let a = await d(''.concat(i.CT, '/api/v1/import/presets/').concat(e), {
             method: 'PUT',
@@ -726,7 +764,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function g(e) {
+      async function y(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/import/presets/').concat(e), {
             method: 'DELETE',
@@ -737,7 +775,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function y() {
+      async function w() {
         let e = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : '24h',
           t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 12;
         try {
@@ -751,7 +789,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function w() {
+      async function v() {
         try {
           let e = await d(''.concat(i.CT, '/api/v1/me/features'), { method: 'GET', headers: c() });
           return (e.ok || (await (0, o.zG)({ response: e })), await e.json());
@@ -759,7 +797,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function v(e) {
+      async function b(e) {
         let t = await d(''.concat(i.CT, '/api/v1/jobs/').concat(e, '/cancel'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...c() },
@@ -771,7 +809,7 @@
           );
         return await t.json();
       }
-      async function b(e) {
+      async function x(e) {
         let t = await d(''.concat(i.CT, '/api/v1/jobs/').concat(e, '/pause'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...c() },
@@ -782,7 +820,7 @@
           );
         return await t.json();
       }
-      async function x(e) {
+      async function R(e) {
         let t = await d(''.concat(i.CT, '/api/v1/jobs/').concat(e, '/resume'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...c() },
@@ -910,7 +948,7 @@
           throw (console.error('[importChatFilesAsJob] Final error:', e), await (0, o.zG)(e));
         }
       }
-      async function R(e) {
+      async function T(e) {
         let t = '';
         try {
           var a, o, n, i, r, s, l;
@@ -971,13 +1009,13 @@
           return { platform: 'unknown', confidence: 0 };
         }
       }
-      async function T(e) {
+      async function k(e) {
         let t = {},
           a = 0,
           o = 0;
         for (let n of e)
           try {
-            let e = await R(n);
+            let e = await T(n);
             if (((t[e.platform] = (t[e.platform] || 0) + 1), n.size > 52428800)) {
               console.log(
                 'Large file detected ('.concat(
@@ -1013,7 +1051,7 @@
           platforms: t,
         };
       }
-      async function k(e) {
+      async function I(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/content/message/').concat(e), { headers: c() });
           return (t.ok || (await (0, o.zG)({ response: t })), await t.json());
@@ -1021,7 +1059,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function I(e) {
+      async function S(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/content/source/').concat(e), { headers: c() });
           return (t.ok || (await (0, o.zG)({ response: t })), await t.json());
@@ -1037,7 +1075,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function S(e) {
+      async function A(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/content/conversation/').concat(e), {
             headers: c(),
@@ -1047,7 +1085,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function A(e) {
+      async function O(e) {
         try {
           var t, a, n;
           let r = await d(''.concat(i.CT, '/api/v1/nodes/').concat(e), { headers: c() });
@@ -1068,7 +1106,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function O(e) {
+      async function Z(e) {
         try {
           var t, a, n, r, s;
           let l = await d(''.concat(i.CT, '/api/v1/nodes/').concat(e), { headers: c() });
@@ -1096,7 +1134,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function Z(e) {
+      async function N(e) {
         try {
           var t, a, n, r;
           let s = await d(''.concat(i.CT, '/api/v1/nodes/').concat(e), { headers: c() });
@@ -1122,7 +1160,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function N(e) {
+      async function P(e) {
         try {
           var t, a, n, r, s, l, u;
           let p = await d(''.concat(i.CT, '/api/v1/nodes/').concat(e), { headers: c() });
@@ -1152,7 +1190,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function P(e) {
+      async function D(e) {
         try {
           var t, a, n, r, s;
           let l = await d(''.concat(i.CT, '/api/v1/nodes/').concat(e), { headers: c() });
@@ -1185,7 +1223,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function D() {
+      async function L() {
         try {
           let e = await d(''.concat(i.CT, '/api/v1/content/stats'), { headers: c() });
           return (e.ok || (await (0, o.zG)({ response: e })), await e.json());
@@ -1206,7 +1244,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function L(e) {
+      async function z(e) {
         if (!e) throw Error('jobId is required to fetch duplicate review status');
         try {
           let t = await d(''.concat(i.CT, '/api/v1/jobs/').concat(e, '/duplicate-review/status'), {
@@ -1218,7 +1256,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function z(e) {
+      async function M(e) {
         if (!e) throw Error('jobId is required to fetch duplicate review groups');
         try {
           let t = await d(''.concat(i.CT, '/api/v1/jobs/').concat(e, '/duplicate-review/groups'), {
@@ -1230,7 +1268,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function M(e) {
+      async function G(e) {
         try {
           var t;
           let a = new URLSearchParams();
@@ -1239,7 +1277,7 @@
             (null == e ? void 0 : e.offset) && a.append('offset', e.offset.toString()),
             (null == e ? void 0 : e.search) && a.append('search', e.search));
           let n = ''.concat(i.CT, '/api/v1/nodes').concat(a.toString() ? '?'.concat(a) : ''),
-            r = await fetch(n, { headers: c() });
+            r = await u(n);
           r.ok || (await (0, o.zG)({ response: r }));
           let s = await r.json();
           return {
@@ -1250,7 +1288,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function G(e) {
+      async function U(e) {
         try {
           var t, a;
           let n = new URLSearchParams();
@@ -1262,7 +1300,7 @@
             (null == e ? void 0 : e.sort) && n.append('sort', e.sort),
             (null == e ? void 0 : e.order) && n.append('order', e.order));
           let r = ''.concat(i.CT, '/api/v1/edges').concat(n.toString() ? '?'.concat(n) : ''),
-            s = await fetch(r, { headers: c() });
+            s = await u(r);
           s.ok || (await (0, o.zG)({ response: s }));
           let l = await s.json();
           return {
@@ -1287,7 +1325,7 @@
           });
         return (n.ok || (await (0, o.zG)({ response: n })), n.json());
       }
-      async function U() {
+      async function X() {
         try {
           let e = await d(''.concat(i.CT, '/api/v1/accounts'), { headers: c() });
           return (e.ok || (await (0, o.zG)({ response: e })), await e.json());
@@ -1295,7 +1333,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function X(e) {
+      async function F(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/accounts/').concat(e, '/stats'), {
             headers: c(),
@@ -1305,7 +1343,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function F() {
+      async function V() {
         try {
           let e = await d(''.concat(i.CT, '/api/v1/analytics/overview'), { headers: c() });
           return (e.ok || (await (0, o.zG)({ response: e })), await e.json());
@@ -1313,35 +1351,35 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function V() {
+      async function K() {
         let e = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : 'usage',
           t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 10;
         try {
-          let a = await fetch(
+          let a = await u(
             ''
               .concat(i.CT, '/api/v1/analytics/top-accounts?metric=')
               .concat(e, '&limit=')
               .concat(t),
-            { headers: c() }
+            {}
           );
           return (a.ok || (await (0, o.zG)({ response: a })), await a.json());
         } catch (e) {
           throw await (0, o.zG)(e);
         }
       }
-      async function K() {
+      async function J() {
         let e = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : 50;
         try {
-          let t = await fetch(
+          let t = await u(
             ''.concat(i.CT, '/api/v1/analytics/recent-activity?limit=').concat(e),
-            { headers: c() }
+            {}
           );
           return (t.ok || (await (0, o.zG)({ response: t })), await t.json());
         } catch (e) {
           throw await (0, o.zG)(e);
         }
       }
-      async function J() {
+      async function q() {
         try {
           let e = await d(''.concat(i.CT, '/api/v1/analytics/alerts'), { headers: c() });
           return (e.ok || (await (0, o.zG)({ response: e })), await e.json());
@@ -1349,7 +1387,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function q(e) {
+      async function Y(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/accounts/').concat(e, '/users'), {
             headers: c(),
@@ -1359,7 +1397,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function Y(e) {
+      async function H(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/users/').concat(e), { headers: c() });
           return (t.ok || (await (0, o.zG)({ response: t })), await t.json());
@@ -1367,7 +1405,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function H(e, t) {
+      async function W(e, t) {
         try {
           let a = await d(''.concat(i.CT, '/api/v1/accounts/').concat(e, '/users'), {
             method: 'POST',
@@ -1379,7 +1417,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function W(e, t) {
+      async function $(e, t) {
         try {
           let a = await d(''.concat(i.CT, '/api/v1/users/').concat(e), {
             method: 'PATCH',
@@ -1391,7 +1429,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function $(e) {
+      async function Q(e) {
         try {
           let t = await d(''.concat(i.CT, '/api/v1/users/').concat(e), {
             method: 'DELETE',
@@ -1402,11 +1440,11 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function Q(e) {
+      async function ee(e) {
         let t = await d(''.concat(i.CT, '/api/v1/settings?accountId=').concat(e), { headers: c() });
         return (t.ok || (await (0, o.zG)({ response: t })), t.json());
       }
-      async function ee(e, t) {
+      async function et(e, t) {
         if (!(0, n.LP)()) throw Error('Not authenticated');
         let a = await d(''.concat(i.CT, '/api/v1/settings/').concat(e), {
           method: 'PATCH',
@@ -1415,7 +1453,7 @@
         });
         return (a.ok || (await (0, o.zG)({ response: a })), a.json());
       }
-      async function et(e, t) {
+      async function ea(e, t) {
         let a = await d(''.concat(i.CT, '/api/v1/ingest/url'), {
           method: 'POST',
           headers: { ...c(), 'Content-Type': 'application/json' },
@@ -1427,7 +1465,7 @@
         }
         return a.json();
       }
-      async function ea() {
+      async function eo() {
         let e = await d(''.concat(i.CT, '/api/v1/system/reimport-status'), {
           method: 'GET',
           headers: c(),
@@ -1435,7 +1473,7 @@
         if (!e.ok) throw await (0, o.zG)({ response: e });
         return e.json();
       }
-      async function eo() {
+      async function en() {
         let e = await d(''.concat(i.CT, '/api/v1/system/reimport-complete'), {
           method: 'POST',
           headers: { ...c(), 'Content-Type': 'application/json' },
@@ -1444,7 +1482,7 @@
         if (!e.ok) throw await (0, o.zG)({ response: e });
         return e.json();
       }
-      let en = {
+      let ei = {
         get: async (e, t) => {
           let a = await d(''.concat(i.CT).concat(e), {
             method: 'GET',
@@ -1490,78 +1528,91 @@
       'use strict';
       a.d(t, {
         Ar: function () {
-          return d;
-        },
-        CT: function () {
-          return s;
-        },
-        Ku: function () {
-          return g;
-        },
-        LS: function () {
-          return w;
-        },
-        M6: function () {
-          return _;
-        },
-        OJ: function () {
-          return c;
-        },
-        Qn: function () {
-          return h;
-        },
-        X8: function () {
-          return f;
-        },
-        nj: function () {
-          return l;
-        },
-        oj: function () {
-          return m;
-        },
-        pA: function () {
-          return p;
-        },
-        yD: function () {
           return u;
         },
-        zC: function () {
+        CT: function () {
+          return l;
+        },
+        Ku: function () {
           return y;
         },
+        LS: function () {
+          return v;
+        },
+        M6: function () {
+          return h;
+        },
+        OJ: function () {
+          return d;
+        },
+        Qn: function () {
+          return g;
+        },
+        X8: function () {
+          return _;
+        },
+        nj: function () {
+          return c;
+        },
+        oj: function () {
+          return f;
+        },
+        pA: function () {
+          return m;
+        },
+        yD: function () {
+          return p;
+        },
+        zC: function () {
+          return w;
+        },
       });
-      var o,
-        n = a(4859);
-      function i(e) {
+      var o = a(4859);
+      function n(e) {
         let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : '';
-        return (void 0 !== n && n.env && n.env[e]) || t;
+        return (void 0 !== o && o.env && o.env[e]) || t;
       }
-      i('INTERNAL_API_URL');
-      let r =
-          ((o = 'apiPort'),
-          window.location ? new URLSearchParams(window.location.search).get(o) : null),
-        s =
-          (r ? 'http://127.0.0.1:'.concat(r) : null) ||
-          i('NEXT_PUBLIC_API_URL', 'http://127.0.0.1:4001');
-      (console.log('[Config] API_BASE_URL resolved to:', s),
-        i('NEXT_PUBLIC_ENABLE_PRO_FEATURES'),
-        i('NEXT_PUBLIC_ENABLE_BUSINESS_FEATURES'));
-      let l = '1' === i('NEXT_PUBLIC_ENABLE_LEGACY_IMPORTS'),
-        c = '1' === i('NEXT_PUBLIC_ENABLE_HYBRID_LOCAL_FIRST'),
-        d = 'false' !== i('NEXT_PUBLIC_ENABLE_3D_RENDERER', 'true');
-      i('NEXT_PUBLIC_USE_DIRECT_SSE');
-      let u = '1' === i('NEXT_PUBLIC_DEBUG_IMPORT_SELECTOR'),
-        p = 'true' === i('NEXT_PUBLIC_E2E_TESTING');
-      (parseInt(i('NEXT_PUBLIC_JOB_POLL_INTERVAL_MS', '2000'), 10),
-        parseInt(i('NEXT_PUBLIC_SSE_RECONNECT_TIMEOUT_MS', '5000'), 10),
-        parseInt(i('NEXT_PUBLIC_MAX_JOB_WAIT_MS', '1500000'), 10));
-      let m = i('NEXT_PUBLIC_SENTRY_DSN'),
-        f = i('NEXT_PUBLIC_SENTRY_ENVIRONMENT', i('NODE_ENV', 'production')),
-        _ = parseFloat(i('NEXT_PUBLIC_SENTRY_SAMPLE_RATE', '1.0')),
-        h = parseFloat(i('NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE', '0.1')),
-        g = parseFloat(i('NEXT_PUBLIC_SENTRY_REPLAY_SESSION_SAMPLE_RATE', '0.1')),
-        y = parseFloat(i('NEXT_PUBLIC_SENTRY_REPLAY_ERROR_SAMPLE_RATE', '1.0')),
-        w = 'false' !== i('NEXT_PUBLIC_SENTRY_SCRUB_PII', 'true');
-      (i('NEXT_PUBLIC_AUTH_DOMAIN'), i('NEXT_PUBLIC_AUTH_CLIENT_ID'), i('NODE_ENV', 'production'));
+      n('INTERNAL_API_URL');
+      let i = { apiPort: 'keimenon.startup.apiPort', dev: 'keimenon.startup.dev' };
+      function r(e) {
+        let t = window.location ? new URLSearchParams(window.location.search).get(e) : null;
+        if (t && t.trim().length > 0) {
+          try {
+            window.sessionStorage.setItem(i[e], t);
+          } catch (e) {}
+          return t;
+        }
+        try {
+          let t = window.sessionStorage.getItem(i[e]);
+          if (t && t.trim().length > 0) return t;
+        } catch (e) {}
+        return null;
+      }
+      let s = r('apiPort'),
+        l =
+          (s ? 'http://127.0.0.1:'.concat(s) : null) ||
+          n('NEXT_PUBLIC_API_URL', 'http://127.0.0.1:4001');
+      (console.log('[Config] API_BASE_URL resolved to:', l),
+        n('NEXT_PUBLIC_ENABLE_PRO_FEATURES'),
+        n('NEXT_PUBLIC_ENABLE_BUSINESS_FEATURES'));
+      let c = '1' === n('NEXT_PUBLIC_ENABLE_LEGACY_IMPORTS'),
+        d = '1' === n('NEXT_PUBLIC_ENABLE_HYBRID_LOCAL_FIRST'),
+        u = 'false' !== n('NEXT_PUBLIC_ENABLE_3D_RENDERER', 'true');
+      n('NEXT_PUBLIC_USE_DIRECT_SSE');
+      let p = '1' === n('NEXT_PUBLIC_DEBUG_IMPORT_SELECTOR');
+      r('dev');
+      let m = 'true' === n('NEXT_PUBLIC_E2E_TESTING');
+      (parseInt(n('NEXT_PUBLIC_JOB_POLL_INTERVAL_MS', '2000'), 10),
+        parseInt(n('NEXT_PUBLIC_SSE_RECONNECT_TIMEOUT_MS', '5000'), 10),
+        parseInt(n('NEXT_PUBLIC_MAX_JOB_WAIT_MS', '1500000'), 10));
+      let f = n('NEXT_PUBLIC_SENTRY_DSN'),
+        _ = n('NEXT_PUBLIC_SENTRY_ENVIRONMENT', n('NODE_ENV', 'production')),
+        h = parseFloat(n('NEXT_PUBLIC_SENTRY_SAMPLE_RATE', '1.0')),
+        g = parseFloat(n('NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE', '0.1')),
+        y = parseFloat(n('NEXT_PUBLIC_SENTRY_REPLAY_SESSION_SAMPLE_RATE', '0.1')),
+        w = parseFloat(n('NEXT_PUBLIC_SENTRY_REPLAY_ERROR_SAMPLE_RATE', '1.0')),
+        v = 'false' !== n('NEXT_PUBLIC_SENTRY_SCRUB_PII', 'true');
+      (n('NEXT_PUBLIC_AUTH_DOMAIN'), n('NEXT_PUBLIC_AUTH_CLIENT_ID'), n('NODE_ENV', 'production'));
     },
     2844: function (e, t, a) {
       'use strict';
@@ -2443,7 +2494,7 @@
       'use strict';
       a.d(t, {
         r3: function () {
-          return L;
+          return j;
         },
         F7: function () {
           return n;
@@ -3167,7 +3218,7 @@
             )
             .default([]),
         }),
-        E = i.Ry({
+        R = i.Ry({
           scope: i.Km(['message', 'conversation', 'auto']).default('message'),
           roleFilter: i.Ry({
             user: i.O7().default(!0),
@@ -3182,7 +3233,7 @@
             similarityThreshold: i.Rx().min(0).max(1).default(0.75),
           }),
         }),
-        R = i.Ry({
+        E = i.Ry({
           extract: i.O7().default(!0),
           removeFromSource: i.O7().default(!0),
           createEdges: i.O7().default(!0),
@@ -3213,15 +3264,15 @@
           allowExternalAPIs: i.O7().default(!1),
           apiKey: i.Z_().nullable().default(null),
         }),
-        C = i.Ry({
+        S = i.Ry({
           grouping: x,
-          sources: E,
-          code: R,
+          sources: R,
+          code: E,
           duplicates: T,
           privacy: I,
           spine: k.optional(),
         }),
-        S = i.G0([g, C]);
+        C = i.G0([g, S]);
       (i.Ry({
         version: i.Z_().default('1.0'),
         storageMode: b.default('local'),
@@ -3233,7 +3284,7 @@
           }),
         }),
         documentStore: i.Ry({ path: i.Z_(), enableDeduplication: i.O7().default(!0) }),
-        defaults: S.optional(),
+        defaults: C.optional(),
       }),
         v(),
         a(6031),
@@ -3302,25 +3353,25 @@
         (o.SUCCEEDED = 'SUCCEEDED'),
         (o.FAILED = 'FAILED'),
         (o.CANCELED = 'CANCELED'));
-      let j = v(),
-        L = {
+      let L = v(),
+        j = {
           extraction: {
-            includeUser: j.extraction.includeUser,
-            includeAssistant: j.extraction.includeAssistant,
+            includeUser: L.extraction.includeUser,
+            includeAssistant: L.extraction.includeAssistant,
           },
-          branches: j.branches,
-          agent: { bootstrap: j.agent.bootstrap },
-          minMessageLength: j.minMessageLength,
-          processingMode: j.processingMode,
+          branches: L.branches,
+          agent: { bootstrap: L.agent.bootstrap },
+          minMessageLength: L.minMessageLength,
+          processingMode: L.processingMode,
           groups: [],
-          duplicateDetection: { ...j.duplicateDetection },
-          extractCode: j.extractCode,
+          duplicateDetection: { ...L.duplicateDetection },
+          extractCode: L.extractCode,
           codeSettings: {
-            minLength: j.codeSettings.minLength,
-            languages: [...j.codeSettings.languages],
-            groupBy: j.codeSettings.groupBy,
-            deduplicate: j.codeSettings.deduplicate,
-            sourceHandling: j.codeSettings.sourceHandling,
+            minLength: L.codeSettings.minLength,
+            languages: [...L.codeSettings.languages],
+            groupBy: L.codeSettings.groupBy,
+            deduplicate: L.codeSettings.deduplicate,
+            sourceHandling: L.codeSettings.sourceHandling,
           },
         };
       i.Ry({

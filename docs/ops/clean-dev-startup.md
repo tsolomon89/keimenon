@@ -8,7 +8,7 @@ This repo now provides two deterministic clean-start commands:
 npm run dev:clean:browser
 ```
 
-2. Electron mode (Web + Electron + embedded API):
+2. Electron mode (API + Web + Electron):
 
 ```bash
 npm run dev:clean:electron
@@ -22,6 +22,13 @@ Both commands perform cleanup first, then startup in a fixed order.
 2. Kill any process bound to the configured API/Web ports.
 3. Verify those ports are fully free before startup.
 
+Note: clean startup does **not** wipe graph/database content. Use `npm run factory-reset:global-sweep` when you need a full fresh data reset across canonical and stale local DB/runtime locations.
+For incident recovery (stop processes + global sweep + settings schema repair + status report), use:
+
+```bash
+npm run recovery:full-fresh-admin
+```
+
 Additionally, Electron mode also:
 
 1. Kills stale `electron.exe` (or `electron` on Unix) processes that match Keimenon command lines.
@@ -31,18 +38,30 @@ Additionally, Electron mode also:
 ### Browser (`dev:clean:browser`)
 
 1. API (`@keimenon/api`)
-2. API health check
+2. API readiness check (`/ready`)
 3. Web (`@keimenon/web`)
 
 This delegates to the existing ordered orchestrator (`scripts/dev.js --clean`).
 
 ### Electron (`dev:clean:electron`)
 
-1. Web (`@keimenon/web`)
-2. Electron (`keimenon-desktop`)
-3. Embedded API started by Electron main process
+1. API (`@keimenon/api`)
+2. API readiness check (`/ready`)
+3. Web (`@keimenon/web`)
+4. Electron (`keimenon-desktop`) with embedded API disabled in dev
 
 This delegates to `scripts/dev-desktop.js`.
+
+## Pre-login startup gate
+
+The web login route now enforces backend readiness before rendering credential inputs.
+
+Behavior:
+
+1. Full-screen startup gate appears when backend `/ready` is not green.
+2. Gate polls `/ready` and also fetches `/health/modules` details for actionable diagnostics.
+3. Login form renders only after readiness is green.
+4. Root/login redirects preserve startup context query params (`apiPort`, `dev`) to keep desktop dev routing stable.
 
 ## Ports
 
@@ -79,3 +98,13 @@ Use clean-start when:
 4. `npm run dev:reset` - canonical reset (ports + optional local test cleanup)
 5. `npm run dev:stop` - ports-only reset
 6. `npm run dev:clean` - existing browser clean startup (`scripts/dev.js --clean`)
+
+## ABI mismatch recovery
+
+If startup detects native module ABI mismatch (for example `better-sqlite3`), the dev orchestrator performs one automatic runtime repair attempt and retries backend startup once.
+
+If retry still fails, run:
+
+```bash
+npm run runtime:repair
+```

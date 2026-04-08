@@ -22,7 +22,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, authenticatedFetch } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/env.config';
 import { getToken } from '@/contexts/AuthContext';
 import { normalizeImportOptions } from '@keimenon/types';
@@ -79,6 +79,7 @@ const MAX_CONCURRENT_UPLOADS = 6; // Concurrent chunk uploads
 const RETRY_ATTEMPTS = 3; // Per-chunk retry attempts
 const RETRY_DELAY_MS = 1000; // Initial retry delay
 const STORAGE_KEY_PREFIX = 'chunked_upload_'; // LocalStorage key prefix
+const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again before uploading.';
 
 // ============================================================================
 // Hook
@@ -198,11 +199,11 @@ export function useChunkedUpload() {
         };
 
         const token = getToken();
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
+        if (!token) {
+          throw new Error(SESSION_EXPIRED_MESSAGE);
         }
 
-        const response = await fetch(
+        const response = await authenticatedFetch(
           `${API_BASE_URL}/api/v1/uploads/${sessionId}/chunks/${chunkIndex}`,
           {
             method: 'POST',
@@ -223,6 +224,9 @@ export function useChunkedUpload() {
             jobId: result.jobId, // Set when isComplete=true
           };
         } else {
+          if (response.status === 401 || response.status === 403) {
+            throw new Error(SESSION_EXPIRED_MESSAGE);
+          }
           const errorData = await response.json();
           // Read message field for actual error (e.g., ENOSPC, EPERM)
           throw new Error(errorData.message || errorData.error || 'Chunk upload failed');
@@ -243,8 +247,13 @@ export function useChunkedUpload() {
         }
 
         // Max retries exceeded
+        const finalMessage = String(error?.message || error || 'Chunk upload failed');
+        if (finalMessage === SESSION_EXPIRED_MESSAGE) {
+          throw new Error(finalMessage);
+        }
+
         throw new Error(
-          `Failed to upload chunk ${chunkIndex} after ${RETRY_ATTEMPTS} attempts: ${error.message}`
+          `Failed to upload chunk ${chunkIndex} after ${RETRY_ATTEMPTS} attempts: ${finalMessage}`
         );
       }
     },
@@ -261,10 +270,11 @@ export function useChunkedUpload() {
       sessionId: string,
       file: File,
       missingChunks: number[],
-      totalChunks: number
+      totalChunks: number,
+      initialUploadedChunkIndexes: number[] = []
     ): Promise<string | undefined> => {
       const startTime = Date.now();
-      const uploadedChunks = new Set(state.uploadedChunks);
+      const uploadedChunks = new Set(initialUploadedChunkIndexes);
       const chunks = [...missingChunks];
 
       // Track active uploads with completion status
@@ -362,7 +372,25 @@ export function useChunkedUpload() {
       // Return the jobId captured from final chunk response
       return finalJobId;
     },
-    [uploadChunk, saveSessionToStorage] // Bug fix #14: Removed state dependencies - uses refs
+    [uploadChunk, saveSessionToStorage]
+  );
+
+  const resolveJobIdFromSession = useCallback(
+    async (sessionId: string): Promise<string | undefined> => {
+      try {
+        const statusResponse = await apiClient.get(`/api/v1/uploads/${sessionId}`);
+        if (!statusResponse?.data?.success) {
+          return undefined;
+        }
+        const session = statusResponse.data.session as Record<string, any> | undefined;
+        return typeof session?.jobId === 'string' && session.jobId.length > 0
+          ? session.jobId
+          : undefined;
+      } catch {
+        return undefined;
+      }
+    },
+    []
   );
 
   /**
@@ -430,27 +458,30 @@ export function useChunkedUpload() {
 
         // Step 2: Upload all chunks (jobId is returned from final chunk response)
         const missingChunks = Array.from({ length: session.totalChunks }, (_, i) => i);
-        const jobId = await uploadChunksInParallel(
+        const uploadJobId = await uploadChunksInParallel(
           session.id,
           file,
           missingChunks,
-          session.totalChunks
+          session.totalChunks,
+          []
         );
 
         // Check if canceled or paused
-        if (state.isCanceled) {
+        if (isCanceledRef.current) {
           console.log('Upload canceled by user');
           return { success: false, error: 'Upload canceled by user' };
         }
 
-        if (state.isPaused) {
+        if (isPausedRef.current) {
           console.log('Upload paused by user');
           return { success: false, error: 'Upload paused by user' };
         }
 
         // Step 3: Upload complete
         console.log(`✅ Upload complete: ${file.name}`);
-        console.log(`   Job ID: ${jobId}`);
+        const resolvedJobId = uploadJobId || (await resolveJobIdFromSession(session.id));
+
+        console.log(`   Job ID: ${resolvedJobId}`);
 
         // Clear localStorage
         clearSessionStorage(session.id);
@@ -458,7 +489,7 @@ export function useChunkedUpload() {
         // Update state with jobId
         setState((prev) => ({
           ...prev,
-          jobId,
+          jobId: resolvedJobId,
           progress: {
             ...prev.progress,
             status: 'completed',
@@ -466,7 +497,7 @@ export function useChunkedUpload() {
           },
         }));
 
-        return { success: true, jobId };
+        return { success: true, jobId: resolvedJobId };
       } catch (error: any) {
         console.error('Upload error:', error);
 
@@ -482,7 +513,7 @@ export function useChunkedUpload() {
         return { success: false, error: error.message };
       }
     },
-    [uploadChunksInParallel, clearSessionStorage, state.isCanceled, state.isPaused]
+    [uploadChunksInParallel, clearSessionStorage, resolveJobIdFromSession]
   );
 
   /**
@@ -499,7 +530,11 @@ export function useChunkedUpload() {
   /**
    * Resume upload
    */
-  const resume = useCallback(async () => {
+  const resume = useCallback(async (): Promise<{
+    success: boolean;
+    jobId?: string;
+    error?: string;
+  }> => {
     if (!state.sessionId || !state.file) {
       throw new Error('No active upload session to resume');
     }
@@ -532,13 +567,45 @@ export function useChunkedUpload() {
     }));
 
     // Resume uploading missing chunks
-    await uploadChunksInParallel(
+    const resumedJobId = await uploadChunksInParallel(
       state.sessionId,
       state.file,
       session.missingChunks,
-      session.totalChunks
+      session.totalChunks,
+      session.chunksUploaded
     );
-  }, [state.sessionId, state.file, uploadChunksInParallel]);
+
+    if (isCanceledRef.current) {
+      return { success: false, error: 'Upload canceled by user' };
+    }
+
+    if (isPausedRef.current) {
+      return { success: false, error: 'Upload paused by user' };
+    }
+
+    const resolvedJobId =
+      resumedJobId || (await resolveJobIdFromSession(state.sessionId)) || state.jobId;
+    clearSessionStorage(state.sessionId);
+
+    setState((prev) => ({
+      ...prev,
+      jobId: resolvedJobId,
+      progress: {
+        ...prev.progress,
+        status: 'completed',
+        percentage: 100,
+      },
+    }));
+
+    return { success: true, jobId: resolvedJobId };
+  }, [
+    state.sessionId,
+    state.file,
+    state.jobId,
+    uploadChunksInParallel,
+    resolveJobIdFromSession,
+    clearSessionStorage,
+  ]);
 
   /**
    * Cancel upload

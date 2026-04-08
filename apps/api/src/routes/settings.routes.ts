@@ -15,6 +15,68 @@ import {
 } from '@keimenon/types';
 import { KeyManagementService, LLMProvider } from '../services/key-management.service';
 
+const SETTINGS_SCHEMA_TARGETS = [
+  'settings_config',
+  'settings_changes',
+  'account_api_keys',
+  'account_ai_settings',
+  'litellm_url',
+  'searxng_url',
+  'litellm_base_url',
+  'searxng_base_url',
+] as const;
+
+function getSettingsSchemaDrift(error: unknown): { message: string; targets: string[] } | null {
+  const raw = String((error as any)?.message || '');
+  const normalized = raw.toLowerCase();
+
+  const hasSchemaError =
+    normalized.includes('no such table') ||
+    normalized.includes('no such column') ||
+    normalized.includes('has no column named') ||
+    normalized.includes('unknown column');
+
+  if (!hasSchemaError) {
+    return null;
+  }
+
+  const matchedTargets = SETTINGS_SCHEMA_TARGETS.filter((target) =>
+    normalized.includes(target.toLowerCase())
+  );
+
+  if (matchedTargets.length === 0) {
+    return null;
+  }
+
+  return {
+    message: raw,
+    targets: matchedTargets,
+  };
+}
+
+function respondSettingsError(
+  res: Response,
+  error: unknown,
+  options: { fallbackMessage: string; operation: string }
+) {
+  const drift = getSettingsSchemaDrift(error);
+  if (drift) {
+    return res.status(503).json({
+      success: false,
+      error: options.fallbackMessage,
+      code: 'SETTINGS_SCHEMA_DRIFT',
+      operation: options.operation,
+      diagnostics: {
+        targets: drift.targets,
+        sqliteError: drift.message,
+        remediation: 'Run npm run settings:schema:repair',
+      },
+    });
+  }
+
+  return res.status(500).json({ error: options.fallbackMessage });
+}
+
 /**
  * Settings Routes - JSON-Driven Configuration Management
  * Handles scoped settings with inheritance: defaults → org → workspace → role → user → view → component
@@ -107,7 +169,10 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       });
     } catch (error: any) {
       console.error('Error fetching settings:', error);
-      return res.status(500).json({ error: 'Failed to fetch settings' });
+      return respondSettingsError(res, error, {
+        fallbackMessage: 'Failed to fetch settings',
+        operation: 'settings.fetch',
+      });
     }
   });
 
@@ -164,7 +229,10 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       });
     } catch (error: any) {
       console.error('Error fetching setting:', error);
-      return res.status(500).json({ error: 'Failed to fetch setting' });
+      return respondSettingsError(res, error, {
+        fallbackMessage: 'Failed to fetch setting',
+        operation: 'settings.fetchOne',
+      });
     }
   });
 
@@ -247,7 +315,10 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       });
     } catch (error: any) {
       console.error('Error updating setting:', error);
-      return res.status(500).json({ error: 'Failed to update setting' });
+      return respondSettingsError(res, error, {
+        fallbackMessage: 'Failed to update setting',
+        operation: 'settings.update',
+      });
     }
   });
 
@@ -313,7 +384,10 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       });
     } catch (error: any) {
       console.error('Error resetting setting:', error);
-      return res.status(500).json({ error: 'Failed to reset setting' });
+      return respondSettingsError(res, error, {
+        fallbackMessage: 'Failed to reset setting',
+        operation: 'settings.reset',
+      });
     }
   });
 
@@ -350,7 +424,10 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       });
     } catch (error: any) {
       console.error('Error fetching history:', error);
-      return res.status(500).json({ error: 'Failed to fetch history' });
+      return respondSettingsError(res, error, {
+        fallbackMessage: 'Failed to fetch history',
+        operation: 'settings.history',
+      });
     }
   });
 
@@ -398,7 +475,10 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       });
     } catch (error: any) {
       console.error('Error fetching registry:', error);
-      return res.status(500).json({ error: 'Failed to fetch settings registry' });
+      return respondSettingsError(res, error, {
+        fallbackMessage: 'Failed to fetch settings registry',
+        operation: 'settings.registry',
+      });
     }
   });
 
@@ -426,7 +506,10 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       });
     } catch (error: any) {
       console.error('Error listing API keys:', error);
-      return res.status(500).json({ error: 'Failed to list API keys' });
+      return respondSettingsError(res, error, {
+        fallbackMessage: 'Failed to list API keys',
+        operation: 'settings.apiKeys.list',
+      });
     }
   });
 
@@ -482,49 +565,67 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
         });
       }
 
-      return res.status(500).json({ error: 'Failed to add API key' });
+      return respondSettingsError(res, error, {
+        fallbackMessage: 'Failed to add API key',
+        operation: 'settings.apiKeys.add',
+      });
     }
   });
 
   /**
    * DELETE /api/v1/settings/api-keys/:provider - Remove API key
    */
-  router.delete('/api-keys/:provider', requireAuth(authService), async (req: Request, res: Response) => {
-    try {
-      const { getDbClient } = await import('../utils/get-db-client');
-      const dbClient = await getDbClient(req);
+  router.delete(
+    '/api-keys/:provider',
+    requireAuth(authService),
+    async (req: Request, res: Response) => {
+      try {
+        const { getDbClient } = await import('../utils/get-db-client');
+        const dbClient = await getDbClient(req);
 
-      const user = (req as any).user;
-      const accountId = user.accountId;
-      const provider = req.params.provider as LLMProvider;
+        const user = (req as any).user;
+        const accountId = user.accountId;
+        const provider = req.params.provider as LLMProvider;
 
-      const validProviders = ['openai', 'anthropic', 'groq', 'google', 'azure', 'ollama', 'custom'];
-      if (!validProviders.includes(provider)) {
-        return res.status(400).json({
-          success: false,
-          error: `Invalid provider: ${provider}`,
+        const validProviders = [
+          'openai',
+          'anthropic',
+          'groq',
+          'google',
+          'azure',
+          'ollama',
+          'custom',
+        ];
+        if (!validProviders.includes(provider)) {
+          return res.status(400).json({
+            success: false,
+            error: `Invalid provider: ${provider}`,
+          });
+        }
+
+        const keyService = new KeyManagementService(dbClient);
+        const deleted = await keyService.deleteKey(accountId, provider);
+
+        if (!deleted) {
+          return res.status(404).json({
+            success: false,
+            error: 'API key not found',
+          });
+        }
+
+        return res.json({
+          success: true,
+          message: 'API key deleted successfully',
+        });
+      } catch (error: any) {
+        console.error('Error deleting API key:', error);
+        return respondSettingsError(res, error, {
+          fallbackMessage: 'Failed to delete API key',
+          operation: 'settings.apiKeys.delete',
         });
       }
-
-      const keyService = new KeyManagementService(dbClient);
-      const deleted = await keyService.deleteKey(accountId, provider);
-
-      if (!deleted) {
-        return res.status(404).json({
-          success: false,
-          error: 'API key not found',
-        });
-      }
-
-      return res.json({
-        success: true,
-        message: 'API key deleted successfully',
-      });
-    } catch (error: any) {
-      console.error('Error deleting API key:', error);
-      return res.status(500).json({ error: 'Failed to delete API key' });
     }
-  });
+  );
 
   /**
    * POST /api/v1/settings/api-keys/test - Test API key validity
@@ -562,7 +663,10 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
         });
       }
 
-      return res.status(500).json({ error: 'Failed to test API key' });
+      return respondSettingsError(res, error, {
+        fallbackMessage: 'Failed to test API key',
+        operation: 'settings.apiKeys.test',
+      });
     }
   });
 
@@ -591,7 +695,10 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
       });
     } catch (error: any) {
       console.error('Error getting AI settings:', error);
-      return res.status(500).json({ error: 'Failed to get AI settings' });
+      return respondSettingsError(res, error, {
+        fallbackMessage: 'Failed to get AI settings',
+        operation: 'settings.ai.get',
+      });
     }
   });
 
@@ -599,7 +706,9 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
    * PATCH /api/v1/settings/ai - Update AI settings
    */
   const UpdateAISettingsSchema = z.object({
-    preferredProvider: z.enum(['openai', 'anthropic', 'groq', 'google', 'azure', 'ollama', 'custom']).optional(),
+    preferredProvider: z
+      .enum(['openai', 'anthropic', 'groq', 'google', 'azure', 'ollama', 'custom'])
+      .optional(),
     preferredModel: z.string().optional(),
     litellmUrl: z.string().url().optional().nullable(),
     searxngUrl: z.string().url().optional().nullable(),
@@ -641,7 +750,10 @@ export function createSettingsRoutes(db: SQLiteClient, authService: AuthService)
         });
       }
 
-      return res.status(500).json({ error: 'Failed to update AI settings' });
+      return respondSettingsError(res, error, {
+        fallbackMessage: 'Failed to update AI settings',
+        operation: 'settings.ai.update',
+      });
     }
   });
 

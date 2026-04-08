@@ -775,6 +775,8 @@ export class SQLiteClient {
   private config: SQLiteConfig;
   private allowDirectWrites: boolean = false;
   private schemaInitialized: boolean = false;
+  private readonly SQLITE_MAX_QUERY_VARIABLES = 999;
+  private readonly LOOKUP_BINDING_HEADROOM = 8;
 
   constructor(config: SQLiteConfig) {
     this.config = config;
@@ -794,6 +796,13 @@ export class SQLiteClient {
    */
   disableDirectWrites(): void {
     this.allowDirectWrites = false;
+  }
+
+  private getSafeInClauseChunkSize(fixedBindings: number): number {
+    return Math.max(
+      1,
+      this.SQLITE_MAX_QUERY_VARIABLES - fixedBindings - this.LOOKUP_BINDING_HEADROOM
+    );
   }
 
   /**
@@ -1865,23 +1874,34 @@ export class SQLiteClient {
       return new Map();
     }
 
-    // Build IN clause with placeholders
-    const placeholders = contentHashes.map(() => '?').join(',');
-
-    const stmt = this.db.prepare(`
-      SELECT content_hash, id, created_at FROM nodes
-      WHERE content_hash IN (${placeholders})
-        AND account_id = ?
-      ORDER BY content_hash, created_at ASC
-    `);
-
-    const rows = stmt.all(...contentHashes, accountId) as any[];
-
-    // Build map of content_hash -> earliest node_id
     const resultMap = new Map<string, string>();
-    for (const row of rows) {
-      if (!resultMap.has(row.content_hash)) {
-        resultMap.set(row.content_hash, row.id);
+    const uniqueHashes = Array.from(
+      new Set(contentHashes.filter((value): value is string => typeof value === 'string'))
+    );
+    const chunkSize = this.getSafeInClauseChunkSize(1); // +account_id binding
+
+    if (uniqueHashes.length > chunkSize) {
+      console.warn(
+        `[SQLiteClient] chunking content hash lookup to avoid SQL variable limit ` +
+          `(account=${accountId}, totalHashes=${uniqueHashes.length}, chunkSize=${chunkSize})`
+      );
+    }
+
+    for (let offset = 0; offset < uniqueHashes.length; offset += chunkSize) {
+      const hashChunk = uniqueHashes.slice(offset, offset + chunkSize);
+      const placeholders = hashChunk.map(() => '?').join(',');
+      const stmt = this.db.prepare(`
+        SELECT content_hash, id, created_at FROM nodes
+        WHERE content_hash IN (${placeholders})
+          AND account_id = ?
+        ORDER BY content_hash, created_at ASC
+      `);
+
+      const rows = stmt.all(...hashChunk, accountId) as any[];
+      for (const row of rows) {
+        if (!resultMap.has(row.content_hash)) {
+          resultMap.set(row.content_hash, row.id);
+        }
       }
     }
 
@@ -1959,28 +1979,36 @@ export class SQLiteClient {
     const jsonPath =
       kind === 'Lexeme' ? '$.lemma' : kind === 'Topic' ? '$.name' : '$.normalized_text';
 
-    // Build IN clause with placeholders for the normalized texts
-    const placeholders = normalizedTexts.map(() => '?').join(',');
-    const lowercaseTexts = normalizedTexts.map((t) => t.toLowerCase());
-
-    const stmt = this.db.prepare(`
-      SELECT properties, LOWER(json_extract(properties, ?)) as lookup_key FROM nodes
-      WHERE account_id = ?
-        AND kind = ?
-        AND LOWER(json_extract(properties, ?)) IN (${placeholders})
-      ORDER BY created_at ASC
-    `);
-
-    const rows = stmt.all(jsonPath, accountId, kind, jsonPath, ...lowercaseTexts) as any[];
-
-    // Build map of normalizedText -> earliest node
     const resultMap = new Map<string, AnyNode>();
-    for (const row of rows) {
-      const lookupKey = row.lookup_key as string;
-      if (!resultMap.has(lookupKey)) {
-        const parsed = safeJsonParse<AnyNode>(row.properties, `findSpineNodesByTexts(${kind})`);
-        if (parsed) {
-          resultMap.set(lookupKey, parsed);
+    const lowercaseTexts = Array.from(new Set(normalizedTexts.map((t) => t.toLowerCase())));
+    const chunkSize = this.getSafeInClauseChunkSize(4); // jsonPath, accountId, kind, jsonPath
+
+    if (lowercaseTexts.length > chunkSize) {
+      console.warn(
+        `[SQLiteClient] chunking spine text lookup to avoid SQL variable limit ` +
+          `(account=${accountId}, kind=${kind}, totalTexts=${lowercaseTexts.length}, chunkSize=${chunkSize})`
+      );
+    }
+
+    for (let offset = 0; offset < lowercaseTexts.length; offset += chunkSize) {
+      const textChunk = lowercaseTexts.slice(offset, offset + chunkSize);
+      const placeholders = textChunk.map(() => '?').join(',');
+      const stmt = this.db.prepare(`
+        SELECT properties, LOWER(json_extract(properties, ?)) as lookup_key FROM nodes
+        WHERE account_id = ?
+          AND kind = ?
+          AND LOWER(json_extract(properties, ?)) IN (${placeholders})
+        ORDER BY created_at ASC
+      `);
+
+      const rows = stmt.all(jsonPath, accountId, kind, jsonPath, ...textChunk) as any[];
+      for (const row of rows) {
+        const lookupKey = row.lookup_key as string;
+        if (!resultMap.has(lookupKey)) {
+          const parsed = safeJsonParse<AnyNode>(row.properties, `findSpineNodesByTexts(${kind})`);
+          if (parsed) {
+            resultMap.set(lookupKey, parsed);
+          }
         }
       }
     }

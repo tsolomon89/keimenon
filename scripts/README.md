@@ -12,6 +12,10 @@ npm run dev:clean
 npm run dev:clean:browser
 npm run dev:clean:electron
 npm run dev:reset
+npm run factory-reset:status
+npm run factory-reset:global-sweep
+npm run settings:schema:repair
+npm run recovery:full-fresh-admin
 npm run validate
 npm run check-ports
 npm run kill-ports
@@ -41,7 +45,7 @@ node scripts/kill-port.js 3000 --force
 Wait for HTTP/TCP endpoints before continuing.
 
 ```bash
-node scripts/wait-for.js http://localhost:4001/health
+node scripts/wait-for.js http://localhost:4001/ready
 node scripts/wait-for.js localhost:4001 --timeout 30000
 ```
 
@@ -56,7 +60,7 @@ node scripts/validate-env.js --verbose
 
 Checks include:
 
-- Node.js 22.x
+- Node.js 24.x
 - npm >= 9
 - dependency installation
 - required local storage env values (`STORAGE_MODE=local`, `LOCAL_DOCS_PATH`, `SQLITE_PATH`)
@@ -72,7 +76,7 @@ Flow:
 2. Detect/fix port conflicts
 3. Enforce local storage mode
 4. Start API
-5. Wait for health endpoint
+5. Wait for readiness endpoint (`/ready`)
 6. Start web app
 
 ### `dev-clean-browser.js`
@@ -93,7 +97,7 @@ Flow:
 
 1. Force-kill processes on API/Web ports
 2. Kill stale Keimenon Electron processes
-3. Run ordered electron startup (`dev-desktop.js`)
+3. Run ordered electron startup (`dev-desktop.js`) with external API-first sequencing
 
 ### `dev-boot.js`
 
@@ -112,6 +116,50 @@ Behavior:
 1. Loads API env and resolves configured dev ports.
 2. Kills tracked dev ports (API/web + legacy helpers).
 3. Optionally cleans stale worker test DB files.
+
+### `ops/factory-reset-status.js`
+
+Reports canonical runtime paths and detected database candidates, including stale DB files.
+
+```bash
+npm run factory-reset:status
+```
+
+### `ops/factory-reset-global-sweep.js`
+
+Global sweep reset orchestrator:
+
+1. Resolve canonical runtime DB and storage paths.
+2. Backup known DB/runtime locations to `storage/backups/global-sweep/<timestamp>`.
+3. Run canonical full-fresh factory reset.
+4. Purge stale non-canonical DB/runtime residues.
+
+Run `npm run dev:stop` first so the reset can obtain an exclusive DB write lock quickly.
+
+```bash
+npm run factory-reset:global-sweep
+```
+
+### `ops/repair-settings-schema.js`
+
+One-time repair for settings/BYOK schema drift (`account_api_keys`, `account_ai_settings`).
+
+```bash
+npm run settings:schema:repair
+```
+
+### `ops/recover-fresh-admin.js`
+
+One-shot recovery command for local dev incidents:
+
+1. stop dev processes
+2. run global-sweep full-fresh reset
+3. repair settings schema
+4. print reset status
+
+```bash
+npm run recovery:full-fresh-admin
+```
 
 ## Gate E Hardening Scripts
 

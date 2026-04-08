@@ -762,6 +762,67 @@ describe('WriteQueueErrorHandler', () => {
   });
 
   describe('Edge Cases', () => {
+    it('should split and retry node batches when SQLite variable limit is hit', async () => {
+      const insertNodeStmt = db.prepare(`
+        INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at, data_tag)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      const splittingDb = {
+        createNodes: (nodes: DBNode[]) => {
+          if (nodes.length > 400) {
+            throw new Error('SQLITE_ERROR: too many SQL variables');
+          }
+          for (const node of nodes) {
+            insertNodeStmt.run(
+              node.id,
+              node.kind,
+              JSON.stringify(node.properties),
+              node.account_id,
+              node.created_by,
+              Date.now(),
+              Date.now(),
+              node.data_tag || 'test'
+            );
+          }
+        },
+        createNode: (node: DBNode) => {
+          insertNodeStmt.run(
+            node.id,
+            node.kind,
+            JSON.stringify(node.properties),
+            node.account_id,
+            node.created_by,
+            Date.now(),
+            Date.now(),
+            node.data_tag || 'test'
+          );
+        },
+      };
+
+      const handler = new WriteQueueErrorHandler(splittingDb as any, {
+        maxRetries: 0,
+        enableCircuitBreaker: false,
+      });
+
+      const nodes = createTestNodes(1005, 'sql_limit_split');
+      const result = await handler.handleFlush(asAnyNodes(nodes), asAnyEdges([]));
+
+      assert.strictEqual(
+        result.totalWritten,
+        nodes.length,
+        'All nodes should be written after adaptive chunk split'
+      );
+      assert.ok(
+        result.diagnostics?.sqlVariableSplit,
+        'Flush result should include SQL variable split diagnostics'
+      );
+      assert.ok(
+        (result.diagnostics?.sqlVariableSplit?.nodeChunksProcessed || 0) > 1,
+        'SQL-variable fallback should process multiple bounded chunks'
+      );
+    });
+
     it('should handle empty batch gracefully', async () => {
       const mockDb = new MockFailingDatabase(db);
 

@@ -12,7 +12,7 @@ const { exec } = require('child_process');
 const { promisify } = require('util');
 const path = require('path');
 const fs = require('fs');
-const { spawnNode22 } = require('./project-node-runtime');
+const { spawnProjectNode } = require('./project-node-runtime');
 require('dotenv').config({ path: path.join(__dirname, '../apps/api/.env') });
 
 const execAsync = promisify(exec);
@@ -97,7 +97,7 @@ async function startDevServer(args) {
   console.log(`${COLORS.bright}--- Starting Development Server ---${COLORS.reset}\n`);
 
   const devScript = path.join(__dirname, 'dev.js');
-  const devProcess = spawnNode22([devScript, ...args], {
+  const devProcess = spawnProjectNode([devScript, ...args], {
     stdio: 'inherit',
   });
 

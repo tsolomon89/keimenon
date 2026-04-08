@@ -2,9 +2,9 @@
   [710],
   {
     5881: function (e, t, s) {
-      Promise.resolve().then(s.bind(s, 3262));
+      Promise.resolve().then(s.bind(s, 562));
     },
-    3262: function (e, t, s) {
+    562: function (e, t, s) {
       'use strict';
       (s.r(t),
         s.d(t, {
@@ -33,7 +33,7 @@
         N = s(4175),
         y = s(7250);
       let w = (0, l.createContext)(void 0),
-        k = {
+        C = {
           isProcessing: !1,
           fileName: null,
           stage: 'idle',
@@ -43,9 +43,9 @@
           canMinimize: !1,
           error: null,
         };
-      function C(e) {
+      function k(e) {
         let { children: t } = e,
-          [s, r] = (0, l.useState)(k),
+          [s, r] = (0, l.useState)(C),
           [n, i] = (0, l.useState)(!1),
           o = (0, l.useCallback)((e) => {
             (r({
@@ -87,7 +87,7 @@
             }));
           }, []),
           x = (0, l.useCallback)(() => {
-            (r(k), i(!1));
+            (r(C), i(!1));
           }, []),
           m = (0, l.useCallback)(() => {
             i(!0);
@@ -328,7 +328,7 @@
       function L() {
         var e, t;
         let s = (0, r.useRouter)(),
-          { user: k, logout: C, switchAccount: I } = (0, N.aC)(),
+          { user: C, logout: k, switchAccount: I } = (0, N.aC)(),
           { isOperatingMode: E } = (0, y.B)(),
           { progress: M, openModal: Z } = (function () {
             let e = (0, l.useContext)(w);
@@ -337,23 +337,23 @@
           })(),
           { uiVersion: D, toggleUIVersion: L } = (0, S.O)(),
           [F, P] = (0, l.useState)(!1),
-          [O, z] = (0, l.useState)(!1),
-          R = (0, l.useRef)(null),
+          [O, R] = (0, l.useState)(!1),
+          z = (0, l.useRef)(null),
           U = (0, l.useRef)(null),
-          B = (null == k ? void 0 : k.accountType) === 'admin',
-          V = (null == k ? void 0 : k.allAccounts) && k.allAccounts.length > 1,
-          K = k
+          B = (null == C ? void 0 : C.accountType) === 'admin',
+          V = (null == C ? void 0 : C.allAccounts) && C.allAccounts.length > 1,
+          K = C
             ? {
-                accountId: k.accountId,
+                accountId: C.accountId,
                 accountName:
-                  (null === (t = k.allAccounts) || void 0 === t
+                  (null === (t = C.allAccounts) || void 0 === t
                     ? void 0
-                    : null === (e = t.find((e) => e.accountId === k.accountId)) || void 0 === e
+                    : null === (e = t.find((e) => e.accountId === C.accountId)) || void 0 === e
                       ? void 0
                       : e.accountName) || 'Current Account',
-                accountType: k.accountType,
-                accountClass: k.accountClass,
-                permissionLevel: k.permissionLevel,
+                accountType: C.accountType,
+                accountClass: C.accountClass,
+                permissionLevel: C.permissionLevel,
               }
             : null,
           q =
@@ -379,8 +379,8 @@
                   };
         (0, l.useEffect)(() => {
           function e(e) {
-            (R.current && !R.current.contains(e.target) && P(!1),
-              U.current && !U.current.contains(e.target) && z(!1));
+            (z.current && !z.current.contains(e.target) && P(!1),
+              U.current && !U.current.contains(e.target) && R(!1));
           }
           return (
             document.addEventListener('mousedown', e),
@@ -388,7 +388,7 @@
           );
         }, []);
         let J = (() => {
-          let e = (null == k ? void 0 : k.accountClass) || 'free',
+          let e = (null == C ? void 0 : C.accountClass) || 'free',
             t = {
               free: {
                 bg: 'bg-slate-600/20',
@@ -513,8 +513,8 @@
                   }),
                 V &&
                   K &&
-                  (null == k ? void 0 : k.allAccounts) &&
-                  (0, a.jsx)(T, { currentAccount: K, allAccounts: k.allAccounts, onSwitch: I }),
+                  (null == C ? void 0 : C.allAccounts) &&
+                  (0, a.jsx)(T, { currentAccount: K, allAccounts: C.allAccounts, onSwitch: I }),
                 B &&
                   E &&
                   (0, a.jsxs)('div', {
@@ -534,7 +534,7 @@
                   children: [
                     B
                       ? (0, a.jsxs)('button', {
-                          onClick: () => z(!O),
+                          onClick: () => R(!O),
                           className: 'flex items-center gap-2 px-3 py-1.5 '
                             .concat(J.bg, ' border ')
                             .concat(J.border, ' rounded-lg hover:opacity-80 transition-opacity'),
@@ -569,7 +569,7 @@
                           children: [
                             (0, a.jsx)('button', {
                               onClick: () => {
-                                z(!1);
+                                R(!1);
                               },
                               className:
                                 'w-full px-4 py-2 text-left text-sm hover:bg-slate-700 transition-colors',
@@ -583,7 +583,7 @@
                             }),
                             (0, a.jsx)('button', {
                               onClick: () => {
-                                z(!1);
+                                R(!1);
                               },
                               className:
                                 'w-full px-4 py-2 text-left text-sm hover:bg-slate-700 transition-colors',
@@ -597,7 +597,7 @@
                             }),
                             (0, a.jsx)('button', {
                               onClick: () => {
-                                z(!1);
+                                R(!1);
                               },
                               className:
                                 'w-full px-4 py-2 text-left text-sm hover:bg-slate-700 transition-colors',
@@ -616,7 +616,7 @@
                 }),
                 (0, a.jsxs)('div', {
                   className: 'relative',
-                  ref: R,
+                  ref: z,
                   children: [
                     (0, a.jsx)('button', {
                       onClick: () => P(!F),
@@ -634,15 +634,15 @@
                             children: [
                               (0, a.jsx)('p', {
                                 className: 'text-sm font-medium text-white',
-                                children: null == k ? void 0 : k.email,
+                                children: null == C ? void 0 : C.email,
                               }),
                               (0, a.jsxs)('p', {
                                 className: 'text-xs text-slate-400 mt-1',
                                 children: [
-                                  null == k ? void 0 : k.permissionLevel,
+                                  null == C ? void 0 : C.permissionLevel,
                                   ' •',
                                   ' ',
-                                  (null == k ? void 0 : k.accountType) === 'admin'
+                                  (null == C ? void 0 : C.accountType) === 'admin'
                                     ? 'Admin Account'
                                     : 'Client Account',
                                 ],
@@ -676,7 +676,7 @@
                               }),
                               (0, a.jsxs)('button', {
                                 onClick: () => {
-                                  (s.push('/users/' + (null == k ? void 0 : k.userId)), P(!1));
+                                  (s.push('/users/' + (null == C ? void 0 : C.userId)), P(!1));
                                 },
                                 className:
                                   'w-full px-4 py-2 text-left text-sm hover:bg-slate-700 transition-colors flex items-center gap-2',
@@ -687,7 +687,7 @@
                               }),
                               (0, a.jsxs)('button', {
                                 onClick: () => {
-                                  (C(), P(!1));
+                                  (k(), P(!1));
                                 },
                                 className:
                                   'w-full px-4 py-2 text-left text-sm hover:bg-slate-700 transition-colors flex items-center gap-2 text-red-400',
@@ -710,24 +710,23 @@
       var F = s(607),
         P = s(7041),
         O = s(7047),
-        z = s(2882),
-        R = s(4824),
-        U = s(4197),
-        B = s(9790),
-        V = s(3071),
-        K = s(2587),
-        q = s(4303),
-        J = s(8153),
-        G = s(1095),
-        W = s(3890),
-        Y = s(9645),
+        R = s(2882),
+        z = s(4824),
+        U = s(9790),
+        B = s(3071),
+        V = s(2587),
+        K = s(4303),
+        q = s(8153),
+        J = s(1095),
+        G = s(3890),
+        W = s(9645),
         H = s(7124),
-        X = s(5965),
-        Q = s(9886),
-        $ = s(2917),
-        ee = s(6120),
-        et = s(6326);
-      let es = {
+        Y = s(5965),
+        X = s(9886),
+        Q = s(2917),
+        $ = s(6120),
+        ee = s(6326);
+      let et = {
           imported: { label: 'Imported', description: 'Chat imports, file uploads', color: 'blue' },
           workspace: { label: 'Workspace', description: 'Active working spaces', color: 'green' },
           brief: { label: 'Brief', description: 'Agent-generated summaries', color: 'purple' },
@@ -742,8 +741,8 @@
             color: 'red',
           },
         },
-        ea = ['imported', 'workspace', 'brief', 'agent_output', 'research_bundle'];
-      function el() {
+        es = ['imported', 'workspace', 'brief', 'agent_output', 'research_bundle'];
+      function ea() {
         let e = (0, A.O)((e) => e.filters.sourceRoleFilter),
           t = (0, A.O)((e) => e.setSourceRoleFilter),
           s = (0, A.O)((e) => e.nodes),
@@ -769,7 +768,7 @@
               className: 'flex items-center justify-between gap-2 pb-2 border-b border-slate-700',
               children: [
                 (0, a.jsx)('button', {
-                  onClick: () => t(ea),
+                  onClick: () => t(es),
                   className: 'text-xs text-slate-400 hover:text-white transition-colors',
                   children: 'Show All',
                 }),
@@ -780,8 +779,8 @@
                 }),
               ],
             }),
-            ea.map((t) => {
-              let s = es[t],
+            es.map((t) => {
+              let s = et[t],
                 l = 0 === e.size || e.has(t),
                 i = r[t];
               return (0, a.jsxs)(
@@ -807,7 +806,7 @@
           ],
         });
       }
-      function er(e) {
+      function el(e) {
         let {
             onUploadClick: t,
             onLeftSidebarToggle: s,
@@ -828,8 +827,8 @@
             onAutoSwitchToProcessingChange: j,
             focusModeEnabled: y,
             onFocusModeToggle: w,
-            includeConnectorNodes: k,
-            onConnectorVisibilityToggle: C,
+            includeConnectorNodes: C,
+            onConnectorVisibilityToggle: k,
             pinnedNodeCount: S,
             onClearPinnedNodes: I,
             renderLens: E,
@@ -838,37 +837,37 @@
             onNdConfigChange: D,
           } = e,
           { user: T } = (0, N.aC)(),
-          { keimenonMode: _, setKeimenonMode: L } = (0, et.St)(),
-          [es, ea] = (0, l.useState)(!1),
-          er = (0, l.useRef)(null),
-          en = (0, A.O)((e) => e.filters.sourceRoleFilter),
-          ei = (null == T ? void 0 : T.accountType) === 'admin',
-          eo = 'keimenon' === _,
-          ec = ei && 'dashboard' === _,
-          ed = en.size > 0;
+          { keimenonMode: _, setKeimenonMode: L } = (0, ee.St)(),
+          [et, es] = (0, l.useState)(!1),
+          el = (0, l.useRef)(null),
+          er = (0, A.O)((e) => e.filters.sourceRoleFilter),
+          en = (null == T ? void 0 : T.accountType) === 'admin',
+          ei = 'keimenon' === _,
+          eo = en && 'dashboard' === _,
+          ec = er.size > 0;
         (0, l.useEffect)(() => {
           function e(e) {
-            er.current && !er.current.contains(e.target) && ea(!1);
+            el.current && !el.current.contains(e.target) && es(!1);
           }
-          if (es)
+          if (et)
             return (
               document.addEventListener('mousedown', e),
               () => document.removeEventListener('mousedown', e)
             );
-        }, [es]);
-        let eu = (e, t) =>
+        }, [et]);
+        let ed = (e, t) =>
             (0, F.Z)(
               'p-1.5 sm:p-2 rounded transition-colors text-slate-400 hover:text-white hover:bg-slate-800',
               e && 'bg-slate-800 text-white shadow-inner',
               t
             ),
-          ex = (e, t) =>
+          eu = (e, t) =>
             (0, F.Z)(
               'p-2 rounded-md transition-all text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed',
               e && 'bg-slate-800 text-white shadow-inner border border-slate-700/60',
               t && 'opacity-40 cursor-not-allowed hover:text-slate-400 hover:bg-slate-800'
             ),
-          em = (e) =>
+          ex = (e) =>
             (0, F.Z)(
               'p-2 rounded-md transition-all text-slate-400 hover:text-white hover:bg-slate-800',
               e && 'bg-slate-800 text-white shadow-inner border border-slate-700/60'
@@ -885,7 +884,7 @@
                   onClick: s,
                   type: 'button',
                   'data-testid': 'toolbar-toggle-navigator',
-                  className: eu(i),
+                  className: ed(i),
                   title: 'Toggle Navigator',
                   children: (0, a.jsx)(P.Z, { className: 'w-4 h-4' }),
                 }),
@@ -893,7 +892,7 @@
                   onClick: r,
                   type: 'button',
                   'data-testid': 'toolbar-toggle-inspector',
-                  className: eu(o),
+                  className: ed(o),
                   title: 'Toggle Inspector',
                   children: (0, a.jsx)(O.Z, { className: 'w-4 h-4' }),
                 }),
@@ -901,13 +900,13 @@
                   onClick: n,
                   type: 'button',
                   'data-testid': 'toolbar-toggle-console',
-                  className: eu(c, 'hidden sm:flex'),
+                  className: ed(c, 'hidden sm:flex'),
                   title: 'Toggle Console',
-                  children: (0, a.jsx)(z.Z, { className: 'w-4 h-4' }),
+                  children: (0, a.jsx)(R.Z, { className: 'w-4 h-4' }),
                 }),
               ],
             }),
-            eo &&
+            ei &&
               (0, a.jsxs)('div', {
                 className: 'hidden lg:flex items-center gap-2 lg:gap-3',
                 children: [
@@ -918,31 +917,24 @@
                       (0, a.jsx)('button', {
                         onClick: () => p('keimenon'),
                         type: 'button',
-                        className: ex('keimenon' === m),
+                        className: eu('keimenon' === m),
                         title: 'Keimenon View',
-                        children: (0, a.jsx)(R.Z, { className: 'w-4 h-4' }),
-                      }),
-                      (0, a.jsx)('button', {
-                        onClick: () => p('legacy'),
-                        type: 'button',
-                        className: ex('legacy' === m),
-                        title: 'Legacy Board View',
-                        children: (0, a.jsx)(U.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(z.Z, { className: 'w-4 h-4' }),
                       }),
                       (0, a.jsx)('button', {
                         onClick: () => p('processing'),
                         type: 'button',
                         disabled: !b,
-                        className: ex('processing' === m, !b),
+                        className: eu('processing' === m, !b),
                         title: 'Processing View',
-                        children: (0, a.jsx)(B.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(U.Z, { className: 'w-4 h-4' }),
                       }),
                       (0, a.jsx)('button', {
                         onClick: () => p('boards'),
                         type: 'button',
-                        className: ex('boards' === m),
+                        className: eu('boards' === m),
                         title: 'Boards View',
-                        children: (0, a.jsx)(V.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(B.Z, { className: 'w-4 h-4' }),
                       }),
                     ],
                   }),
@@ -1063,7 +1055,7 @@
                         className:
                           'p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors',
                         title: 'Camera: Zoom In',
-                        children: (0, a.jsx)(K.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(V.Z, { className: 'w-4 h-4' }),
                       }),
                       (0, a.jsx)('button', {
                         onClick: u,
@@ -1072,7 +1064,7 @@
                         className:
                           'p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors',
                         title: 'Camera: Zoom Out',
-                        children: (0, a.jsx)(q.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(K.Z, { className: 'w-4 h-4' }),
                       }),
                       (0, a.jsx)('button', {
                         onClick: x,
@@ -1081,7 +1073,7 @@
                         className:
                           'p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors',
                         title: 'Camera: Center View',
-                        children: (0, a.jsx)(J.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(q.Z, { className: 'w-4 h-4' }),
                       }),
                     ],
                   }),
@@ -1104,20 +1096,20 @@
                             : 'text-slate-400 hover:text-white hover:bg-slate-800'
                         ),
                         title: 'LOD: Focus mode keeps focused neighborhoods visible',
-                        children: (0, a.jsx)(G.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(J.Z, { className: 'w-4 h-4' }),
                       }),
                       (0, a.jsx)('button', {
-                        onClick: C,
+                        onClick: k,
                         type: 'button',
                         'data-testid': 'toolbar-lod-connectors-desktop',
                         className: (0, F.Z)(
                           'p-2 rounded transition-colors',
-                          k
+                          C
                             ? 'bg-emerald-600/20 text-emerald-300'
                             : 'text-slate-400 hover:text-white hover:bg-slate-800'
                         ),
                         title: 'LOD: Toggle connector lexemes/phrases',
-                        children: (0, a.jsx)(W.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(G.Z, { className: 'w-4 h-4' }),
                       }),
                       (0, a.jsx)('button', {
                         onClick: I,
@@ -1126,7 +1118,7 @@
                         className:
                           'p-2 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors',
                         title: 'LOD: Clear pinned subgraph nodes',
-                        children: (0, a.jsx)(Y.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(W.Z, { className: 'w-4 h-4' }),
                       }),
                       (0, a.jsxs)('span', {
                         className: 'text-[11px] text-slate-500 min-w-[40px]',
@@ -1149,38 +1141,38 @@
                   }),
                   (0, a.jsxs)('div', {
                     className: 'relative',
-                    ref: er,
+                    ref: el,
                     children: [
                       (0, a.jsxs)('button', {
-                        onClick: () => ea(!es),
+                        onClick: () => es(!et),
                         type: 'button',
                         className: (0, F.Z)(
                           'p-2 rounded transition-colors relative',
-                          es || ed
+                          et || ec
                             ? 'bg-slate-800 text-purple-400'
                             : 'text-slate-400 hover:text-white hover:bg-slate-800'
                         ),
                         title: 'Filter by Source Role',
                         children: [
                           (0, a.jsx)(H.Z, { className: 'w-4 h-4' }),
-                          ed &&
+                          ec &&
                             (0, a.jsx)('span', {
                               className:
                                 'absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full',
                             }),
                         ],
                       }),
-                      es &&
+                      et &&
                         (0, a.jsx)('div', {
                           className:
                             'absolute top-full mt-1 right-0 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50',
-                          children: (0, a.jsx)(el, {}),
+                          children: (0, a.jsx)(ea, {}),
                         }),
                     ],
                   }),
                 ],
               }),
-            eo &&
+            ei &&
               (0, a.jsxs)('div', {
                 className: 'flex lg:hidden items-center gap-1.5 px-1',
                 children: [
@@ -1228,18 +1220,18 @@
                     type: 'button',
                     className: 'p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800',
                     title: 'Camera: Zoom In',
-                    children: (0, a.jsx)(K.Z, { className: 'w-3.5 h-3.5' }),
+                    children: (0, a.jsx)(V.Z, { className: 'w-3.5 h-3.5' }),
                   }),
                   (0, a.jsx)('button', {
                     onClick: x,
                     type: 'button',
                     className: 'p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800',
                     title: 'Camera: Center View',
-                    children: (0, a.jsx)(J.Z, { className: 'w-3.5 h-3.5' }),
+                    children: (0, a.jsx)(q.Z, { className: 'w-3.5 h-3.5' }),
                   }),
                 ],
               }),
-            ec &&
+            eo &&
               (0, a.jsx)('div', {
                 className: 'hidden md:flex items-center gap-2 lg:gap-3',
                 children: (0, a.jsxs)('div', {
@@ -1249,35 +1241,35 @@
                     (0, a.jsx)('button', {
                       onClick: () => g('analytics'),
                       type: 'button',
-                      className: ex('analytics' === h),
+                      className: eu('analytics' === h),
                       title: 'Analytics Overview',
-                      children: (0, a.jsx)(V.Z, { className: 'w-4 h-4' }),
+                      children: (0, a.jsx)(B.Z, { className: 'w-4 h-4' }),
                     }),
                     (0, a.jsx)('button', {
                       onClick: () => g('storage'),
                       type: 'button',
-                      className: ex('storage' === h),
+                      className: eu('storage' === h),
                       title: 'Storage Statistics',
-                      children: (0, a.jsx)(X.Z, { className: 'w-4 h-4' }),
+                      children: (0, a.jsx)(Y.Z, { className: 'w-4 h-4' }),
                     }),
                     (0, a.jsx)('button', {
                       onClick: () => g('workspaces'),
                       type: 'button',
-                      className: ex('workspaces' === h),
+                      className: eu('workspaces' === h),
                       title: 'Workspace Browser',
-                      children: (0, a.jsx)(Q.Z, { className: 'w-4 h-4' }),
+                      children: (0, a.jsx)(X.Z, { className: 'w-4 h-4' }),
                     }),
                     (0, a.jsx)('button', {
                       onClick: () => g('conversations'),
                       type: 'button',
-                      className: ex('conversations' === h),
+                      className: eu('conversations' === h),
                       title: 'Conversation Browser',
-                      children: (0, a.jsx)($.Z, { className: 'w-4 h-4' }),
+                      children: (0, a.jsx)(Q.Z, { className: 'w-4 h-4' }),
                     }),
                   ],
                 }),
               }),
-            !eo && !ec && (0, a.jsx)('div', { className: 'flex-1' }),
+            !ei && !eo && (0, a.jsx)('div', { className: 'flex-1' }),
             (0, a.jsxs)('div', {
               className: 'flex items-center gap-2',
               children: [
@@ -1290,26 +1282,26 @@
                         (L('keimenon'), p('keimenon'));
                       },
                       type: 'button',
-                      className: em('keimenon' === _),
+                      className: ex('keimenon' === _),
                       title: 'Keimenon',
-                      children: (0, a.jsx)(R.Z, { className: 'w-4 h-4' }),
+                      children: (0, a.jsx)(z.Z, { className: 'w-4 h-4' }),
                     }),
-                    ei &&
+                    en &&
                       (0, a.jsx)('button', {
                         onClick: () => {
-                          ei && (L('dashboard'), g('analytics'));
+                          en && (L('dashboard'), g('analytics'));
                         },
                         type: 'button',
-                        className: em('dashboard' === _),
+                        className: ex('dashboard' === _),
                         title: 'Dashboard',
-                        children: (0, a.jsx)(V.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(B.Z, { className: 'w-4 h-4' }),
                       }),
                     (0, a.jsx)('button', {
                       onClick: () => {
                         L('settings');
                       },
                       type: 'button',
-                      className: em('settings' === _),
+                      className: ex('settings' === _),
                       title: 'Settings',
                       children: (0, a.jsx)(v.Z, { className: 'w-4 h-4' }),
                     }),
@@ -1322,18 +1314,18 @@
                   className:
                     'p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors',
                   title: 'Upload Sources',
-                  children: (0, a.jsx)(ee.Z, { className: 'w-4 h-4' }),
+                  children: (0, a.jsx)($.Z, { className: 'w-4 h-4' }),
                 }),
               ],
             }),
           ],
         });
       }
-      var en = s(8410),
-        ei = s(3172),
-        eo = s(3166),
-        ec = s(269);
-      function ed(e) {
+      var er = s(8410),
+        en = s(3172),
+        ei = s(3166),
+        eo = s(269);
+      function ec(e) {
         let {
             mode: t,
             data: s,
@@ -1369,7 +1361,7 @@
               return (s.has(e) ? s.delete(e) : s.add(e), s);
             });
           },
-          k = function (e) {
+          C = function (e) {
             let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 'slate',
               s = {
                 blue: 'bg-blue-600/20 border-blue-500/30 text-blue-300',
@@ -1384,7 +1376,7 @@
               children: e,
             });
           },
-          C = function (e) {
+          k = function (e) {
             let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 0;
             if (!1 === e.visible) return null;
             let s = e.children && e.children.length > 0,
@@ -1422,10 +1414,10 @@
                           ),
                         }),
                       (0, a.jsx)('span', { className: 'flex-1 truncate', children: e.label }),
-                      void 0 !== e.badge && k(e.badge, e.badgeColor),
+                      void 0 !== e.badge && C(e.badge, e.badgeColor),
                     ],
                   }),
-                  s && l && (0, a.jsx)('div', { children: e.children.map((e) => C(e, t + 1)) }),
+                  s && l && (0, a.jsx)('div', { children: e.children.map((e) => k(e, t + 1)) }),
                 ],
               },
               e.id
@@ -1455,7 +1447,7 @@
                       onClick: () => b(''),
                       className:
                         'absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-700 rounded transition-colors',
-                      children: (0, a.jsx)(ec.Z, { className: 'w-3 h-3 text-slate-500' }),
+                      children: (0, a.jsx)(eo.Z, { className: 'w-3 h-3 text-slate-500' }),
                     }),
                 ],
               }),
@@ -1544,7 +1536,7 @@
               className: 'flex-1 overflow-y-auto',
               children:
                 y.length > 0
-                  ? (0, a.jsx)('div', { className: 'py-2', children: y.map((e) => C(e, 0)) })
+                  ? (0, a.jsx)('div', { className: 'py-2', children: y.map((e) => k(e, 0)) })
                   : (0, a.jsx)('div', {
                       className: 'px-3 py-8 text-center text-sm text-slate-500',
                       children: g ? 'No results for "'.concat(g, '"') : m,
@@ -1553,11 +1545,30 @@
           ],
         });
       }
-      var eu = s(7126),
-        ex = s(4875),
-        em = s(1755),
-        ep = s(5555);
-      function eh(e) {
+      var ed = s(7126),
+        eu = s(4875),
+        ex = s(1755),
+        em = s(5555),
+        ep = s(1493);
+      async function eh(e, t) {
+        let s = await e.json().catch(() => ({})),
+          a =
+            'string' == typeof (null == s ? void 0 : s.error) && s.error.trim().length > 0
+              ? s.error
+              : t;
+        if ((null == s ? void 0 : s.code) === 'SETTINGS_SCHEMA_DRIFT') {
+          var l;
+          let e =
+            null == s
+              ? void 0
+              : null === (l = s.diagnostics) || void 0 === l
+                ? void 0
+                : l.remediation;
+          if ('string' == typeof e && e.trim().length > 0) return ''.concat(a, '. ').concat(e);
+        }
+        return a;
+      }
+      function eg(e) {
         let { selectedControlId: t } = e,
           {
             control: s,
@@ -1585,26 +1596,26 @@
             return (
               (0, l.useEffect)(() => {
                 (async function () {
-                  let t = (0, N.LP)();
-                  if (!t || !e) {
+                  if (!(0, N.LP)() || !e) {
                     j();
                     return;
                   }
                   try {
                     (b(!0), v(null));
-                    let a = await fetch(''.concat(_.CT, '/api/v1/settings/').concat(e), {
-                      headers: { Authorization: 'Bearer '.concat(t) },
-                    });
-                    if (!a.ok) throw Error('Failed to fetch setting details');
-                    let l = await a.json();
-                    if (!l.success || !l.setting) throw Error('Invalid setting response');
-                    (s(l.setting.control),
-                      r(l.setting.effectiveValue),
-                      i(l.setting.source),
-                      c(l.setting.canEdit),
-                      u(l.setting.canReset),
-                      m(l.setting.isDefault),
-                      h(l.history || []));
+                    let t = await (0, ep.ax)(''.concat(_.CT, '/api/v1/settings/').concat(e));
+                    if (!t.ok) {
+                      let e = await eh(t, 'Failed to fetch setting details');
+                      throw Error(e);
+                    }
+                    let a = await t.json();
+                    if (!a.success || !a.setting) throw Error('Invalid setting response');
+                    (s(a.setting.control),
+                      r(a.setting.effectiveValue),
+                      i(a.setting.source),
+                      c(a.setting.canEdit),
+                      u(a.setting.canReset),
+                      m(a.setting.isDefault),
+                      h(a.history || []));
                   } catch (t) {
                     (console.error('Error fetching setting details:', t),
                       v(
@@ -1713,13 +1724,13 @@
                                       }),
                                       (0, a.jsxs)('span', {
                                         className: 'text-xs text-slate-400',
-                                        children: ['Source: ', eg(n || 'defaults')],
+                                        children: ['Source: ', eb(n || 'defaults')],
                                       }),
                                     ],
                                   }),
                                   (0, a.jsx)('div', {
                                     className: 'font-mono text-sm text-white',
-                                    children: eb(r, s.type),
+                                    children: ef(r, s.type),
                                   }),
                                   c &&
                                     (0, a.jsx)('div', {
@@ -1776,7 +1787,7 @@
                                       }),
                                       (0, a.jsx)('span', {
                                         className: 'text-slate-300',
-                                        children: eg(s.scope),
+                                        children: eb(s.scope),
                                       }),
                                     ],
                                   }),
@@ -1928,7 +1939,7 @@
                                 className:
                                   'flex items-center gap-2 px-3 py-2 bg-blue-600/10 border border-blue-500/30 rounded text-sm text-blue-300 hover:bg-blue-600/20 transition-colors',
                                 children: [
-                                  (0, a.jsx)(ex.Z, { className: 'w-4 h-4' }),
+                                  (0, a.jsx)(eu.Z, { className: 'w-4 h-4' }),
                                   (0, a.jsx)('span', { children: 'View Documentation' }),
                                 ],
                               }),
@@ -1941,7 +1952,7 @@
                                   className:
                                     'text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2',
                                   children: [
-                                    (0, a.jsx)(em.Z, { className: 'w-3 h-3' }),
+                                    (0, a.jsx)(ex.Z, { className: 'w-3 h-3' }),
                                     'Change History',
                                   ],
                                 }),
@@ -1969,7 +1980,7 @@
                                               (0, a.jsxs)('div', {
                                                 className: 'flex items-center gap-1 text-slate-500',
                                                 children: [
-                                                  (0, a.jsx)(ep.Z, { className: 'w-3 h-3' }),
+                                                  (0, a.jsx)(em.Z, { className: 'w-3 h-3' }),
                                                   (0, a.jsx)('span', {
                                                     children: (function (e) {
                                                       let t = new Date(e),
@@ -2004,7 +2015,7 @@
                                                   }),
                                                   (0, a.jsx)('span', {
                                                     className: 'font-mono text-red-400',
-                                                    children: eb(e.oldValue, s.type),
+                                                    children: ef(e.oldValue, s.type),
                                                   }),
                                                 ],
                                               }),
@@ -2017,7 +2028,7 @@
                                                   }),
                                                   (0, a.jsx)('span', {
                                                     className: 'font-mono text-green-400',
-                                                    children: eb(e.newValue, s.type),
+                                                    children: ef(e.newValue, s.type),
                                                   }),
                                                 ],
                                               }),
@@ -2103,7 +2114,7 @@
                         className:
                           'flex items-start gap-3 p-4 bg-blue-600/10 border border-blue-500/30 rounded-lg',
                         children: [
-                          (0, a.jsx)(eu.Z, {
+                          (0, a.jsx)(ed.Z, {
                             className: 'w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5',
                           }),
                           (0, a.jsxs)('div', {
@@ -2227,7 +2238,7 @@
               ],
             });
       }
-      function eg(e) {
+      function eb(e) {
         return (
           {
             defaults: 'System Default',
@@ -2240,7 +2251,7 @@
           }[e] || e
         );
       }
-      function eb(e, t) {
+      function ef(e, t) {
         if (null == e) return 'null';
         switch (t) {
           case 'boolean':
@@ -2253,12 +2264,12 @@
             return String(e);
         }
       }
-      var ef = s(4527),
-        ev = s(8333),
-        ej = s(3727),
-        eN = s(2750),
-        ey = s(1856),
-        ew = s(997);
+      var ev = s(4527),
+        ej = s(8333),
+        eN = s(3727),
+        ey = s(2750),
+        ew = s(1856),
+        eC = s(997);
       function ek(e) {
         let { data: t, onAction: s, onViewFullDetails: r } = e,
           [i, o] = (0, l.useState)(new Set(['details', 'metadata'])),
@@ -2291,13 +2302,13 @@
                           children: ((e) => {
                             switch (e) {
                               case 'conversation':
-                                return (0, a.jsx)($.Z, { className: 'w-5 h-5 text-purple-400' });
+                                return (0, a.jsx)(Q.Z, { className: 'w-5 h-5 text-purple-400' });
                               case 'source_doc':
-                                return (0, a.jsx)(eo.Z, { className: 'w-5 h-5 text-green-400' });
+                                return (0, a.jsx)(ei.Z, { className: 'w-5 h-5 text-green-400' });
                               case 'code_asset':
-                                return (0, a.jsx)(ef.Z, { className: 'w-5 h-5 text-orange-400' });
+                                return (0, a.jsx)(ev.Z, { className: 'w-5 h-5 text-orange-400' });
                               default:
-                                return (0, a.jsx)(eo.Z, { className: 'w-5 h-5 text-gray-400' });
+                                return (0, a.jsx)(ei.Z, { className: 'w-5 h-5 text-gray-400' });
                             }
                           })(t.type),
                         }),
@@ -2321,7 +2332,7 @@
                         onClick: r,
                         className:
                           'w-full px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors text-purple-400',
-                        children: [(0, a.jsx)(ev.Z, { className: 'w-4 h-4' }), 'View Full Details'],
+                        children: [(0, a.jsx)(ej.Z, { className: 'w-4 h-4' }), 'View Full Details'],
                       }),
                   ],
                 }),
@@ -2358,11 +2369,11 @@
                                       className: 'flex items-center gap-2 text-xs text-slate-400',
                                       children: [
                                         'Messages' === e.label &&
-                                          (0, a.jsx)($.Z, { className: 'w-3 h-3' }),
+                                          (0, a.jsx)(Q.Z, { className: 'w-3 h-3' }),
                                         'Created' === e.label &&
-                                          (0, a.jsx)(ej.Z, { className: 'w-3 h-3' }),
-                                        'Characters' === e.label &&
                                           (0, a.jsx)(eN.Z, { className: 'w-3 h-3' }),
+                                        'Characters' === e.label &&
+                                          (0, a.jsx)(ey.Z, { className: 'w-3 h-3' }),
                                         (0, a.jsx)('span', { children: e.label }),
                                       ],
                                     }),
@@ -2449,11 +2460,11 @@
                                     'w-full px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm text-left flex items-center gap-2 transition-colors',
                                   children: [
                                     'copy' === e.icon &&
-                                      (0, a.jsx)(ey.Z, { className: 'w-4 h-4 text-slate-400' }),
+                                      (0, a.jsx)(ew.Z, { className: 'w-4 h-4 text-slate-400' }),
                                     'link' === e.icon &&
-                                      (0, a.jsx)(ex.Z, { className: 'w-4 h-4 text-slate-400' }),
+                                      (0, a.jsx)(eu.Z, { className: 'w-4 h-4 text-slate-400' }),
                                     'delete' === e.icon &&
-                                      (0, a.jsx)(ew.Z, { className: 'w-4 h-4 text-red-400' }),
+                                      (0, a.jsx)(eC.Z, { className: 'w-4 h-4 text-red-400' }),
                                     (0, a.jsx)('span', { children: e.label }),
                                   ],
                                 },
@@ -2471,7 +2482,7 @@
               className:
                 'flex flex-col items-center justify-center h-full text-center text-sm text-slate-500 px-6',
               children: [
-                (0, a.jsx)(eo.Z, { className: 'w-16 h-16 mb-4 text-slate-600' }),
+                (0, a.jsx)(ei.Z, { className: 'w-16 h-16 mb-4 text-slate-600' }),
                 (0, a.jsx)('p', { className: 'font-medium', children: 'No selection' }),
                 (0, a.jsx)('p', {
                   className: 'mt-2 text-xs',
@@ -2480,12 +2491,12 @@
               ],
             });
       }
-      var eC = s(2871),
-        eS = s(4965),
-        eI = s(9026),
-        eE = s(844),
-        eM = s(1103);
-      function eZ(e) {
+      var eS = s(2871),
+        eI = s(4965),
+        eE = s(9026),
+        eM = s(844),
+        eZ = s(1103);
+      function eD(e) {
         let {
             selectedNodes: t,
             onRemoveFromSelection: s,
@@ -2529,7 +2540,7 @@
           },
           f = (e) => {
             var t, s;
-            return (0, eM.F)(
+            return (0, eZ.F)(
               {
                 id: e.id,
                 kind: e.kind || e.type,
@@ -2556,7 +2567,7 @@
                       onClick: r,
                       className:
                         'text-xs text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1',
-                      children: [(0, a.jsx)(ew.Z, { className: 'w-3 h-3' }), 'Clear All'],
+                      children: [(0, a.jsx)(eC.Z, { className: 'w-3 h-3' }), 'Clear All'],
                     }),
                   ],
                 }),
@@ -2597,7 +2608,7 @@
                                       ),
                                       children: e.type,
                                     }),
-                                    l && (0, a.jsx)(Y.Z, { className: 'w-3 h-3 text-purple-400' }),
+                                    l && (0, a.jsx)(W.Z, { className: 'w-3 h-3 text-purple-400' }),
                                   ],
                                 }),
                                 (0, a.jsx)('h4', {
@@ -2619,22 +2630,22 @@
                                     'p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-purple-400 transition-colors',
                                   title: l ? 'Unpin' : 'Pin',
                                   children: l
-                                    ? (0, a.jsx)(eC.Z, { className: 'w-4 h-4' })
-                                    : (0, a.jsx)(Y.Z, { className: 'w-4 h-4' }),
+                                    ? (0, a.jsx)(eS.Z, { className: 'w-4 h-4' })
+                                    : (0, a.jsx)(W.Z, { className: 'w-4 h-4' }),
                                 }),
                                 (0, a.jsx)('button', {
                                   onClick: () => m(e.id),
                                   className:
                                     'p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-200 transition-colors',
                                   children: t
-                                    ? (0, a.jsx)(eS.Z, { className: 'w-4 h-4' })
+                                    ? (0, a.jsx)(eI.Z, { className: 'w-4 h-4' })
                                     : (0, a.jsx)(h.Z, { className: 'w-4 h-4' }),
                                 }),
                                 (0, a.jsx)('button', {
                                   onClick: () => s(e.id),
                                   className:
                                     'p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-red-400 transition-colors',
-                                  children: (0, a.jsx)(ec.Z, { className: 'w-4 h-4' }),
+                                  children: (0, a.jsx)(eo.Z, { className: 'w-4 h-4' }),
                                 }),
                               ],
                             }),
@@ -2691,7 +2702,7 @@
                                     className:
                                       'flex items-center gap-1 px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded transition-colors text-slate-300',
                                     children: [
-                                      (0, a.jsx)(ev.Z, { className: 'w-3 h-3' }),
+                                      (0, a.jsx)(ej.Z, { className: 'w-3 h-3' }),
                                       'Details',
                                     ],
                                   }),
@@ -2701,7 +2712,7 @@
                                       className:
                                         'flex items-center gap-1 px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded transition-colors text-slate-300',
                                       children: [
-                                        (0, a.jsx)(eI.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)(eE.Z, { className: 'w-3 h-3' }),
                                         'Add to Scope',
                                       ],
                                     }),
@@ -2711,7 +2722,7 @@
                                       className:
                                         'flex items-center gap-1 px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded transition-colors text-slate-300',
                                       children: [
-                                        (0, a.jsx)(eE.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)(eM.Z, { className: 'w-3 h-3' }),
                                         'Sequester',
                                       ],
                                     }),
@@ -2743,7 +2754,7 @@
                         },
                         className:
                           'flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded transition-colors text-purple-400',
-                        children: [(0, a.jsx)(eI.Z, { className: 'w-3 h-3' }), 'Add All to Scope'],
+                        children: [(0, a.jsx)(eE.Z, { className: 'w-3 h-3' }), 'Add All to Scope'],
                       }),
                     o &&
                       (0, a.jsxs)('button', {
@@ -2752,7 +2763,7 @@
                         },
                         className:
                           'flex items-center gap-1 px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded transition-colors text-slate-300',
-                        children: [(0, a.jsx)(eE.Z, { className: 'w-3 h-3' }), 'Sequester All'],
+                        children: [(0, a.jsx)(eM.Z, { className: 'w-3 h-3' }), 'Sequester All'],
                       }),
                   ],
                 }),
@@ -2761,13 +2772,12 @@
           ],
         });
       }
-      var eD = s(2100),
-        eT = s(3349),
-        eA = s(4099),
-        e_ = s(1493);
+      var eT = s(2100),
+        eA = s(3349),
+        e_ = s(4099);
       function eL(e) {
         let { account: t, isMultiSelect: s = !1, onCreateUser: r } = e,
-          { setKeimenonMode: n } = (0, et.St)(),
+          { setKeimenonMode: n } = (0, ee.St)(),
           [i, o] = (0, l.useState)(null),
           [c, d] = (0, l.useState)(!0);
         return (
@@ -2775,7 +2785,7 @@
             (async () => {
               try {
                 d(!0);
-                let e = await (0, e_.rT)(t.id);
+                let e = await (0, ep.rT)(t.id);
                 o(e);
               } catch (e) {
                 console.error('Failed to load account stats:', e);
@@ -2831,7 +2841,7 @@
                         (() => {
                           switch (t.account_class) {
                             case 'business':
-                              return (0, a.jsx)(eD.Z, { className: 'w-4 h-4' });
+                              return (0, a.jsx)(eT.Z, { className: 'w-4 h-4' });
                             case 'professional':
                               return (0, a.jsx)(p.Z, { className: 'w-4 h-4' });
                             default:
@@ -2928,7 +2938,7 @@
                           (0, a.jsxs)('div', {
                             className: 'bg-slate-800/50 rounded-lg p-3 text-center',
                             children: [
-                              (0, a.jsx)(X.Z, { className: 'w-4 h-4 text-blue-400 mx-auto mb-1' }),
+                              (0, a.jsx)(Y.Z, { className: 'w-4 h-4 text-blue-400 mx-auto mb-1' }),
                               (0, a.jsx)('p', {
                                 className: 'text-xl font-bold text-white',
                                 children: i.nodes,
@@ -2942,7 +2952,7 @@
                           (0, a.jsxs)('div', {
                             className: 'bg-slate-800/50 rounded-lg p-3 text-center',
                             children: [
-                              (0, a.jsx)(eT.Z, {
+                              (0, a.jsx)(eA.Z, {
                                 className: 'w-4 h-4 text-purple-400 mx-auto mb-1',
                               }),
                               (0, a.jsx)('p', {
@@ -2980,7 +2990,7 @@
                         'w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors',
                       title: "View this account's keimenon",
                       children: [
-                        (0, a.jsx)(eT.Z, { className: 'w-4 h-4' }),
+                        (0, a.jsx)(eA.Z, { className: 'w-4 h-4' }),
                         (0, a.jsx)('span', { children: 'View Keimenon' }),
                       ],
                     }),
@@ -2990,7 +3000,7 @@
                         'w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors',
                       title: 'Add user to this account',
                       children: [
-                        (0, a.jsx)(eA.Z, { className: 'w-4 h-4' }),
+                        (0, a.jsx)(e_.Z, { className: 'w-4 h-4' }),
                         (0, a.jsx)('span', { children: 'Add User' }),
                       ],
                     }),
@@ -3013,7 +3023,7 @@
       var eF = s(6673),
         eP = s(6991),
         eO = s(7271);
-      function ez(e) {
+      function eR(e) {
         let { onFilesSelected: t, acceptedTypes: s = [] } = e,
           [r, n] = (0, l.useState)(!1),
           i = (0, l.useCallback)(
@@ -3078,7 +3088,7 @@
                   ),
                   children: r
                     ? (0, a.jsx)(eF.Z, { className: 'w-12 h-12 text-purple-400' })
-                    : (0, a.jsx)(ee.Z, { className: 'w-12 h-12 text-slate-400' }),
+                    : (0, a.jsx)($.Z, { className: 'w-12 h-12 text-slate-400' }),
                 }),
                 (0, a.jsxs)('div', {
                   children: [
@@ -3138,7 +3148,7 @@
           ],
         });
       }
-      function eR(e) {
+      function ez(e) {
         let { onFilesSelected: t, files: s } = e;
         return (0, a.jsxs)('div', {
           className: 'space-y-4',
@@ -3149,7 +3159,7 @@
                   className: 'text-sm font-semibold mb-3',
                   children: 'Select Chat Export Files',
                 }),
-                (0, a.jsx)(ez, {
+                (0, a.jsx)(eR, {
                   onFilesSelected: t,
                   acceptedTypes: ['application/json', '.jsonl'],
                 }),
@@ -3353,7 +3363,7 @@
       var eJ = s(2439),
         eG = s(977),
         eW = s(9991);
-      function eY(e) {
+      function eH(e) {
         let { value: t, duration: s = 500 } = e,
           [r, n] = (0, l.useState)(0),
           i = (0, l.useRef)(0),
@@ -3381,7 +3391,7 @@
           (0, a.jsx)('span', { children: r.toLocaleString() })
         );
       }
-      function eH(e) {
+      function eY(e) {
         let { color: t, values: s } = e,
           l = s.length > 0 ? s : [0],
           r = Math.max(...l, 1),
@@ -3429,12 +3439,12 @@
               children: [
                 (0, a.jsx)('div', {
                   className: 'text-3xl font-bold text-white',
-                  children: i ? (0, a.jsx)(eY, { value: s }) : s.toLocaleString(),
+                  children: i ? (0, a.jsx)(eH, { value: s }) : s.toLocaleString(),
                 }),
                 (0, a.jsx)('div', { className: 'text-xs text-slate-400 font-medium', children: t }),
               ],
             }),
-            (0, a.jsx)(eH, { color: r, values: n }),
+            (0, a.jsx)(eY, { color: r, values: n }),
           ],
         });
       }
@@ -3457,7 +3467,7 @@
             return (
               (async () => {
                 try {
-                  let t = await (0, e_.qF)(i, 12);
+                  let t = await (0, ep.qF)(i, 12);
                   e || d(t.series);
                 } catch (t) {
                   (e || d([]),
@@ -3475,7 +3485,7 @@
             {
               label: 'Conversations',
               value: t.conversationsProcessed,
-              icon: $.Z,
+              icon: Q.Z,
               color: 'from-blue-500 to-blue-600',
               sparklineValues: u('conversations'),
             },
@@ -3691,7 +3701,7 @@
                 children: (0, a.jsxs)('div', {
                   className: 'flex gap-2',
                   children: [
-                    (0, a.jsx)(eu.Z, { className: 'w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5' }),
+                    (0, a.jsx)(ed.Z, { className: 'w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5' }),
                     (0, a.jsx)('p', {
                       className: 'text-xs text-blue-300',
                       children:
@@ -3881,7 +3891,7 @@
                       type: 'button',
                       onClick: () => c(t),
                       className: 'hover:bg-purple-600/30 rounded p-0.5 transition-colors',
-                      children: (0, a.jsx)(ec.Z, { className: 'w-3 h-3' }),
+                      children: (0, a.jsx)(eo.Z, { className: 'w-3 h-3' }),
                     }),
                   ],
                 },
@@ -3938,7 +3948,7 @@
                       },
                       className:
                         'flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded text-xs font-medium transition-colors',
-                      children: [(0, a.jsx)(ei.Z, { className: 'w-3 h-3' }), 'Add Group'],
+                      children: [(0, a.jsx)(en.Z, { className: 'w-3 h-3' }), 'Add Group'],
                     }),
                   ],
                 }),
@@ -4364,9 +4374,9 @@
                       (0, a.jsx)('div', {
                         className: 'space-y-2',
                         children: [
-                          { value: 'language', icon: ef.Z, label: 'Programming language' },
-                          { value: 'conversation', icon: $.Z, label: 'Conversation' },
-                          { value: 'keyword', icon: eo.Z, label: 'Keywords (uses groups above)' },
+                          { value: 'language', icon: ev.Z, label: 'Programming language' },
+                          { value: 'conversation', icon: Q.Z, label: 'Conversation' },
+                          { value: 'keyword', icon: ei.Z, label: 'Keywords (uses groups above)' },
                         ].map((e) => {
                           let { value: s, icon: l, label: r } = e;
                           return (0, a.jsxs)(
@@ -4477,7 +4487,7 @@
                     children: (0, a.jsxs)('div', {
                       className: 'flex gap-2',
                       children: [
-                        (0, a.jsx)(eu.Z, {
+                        (0, a.jsx)(ed.Z, {
                           className: 'w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5',
                         }),
                         (0, a.jsx)('p', {
@@ -4885,7 +4895,7 @@
                     (0, a.jsxs)('div', {
                       className: 'flex items-center gap-1.5',
                       children: [
-                        (0, a.jsx)(eN.Z, { className: 'w-3.5 h-3.5' }),
+                        (0, a.jsx)(ey.Z, { className: 'w-3.5 h-3.5' }),
                         (0, a.jsxs)('span', {
                           children: ['Similarity: ', Math.round(100 * t.similarity), '%'],
                         }),
@@ -4894,7 +4904,7 @@
                     (0, a.jsxs)('div', {
                       className: 'flex items-center gap-1.5',
                       children: [
-                        (0, a.jsx)($.Z, { className: 'w-3.5 h-3.5' }),
+                        (0, a.jsx)(Q.Z, { className: 'w-3.5 h-3.5' }),
                         (0, a.jsxs)('span', {
                           children: ['Token overlap: ', t.metrics.tokenOverlap],
                         }),
@@ -4903,7 +4913,7 @@
                     (0, a.jsxs)('div', {
                       className: 'flex items-center gap-1.5',
                       children: [
-                        (0, a.jsx)(eN.Z, { className: 'w-3.5 h-3.5' }),
+                        (0, a.jsx)(ey.Z, { className: 'w-3.5 h-3.5' }),
                         (0, a.jsxs)('span', {
                           children: ['Edit distance: ', t.metrics.editDistance],
                         }),
@@ -4978,7 +4988,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-center gap-1.5',
                                       children: [
-                                        (0, a.jsx)($.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)(Q.Z, { className: 'w-3 h-3' }),
                                         (0, a.jsx)('span', {
                                           className: 'truncate',
                                           children: t.primary.conversationTitle,
@@ -4988,14 +4998,14 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-center gap-1.5',
                                       children: [
-                                        (0, a.jsx)(ej.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)(eN.Z, { className: 'w-3 h-3' }),
                                         (0, a.jsx)('span', { children: i(t.primary.timestamp) }),
                                       ],
                                     }),
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-center gap-1.5',
                                       children: [
-                                        (0, a.jsx)(eN.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)(ey.Z, { className: 'w-3 h-3' }),
                                         (0, a.jsxs)('span', {
                                           children: [t.primary.charCount, ' characters'],
                                         }),
@@ -5038,7 +5048,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-center gap-1.5',
                                       children: [
-                                        (0, a.jsx)($.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)(Q.Z, { className: 'w-3 h-3' }),
                                         (0, a.jsx)('span', {
                                           className: 'truncate',
                                           children: t.duplicate.conversationTitle,
@@ -5048,14 +5058,14 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-center gap-1.5',
                                       children: [
-                                        (0, a.jsx)(ej.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)(eN.Z, { className: 'w-3 h-3' }),
                                         (0, a.jsx)('span', { children: i(t.duplicate.timestamp) }),
                                       ],
                                     }),
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-center gap-1.5',
                                       children: [
-                                        (0, a.jsx)(eN.Z, { className: 'w-3 h-3' }),
+                                        (0, a.jsx)(ey.Z, { className: 'w-3 h-3' }),
                                         (0, a.jsxs)('span', {
                                           children: [t.duplicate.charCount, ' characters'],
                                         }),
@@ -5141,7 +5151,7 @@
               action: 'keep-both',
               label: 'Keep Both',
               description: 'Keep both messages as separate entries',
-              icon: (0, a.jsx)(ey.Z, { className: 'w-5 h-5' }),
+              icon: (0, a.jsx)(ew.Z, { className: 'w-5 h-5' }),
               color: 'green',
             },
             {
@@ -5269,7 +5279,7 @@
                         (0, a.jsxs)('div', {
                           className: 'flex items-center gap-1.5 text-slate-400 mb-1',
                           children: [
-                            (0, a.jsx)($.Z, { className: 'w-3 h-3' }),
+                            (0, a.jsx)(Q.Z, { className: 'w-3 h-3' }),
                             (0, a.jsx)('span', { children: 'Conversation' }),
                           ],
                         }),
@@ -5309,7 +5319,7 @@
                         (0, a.jsxs)('div', {
                           className: 'flex items-center gap-1.5 text-slate-400 mb-1',
                           children: [
-                            (0, a.jsx)(ej.Z, { className: 'w-3 h-3' }),
+                            (0, a.jsx)(eN.Z, { className: 'w-3 h-3' }),
                             (0, a.jsx)('span', { children: 'Date' }),
                           ],
                         }),
@@ -5347,7 +5357,7 @@
                         (0, a.jsxs)('div', {
                           className: 'flex items-center gap-1.5 text-slate-400 mb-1',
                           children: [
-                            (0, a.jsx)(eN.Z, { className: 'w-3 h-3' }),
+                            (0, a.jsx)(ey.Z, { className: 'w-3 h-3' }),
                             (0, a.jsx)('span', { children: 'Length' }),
                           ],
                         }),
@@ -5500,8 +5510,8 @@
           N = t.reduce((e, t) => e + t.candidates.length, 0),
           y = m.size,
           w = N > 0 ? (y / N) * 100 : 0,
-          k = Math.max(N - y, 0),
-          C = (e, s) => {
+          C = Math.max(N - y, 0),
+          k = (e, s) => {
             let a = null == v ? void 0 : v.candidates.find((t) => t.id === e);
             if (!a) {
               console.error('Candidate not found:', e);
@@ -5572,19 +5582,19 @@
             )
               switch (e.key) {
                 case '1':
-                  (e.preventDefault(), C(o, 'keep-primary'));
+                  (e.preventDefault(), k(o, 'keep-primary'));
                   break;
                 case '2':
-                  (e.preventDefault(), C(o, 'keep-duplicate'));
+                  (e.preventDefault(), k(o, 'keep-duplicate'));
                   break;
                 case '3':
-                  (e.preventDefault(), C(o, 'keep-both'));
+                  (e.preventDefault(), k(o, 'keep-both'));
                   break;
                 case '4':
-                  (e.preventDefault(), C(o, 'merge'));
+                  (e.preventDefault(), k(o, 'merge'));
                   break;
                 case '5':
-                  (e.preventDefault(), C(o, 'sequester'));
+                  (e.preventDefault(), k(o, 'sequester'));
                   break;
                 case 'z':
                   (e.ctrlKey || e.metaKey) && (e.preventDefault(), e.shiftKey ? g() : h());
@@ -5743,11 +5753,11 @@
                           className: 'text-sm text-slate-400',
                           children: [y, ' / ', N, ' reviewed'],
                         }),
-                        k > 0 &&
+                        C > 0 &&
                           (0, a.jsxs)('div', {
                             className:
                               'text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-1 rounded',
-                            children: [k, ' pending'],
+                            children: [C, ' pending'],
                           }),
                       ],
                     }),
@@ -5794,7 +5804,7 @@
                     (0, a.jsx)(tx, {
                       candidate: j,
                       decision: o ? m.get(o) : void 0,
-                      onDecision: (e) => o && C(o, e),
+                      onDecision: (e) => o && k(o, e),
                     }),
                 }),
               ],
@@ -5858,10 +5868,10 @@
                 }),
                 (0, a.jsx)('button', {
                   onClick: S,
-                  disabled: k > 0,
+                  disabled: C > 0,
                   className:
                     'px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors',
-                  children: k > 0 ? 'Complete Review ('.concat(k, ' pending)') : 'Complete Review',
+                  children: C > 0 ? 'Complete Review ('.concat(C, ' pending)') : 'Complete Review',
                 }),
               ],
             }),
@@ -5877,12 +5887,14 @@
           x = (0, l.useRef)(null),
           m = (0, l.useRef)(0),
           p = (0, l.useRef)(null),
-          h = (0, l.useRef)(!0),
-          g = (0, l.useRef)(new Set()),
-          b = (0, l.useRef)(new Set());
+          h = (0, l.useRef)(0),
+          g = (0, l.useRef)(!1),
+          b = (0, l.useRef)(!0),
+          f = (0, l.useRef)(new Set()),
+          v = (0, l.useRef)(new Set());
         return (
           (0, l.useEffect)(() => {
-            h.current = !0;
+            b.current = !0;
             let t = async () => {
               let a = (0, N.LP)();
               if (!a) {
@@ -5892,26 +5904,34 @@
               m.current;
               let l = ''.concat(_.CT, '/api/v1/stream/jobs?token=***');
               try {
-                x.current && x.current.close();
+                x.current && (x.current.close(), (x.current = null));
                 let n = new URL(''.concat(_.CT, '/api/v1/stream/jobs'));
                 n.searchParams.set('token', a);
-                let o = new EventSource(n.toString());
-                ((x.current = o),
-                  o.addEventListener('open', () => {
-                    (E.I.info('Job stream connected', {
-                      domain: 'jobs',
-                      operation: 'jobStream.open',
-                    }),
-                      h.current && (i(!0), u(!1), c(null), (m.current = 0)));
+                let o = ++h.current,
+                  d = new EventSource(n.toString());
+                ((x.current = d),
+                  d.addEventListener('open', () => {
+                    o === h.current &&
+                      (E.I.info('Job stream connected', {
+                        domain: 'jobs',
+                        operation: 'jobStream.open',
+                      }),
+                      b.current &&
+                        (i(!0),
+                        u(!1),
+                        c(null),
+                        (m.current = 0),
+                        (g.current = !1),
+                        p.current && (clearTimeout(p.current), (p.current = null))));
                   }),
-                  o.addEventListener('connected', (e) => {}),
-                  o.addEventListener('jobs.update', (t) => {
-                    if (h.current)
+                  d.addEventListener('connected', (e) => {}),
+                  d.addEventListener('jobs.update', (t) => {
+                    if (o === h.current && b.current)
                       try {
                         let a = JSON.parse(t.data).jobs || [],
                           l = a.filter(
                             (e) =>
-                              !b.current.has(e.jobId) ||
+                              !v.current.has(e.jobId) ||
                               (console.log(
                                 '[useJobStream] \uD83E\uDDDF‍♂️ Blocking zombie job update for '.concat(
                                   e.jobId,
@@ -5951,7 +5971,7 @@
                                   )
                                 ),
                                   s.delete(t.jobId),
-                                  b.current.add(t.jobId));
+                                  v.current.add(t.jobId));
                                 continue;
                               }
                               let l = 'succeeded' === t.status || 'failed' === t.status,
@@ -5964,8 +5984,8 @@
                                 'import' === t.type &&
                                   'succeeded' === t.status &&
                                   (null == e ? void 0 : e.onImportComplete) &&
-                                  !g.current.has(t.jobId) &&
-                                  (g.current.add(t.jobId),
+                                  !f.current.has(t.jobId) &&
+                                  (f.current.add(t.jobId),
                                   setTimeout(() => {
                                     var s;
                                     null === (s = e.onImportComplete) ||
@@ -5984,8 +6004,8 @@
                         );
                       }
                   }),
-                  o.addEventListener('graph.update', (e) => {
-                    if (h.current)
+                  d.addEventListener('graph.update', (e) => {
+                    if (o === h.current && b.current)
                       try {
                         let t = JSON.parse(e.data);
                         r((e) => {
@@ -6001,10 +6021,13 @@
                         );
                       }
                   }),
-                  o.addEventListener('heartbeat', () => {}),
-                  o.addEventListener('error', (e) => {
+                  d.addEventListener('heartbeat', () => {
+                    if (o !== h.current) return;
+                  }),
+                  d.addEventListener('error', (e) => {
+                    if (o !== h.current) return;
                     let s = m.current > 0 ? 'reconnection' : 'connection',
-                      a = o.readyState,
+                      a = d.readyState,
                       r = (function (e, t, s) {
                         let a = s > 0 ? ' (attempt '.concat(s, '/').concat(5, ')') : '';
                         switch (e) {
@@ -6044,13 +6067,16 @@
                           connectionContext: s,
                         },
                       }),
-                      h.current)
+                      b.current)
                     ) {
-                      if ((i(!1), m.current < 5)) {
-                        (u(!0), m.current++);
+                      if (
+                        (i(!1), x.current === d && (d.close(), (x.current = null)), m.current < 5)
+                      ) {
+                        if ((u(!0), p.current)) return;
+                        m.current++;
                         let e = 3e3 * Math.pow(2, m.current - 1);
                         p.current = setTimeout(() => {
-                          h.current && t();
+                          ((p.current = null), b.current && t());
                         }, e);
                       } else {
                         let e = 'Failed to establish job stream connection after '
@@ -6058,11 +6084,13 @@
                           .concat(r, ' Please refresh the page or check your network connection.');
                         (c(e),
                           u(!1),
-                          E.I.error(e, {
-                            domain: 'jobs',
-                            operation: 'jobStream.exhaustedRetries',
-                            metadata: { attempts: m.current, lastReadyState: a, url: l },
-                          }));
+                          g.current ||
+                            ((g.current = !0),
+                            E.I.error(e, {
+                              domain: 'jobs',
+                              operation: 'jobStream.exhaustedRetries',
+                              metadata: { attempts: m.current, lastReadyState: a, url: l },
+                            })));
                       }
                     }
                   }));
@@ -6087,7 +6115,7 @@
             return (
               t(),
               () => {
-                ((h.current = !1),
+                ((b.current = !1),
                   p.current && (clearTimeout(p.current), (p.current = null)),
                   x.current &&
                     (E.I.info('Job stream disconnecting', {
@@ -6111,7 +6139,7 @@
                   '[useJobStream] Removing '.concat(e.length, ' jobs from local state:'),
                   e
                 ),
-                e.forEach((e) => b.current.add(e)),
+                e.forEach((e) => v.current.add(e)),
                 s((t) => {
                   let s = new Map(t),
                     a = 0;
@@ -6133,11 +6161,12 @@
           }
         );
       }
-      let th = 'chunked_upload_';
-      var tg = s(2844);
-      let tb = new Set(['reading', 'parsing', 'normalizing', 'indexing', 'linking', 'processing']),
-        tf = ['queued', 'reading', 'parsing', 'normalizing', 'indexing', 'linking', 'done'],
-        tv = {
+      let th = 'chunked_upload_',
+        tg = 'Session expired. Please log in again before uploading.';
+      var tb = s(2844);
+      let tf = new Set(['reading', 'parsing', 'normalizing', 'indexing', 'linking', 'processing']),
+        tv = ['queued', 'reading', 'parsing', 'normalizing', 'indexing', 'linking', 'done'],
+        tj = {
           queued: 0,
           reading: 3,
           parsing: 10,
@@ -6146,13 +6175,13 @@
           linking: 90,
           done: 100,
         };
-      function tj(e) {
-        return e ? tf.indexOf(e) : -1;
-      }
       function tN(e) {
+        return e ? tv.indexOf(e) : -1;
+      }
+      function ty(e) {
         return Number.isFinite(e) ? Math.max(0, Math.min(100, Math.round(e))) : 0;
       }
-      function ty(e, t) {
+      function tw(e, t) {
         switch (e) {
           case 'queued':
             return 'queued';
@@ -6173,7 +6202,7 @@
             return t;
         }
       }
-      function tw(e) {
+      function tC(e) {
         var t, s, a;
         let { backendStatus: l, jobType: r = 'import', progress: n, previousStatus: i } = e,
           o = 'import' === r,
@@ -6261,13 +6290,13 @@
               ? s
               : null,
           d =
-            null !== (a = i && tb.has(i) ? ty(i, 'parsing') : null) && void 0 !== a ? a : 'parsing';
+            null !== (a = i && tf.has(i) ? tw(i, 'parsing') : null) && void 0 !== a ? a : 'parsing';
         if ('succeeded' === l) return { status: 'done', stage: 'done' };
         if ('failed' === l || 'canceled' === l) return { status: 'error', stage: 'done' };
         if ('blocked' === l)
           return {
             status: 'blocked',
-            stage: ty(
+            stage: tw(
               c && 'queued' !== c && 'blocked' !== c && 'done' !== c && 'error' !== c
                 ? c
                 : null != i
@@ -6282,15 +6311,15 @@
           let e =
               c && 'queued' !== c && 'blocked' !== c && 'done' !== c && 'error' !== c
                 ? c
-                : tb.has(i)
+                : tf.has(i)
                   ? i
                   : 'parsing',
-            t = tb.has(i) ? i : null,
-            s = t && tj(t) > tj(e) ? t : e;
-          return { status: s, stage: ty(s, d) };
+            t = tf.has(i) ? i : null,
+            s = t && tN(t) > tN(e) ? t : e;
+          return { status: s, stage: tw(s, d) };
         }
         let u = o ? 'parsing' : 'processing';
-        return { status: u, stage: ty(u, d) };
+        return { status: u, stage: tw(u, d) };
       }
       function tk(e) {
         var t;
@@ -6303,8 +6332,8 @@
           metadata: i,
         } = e;
         if ('succeeded' === s || 'done' === a) return 100;
-        let o = tN(null !== (t = null != l ? l : r) && void 0 !== t ? t : 0),
-          c = tv[a];
+        let o = ty(null !== (t = null != l ? l : r) && void 0 !== t ? t : 0),
+          c = tj[a];
         if (
           (('running' === s || 'blocked' === s) &&
             ('number' == typeof c && (o = Math.max(o, c)), 'error' !== a && (o = Math.min(o, 99))),
@@ -6312,7 +6341,7 @@
             'succeeded' !== s &&
             'failed' !== s &&
             'canceled' !== s &&
-            (o = Math.max(o, tN(r))),
+            (o = Math.max(o, ty(r))),
           'running' === s || 'blocked' === s)
         ) {
           let e = n ? String(n).toUpperCase() : '',
@@ -6326,9 +6355,9 @@
                 (o = Math.min(95, Math.max(o, o + Math.min(3, Math.floor(t / 6e5)))));
           }
         }
-        return tN(o);
+        return ty(o);
       }
-      function tC(e) {
+      function tS(e) {
         var t, s, r, n, i;
         let { onDismiss: o } = e,
           { user: c } = (0, N.aC)(),
@@ -6387,24 +6416,27 @@
                     i = Math.min(n + 10485760, t.size),
                     o = t.slice(n, i),
                     c = new AbortController();
-                  s.current.set(l, c);
-                  let d = { 'Content-Type': 'application/octet-stream' },
-                    u = (0, N.LP)();
-                  u && (d.Authorization = 'Bearer '.concat(u));
-                  let x = await fetch(
+                  if ((s.current.set(l, c), !(0, N.LP)())) throw Error(tg);
+                  let d = await (0, ep.ax)(
                     ''.concat(_.CT, '/api/v1/uploads/').concat(e, '/chunks/').concat(l),
-                    { method: 'POST', headers: d, body: o, signal: c.signal }
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/octet-stream' },
+                      body: o,
+                      signal: c.signal,
+                    }
                   );
-                  if ((s.current.delete(l), x.ok)) {
-                    let e = await x.json();
+                  if ((s.current.delete(l), d.ok)) {
+                    let e = await d.json();
                     return { success: !0 === e.success, jobId: e.jobId };
                   }
                   {
-                    let e = await x.json();
+                    if (401 === d.status || 403 === d.status) throw Error(tg);
+                    let e = await d.json();
                     throw Error(e.message || e.error || 'Chunk upload failed');
                   }
-                } catch (s) {
-                  if ('AbortError' === s.name) return { success: !1 };
+                } catch (a) {
+                  if ('AbortError' === a.name) return { success: !1 };
                   if (n < 3)
                     return (
                       console.log(
@@ -6416,20 +6448,23 @@
                       await new Promise((e) => setTimeout(e, 1e3 * (n + 1))),
                       o(e, t, l, n + 1)
                     );
+                  let s = String((null == a ? void 0 : a.message) || a || 'Chunk upload failed');
+                  if (s === tg) throw Error(s);
                   throw Error(
                     'Failed to upload chunk '
                       .concat(l, ' after ')
                       .concat(3, ' attempts: ')
-                      .concat(s.message)
+                      .concat(s)
                   );
                 }
               }, []),
               c = (0, l.useCallback)(
-                async (l, i, c, d) => {
-                  let u;
-                  let x = Date.now(),
-                    m = new Set(e.uploadedChunks),
-                    p = [...c],
+                async function (e, l, i, c) {
+                  let d,
+                    u = arguments.length > 4 && void 0 !== arguments[4] ? arguments[4] : [],
+                    x = Date.now(),
+                    m = new Set(u),
+                    p = [...i],
                     h = new Map(),
                     g = 0,
                     b = (e) => {
@@ -6437,47 +6472,47 @@
                       if (s - g < 200) return;
                       g = s;
                       let a = 10485760 * m.size,
-                        l = Math.round((m.size / d) * 100),
-                        r = (s - x) / 1e3,
-                        n = r > 0 ? a / r : 0,
-                        o = i.size - a,
-                        c = n > 0 ? Math.round(o / n) : 0;
+                        r = Math.round((m.size / c) * 100),
+                        n = (s - x) / 1e3,
+                        i = n > 0 ? a / n : 0,
+                        o = l.size - a,
+                        d = i > 0 ? Math.round(o / i) : 0;
                       t((t) => ({
                         ...t,
                         uploadedChunks: m,
                         progress: {
                           ...t.progress,
                           bytesUploaded: a,
-                          percentage: l,
+                          percentage: r,
                           chunkIndex: e,
                           chunksUploaded: m.size,
-                          uploadSpeed: n,
-                          estimatedTimeRemaining: c,
+                          uploadSpeed: i,
+                          estimatedTimeRemaining: d,
                           status: 'uploading',
                         },
                       }));
                     };
                   for (; p.length > 0 || h.size > 0; ) {
                     if (a.current || r.current)
-                      return (s.current.forEach((e) => e.abort()), s.current.clear(), u);
+                      return (s.current.forEach((e) => e.abort()), s.current.clear(), d);
                     for (; h.size < 6 && p.length > 0; ) {
-                      let e = p.shift(),
-                        t = o(l, i, e)
-                          .then((t) => {
-                            t.success &&
-                              (m.add(e),
-                              b(e),
-                              n(l, i, m),
-                              t.jobId &&
+                      let t = p.shift(),
+                        s = o(e, l, t)
+                          .then((s) => {
+                            s.success &&
+                              (m.add(t),
+                              b(t),
+                              n(e, l, m),
+                              s.jobId &&
                                 (console.log(
-                                  '✅ Received jobId from final chunk: '.concat(t.jobId)
+                                  '✅ Received jobId from final chunk: '.concat(s.jobId)
                                 ),
-                                (u = t.jobId)));
+                                (d = s.jobId)));
                           })
                           .finally(() => {
-                            h.delete(e);
+                            h.delete(t);
                           });
-                      h.set(e, t);
+                      h.set(t, s);
                     }
                     h.size > 0 && (await Promise.race(h.values()));
                   }
@@ -6487,37 +6522,57 @@
                       uploadedChunks: m,
                       progress: {
                         ...e.progress,
-                        bytesUploaded: i.size,
+                        bytesUploaded: l.size,
                         percentage: 100,
-                        chunksUploaded: d,
+                        chunksUploaded: c,
                         status: 'uploading',
                       },
                     })),
-                    u
+                    d
                   );
                 },
                 [o, n]
               ),
-              d = (0, l.useCallback)(
-                async (s, l) => {
+              d = (0, l.useCallback)(async (e) => {
+                try {
+                  var t;
+                  let s = await ep.x1.get('/api/v1/uploads/'.concat(e));
+                  if (
+                    !(null == s
+                      ? void 0
+                      : null === (t = s.data) || void 0 === t
+                        ? void 0
+                        : t.success)
+                  )
+                    return;
+                  let a = s.data.session;
+                  return 'string' == typeof (null == a ? void 0 : a.jobId) && a.jobId.length > 0
+                    ? a.jobId
+                    : void 0;
+                } catch (e) {
+                  return;
+                }
+              }, []),
+              u = (0, l.useCallback)(
+                async (e, s) => {
                   try {
-                    let n = (0, eO.p$)(l);
+                    let l = (0, eO.p$)(s);
                     (console.log(
                       '\uD83D\uDCE4 Starting chunked upload: '
-                        .concat(s.name, ' (')
-                        .concat((s.size / 1024 / 1024).toFixed(2), ' MB)')
+                        .concat(e.name, ' (')
+                        .concat((e.size / 1024 / 1024).toFixed(2), ' MB)')
                     ),
                       (a.current = !1),
                       (r.current = !1),
                       t({
-                        file: s,
+                        file: e,
                         progress: {
-                          fileName: s.name,
-                          fileSize: s.size,
+                          fileName: e.name,
+                          fileSize: e.size,
                           bytesUploaded: 0,
                           percentage: 0,
                           chunkIndex: 0,
-                          totalChunks: Math.ceil(s.size / 10485760),
+                          totalChunks: Math.ceil(e.size / 10485760),
                           chunksUploaded: 0,
                           status: 'uploading',
                         },
@@ -6527,40 +6582,41 @@
                         startTime: Date.now(),
                         bytesUploadedAtStart: 0,
                       }));
-                    let o = await e_.x1.post('/api/v1/uploads/initiate', {
-                      fileName: s.name,
-                      fileSize: s.size,
-                      mimeType: s.type || 'application/json',
+                    let n = await ep.x1.post('/api/v1/uploads/initiate', {
+                      fileName: e.name,
+                      fileSize: e.size,
+                      mimeType: e.type || 'application/json',
                       chunkSize: 10485760,
-                      importConfig: n,
+                      importConfig: l,
                     });
-                    if (!o.data.success) throw Error(o.data.error || 'Failed to initiate upload');
-                    let d = o.data.session;
-                    (console.log('✅ Upload session created: '.concat(d.id)),
-                      console.log('   Total chunks: '.concat(d.totalChunks)),
-                      t((e) => ({ ...e, sessionId: d.id })));
-                    let u = Array.from({ length: d.totalChunks }, (e, t) => t),
-                      x = await c(d.id, s, u, d.totalChunks);
-                    if (e.isCanceled)
+                    if (!n.data.success) throw Error(n.data.error || 'Failed to initiate upload');
+                    let o = n.data.session;
+                    (console.log('✅ Upload session created: '.concat(o.id)),
+                      console.log('   Total chunks: '.concat(o.totalChunks)),
+                      t((e) => ({ ...e, sessionId: o.id })));
+                    let u = Array.from({ length: o.totalChunks }, (e, t) => t),
+                      x = await c(o.id, e, u, o.totalChunks, []);
+                    if (r.current)
                       return (
                         console.log('Upload canceled by user'),
                         { success: !1, error: 'Upload canceled by user' }
                       );
-                    if (e.isPaused)
+                    if (a.current)
                       return (
                         console.log('Upload paused by user'),
                         { success: !1, error: 'Upload paused by user' }
                       );
+                    console.log('✅ Upload complete: '.concat(e.name));
+                    let m = x || (await d(o.id));
                     return (
-                      console.log('✅ Upload complete: '.concat(s.name)),
-                      console.log('   Job ID: '.concat(x)),
-                      i(d.id),
+                      console.log('   Job ID: '.concat(m)),
+                      i(o.id),
                       t((e) => ({
                         ...e,
-                        jobId: x,
+                        jobId: m,
                         progress: { ...e.progress, status: 'completed', percentage: 100 },
                       })),
-                      { success: !0, jobId: x }
+                      { success: !0, jobId: m }
                     );
                   } catch (e) {
                     return (
@@ -6573,10 +6629,10 @@
                     );
                   }
                 },
-                [c, i, e.isCanceled, e.isPaused]
+                [c, i, d]
               );
             return {
-              upload: d,
+              upload: u,
               pause: (0, l.useCallback)(() => {
                 (console.log('Pausing upload...'),
                   (a.current = !0),
@@ -6587,7 +6643,7 @@
               resume: (0, l.useCallback)(async () => {
                 if (!e.sessionId || !e.file) throw Error('No active upload session to resume');
                 console.log('Resuming upload...');
-                let s = await e_.x1.get('/api/v1/uploads/'.concat(e.sessionId));
+                let s = await ep.x1.get('/api/v1/uploads/'.concat(e.sessionId));
                 if (!s.data.success) throw Error(s.data.error || 'Failed to get upload status');
                 let l = s.data.session;
                 (console.log(
@@ -6605,9 +6661,27 @@
                       status: 'uploading',
                       chunksUploaded: l.chunksUploaded.length,
                     },
+                  })));
+                let n = await c(
+                  e.sessionId,
+                  e.file,
+                  l.missingChunks,
+                  l.totalChunks,
+                  l.chunksUploaded
+                );
+                if (r.current) return { success: !1, error: 'Upload canceled by user' };
+                if (a.current) return { success: !1, error: 'Upload paused by user' };
+                let o = n || (await d(e.sessionId)) || e.jobId;
+                return (
+                  i(e.sessionId),
+                  t((e) => ({
+                    ...e,
+                    jobId: o,
+                    progress: { ...e.progress, status: 'completed', percentage: 100 },
                   })),
-                  await c(e.sessionId, e.file, l.missingChunks, l.totalChunks));
-              }, [e.sessionId, e.file, c]),
+                  { success: !0, jobId: o }
+                );
+              }, [e.sessionId, e.file, e.jobId, c, d, i]),
               cancel: (0, l.useCallback)(async () => {
                 if (e.sessionId) {
                   (console.log('Canceling upload...'),
@@ -6616,7 +6690,7 @@
                     s.current.forEach((e) => e.abort()),
                     s.current.clear());
                   try {
-                    (await e_.x1.delete('/api/v1/uploads/'.concat(e.sessionId)), i(e.sessionId));
+                    (await ep.x1.delete('/api/v1/uploads/'.concat(e.sessionId)), i(e.sessionId));
                   } catch (e) {
                     console.error('Failed to cancel upload session:', e);
                   }
@@ -6634,33 +6708,33 @@
           [h, g] = (0, l.useState)(eO.r3),
           [b, f] = (0, l.useState)([]),
           [v, j] = (0, l.useState)(!1),
-          [w, k] = (0, l.useState)(null),
-          [C, S] = (0, l.useState)({ stage: 'uploading', percent: 0, message: '' }),
+          [w, C] = (0, l.useState)(null),
+          [k, S] = (0, l.useState)({ stage: 'uploading', percent: 0, message: '' }),
           [I, E] = (0, l.useState)(null),
           [M, Z] = (0, l.useState)([]),
           [D, T] = (0, l.useState)(null),
           [A, L] = (0, l.useState)(null),
           [F, P] = (0, l.useState)([]),
-          [O, z] = (0, l.useState)([]),
-          [R, U] = (0, l.useState)(''),
+          [O, R] = (0, l.useState)([]),
+          [z, U] = (0, l.useState)(''),
           [B, V] = (0, l.useState)(''),
           [K, q] = (0, l.useState)(!1),
           [J, G] = (0, l.useState)(!1),
-          [W, Y] = (0, l.useState)(null),
-          [H, X] = (0, l.useState)(!1),
+          [W, H] = (0, l.useState)(null),
+          [Y, X] = (0, l.useState)(!1),
           Q = (0, l.useCallback)(async () => {
             try {
-              if (!(await (0, e_.e_)()).requiresReimport) return;
-              (await (0, e_.SK)(),
+              if (!(await (0, ep.e_)()).requiresReimport) return;
+              (await (0, ep.SK)(),
                 window.dispatchEvent(new CustomEvent('core-process-reimport-complete')),
                 console.log('[ChatImportModal] Core process reimport marked complete'));
             } catch (e) {
               console.warn('[ChatImportModal] Failed to clear core process reimport gate:', e);
             }
           }, []),
-          $ = (0, l.useCallback)(async () => {
+          ee = (0, l.useCallback)(async () => {
             try {
-              let e = await (0, e_.E0)(),
+              let e = await (0, ep.E0)(),
                 t = !!e.features.agent_runtime;
               return (
                 X(t),
@@ -6682,117 +6756,117 @@
           }, []),
           et = (0, l.useCallback)(
             async (e) => {
-              (q(!0), Y(null));
+              (q(!0), H(null));
               try {
                 var t;
-                let s = (await (0, e_.d)()).presets || [];
-                z(s);
+                let s = (await (0, ep.d)()).presets || [];
+                R(s);
                 let a =
                   e && s.some((t) => t.id === e)
                     ? e
-                    : R && s.some((e) => e.id === R)
-                      ? R
+                    : z && s.some((e) => e.id === z)
+                      ? z
                       : (null === (t = s[0]) || void 0 === t ? void 0 : t.id) || '';
                 U(a);
                 let l = s.find((e) => e.id === a);
                 V((null == l ? void 0 : l.name) || '');
               } catch (e) {
                 (console.error('[ChatImportModal] Failed to load import presets:', e),
-                  Y(e instanceof Error ? e.message : 'Failed to load presets'));
+                  H(e instanceof Error ? e.message : 'Failed to load presets'));
               } finally {
                 q(!1);
               }
             },
-            [R]
+            [z]
           );
         (0, l.useEffect)(() => {
-          'config' === m && (et(), $());
-        }, [m, et, $]);
+          'config' === m && (et(), ee());
+        }, [m, et, ee]);
         let es = (0, l.useCallback)(() => {
-            if (!R) return;
-            let e = O.find((e) => e.id === R);
+            if (!z) return;
+            let e = O.find((e) => e.id === z);
             if (!e) {
-              Y('Selected preset no longer exists.');
+              H('Selected preset no longer exists.');
               return;
             }
             (g(
-              H || 'auto' !== e.config.agent.bootstrap
+              Y || 'auto' !== e.config.agent.bootstrap
                 ? e.config
                 : { ...e.config, agent: { ...e.config.agent, bootstrap: 'manual' } }
             ),
               V(e.name),
-              Y(null));
-          }, [H, O, R]),
+              H(null));
+          }, [Y, O, z]),
           ea = (0, l.useCallback)(async () => {
             let e = B.trim();
             if (!e) {
-              Y('Preset name is required.');
+              H('Preset name is required.');
               return;
             }
-            (G(!0), Y(null));
+            (G(!0), H(null));
             try {
-              let t = await (0, e_.W9)({ name: e, config: h });
+              let t = await (0, ep.W9)({ name: e, config: h });
               await et(t.preset.id);
             } catch (e) {
               (console.error('[ChatImportModal] Failed to create preset:', e),
-                Y(e instanceof Error ? e.message : 'Failed to create preset'));
+                H(e instanceof Error ? e.message : 'Failed to create preset'));
             } finally {
               G(!1);
             }
           }, [h, et, B]),
           el = (0, l.useCallback)(async () => {
-            if (!R) {
-              Y('Select a preset to update.');
+            if (!z) {
+              H('Select a preset to update.');
               return;
             }
             let e = B.trim();
             if (!e) {
-              Y('Preset name is required.');
+              H('Preset name is required.');
               return;
             }
-            (G(!0), Y(null));
+            (G(!0), H(null));
             try {
-              (await (0, e_.lq)(R, { name: e, config: h }), await et(R));
+              (await (0, ep.lq)(z, { name: e, config: h }), await et(z));
             } catch (e) {
               (console.error('[ChatImportModal] Failed to update preset:', e),
-                Y(e instanceof Error ? e.message : 'Failed to update preset'));
+                H(e instanceof Error ? e.message : 'Failed to update preset'));
             } finally {
               G(!1);
             }
-          }, [h, et, B, R]),
+          }, [h, et, B, z]),
           er = (0, l.useCallback)(async () => {
-            if (!R) {
-              Y('Select a preset to delete.');
+            if (!z) {
+              H('Select a preset to delete.');
               return;
             }
-            let e = O.find((e) => e.id === R);
+            let e = O.find((e) => e.id === z);
             if (!e) {
-              Y('Selected preset no longer exists.');
+              H('Selected preset no longer exists.');
               return;
             }
             if (window.confirm('Delete preset "'.concat(e.name, '"?'))) {
-              (G(!0), Y(null));
+              (G(!0), H(null));
               try {
-                (await (0, e_.oI)(R), await et());
+                (await (0, ep.oI)(z), await et());
               } catch (e) {
                 (console.error('[ChatImportModal] Failed to delete preset:', e),
-                  Y(e instanceof Error ? e.message : 'Failed to delete preset'));
+                  H(e instanceof Error ? e.message : 'Failed to delete preset'));
               } finally {
                 G(!1);
               }
             }
-          }, [O, et, R]),
+          }, [O, et, z]),
           { jobs: en, connected: ei } = tp(),
-          eo = D ? en.get(D) : void 0,
-          ed = (null == eo ? void 0 : eo.stats)
+          ec = D ? en.get(D) : void 0,
+          ed = (null == ec ? void 0 : ec.stats)
             ? {
                 conversationsProcessed:
-                  null !== (t = eo.stats.conversationsProcessed) && void 0 !== t ? t : 0,
+                  null !== (t = ec.stats.conversationsProcessed) && void 0 !== t ? t : 0,
                 messagesProcessed:
-                  null !== (s = eo.stats.messagesProcessed) && void 0 !== s ? s : 0,
-                nodesCreated: null !== (r = eo.stats.nodesCreated) && void 0 !== r ? r : 0,
-                edgesCreated: null !== (n = eo.stats.edgesCreated) && void 0 !== n ? n : 0,
-                sourcesCreated: null !== (i = eo.stats.sourcesCreated) && void 0 !== i ? i : 0,
+                  null !== (s = ec.stats.messagesProcessed) && void 0 !== s ? s : 0,
+                nodesCreated: null !== (r = ec.stats.nodesCreated) && void 0 !== r ? r : 0,
+                edgesCreated: null !== (n = ec.stats.edgesCreated) && void 0 !== n ? n : 0,
+                sourcesCreated: null !== (i = ec.stats.sourcesCreated) && void 0 !== i ? i : 0,
               }
             : null;
         ((0, l.useEffect)(() => {
@@ -6800,7 +6874,7 @@
           let e = en.get(D);
           if (!e) return;
           console.log('[ChatImportModal] Job update received:', e);
-          let t = tw({
+          let t = tC({
               backendStatus: e.status,
               jobType: e.type,
               progress: { message: e.progress.message, stage: e.progress.stage },
@@ -6842,9 +6916,9 @@
               console.log('[ChatImportModal] Import job completed successfully'),
               (async () => {
                 try {
-                  let e = await (0, e_.FE)(D);
+                  let e = await (0, ep.FE)(D);
                   if (e.status.review_required) {
-                    let t = await (0, e_.tl)(D);
+                    let t = await (0, ep.tl)(D);
                     if (t.total_candidates > 0) {
                       (Z(t.groups),
                         S({
@@ -6864,7 +6938,7 @@
                 }
                 (p('complete'), Q());
               })(),
-              (0, tg.Vo)('Import completed successfully', 'import.jobCompleted', {
+              (0, tb.Vo)('Import completed successfully', 'import.jobCompleted', {
                 jobId: D,
                 progress: e.progress.percent,
               }));
@@ -6888,7 +6962,7 @@
               percent: Math.max(0, a),
               message: ''.concat(t, ' at ').concat(s, ' (').concat(a, '%): ').concat(o),
             }),
-              (0, tg.Vo)('Import job failed', 'import.jobFailed', {
+              (0, tb.Vo)('Import job failed', 'import.jobFailed', {
                 jobId: D,
                 message: o,
                 code: t,
@@ -6905,7 +6979,7 @@
                   if (!e.jobId) return e;
                   let s = en.get(e.jobId);
                   if (!s) return e;
-                  let a = tw({
+                  let a = tC({
                       backendStatus: s.status,
                       jobType: s.type,
                       progress: { message: s.progress.message, stage: s.progress.stage },
@@ -6956,24 +7030,24 @@
                 S({ stage: 'detecting', percent: 30, message: 'Detecting platform...' }));
               let t = null;
               if (e.length > 0) {
-                let s = await (0, e_.tz)(e[0]);
+                let s = await (0, ep.tz)(e[0]);
                 ((t = {
                   platform: s.platform,
                   conversationCount: 0,
                   messageCount: 0,
                   confidence: s.confidence,
                 }),
-                  k(t));
+                  C(t));
               }
               S({ stage: 'analyzing', percent: 60, message: 'Analyzing content...' });
-              let s = await (0, e_.NT)(e);
+              let s = await (0, ep.NT)(e);
               if (t) {
                 let e = {
                   ...t,
                   conversationCount: s.total_conversations,
                   messageCount: s.total_messages,
                 };
-                k(e);
+                C(e);
               }
               (E({
                 totalMessages: s.total_messages,
@@ -7002,7 +7076,7 @@
             },
             [eu]
           ),
-          ep = (0, l.useCallback)(async (e, t, s) => {
+          eh = (0, l.useCallback)(async (e, t, s) => {
             let a = Math.min(3, e.length),
               l = [],
               r = 0;
@@ -7022,7 +7096,7 @@
                   )
                 );
                 try {
-                  let e = await (0, e_.NU)([n], t, s);
+                  let e = await (0, ep.NU)([n], t, s);
                   (l.push(e.jobId),
                     P((t) =>
                       t.map((t, s) =>
@@ -7047,7 +7121,7 @@
             });
             return (await Promise.all(n), l);
           }, []),
-          eh = async () => {
+          eg = async () => {
             try {
               if (
                 (console.log('[ChatImportModal] Starting chunked upload with config:', h),
@@ -7060,8 +7134,8 @@
                 alert('Please select files to import');
                 return;
               }
-              let e = H,
-                t = await $();
+              let e = Y,
+                t = await ee();
               if (t && !t.features.auto_graph) {
                 alert('Your current account tier does not allow automatic graph import.');
                 return;
@@ -7091,7 +7165,7 @@
                 ));
               let a = { platform: (null == w ? void 0 : w.platform) || 'generic', ...s };
               if (b.length > 1) {
-                let e = await ep(b, s, null == w ? void 0 : w.platform),
+                let e = await eh(b, s, null == w ? void 0 : w.platform),
                   t = e.length,
                   a = b.length - t;
                 if ((j(!1), 0 === t)) {
@@ -7134,7 +7208,7 @@
               ),
                 T(r.jobId),
                 L(null),
-                (0, tg.Vo)(
+                (0, tb.Vo)(
                   'Import job created via chunked upload: '.concat(l.name),
                   'import.jobCreated',
                   { jobId: r.jobId, fileName: l.name, fileSize: l.size, uploadMethod: 'chunked' }
@@ -7164,7 +7238,7 @@
                 alert('Import failed: '.concat(e instanceof Error ? e.message : 'Unknown error')));
             }
           },
-          eg = async (e) => {
+          eb = async (e) => {
             try {
               console.log('[ChatImportModal] Applying duplicate decisions:', e);
               let t = Array.from(e.entries()).map((e) => {
@@ -7190,10 +7264,10 @@
                 !D)
               )
                 throw Error('Cannot apply duplicate decisions without an active import job ID');
-              let s = await (0, e_.tN)(t, D);
+              let s = await (0, ep.tN)(t, D);
               if (
                 (console.log('[ChatImportModal] Decisions applied:', s),
-                (0, tg.Et)('Applied '.concat(s.result.applied_decisions, ' duplicate decisions'), {
+                (0, tb.Et)('Applied '.concat(s.result.applied_decisions, ' duplicate decisions'), {
                   domain: 'import',
                   operation: 'duplicateDecisionsApplied',
                   metadata: {
@@ -7205,7 +7279,7 @@
                 }),
                 s.result.pending_candidates > 0 && D)
               ) {
-                let e = await (0, e_.tl)(D);
+                let e = await (0, ep.tl)(D);
                 (Z(e.groups),
                   S({
                     stage: 'ready',
@@ -7298,26 +7372,26 @@
                     onClick: o,
                     className: 'p-2 hover:bg-slate-800 rounded-lg transition-colors',
                     'aria-label': 'Close import modal',
-                    children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5 text-slate-400' }),
+                    children: (0, a.jsx)(eo.Z, { className: 'w-5 h-5 text-slate-400' }),
                   }),
                 ],
               }),
               'review' === m
                 ? (0, a.jsx)('div', {
                     className: 'flex-1 flex flex-col min-h-0',
-                    children: (0, a.jsx)(tm, { groups: M, onReviewComplete: eg, onCancel: o }),
+                    children: (0, a.jsx)(tm, { groups: M, onReviewComplete: eb, onCancel: o }),
                   })
                 : (0, a.jsxs)('div', {
                     className: 'p-6',
                     children: [
-                      'select' === m && (0, a.jsx)(eR, { onFilesSelected: em, files: b }),
+                      'select' === m && (0, a.jsx)(ez, { onFilesSelected: em, files: b }),
                       'processing' === m &&
                         (0, a.jsxs)('div', {
                           className: 'space-y-4',
                           children: [
                             (0, a.jsx)(e$, {
                               platformDetection: w,
-                              progress: C,
+                              progress: k,
                               runtimeStats: ed,
                               onPause: x.pause,
                               onResume: x.resume,
@@ -7414,7 +7488,7 @@
                                           children: 'Saved presets',
                                         }),
                                         (0, a.jsxs)('select', {
-                                          value: R,
+                                          value: z,
                                           onChange: (e) => {
                                             let t = e.target.value;
                                             U(t);
@@ -7464,7 +7538,7 @@
                                     (0, a.jsx)('button', {
                                       type: 'button',
                                       onClick: es,
-                                      disabled: !R || J,
+                                      disabled: !z || J,
                                       className:
                                         'px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-slate-200 transition-colors',
                                       children: 'Load',
@@ -7480,7 +7554,7 @@
                                     (0, a.jsx)('button', {
                                       type: 'button',
                                       onClick: el,
-                                      disabled: !R || J,
+                                      disabled: !z || J,
                                       className:
                                         'px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-slate-200 transition-colors',
                                       children: 'Update',
@@ -7488,7 +7562,7 @@
                                     (0, a.jsx)('button', {
                                       type: 'button',
                                       onClick: er,
-                                      disabled: !R || J,
+                                      disabled: !z || J,
                                       className:
                                         'px-3 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/30 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-red-300 transition-colors',
                                       children: 'Delete',
@@ -7507,7 +7581,7 @@
                               onConfigChange: g,
                               platformDetection: w,
                               analysis: I,
-                              agentRuntimeEnabled: H,
+                              agentRuntimeEnabled: Y,
                             }),
                           ],
                         }),
@@ -7613,18 +7687,18 @@
                             children: [
                               (0, a.jsxs)('button', {
                                 onClick: () => {
-                                  R ? el() : ea();
+                                  z ? el() : ea();
                                 },
                                 disabled: J || 0 === B.trim().length,
                                 className:
                                   'flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 rounded-lg transition-colors',
                                 children: [
                                   (0, a.jsx)(eP.Z, { className: 'w-4 h-4' }),
-                                  R ? 'Update Preset' : 'Save Preset',
+                                  z ? 'Update Preset' : 'Save Preset',
                                 ],
                               }),
                               (0, a.jsx)('button', {
-                                onClick: eh,
+                                onClick: eg,
                                 disabled: v,
                                 className:
                                   'flex items-center gap-2 px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors',
@@ -7640,7 +7714,7 @@
                                     })
                                   : (0, a.jsxs)(a.Fragment, {
                                       children: [
-                                        (0, a.jsx)(ee.Z, { className: 'w-4 h-4' }),
+                                        (0, a.jsx)($.Z, { className: 'w-4 h-4' }),
                                         'Import & Review',
                                       ],
                                     }),
@@ -7655,8 +7729,8 @@
           }),
         });
       }
-      var tS = s(3250);
-      function tI(e) {
+      var tI = s(3250);
+      function tE(e) {
         let { onSuccess: t, onError: s, boardId: r } = e,
           [n, i] = (0, l.useState)(''),
           [o, c] = (0, l.useState)('idle'),
@@ -7686,7 +7760,7 @@
             }
             (c('loading'), h(null), m(null));
             try {
-              let e = await (0, e_.$P)(n, r);
+              let e = await (0, ep.$P)(n, r);
               (m(e), c('success'), null == t || t(e));
             } catch (t) {
               let e = t instanceof Error ? t.message : 'Failed to ingest URL';
@@ -7880,7 +7954,7 @@
                     children:
                       'error' === o
                         ? (0, a.jsx)(d.Z, { className: 'w-12 h-12 text-red-400' })
-                        : (0, a.jsx)(eI.Z, { className: 'w-12 h-12 text-slate-400' }),
+                        : (0, a.jsx)(eE.Z, { className: 'w-12 h-12 text-slate-400' }),
                   }),
                   (0, a.jsxs)('div', {
                     children: [
@@ -7924,7 +7998,7 @@
                                 className:
                                   'absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-slate-700 rounded transition-colors',
                                 title: 'Paste from clipboard',
-                                children: (0, a.jsx)(tS.Z, { className: 'w-4 h-4 text-slate-400' }),
+                                children: (0, a.jsx)(tI.Z, { className: 'w-4 h-4 text-slate-400' }),
                               }),
                             ],
                           }),
@@ -7933,7 +8007,7 @@
                             disabled: !n.trim(),
                             className:
                               'px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors flex items-center gap-2',
-                            children: [(0, a.jsx)(ex.Z, { className: 'w-4 h-4' }), 'Fetch'],
+                            children: [(0, a.jsx)(eu.Z, { className: 'w-4 h-4' }), 'Fetch'],
                           }),
                         ],
                       }),
@@ -7958,7 +8032,7 @@
               }),
             });
       }
-      function tE(e) {
+      function tM(e) {
         var t;
         let { onClose: s } = e,
           [r, n] = (0, l.useState)('files'),
@@ -8019,7 +8093,7 @@
                       (0, a.jsxs)('div', {
                         className: 'flex items-center gap-3',
                         children: [
-                          (0, a.jsx)(ee.Z, { className: 'w-6 h-6 text-purple-500' }),
+                          (0, a.jsx)($.Z, { className: 'w-6 h-6 text-purple-500' }),
                           (0, a.jsx)('h2', {
                             id: 'upload-modal-title',
                             className: 'text-xl font-bold',
@@ -8031,7 +8105,7 @@
                         onClick: s,
                         className: 'p-2 hover:bg-slate-800 rounded-lg transition-colors',
                         'aria-label': 'Close upload modal',
-                        children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5 text-slate-400' }),
+                        children: (0, a.jsx)(eo.Z, { className: 'w-5 h-5 text-slate-400' }),
                       }),
                     ],
                   }),
@@ -8059,7 +8133,7 @@
                                   ? 'bg-slate-800 text-white border-b-2 border-purple-500'
                                   : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                               ),
-                            children: [(0, a.jsx)(eI.Z, { className: 'w-4 h-4' }), 'URL'],
+                            children: [(0, a.jsx)(eE.Z, { className: 'w-4 h-4' }), 'URL'],
                           }),
                         ],
                       }),
@@ -8229,7 +8303,7 @@
                           ],
                         })
                       : 'url' === r
-                        ? (0, a.jsx)(tI, {
+                        ? (0, a.jsx)(tE, {
                             onSuccess: (e) => {
                               (b(e),
                                 h(!0),
@@ -8326,7 +8400,7 @@
                                       },
                                       className: 'hidden',
                                     }),
-                                    (0, a.jsx)(ee.Z, {
+                                    (0, a.jsx)($.Z, {
                                       className: 'w-12 h-12 text-slate-400 mx-auto mb-4',
                                     }),
                                     (0, a.jsx)('p', {
@@ -8398,7 +8472,7 @@
                                                     o((e) => e.filter((e, s) => s !== t)),
                                                   className:
                                                     'p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors',
-                                                  children: (0, a.jsx)(ec.Z, {
+                                                  children: (0, a.jsx)(eo.Z, {
                                                     className: 'w-4 h-4',
                                                   }),
                                                 }),
@@ -8452,7 +8526,7 @@
                           disabled: 0 === i.length || u,
                           className:
                             'px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors flex items-center gap-2',
-                          children: [(0, a.jsx)(ee.Z, { className: 'w-4 h-4' }), 'Start Upload'],
+                          children: [(0, a.jsx)($.Z, { className: 'w-4 h-4' }), 'Start Upload'],
                         }),
                       'processing' === c &&
                         (0, a.jsxs)('button', {
@@ -8472,7 +8546,7 @@
           }),
         });
       }
-      function tM(e) {
+      function tZ(e) {
         let { onClose: t, onSuccess: s } = e,
           [r, n] = (0, l.useState)('job'),
           i = [
@@ -8555,8 +8629,8 @@
             (0, a.jsxs)('div', {
               className: 'flex-1 overflow-hidden',
               children: [
-                'job' === r && (0, a.jsx)(tC, { onDismiss: t }),
-                'ingest' === r && (0, a.jsx)(tE, { onClose: t }),
+                'job' === r && (0, a.jsx)(tS, { onDismiss: t }),
+                'ingest' === r && (0, a.jsx)(tM, { onClose: t }),
                 'hybrid' === r && null,
                 'local' === r && null,
               ],
@@ -8564,13 +8638,13 @@
           ],
         });
       }
-      var tZ = s(4915),
-        tD = s(9323),
-        tT = s(1569);
-      function tA(e) {
+      var tD = s(4915),
+        tT = s(9323),
+        tA = s(1569);
+      function t_(e) {
         let { user: t, onClose: s, onUpdate: r } = e,
           { user: n } = (0, N.aC)(),
-          { setKeimenonMode: i } = (0, et.St)(),
+          { setKeimenonMode: i } = (0, ee.St)(),
           [o, c] = (0, l.useState)(!1),
           [u, x] = (0, l.useState)(!1),
           [p, h] = (0, l.useState)(null),
@@ -8596,13 +8670,13 @@
             (null == n ? void 0 : n.permissionLevel) === 'admin' &&
             (null == n ? void 0 : n.userId) !== t.id,
           w = (null == n ? void 0 : n.userId) === t.id,
-          k = (e, t) => {
+          C = (e, t) => {
             (j((s) => ({ ...s, [e]: t })), h(null), f(!1));
           },
-          C = async () => {
+          k = async () => {
             (x(!0), h(null), f(!1));
             try {
-              let e = await (0, e_.Nq)(t.id, v);
+              let e = await (0, ep.Nq)(t.id, v);
               (f(!0), c(!1), null == r || r(e.user), setTimeout(() => f(!1), 3e3));
             } catch (e) {
               (console.error('Failed to update user:', e), h(e.message || 'Failed to update user'));
@@ -8637,7 +8711,7 @@
                         onClick: s,
                         className:
                           'p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-300 transition-colors',
-                        children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5' }),
+                        children: (0, a.jsx)(eo.Z, { className: 'w-5 h-5' }),
                       }),
                   ],
                 }),
@@ -8649,7 +8723,7 @@
                       className:
                         'flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm',
                       title: "View this user's keimenon",
-                      children: [(0, a.jsx)(eT.Z, { className: 'w-4 h-4' }), 'View Keimenon'],
+                      children: [(0, a.jsx)(eA.Z, { className: 'w-4 h-4' }), 'View Keimenon'],
                     }),
                     y &&
                       !o &&
@@ -8657,7 +8731,7 @@
                         onClick: () => c(!0),
                         className:
                           'flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors text-sm',
-                        children: [(0, a.jsx)(tZ.Z, { className: 'w-4 h-4' }), 'Edit User'],
+                        children: [(0, a.jsx)(tD.Z, { className: 'w-4 h-4' }), 'Edit User'],
                       }),
                     y &&
                       o &&
@@ -8678,17 +8752,17 @@
                             disabled: u,
                             className:
                               'flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors text-sm disabled:opacity-50',
-                            children: [(0, a.jsx)(ec.Z, { className: 'w-4 h-4' }), 'Cancel'],
+                            children: [(0, a.jsx)(eo.Z, { className: 'w-4 h-4' }), 'Cancel'],
                           }),
                           (0, a.jsx)('button', {
-                            onClick: C,
+                            onClick: k,
                             disabled: u,
                             className:
                               'flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm disabled:opacity-50',
                             children: u
                               ? (0, a.jsxs)(a.Fragment, {
                                   children: [
-                                    (0, a.jsx)(tD.Z, { className: 'w-4 h-4 animate-spin' }),
+                                    (0, a.jsx)(tT.Z, { className: 'w-4 h-4 animate-spin' }),
                                     'Saving...',
                                   ],
                                 })
@@ -8760,7 +8834,7 @@
                       ? (0, a.jsx)('input', {
                           type: 'text',
                           value: v.name,
-                          onChange: (e) => k('name', e.target.value),
+                          onChange: (e) => C('name', e.target.value),
                           className:
                             'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500',
                           placeholder: 'Enter name',
@@ -8773,13 +8847,13 @@
                   children: [
                     (0, a.jsxs)('label', {
                       className: 'flex items-center gap-2 text-sm font-medium text-slate-400',
-                      children: [(0, a.jsx)(tT.Z, { className: 'w-4 h-4' }), 'Email'],
+                      children: [(0, a.jsx)(tA.Z, { className: 'w-4 h-4' }), 'Email'],
                     }),
                     o
                       ? (0, a.jsx)('input', {
                           type: 'email',
                           value: v.email,
-                          onChange: (e) => k('email', e.target.value),
+                          onChange: (e) => C('email', e.target.value),
                           className:
                             'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500',
                           placeholder: 'Enter email',
@@ -8797,7 +8871,7 @@
                     o
                       ? (0, a.jsxs)('select', {
                           value: v.permission_level,
-                          onChange: (e) => k('permission_level', e.target.value),
+                          onChange: (e) => C('permission_level', e.target.value),
                           className:
                             'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500',
                           children: [
@@ -8838,8 +8912,8 @@
                       className: 'flex items-center gap-2 text-sm font-medium text-slate-400',
                       children: [
                         v.is_active
-                          ? (0, a.jsx)(ev.Z, { className: 'w-4 h-4' })
-                          : (0, a.jsx)(eE.Z, { className: 'w-4 h-4' }),
+                          ? (0, a.jsx)(ej.Z, { className: 'w-4 h-4' })
+                          : (0, a.jsx)(eM.Z, { className: 'w-4 h-4' }),
                         'Status',
                       ],
                     }),
@@ -8850,7 +8924,7 @@
                             (0, a.jsx)('input', {
                               type: 'checkbox',
                               checked: v.is_active,
-                              onChange: (e) => k('is_active', e.target.checked),
+                              onChange: (e) => C('is_active', e.target.checked),
                               className:
                                 'w-5 h-5 rounded bg-slate-800 border-slate-700 text-purple-600 focus:ring-2 focus:ring-purple-500',
                             }),
@@ -8872,7 +8946,7 @@
                                 children: [(0, a.jsx)(eV.Z, { className: 'w-4 h-4' }), 'Active'],
                               })
                             : (0, a.jsxs)(a.Fragment, {
-                                children: [(0, a.jsx)(ec.Z, { className: 'w-4 h-4' }), 'Inactive'],
+                                children: [(0, a.jsx)(eo.Z, { className: 'w-4 h-4' }), 'Inactive'],
                               }),
                         }),
                     (0, a.jsx)('p', {
@@ -8932,7 +9006,7 @@
                       children: [
                         (0, a.jsxs)('span', {
                           className: 'text-sm text-slate-500 flex items-center gap-2',
-                          children: [(0, a.jsx)(ej.Z, { className: 'w-4 h-4' }), 'Created'],
+                          children: [(0, a.jsx)(eN.Z, { className: 'w-4 h-4' }), 'Created'],
                         }),
                         (0, a.jsx)('span', {
                           className: 'text-sm text-white',
@@ -9023,7 +9097,7 @@
           ],
         });
       }
-      function t_(e) {
+      function tL(e) {
         let { onClose: t, onSuccess: s } = e,
           [r, n] = (0, l.useState)(!1),
           [i, o] = (0, l.useState)(null),
@@ -9111,7 +9185,7 @@
                     className: 'p-2 hover:bg-slate-800 rounded-lg transition-colors',
                     disabled: r,
                     'aria-label': 'Close create account modal',
-                    children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5 text-slate-400' }),
+                    children: (0, a.jsx)(eo.Z, { className: 'w-5 h-5 text-slate-400' }),
                   }),
                 ],
               }),
@@ -9353,7 +9427,7 @@
           }),
         });
       }
-      function tL(e) {
+      function tF(e) {
         let { account: t, accounts: s = [], onClose: r, onSuccess: n } = e,
           [i, o] = (0, l.useState)({
             name: '',
@@ -9369,14 +9443,14 @@
             (e.preventDefault(), u(null), m(!0));
             try {
               let e = p ? i.accountId : t.id,
-                s = await (0, e_.r4)(e, {
+                s = await (0, ep.r4)(e, {
                   name: i.name,
                   email: i.email,
                   password: i.password,
                   permission_level: i.permissionLevel,
                   user_class: 'person',
                 });
-              ((0, tg.Et)('User created: '.concat(i.name, ' (').concat(i.email, ')'), {
+              ((0, tb.Et)('User created: '.concat(i.name, ' (').concat(i.email, ')'), {
                 domain: 'api',
                 operation: 'users.create',
                 metadata: { accountId: e, userId: s.user.id, permissionLevel: i.permissionLevel },
@@ -9411,7 +9485,7 @@
                     className:
                       'p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors',
                     'aria-label': 'Close add user modal',
-                    children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5' }),
+                    children: (0, a.jsx)(eo.Z, { className: 'w-5 h-5' }),
                   }),
                 ],
               }),
@@ -9567,8 +9641,8 @@
           }),
         });
       }
-      var tF = s(7051);
-      function tP() {
+      var tP = s(7051);
+      function tO() {
         let { user: e } = (0, N.aC)(),
           [t, s] = (0, l.useState)([]),
           [a, r] = (0, l.useState)(!0),
@@ -9582,7 +9656,7 @@
             (async () => {
               try {
                 (r(!0), i(null));
-                let { accounts: e } = await (0, e_.T8)(),
+                let { accounts: e } = await (0, ep.T8)(),
                   t = e.filter((e) => 'client' === e.account_type && !e.mode_service),
                   a = e.filter((e) => !0 === e.mode_service),
                   l = [
@@ -9592,15 +9666,15 @@
                       icon: b.Z,
                       badge: t.length,
                       badgeColor: 'blue',
-                      children: t.map((e) => tO(e)),
+                      children: t.map((e) => tR(e)),
                     },
                     {
                       id: 'debug-accounts',
                       label: 'Debug Accounts',
-                      icon: tF.Z,
+                      icon: tP.Z,
                       badge: a.length,
                       badgeColor: 'yellow',
-                      children: a.map((e) => tO(e)),
+                      children: a.map((e) => tR(e)),
                     },
                   ];
                 s(l);
@@ -9632,10 +9706,10 @@
           { treeData: t, loading: a, error: n }
         );
       }
-      function tO(e) {
+      function tR(e) {
         let t = b.Z;
         'business' === e.account_class
-          ? (t = eD.Z)
+          ? (t = eT.Z)
           : 'professional' === e.account_class && (t = p.Z);
         let s = 'slate';
         return (
@@ -9674,14 +9748,14 @@
         );
       }
       var tz = s(7022);
-      let tR = 'keimenon_token';
-      function tU(e) {
-        let t = eo.Z;
+      let tU = 'keimenon_token';
+      function tB(e) {
+        let t = ei.Z;
         'Folder' === e.kind
           ? (t = tz.Z)
           : 'smart' === e.group_kind
             ? (t = H.Z)
-            : 'cluster' === e.group_kind && (t = R.Z);
+            : 'cluster' === e.group_kind && (t = z.Z);
         let s = 'slate';
         return (
           (s = 'Folder' === e.kind ? 'slate' : 'blue'),
@@ -9695,9 +9769,9 @@
           }
         );
       }
-      async function tB(e) {
+      async function tV(e) {
         try {
-          let t = localStorage.getItem(tR);
+          let t = localStorage.getItem(tU);
           if (!t) throw Error('Not authenticated');
           let s = await fetch(''.concat(_.CT, '/api/v1/groups/').concat(e), {
             headers: { Authorization: 'Bearer '.concat(t), 'Content-Type': 'application/json' },
@@ -9706,7 +9780,7 @@
             let e = await s.json().catch(() => ({}));
             throw Error(e.error || 'HTTP '.concat(s.status));
           }
-          return ((await s.json()).children || []).map((e) => tU(e));
+          return ((await s.json()).children || []).map((e) => tB(e));
         } catch (t) {
           throw (
             console.error('Failed to fetch folder children:', t),
@@ -9727,10 +9801,10 @@
           );
         }
       }
-      async function tV(e) {
+      async function tK(e) {
         let t = arguments.length > 1 && void 0 !== arguments[1] && arguments[1];
         try {
-          let s = localStorage.getItem(tR);
+          let s = localStorage.getItem(tU);
           if (!s) throw Error('Not authenticated');
           let a = ''
               .concat(_.CT, '/api/v1/groups/')
@@ -9766,44 +9840,44 @@
           );
         }
       }
-      var tK = s(3502),
-        tq = s(113),
-        tJ = s(9419),
-        tG = s(1026),
-        tW = s(1733),
+      var tq = s(3502),
+        tJ = s(113),
+        tG = s(9419),
+        tW = s(1026),
+        tH = s(1733),
         tY = s(6085),
-        tH = s(3447),
-        tX = s(4078),
-        tQ = s(324),
-        t$ = s(670);
-      function t0(e) {
+        tX = s(3447),
+        tQ = s(4078),
+        t$ = s(324),
+        t0 = s(670);
+      function t4(e) {
         return (
           {
             Settings: v.Z,
-            Palette: tK.Z,
-            LayoutGrid: tq.Z,
+            Palette: tq.Z,
+            LayoutGrid: tJ.Z,
             Building2: b.Z,
-            Database: X.Z,
-            Plug: tJ.Z,
-            Bell: tG.Z,
+            Database: Y.Z,
+            Plug: tG.Z,
+            Bell: tW.Z,
             Shield: m.Z,
-            Download: tW.Z,
-            Wrench: tF.Z,
+            Download: tH.Z,
+            Wrench: tP.Z,
             User: g.Z,
             Users: f.Z,
             Lock: tY.Z,
-            Key: tH.Z,
-            Mail: tT.Z,
-            Globe: tX.Z,
+            Key: tX.Z,
+            Mail: tA.Z,
+            Globe: tQ.Z,
             Zap: p.Z,
-            Clock: ep.Z,
-            File: tQ.Z,
+            Clock: em.Z,
+            File: t$.Z,
             Folder: tz.Z,
-            FolderOpen: t$.Z,
+            FolderOpen: t0.Z,
           }[e] || v.Z
         );
       }
-      class t4 {
+      class t1 {
         static get(e) {
           return 'settings' === e.keimenonMode
             ? this.getSettingsModel(e)
@@ -9855,7 +9929,7 @@
           };
         }
       }
-      function t1(e) {
+      function t2(e) {
         var t, s;
         let {
             side: r,
@@ -9880,13 +9954,13 @@
             children:
               'left' === r
                 ? (0, a.jsx)(n.Z, { className: 'w-4 h-4 text-slate-500' })
-                : (0, a.jsx)(en.Z, { className: 'w-4 h-4 text-slate-500' }),
+                : (0, a.jsx)(er.Z, { className: 'w-4 h-4 text-slate-500' }),
           });
         if ('left' === r) {
           let { user: e } = (0, N.aC)(),
-            { shellMode: t, keimenonMode: s } = (0, et.St)(),
+            { shellMode: t, keimenonMode: s } = (0, ee.St)(),
             { operating: r, switchAccount: n } = (0, y.B)(),
-            { treeData: d, loading: u } = tP(),
+            { treeData: d, loading: u } = tO(),
             { treeData: x, loading: m } = (function () {
               let { user: e } = (0, N.aC)(),
                 [t, s] = (0, l.useState)([]),
@@ -9901,7 +9975,7 @@
                   (async () => {
                     try {
                       (r(!0), i(null));
-                      let e = localStorage.getItem(tR);
+                      let e = localStorage.getItem(tU);
                       if (!e) throw Error('Not authenticated');
                       let t = await fetch(''.concat(_.CT, '/api/v1/groups'), {
                         headers: {
@@ -9913,7 +9987,7 @@
                         let e = await t.json().catch(() => ({}));
                         throw Error(e.error || 'HTTP '.concat(t.status));
                       }
-                      let a = ((await t.json()).groups || []).map((e) => tU(e));
+                      let a = ((await t.json()).groups || []).map((e) => tB(e));
                       s(a);
                     } catch (t) {
                       (console.error('Failed to fetch groups tree:', t),
@@ -9946,7 +10020,7 @@
                     if (e)
                       try {
                         (r(!0), i(null));
-                        let e = localStorage.getItem(tR);
+                        let e = localStorage.getItem(tU);
                         if (!e) throw Error('Not authenticated');
                         let t = await fetch(''.concat(_.CT, '/api/v1/groups'), {
                           headers: {
@@ -9958,7 +10032,7 @@
                           let e = await t.json().catch(() => ({}));
                           throw Error(e.error || 'HTTP '.concat(t.status));
                         }
-                        let a = ((await t.json()).groups || []).map((e) => tU(e));
+                        let a = ((await t.json()).groups || []).map((e) => tB(e));
                         s(a);
                       } catch (t) {
                         (console.error('Failed to refetch groups tree:', t),
@@ -10004,13 +10078,13 @@
                     }
                     try {
                       (a(!0), n(null));
-                      let { data: e } = await e_.x1.get('/api/v1/settings/registry/all');
+                      let { data: e } = await ep.x1.get('/api/v1/settings/registry/all');
                       if (!e.success || !e.registry) throw Error('Invalid registry response');
                       let s = e.registry
                         .sort((e, t) => e.order - t.order)
                         .map((e) =>
                           (function (e) {
-                            let t = t0(e.icon);
+                            let t = t4(e.icon);
                             return {
                               id: 'category_'.concat(e.id),
                               label: e.label,
@@ -10019,7 +10093,7 @@
                                 .sort((e, t) => e.order - t.order)
                                 .map((t) =>
                                   (function e(t, s) {
-                                    let a = t.icon ? t0(t.icon) : void 0;
+                                    let a = t.icon ? t4(t.icon) : void 0;
                                     return t.subsections && t.subsections.length > 0
                                       ? {
                                           id: 'section_'.concat(s, '_').concat(t.id),
@@ -10102,8 +10176,8 @@
               );
             })(),
             [v, j] = (0, l.useState)(x),
-            [w, k] = (0, l.useState)(new Set()),
-            [C, S] = (0, l.useState)(!1),
+            [w, C] = (0, l.useState)(new Set()),
+            [k, S] = (0, l.useState)(!1),
             [I, M] = (0, l.useState)(new Set()),
             [Z, D] = (0, l.useState)(null),
             T = (0, A.O)((e) => e.setFilteredNodeIds),
@@ -10155,13 +10229,13 @@
               );
             })(Array.from((0, A.O)((e) => e.selectedNodeIds))),
             {
-              mode: z,
-              title: R,
+              mode: R,
+              title: z,
               searchPlaceholder: U,
               emptyMessage: B,
               data: V,
               showCreateButton: K,
-            } = t4.get({
+            } = t1.get({
               shellMode: t,
               keimenonMode: s,
               operatingMode: r.mode,
@@ -10177,12 +10251,12 @@
             q = async (e, s) => {
               var a, l, r;
               if (
-                ((0, tg.bK)('Navigation item selected', 'keimenon.navigation.select', {
+                ((0, tb.bK)('Navigation item selected', 'keimenon.navigation.select', {
                   nodeId: e.id,
-                  navMode: z,
+                  navMode: R,
                   shellMode: t,
                 }),
-                'accounts' === z &&
+                'accounts' === R &&
                   (null === (a = e.metadata) || void 0 === a ? void 0 : a.accountId))
               ) {
                 let t = e.metadata.accountId,
@@ -10219,9 +10293,9 @@
                   n(t, 'crm', { accountType: a, accountName: e.label, serviceMode: l }));
               }
               if (
-                ('settings' === z &&
+                ('settings' === R &&
                   (c && c(e.id),
-                  (0, tg.bK)(
+                  (0, tb.bK)(
                     'Settings navigation item selected',
                     'keimenon.navigation.settingsSection',
                     {
@@ -10229,13 +10303,13 @@
                       sectionId: null === (l = e.metadata) || void 0 === l ? void 0 : l.sectionId,
                     }
                   )),
-                'groups' === z)
+                'groups' === R)
               ) {
                 if ((null === (r = e.metadata) || void 0 === r ? void 0 : r.kind) === 'Folder') {
                   if (!e.children || 0 === e.children.length) {
-                    k((t) => new Set(t).add(e.id));
+                    C((t) => new Set(t).add(e.id));
                     try {
-                      let t = await tB(e.id),
+                      let t = await tV(e.id),
                         s = (a) =>
                           a.map((a) =>
                             a.id === e.id
@@ -10253,7 +10327,7 @@
                         metadata: { folderId: e.id },
                       });
                     } finally {
-                      k((t) => {
+                      C((t) => {
                         let s = new Set(t);
                         return (s.delete(e.id), s);
                       });
@@ -10261,9 +10335,9 @@
                   }
                 } else
                   try {
-                    let t = await tV(e.id),
+                    let t = await tK(e.id),
                       s = t.nodeIds;
-                    ((0, tg.bK)('Fetched group members', 'keimenon.navigation.groupMembers', {
+                    ((0, tb.bK)('Fetched group members', 'keimenon.navigation.groupMembers', {
                       groupId: e.id,
                       memberCount: s.length,
                     }),
@@ -10301,42 +10375,42 @@
                         children: [
                           (0, a.jsx)('h2', {
                             className: 'text-sm font-semibold text-slate-300',
-                            children: R,
+                            children: z,
                           }),
                           (0, a.jsxs)('div', {
                             className: 'flex items-center gap-1',
                             children: [
                               K &&
-                                'accounts' === z &&
+                                'accounts' === R &&
                                 (0, a.jsx)('button', {
                                   onClick: () => S(!0),
                                   className:
                                     'p-1 hover:bg-slate-800 rounded text-purple-400 hover:text-purple-300',
                                   title: 'Create Account',
-                                  children: (0, a.jsx)(ei.Z, { className: 'w-4 h-4' }),
+                                  children: (0, a.jsx)(en.Z, { className: 'w-4 h-4' }),
                                 }),
                               (0, a.jsx)('button', {
                                 onClick: o,
                                 className:
                                   'p-1 hover:bg-slate-800 rounded text-slate-500 hover:text-slate-300',
-                                children: (0, a.jsx)(en.Z, { className: 'w-4 h-4' }),
+                                children: (0, a.jsx)(er.Z, { className: 'w-4 h-4' }),
                               }),
                             ],
                           }),
                         ],
                       }),
-                      (0, a.jsx)(ed, {
-                        mode: z,
+                      (0, a.jsx)(ec, {
+                        mode: R,
                         data: V,
-                        selectedId: 'accounts' === z ? r.accountId : void 0,
-                        selectedIds: 'accounts' === z ? I : 'groups' === z ? O : void 0,
-                        multiSelect: 'accounts' === z || 'groups' === z,
+                        selectedId: 'accounts' === R ? r.accountId : void 0,
+                        selectedIds: 'accounts' === R ? I : 'groups' === R ? O : void 0,
+                        multiSelect: 'accounts' === R || 'groups' === R,
                         onSelect: q,
                         searchPlaceholder: U,
                         emptyMessage: B,
                       }),
-                      C &&
-                        (0, a.jsx)(t_, {
+                      k &&
+                        (0, a.jsx)(tL, {
                           onClose: () => S(!1),
                           onSuccess: () => {
                             S(!1);
@@ -10348,10 +10422,10 @@
               })
             : f;
         }
-        let { keimenonMode: v, shellMode: j } = (0, et.St)(),
+        let { keimenonMode: v, shellMode: j } = (0, ee.St)(),
           { operating: w } = (0, y.B)(),
-          { treeData: k } = tP(),
-          C = (0, A.O)((e) => e.selectedNode),
+          { treeData: C } = tO(),
+          k = (0, A.O)((e) => e.selectedNode),
           S = (0, A.O)((e) => e.selectedNodeIds),
           I = (0, A.O)((e) => e.nodes),
           M = (0, A.O)((e) => e.deselectNode),
@@ -10360,11 +10434,11 @@
           T = (0, A.O)((e) => e.setFilteredNodeIds),
           [L, F] = (0, l.useState)(!1),
           [P, O] = (0, l.useState)([]),
-          [z, R] = (0, l.useState)(null),
+          [R, z] = (0, l.useState)(null),
           [U, B] = (0, l.useState)([]),
-          V = u || z,
+          V = u || R,
           K = (e) => {
-            (V && V !== e && B([...U, V]), x ? x(e) : R(e));
+            (V && V !== e && B([...U, V]), x ? x(e) : z(e));
           },
           q = w.accountId
             ? ((e) => {
@@ -10391,18 +10465,18 @@
                   }
                   return null;
                 };
-                return t(k);
+                return t(C);
               })(w.accountId)
             : null,
           J = q ? [q] : [],
           G = (e) => {
             (O((t) => (t.includes(e) ? t : [...t, e])),
               K('scope-builder'),
-              (0, tg.bK)('Added node to scope', 'keimenon.scope.add', { nodeId: e }));
+              (0, tb.bK)('Added node to scope', 'keimenon.scope.add', { nodeId: e }));
           },
           W = (e) => {
             var t, s;
-            return (0, eM.F)(
+            return (0, eZ.F)(
               {
                 id: e.id,
                 kind: e.kind || e.type,
@@ -10412,7 +10486,7 @@
               48
             );
           },
-          Y = (e) => {
+          H = (e) => {
             O((t) => t.filter((t) => t !== e));
           };
         return i
@@ -10446,27 +10520,27 @@
                       className: 'flex-1 overflow-hidden',
                       children:
                         'user-detail' === V && m
-                          ? (0, a.jsx)(tA, {
+                          ? (0, a.jsx)(t_, {
                               user: m,
                               onClose: () => {
-                                (R(null), B([]), null == x || x(void 0));
+                                (z(null), B([]), null == x || x(void 0));
                               },
                               onUpdate: p,
                             })
                           : 'import-flow' === V
                             ? (0, a.jsx)(a.Fragment, {
                                 children: _.yD
-                                  ? (0, a.jsx)(tM, {
+                                  ? (0, a.jsx)(tZ, {
                                       onClose: () => {
-                                        (R(null), B([]), null == x || x(void 0));
+                                        (z(null), B([]), null == x || x(void 0));
                                       },
                                       onSuccess: () => {
                                         null == g || g();
                                       },
                                     })
-                                  : (0, a.jsx)(tC, {
+                                  : (0, a.jsx)(tS, {
                                       onDismiss: () => {
-                                        (R(null), B([]), null == x || x(void 0));
+                                        (z(null), B([]), null == x || x(void 0));
                                       },
                                     }),
                               })
@@ -10486,8 +10560,8 @@
                                           onClick: () => {
                                             if (U.length > 0) {
                                               let e = U[U.length - 1];
-                                              (B(U.slice(0, -1)), x ? x(e) : R(e));
-                                            } else x ? x('node-detail') : R(null);
+                                              (B(U.slice(0, -1)), x ? x(e) : z(e));
+                                            } else x ? x('node-detail') : z(null);
                                           },
                                           className: 'text-xs text-slate-400 hover:text-slate-200',
                                           children: 'Back',
@@ -10527,7 +10601,7 @@
                                                       ],
                                                     }),
                                                     (0, a.jsx)('button', {
-                                                      onClick: () => Y(e),
+                                                      onClick: () => H(e),
                                                       className:
                                                         'text-xs text-slate-400 hover:text-red-300',
                                                       children: 'Remove',
@@ -10563,7 +10637,7 @@
                                   ],
                                 })
                               : 'settings' === v
-                                ? (0, a.jsx)(eh, { selectedControlId: d || null })
+                                ? (0, a.jsx)(eg, { selectedControlId: d || null })
                                 : 'admin' === j && J.length > 1
                                   ? (0, a.jsxs)(a.Fragment, {
                                       children: [
@@ -10616,7 +10690,7 @@
                                           }),
                                         }),
                                         L &&
-                                          (0, a.jsx)(tL, {
+                                          (0, a.jsx)(tF, {
                                             account: J[0],
                                             accounts: J,
                                             onClose: () => F(!1),
@@ -10631,7 +10705,7 @@
                                         children: [
                                           (0, a.jsx)(eL, { account: q, onCreateUser: () => F(!0) }),
                                           L &&
-                                            (0, a.jsx)(tL, {
+                                            (0, a.jsx)(tF, {
                                               account: q,
                                               onClose: () => F(!1),
                                               onSuccess: () => {
@@ -10641,7 +10715,7 @@
                                         ],
                                       })
                                     : S.size > 1
-                                      ? (0, a.jsx)(eZ, {
+                                      ? (0, a.jsx)(eD, {
                                           selectedNodes: I.filter((e) => S.has(e.id)),
                                           onRemoveFromSelection: (e) => M(e),
                                           onClearAll: () => Z(),
@@ -10652,8 +10726,8 @@
                                           onSequester: (e) => {
                                             (async () => {
                                               try {
-                                                (await (0, e_.Bk)(e, { sequester: !0 }),
-                                                  (0, tg.bK)(
+                                                (await (0, ep.Bk)(e, { sequester: !0 }),
+                                                  (0, tb.bK)(
                                                     'Node sequestered',
                                                     'keimenon.scope.sequester',
                                                     { nodeId: e }
@@ -10669,63 +10743,63 @@
                                             })();
                                           },
                                         })
-                                      : C
+                                      : k
                                         ? (0, a.jsx)(ek, {
                                             data: {
-                                              nodeId: C.id,
+                                              nodeId: k.id,
                                               type:
                                                 {
                                                   conversation: 'conversation',
                                                   message: 'source_doc',
                                                   source: 'source_doc',
                                                   code: 'code_asset',
-                                                }[C.type] || 'source_doc',
-                                              title: W(C),
+                                                }[k.type] || 'source_doc',
+                                              title: W(k),
                                               details: [
-                                                { label: 'Type', value: C.type, type: 'badge' },
+                                                { label: 'Type', value: k.type, type: 'badge' },
                                                 {
                                                   label: 'ID',
-                                                  value: C.id.slice(0, 12) + '...',
+                                                  value: k.id.slice(0, 12) + '...',
                                                   type: 'text',
                                                 },
                                                 ...((
-                                                  null === (t = C.data.metadata) || void 0 === t
+                                                  null === (t = k.data.metadata) || void 0 === t
                                                     ? void 0
                                                     : t.char_count
                                                 )
                                                   ? [
                                                       {
                                                         label: 'Characters',
-                                                        value: C.data.metadata.char_count,
+                                                        value: k.data.metadata.char_count,
                                                         type: 'number',
                                                       },
                                                     ]
                                                   : []),
                                                 ...((
-                                                  null === (s = C.data.metadata) || void 0 === s
+                                                  null === (s = k.data.metadata) || void 0 === s
                                                     ? void 0
                                                     : s.created_at
                                                 )
                                                   ? [
                                                       {
                                                         label: 'Created',
-                                                        value: C.data.metadata.created_at,
+                                                        value: k.data.metadata.created_at,
                                                         type: 'date',
                                                       },
                                                     ]
                                                   : []),
                                               ],
-                                              metadata: C.data.metadata || {},
+                                              metadata: k.data.metadata || {},
                                               actions: [
                                                 {
                                                   label: 'Copy ID',
                                                   icon: 'copy',
                                                   onClick: () => {
-                                                    (navigator.clipboard.writeText(C.id),
-                                                      (0, tg.bK)(
+                                                    (navigator.clipboard.writeText(k.id),
+                                                      (0, tb.bK)(
                                                         'Copied node ID to clipboard',
                                                         'keimenon.node.copyId',
-                                                        { nodeId: C.id }
+                                                        { nodeId: k.id }
                                                       ));
                                                   },
                                                 },
@@ -10733,12 +10807,12 @@
                                                   label: 'Add to Scope',
                                                   icon: 'link',
                                                   onClick: () => {
-                                                    G(C.id);
+                                                    G(k.id);
                                                   },
                                                 },
                                               ],
                                             },
-                                            onViewFullDetails: () => D(C),
+                                            onViewFullDetails: () => D(k),
                                           })
                                         : (0, a.jsx)('div', {
                                             className:
@@ -10746,7 +10820,7 @@
                                             children: (0, a.jsxs)('div', {
                                               className: 'text-center text-sm text-slate-500',
                                               children: [
-                                                (0, a.jsx)(eo.Z, {
+                                                (0, a.jsx)(ei.Z, {
                                                   className:
                                                     'w-12 h-12 mb-4 text-slate-600 mx-auto',
                                                 }),
@@ -10768,11 +10842,11 @@
             })
           : f;
       }
-      var t2 = s(5797),
-        t5 = s(4116),
-        t3 = s(54);
-      let t6 = (0, l.createContext)(void 0);
-      function t8(e) {
+      var t5 = s(5797),
+        t3 = s(4116),
+        t6 = s(54);
+      let t8 = (0, l.createContext)(void 0);
+      function t7(e) {
         let { children: t } = e,
           [s, r] = (0, l.useState)([]),
           [n, i] = (0, l.useState)({ error: 0, warn: 0, info: 0, debug: 0 }),
@@ -10839,7 +10913,7 @@
             [o]
           ),
           f = (0, l.useCallback)((e) => ('json' === e ? E.I.exportJSON(o) : E.I.exportCSV(o)), [o]);
-        return (0, a.jsx)(t6.Provider, {
+        return (0, a.jsx)(t8.Provider, {
           value: {
             errors: s,
             errorCounts: n,
@@ -10857,12 +10931,12 @@
           children: t,
         });
       }
-      function t7() {
-        let e = (0, l.useContext)(t6);
+      function t9() {
+        let e = (0, l.useContext)(t8);
         if (!e) throw Error('useConsole must be used within ConsoleProvider');
         return e;
       }
-      function t9(e) {
+      function se(e) {
         let { isOpen: t } = e,
           {
             errors: s,
@@ -10872,7 +10946,7 @@
             exportErrors: o,
             activeTab: c,
             setActiveTab: d,
-          } = t7(),
+          } = t9(),
           [u, x] = (0, l.useState)(''),
           [m, p] = (0, l.useState)('all'),
           [h, g] = (0, l.useState)('all');
@@ -10913,7 +10987,7 @@
                                 : 'hover:bg-slate-800/50 text-slate-400'
                             ),
                           children: [
-                            (0, a.jsx)(t2.Z, { className: 'w-4 h-4' }),
+                            (0, a.jsx)(t5.Z, { className: 'w-4 h-4' }),
                             'Console',
                             r.error > 0 &&
                               (0, a.jsx)('span', {
@@ -10932,7 +11006,7 @@
                                 : 'hover:bg-slate-800/50 text-slate-400'
                             ),
                           children: [
-                            (0, a.jsx)(ep.Z, { className: 'w-4 h-4' }),
+                            (0, a.jsx)(em.Z, { className: 'w-4 h-4' }),
                             'Logs',
                             s.length > 0 &&
                               (0, a.jsx)('span', {
@@ -10951,7 +11025,7 @@
                                 : 'hover:bg-slate-800/50 text-slate-400'
                             ),
                           children: [
-                            (0, a.jsx)(B.Z, { className: 'w-4 h-4' }),
+                            (0, a.jsx)(U.Z, { className: 'w-4 h-4' }),
                             'Tasks',
                             (0, a.jsx)('span', {
                               className:
@@ -10968,7 +11042,7 @@
                                 ? 'bg-slate-800 text-white'
                                 : 'hover:bg-slate-800/50 text-slate-400'
                             ),
-                          children: [(0, a.jsx)(t5.Z, { className: 'w-4 h-4' }), 'Shortcuts'],
+                          children: [(0, a.jsx)(t3.Z, { className: 'w-4 h-4' }), 'Shortcuts'],
                         }),
                       ],
                     }),
@@ -10983,14 +11057,14 @@
                               className:
                                 'p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors',
                               title: 'Export as JSON',
-                              children: (0, a.jsx)(tW.Z, { className: 'w-4 h-4' }),
+                              children: (0, a.jsx)(tH.Z, { className: 'w-4 h-4' }),
                             }),
                             (0, a.jsx)('button', {
                               onClick: i,
                               className:
                                 'p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-red-400 transition-colors',
                               title: 'Clear all',
-                              children: (0, a.jsx)(ew.Z, { className: 'w-4 h-4' }),
+                              children: (0, a.jsx)(eC.Z, { className: 'w-4 h-4' }),
                             }),
                           ],
                         }),
@@ -11043,10 +11117,10 @@
                 (0, a.jsxs)('div', {
                   className: 'flex-1 overflow-y-auto',
                   children: [
-                    'console' === c && (0, a.jsx)(se, { errors: s }),
-                    'logs' === c && (0, a.jsx)(st, { errors: s }),
-                    'tasks' === c && (0, a.jsx)(ss, {}),
-                    'shortcuts' === c && (0, a.jsx)(sa, {}),
+                    'console' === c && (0, a.jsx)(st, { errors: s }),
+                    'logs' === c && (0, a.jsx)(ss, { errors: s }),
+                    'tasks' === c && (0, a.jsx)(sa, {}),
+                    'shortcuts' === c && (0, a.jsx)(sl, {}),
                   ],
                 }),
               ],
@@ -11093,13 +11167,13 @@
               ],
             });
       }
-      function se(e) {
+      function st(e) {
         let { errors: t } = e;
         return 0 === t.length
           ? (0, a.jsxs)('div', {
               className: 'p-8 text-center text-slate-500',
               children: [
-                (0, a.jsx)(t2.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
+                (0, a.jsx)(t5.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
                 (0, a.jsx)('p', { children: 'No errors captured' }),
                 (0, a.jsx)('p', {
                   className: 'text-xs mt-1',
@@ -11129,9 +11203,9 @@
                         'error' === e.severity &&
                           (0, a.jsx)(d.Z, { className: 'w-4 h-4 text-red-400 mt-0.5' }),
                         'warn' === e.severity &&
-                          (0, a.jsx)(t3.Z, { className: 'w-4 h-4 text-yellow-400 mt-0.5' }),
+                          (0, a.jsx)(t6.Z, { className: 'w-4 h-4 text-yellow-400 mt-0.5' }),
                         'info' === e.severity &&
-                          (0, a.jsx)(eu.Z, { className: 'w-4 h-4 text-blue-400 mt-0.5' }),
+                          (0, a.jsx)(ed.Z, { className: 'w-4 h-4 text-blue-400 mt-0.5' }),
                         (0, a.jsxs)('div', {
                           className: 'flex-1',
                           children: [
@@ -11221,13 +11295,13 @@
               }),
             });
       }
-      function st(e) {
+      function ss(e) {
         let { errors: t } = e;
         return 0 === t.length
           ? (0, a.jsxs)('div', {
               className: 'p-8 text-center text-slate-500',
               children: [
-                (0, a.jsx)(ep.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
+                (0, a.jsx)(em.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
                 (0, a.jsx)('p', { children: 'No logs recorded' }),
               ],
             })
@@ -11273,11 +11347,11 @@
               ),
             });
       }
-      function ss() {
+      function sa() {
         return (0, a.jsxs)('div', {
           className: 'p-8 text-center text-slate-500',
           children: [
-            (0, a.jsx)(B.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
+            (0, a.jsx)(U.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
             (0, a.jsx)('p', { children: 'No active tasks' }),
             (0, a.jsx)('p', {
               className: 'text-xs mt-1',
@@ -11286,7 +11360,7 @@
           ],
         });
       }
-      function sa() {
+      function sl() {
         return (0, a.jsxs)('div', {
           className: 'p-4',
           children: [
@@ -11325,12 +11399,12 @@
           ],
         });
       }
-      var sl = s(2878),
-        sr = s(612),
-        sn = s(2929),
-        si = s(7878),
-        so = s(8813);
-      let sc = new Set([
+      var sr = s(2878),
+        sn = s(612),
+        si = s(2929),
+        so = s(7878),
+        sc = s(8813);
+      let sd = new Set([
           'AccountNode',
           'Principal',
           'UserNode',
@@ -11341,8 +11415,8 @@
           'ObjectiveClaim',
           'UnifiedDoc',
         ]),
-        sd = new Set([
-          ...sc,
+        su = new Set([
+          ...sd,
           'Source',
           'SourceDoc',
           'ChatThread',
@@ -11350,8 +11424,8 @@
           'VerifiedSource',
           'VerifiedClaim',
         ]),
-        su = new Set([...sd, 'Topic', 'Phrase', 'Packet', 'CodeBlock', 'Lexeme', 'SourceSpan']),
-        sx = new Set([
+        sx = new Set([...su, 'Topic', 'Phrase', 'Packet', 'CodeBlock', 'Lexeme', 'SourceSpan']),
+        sm = new Set([
           'the',
           'a',
           'an',
@@ -11369,14 +11443,14 @@
           'this',
           'that',
         ]),
-        sm = { L0: 240, L1: 3200, L2: 14e3, L3: 6e4 },
-        sp = { L0: 1600, L1: 14e3, L2: 6e4, L3: 18e4 },
-        sh = { L0: 0.7, L1: 0.5, L2: 0.25, L3: 0 },
-        sg = { L0: 0.6, L1: 0.25, L2: 0.05, L3: 0 };
-      function sb(e) {
+        sp = { L0: 240, L1: 3200, L2: 14e3, L3: 6e4 },
+        sh = { L0: 1600, L1: 14e3, L2: 6e4, L3: 18e4 },
+        sg = { L0: 0.7, L1: 0.5, L2: 0.25, L3: 0 },
+        sb = { L0: 0.6, L1: 0.25, L2: 0.05, L3: 0 };
+      function sf(e) {
         return 'string' == typeof e ? e : e.id;
       }
-      function sf(e) {
+      function sv(e) {
         var t, s, a, l;
         for (let r of [
           e.mass,
@@ -11394,7 +11468,7 @@
         }
         return 1;
       }
-      function sv(e) {
+      function sj(e) {
         var t, s, a, l;
         for (let r of [
           e.strength,
@@ -11409,8 +11483,8 @@
         }
         return 0.5;
       }
-      let sj = { dims: 8, axes: [0, 1, 2], sliceDim: 3, sliceCenter: 0, sliceWidth: 0.35 };
-      function sN(e) {
+      let sN = { dims: 8, axes: [0, 1, 2], sliceDim: 3, sliceCenter: 0, sliceWidth: 0.35 };
+      function sy(e) {
         return (
           (function (e) {
             let t = 2166136261;
@@ -11420,17 +11494,17 @@
           })(e) / 4294967295
         );
       }
-      function sy(e) {
+      function sw(e) {
         return 'number' == typeof e && Number.isFinite(e);
       }
-      function sw(e) {
+      function sC(e) {
         let t = Math.sqrt(e.reduce((e, t) => e + t * t, 0));
         return t <= 0 ? e : e.map((e) => e / t);
       }
       function sk(e, t) {
         return Number.isFinite(e) ? Math.max(0, Math.min(t - 1, Math.floor(e))) : 0;
       }
-      function sC(e, t) {
+      function sS(e, t) {
         var s, a, l, r, n, i;
         let o = Math.max(3, Math.floor(t)),
           c = (function (e) {
@@ -11442,12 +11516,12 @@
               null === (s = e.metadata) || void 0 === s ? void 0 : s.vector,
             ]) {
               if (!Array.isArray(a)) continue;
-              let e = a.filter(sy);
+              let e = a.filter(sw);
               if (e.length > 0) return e;
             }
             return null;
           })(e);
-        if (c && c.length >= o) return sw(c.slice(0, o));
+        if (c && c.length >= o) return sC(c.slice(0, o));
         let d = [],
           u = [
             e.mass,
@@ -11462,45 +11536,45 @@
             null === (r = e.metadata) || void 0 === r ? void 0 : r.importance,
             null === (n = e.metadata) || void 0 === n ? void 0 : n.confidence,
             null === (i = e.metadata) || void 0 === i ? void 0 : i.similarity,
-          ].filter(sy);
+          ].filter(sw);
         for (let e = 0; e < u.length && d.length < o; e += 1) d.push(Number(u[e]));
         for (; d.length < o; ) {
           let t = d.length,
             s = ''.concat(e.id, ':').concat(t, ':').concat(e.kind);
-          d.push(2 * sN(s) - 1);
+          d.push(2 * sy(s) - 1);
         }
-        return sw(d.slice(0, o));
-      }
-      function sS(e) {
-        let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 1200,
-          s = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : 900;
-        return sy(e.x) && sy(e.y)
-          ? { x: e.x, y: e.y }
-          : {
-              x: sN(''.concat(e.id, ':x:').concat(e.kind)) * t,
-              y: sN(''.concat(e.id, ':y:').concat(e.kind)) * s,
-            };
+        return sC(d.slice(0, o));
       }
       function sI(e) {
+        let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 1200,
+          s = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : 900;
+        return sw(e.x) && sw(e.y)
+          ? { x: e.x, y: e.y }
+          : {
+              x: sy(''.concat(e.id, ':x:').concat(e.kind)) * t,
+              y: sy(''.concat(e.id, ':y:').concat(e.kind)) * s,
+            };
+      }
+      function sE(e) {
         return Number.isFinite(e) ? e : 0;
       }
-      function sE(e, t) {
+      function sM(e, t) {
         let s = e.x - t.x,
           a = e.y - t.y;
         return s * s + a * a;
       }
-      function sM(e) {
+      function sZ(e) {
         return '2d' === e ? 900 : 980;
       }
-      function sZ(e) {
+      function sD(e) {
         return 'string' == typeof e ? e : e.id;
       }
-      function sD(e) {
+      function sT(e) {
         if (0 === e.length) return [0, 0, 0];
         let t = e.reduce((e, t) => [e[0] + t[0], e[1] + t[1], e[2] + t[2]], [0, 0, 0]);
         return [t[0] / e.length, t[1] / e.length, t[2] / e.length];
       }
-      function sT(e) {
+      function sA(e) {
         let { edgePositions: t } = e;
         return 0 === t.length
           ? null
@@ -11520,7 +11594,7 @@
               ],
             });
       }
-      function sA(e) {
+      function s_(e) {
         let { renderNodes: t, onNodeClick: s, onNodePointerDown: l } = e;
         return (0, a.jsx)(a.Fragment, {
           children: t.map((e) =>
@@ -11547,7 +11621,7 @@
           ),
         });
       }
-      function s_(e) {
+      function sL(e) {
         let {
             renderLens: t,
             interactive: s,
@@ -11567,10 +11641,10 @@
             onNodeDrag: f,
           } = e,
           v = (0, l.useRef)(null),
-          { camera: j, gl: N, size: y } = (0, sr.D)(),
+          { camera: j, gl: N, size: y } = (0, sn.D)(),
           w = (0, l.useRef)([0, 0, 0]),
-          k = (0, l.useRef)(sM(t)),
-          C = (0, l.useRef)(0),
+          C = (0, l.useRef)(sZ(t)),
+          k = (0, l.useRef)(0),
           S = (0, l.useRef)(new Map()),
           I = (0, l.useRef)(null),
           E = (0, l.useRef)(null),
@@ -11592,14 +11666,14 @@
           ),
           _ = (0, l.useCallback)(
             (e) => {
-              let t = new so.Vector3(e[0], e[1], e[2]).project(j);
+              let t = new sc.Vector3(e[0], e[1], e[2]).project(j);
               return { x: (0.5 * t.x + 0.5) * y.width, y: (-(0.5 * t.y) + 0.5) * y.height };
             },
             [j, y.height, y.width]
           ),
           L = (0, l.useCallback)(() => {
             let e = w.current,
-              t = k.current;
+              t = C.current;
             (j.position.set(e[0], e[1], e[2] + t),
               v.current
                 ? (v.current.target.set(e[0], e[1], e[2]), v.current.update())
@@ -11609,7 +11683,7 @@
             (e) => {
               let t = e.map((e) => m.get(e)).filter((e) => !!e);
               if (0 === t.length) return;
-              let s = sD(t),
+              let s = sT(t),
                 a = 0;
               for (let e of t) {
                 let t = e[0] - s[0],
@@ -11617,7 +11691,7 @@
                   r = e[2] - s[2];
                 a = Math.max(a, Math.sqrt(t * t + l * l + r * r));
               }
-              ((w.current = s), (k.current = Math.max(160, 3.2 * a + 220)), L());
+              ((w.current = s), (C.current = Math.max(160, 3.2 * a + 220)), L());
             },
             [L, m]
           ),
@@ -11648,18 +11722,18 @@
                       let a = s.x - t.x,
                         l = s.y - t.y,
                         r = a * a + l * l;
-                      if (r <= 1e-6) return sE(e, t);
+                      if (r <= 1e-6) return sM(e, t);
                       let n = Math.max(0, Math.min(1, ((e.x - t.x) * a + (e.y - t.y) * l) / r));
-                      return sE(e, { x: t.x + n * a, y: t.y + n * l });
+                      return sM(e, { x: t.x + n * a, y: t.y + n * l });
                     })(e, s.source, s.target);
                     t < l && ((l = t), (a = s));
                   }
                   return !a || l > Math.max(1, s) * Math.max(1, s)
-                    ? { kind: 'none', screen: { x: sI(e.x), y: sI(e.y) } }
+                    ? { kind: 'none', screen: { x: sE(e.x), y: sE(e.y) } }
                     : {
                         kind: 'edge',
                         edgeId: a.edgeId,
-                        screen: { x: sI(e.x), y: sI(e.y) },
+                        screen: { x: sE(e.x), y: sE(e.y) },
                         metadata: a.metadata,
                       };
                 })(l, r, 10),
@@ -11675,23 +11749,23 @@
             [s, p, o, A, _]
           );
         ((0, l.useEffect)(() => {
-          ((w.current = [0, 0, 0]), (k.current = sM(t)), L());
+          ((w.current = [0, 0, 0]), (C.current = sZ(t)), L());
         }, [L, t]),
           (0, l.useEffect)(() => {
             x({
               zoomIn: () => {
-                ((k.current = Math.max(120, 0.82 * k.current)), L());
+                ((C.current = Math.max(120, 0.82 * C.current)), L());
               },
               zoomOut: () => {
-                ((k.current = Math.min(6400, 1.2 * k.current)), L());
+                ((C.current = Math.min(6400, 1.2 * C.current)), L());
               },
               centerView: () => {
-                ((w.current = [0, 0, 0]), (k.current = sM(t)), L());
+                ((w.current = [0, 0, 0]), (C.current = sZ(t)), L());
               },
               setTargetById: function (e) {
                 let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 1.6,
                   s = m.get(e);
-                s && ((w.current = s), (k.current = Math.max(120, 640 / Math.max(0.4, t))), L());
+                s && ((w.current = s), (C.current = Math.max(120, 640 / Math.max(0.4, t))), L());
               },
               zoomToFitNodes: F,
             });
@@ -11705,10 +11779,10 @@
                     l = s.y - t.lastScreen.y;
                   ((M.current += Math.abs(a) + Math.abs(l)), (t.lastScreen = s));
                   let r = j.position.distanceTo(
-                      new so.Vector3(t.currentWorld[0], t.currentWorld[1], t.currentWorld[2])
+                      new sc.Vector3(t.currentWorld[0], t.currentWorld[1], t.currentWorld[2])
                     ),
-                    n = new so.Vector3(1, 0, 0).applyQuaternion(j.quaternion).normalize(),
-                    i = new so.Vector3(0, 1, 0).applyQuaternion(j.quaternion).normalize(),
+                    n = new sc.Vector3(1, 0, 0).applyQuaternion(j.quaternion).normalize(),
+                    i = new sc.Vector3(0, 1, 0).applyQuaternion(j.quaternion).normalize(),
                     o = (function (e, t, s, a, l) {
                       let r = s.dx * a,
                         n = s.dy * a;
@@ -11801,7 +11875,7 @@
             },
             [s, h, A]
           ),
-          z = (0, l.useCallback)(
+          R = (0, l.useCallback)(
             (e, a) => {
               if (!s || 0 !== a.button || a.altKey || a.shiftKey || a.ctrlKey || a.metaKey) return;
               let l = S.current.get(e);
@@ -11820,7 +11894,7 @@
             },
             [s, b, t, A]
           ),
-          R = (0, l.useCallback)(
+          z = (0, l.useCallback)(
             (e, t, s) => {
               if (Z.current === e) {
                 Z.current = null;
@@ -11831,21 +11905,21 @@
             [c]
           );
         return (
-          (0, sr.F)(() => {
+          (0, sn.F)(() => {
             if (!v.current) return;
             let e = v.current.object.position.distanceTo(v.current.target);
-            k.current = e;
+            C.current = e;
             let t = Math.max(0.05, Math.min(6, 820 / Math.max(1, e)));
-            Math.abs(t - C.current) > 0.03 && ((C.current = t), u(t));
+            Math.abs(t - k.current) > 0.03 && ((k.current = t), u(t));
           }),
           (0, a.jsxs)(a.Fragment, {
             children: [
               (0, a.jsx)('ambientLight', { intensity: 0.45 }),
               (0, a.jsx)('pointLight', { position: [260, 220, 450], intensity: 0.65 }),
               (0, a.jsx)('pointLight', { position: [-260, -160, 260], intensity: 0.35 }),
-              (0, a.jsx)(sT, { edgePositions: n }),
-              (0, a.jsx)(sA, { renderNodes: i, onNodeClick: R, onNodePointerDown: z }),
-              (0, a.jsx)(si.z, {
+              (0, a.jsx)(sA, { edgePositions: n }),
+              (0, a.jsx)(s_, { renderNodes: i, onNodeClick: z, onNodePointerDown: R }),
+              (0, a.jsx)(so.z, {
                 ref: v,
                 enablePan: s && !r,
                 enableZoom: s && !r,
@@ -11872,14 +11946,14 @@
           })
         );
       }
-      let sL = (0, l.forwardRef)((e, t) => {
+      let sF = (0, l.forwardRef)((e, t) => {
         let {
             nodes: s,
             edges: r,
             width: n,
             height: i,
             renderLens: o,
-            ndConfig: c = sj,
+            ndConfig: c = sN,
             focusModeEnabled: d = !1,
             includeConnectors: u = !1,
             pinnedNodeIds: x = [],
@@ -11893,8 +11967,8 @@
             onInteractionStateChange: j,
           } = e,
           [N, y] = (0, l.useState)(null),
-          [w, k] = (0, l.useState)([]),
-          [C, S] = (0, l.useState)(1),
+          [w, C] = (0, l.useState)([]),
+          [k, S] = (0, l.useState)(1),
           [I, E] = (0, l.useState)(null),
           [M, Z] = (0, l.useState)(null),
           [D, T] = (0, l.useState)(null),
@@ -11916,7 +11990,7 @@
             () =>
               s.map((e) => {
                 var t, s;
-                let a = sS(e);
+                let a = sI(e);
                 return {
                   ...e,
                   x: null !== (t = e.x) && void 0 !== t ? t : a.x,
@@ -11929,18 +12003,18 @@
           O = (0, l.useMemo)(
             () =>
               r.filter((e) => {
-                let t = sZ(e.source),
-                  s = sZ(e.target);
+                let t = sD(e.source),
+                  s = sD(e.target);
                 return P.has(t) && P.has(s);
               }),
             [r, P]
           ),
-          z = (0, l.useMemo)(() => {
+          R = (0, l.useMemo)(() => {
             let e = new Map();
             for (let t of O) e.set(t.id, t);
             return e;
           }, [O]),
-          R = 1 === w.length ? w[0] : null,
+          z = 1 === w.length ? w[0] : null,
           U = (0, l.useMemo)(
             () =>
               (function (e) {
@@ -11958,25 +12032,25 @@
                   i = !0 === e.includeConnectors,
                   o = Math.max(
                     Number.isFinite(e.minMass) ? Math.max(0, e.minMass) : 0,
-                    sg[s] + 0.08 * a
+                    sb[s] + 0.08 * a
                   ),
                   c = (function (e, t) {
-                    let s = sm[e];
+                    let s = sp[e];
                     return 0 === t ? s : Math.max(60, Math.floor(s / (1 + 0.35 * t)));
                   })(s, a),
                   d = (function (e, t) {
-                    let s = sp[e];
+                    let s = sh[e];
                     return 0 === t ? s : Math.max(200, Math.floor(s / (1 + 0.4 * t)));
                   })(s, a),
                   u = e.nodes.filter((e) => {
                     var t;
                     return (
                       (t = e.kind),
-                      'L0' === s ? sc.has(t) : 'L1' === s ? sd.has(t) : 'L2' !== s || su.has(t)
+                      'L0' === s ? sd.has(t) : 'L1' === s ? su.has(t) : 'L2' !== s || sx.has(t)
                     );
                   });
                 if (
-                  ((u = u.filter((e) => sf(e) >= o)),
+                  ((u = u.filter((e) => sv(e) >= o)),
                   i ||
                     'L3' !== s ||
                     (u = u.filter((e) => {
@@ -11987,7 +12061,7 @@
                             return t.trim().toLowerCase();
                         return null;
                       })(e);
-                      return !t || !sx.has(t);
+                      return !t || !sm.has(t);
                     })),
                   l && r)
                 ) {
@@ -11995,8 +12069,8 @@
                     let a = new Map();
                     for (let e of t) {
                       var l, r;
-                      let t = sb(e.source),
-                        s = sb(e.target);
+                      let t = sf(e.source),
+                        s = sf(e.target);
                       (a.has(t) || a.set(t, new Set()),
                         a.has(s) || a.set(s, new Set()),
                         null === (l = a.get(t)) || void 0 === l || l.add(s),
@@ -12033,26 +12107,26 @@
                     ...e,
                     ...[...t]
                       .sort((e, t) => {
-                        let s = sf(t) - sf(e);
+                        let s = sv(t) - sv(e);
                         return 0 !== s ? s : e.id.localeCompare(t.id);
                       })
                       .slice(0, s),
                   ];
                 }
                 let m = new Set(u.map((e) => e.id)),
-                  p = sh[s] + 0.05 * a,
+                  p = sg[s] + 0.05 * a,
                   h = e.edges.filter((e) => {
-                    let t = sb(e.source),
-                      s = sb(e.target);
+                    let t = sf(e.source),
+                      s = sf(e.target);
                     return (
                       !!(m.has(t) && m.has(s)) &&
-                      (!!((l && (t === l || s === l)) || n.has(t) || n.has(s)) || sv(e) >= p)
+                      (!!((l && (t === l || s === l)) || n.has(t) || n.has(s)) || sj(e) >= p)
                     );
                   });
                 h.length > d &&
                   (h = [...h]
                     .sort((e, t) => {
-                      let s = sv(t) - sv(e);
+                      let s = sj(t) - sj(e);
                       return 0 !== s ? s : e.id.localeCompare(t.id);
                     })
                     .slice(0, d));
@@ -12066,11 +12140,11 @@
                             : 'default',
                       s = Math.max(
                         50,
-                        Math.floor(sm[e.level] * ('50k' === t ? 1.35 : '10k' === t ? 1.15 : 1))
+                        Math.floor(sp[e.level] * ('50k' === t ? 1.35 : '10k' === t ? 1.15 : 1))
                       ),
                       a = Math.max(
                         200,
-                        Math.floor(sp[e.level] * ('50k' === t ? 1.4 : '10k' === t ? 1.2 : 1))
+                        Math.floor(sh[e.level] * ('50k' === t ? 1.4 : '10k' === t ? 1.2 : 1))
                       );
                     return {
                       datasetTier: t,
@@ -12109,13 +12183,13 @@
               })({
                 nodes: F,
                 edges: O,
-                zoom: C,
-                focusNodeId: R,
+                zoom: k,
+                focusNodeId: z,
                 focusMode: d,
                 pinnedNodeIds: x,
                 includeConnectors: u,
               }),
-            [F, O, C, R, d, x, u]
+            [F, O, k, z, d, x, u]
           );
         (0, l.useEffect)(() => {
           null == f || f(U.stats);
@@ -12123,12 +12197,12 @@
         let B = (0, l.useMemo)(() => {
             let e = new Map(),
               t = Math.max(3, c.dims);
-            for (let s of U.visibleNodes) e.set(s.id, sC(s, t));
+            for (let s of U.visibleNodes) e.set(s.id, sS(s, t));
             return e;
           }, [U.visibleNodes, c.dims]),
           V = (0, l.useMemo)(
             () =>
-              R && d
+              z && d
                 ? (function (e, t) {
                     let s = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : 2,
                       a = new Set([e]),
@@ -12136,16 +12210,16 @@
                     for (let e = 0; e < s; e += 1) {
                       let e = new Set();
                       for (let s of t) {
-                        let t = sZ(s.source),
-                          r = sZ(s.target);
+                        let t = sD(s.source),
+                          r = sD(s.target);
                         l.has(t) && !a.has(r) ? e.add(r) : l.has(r) && !a.has(t) && e.add(t);
                       }
                       if ((e.forEach((e) => a.add(e)), 0 === (l = e).size)) break;
                     }
                     return a;
-                  })(R, U.visibleEdges, 2)
+                  })(z, U.visibleEdges, 2)
                 : new Set(),
-            [R, d, U.visibleEdges]
+            [z, d, U.visibleEdges]
           ),
           K = (0, l.useMemo)(() => new Set(x), [x]),
           q = (0, l.useMemo)(() => new Set(w), [w]),
@@ -12173,22 +12247,22 @@
           W = (0, l.useMemo)(
             () =>
               U.visibleEdges.filter((e) => {
-                let t = sZ(e.source),
-                  s = sZ(e.target);
+                let t = sD(e.source),
+                  s = sD(e.target);
                 return G.has(t) && G.has(s);
               }),
             [U.visibleEdges, G]
           ),
-          Y = (0, l.useMemo)(() => {
+          H = (0, l.useMemo)(() => {
             let e = new Map(),
               t = [];
             for (let r of J) {
               var s, a, l;
               let n;
-              let i = sS(r, 1600, 1200);
+              let i = sI(r, 1600, 1200);
               if ('2d' === o) n = [i.x, -i.y, 0];
               else if ('3d' === o) {
-                let e = null !== (s = B.get(r.id)) && void 0 !== s ? s : sC(r, c.dims);
+                let e = null !== (s = B.get(r.id)) && void 0 !== s ? s : sS(r, c.dims);
                 n = [i.x, -i.y, (null !== (a = e[2]) && void 0 !== a ? a : 0) * 260];
               } else {
                 let e = (function (e, t) {
@@ -12202,20 +12276,20 @@
                     y: (null !== (a = e[i]) && void 0 !== a ? a : 0) * 320,
                     z: (null !== (l = e[o]) && void 0 !== l ? l : 0) * 320,
                   };
-                })(null !== (l = B.get(r.id)) && void 0 !== l ? l : sC(r, c.dims), c);
+                })(null !== (l = B.get(r.id)) && void 0 !== l ? l : sS(r, c.dims), c);
                 n = [e.x, e.y, e.z];
               }
               (t.push(n), e.set(r.id, n));
             }
-            let r = sD(t);
+            let r = sT(t);
             for (let [t, s] of e.entries()) e.set(t, [s[0] - r[0], s[1] - r[1], s[2] - r[2]]);
             return e;
           }, [J, o, B, c]),
-          H = (0, l.useMemo)(() => {
-            let e = new Map(Y);
+          Y = (0, l.useMemo)(() => {
+            let e = new Map(H);
             for (let [t, s] of A.entries()) e.has(t) && e.set(t, s);
             return e;
-          }, [Y, A]);
+          }, [H, A]);
         (0, l.useEffect)(() => {
           let e = new Set(J.map((e) => e.id));
           _((t) => {
@@ -12233,7 +12307,7 @@
                   a = K.has(e.id);
                 return {
                   node: e,
-                  position: null !== (t = H.get(e.id)) && void 0 !== t ? t : [0, 0, 0],
+                  position: null !== (t = Y.get(e.id)) && void 0 !== t ? t : [0, 0, 0],
                   radius: (function (e) {
                     switch (e) {
                       case 'Constellation':
@@ -12304,18 +12378,18 @@
                   isPinned: a,
                 };
               }),
-            [J, H, q, K]
+            [J, Y, q, K]
           ),
           Q = (0, l.useMemo)(
-            () => W.map((e) => ({ edge: e, sourceId: sZ(e.source), targetId: sZ(e.target) })),
+            () => W.map((e) => ({ edge: e, sourceId: sD(e.source), targetId: sD(e.target) })),
             [W]
           ),
           $ = (0, l.useMemo)(() => {
             let e = new Float32Array(6 * Q.length),
               t = 0;
             for (let s of Q) {
-              let a = H.get(s.sourceId),
-                l = H.get(s.targetId);
+              let a = Y.get(s.sourceId),
+                l = Y.get(s.targetId);
               a &&
                 l &&
                 ((e[t] = a[0]),
@@ -12327,10 +12401,10 @@
                 (t += 6));
             }
             return t === e.length ? e : e.slice(0, t);
-          }, [Q, H]),
+          }, [Q, Y]),
           ee = (0, l.useCallback)(
             (e) => {
-              (k(e), null == g || g(e));
+              (C(e), null == g || g(e));
             },
             [g]
           ),
@@ -12373,11 +12447,11 @@
                 (E(null), null == b || b(null, e.screen));
                 return;
               }
-              let s = z.get(e.edgeId) || null;
+              let s = R.get(e.edgeId) || null;
               (E(null !== (t = null == s ? void 0 : s.id) && void 0 !== t ? t : null),
                 null == b || b(s, e.screen));
             },
-            [z, b]
+            [R, b]
           ),
           er = (0, l.useCallback)(
             (e, t) => {
@@ -12463,12 +12537,12 @@
                 className: 'w-full h-full relative',
                 style: { width: n, height: i },
                 children: [
-                  (0, a.jsx)(sn.Xz, {
+                  (0, a.jsx)(si.Xz, {
                     gl: { antialias: !0, alpha: !0 },
                     dpr: [1, 2],
                     camera: { position: [0, 0, 920], fov: 52, near: 0.1, far: 12e3 },
                     onPointerMissed: ea,
-                    children: (0, a.jsx)(s_, {
+                    children: (0, a.jsx)(sL, {
                       renderLens: o,
                       interactive: m,
                       interactionLocked: !!D || !!M,
@@ -12481,7 +12555,7 @@
                       registerController: (e) => {
                         L.current = e;
                       },
-                      positionById: H,
+                      positionById: Y,
                       onEdgePick: el,
                       onMarqueeSessionChange: Z,
                       onMarqueeComplete: er,
@@ -12516,8 +12590,8 @@
                 }),
               });
       });
-      sL.displayName = 'SharedThreeGraphRenderer';
-      let sF = (0, l.memo)(
+      sF.displayName = 'SharedThreeGraphRenderer';
+      let sP = (0, l.memo)(
         (0, l.forwardRef)((e, t) => {
           let {
               nodes: s,
@@ -12571,7 +12645,7 @@
                 return null === (e = N.current) || void 0 === e ? void 0 : e.optimizeView();
               },
             })),
-            (0, a.jsx)(sL, {
+            (0, a.jsx)(sF, {
               ref: N,
               nodes: s,
               edges: r,
@@ -12594,7 +12668,7 @@
           );
         })
       );
-      function sP(e) {
+      function sO(e) {
         var t, s, r;
         let { width: n, height: i, jobId: o, renderLens: c = '2d', ndConfig: d } = e,
           { jobs: u } = tp(),
@@ -12660,7 +12734,7 @@
               children: [
                 (0, a.jsx)('div', {
                   className: 'absolute inset-0 opacity-60',
-                  children: (0, a.jsx)(sL, {
+                  children: (0, a.jsx)(sF, {
                     nodes: p,
                     edges: h,
                     width: n,
@@ -12691,8 +12765,8 @@
             })
           : null;
       }
-      sF.displayName = 'Keimenon2D';
-      let sO = {
+      sP.displayName = 'Keimenon2D';
+      let sR = {
           CONTAINS: {
             color: 'rgba(59, 130, 246, 0.4)',
             highlightColor: 'rgba(59, 130, 246, 0.8)',
@@ -12829,27 +12903,27 @@
           label: 'Related',
           category: 'structural',
         };
-      function sR(e) {
+      function sU(e) {
         return 'number' == typeof e ? e : null;
       }
-      function sU(e) {
+      function sB(e) {
         return 'string' == typeof e ? e : null;
       }
-      function sB(e) {
+      function sV(e) {
         var t;
         let { edge: s, position: l, visible: r } = e;
         if (!r || !s) return null;
-        let n = sO[s.kind] || sz,
+        let n = sR[s.kind] || sz,
           i = s.data || {},
-          o = sR(i.score),
-          c = sR(i.count),
-          d = sR(i.pmi),
-          u = sR(i.weight),
-          x = sR(i.strength),
-          m = sR(i.rank),
-          p = sR(i.confidence),
-          h = sU(i.algorithm),
-          g = sU(i.span),
+          o = sU(i.score),
+          c = sU(i.count),
+          d = sU(i.pmi),
+          u = sU(i.weight),
+          x = sU(i.strength),
+          m = sU(i.rank),
+          p = sU(i.confidence),
+          h = sB(i.algorithm),
+          g = sB(i.span),
           b =
             Array.isArray((t = i.features_used)) && t.every((e) => 'string' == typeof e) ? t : null;
         return (0, a.jsx)('div', {
@@ -13019,7 +13093,7 @@
           }),
         });
       }
-      function sV(e) {
+      function sK(e) {
         let t =
             arguments.length > 1 && void 0 !== arguments[1]
               ? arguments[1]
@@ -13050,7 +13124,7 @@
           s
         );
       }
-      let sK = (0, l.forwardRef)((e, t) => {
+      let sq = (0, l.forwardRef)((e, t) => {
         let {
             onOpenUpload: s,
             onOpenChatImport: r,
@@ -13062,7 +13136,7 @@
           } = e,
           u = (0, l.useRef)(null),
           x = (0, l.useRef)(null),
-          m = sV(u),
+          m = sK(u),
           p = (0, A.O)((e) => e.nodes),
           h = (0, A.O)((e) => e.edges),
           g = (0, A.O)((e) => e.isLoading),
@@ -13075,7 +13149,7 @@
           { jobs: w } = tp({
             onImportComplete: (0, l.useCallback)(
               (e) => {
-                ((0, tg.bK)('Import job completed, refreshing graph', 'keimenon.import.complete', {
+                ((0, tb.bK)('Import job completed, refreshing graph', 'keimenon.import.complete', {
                   jobId: e,
                 }),
                   y());
@@ -13083,7 +13157,7 @@
               [y]
             ),
           }),
-          [k, C] = (0, l.useState)(null),
+          [C, k] = (0, l.useState)(null),
           [S, I] = (0, l.useState)(null),
           [E, M] = (0, l.useState)(null),
           [Z, D] = (0, l.useState)([]);
@@ -13092,7 +13166,7 @@
           (w.forEach((t, s) => {
             'import' === t.type && 'running' === t.status && (e = s);
           }),
-            C(e));
+            k(e));
         }, [w]);
         let T = (0, l.useMemo)(() => {
             let e = p;
@@ -13180,9 +13254,9 @@
                 })),
             [h, F]
           ),
-          z = (0, l.useCallback)(
+          R = (0, l.useCallback)(
             (e) => {
-              (0, tg.bK)('Keimenon node clicked', 'keimenon.node.click', {
+              (0, tb.bK)('Keimenon node clicked', 'keimenon.node.click', {
                 nodeId: e.id,
                 nodeKind: e.kind,
               });
@@ -13191,9 +13265,9 @@
             },
             [P, v]
           ),
-          R = (0, l.useCallback)((e) => {
+          z = (0, l.useCallback)((e) => {
             var t;
-            ((0, tg.bK)('Keimenon node double-clicked', 'keimenon.node.doubleClick', {
+            ((0, tb.bK)('Keimenon node double-clicked', 'keimenon.node.doubleClick', {
               nodeId: e.id,
               nodeKind: e.kind,
             }),
@@ -13202,7 +13276,7 @@
           U = (0, l.useCallback)(
             (e) => {
               if (
-                ((0, tg.bK)('Keimenon selection changed', 'keimenon.selection.change', {
+                ((0, tb.bK)('Keimenon selection changed', 'keimenon.selection.change', {
                   selectionCount: e.length,
                 }),
                 0 === e.length)
@@ -13274,7 +13348,7 @@
               m.width > 0 &&
               (0, a.jsxs)(a.Fragment, {
                 children: [
-                  (0, a.jsx)(sF, {
+                  (0, a.jsx)(sP, {
                     ref: x,
                     nodes: L,
                     edges: O,
@@ -13285,21 +13359,21 @@
                     focusModeEnabled: n,
                     includeConnectors: i,
                     pinnedNodeIds: Z,
-                    onNodeClick: z,
-                    onNodeDoubleClick: R,
+                    onNodeClick: R,
+                    onNodeDoubleClick: z,
                     onSelectionChange: U,
                     onEdgeHover: B,
                     onLodStats: M,
                     onPinnedNodeIdsChange: D,
                   }),
-                  (0, a.jsx)(sP, {
+                  (0, a.jsx)(sO, {
                     width: m.width,
                     height: m.height,
-                    jobId: k,
+                    jobId: C,
                     renderLens: o,
                     ndConfig: c,
                   }),
-                  (0, a.jsx)(sB, {
+                  (0, a.jsx)(sV, {
                     edge: (null == S ? void 0 : S.edge) || null,
                     position: (null == S ? void 0 : S.position) || { x: 0, y: 0 },
                     visible: !!S,
@@ -13385,9 +13459,7 @@
                               (0, a.jsx)('div', {
                                 className:
                                   'p-3 bg-purple-600/20 rounded-lg group-hover:bg-purple-600/30 transition-colors',
-                                children: (0, a.jsx)(ee.Z, {
-                                  className: 'w-6 h-6 text-purple-400',
-                                }),
+                                children: (0, a.jsx)($.Z, { className: 'w-6 h-6 text-purple-400' }),
                               }),
                               (0, a.jsxs)('div', {
                                 className: 'flex-1',
@@ -13446,7 +13518,7 @@
                               (0, a.jsx)('div', {
                                 className:
                                   'p-3 bg-purple-600/20 rounded-lg group-hover:bg-purple-600/30 transition-colors',
-                                children: (0, a.jsx)(sl.Z, {
+                                children: (0, a.jsx)(sr.Z, {
                                   className: 'w-6 h-6 text-purple-400',
                                 }),
                               }),
@@ -13474,11 +13546,11 @@
           ],
         });
       });
-      sK.displayName = 'KeimenonViewport';
-      var sq = s(8163),
-        sJ = s(8177),
-        sG = s(7121);
-      let sW = (0, l.createContext)(void 0);
+      sq.displayName = 'KeimenonViewport';
+      var sJ = s(8163),
+        sG = s(8177),
+        sW = s(7121);
+      let sH = (0, l.createContext)(void 0);
       function sY(e) {
         switch (e) {
           case 'import':
@@ -13491,7 +13563,7 @@
             return 'migration';
         }
       }
-      function sH(e, t) {
+      function sX(e, t) {
         var s, a;
         return (null == t ? void 0 : t.title)
           ? t.title
@@ -13507,7 +13579,7 @@
                 ? 'Export job'
                 : 'Job '.concat(e.jobId);
       }
-      function sX(e, t) {
+      function sQ(e, t) {
         var s, a;
         return (null == t ? void 0 : t.description)
           ? t.description
@@ -13521,7 +13593,7 @@
                 ? void 0
                 : t.description;
       }
-      function sQ(e) {
+      function s$(e) {
         let { children: t, onRestoreOperation: s } = e,
           [r, n] = (0, l.useState)(new Map()),
           { jobs: i } = tp();
@@ -13542,8 +13614,8 @@
                             null !== (c = null == t ? void 0 : t.type) && void 0 !== c
                               ? c
                               : sY(e.type),
-                          title: sH(e, t),
-                          description: sX(e, t),
+                          title: sX(e, t),
+                          description: sQ(e, t),
                           fileName:
                             null !== (d = null == t ? void 0 : t.fileName) && void 0 !== d
                               ? d
@@ -13572,7 +13644,7 @@
                           state: null == t ? void 0 : t.state,
                         };
                       let N = null == t ? void 0 : t.status,
-                        y = tw({
+                        y = tC({
                           backendStatus: e.status,
                           jobType: e.type,
                           progress: {
@@ -13582,7 +13654,7 @@
                           previousStatus: N,
                         }),
                         w = y.status,
-                        k = tk({
+                        C = tk({
                           backendStatus: e.status,
                           status: y.status,
                           rawPercent:
@@ -13591,7 +13663,7 @@
                           stage: null === (r = e.progress) || void 0 === r ? void 0 : r.stage,
                           metadata: null === (n = e.progress) || void 0 === n ? void 0 : n.metadata,
                         }),
-                        C =
+                        k =
                           'done' === w || 'error' === w
                             ? null !== (h = null == t ? void 0 : t.completedAt) && void 0 !== h
                               ? h
@@ -13656,8 +13728,8 @@
                           null !== (f = null == t ? void 0 : t.type) && void 0 !== f
                             ? f
                             : sY(e.type),
-                        title: sH(e, t),
-                        description: sX(e, t),
+                        title: sX(e, t),
+                        description: sQ(e, t),
                         fileName:
                           null !== (v = null == t ? void 0 : t.fileName) && void 0 !== v
                             ? v
@@ -13667,12 +13739,12 @@
                         fileType: null == t ? void 0 : t.fileType,
                         platform: null == t ? void 0 : t.platform,
                         status: w,
-                        progress: k,
+                        progress: C,
                         startedAt:
                           null !== (j = null == t ? void 0 : t.startedAt) && void 0 !== j
                             ? j
                             : Date.now(),
-                        completedAt: C,
+                        completedAt: k,
                         stats: I,
                         error: S,
                         state: null == t ? void 0 : t.state,
@@ -13777,7 +13849,7 @@
             }, 3e3);
             return () => clearInterval(e);
           }, []),
-          (0, a.jsx)(sW.Provider, {
+          (0, a.jsx)(sH.Provider, {
             value: {
               operations: r,
               addOperation: o,
@@ -13793,13 +13865,13 @@
           })
         );
       }
-      function s$() {
-        let e = (0, l.useContext)(sW);
+      function s0() {
+        let e = (0, l.useContext)(sH);
         if (!e)
           throw Error('useBackgroundOperations must be used within BackgroundOperationsProvider');
         return e;
       }
-      function s0(e) {
+      function s4(e) {
         var t, s, l, r;
         let {
             index: n,
@@ -13812,13 +13884,13 @@
           } = e,
           p = o[n],
           h = p.status,
-          g = s1[h],
+          g = s2[h],
           b = c.has(p.id),
           f = ['reading', 'parsing', 'normalizing', 'indexing', 'linking', 'processing'].includes(
             p.status
           ),
           v = m(p),
-          j = 'deletion' === v ? ew.Z : eF.Z;
+          j = 'deletion' === v ? eC.Z : eF.Z;
         return (0, a.jsxs)('div', {
           style: i,
           'data-testid': 'background-operation-row',
@@ -13860,9 +13932,9 @@
               children: (0, a.jsxs)('div', {
                 className:
                   'inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium '.concat(
-                    s4[h]
+                    s1[h]
                   ),
-                children: [(0, a.jsx)(g, { className: 'w-3 h-3' }), s2[h]],
+                children: [(0, a.jsx)(g, { className: 'w-3 h-3' }), s5[h]],
               }),
             }),
             (0, a.jsx)('div', {
@@ -14003,7 +14075,7 @@
                 className: 'flex items-center gap-1 text-xs text-slate-400',
                 children: [
                   f && (0, a.jsx)(x.Z, { className: 'w-3 h-3 animate-spin' }),
-                  (0, a.jsx)(ep.Z, { className: 'w-3 h-3' }),
+                  (0, a.jsx)(em.Z, { className: 'w-3 h-3' }),
                   (0, a.jsx)('span', { children: u(p.startedAt, p.completedAt) }),
                 ],
               }),
@@ -14016,13 +14088,13 @@
                 },
                 className: 'p-1.5 hover:bg-slate-600 rounded transition-colors',
                 title: 'View details',
-                children: (0, a.jsx)(ev.Z, { className: 'w-4 h-4 text-slate-400' }),
+                children: (0, a.jsx)(ej.Z, { className: 'w-4 h-4 text-slate-400' }),
               }),
             }),
           ],
         });
       }
-      let s4 = {
+      let s1 = {
           queued: 'bg-slate-600/20 border-slate-500/30 text-slate-300',
           reading: 'bg-blue-600/20 border-blue-500/30 text-blue-300',
           parsing: 'bg-blue-600/20 border-blue-500/30 text-blue-300',
@@ -14034,19 +14106,19 @@
           done: 'bg-green-600/20 border-green-500/30 text-green-300',
           error: 'bg-red-600/20 border-red-500/30 text-red-300',
         },
-        s1 = {
-          queued: ep.Z,
+        s2 = {
+          queued: em.Z,
           reading: eF.Z,
           parsing: eF.Z,
           normalizing: eJ.Z,
-          indexing: ee.Z,
-          linking: ee.Z,
+          indexing: $.Z,
+          linking: $.Z,
           processing: x.Z,
-          blocked: sG.Z,
+          blocked: sW.Z,
           done: u.Z,
           error: e1.Z,
         },
-        s2 = {
+        s5 = {
           queued: 'Queued',
           reading: 'Reading',
           parsing: 'Parsing',
@@ -14058,7 +14130,7 @@
           done: 'Complete',
           error: 'Failed',
         };
-      function s5(e) {
+      function s3(e) {
         let { onJobSelect: t, onJobsMultiSelect: s } = e,
           [r, n] = (0, l.useState)([]),
           [i, o] = (0, l.useState)(new Set()),
@@ -14067,14 +14139,14 @@
           [h, g] = (0, l.useState)([]),
           [b, f] = (0, l.useState)(new Set()),
           [v, j] = (0, l.useState)(!1),
-          [w, k] = (0, l.useState)(!1),
-          { operating: C, isOperatingMode: S, operatingContextVersion: I } = (0, y.B)(),
+          [w, C] = (0, l.useState)(!1),
+          { operating: k, isOperatingMode: S, operatingContextVersion: I } = (0, y.B)(),
           {
             getAllOperations: M,
             getOperation: Z,
             restoreOperation: D,
             removeOperationsByJobIds: T,
-          } = s$(),
+          } = s0(),
           L = (0, l.useRef)(null),
           F = (0, l.useRef)(null),
           P = tr(F, 400),
@@ -14090,7 +14162,7 @@
             console.error('[ImportsTable] Failed to load deleted jobs from session storage', e);
           }
         }, []);
-        let { jobs: z, connected: R, error: U, removeJobs: B } = tp();
+        let { jobs: R, connected: z, error: U, removeJobs: B } = tp();
         ((0, l.useEffect)(() => {
           if (0 === b.size) {
             p(!1);
@@ -14098,7 +14170,7 @@
           }
           (console.log('[ImportsTable] Monitoring '.concat(b.size, ' jobs via SSE')),
             Array.from(b).some((e) => {
-              let t = z.get(e);
+              let t = R.get(e);
               return t && ('queued' === t.status || 'running' === t.status);
             }) ||
               (console.log('[ImportsTable] All bulk operations complete via SSE'),
@@ -14116,7 +14188,7 @@
               }));
           }, 3e5);
           return () => clearTimeout(e);
-        }, [z, b, i]),
+        }, [R, b, i]),
           (0, l.useEffect)(() => {
             (console.log('[ImportsTable] Component mounted, ensuring clean state'),
               p(!1),
@@ -14150,8 +14222,8 @@
               N,
               y,
               w,
-              k,
               C,
+              k,
               S,
               I,
               E,
@@ -14165,10 +14237,10 @@
               F,
               P,
               O,
-              z,
               R,
+              z,
               U;
-            let B = tw({
+            let B = tC({
                 backendStatus: e.status,
                 jobType: e.type,
                 progress: {
@@ -14254,11 +14326,11 @@
                       ? void 0
                       : y.sourcesCreated) || 0,
                 conversationsProcessed:
-                  (null === (C = e.state_data) || void 0 === C
+                  (null === (k = e.state_data) || void 0 === k
                     ? void 0
-                    : null === (k = C.stats) || void 0 === k
+                    : null === (C = k.stats) || void 0 === C
                       ? void 0
-                      : k.conversationsProcessed) || 0,
+                      : C.conversationsProcessed) || 0,
                 messagesProcessed:
                   (null === (I = e.state_data) || void 0 === I
                     ? void 0
@@ -14296,18 +14368,18 @@
                       ? void 0
                       : F.nodesDeleted) || 0,
                 edgesDeleted:
-                  (null === (z = e.state_data) || void 0 === z
+                  (null === (R = e.state_data) || void 0 === R
                     ? void 0
-                    : null === (O = z.stats) || void 0 === O
+                    : null === (O = R.stats) || void 0 === O
                       ? void 0
                       : O.edgesDeleted) || 0,
               },
               error:
                 null === (U = e.state_data) || void 0 === U
                   ? void 0
-                  : null === (R = U.error) || void 0 === R
+                  : null === (z = U.error) || void 0 === z
                     ? void 0
-                    : R.message,
+                    : z.message,
             };
           }, []),
           q = (0, l.useCallback)((e, t) => {
@@ -14333,8 +14405,8 @@
               N,
               y,
               w,
-              k,
               C,
+              k,
               S,
               I,
               E,
@@ -14348,10 +14420,10 @@
               F,
               P,
               O,
-              z,
-              R;
+              R,
+              z;
             let U;
-            let B = tw({
+            let B = tC({
                 backendStatus: e.status,
                 jobType: e.type,
                 progress: { message: e.progress.message, stage: e.progress.stage },
@@ -14435,24 +14507,24 @@
                       : 0,
                   sourcesCreated:
                     null !==
-                      (k =
+                      (C =
                         null !==
                           (w =
                             null === (r = e.stats) || void 0 === r ? void 0 : r.sourcesCreated) &&
                         void 0 !== w
                           ? w
-                          : V.sourcesCreated) && void 0 !== k
-                      ? k
+                          : V.sourcesCreated) && void 0 !== C
+                      ? C
                       : 0,
                   conversationsProcessed:
                     null !==
                       (S =
                         null !==
-                          (C =
+                          (k =
                             null === (n = e.stats) || void 0 === n
                               ? void 0
-                              : n.conversationsProcessed) && void 0 !== C
-                          ? C
+                              : n.conversationsProcessed) && void 0 !== k
+                          ? k
                           : V.conversationsProcessed) && void 0 !== S
                       ? S
                       : 0,
@@ -14525,13 +14597,13 @@
                       : 0,
                   edgesDeleted:
                     null !==
-                      (R =
+                      (z =
                         null !==
-                          (z = null === (m = e.stats) || void 0 === m ? void 0 : m.edgesDeleted) &&
-                        void 0 !== z
-                          ? z
-                          : V.edgesDeleted) && void 0 !== R
-                      ? R
+                          (R = null === (m = e.stats) || void 0 === m ? void 0 : m.edgesDeleted) &&
+                        void 0 !== R
+                          ? R
+                          : V.edgesDeleted) && void 0 !== z
+                      ? z
                       : 0,
                 },
                 error:
@@ -14544,14 +14616,14 @@
             );
           }, []);
         ((0, l.useEffect)(() => {
-          z.size > 0 &&
+          R.size > 0 &&
             n((e) => {
               let t = new Map(e.map((e) => [e.id, e]));
-              return Array.from(z.values())
+              return Array.from(R.values())
                 .map((e) => q(e, t.get(e.jobId)))
                 .sort((e, t) => t.startedAt - e.startedAt);
             });
-        }, [z, q]),
+        }, [R, q]),
           (0, l.useCallback)((e, t) => {
             n((s) =>
               s.find((t) => t.id === e)
@@ -14638,8 +14710,8 @@
                 let t = (0, N.LP)(),
                   s = { Authorization: 'Bearer '.concat(t), 'Content-Type': 'application/json' };
                 S &&
-                  C.accountId &&
-                  ((s['X-Operating-Account'] = C.accountId), (s['X-Operating-Mode'] = C.mode));
+                  k.accountId &&
+                  ((s['X-Operating-Account'] = k.accountId), (s['X-Operating-Mode'] = k.mode));
                 let a = setTimeout(() => e.abort(), 5e3),
                   l = await fetch(''.concat(_.CT, '/api/v1/jobs?limit=50'), {
                     headers: s,
@@ -14677,7 +14749,7 @@
               L.current && L.current.abort();
             }
           ),
-          [C, S, I, K]
+          [k, S, I, K]
         ),
           (0, l.useEffect)(() => {
             let e = async () => {
@@ -14689,8 +14761,8 @@
                   let s = (0, N.LP)(),
                     a = { Authorization: 'Bearer '.concat(s), 'Content-Type': 'application/json' };
                   S &&
-                    C.accountId &&
-                    ((a['X-Operating-Account'] = C.accountId), (a['X-Operating-Mode'] = C.mode));
+                    k.accountId &&
+                    ((a['X-Operating-Account'] = k.accountId), (a['X-Operating-Mode'] = k.mode));
                   let l = await fetch(''.concat(_.CT, '/api/v1/jobs?limit=50'), {
                     headers: a,
                     signal: e.signal,
@@ -14712,7 +14784,7 @@
               document.addEventListener('visibilitychange', e),
               () => document.removeEventListener('visibilitychange', e)
             );
-          }, [C, S, K]));
+          }, [k, S, K]));
         let G = async () => {
             let e = new Set(i);
             (console.log('================================'),
@@ -14735,10 +14807,10 @@
                 alert('Error in delete handler: ' + e));
               return;
             }
-            k(!0);
+            C(!0);
           },
           W = async () => {
-            k(!1);
+            C(!1);
             let e = new Set(i);
             (console.log('[DELETE] User confirmed deletion via dialog, proceeding...'),
               j(!0),
@@ -14747,8 +14819,8 @@
               let t = (0, N.LP)(),
                 s = { Authorization: 'Bearer '.concat(t), 'Content-Type': 'application/json' };
               (S &&
-                C.accountId &&
-                ((s['X-Operating-Account'] = C.accountId), (s['X-Operating-Mode'] = C.mode)),
+                k.accountId &&
+                ((s['X-Operating-Account'] = k.accountId), (s['X-Operating-Mode'] = k.mode)),
                 console.log('='.repeat(80)),
                 console.log('[DELETE] PRE-DELETE DIAGNOSTICS'),
                 console.log('='.repeat(80)),
@@ -14766,21 +14838,21 @@
                       .concat(e.status, ')')
                   );
                 }));
-              let l = Array.from(e).filter((e) => z.has(e));
+              let l = Array.from(e).filter((e) => R.has(e));
               (console.log(
                 '[DELETE] Jobs found in SSE stream: '.concat(l.length, '/').concat(e.size)
               ),
-                console.log('[DELETE] SSE stream total size: '.concat(z.size, ' jobs')));
+                console.log('[DELETE] SSE stream total size: '.concat(R.size, ' jobs')));
               let i = Array.from(e).filter((e) => !r.find((t) => t.id === e)),
-                c = Array.from(e).filter((e) => !z.has(e));
+                c = Array.from(e).filter((e) => !R.has(e));
               (i.length > 0 && console.warn('[DELETE] ⚠️  Jobs NOT in local state:', i),
                 c.length > 0 && console.warn('[DELETE] ⚠️  Jobs NOT in SSE stream:', c),
                 console.log('[DELETE] Auth headers:', {
                   hasToken: !!t,
                   tokenLength: t ? t.length : 0,
                   isOperatingMode: S,
-                  operatingAccountId: null == C ? void 0 : C.accountId,
-                  operatingMode: null == C ? void 0 : C.mode,
+                  operatingAccountId: null == k ? void 0 : k.accountId,
+                  operatingMode: null == k ? void 0 : k.mode,
                 }));
               let d = Array.from(e).map(async (e) => {
                   try {
@@ -14927,7 +14999,7 @@
                 console.log('[DELETE] Finally block complete - state should be reset'));
             }
           },
-          Y = async () => {
+          H = async () => {
             if (0 === i.size) return;
             let e = Array.from(i).filter((e) => b.has(e));
             if (e.length > 0) {
@@ -14944,8 +15016,8 @@
               let e = (0, N.LP)(),
                 t = { Authorization: 'Bearer '.concat(e), 'Content-Type': 'application/json' };
               S &&
-                C.accountId &&
-                ((t['X-Operating-Account'] = C.accountId), (t['X-Operating-Mode'] = C.mode));
+                k.accountId &&
+                ((t['X-Operating-Account'] = k.accountId), (t['X-Operating-Mode'] = k.mode));
               let s = Array.from(i).map(async (e) => {
                   try {
                     let s = await fetch(''.concat(_.CT, '/api/v1/jobs/').concat(e, '/retry'), {
@@ -15033,7 +15105,7 @@
                 p(!1));
             }
           },
-          H = (0, l.useCallback)(
+          Y = (0, l.useCallback)(
             (e, a) => {
               let l = e.id;
               a.ctrlKey || a.metaKey
@@ -15061,7 +15133,7 @@
                   : ''.concat(Math.floor(s / 3600), 'h ').concat(Math.floor((s % 3600) / 60), 'm');
           }, []),
           Q = J(),
-          $ = (0, l.useCallback)(
+          ee = (0, l.useCallback)(
             (e) => (e.id.startsWith('del_') || 'delete' === e.type ? 'deletion' : 'import'),
             []
           ),
@@ -15069,11 +15141,11 @@
             () => ({
               jobs: Q,
               selectedJobIds: i,
-              handleRowClick: H,
+              handleRowClick: Y,
               formatTimeElapsed: X,
-              getOperationType: $,
+              getOperationType: ee,
             }),
-            [Q, i, H, X, $]
+            [Q, i, Y, X, ee]
           );
         return ((0, l.useEffect)(() => {
           if (
@@ -15107,7 +15179,7 @@
                     (0, a.jsxs)('div', {
                       className: 'flex items-center gap-2',
                       children: [
-                        (0, a.jsx)(ee.Z, { className: 'w-5 h-5 text-slate-400' }),
+                        (0, a.jsx)($.Z, { className: 'w-5 h-5 text-slate-400' }),
                         (0, a.jsx)('h3', {
                           className: 'text-sm font-semibold text-slate-300',
                           children: 'Background Operations',
@@ -15142,7 +15214,7 @@
                             className: 'flex items-center gap-2',
                             children: [
                               (0, a.jsxs)('button', {
-                                onClick: Y,
+                                onClick: H,
                                 disabled: m || V,
                                 className:
                                   'flex items-center gap-1 px-2 py-1 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
@@ -15172,7 +15244,7 @@
                                 children: [
                                   v
                                     ? (0, a.jsx)(x.Z, { className: 'w-3 h-3 animate-spin' })
-                                    : (0, a.jsx)(ew.Z, { className: 'w-3 h-3' }),
+                                    : (0, a.jsx)(eC.Z, { className: 'w-3 h-3' }),
                                   'Delete',
                                 ],
                               }),
@@ -15198,7 +15270,7 @@
                         (0, a.jsxs)('div', {
                           className: 'flex items-center gap-3 text-amber-400',
                           children: [
-                            (0, a.jsx)(t3.Z, { className: 'w-6 h-6' }),
+                            (0, a.jsx)(t6.Z, { className: 'w-6 h-6' }),
                             (0, a.jsx)('h3', {
                               className: 'text-lg font-semibold text-slate-100',
                               children: 'Confirm Deletion',
@@ -15221,7 +15293,7 @@
                           className: 'flex justify-end gap-3 pt-2',
                           children: [
                             (0, a.jsx)('button', {
-                              onClick: () => k(!1),
+                              onClick: () => C(!1),
                               className:
                                 'px-4 py-2 rounded hover:bg-slate-700 text-slate-300 transition-colors',
                               disabled: v,
@@ -15282,7 +15354,7 @@
                             style: { height: Math.min(68 * Q.length, P) },
                             rowCount: Q.length,
                             rowHeight: 68,
-                            rowComponent: s0,
+                            rowComponent: s4,
                             rowProps: et,
                           }),
                         }),
@@ -15292,7 +15364,7 @@
                       className: 'p-8 text-center',
                       'data-testid': 'background-operations-empty-state',
                       children: [
-                        (0, a.jsx)(ee.Z, { className: 'w-12 h-12 text-slate-600 mx-auto mb-3' }),
+                        (0, a.jsx)($.Z, { className: 'w-12 h-12 text-slate-600 mx-auto mb-3' }),
                         (0, a.jsx)('p', {
                           className: 'text-sm text-slate-400 mb-1',
                           children: 'No active imports',
@@ -15306,7 +15378,7 @@
               ],
             });
       }
-      function s3(e) {
+      function s6(e) {
         let { title: t, value: s, subtitle: l, icon: r, trend: n, color: i = 'slate' } = e;
         return (0, a.jsxs)('div', {
           className:
@@ -15348,7 +15420,7 @@
           ],
         });
       }
-      function s6(e) {
+      function s8(e) {
         let { title: t, icon: s, children: l } = e;
         return (0, a.jsxs)('div', {
           children: [
@@ -15366,7 +15438,7 @@
           ],
         });
       }
-      function s8(e) {
+      function s7(e) {
         var t;
         let { onJobSelect: s } = e,
           [r, n] = (0, l.useState)(null),
@@ -15381,10 +15453,10 @@
               try {
                 (h(!0), v(null));
                 let [e, t, s, a] = await Promise.all([
-                  (0, e_.w3)(),
-                  (0, e_.T1)('usage', 10),
-                  (0, e_.J$)(20),
-                  (0, e_.PZ)(),
+                  (0, ep.w3)(),
+                  (0, ep.T1)('usage', 10),
+                  (0, ep.J$)(20),
+                  (0, ep.PZ)(),
                 ]);
                 (n(e), o(t.accounts), d(s.activity), x(a.alerts));
               } catch (s) {
@@ -15431,7 +15503,7 @@
                     }),
                   ],
                 }),
-                (0, a.jsx)(s5, {
+                (0, a.jsx)(s3, {
                   onJobSelect: (e, t) => {
                     console.log('Import job selected:', e, t);
                   },
@@ -15445,7 +15517,7 @@
                     children: (0, a.jsxs)('div', {
                       className: 'text-center',
                       children: [
-                        (0, a.jsx)(tD.Z, {
+                        (0, a.jsx)(tT.Z, {
                           className: 'w-8 h-8 animate-spin text-purple-500 mx-auto mb-4',
                         }),
                         (0, a.jsx)('p', {
@@ -15462,7 +15534,7 @@
                     children: (0, a.jsxs)('div', {
                       className: 'text-center',
                       children: [
-                        (0, a.jsx)(t3.Z, { className: 'w-8 h-8 text-red-500 mx-auto mb-4' }),
+                        (0, a.jsx)(t6.Z, { className: 'w-8 h-8 text-red-500 mx-auto mb-4' }),
                         (0, a.jsx)('p', { className: 'text-sm text-red-400', children: g }),
                       ],
                     }),
@@ -15472,31 +15544,31 @@
                   r &&
                   (0, a.jsxs)(a.Fragment, {
                     children: [
-                      (0, a.jsx)(s6, {
+                      (0, a.jsx)(s8, {
                         title: 'Account Metrics',
                         icon: b.Z,
                         children: (0, a.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4',
                           children: [
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Active Accounts',
                               value: r.accounts.active,
                               icon: b.Z,
                               color: 'blue',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Total Seats',
                               value: r.accounts.total_seats,
                               icon: f.Z,
                               color: 'purple',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Free Tier',
                               value: r.accounts.tier_distribution.free,
                               icon: b.Z,
                               color: 'slate',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Business Tier',
                               value: r.accounts.tier_distribution.business,
                               icon: b.Z,
@@ -15505,63 +15577,63 @@
                           ],
                         }),
                       }),
-                      (0, a.jsx)(s6, {
+                      (0, a.jsx)(s8, {
                         title: 'User Activity',
-                        icon: B.Z,
+                        icon: U.Z,
                         children: (0, a.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
                           children: [
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Last 7 Days',
                               value: r.user_activity.last_7_days,
                               subtitle: 'Active users',
                               icon: f.Z,
                               color: 'green',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Last 30 Days',
                               value: r.user_activity.last_30_days,
                               subtitle: 'Active users',
                               icon: f.Z,
                               color: 'green',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Avg Session Time',
                               value:
                                 (t = r.user_activity.avg_session_time_minutes) < 60
                                   ? ''.concat(Math.round(t), 'm')
                                   : ''.concat(Math.round(t / 60), 'h'),
-                              icon: ep.Z,
+                              icon: em.Z,
                               color: 'purple',
                             }),
                           ],
                         }),
                       }),
-                      (0, a.jsx)(s6, {
+                      (0, a.jsx)(s8, {
                         title: 'Storage & Resources',
-                        icon: X.Z,
+                        icon: Y.Z,
                         children: (0, a.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4',
                           children: [
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Total Nodes',
                               value: r.storage.total_nodes.toLocaleString(),
-                              icon: eT.Z,
+                              icon: eA.Z,
                               color: 'blue',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Total Edges',
                               value: r.storage.total_edges.toLocaleString(),
-                              icon: eT.Z,
+                              icon: eA.Z,
                               color: 'purple',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Total Sources',
                               value: r.storage.total_sources.toLocaleString(),
                               icon: eF.Z,
                               color: 'green',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Storage Used',
                               value: ((e) => {
                                 if (0 === e) return '0 B';
@@ -15572,87 +15644,87 @@
                                   ['B', 'KB', 'MB', 'GB'][t]
                                 );
                               })(r.storage.storage_size_bytes),
-                              icon: X.Z,
+                              icon: Y.Z,
                               color: 'yellow',
                             }),
                           ],
                         }),
                       }),
-                      (0, a.jsx)(s6, {
+                      (0, a.jsx)(s8, {
                         title: 'Processing Jobs',
-                        icon: sq.Z,
+                        icon: sJ.Z,
                         children: (0, a.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
                           children: [
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Active Jobs',
                               value: r.processing.active,
-                              icon: sq.Z,
+                              icon: sJ.Z,
                               color: 'blue',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Completed Today',
                               value: r.processing.completed_today,
-                              icon: sq.Z,
+                              icon: sJ.Z,
                               color: 'green',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Failed Jobs',
                               value: r.processing.failed,
-                              icon: t3.Z,
+                              icon: t6.Z,
                               color: 'red',
                             }),
                           ],
                         }),
                       }),
-                      (0, a.jsx)(s6, {
+                      (0, a.jsx)(s8, {
                         title: 'Billing & Revenue',
-                        icon: sJ.Z,
+                        icon: sG.Z,
                         children: (0, a.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
                           children: [
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Monthly Recurring Revenue',
                               value: '$'.concat(r.billing.mrr.toLocaleString()),
-                              icon: sJ.Z,
+                              icon: sG.Z,
                               color: 'green',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Churn Rate',
                               value: ''.concat(r.billing.churn_rate.toFixed(1), '%'),
                               icon: eJ.Z,
                               color: 'yellow',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Customer LTV',
                               value: '$'.concat(r.billing.customer_ltv.toLocaleString()),
-                              icon: sJ.Z,
+                              icon: sG.Z,
                               color: 'purple',
                             }),
                           ],
                         }),
                       }),
-                      (0, a.jsx)(s6, {
+                      (0, a.jsx)(s8, {
                         title: 'System Health',
                         icon: p.Z,
                         children: (0, a.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
                           children: [
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'API Latency',
                               value: ''.concat(r.system_health.api_latency_ms, 'ms'),
                               subtitle: 'Avg response time',
                               icon: p.Z,
                               color: 'blue',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Error Rate',
                               value: ''.concat(r.system_health.error_rate.toFixed(2), '%'),
                               subtitle: 'Last 24 hours',
-                              icon: t3.Z,
+                              icon: t6.Z,
                               color: 'green',
                             }),
-                            (0, a.jsx)(s3, {
+                            (0, a.jsx)(s6, {
                               title: 'Uptime',
                               value: ''.concat(r.system_health.uptime_percent.toFixed(1), '%'),
                               subtitle: 'Last 30 days',
@@ -15784,7 +15856,7 @@
                           (0, a.jsxs)('div', {
                             className: 'flex items-center gap-2 mb-4',
                             children: [
-                              (0, a.jsx)(t3.Z, { className: 'w-5 h-5 text-yellow-400' }),
+                              (0, a.jsx)(t6.Z, { className: 'w-5 h-5 text-yellow-400' }),
                               (0, a.jsx)('h3', {
                                 className: 'text-sm font-semibold text-slate-300',
                                 children: 'System Alerts',
@@ -15808,7 +15880,7 @@
                                       children: (0, a.jsxs)('div', {
                                         className: 'flex items-start gap-3',
                                         children: [
-                                          (0, a.jsx)(t3.Z, {
+                                          (0, a.jsx)(t6.Z, {
                                             className: 'w-5 h-5 flex-shrink-0 '.concat(
                                               'error' === e.type
                                                 ? 'text-red-400'
@@ -15850,7 +15922,7 @@
           })
         );
       }
-      function s7() {
+      function s9() {
         var e;
         let [t, s] = (0, l.useState)(null),
           [r, n] = (0, l.useState)(null),
@@ -15864,28 +15936,27 @@
         let p = async () => {
           (o(!0), d(null));
           try {
-            let e = await (0, e_.In)();
+            let e = await (0, ep.In)();
             s(e);
             try {
-              let e = localStorage.getItem('keimenon_token'),
-                t = localStorage.getItem('keimenon_user');
-              if (e && t) {
-                let s = null;
+              let e = localStorage.getItem('keimenon_user');
+              if (e) {
+                let t = null;
                 try {
-                  s = JSON.parse(t);
+                  t = JSON.parse(e);
                 } catch (e) {
                   console.warn('Failed to parse user from localStorage');
                 }
-                if (!(null == s ? void 0 : s.accountId)) {
+                if (!(null == t ? void 0 : t.accountId)) {
                   console.log('No valid user found in localStorage');
                   return;
                 }
-                let a = await fetch(
-                  ''.concat(_.CT, '/api/v1/deduplication/stats?accountId=').concat(s.accountId),
-                  { headers: { Authorization: 'Bearer '.concat(e) } }
+                let s = await (0, ep.ax)(
+                  ''.concat(_.CT, '/api/v1/deduplication/stats?accountId=').concat(t.accountId),
+                  {}
                 );
-                if (a.ok) {
-                  let e = await a.json();
+                if (s.ok) {
+                  let e = await s.json();
                   n(e);
                 }
               }
@@ -16021,7 +16092,7 @@
                                       }),
                                       (0, a.jsx)('span', {
                                         className: 'font-medium text-gray-900',
-                                        children: s9(t.local_storage.totalSize),
+                                        children: ae(t.local_storage.totalSize),
                                       }),
                                     ],
                                   }),
@@ -16059,7 +16130,7 @@
                                                 }),
                                                 (0, a.jsxs)('span', {
                                                   className: 'text-gray-900',
-                                                  children: [s.count, ' (', s9(s.size), ')'],
+                                                  children: [s.count, ' (', ae(s.size), ')'],
                                                 }),
                                               ],
                                             },
@@ -16191,7 +16262,7 @@
                                         }),
                                         (0, a.jsx)('span', {
                                           className: 'font-medium text-yellow-800',
-                                          children: s9(r.spaceSaved),
+                                          children: ae(r.spaceSaved),
                                         }),
                                       ],
                                     }),
@@ -16212,7 +16283,7 @@
                                       href: '/settings?category=data&section=deduplication',
                                       className:
                                         'block mt-2 text-xs text-blue-600 hover:text-blue-800 underline',
-                                      children: 'Manage duplicates →',
+                                      children: 'Manage duplicates',
                                     }),
                                   ],
                                 }),
@@ -16264,164 +16335,12 @@
               ],
             });
       }
-      function s9(e) {
+      function ae(e) {
         if (0 === e) return '0 Bytes';
         let t = Math.floor(Math.log(e) / Math.log(1024));
         return (
           Math.round((e / Math.pow(1024, t)) * 100) / 100 + ' ' + ['Bytes', 'KB', 'MB', 'GB'][t]
         );
-      }
-      function ae(e) {
-        let { boardId: t = 'default_board', height: s, renderLens: r = '2d', ndConfig: n } = e,
-          i = (0, l.useRef)(null),
-          o = sV(i),
-          [c, d] = (0, l.useState)([]),
-          [u, m] = (0, l.useState)([]),
-          [p, h] = (0, l.useState)(!0),
-          [g, b] = (0, l.useState)(null),
-          [f, v] = (0, l.useState)([]),
-          j = (0, l.useCallback)(async () => {
-            try {
-              (h(!0), b(null));
-              let [e, t] = await Promise.all([
-                fetch(''.concat(_.CT, '/api/v1/nodes?limit=1000')),
-                fetch(''.concat(_.CT, '/api/v1/edges?limit=5000')),
-              ]);
-              if (!e.ok) throw Error('Failed to fetch nodes (status '.concat(e.status, ')'));
-              if (!t.ok) throw Error('Failed to fetch edges (status '.concat(t.status, ')'));
-              let s = await e.json(),
-                a = await t.json(),
-                l = s.nodes.map((e) => ({ id: e.id, kind: e.kind })),
-                r = new Set(l.map((e) => e.id)),
-                n = (a.edges || [])
-                  .map((e) => {
-                    let t = e.from || e.source,
-                      s = e.to || e.target;
-                    return t && s
-                      ? { id: e.id, kind: e.kind || 'CONTAINS', source: t, target: s }
-                      : null;
-                  })
-                  .filter((e) => !!e)
-                  .filter((e) => r.has(String(e.source)) && r.has(String(e.target)));
-              (d(l), m(n));
-            } catch (e) {
-              b(e instanceof Error ? e.message : String(e));
-            } finally {
-              h(!1);
-            }
-          }, []);
-        (0, l.useEffect)(() => {
-          j();
-        }, [j, t]);
-        let N = (0, l.useMemo)(() => c.length, [c]);
-        return (0, a.jsxs)('div', {
-          className: 'flex-1 flex flex-col bg-slate-950/60 border border-slate-900 rounded-lg',
-          children: [
-            (0, a.jsxs)('header', {
-              className:
-                'flex items-center justify-between px-4 py-3 border-b border-slate-900 bg-slate-950/80',
-              children: [
-                (0, a.jsxs)('div', {
-                  className: 'flex items-center gap-3',
-                  children: [
-                    (0, a.jsx)('div', {
-                      className: 'p-2 bg-purple-600/20 rounded-lg',
-                      children: (0, a.jsx)(R.Z, { className: 'w-4 h-4 text-purple-400' }),
-                    }),
-                    (0, a.jsxs)('div', {
-                      children: [
-                        (0, a.jsx)('h3', {
-                          className: 'text-sm font-semibold text-slate-200',
-                          children: 'Legacy Board View',
-                        }),
-                        (0, a.jsxs)('p', {
-                          className: 'text-xs text-slate-500',
-                          children: ['Board ID: ', t],
-                        }),
-                      ],
-                    }),
-                  ],
-                }),
-                (0, a.jsxs)('div', {
-                  className: 'text-xs text-slate-400',
-                  children: [N, ' nodes - ', u.length, ' edges'],
-                }),
-              ],
-            }),
-            (0, a.jsxs)('div', {
-              ref: i,
-              className: 'relative flex-1',
-              children: [
-                p &&
-                  (0, a.jsx)('div', {
-                    className: 'absolute inset-0 flex items-center justify-center',
-                    children: (0, a.jsxs)('div', {
-                      className: 'text-center text-slate-400',
-                      children: [
-                        (0, a.jsx)(x.Z, { className: 'w-6 h-6 animate-spin mx-auto mb-2' }),
-                        (0, a.jsx)('p', {
-                          className: 'text-sm',
-                          children: 'Loading legacy board data...',
-                        }),
-                      ],
-                    }),
-                  }),
-                g &&
-                  (0, a.jsx)('div', {
-                    className: 'absolute inset-0 flex items-center justify-center',
-                    children: (0, a.jsxs)('div', {
-                      className: 'max-w-md text-center space-y-2',
-                      children: [
-                        (0, a.jsx)('p', {
-                          className: 'text-sm text-red-300 font-medium',
-                          children: 'Failed to load legacy board',
-                        }),
-                        (0, a.jsx)('p', { className: 'text-xs text-red-400', children: g }),
-                      ],
-                    }),
-                  }),
-                !p &&
-                  !g &&
-                  0 === c.length &&
-                  (0, a.jsx)('div', {
-                    className: 'absolute inset-0 flex items-center justify-center',
-                    children: (0, a.jsx)('p', {
-                      className: 'text-sm text-slate-500',
-                      children: 'No nodes available in the legacy dataset.',
-                    }),
-                  }),
-                !p &&
-                  !g &&
-                  c.length > 0 &&
-                  (0, a.jsx)(sF, {
-                    nodes: c,
-                    edges: u,
-                    width: o.width || 900,
-                    height: o.height || (null != s ? s : 520),
-                    renderLens: r,
-                    ndConfig: n,
-                    onSelectionChange: v,
-                  }),
-              ],
-            }),
-            (0, a.jsx)('footer', {
-              className:
-                'px-4 py-3 border-t border-slate-900 bg-slate-950/80 text-xs text-slate-500',
-              children:
-                f.length > 0
-                  ? (0, a.jsxs)('span', {
-                      children: [
-                        'Selected nodes: ',
-                        (0, a.jsx)('span', { className: 'text-slate-300', children: f.join(', ') }),
-                      ],
-                    })
-                  : (0, a.jsx)('span', {
-                      children:
-                        'Select nodes in the keimenon to inspect legacy graph relationships.',
-                    }),
-            }),
-          ],
-        });
       }
       var at = s(1565);
       function as(e) {
@@ -16473,7 +16392,7 @@
               className: 'w-full h-full flex items-center justify-center text-xs text-slate-500',
               children: 'Waiting for graph activity...',
             })
-          : (0, a.jsx)(sL, {
+          : (0, a.jsx)(sF, {
               nodes: o,
               edges: c,
               width: s,
@@ -16487,12 +16406,12 @@
             });
       }
       let aa = [
-        { id: 'queued', label: 'Queued', icon: ep.Z, order: 0 },
+        { id: 'queued', label: 'Queued', icon: em.Z, order: 0 },
         { id: 'reading', label: 'Reading', icon: eF.Z, order: 1 },
         { id: 'parsing', label: 'Parsing', icon: eG.Z, order: 2 },
-        { id: 'normalizing', label: 'Normalizing', icon: X.Z, order: 3 },
+        { id: 'normalizing', label: 'Normalizing', icon: Y.Z, order: 3 },
         { id: 'indexing', label: 'Indexing', icon: eW.Z, order: 4 },
-        { id: 'linking', label: 'Linking', icon: W.Z, order: 5 },
+        { id: 'linking', label: 'Linking', icon: G.Z, order: 5 },
         { id: 'done', label: 'Complete', icon: u.Z, order: 6 },
       ];
       function al(e) {
@@ -16625,12 +16544,12 @@
         var t, s, r, n, i, o, c, d;
         let { operation: u, renderLens: m = '2d', ndConfig: p } = e,
           h = (0, l.useRef)(null),
-          g = sV(h, { width: 960, height: 360 }),
+          g = sK(h, { width: 960, height: 360 }),
           { jobs: b, graphUpdates: f, connected: v } = tp(),
           j = u ? b.get(u.id) : void 0,
           [N, y] = (0, l.useState)(!1),
-          [w, k] = (0, l.useState)(!1),
-          [C, S] = (0, l.useState)(!1),
+          [w, C] = (0, l.useState)(!1),
+          [k, S] = (0, l.useState)(!1),
           I = (0, ar.p)(),
           E =
             null !== (o = null == j ? void 0 : j.status) && void 0 !== o
@@ -16646,7 +16565,7 @@
                       : 'running',
           M = (0, l.useMemo)(() => {
             var e, t;
-            return tw({
+            return tC({
               backendStatus: E,
               jobType: 'import',
               progress: {
@@ -16729,7 +16648,7 @@
             ) {
               y(!0);
               try {
-                (await (0, e_.UU)(u.id),
+                (await (0, ep.UU)(u.id),
                   I.success(
                     'Job cancellation requested',
                     'The job will stop processing at the next checkpoint.'
@@ -16749,9 +16668,9 @@
                 'Pause this import?\n\nThe job will pause at the next checkpoint. When resumed, it will continue from the latest checkpoint.'
               )
             ) {
-              k(!0);
+              C(!0);
               try {
-                (await (0, e_.EZ)(u.id),
+                (await (0, ep.EZ)(u.id),
                   I.success(
                     'Job paused successfully',
                     'Resume to continue from the latest checkpoint.'
@@ -16760,7 +16679,7 @@
                 (console.error('Failed to pause job:', e),
                   I.error('Failed to pause job', e.message || 'An unexpected error occurred.'));
               } finally {
-                k(!1);
+                C(!1);
               }
             }
           },
@@ -16768,7 +16687,7 @@
             if (null == u ? void 0 : u.id) {
               S(!0);
               try {
-                (await (0, e_.$Q)(u.id),
+                (await (0, ep.$Q)(u.id),
                   I.success('Job resumed successfully', 'Continuing from the latest checkpoint.'));
               } catch (e) {
                 (console.error('Failed to resume job:', e),
@@ -16781,7 +16700,7 @@
           F = f.length > 0 ? f[f.length - 1] : null,
           P = null !== (d = null == F ? void 0 : F.recentNodes) && void 0 !== d ? d : [],
           O = M.stage,
-          z = (0, l.useMemo)(() => {
+          R = (0, l.useMemo)(() => {
             var e, t, s, a, l, r, n;
             let i = {
                 ...(null !== (e = null == u ? void 0 : u.stats) && void 0 !== e ? e : {}),
@@ -16874,7 +16793,7 @@
                                 className: 'flex items-center gap-2 text-xs text-slate-400',
                                 children: [
                                   ['succeeded', 'failed', 'canceled', 'blocked'].includes(E)
-                                    ? (0, a.jsx)(sG.Z, { className: 'w-4 h-4' })
+                                    ? (0, a.jsx)(sW.Z, { className: 'w-4 h-4' })
                                     : (0, a.jsx)(x.Z, { className: 'w-4 h-4 animate-spin' }),
                                   (0, a.jsx)('span', { className: 'capitalize', children: D }),
                                 ],
@@ -16885,13 +16804,13 @@
                                   'blocked' === E &&
                                     (0, a.jsxs)('button', {
                                       onClick: L,
-                                      disabled: C,
+                                      disabled: k,
                                       className:
                                         'px-3 py-1.5 rounded-lg border border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20 hover:border-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-medium flex items-center gap-1.5',
                                       title: 'Resume job from latest checkpoint',
                                       children: [
                                         (0, a.jsx)(at.Z, { className: 'w-3.5 h-3.5' }),
-                                        C ? 'Resuming...' : 'Resume',
+                                        k ? 'Resuming...' : 'Resume',
                                       ],
                                     }),
                                   'running' === E &&
@@ -16902,7 +16821,7 @@
                                         'px-3 py-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 hover:border-yellow-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-medium flex items-center gap-1.5',
                                       title: 'Pause job at next checkpoint',
                                       children: [
-                                        (0, a.jsx)(sG.Z, { className: 'w-3.5 h-3.5' }),
+                                        (0, a.jsx)(sW.Z, { className: 'w-3.5 h-3.5' }),
                                         w ? 'Pausing...' : 'Pause',
                                       ],
                                     }),
@@ -16959,7 +16878,7 @@
                                 }),
                                 (0, a.jsx)('div', {
                                   className: 'grid grid-cols-2 gap-3',
-                                  children: z.map((e) => {
+                                  children: R.map((e) => {
                                     var t, s, l;
                                     return (0, a.jsxs)(
                                       'div',
@@ -17000,7 +16919,7 @@
                                 (0, a.jsxs)('header', {
                                   className: 'flex items-center gap-3',
                                   children: [
-                                    (0, a.jsx)(B.Z, { className: 'w-5 h-5 text-purple-400' }),
+                                    (0, a.jsx)(U.Z, { className: 'w-5 h-5 text-purple-400' }),
                                     (0, a.jsxs)('div', {
                                       children: [
                                         (0, a.jsx)('h3', {
@@ -17036,7 +16955,7 @@
                                       className:
                                         'flex-1 min-h-[320px] rounded-lg border border-slate-800 bg-slate-950/70 flex flex-col items-center justify-center gap-3 text-slate-500 text-sm',
                                       children: [
-                                        (0, a.jsx)(t3.Z, { className: 'w-6 h-6' }),
+                                        (0, a.jsx)(t6.Z, { className: 'w-6 h-6' }),
                                         (0, a.jsx)('p', {
                                           children: 'No recent graph updates yet.',
                                         }),
@@ -17060,7 +16979,7 @@
           : (0, a.jsxs)('div', {
               className: 'h-full flex flex-col items-center justify-center gap-4 text-slate-500',
               children: [
-                (0, a.jsx)(B.Z, { className: 'w-10 h-10' }),
+                (0, a.jsx)(U.Z, { className: 'w-10 h-10' }),
                 (0, a.jsxs)('div', {
                   className: 'text-center space-y-2',
                   children: [
@@ -17212,7 +17131,7 @@
                     className:
                       'w-80 flex-shrink-0 h-[100px] border-2 border-dashed border-slate-800 rounded-xl flex items-center justify-center text-slate-500 hover:text-white hover:border-slate-600 transition-colors',
                     children: [
-                      (0, a.jsx)(ei.Z, { className: 'w-6 h-6 mb-2' }),
+                      (0, a.jsx)(en.Z, { className: 'w-6 h-6 mb-2' }),
                       (0, a.jsx)('span', { children: 'Add Column' }),
                     ],
                   }),
@@ -17225,31 +17144,31 @@
         getBoards: async function () {
           let e =
             arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : 'default_workspace';
-          return (await e_.hi.get('/boards?workspace_id='.concat(e))).data.boards;
+          return (await ep.hi.get('/boards?workspace_id='.concat(e))).data.boards;
         },
         getBoardGraph: async function (e) {
           let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 1e3;
-          return (await e_.hi.get('/boards/'.concat(e, '/graph?limit=').concat(t))).data;
+          return (await ep.hi.get('/boards/'.concat(e, '/graph?limit=').concat(t))).data;
         },
         createBoard: async function (e, t) {
           let s =
             arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : 'default_workspace';
-          return (await e_.hi.post('/boards', { name: e, description: t, workspace_id: s })).data
+          return (await ep.hi.post('/boards', { name: e, description: t, workspace_id: s })).data
             .board;
         },
-        listPrincipals: async () => (await e_.hi.get('/principals')).data.principals,
-        listWorkspaces: async () => (await e_.hi.get('/workspaces')).data.workspaces,
-        createWorkspace: async (e) => (await e_.hi.post('/workspaces', e)).data.workspace,
+        listPrincipals: async () => (await ep.hi.get('/principals')).data.principals,
+        listWorkspaces: async () => (await ep.hi.get('/workspaces')).data.workspaces,
+        createWorkspace: async (e) => (await ep.hi.post('/workspaces', e)).data.workspace,
         deleteWorkspace: async (e) => {
-          await e_.hi.delete('/workspaces/'.concat(e));
+          await ep.hi.delete('/workspaces/'.concat(e));
         },
-        listConversations: async () => (await e_.hi.get('/conversations')).data.conversations,
-        createConversation: async (e) => (await e_.hi.post('/conversations', e)).data.conversation,
+        listConversations: async () => (await ep.hi.get('/conversations')).data.conversations,
+        createConversation: async (e) => (await ep.hi.post('/conversations', e)).data.conversation,
       };
       function au(e) {
         let { renderLens: t = '2d', ndConfig: s } = e,
           r = (0, l.useRef)(null),
-          n = sV(r),
+          n = sK(r),
           [i, o] = (0, l.useState)([]),
           [c, d] = (0, l.useState)(null),
           [u, m] = (0, l.useState)([]),
@@ -17309,7 +17228,7 @@
             }
           },
           w = i.find((e) => e.id === c),
-          k = async (e, t) => {
+          C = async (e, t) => {
             m((s) =>
               s.map((s) =>
                 s.id !== e ? s : { ...s, metadata: { ...s.metadata, board_column: t } }
@@ -17317,14 +17236,14 @@
             );
             let s = u.find((t) => t.id === e);
             try {
-              await e_.hi.put('/nodes/'.concat(e), {
+              await ep.hi.put('/nodes/'.concat(e), {
                 metadata: { ...((null == s ? void 0 : s.metadata) || {}), board_column: t },
               });
             } catch (e) {
               console.error('Failed to persist board node move:', e);
             }
           },
-          C = (0, l.useMemo)(
+          k = (0, l.useMemo)(
             () =>
               u.map((e) => ({
                 id: e.id,
@@ -17366,7 +17285,7 @@
                       onClick: y,
                       className:
                         'flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors',
-                      children: [(0, a.jsx)(ei.Z, { className: 'w-4 h-4' }), 'Create First Board'],
+                      children: [(0, a.jsx)(en.Z, { className: 'w-4 h-4' }), 'Create First Board'],
                     }),
                   ],
                 })
@@ -17391,7 +17310,7 @@
                           className:
                             'p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white',
                           title: 'Create New Board',
-                          children: (0, a.jsx)(ei.Z, { className: 'w-4 h-4' }),
+                          children: (0, a.jsx)(en.Z, { className: 'w-4 h-4' }),
                         }),
                         (0, a.jsx)('div', { className: 'h-6 w-px bg-slate-800 mx-2' }),
                         (0, a.jsxs)('div', {
@@ -17428,12 +17347,12 @@
                       className: 'flex-1 overflow-hidden relative',
                       children: w
                         ? 'kanban' === j
-                          ? (0, a.jsx)(ac, { board: w, nodes: u, onMoveNode: k })
+                          ? (0, a.jsx)(ac, { board: w, nodes: u, onMoveNode: C })
                           : (0, a.jsx)('div', {
                               ref: r,
                               className: 'h-full w-full',
-                              children: (0, a.jsx)(sF, {
-                                nodes: C,
+                              children: (0, a.jsx)(sP, {
+                                nodes: k,
                                 edges: p,
                                 width: n.width || 1200,
                                 height: n.height || 800,
@@ -17534,7 +17453,7 @@
                               className:
                                 'p-1.5 hover:bg-purple-700/50 rounded text-purple-200 hover:text-white transition-colors',
                               title: 'Portal info',
-                              children: (0, a.jsx)(eu.Z, { className: 'w-4 h-4' }),
+                              children: (0, a.jsx)(ed.Z, { className: 'w-4 h-4' }),
                             }),
                             (0, a.jsx)('button', {
                               onClick: () => {
@@ -17543,7 +17462,7 @@
                               className:
                                 'p-1.5 hover:bg-purple-700/50 rounded text-purple-200 hover:text-white transition-colors',
                               title: 'Exit Portal',
-                              children: (0, a.jsx)(ec.Z, { className: 'w-4 h-4' }),
+                              children: (0, a.jsx)(eo.Z, { className: 'w-4 h-4' }),
                             }),
                           ],
                         }),
@@ -17558,7 +17477,7 @@
                             (0, a.jsxs)('div', {
                               className: 'flex items-start gap-2',
                               children: [
-                                (0, a.jsx)(eu.Z, {
+                                (0, a.jsx)(ed.Z, {
                                   className: 'w-4 h-4 text-purple-300 mt-0.5 flex-shrink-0',
                                 }),
                                 (0, a.jsxs)('div', {
@@ -17603,7 +17522,7 @@
                                   })
                                 : (0, a.jsxs)(a.Fragment, {
                                     children: [
-                                      (0, a.jsx)(t3.Z, {
+                                      (0, a.jsx)(t6.Z, {
                                         className: 'w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0',
                                       }),
                                       (0, a.jsxs)('div', {
@@ -17689,7 +17608,7 @@
                         onClick: () => p(!m),
                         className: 'text-slate-400 hover:text-slate-300',
                         title: 'Show help',
-                        children: (0, a.jsx)(eu.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(ed.Z, { className: 'w-4 h-4' }),
                       }),
                     b &&
                       (0, a.jsx)(an.zx, {
@@ -17997,12 +17916,12 @@
           ],
         });
       }
-      let ak = {
+      let aC = {
         warning: {
           bg: 'bg-yellow-600/10',
           border: 'border-yellow-500/30',
           iconBg: 'bg-yellow-500/20',
-          icon: t3.Z,
+          icon: t6.Z,
           iconColor: 'text-yellow-400',
           titleColor: 'text-yellow-300',
           messageColor: 'text-yellow-200/80',
@@ -18024,7 +17943,7 @@
           bg: 'bg-blue-600/10',
           border: 'border-blue-500/30',
           iconBg: 'bg-blue-500/20',
-          icon: eu.Z,
+          icon: ed.Z,
           iconColor: 'text-blue-400',
           titleColor: 'text-blue-300',
           messageColor: 'text-blue-200/80',
@@ -18043,7 +17962,7 @@
           confirmText: 'text-white',
         },
       };
-      function aC(e) {
+      function ak(e) {
         let {
           isOpen: t,
           onClose: s,
@@ -18059,7 +17978,7 @@
           minimizeText: m = 'Minimize',
         } = e;
         if (!t) return null;
-        let p = ak[r],
+        let p = aC[r],
           h = p.icon,
           g = () => {
             d || s();
@@ -18118,7 +18037,7 @@
                             onClick: g,
                             className:
                               'flex-shrink-0 p-1 hover:bg-slate-800/50 rounded transition-colors',
-                            children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5 text-slate-400' }),
+                            children: (0, a.jsx)(eo.Z, { className: 'w-5 h-5 text-slate-400' }),
                           }),
                       ],
                     }),
@@ -18180,7 +18099,7 @@
       }
       function aS() {
         let { user: e } = (0, N.aC)(),
-          { addOperation: t, updateOperation: s, getOperation: r } = s$(),
+          { addOperation: t, updateOperation: s, getOperation: r } = s0(),
           { jobs: n } = tp(),
           [i, o] = (0, l.useState)(!1),
           [c, d] = (0, l.useState)(!1),
@@ -18190,10 +18109,10 @@
           [f, v] = (0, l.useState)(null),
           [j, y] = (0, l.useState)(null),
           w = (0, l.useRef)(null),
-          k = (0, l.useRef)(!1);
+          C = (0, l.useRef)(!1);
         ((0, l.useEffect)(() => {
           if (!u) {
-            ((k.current = !1), w.current && (clearTimeout(w.current), (w.current = null)));
+            ((C.current = !1), w.current && (clearTimeout(w.current), (w.current = null)));
             return;
           }
           let e = n.get(u);
@@ -18212,8 +18131,8 @@
                 m(null),
                 d(!1))
               : e ||
-                k.current ||
-                ((k.current = !0),
+                C.current ||
+                ((C.current = !0),
                 (w.current = setTimeout(() => {
                   n.get(u) ||
                     (console.error('[DataManagementCard] Job not received via SSE after 10s'),
@@ -18228,20 +18147,16 @@
             },
             []
           ));
-        let C = async () => {
+        let k = async () => {
             try {
               (b(!0), v(null));
-              let e = localStorage.getItem('keimenon_token');
-              if (!e) throw Error('Not authenticated');
-              let t = await fetch(''.concat(_.CT, '/api/v1/data/stats'), {
-                headers: { Authorization: 'Bearer '.concat(e) },
-              });
-              if (!t.ok) {
-                let e = await t.json().catch(() => ({}));
-                throw Error(e.error || 'Failed to load stats');
+              let e = await (0, ep.ax)(''.concat(_.CT, '/api/v1/data/stats'));
+              if (!e.ok) {
+                let t = await e.json().catch(() => ({}));
+                throw Error(t.error || 'Failed to load stats');
               }
-              let s = await t.json();
-              h(s.stats);
+              let t = await e.json();
+              h(t.stats);
             } catch (t) {
               (console.error('Failed to load stats:', t),
                 v(
@@ -18268,7 +18183,7 @@
               d(!1),
               v(null));
             try {
-              await C();
+              await k();
             } catch (e) {
               console.warn(
                 '[DataManagementCard] Failed to load stats before deletion, continuing anyway:',
@@ -18336,9 +18251,7 @@
             var t, s, a, l, r, n, i, c, u, x, g, b;
             try {
               (d(!0), v(null));
-              let l = localStorage.getItem('keimenon_token');
-              if (!l) throw Error('Not authenticated');
-              let r =
+              let l =
                   null !==
                     (s =
                       null == p
@@ -18348,17 +18261,14 @@
                           : t.reduce((e, t) => e + t.count, 0)) && void 0 !== s
                     ? s
                     : 0,
-                n = null !== (a = null == p ? void 0 : p.edges) && void 0 !== a ? a : 0,
-                i = await fetch(''.concat(_.CT, '/api/v1/jobs/delete'), {
+                r = null !== (a = null == p ? void 0 : p.edges) && void 0 !== a ? a : 0,
+                n = await (0, ep.ax)(''.concat(_.CT, '/api/v1/jobs/delete'), {
                   method: 'POST',
-                  headers: {
-                    Authorization: 'Bearer '.concat(l),
-                    'Content-Type': 'application/json',
-                  },
+                  headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ scope: 'keimenon' }),
                 });
-              if (!i.ok) {
-                let t = await i.json().catch(() => ({})),
+              if (!n.ok) {
+                let t = await n.json().catch(() => ({})),
                   s = E.I.capture(
                     Error(t.error || 'Failed to clear data'),
                     {
@@ -18369,9 +18279,9 @@
                       metadata: {
                         component: 'DataManagementCard',
                         endpoint: '/api/v1/jobs/delete',
-                        statusCode: i.status,
-                        nodeCount: r,
-                        edgeCount: n,
+                        statusCode: n.status,
+                        nodeCount: l,
+                        edgeCount: r,
                         errorDetails: t,
                       },
                     },
@@ -18379,18 +18289,18 @@
                   );
                 throw Error(s.userMessage || t.error || 'Failed to clear data');
               }
-              let c = await i.json();
-              console.log('[DataManagementCard] Delete job created:', c);
-              let u = c.jobId,
-                x = null != u ? u : 'del_'.concat(Date.now());
-              (u ||
+              let i = await n.json();
+              console.log('[DataManagementCard] Delete job created:', i);
+              let c = i.jobId,
+                u = null != c ? c : 'del_'.concat(Date.now());
+              (c ||
                 console.warn('[DataManagementCard] Delete job created without jobId in response'),
-                m(x),
-                I(x, { nodeCount: r, edgeCount: n }),
-                (0, tg.Vo)(
-                  'Delete job created: '.concat(r, ' nodes, ').concat(n, ' edges'),
+                m(u),
+                I(u, { nodeCount: l, edgeCount: r }),
+                (0, tb.Vo)(
+                  'Delete job created: '.concat(l, ' nodes, ').concat(r, ' edges'),
                   'delete.jobCreated',
-                  { jobId: x, nodeCount: r, edgeCount: n, scope: 'keimenon' }
+                  { jobId: u, nodeCount: l, edgeCount: r, scope: 'keimenon' }
                 ),
                 y('Delete job created! Monitor progress in Background Operations.'),
                 o(!1),
@@ -18467,7 +18377,7 @@
                   children: [
                     (0, a.jsx)('div', {
                       className: 'flex-shrink-0 bg-red-500/20 rounded-lg p-3',
-                      children: (0, a.jsx)(ew.Z, { className: 'w-6 h-6 text-red-400' }),
+                      children: (0, a.jsx)(eC.Z, { className: 'w-6 h-6 text-red-400' }),
                     }),
                     (0, a.jsxs)('div', {
                       className: 'flex-1',
@@ -18509,7 +18419,7 @@
                   className:
                     'mt-4 flex items-start gap-2 px-3 py-2 bg-yellow-600/10 border border-yellow-500/30 rounded text-xs text-yellow-300',
                   children: [
-                    (0, a.jsx)(t3.Z, { className: 'w-4 h-4 flex-shrink-0 mt-0.5' }),
+                    (0, a.jsx)(t6.Z, { className: 'w-4 h-4 flex-shrink-0 mt-0.5' }),
                     (0, a.jsxs)('div', {
                       children: [
                         (0, a.jsx)('p', {
@@ -18527,7 +18437,7 @@
                 }),
               ],
             }),
-            (0, a.jsx)(aC, {
+            (0, a.jsx)(ak, {
               isOpen: i,
               onClose: () => o(!1),
               onConfirm: M,
@@ -18565,16 +18475,13 @@
         let u = async () => {
           try {
             (n(!0), o(null));
-            let t = localStorage.getItem('keimenon_token');
-            if (!t) throw Error('Not authenticated');
-            let a = await fetch(''.concat(_.CT, '/api/v1/data/all-clients'), {
+            let t = await (0, ep.ax)(''.concat(_.CT, '/api/v1/data/all-clients'), {
               method: 'DELETE',
-              headers: { Authorization: 'Bearer '.concat(t) },
             });
-            if (!a.ok) {
-              let t = await a.json().catch(() => ({})),
-                s = E.I.capture(
-                  Error(t.error || 'Failed to clear all client data'),
+            if (!t.ok) {
+              let s = await t.json().catch(() => ({})),
+                a = E.I.capture(
+                  Error(s.error || 'Failed to clear all client data'),
                   {
                     domain: 'database',
                     operation: 'dataManagement.clearAllClients',
@@ -18583,17 +18490,17 @@
                     metadata: {
                       component: 'AdminDataManagementCard',
                       endpoint: '/api/v1/data/all-clients',
-                      statusCode: a.status,
-                      errorDetails: t,
+                      statusCode: t.status,
+                      errorDetails: s,
                     },
                   },
                   'error'
                 );
-              throw Error(s.userMessage || t.error || 'Failed to clear data');
+              throw Error(a.userMessage || s.error || 'Failed to clear data');
             }
-            let l = await a.json();
-            (console.log('Clear all client data result:', l),
-              d('Successfully cleared data for '.concat(l.cleared_accounts, ' client account(s)')),
+            let a = await t.json();
+            (console.log('Clear all client data result:', a),
+              d('Successfully cleared data for '.concat(a.cleared_accounts, ' client account(s)')),
               s(!1),
               setTimeout(() => {
                 d(null);
@@ -18661,7 +18568,7 @@
                   children: [
                     (0, a.jsx)('div', {
                       className: 'flex-shrink-0 bg-red-500/30 rounded-lg p-3',
-                      children: (0, a.jsx)(t3.Z, { className: 'w-6 h-6 text-red-400' }),
+                      children: (0, a.jsx)(t6.Z, { className: 'w-6 h-6 text-red-400' }),
                     }),
                     (0, a.jsxs)('div', {
                       className: 'flex-1',
@@ -18703,7 +18610,7 @@
                 }),
               ],
             }),
-            (0, a.jsx)(aC, {
+            (0, a.jsx)(ak, {
               isOpen: t,
               onClose: () => s(!1),
               onConfirm: u,
@@ -18801,7 +18708,7 @@
                           className:
                             'p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors',
                           title: 'Edit user',
-                          children: (0, a.jsx)(tZ.Z, { className: 'w-4 h-4' }),
+                          children: (0, a.jsx)(tD.Z, { className: 'w-4 h-4' }),
                         }),
                         r !== u.id &&
                           (0, a.jsx)('button', {
@@ -18814,8 +18721,8 @@
                             title: 'Delete user',
                             children:
                               i === u.id
-                                ? (0, a.jsx)(tD.Z, { className: 'w-4 h-4 animate-spin' })
-                                : (0, a.jsx)(ew.Z, { className: 'w-4 h-4' }),
+                                ? (0, a.jsx)(tT.Z, { className: 'w-4 h-4 animate-spin' })
+                                : (0, a.jsx)(eC.Z, { className: 'w-4 h-4' }),
                           }),
                       ],
                     }),
@@ -18836,13 +18743,13 @@
           [b, v] = (0, l.useState)(null),
           [j, y] = (0, l.useState)(!1),
           w = (0, l.useRef)(null),
-          k = tr(w, 400);
+          C = tr(w, 400);
         (0, l.useEffect)(() => {
           (async () => {
             if (r) {
               (d(!0), x(null));
               try {
-                let e = await (0, e_.TE)(r.accountId);
+                let e = await (0, ep.TE)(r.accountId);
                 o(e.users);
               } catch (t) {
                 let e = t instanceof Error ? t : Error(String(t));
@@ -18854,7 +18761,7 @@
             }
           })();
         }, [r]);
-        let C = (0, l.useMemo)(
+        let k = (0, l.useMemo)(
             () =>
               n.filter((e) => {
                 if (!m.trim()) return !0;
@@ -18878,9 +18785,9 @@
             ) {
               (g(e), v(null));
               try {
-                (await (0, e_.h8)(e),
+                (await (0, ep.h8)(e),
                   o((t) => t.filter((t) => t.id !== e)),
-                  (0, tg.Et)('User deleted: '.concat(t), {
+                  (0, tb.Et)('User deleted: '.concat(t), {
                     domain: 'api',
                     operation: 'users.delete',
                     metadata: { userId: e, userName: t },
@@ -18913,7 +18820,7 @@
           Z = (null == r ? void 0 : r.permissionLevel) === 'admin',
           D = (0, l.useMemo)(
             () => ({
-              users: C,
+              users: k,
               currentUserId: null == r ? void 0 : r.userId,
               canManageUsers: Z,
               deletingId: h,
@@ -18921,7 +18828,7 @@
               handleDelete: S,
               getPermissionColor: M,
             }),
-            [C, null == r ? void 0 : r.userId, Z, h, t, S, M]
+            [k, null == r ? void 0 : r.userId, Z, h, t, S, M]
           );
         return c
           ? (0, a.jsx)('div', {
@@ -18929,7 +18836,7 @@
               children: (0, a.jsxs)('div', {
                 className: 'text-center',
                 children: [
-                  (0, a.jsx)(tD.Z, {
+                  (0, a.jsx)(tT.Z, {
                     className: 'w-8 h-8 animate-spin text-purple-500 mx-auto mb-4',
                   }),
                   (0, a.jsx)('p', {
@@ -18945,7 +18852,7 @@
                 children: (0, a.jsxs)('div', {
                   className: 'flex items-start gap-3',
                   children: [
-                    (0, a.jsx)(ec.Z, { className: 'w-5 h-5 text-red-400 flex-shrink-0 mt-0.5' }),
+                    (0, a.jsx)(eo.Z, { className: 'w-5 h-5 text-red-400 flex-shrink-0 mt-0.5' }),
                     (0, a.jsxs)('div', {
                       children: [
                         (0, a.jsx)('h3', {
@@ -19004,7 +18911,7 @@
                           },
                           className:
                             'flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors',
-                          children: [(0, a.jsx)(ei.Z, { className: 'w-4 h-4' }), 'Add User'],
+                          children: [(0, a.jsx)(en.Z, { className: 'w-4 h-4' }), 'Add User'],
                         }),
                     ],
                   }),
@@ -19037,11 +18944,11 @@
                           onClick: () => p(''),
                           className:
                             'absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-700 rounded transition-colors',
-                          children: (0, a.jsx)(ec.Z, { className: 'w-3 h-3 text-slate-500' }),
+                          children: (0, a.jsx)(eo.Z, { className: 'w-3 h-3 text-slate-500' }),
                         }),
                     ],
                   }),
-                  0 === C.length
+                  0 === k.length
                     ? (0, a.jsxs)('div', {
                         className:
                           'text-center py-12 bg-slate-800/30 border border-slate-700 rounded-lg',
@@ -19060,7 +18967,7 @@
                               className:
                                 'inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors',
                               children: [
-                                (0, a.jsx)(ei.Z, { className: 'w-4 h-4' }),
+                                (0, a.jsx)(en.Z, { className: 'w-4 h-4' }),
                                 'Add First User',
                               ],
                             }),
@@ -19068,23 +18975,23 @@
                       })
                     : (0, a.jsx)('div', {
                         ref: w,
-                        style: { height: Math.min(120 * C.length, 400) },
+                        style: { height: Math.min(120 * k.length, 400) },
                         children: (0, a.jsx)(tl.aV, {
-                          style: { height: Math.min(120 * C.length, k) },
-                          rowCount: C.length,
+                          style: { height: Math.min(120 * k.length, C) },
+                          rowCount: k.length,
                           rowHeight: 120,
                           rowComponent: aE,
                           rowProps: D,
                         }),
                       }),
-                  C.length > 0 &&
+                  k.length > 0 &&
                     (0, a.jsxs)('div', {
                       className: 'flex items-center gap-4 text-xs text-slate-500 pt-2',
                       children: [
                         (0, a.jsxs)('span', {
                           children: [
                             'Showing ',
-                            C.length,
+                            k.length,
                             ' of ',
                             n.length,
                             ' ',
@@ -19096,7 +19003,7 @@
                     }),
                   j &&
                     r &&
-                    (0, a.jsx)(tL, {
+                    (0, a.jsx)(tF, {
                       account: {
                         id: r.accountId,
                         name: 'Current Account',
@@ -19107,7 +19014,7 @@
                       onSuccess: () => {
                         (y(!1),
                           r &&
-                            (0, e_.TE)(r.accountId)
+                            (0, ep.TE)(r.accountId)
                               .then((e) => o(e.users))
                               .catch((e) => {
                                 let t = e instanceof Error ? e : Error(String(e));
@@ -19294,7 +19201,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, a.jsx)(ec.Z, {
+                                        (0, a.jsx)(eo.Z, {
                                           className: 'w-4 h-4 text-red-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, a.jsx)('div', {
@@ -19309,7 +19216,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, a.jsx)(ec.Z, {
+                                        (0, a.jsx)(eo.Z, {
                                           className: 'w-4 h-4 text-red-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, a.jsx)('div', {
@@ -19324,7 +19231,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, a.jsx)(ec.Z, {
+                                        (0, a.jsx)(eo.Z, {
                                           className: 'w-4 h-4 text-red-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, a.jsx)('div', {
@@ -19339,7 +19246,7 @@
                                     (0, a.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, a.jsx)(ec.Z, {
+                                        (0, a.jsx)(eo.Z, {
                                           className: 'w-4 h-4 text-red-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, a.jsx)('div', {
@@ -19445,12 +19352,12 @@
           active: {
             label: 'Active',
             color: 'bg-green-500/15 text-green-300 border border-green-500/20',
-            icon: (0, a.jsx)(B.Z, { className: 'w-3.5 h-3.5' }),
+            icon: (0, a.jsx)(U.Z, { className: 'w-3.5 h-3.5' }),
           },
           legacy: {
             label: 'Legacy',
             color: 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/20',
-            icon: (0, a.jsx)(t$.Z, { className: 'w-3.5 h-3.5' }),
+            icon: (0, a.jsx)(t0.Z, { className: 'w-3.5 h-3.5' }),
           },
           quarantined: {
             label: 'Quarantined',
@@ -19689,7 +19596,7 @@
       var aP = s(8248);
       function aO() {
         let { user: e } = (0, N.aC)(),
-          { addOperation: t, updateOperation: s, getOperation: r } = s$(),
+          { addOperation: t, updateOperation: s, getOperation: r } = s0(),
           [n, i] = (0, l.useState)(null),
           [o, u] = (0, l.useState)(!1),
           [m, p] = (0, l.useState)(null),
@@ -19697,23 +19604,21 @@
           [b, f] = (0, l.useState)(!1),
           [v, j] = (0, l.useState)(null),
           [y, w] = (0, l.useState)(null),
-          [k, C] = (0, l.useState)(!1),
+          [C, k] = (0, l.useState)(!1),
           S = async () => {
             if (null == e ? void 0 : e.accountId) {
               (u(!0), p(null));
               try {
-                let t = localStorage.getItem('keimenon_token');
-                if (!t) throw Error('Not authenticated');
-                let s = await fetch(
+                let t = await (0, ep.ax)(
                   ''.concat(_.CT, '/api/v1/deduplication/stats?accountId=').concat(e.accountId),
-                  { headers: { Authorization: 'Bearer '.concat(t) } }
+                  {}
                 );
-                if (!s.ok) {
-                  let e = await s.json().catch(() => ({}));
+                if (!t.ok) {
+                  let e = await t.json().catch(() => ({}));
                   throw Error(e.error || 'Failed to fetch stats');
                 }
-                let a = await s.json();
-                (i(a), w(new Date()));
+                let s = await t.json();
+                (i(s), w(new Date()));
               } catch (t) {
                 (console.error('Failed to load stats:', t),
                   E.I.capture(
@@ -19761,10 +19666,10 @@
           }, [v, r]));
         let I = async () => {
             if (!(null == e ? void 0 : e.accountId)) return;
-            (C(!1), f(!0), p(null), g(null));
+            (k(!1), f(!0), p(null), g(null));
             let a = 'dedup-merge-'.concat(Date.now());
             (j(a),
-              (0, tg.Vo)('dedup-merge', 'start', { accountId: e.accountId, userId: e.userId }),
+              (0, tb.Vo)('dedup-merge', 'start', { accountId: e.accountId, userId: e.userId }),
               t({
                 id: a,
                 type: 'export',
@@ -19777,48 +19682,46 @@
               }));
             try {
               var l, r;
-              let t = localStorage.getItem('keimenon_token');
-              if (!t) throw Error('Not authenticated');
-              let n = await fetch(''.concat(_.CT, '/api/v1/deduplication/merge'), {
+              let t = await (0, ep.ax)(''.concat(_.CT, '/api/v1/deduplication/merge'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer '.concat(t) },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ accountId: e.accountId }),
               });
-              if (!n.ok) {
-                let e = await n.json().catch(() => ({}));
+              if (!t.ok) {
+                let e = await t.json().catch(() => ({}));
                 throw Error(e.error || 'Failed to consolidate similarity groups');
               }
-              let i = await n.json(),
-                o =
+              let n = await t.json(),
+                i =
                   null !==
                     (r =
-                      null !== (l = i.duplicatesConsolidated) && void 0 !== l
+                      null !== (l = n.duplicatesConsolidated) && void 0 !== l
                         ? l
-                        : i.duplicatesRemoved) && void 0 !== r
+                        : n.duplicatesRemoved) && void 0 !== r
                     ? r
                     : 0;
-              ((0, tg.Vo)('dedup-merge', 'success', {
+              ((0, tb.Vo)('dedup-merge', 'success', {
                 accountId: e.accountId,
-                mergedCount: i.mergedCount,
-                edgesRelinked: i.edgesRelinked,
-                duplicatesConsolidated: o,
+                mergedCount: n.mergedCount,
+                edgesRelinked: n.edgesRelinked,
+                duplicatesConsolidated: i,
               }),
                 s(a, {
                   status: 'done',
-                  description: 'Consolidated '.concat(i.mergedCount, ' similarity groups'),
+                  description: 'Consolidated '.concat(n.mergedCount, ' similarity groups'),
                   progress: 100,
                   completedAt: Date.now(),
                   stats: {
-                    mergedCount: i.mergedCount,
-                    edgesRelinked: i.edgesRelinked,
-                    duplicatesConsolidated: o,
+                    mergedCount: n.mergedCount,
+                    edgesRelinked: n.edgesRelinked,
+                    duplicatesConsolidated: i,
                   },
                 }),
                 await S(),
-                g('Successfully consolidated '.concat(i.mergedCount, ' similarity groups')));
+                g('Successfully consolidated '.concat(n.mergedCount, ' similarity groups')));
             } catch (t) {
               (console.error('Failed to consolidate similarity groups:', t),
-                (0, tg.Vo)('dedup-merge', 'error', { accountId: e.accountId, error: t.message }),
+                (0, tb.Vo)('dedup-merge', 'error', { accountId: e.accountId, error: t.message }),
                 E.I.capture(
                   t,
                   {
@@ -19861,7 +19764,7 @@
                       children: [
                         (0, a.jsx)('div', {
                           className: 'p-2 bg-blue-100 dark:bg-blue-900 rounded-lg',
-                          children: (0, a.jsx)(X.Z, {
+                          children: (0, a.jsx)(Y.Z, {
                             className: 'w-5 h-5 text-blue-600 dark:text-blue-400',
                           }),
                         }),
@@ -20049,7 +19952,7 @@
                         className: 'flex flex-col sm:flex-row gap-3',
                         children: [
                           (0, a.jsx)('button', {
-                            onClick: () => C(!0),
+                            onClick: () => k(!0),
                             disabled: b || 0 === n.duplicates,
                             className:
                               'flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors',
@@ -20062,7 +19965,7 @@
                                 })
                               : (0, a.jsxs)(a.Fragment, {
                                   children: [
-                                    (0, a.jsx)(ew.Z, { className: 'w-4 h-4' }),
+                                    (0, a.jsx)(eC.Z, { className: 'w-4 h-4' }),
                                     'Consolidate Similarity Groups (',
                                     n.duplicates,
                                     ')',
@@ -20124,9 +20027,9 @@
                 }),
               ],
             }),
-            (0, a.jsx)(aC, {
-              isOpen: k,
-              onClose: () => C(!1),
+            (0, a.jsx)(ak, {
+              isOpen: C,
+              onClose: () => k(!1),
               onConfirm: I,
               variant: 'warning',
               title: 'Consolidate Similarity Groups?',
@@ -20142,13 +20045,13 @@
               confirmText: 'Consolidate Groups',
               cancelText: 'Cancel',
               isProcessing: b,
-              onMinimize: b ? () => C(!1) : void 0,
+              onMinimize: b ? () => k(!1) : void 0,
               minimizeText: 'Continue in Background',
             }),
           ],
         });
       }
-      function az(e) {
+      function aR(e) {
         let { exportFormat: t } = e,
           [s, r] = (0, l.useState)(!1),
           [n, i] = (0, l.useState)(null),
@@ -20157,16 +20060,14 @@
             var e, t, s;
             try {
               (r(!0), i(null));
-              let e = localStorage.getItem('keimenon_token');
-              if (!e) throw Error('Not authenticated');
-              let t = await fetch(
+              let e = await (0, ep.ax)(
                 ''.concat(_.CT, '/api/v1/data/export?format=').concat(encodeURIComponent(o)),
-                { method: 'GET', headers: { Authorization: 'Bearer '.concat(e) } }
+                { method: 'GET' }
               );
-              if (!t.ok) {
-                let e = await t.json().catch(() => ({})),
+              if (!e.ok) {
+                let t = await e.json().catch(() => ({})),
                   s = E.I.capture(
-                    Error(e.error || 'Failed to export data'),
+                    Error(t.error || 'Failed to export data'),
                     {
                       domain: 'database',
                       operation: 'dataManagement.exportData',
@@ -20174,29 +20075,29 @@
                         component: 'ExportDataCard',
                         endpoint: '/api/v1/data/export',
                         format: o,
-                        statusCode: t.status,
-                        errorDetails: e,
+                        statusCode: e.status,
+                        errorDetails: t,
                       },
                     },
                     'error'
                   );
-                throw Error(s.userMessage || e.error || 'Failed to export data');
+                throw Error(s.userMessage || t.error || 'Failed to export data');
               }
-              let s = await t.blob(),
-                a = window.URL.createObjectURL(s),
-                l = document.createElement('a'),
-                n =
+              let t = await e.blob(),
+                s = window.URL.createObjectURL(t),
+                a = document.createElement('a'),
+                l =
                   (function (e) {
                     if (!e) return null;
                     let t = e.match(/filename="?([^"]+)"?/i);
                     return (null == t ? void 0 : t[1]) || null;
-                  })(t.headers.get('Content-Disposition')) || 'keimenon-export.'.concat(o);
-              ((l.href = a),
-                (l.download = n),
-                document.body.appendChild(l),
-                l.click(),
-                window.URL.revokeObjectURL(a),
-                document.body.removeChild(l));
+                  })(e.headers.get('Content-Disposition')) || 'keimenon-export.'.concat(o);
+              ((a.href = s),
+                (a.download = l),
+                document.body.appendChild(a),
+                a.click(),
+                window.URL.revokeObjectURL(s),
+                document.body.removeChild(a));
             } catch (l) {
               console.error('Failed to export data:', l);
               let a = l.message;
@@ -20219,7 +20120,7 @@
               children: [
                 (0, a.jsx)('div', {
                   className: 'flex-shrink-0 bg-blue-500/20 rounded-lg p-3',
-                  children: (0, a.jsx)(tW.Z, { className: 'w-6 h-6 text-blue-400' }),
+                  children: (0, a.jsx)(tH.Z, { className: 'w-6 h-6 text-blue-400' }),
                 }),
                 (0, a.jsxs)('div', {
                   className: 'flex-1',
@@ -20260,7 +20161,7 @@
           ],
         });
       }
-      var aR = s(7113);
+      var az = s(7113);
       let aU = [
         { id: 'openai', name: 'OpenAI', description: 'Used for GPT-4 and Embeddings' },
         { id: 'anthropic', name: 'Anthropic', description: 'Used for Claude 3 Opus/Sonnet' },
@@ -20268,135 +20169,131 @@
         { id: 'groq', name: 'Groq', description: 'Used for fast Llama and Mixtral inference' },
       ];
       function aB() {
-        let { user: e } = (0, N.aC)(),
-          [t, s] = (0, l.useState)({}),
-          [r, n] = (0, l.useState)({}),
-          [i, o] = (0, l.useState)({}),
-          [c, u] = (0, l.useState)({}),
-          [m, p] = (0, l.useState)({}),
-          [h, g] = (0, l.useState)({}),
-          [b, f] = (0, l.useState)(null),
-          [v, j] = (0, l.useState)(!0),
-          y = () => localStorage.getItem('keimenon_token');
+        let [e, t] = (0, l.useState)({}),
+          [s, r] = (0, l.useState)({}),
+          [n, i] = (0, l.useState)({}),
+          [o, c] = (0, l.useState)({}),
+          [u, m] = (0, l.useState)({}),
+          [p, h] = (0, l.useState)({}),
+          [g, b] = (0, l.useState)(null),
+          [f, v] = (0, l.useState)(!0),
+          j = () => localStorage.getItem('keimenon_token'),
+          N = async (e, t) => {
+            let s = await e.json().catch(() => ({})),
+              a =
+                'string' == typeof (null == s ? void 0 : s.error) && s.error.trim().length > 0
+                  ? s.error
+                  : t;
+            if ((null == s ? void 0 : s.code) === 'SETTINGS_SCHEMA_DRIFT') {
+              var l;
+              let e =
+                null == s
+                  ? void 0
+                  : null === (l = s.diagnostics) || void 0 === l
+                    ? void 0
+                    : l.remediation;
+              if ('string' == typeof e && e.trim().length > 0) return ''.concat(a, '. ').concat(e);
+            }
+            return a;
+          };
         (0, l.useEffect)(() => {
-          w();
+          y();
         }, []);
-        let w = async () => {
+        let y = async () => {
             try {
-              (j(!0), f(null));
-              let e = y();
-              if (!e) return;
-              let t = await fetch(''.concat(_.CT, '/api/v1/settings/api-keys'), {
-                headers: { Authorization: 'Bearer '.concat(e) },
-              });
-              if (!t.ok) throw Error('Failed to load API keys');
-              let s = await t.json(),
-                a = {};
-              for (let e of s.keys || []) a[e.provider] = e;
-              n(a);
+              if ((v(!0), b(null), !j())) return;
+              let e = await (0, ep.ax)(''.concat(_.CT, '/api/v1/settings/api-keys'));
+              if (!e.ok) throw Error(await N(e, 'Failed to load API keys'));
+              let t = await e.json(),
+                s = {};
+              for (let e of t.keys || []) s[e.provider] = e;
+              r(s);
             } catch (e) {
               (console.error('Failed to load API keys:', e),
-                f(e.message || 'Failed to load API keys'));
+                b(e.message || 'Failed to load API keys'));
             } finally {
-              j(!1);
+              v(!1);
             }
           },
-          k = async (e) => {
-            let s = t[e];
+          w = async (t) => {
+            let s = e[t];
             if (s) {
-              (u((t) => ({ ...t, [e]: !0 })), p((t) => ({ ...t, [e]: null })));
+              (c((e) => ({ ...e, [t]: !0 })), m((e) => ({ ...e, [t]: null })));
               try {
-                let t = y();
-                if (!t) throw Error('Not authenticated');
-                let a = await fetch(''.concat(_.CT, '/api/v1/settings/api-keys/test'), {
+                if (!j()) throw Error('Not authenticated');
+                let e = await (0, ep.ax)(''.concat(_.CT, '/api/v1/settings/api-keys/test'), {
                     method: 'POST',
-                    headers: {
-                      Authorization: 'Bearer '.concat(t),
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ provider: e, apiKey: s }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider: t, apiKey: s }),
                   }),
-                  l = await a.json();
-                p((t) => ({ ...t, [e]: { valid: l.valid, error: l.error } }));
-              } catch (t) {
-                p((s) => ({ ...s, [e]: { valid: !1, error: t.message || 'Test failed' } }));
+                  a = await e.json();
+                m((e) => ({ ...e, [t]: { valid: a.valid, error: a.error } }));
+              } catch (e) {
+                m((s) => ({ ...s, [t]: { valid: !1, error: e.message || 'Test failed' } }));
               } finally {
-                u((t) => ({ ...t, [e]: !1 }));
+                c((e) => ({ ...e, [t]: !1 }));
               }
             }
           },
-          C = async (e) => {
-            let a = t[e];
+          C = async (s) => {
+            let a = e[s];
             if (a) {
-              o((t) => ({ ...t, [e]: !0 }));
+              i((e) => ({ ...e, [s]: !0 }));
               try {
-                let t = y();
-                if (!t) throw Error('Not authenticated');
-                let l = await fetch(''.concat(_.CT, '/api/v1/settings/api-keys'), {
+                if (!j()) throw Error('Not authenticated');
+                let e = await (0, ep.ax)(''.concat(_.CT, '/api/v1/settings/api-keys'), {
                   method: 'POST',
-                  headers: {
-                    Authorization: 'Bearer '.concat(t),
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({ provider: e, apiKey: a, skipValidation: !1 }),
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ provider: s, apiKey: a, skipValidation: !1 }),
                 });
-                if (!l.ok) {
-                  let e = await l.json();
-                  throw Error(e.error || 'Failed to save API key');
-                }
-                let r = await l.json();
-                (n((t) => ({
-                  ...t,
-                  [e]: {
-                    provider: e,
-                    hint: r.hint || a.slice(-4),
+                if (!e.ok) throw Error(await N(e, 'Failed to save API key'));
+                let l = await e.json();
+                (r((e) => ({
+                  ...e,
+                  [s]: {
+                    provider: s,
+                    hint: l.hint || a.slice(-4),
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                   },
                 })),
-                  s((t) => ({ ...t, [e]: '' })),
-                  g((t) => ({ ...t, [e]: !1 })),
-                  p((t) => ({ ...t, [e]: null })));
-              } catch (t) {
-                (console.error('Failed to save key for '.concat(e), t),
-                  p((s) => ({ ...s, [e]: { valid: !1, error: t.message } })));
+                  t((e) => ({ ...e, [s]: '' })),
+                  h((e) => ({ ...e, [s]: !1 })),
+                  m((e) => ({ ...e, [s]: null })));
+              } catch (e) {
+                (console.error('Failed to save key for '.concat(s), e),
+                  m((t) => ({ ...t, [s]: { valid: !1, error: e.message } })));
               } finally {
-                o((t) => ({ ...t, [e]: !1 }));
+                i((e) => ({ ...e, [s]: !1 }));
               }
             }
           },
-          S = async (e) => {
+          k = async (e) => {
             if (confirm('Are you sure you want to delete this API Key?')) {
-              o((t) => ({ ...t, [e]: !0 }));
+              i((t) => ({ ...t, [e]: !0 }));
               try {
-                let t = y();
-                if (!t) throw Error('Not authenticated');
-                if (
-                  !(
-                    await fetch(''.concat(_.CT, '/api/v1/settings/api-keys/').concat(e), {
-                      method: 'DELETE',
-                      headers: { Authorization: 'Bearer '.concat(t) },
-                    })
-                  ).ok
-                )
-                  throw Error('Failed to delete API key');
-                (n((t) => {
+                if (!j()) throw Error('Not authenticated');
+                let s = await (0, ep.ax)(''.concat(_.CT, '/api/v1/settings/api-keys/').concat(e), {
+                  method: 'DELETE',
+                });
+                if (!s.ok) throw Error(await N(s, 'Failed to delete API key'));
+                (r((t) => {
                   let s = { ...t };
                   return (delete s[e], s);
                 }),
-                  s((t) => ({ ...t, [e]: '' })),
-                  p((t) => ({ ...t, [e]: null })));
+                  t((t) => ({ ...t, [e]: '' })),
+                  m((t) => ({ ...t, [e]: null })));
               } catch (t) {
                 console.error('Failed to delete key for '.concat(e), t);
               } finally {
-                o((t) => ({ ...t, [e]: !1 }));
+                i((t) => ({ ...t, [e]: !1 }));
               }
             }
           },
-          I = (e) => {
-            g((t) => ({ ...t, [e]: !t[e] }));
+          S = (e) => {
+            h((t) => ({ ...t, [e]: !t[e] }));
           };
-        return v
+        return f
           ? (0, a.jsx)('div', {
               className: 'flex items-center justify-center py-12',
               children: (0, a.jsxs)('div', {
@@ -20413,7 +20310,7 @@
                 (0, a.jsxs)('div', {
                   className: 'flex items-center gap-2 mb-6',
                   children: [
-                    (0, a.jsx)(tH.Z, { className: 'w-5 h-5 text-purple-400' }),
+                    (0, a.jsx)(tX.Z, { className: 'w-5 h-5 text-purple-400' }),
                     (0, a.jsx)('h2', {
                       className: 'text-lg font-semibold text-slate-100',
                       children: 'API Keys (BYOK)',
@@ -20426,17 +20323,17 @@
                   children:
                     'Your API keys are encrypted with AES-256-GCM and stored securely on the server. Keys are validated with the provider before being saved.',
                 }),
-                b &&
+                g &&
                   (0, a.jsxs)('div', {
                     className:
                       'mb-4 px-3 py-2 bg-red-600/10 border border-red-500/30 rounded text-sm text-red-300 flex items-center gap-2',
-                    children: [(0, a.jsx)(d.Z, { className: 'w-4 h-4 flex-shrink-0' }), b],
+                    children: [(0, a.jsx)(d.Z, { className: 'w-4 h-4 flex-shrink-0' }), g],
                   }),
                 (0, a.jsx)('div', {
                   className: 'grid gap-4',
-                  children: aU.map((e) => {
-                    let l = r[e.id],
-                      n = m[e.id];
+                  children: aU.map((l) => {
+                    let r = s[l.id],
+                      i = u[l.id];
                     return (0, a.jsxs)(
                       'div',
                       {
@@ -20450,22 +20347,22 @@
                                 children: [
                                   (0, a.jsx)('h3', {
                                     className: 'text-sm font-medium text-slate-200',
-                                    children: e.name,
+                                    children: l.name,
                                   }),
                                   (0, a.jsx)('p', {
                                     className: 'text-xs text-slate-500',
-                                    children: e.description,
+                                    children: l.description,
                                   }),
                                 ],
                               }),
-                              l
+                              r
                                 ? (0, a.jsxs)('div', {
                                     className:
                                       'flex items-center gap-1.5 px-2 py-1 bg-green-500/10 text-green-400 rounded text-xs font-medium border border-green-500/20',
                                     children: [
                                       (0, a.jsx)(eV.Z, { className: 'w-3.5 h-3.5' }),
                                       (0, a.jsxs)('span', {
-                                        children: ['Stored (••••', l.hint, ')'],
+                                        children: ['Stored (••••', r.hint, ')'],
                                       }),
                                     ],
                                   })
@@ -20479,15 +20376,15 @@
                                   }),
                             ],
                           }),
-                          n &&
+                          i &&
                             (0, a.jsx)('div', {
                               className:
                                 'mb-3 px-3 py-2 rounded text-xs flex items-center gap-2 '.concat(
-                                  n.valid
+                                  i.valid
                                     ? 'bg-green-600/10 border border-green-500/30 text-green-300'
                                     : 'bg-red-600/10 border border-red-500/30 text-red-300'
                                 ),
-                              children: n.valid
+                              children: i.valid
                                 ? (0, a.jsxs)(a.Fragment, {
                                     children: [
                                       (0, a.jsx)(eV.Z, { className: 'w-3.5 h-3.5 flex-shrink-0' }),
@@ -20498,7 +20395,7 @@
                                     children: [
                                       (0, a.jsx)(d.Z, { className: 'w-3.5 h-3.5 flex-shrink-0' }),
                                       ' ',
-                                      n.error || 'Validation failed',
+                                      i.error || 'Validation failed',
                                     ],
                                   }),
                             }),
@@ -20509,64 +20406,64 @@
                                 className: 'relative flex-1',
                                 children: [
                                   (0, a.jsx)('input', {
-                                    type: h[e.id] ? 'text' : 'password',
-                                    value: t[e.id] || '',
-                                    onChange: (t) => s((s) => ({ ...s, [e.id]: t.target.value })),
-                                    placeholder: l
+                                    type: p[l.id] ? 'text' : 'password',
+                                    value: e[l.id] || '',
+                                    onChange: (e) => t((t) => ({ ...t, [l.id]: e.target.value })),
+                                    placeholder: r
                                       ? 'Enter new key to replace'
-                                      : 'Enter your '.concat(e.name, ' API Key'),
+                                      : 'Enter your '.concat(l.name, ' API Key'),
                                     className:
                                       'w-full pl-3 pr-10 py-2 bg-slate-900/50 border border-slate-700 rounded text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all font-mono',
                                   }),
                                   (0, a.jsx)('button', {
-                                    onClick: () => I(e.id),
+                                    onClick: () => S(l.id),
                                     className:
                                       'absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-300 transition-colors',
-                                    children: h[e.id]
-                                      ? (0, a.jsx)(eE.Z, { className: 'w-4 h-4' })
-                                      : (0, a.jsx)(ev.Z, { className: 'w-4 h-4' }),
+                                    children: p[l.id]
+                                      ? (0, a.jsx)(eM.Z, { className: 'w-4 h-4' })
+                                      : (0, a.jsx)(ej.Z, { className: 'w-4 h-4' }),
                                   }),
                                 ],
                               }),
                               (0, a.jsxs)('button', {
-                                onClick: () => k(e.id),
-                                disabled: c[e.id] || !t[e.id],
+                                onClick: () => w(l.id),
+                                disabled: o[l.id] || !e[l.id],
                                 className:
                                   'flex items-center gap-1.5 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
                                 title: 'Test key validity',
                                 children: [
-                                  c[e.id]
+                                  o[l.id]
                                     ? (0, a.jsx)(x.Z, { className: 'w-4 h-4 animate-spin' })
-                                    : (0, a.jsx)(aR.Z, { className: 'w-4 h-4' }),
+                                    : (0, a.jsx)(az.Z, { className: 'w-4 h-4' }),
                                   'Test',
                                 ],
                               }),
                               (0, a.jsxs)('button', {
-                                onClick: () => C(e.id),
-                                disabled: i[e.id] || !t[e.id],
+                                onClick: () => C(l.id),
+                                disabled: n[l.id] || !e[l.id],
                                 className:
                                   'flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
                                 children: [
-                                  i[e.id]
+                                  n[l.id]
                                     ? (0, a.jsx)(x.Z, { className: 'w-4 h-4 animate-spin' })
                                     : (0, a.jsx)(eP.Z, { className: 'w-4 h-4' }),
                                   'Save',
                                 ],
                               }),
-                              l &&
+                              r &&
                                 (0, a.jsx)('button', {
-                                  onClick: () => S(e.id),
-                                  disabled: i[e.id],
+                                  onClick: () => k(l.id),
+                                  disabled: n[l.id],
                                   className:
                                     'p-2 text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded transition-colors',
                                   title: 'Remove Key',
-                                  children: (0, a.jsx)(ew.Z, { className: 'w-4 h-4' }),
+                                  children: (0, a.jsx)(eC.Z, { className: 'w-4 h-4' }),
                                 }),
                             ],
                           }),
                         ],
                       },
-                      e.id
+                      l.id
                     );
                   }),
                 }),
@@ -20600,28 +20497,24 @@
               [u, x] = (0, l.useState)(!1),
               m = (0, l.useRef)(null),
               p = (0, l.useCallback)(async () => {
-                let e = (0, N.LP)();
-                if (!e) {
+                if (!(0, N.LP)()) {
                   (t({}), a(null), n(!1));
                   return;
                 }
                 m.current && m.current.abort();
-                let s = new AbortController();
-                m.current = s;
+                let e = new AbortController();
+                m.current = e;
                 try {
                   (n(!0), o(null));
-                  let l = setTimeout(() => s.abort(), 1e4),
-                    r = await fetch(''.concat(_.CT, '/api/v1/settings'), {
-                      headers: { Authorization: 'Bearer '.concat(e) },
-                      signal: s.signal,
-                    });
-                  if ((clearTimeout(l), !r.ok)) {
-                    let e = await r.json().catch(() => ({}));
-                    throw Error(e.error || 'Failed to fetch settings ('.concat(r.status, ')'));
+                  let s = setTimeout(() => e.abort(), 1e4),
+                    l = await (0, ep.ax)(''.concat(_.CT, '/api/v1/settings'), { signal: e.signal });
+                  if ((clearTimeout(s), !l.ok)) {
+                    let e = await eh(l, 'Failed to fetch settings ('.concat(l.status, ')'));
+                    throw Error(e);
                   }
-                  let i = await r.json();
-                  if (!i.success || !i.settings) throw Error('Invalid settings response');
-                  (t(i.settings), a(i.metadata));
+                  let r = await l.json();
+                  if (!r.success || !r.settings) throw Error('Invalid settings response');
+                  (t(r.settings), a(r.metadata));
                 } catch (e) {
                   if ('AbortError' === e.name) {
                     console.debug('[useSettings] Fetch aborted');
@@ -20661,27 +20554,23 @@
                 d((s) => ({ ...s, [e]: t }));
               }, []),
               b = (0, l.useCallback)(async () => {
-                let e = (0, N.LP)();
-                if (e && 0 !== Object.keys(c).length)
+                if ((0, N.LP)() && 0 !== Object.keys(c).length)
                   try {
                     (x(!0), o(null));
-                    let t = Object.entries(c).map(async (t) => {
-                      let [s, a] = t,
-                        l = await fetch(''.concat(_.CT, '/api/v1/settings/').concat(s), {
+                    let e = Object.entries(c).map(async (e) => {
+                      let [t, s] = e,
+                        a = await (0, ep.ax)(''.concat(_.CT, '/api/v1/settings/').concat(t), {
                           method: 'PATCH',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: 'Bearer '.concat(e),
-                          },
-                          body: JSON.stringify({ value: a }),
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ value: s }),
                         });
-                      if (!l.ok) {
-                        let e = await l.json();
-                        throw Error(e.error || 'Failed to update setting');
+                      if (!a.ok) {
+                        let e = await eh(a, 'Failed to update setting');
+                        throw Error(e);
                       }
-                      return l.json();
+                      return a.json();
                     });
-                    (await Promise.all(t), await p(), d({}));
+                    (await Promise.all(e), await p(), d({}));
                   } catch (e) {
                     (console.error('Error applying changes:', e),
                       o(
@@ -20706,18 +20595,15 @@
               }, []),
               v = (0, l.useCallback)(
                 async (e) => {
-                  let t = (0, N.LP)();
-                  if (t)
+                  if ((0, N.LP)())
                     try {
-                      if (
-                        !(
-                          await fetch(''.concat(_.CT, '/api/v1/settings/').concat(e), {
-                            method: 'DELETE',
-                            headers: { Authorization: 'Bearer '.concat(t) },
-                          })
-                        ).ok
-                      )
-                        throw Error('Failed to reset setting');
+                      let t = await (0, ep.ax)(''.concat(_.CT, '/api/v1/settings/').concat(e), {
+                        method: 'DELETE',
+                      });
+                      if (!t.ok) {
+                        let e = await eh(t, 'Failed to reset setting');
+                        throw Error(e);
+                      }
                       (await p(),
                         d((t) => {
                           let s = { ...t };
@@ -20769,7 +20655,7 @@
             };
           })(),
           { user: w } = (0, N.aC)(),
-          [k, C] = (0, l.useState)(!1),
+          [C, k] = (0, l.useState)(!1),
           [S, I] = (0, l.useState)(null),
           {
             history: M,
@@ -20782,20 +20668,22 @@
             return (
               (0, l.useEffect)(() => {
                 (async function () {
-                  let t = (0, N.LP)();
-                  if (!t || !e) {
+                  if (!(0, N.LP)() || !e) {
                     s([]);
                     return;
                   }
                   try {
                     (r(!0), i(null));
-                    let a = await fetch(''.concat(_.CT, '/api/v1/settings/history/').concat(e), {
-                      headers: { Authorization: 'Bearer '.concat(t) },
-                    });
-                    if (!a.ok) throw Error('Failed to fetch history');
-                    let l = await a.json();
-                    if (!l.success || !l.history) throw Error('Invalid history response');
-                    s(l.history);
+                    let t = await (0, ep.ax)(
+                      ''.concat(_.CT, '/api/v1/settings/history/').concat(e)
+                    );
+                    if (!t.ok) {
+                      let e = await eh(t, 'Failed to fetch history');
+                      throw Error(e);
+                    }
+                    let a = await t.json();
+                    if (!a.success || !a.history) throw Error('Invalid history response');
+                    s(a.history);
                   } catch (t) {
                     (console.error('Error fetching history:', t),
                       i(
@@ -20819,7 +20707,7 @@
               }, [e]),
               { history: t, loading: a, error: n }
             );
-          })(k ? S : null),
+          })(C ? S : null),
           { categoryId: T, sectionId: A } = (0, l.useMemo)(() => {
             if (!s) return { categoryId: null, sectionId: null };
             let e = s.split('_');
@@ -20838,10 +20726,10 @@
           O = (e, t) => {
             g(e, t);
           },
-          z = (e) => {
+          R = (e) => {
             v(e);
           },
-          R = async () => {
+          z = async () => {
             await b();
           },
           U = null !== (t = j('export_format')) && void 0 !== t ? t : 'json';
@@ -20926,10 +20814,10 @@
                                 ],
                               }),
                               (0, a.jsxs)('button', {
-                                onClick: () => C(!k),
+                                onClick: () => k(!C),
                                 className:
                                   'px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-sm font-medium flex items-center gap-2 transition-colors',
-                                children: [(0, a.jsx)(em.Z, { className: 'w-4 h-4' }), 'History'],
+                                children: [(0, a.jsx)(ex.Z, { className: 'w-4 h-4' }), 'History'],
                               }),
                             ],
                           }),
@@ -20965,12 +20853,12 @@
                                       className:
                                         'px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50',
                                       children: [
-                                        (0, a.jsx)(ec.Z, { className: 'w-4 h-4' }),
+                                        (0, a.jsx)(eo.Z, { className: 'w-4 h-4' }),
                                         'Revert',
                                       ],
                                     }),
                                     (0, a.jsx)('button', {
-                                      onClick: R,
+                                      onClick: z,
                                       disabled: p,
                                       className:
                                         'px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50',
@@ -21014,7 +20902,7 @@
                             'deduplication' === A && 'data' === T && (0, a.jsx)(aO, {}),
                             'export' === A &&
                               'import_export' === T &&
-                              (0, a.jsx)(az, { exportFormat: U }),
+                              (0, a.jsx)(aR, { exportFormat: U }),
                             'api_keys' === A && 'integrations' === T && (0, a.jsx)(aB, {}),
                             'modals' === A &&
                               'debug' === T &&
@@ -21040,13 +20928,13 @@
                                   {
                                     className: l ? 'ring-2 ring-yellow-500/50 rounded-lg' : '',
                                     onClick: () => {
-                                      (null == r || r(e.id), k && I(e.id));
+                                      (null == r || r(e.id), C && I(e.id));
                                     },
                                     children: (0, a.jsx)(ah, {
                                       control: e,
                                       effectiveValue: { ...t, value: s },
                                       onChange: (t) => O(e.id, t),
-                                      onReset: () => z(e.id),
+                                      onReset: () => R(e.id),
                                     }),
                                   },
                                   e.id
@@ -21079,7 +20967,7 @@
                         }),
                       ],
                     }),
-                    k &&
+                    C &&
                       (0, a.jsx)('div', {
                         className:
                           'fixed inset-y-0 right-0 w-96 bg-slate-900 border-l border-slate-800 shadow-2xl overflow-y-auto z-50',
@@ -21094,10 +20982,10 @@
                                   children: 'Change History',
                                 }),
                                 (0, a.jsx)('button', {
-                                  onClick: () => C(!1),
+                                  onClick: () => k(!1),
                                   className:
                                     'p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-slate-300',
-                                  children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5' }),
+                                  children: (0, a.jsx)(eo.Z, { className: 'w-5 h-5' }),
                                 }),
                               ],
                             }),
@@ -21174,7 +21062,7 @@
                               (0, a.jsxs)('div', {
                                 className: 'text-center py-8',
                                 children: [
-                                  (0, a.jsx)(ep.Z, {
+                                  (0, a.jsx)(em.Z, {
                                     className: 'w-8 h-8 text-slate-700 mx-auto mb-2',
                                   }),
                                   (0, a.jsx)('p', {
@@ -21206,7 +21094,7 @@
                                               className:
                                                 'text-xs text-slate-500 flex items-center gap-1',
                                               children: [
-                                                (0, a.jsx)(ep.Z, { className: 'w-3 h-3' }),
+                                                (0, a.jsx)(em.Z, { className: 'w-3 h-3' }),
                                                 new Date(e.changedAt).toLocaleString(),
                                               ],
                                             }),
@@ -21318,7 +21206,7 @@
           }),
         });
       }
-      function aY(e) {
+      function aH(e) {
         let { onConversationSelect: t, onCreateConversation: s, className: r = '' } = e,
           [n, o] = (0, l.useState)([]),
           [c, d] = (0, l.useState)(new Map()),
@@ -21330,9 +21218,9 @@
           y = (0, l.useRef)(null),
           w = tr(y, 300);
         (0, l.useEffect)(() => {
-          k();
+          C();
         }, []);
-        let k = async () => {
+        let C = async () => {
             try {
               (m(!0), h(null));
               let [e, t] = await Promise.all([ad.listConversations(), ad.listPrincipals()]);
@@ -21346,7 +21234,7 @@
               m(!1);
             }
           },
-          C = (0, l.useCallback)(
+          k = (0, l.useCallback)(
             (e) => {
               (b(e.id), null == t || t(e));
             },
@@ -21361,9 +21249,9 @@
               conversations: I,
               principals: c,
               selectedConversationId: g,
-              handleConversationClick: C,
+              handleConversationClick: k,
             }),
-            [I, c, g, C]
+            [I, c, g, k]
           );
         return u
           ? (0, a.jsx)('div', {
@@ -21378,7 +21266,7 @@
                   children: [
                     (0, a.jsx)('p', { children: p }),
                     (0, a.jsx)('button', {
-                      onClick: k,
+                      onClick: C,
                       className: 'mt-2 text-purple-400 hover:text-purple-300 underline',
                       children: 'Retry',
                     }),
@@ -21395,7 +21283,7 @@
                       (0, a.jsxs)('div', {
                         className: 'flex items-center gap-2',
                         children: [
-                          (0, a.jsx)($.Z, { className: 'w-4 h-4 text-blue-400' }),
+                          (0, a.jsx)(Q.Z, { className: 'w-4 h-4 text-blue-400' }),
                           (0, a.jsx)('h3', {
                             className: 'text-sm font-semibold text-slate-200',
                             children: 'Conversations',
@@ -21411,7 +21299,7 @@
                         className:
                           'p-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded transition-colors',
                         title: 'Start New Conversation',
-                        children: (0, a.jsx)(ei.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(en.Z, { className: 'w-4 h-4' }),
                       }),
                     ],
                   }),
@@ -21443,7 +21331,7 @@
                             className:
                               'flex flex-col items-center justify-center h-full p-6 text-center',
                             children: [
-                              (0, a.jsx)($.Z, { className: 'w-12 h-12 text-slate-600 mb-4' }),
+                              (0, a.jsx)(Q.Z, { className: 'w-12 h-12 text-slate-600 mb-4' }),
                               (0, a.jsx)('p', {
                                 className: 'text-sm text-slate-400 mb-2',
                                 children: j ? 'No matching conversations' : 'No conversations yet',
@@ -21499,7 +21387,7 @@
                 ],
               });
       }
-      let aH = {
+      let aY = {
           summarize: {
             icon: (0, a.jsx)(eF.Z, { className: 'w-3.5 h-3.5' }),
             color: 'text-green-400 bg-green-500/10',
@@ -21544,7 +21432,7 @@
               selected: r,
               onClick: i,
             } = e,
-            o = aH[t.purpose] || aH.general;
+            o = aY[t.purpose] || aY.general;
           return (0, a.jsxs)('div', {
             onClick: i,
             className:
@@ -21676,7 +21564,7 @@
                       }),
                       (0, a.jsx)('div', {
                         className: 'grid grid-cols-4 gap-2',
-                        children: Object.entries(aH).map((e) => {
+                        children: Object.entries(aY).map((e) => {
                           let [t, s] = e;
                           return (0, a.jsxs)(
                             'button',
@@ -21763,10 +21651,10 @@
         a4 = s(5015);
       let a1 = new Set(['completed', 'failed', 'cancelled']);
       async function a2(e) {
-        return (await e_.hi.post('/agent/tasks', e)).data.task;
+        return (await ep.hi.post('/agent/tasks', e)).data.task;
       }
       async function a5(e) {
-        return (await e_.hi.get('/agent/tasks/'.concat(e))).data;
+        return (await ep.hi.get('/agent/tasks/'.concat(e))).data;
       }
       async function a3(e, t) {
         var s, a, l;
@@ -21811,31 +21699,31 @@
                       let e;
                       switch (l) {
                         case 'message':
-                          e = await (0, e_.qp)(s);
+                          e = await (0, ep.qp)(s);
                           break;
                         case 'source':
-                          e = await (0, e_.Ni)(s);
+                          e = await (0, ep.Ni)(s);
                           break;
                         case 'code':
-                          e = await (0, e_.U0)(s);
+                          e = await (0, ep.U0)(s);
                           break;
                         case 'conversation':
-                          e = await (0, e_.Zo)(s);
+                          e = await (0, ep.Zo)(s);
                           break;
                         case 'lexeme':
-                          e = await (0, e_.u1)(s);
+                          e = await (0, ep.u1)(s);
                           break;
                         case 'phrase':
-                          e = await (0, e_._A)(s);
+                          e = await (0, ep._A)(s);
                           break;
                         case 'topic':
-                          e = await (0, e_.Zd)(s);
+                          e = await (0, ep.Zd)(s);
                           break;
                         case 'verified-source':
-                          e = await (0, e_.Nm)(s);
+                          e = await (0, ep.Nm)(s);
                           break;
                         case 'verified-claim':
-                          e = await (0, e_.IU)(s);
+                          e = await (0, ep.IU)(s);
                           break;
                         default:
                           throw Error('Unknown content type: '.concat(l));
@@ -21889,11 +21777,11 @@
           [f, v] = (0, l.useState)(!1),
           [j, N] = (0, l.useState)(null),
           [y, w] = (0, l.useState)(null),
-          [k, C] = (0, l.useState)(null),
+          [C, k] = (0, l.useState)(null),
           S = (0, l.useRef)(null),
           I = (0, l.useCallback)(async () => {
             if (o && 'Topic' === o.type) {
-              (v(!0), C(null), w(null), N(null));
+              (v(!0), k(null), w(null), N(null));
               try {
                 var e, t, s, a, l, r, n, i;
                 let c = await a2({
@@ -21954,7 +21842,7 @@
                   credibilityScore: x.credibilityScore,
                 });
               } catch (e) {
-                C(e.message || 'Verification failed');
+                k(e.message || 'Verification failed');
               } finally {
                 v(!1);
               }
@@ -22071,8 +21959,8 @@
                               N,
                               y,
                               w,
-                              k,
                               C,
+                              k,
                               S,
                               I,
                               E,
@@ -22149,11 +22037,11 @@
                                     ? void 0
                                     : y.email,
                               platform:
-                                (null === (C = e.data) || void 0 === C
+                                (null === (k = e.data) || void 0 === k
                                   ? void 0
-                                  : null === (k = C.metadata) || void 0 === k
+                                  : null === (C = k.metadata) || void 0 === C
                                     ? void 0
-                                    : k.platform) ||
+                                    : C.platform) ||
                                 (null === (E = e.data) || void 0 === E
                                   ? void 0
                                   : null === (I = E.metadata) || void 0 === I
@@ -22169,7 +22057,7 @@
                                     ? void 0
                                     : M.purpose,
                             };
-                            return (0, eM.F)(D, 50);
+                            return (0, eZ.F)(D, 50);
                           })(o),
                         }),
                         (0, a.jsx)('p', { className: 'text-sm text-slate-400', children: o.type }),
@@ -22180,7 +22068,7 @@
                       className:
                         'ml-3 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors',
                       'aria-label': 'Close panel',
-                      children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5' }),
+                      children: (0, a.jsx)(eo.Z, { className: 'w-5 h-5' }),
                     }),
                   ],
                 }),
@@ -22302,12 +22190,12 @@
                             ],
                           }),
                         }),
-                      k &&
+                      C &&
                         (0, a.jsx)('div', {
                           className: 'mt-3 p-3 bg-red-600/10 border border-red-500/30 rounded-lg',
                           children: (0, a.jsx)('p', {
                             className: 'text-sm text-red-300',
-                            children: k,
+                            children: C,
                           }),
                         }),
                       y &&
@@ -22550,7 +22438,7 @@
                         children: [(0, a.jsx)(aZ.Z, { className: 'w-3.5 h-3.5' }), 'Copied!'],
                       })
                     : (0, a.jsxs)(a.Fragment, {
-                        children: [(0, a.jsx)(ey.Z, { className: 'w-3.5 h-3.5' }), 'Copy'],
+                        children: [(0, a.jsx)(ew.Z, { className: 'w-3.5 h-3.5' }), 'Copy'],
                       }),
                 }),
               ],
@@ -22583,7 +22471,7 @@
                 (0, a.jsxs)('span', {
                   className:
                     'px-2 py-1 rounded text-xs font-medium bg-slate-700 text-slate-200 border border-slate-600 flex items-center gap-1',
-                  children: [(0, a.jsx)(eN.Z, { className: 'w-3 h-3' }), 'Lexeme'],
+                  children: [(0, a.jsx)(ey.Z, { className: 'w-3 h-3' }), 'Lexeme'],
                 }),
                 t.pos &&
                   (0, a.jsx)('span', {
@@ -22623,7 +22511,7 @@
                 (0, a.jsxs)('span', {
                   className:
                     'px-2 py-1 rounded text-xs font-medium bg-orange-600/20 text-orange-300 border border-orange-500/30 flex items-center gap-1',
-                  children: [(0, a.jsx)(eo.Z, { className: 'w-3 h-3' }), 'Phrase'],
+                  children: [(0, a.jsx)(ei.Z, { className: 'w-3 h-3' }), 'Phrase'],
                 }),
                 (0, a.jsx)('span', {
                   className: 'px-2 py-1 rounded text-xs font-medium border '.concat(
@@ -22821,7 +22709,7 @@
                       rel: 'noopener noreferrer',
                       className:
                         'text-purple-400 hover:text-purple-300 text-sm flex items-center gap-1 break-all',
-                      children: [(0, a.jsx)(W.Z, { className: 'w-3 h-3 flex-shrink-0' }), s.url],
+                      children: [(0, a.jsx)(G.Z, { className: 'w-3 h-3 flex-shrink-0' }), s.url],
                     }),
                   ],
                 }),
@@ -22900,9 +22788,9 @@
                   icon: eV.Z,
                 };
               case 'disputed':
-                return { color: 'bg-amber-600/20 text-amber-300 border-amber-500/30', icon: t3.Z };
+                return { color: 'bg-amber-600/20 text-amber-300 border-amber-500/30', icon: t6.Z };
               case 'refuted':
-                return { color: 'bg-red-600/20 text-red-300 border-red-500/30', icon: ec.Z };
+                return { color: 'bg-red-600/20 text-red-300 border-red-500/30', icon: eo.Z };
               default:
                 return { color: 'bg-slate-600/20 text-slate-300 border-slate-500/30', icon: eF.Z };
             }
@@ -23004,19 +22892,19 @@
               case 'user_upload':
                 return {
                   label: 'File Upload',
-                  icon: ee.Z,
+                  icon: $.Z,
                   color: 'bg-blue-600/20 text-blue-300 border-blue-500/30',
                 };
               case 'chat_import':
                 return {
                   label: 'Chat Import',
-                  icon: $.Z,
+                  icon: Q.Z,
                   color: 'bg-purple-600/20 text-purple-300 border-purple-500/30',
                 };
               case 'agent_import':
                 return {
                   label: 'Agent Import',
-                  icon: tX.Z,
+                  icon: tQ.Z,
                   color: 'bg-amber-600/20 text-amber-300 border-amber-500/30',
                 };
               case 'agent_generated':
@@ -23028,7 +22916,7 @@
               case 'system_seed':
                 return {
                   label: 'System',
-                  icon: X.Z,
+                  icon: Y.Z,
                   color: 'bg-slate-600/20 text-slate-300 border-slate-500/30',
                 };
               case 'migrated':
@@ -23057,7 +22945,7 @@
                 return {
                   label: 'Unverified',
                   color: 'bg-amber-600/20 text-amber-300 border-amber-500/30',
-                  icon: tX.Z,
+                  icon: tQ.Z,
                 };
               case 'verified_source':
                 return {
@@ -23465,41 +23353,41 @@
           ],
         });
       }
-      (X.Z, tX.Z, ev.Z, tG.Z, tK.Z, X.Z);
+      (Y.Z, tQ.Z, ej.Z, tW.Z, tq.Z, Y.Z);
       let lu = {
         general: {
           id: 'general',
           label: 'General',
-          icon: tX.Z,
+          icon: tQ.Z,
           fields: ['language', 'timezone', 'dateFormat'],
         },
         privacy: {
           id: 'privacy',
           label: 'Privacy',
-          icon: ev.Z,
+          icon: ej.Z,
           fields: ['analytics', 'dataSharingOptIn', 'visibilityLevel'],
         },
         notifications: {
           id: 'notifications',
           label: 'Notifications',
-          icon: tG.Z,
+          icon: tW.Z,
           fields: ['emailNotifications', 'pushNotifications', 'notificationFrequency'],
         },
         appearance: {
           id: 'appearance',
           label: 'Appearance',
-          icon: tK.Z,
+          icon: tq.Z,
           fields: ['theme', 'primaryColor', 'fontSize'],
         },
         dataStorage: {
           id: 'dataStorage',
           label: 'Data & Storage',
-          icon: X.Z,
+          icon: Y.Z,
           fields: ['autoSave', 'defaultFileFormat', 'cacheSize'],
         },
       };
       function lx() {
-        let { shellMode: e, keimenonMode: t } = (0, et.St)(),
+        let { shellMode: e, keimenonMode: t } = (0, ee.St)(),
           { user: s } = (0, N.aC)(),
           [r, n] = (0, l.useState)(null),
           [i, o] = (0, l.useState)(null),
@@ -23508,14 +23396,14 @@
           d(!0);
           try {
             if ('settings' === t && r && (null == s ? void 0 : s.accountId)) {
-              let e = await (0, e_.wv)(s.accountId),
+              let e = await (0, ep.wv)(s.accountId),
                 t = Object.values(lu).find((e) => e.id === r),
                 a = (null == t ? void 0 : t.fields) || [],
                 l = (null == e ? void 0 : e.settings) || {},
                 n = a.reduce((e, t) => (l[t] && (e[t] = l[t]), e), {});
               o({ [r]: n });
             } else if ('dashboard' === t) {
-              let e = await (0, e_.w3)();
+              let e = await (0, ep.w3)();
               o([
                 {
                   title: 'Active Accounts',
@@ -23562,7 +23450,7 @@
                           ? Object.values(lu)
                           : 'dashboard' === t
                             ? [
-                                { id: 'overview', label: 'Overview', icon: X.Z },
+                                { id: 'overview', label: 'Overview', icon: Y.Z },
                                 { id: 'users', label: 'Users', icon: f.Z },
                                 { id: 'accounts', label: 'Accounts', icon: b.Z },
                               ]
@@ -23707,7 +23595,7 @@
                       (0, a.jsxs)('div', {
                         className: 'flex items-center gap-2',
                         children: [
-                          (0, a.jsx)(Q.Z, { className: 'w-4 h-4 text-purple-400' }),
+                          (0, a.jsx)(X.Z, { className: 'w-4 h-4 text-purple-400' }),
                           (0, a.jsx)('h3', {
                             className: 'text-sm font-semibold text-slate-200',
                             children: 'Workspaces',
@@ -23723,7 +23611,7 @@
                         className:
                           'p-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded transition-colors',
                         title: 'Create Workspace',
-                        children: (0, a.jsx)(ei.Z, { className: 'w-4 h-4' }),
+                        children: (0, a.jsx)(en.Z, { className: 'w-4 h-4' }),
                       }),
                     ],
                   }),
@@ -23735,7 +23623,7 @@
                             className:
                               'flex flex-col items-center justify-center h-full p-6 text-center',
                             children: [
-                              (0, a.jsx)(t$.Z, { className: 'w-12 h-12 text-slate-600 mb-4' }),
+                              (0, a.jsx)(t0.Z, { className: 'w-12 h-12 text-slate-600 mb-4' }),
                               (0, a.jsx)('p', {
                                 className: 'text-sm text-slate-400 mb-2',
                                 children: 'No workspaces yet',
@@ -23816,7 +23704,7 @@
                       className:
                         'p-1 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors',
                       title: 'Delete workspace',
-                      children: (0, a.jsx)(ew.Z, { className: 'w-3.5 h-3.5' }),
+                      children: (0, a.jsx)(eC.Z, { className: 'w-3.5 h-3.5' }),
                     }),
                     (0, a.jsx)(n.Z, { className: 'w-4 h-4 text-slate-500' }),
                   ],
@@ -23842,7 +23730,7 @@
                     className: 'flex items-center gap-1',
                     title: 'Pinned context nodes',
                     children: [
-                      (0, a.jsx)(Y.Z, { className: 'w-3.5 h-3.5 text-amber-400' }),
+                      (0, a.jsx)(W.Z, { className: 'w-3.5 h-3.5 text-amber-400' }),
                       (0, a.jsx)('span', { children: t.context_pins.length }),
                     ],
                   }),
@@ -23905,7 +23793,7 @@
                     children: (0, a.jsxs)('div', {
                       className: 'flex items-center gap-2 text-sm text-slate-400',
                       children: [
-                        (0, a.jsx)(Y.Z, { className: 'w-4 h-4 text-amber-400' }),
+                        (0, a.jsx)(W.Z, { className: 'w-4 h-4 text-amber-400' }),
                         (0, a.jsx)('span', {
                           children:
                             t.length > 0
@@ -23955,7 +23843,7 @@
             onClearRestoredOperation: d,
           } = e,
           { user: u } = (0, N.aC)(),
-          { shellMode: x, keimenonMode: m } = (0, et.St)(),
+          { shellMode: x, keimenonMode: m } = (0, ee.St)(),
           { operating: p } = (0, y.B)(),
           { uiVersion: h } = (0, S.O)(),
           {
@@ -23964,26 +23852,26 @@
             getActiveOperations: f,
             addOperation: v,
             updateOperation: j,
-          } = s$(),
-          { isOpen: w, setIsOpen: k } = t7(),
-          C = (0, l.useRef)(null),
+          } = s0(),
+          { isOpen: w, setIsOpen: C } = t9(),
+          k = (0, l.useRef)(null),
           [I, E] = (0, l.useState)(!1),
           [M, Z] = (0, l.useState)(!0),
           [D, T] = (0, l.useState)(!0),
           [A, _] = (0, l.useState)('keimenon'),
           [F, P] = (0, l.useState)('analytics'),
-          [O, z] = (0, l.useState)(void 0),
-          [R, U] = (0, l.useState)(null),
+          [O, R] = (0, l.useState)(void 0),
+          [z, U] = (0, l.useState)(null),
           [B, V] = (0, l.useState)(void 0),
           [K, q] = (0, l.useState)(null),
           [J, G] = (0, l.useState)(null),
-          [W, Y] = (0, l.useState)(null),
-          [H, X] = (0, l.useState)(!0),
+          [W, H] = (0, l.useState)(null),
+          [Y, X] = (0, l.useState)(!0),
           [Q, $] = (0, l.useState)(!1),
-          [ee, es] = (0, l.useState)(!1),
-          [ea, el] = (0, l.useState)(0),
+          [et, es] = (0, l.useState)(!1),
+          [ea, er] = (0, l.useState)(0),
           [en, ei] = (0, l.useState)('2d'),
-          [eo, ec] = (0, l.useState)(sj),
+          [eo, ec] = (0, l.useState)(sN),
           ed = (0, l.useRef)(0);
         ((0, l.useEffect)(() => {
           c && (G(c), V('import-flow'), T(!0), null == d || d());
@@ -23991,16 +23879,16 @@
           (0, l.useEffect)(() => {
             let e = !1;
             if (!u) {
-              Y(null);
+              H(null);
               return;
             }
             return (
-              (0, e_.e_)()
+              (0, ep.e_)()
                 .then((t) => {
-                  e || Y(t);
+                  e || H(t);
                 })
                 .catch(() => {
-                  e || Y(null);
+                  e || H(null);
                 }),
               () => {
                 e = !0;
@@ -24014,7 +23902,7 @@
               return;
             }
             return (
-              (0, e_.wv)(u.accountId)
+              (0, ep.wv)(u.accountId)
                 .then((t) => {
                   var s, a;
                   if (e) return;
@@ -24038,7 +23926,7 @@
           }, [null == u ? void 0 : u.accountId]),
           (0, l.useEffect)(() => {
             let e = () => {
-              Y((e) => (e ? { ...e, requiresReimport: !1 } : e));
+              H((e) => (e ? { ...e, requiresReimport: !1 } : e));
             };
             return (
               window.addEventListener('core-process-reimport-complete', e),
@@ -24076,7 +23964,7 @@
               ),
               t = e.length,
               s = ed.current > 0;
-            (H &&
+            (Y &&
               'keimenon' === m &&
               !s &&
               t > 0 &&
@@ -24085,11 +23973,11 @@
               _('processing'),
               (J && 'done' !== J.status && 'error' !== J.status) || G(e[0])),
               (ed.current = t));
-          }, [g, m, A, J, H]));
+          }, [g, m, A, J, Y]));
         let eu = async (e) => {
           X(e);
           try {
-            await (0, e_.m7)('import_auto_switch_processing', e);
+            await (0, ep.m7)('import_auto_switch_processing', e);
           } catch (e) {
             console.warn('[KeimenonLayout] Failed to persist auto-switch preference', e);
           }
@@ -24117,10 +24005,10 @@
           em = () => {
             (V('import-flow'), T(!0));
           },
-          ep = async () => {
+          eh = async () => {
             em();
           },
-          eh = (e) =>
+          eg = (e) =>
             [
               'queued',
               'reading',
@@ -24135,9 +24023,9 @@
             ].includes(e)
               ? e
               : 'processing',
-          eg = (null == u ? void 0 : u.accountType) === 'admin',
-          eb = 'native' === p.mode,
-          ef = p.accountId && 'native' !== p.mode;
+          eb = (null == u ? void 0 : u.accountType) === 'admin',
+          ef = 'native' === p.mode,
+          ev = p.accountId && 'native' !== p.mode;
         return (
           (0, l.useEffect)(() => {
             let e;
@@ -24157,7 +24045,7 @@
             );
           }, []),
           (0, l.useEffect)(() => {
-            'settings' !== m || O || z('section_general_language');
+            'settings' !== m || O || R('section_general_language');
           }, [m, O]),
           (0, l.useEffect)(() => {
             'dashboard' !== m && 'analytics' !== F && P('analytics');
@@ -24176,14 +24064,14 @@
                     ? (0, a.jsx)(lx, {})
                     : (0, a.jsxs)(a.Fragment, {
                         children: [
-                          (0, a.jsx)(t1, {
+                          (0, a.jsx)(t2, {
                             side: 'left',
                             isOpen: M,
                             onToggle: () => Z(!M),
-                            onSettingsSectionSelect: z,
+                            onSettingsSectionSelect: R,
                             onZoomToFilteredNodes: () => {
                               var e;
-                              null === (e = C.current) ||
+                              null === (e = k.current) ||
                                 void 0 === e ||
                                 e.zoomToFitFilteredNodes();
                             },
@@ -24204,7 +24092,7 @@
                                           'Core process upgrade reset prior import artifacts. Start guided reimport to rebuild your workspace.',
                                       }),
                                       (0, a.jsx)('button', {
-                                        onClick: ep,
+                                        onClick: eh,
                                         className:
                                           'px-3 py-1.5 rounded bg-amber-500 text-slate-900 text-sm font-semibold hover:bg-amber-400 transition-colors',
                                         children: 'Start Reimport',
@@ -24212,11 +24100,11 @@
                                     ],
                                   }),
                                 }),
-                              (0, a.jsx)(er, {
+                              (0, a.jsx)(el, {
                                 onUploadClick: em,
                                 onLeftSidebarToggle: () => Z(!M),
                                 onRightSidebarToggle: () => T(!D),
-                                onFooterToggle: () => k(!w),
+                                onFooterToggle: () => C(!w),
                                 leftSidebarVisible: M,
                                 rightSidebarVisible: D,
                                 footerVisible: w,
@@ -24225,16 +24113,16 @@
                                 dashboardView: F,
                                 onDashboardViewChange: P,
                                 processingAvailable: ex,
-                                autoSwitchToProcessingEnabled: H,
+                                autoSwitchToProcessingEnabled: Y,
                                 onAutoSwitchToProcessingChange: eu,
                                 focusModeEnabled: Q,
                                 onFocusModeToggle: () => $((e) => !e),
-                                includeConnectorNodes: ee,
+                                includeConnectorNodes: et,
                                 onConnectorVisibilityToggle: () => es((e) => !e),
                                 pinnedNodeCount: ea,
                                 onClearPinnedNodes: () => {
                                   var e;
-                                  return null === (e = C.current) || void 0 === e
+                                  return null === (e = k.current) || void 0 === e
                                     ? void 0
                                     : e.clearPinnedNodes();
                                 },
@@ -24244,53 +24132,51 @@
                                 onNdConfigChange: ec,
                                 onZoomIn: () => {
                                   var e;
-                                  return null === (e = C.current) || void 0 === e
+                                  return null === (e = k.current) || void 0 === e
                                     ? void 0
                                     : e.zoomIn();
                                 },
                                 onZoomOut: () => {
                                   var e;
-                                  return null === (e = C.current) || void 0 === e
+                                  return null === (e = k.current) || void 0 === e
                                     ? void 0
                                     : e.zoomOut();
                                 },
                                 onCenterView: () => {
                                   var e;
-                                  return null === (e = C.current) || void 0 === e
+                                  return null === (e = k.current) || void 0 === e
                                     ? void 0
                                     : e.centerView();
                                 },
                               }),
-                              !(eg && !eb) || ef || eb
+                              !(eb && !ef) || ev || ef
                                 ? (0, a.jsxs)(ax, {
                                     children: [
                                       'keimenon' === m &&
                                         ('keimenon' === A
-                                          ? (0, a.jsx)(sK, {
-                                              ref: C,
+                                          ? (0, a.jsx)(sq, {
+                                              ref: k,
                                               onOpenUpload: em,
                                               onOpenChatImport: em,
                                               renderLens: en,
                                               ndConfig: eo,
                                               focusModeEnabled: Q,
-                                              includeConnectors: ee,
-                                              onPinnedNodeCountChange: el,
+                                              includeConnectors: et,
+                                              onPinnedNodeCountChange: er,
                                             })
-                                          : 'legacy' === A
-                                            ? (0, a.jsx)(ae, { renderLens: en, ndConfig: eo })
-                                            : 'processing' === A
-                                              ? (0, a.jsx)(ai, {
-                                                  operation: J,
-                                                  renderLens: en,
-                                                  ndConfig: eo,
-                                                })
-                                              : (0, a.jsx)(au, { renderLens: en, ndConfig: eo })),
+                                          : 'processing' === A
+                                            ? (0, a.jsx)(ai, {
+                                                operation: J,
+                                                renderLens: en,
+                                                ndConfig: eo,
+                                              })
+                                            : (0, a.jsx)(au, { renderLens: en, ndConfig: eo })),
                                       'dashboard' === m &&
                                         ('analytics' === F
-                                          ? (0, a.jsx)(s8, {
+                                          ? (0, a.jsx)(s7, {
                                               onJobSelect: (e) => {
                                                 var t, s, a, l, r, n, i;
-                                                let o = eh(e.status),
+                                                let o = eg(e.status),
                                                   c = {
                                                     nodesCreated: e.stats.nodesCreated,
                                                     edgesCreated: e.stats.edgesCreated,
@@ -24371,10 +24257,10 @@
                                               },
                                             })
                                           : 'storage' === F
-                                            ? (0, a.jsx)(s7, {})
+                                            ? (0, a.jsx)(s9, {})
                                             : 'workspaces' === F
                                               ? (0, a.jsx)(lm, { className: 'h-full' })
-                                              : (0, a.jsx)(aY, { className: 'h-full' })),
+                                              : (0, a.jsx)(aH, { className: 'h-full' })),
                                       'settings' === m &&
                                         (0, a.jsx)(aK, {
                                           selectedSectionId: O,
@@ -24411,11 +24297,11 @@
                                   }),
                             ],
                           }),
-                          (0, a.jsx)(t1, {
+                          (0, a.jsx)(t2, {
                             side: 'right',
                             isOpen: D,
                             onToggle: () => T(!D),
-                            selectedSettingsControlId: R,
+                            selectedSettingsControlId: z,
                             inspectorPanel: B,
                             onInspectorPanelChange: V,
                             selectedUser: K,
@@ -24428,9 +24314,9 @@
                         ],
                       }),
               }),
-              (0, a.jsx)(t9, { isOpen: w }),
-              t && (0, a.jsx)(tE, { onClose: () => s(!1) }),
-              n && (0, a.jsx)(tC, { onDismiss: () => i(!1) }),
+              (0, a.jsx)(se, { isOpen: w }),
+              t && (0, a.jsx)(tM, { onClose: () => s(!1) }),
+              n && (0, a.jsx)(tS, { onDismiss: () => i(!1) }),
               (0, a.jsx)(a6, {}),
             ],
           })
@@ -24458,7 +24344,7 @@
                     className:
                       'absolute top-4 right-4 p-2 hover:bg-slate-800 rounded-lg transition-colors',
                     'aria-label': 'Close welcome modal',
-                    children: (0, a.jsx)(ec.Z, { className: 'w-5 h-5 text-slate-400' }),
+                    children: (0, a.jsx)(eo.Z, { className: 'w-5 h-5 text-slate-400' }),
                   }),
                   (0, a.jsxs)('div', {
                     className: 'flex items-start gap-4',
@@ -24501,7 +24387,7 @@
                           (0, a.jsx)('div', {
                             className:
                               'flex-shrink-0 w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center',
-                            children: (0, a.jsx)(ee.Z, { className: 'w-5 h-5 text-purple-400' }),
+                            children: (0, a.jsx)($.Z, { className: 'w-5 h-5 text-purple-400' }),
                           }),
                           (0, a.jsxs)('div', {
                             children: [
@@ -24651,10 +24537,10 @@
           v = () => {
             u(!0);
           };
-        return (0, a.jsx)(t8, {
-          children: (0, a.jsx)(sQ, {
+        return (0, a.jsx)(t7, {
+          children: (0, a.jsx)(s$, {
             onRestoreOperation: h,
-            children: (0, a.jsxs)(C, {
+            children: (0, a.jsxs)(k, {
               children: [
                 (0, a.jsx)(lg, {
                   showUploadModal: o,
@@ -24682,7 +24568,7 @@
     },
   },
   function (e) {
-    (e.O(0, [44, 898, 124, 195, 613, 630, 184, 293, 528, 744], function () {
+    (e.O(0, [44, 898, 124, 195, 485, 630, 184, 293, 528, 744], function () {
       return e((e.s = 5881));
     }),
       (_N_E = e.O()));

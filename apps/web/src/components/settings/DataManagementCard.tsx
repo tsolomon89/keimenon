@@ -19,6 +19,7 @@ import { logJobEvent } from '@/lib/error-handler';
 import { API_BASE_URL } from '@/lib/env.config';
 import { useJobStream } from '@/hooks/useJobStream';
 import { useKeimenonStore } from '@/store/keimenonStore';
+import { authenticatedFetch } from '@/lib/api-client';
 
 interface DataStats {
   nodes: Array<{ kind: string; count: number }>;
@@ -125,18 +126,7 @@ export function DataManagementCard() {
     try {
       setLoadingStats(true);
       setError(null);
-
-      const token = localStorage.getItem('keimenon_token');
-
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/v1/data/stats`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/data/stats`);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -254,20 +244,14 @@ export function DataManagementCard() {
       setIsClearing(true);
       setError(null);
 
-      const token = localStorage.getItem('keimenon_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
       // Calculate totals for error context
       const nodeCount = stats?.nodes?.reduce((sum, n) => sum + n.count, 0) ?? 0;
       const edgeCount = stats?.edges ?? 0;
 
       // Create delete job (async background operation)
-      const response = await fetch(`${API_BASE_URL}/api/v1/jobs/delete`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/jobs/delete`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -479,17 +463,8 @@ export function AdminDataManagementCard() {
     try {
       setIsClearing(true);
       setError(null);
-
-      const token = localStorage.getItem('keimenon_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/v1/data/all-clients`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/data/all-clients`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (!response.ok) {

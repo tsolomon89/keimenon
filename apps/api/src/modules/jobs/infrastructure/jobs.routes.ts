@@ -618,15 +618,35 @@ export function createJobsRoutes(
         });
       }
 
-      job.pause();
-      await jobRepository.save(job);
+      if (workerPool) {
+        const paused = await workerPool.pauseJob(id, targetAccountId, 'User paused job');
+        if (!paused) {
+          throw ErrorFactory.conflict(
+            'Pause request could not acquire active worker ownership',
+            'jobs.pause',
+            {
+              jobId: id,
+              accountId: targetAccountId,
+            }
+          );
+        }
 
-      if (sseBroadcaster) {
-        sseBroadcaster.broadcastJobUpdate(job);
+        const refreshedJob = await jobRepository.findById(id, targetAccountId, req);
+        if (!refreshedJob) {
+          throw ErrorFactory.notFound('Job', 'jobs.pause');
+        }
+
+        return res.json({
+          success: true,
+          job: refreshedJob.toJSON(),
+        });
       }
 
-      if (workerPool) {
-        await workerPool.pauseJob(id, targetAccountId, 'User paused job');
+      // Fallback path for environments without worker orchestration
+      job.pause();
+      await jobRepository.save(job);
+      if (sseBroadcaster) {
+        sseBroadcaster.broadcastJobUpdate(job);
       }
 
       return res.json({

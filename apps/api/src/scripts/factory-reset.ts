@@ -6,25 +6,45 @@
  * bootstraps a default admin account/user pair.
  *
  * Usage:
- *   npx tsx apps/api/src/scripts/factory-reset.ts
- *   SQLITE_PATH=/path/to/db npx tsx apps/api/src/scripts/factory-reset.ts
+ *   npm run factory-reset
+ *   npm run factory-reset -- --mode=db-only
+ *   SQLITE_PATH=/path/to/db npm run factory-reset
  */
 
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import { promises as fsp } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
+import os from 'node:os';
 import bcrypt from 'bcryptjs';
 import { getImportArtifactsRoot, getUploadChunksRoot } from '../utils/import-artifacts';
 
 const DB_PATH =
   process.env.SQLITE_PATH || process.env.DB_PATH || 'C:\\Users\\Audna\\.canvas-memory\\canvas.db';
+const RESET_MODE_FULL_FRESH = 'full-fresh';
+const RESET_MODE_DB_ONLY = 'db-only';
+
+type ResetMode = typeof RESET_MODE_FULL_FRESH | typeof RESET_MODE_DB_ONLY;
+type PurgeSummary = {
+  removedDirectories: string[];
+  skippedDirectories: string[];
+  failedDirectories: string[];
+};
 
 type IdRow = { id: string };
 type NameRow = { name: string };
 type CountRow = { count: number };
+type SqlRow = { sql: string | null };
+type ResetPragmaState = {
+  journalMode: string;
+  synchronous: number;
+  tempStore: number;
+  cacheSize: number;
+};
 
 const SYSTEM_TABLES = new Set(['sqlite_sequence', 'migrations', 'schema_metadata']);
+const FAST_RESET_TABLES = new Set(['nodes', 'edges']);
 const WIPE_TABLES = [
   'job_events',
   'job_items',
@@ -46,6 +66,37 @@ const WIPE_TABLES = [
   'accounts',
 ];
 
+function getLocalDocsRoot(): string {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
+  const configuredBasePath = process.env.LOCAL_DOCS_PATH;
+  if (configuredBasePath && configuredBasePath.trim().length > 0) {
+    return configuredBasePath.replace('~', homeDir);
+  }
+  return path.dirname(DB_PATH);
+}
+
+function resolveStoragePath(localDocsRoot: string): string {
+  const configuredStoragePath = process.env.STORAGE_PATH || './storage';
+  return path.isAbsolute(configuredStoragePath)
+    ? configuredStoragePath
+    : path.resolve(localDocsRoot, configuredStoragePath);
+}
+
+function parseResetMode(argv: string[]): ResetMode {
+  const explicitModeArg = argv.find((arg) => arg.startsWith('--mode='));
+  const explicitMode = explicitModeArg ? explicitModeArg.split('=', 2)[1] : null;
+
+  if (explicitMode === RESET_MODE_DB_ONLY || argv.includes('--db-only')) {
+    return RESET_MODE_DB_ONLY;
+  }
+  if (explicitMode && explicitMode !== RESET_MODE_FULL_FRESH) {
+    throw new Error(
+      `Unsupported reset mode '${explicitMode}'. Valid modes: ${RESET_MODE_FULL_FRESH}, ${RESET_MODE_DB_ONLY}`
+    );
+  }
+  return RESET_MODE_FULL_FRESH;
+}
+
 function placeholders(count: number): string {
   return new Array(count).fill('?').join(', ');
 }
@@ -55,6 +106,64 @@ function countRows(db: Database.Database, tableName: string): number {
     | CountRow
     | undefined;
   return row?.count ?? 0;
+}
+
+function quoteIdentifier(identifier: string): string {
+  if (!/^[a-zA-Z0-9_]+$/.test(identifier)) {
+    throw new Error(`Unsafe SQL identifier: ${identifier}`);
+  }
+  return `"${identifier}"`;
+}
+
+function rebuildTableFromSchema(db: Database.Database, tableName: string): boolean {
+  const tableSqlRow = db
+    .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`)
+    .get(tableName) as SqlRow | undefined;
+
+  if (!tableSqlRow?.sql) {
+    return false;
+  }
+
+  const indexRows = db
+    .prepare(
+      `
+        SELECT sql
+        FROM sqlite_master
+        WHERE type = 'index'
+          AND tbl_name = ?
+          AND sql IS NOT NULL
+      `
+    )
+    .all(tableName) as SqlRow[];
+
+  const triggerRows = db
+    .prepare(
+      `
+        SELECT sql
+        FROM sqlite_master
+        WHERE type = 'trigger'
+          AND tbl_name = ?
+          AND sql IS NOT NULL
+      `
+    )
+    .all(tableName) as SqlRow[];
+
+  db.exec(`DROP TABLE IF EXISTS ${quoteIdentifier(tableName)}`);
+  db.exec(tableSqlRow.sql);
+
+  for (const row of indexRows) {
+    if (row.sql) {
+      db.exec(row.sql);
+    }
+  }
+
+  for (const row of triggerRows) {
+    if (row.sql) {
+      db.exec(row.sql);
+    }
+  }
+
+  return true;
 }
 
 function selectIds(db: Database.Database, sql: string): string[] {
@@ -112,6 +221,49 @@ async function purgeImportArtifacts(): Promise<void> {
       console.warn(`   failed to purge artifact root ${root}: ${error.message}`);
     }
   }
+}
+
+async function purgeFullFreshLocalData(
+  localDocsRoot: string,
+  storagePath: string
+): Promise<PurgeSummary> {
+  const targets = [
+    path.join(localDocsRoot, 'documents'),
+    path.join(localDocsRoot, 'metadata'),
+    path.join(localDocsRoot, 'agent-artifacts'),
+    path.join(localDocsRoot, 'uploads'),
+    path.join(localDocsRoot, 'temp'),
+    storagePath,
+  ];
+
+  const uniqueTargets = [...new Set(targets.map((target) => path.resolve(target)))];
+  const summary: PurgeSummary = {
+    removedDirectories: [],
+    skippedDirectories: [],
+    failedDirectories: [],
+  };
+
+  for (const target of uniqueTargets) {
+    try {
+      const stat = await fsp.stat(target).catch(() => null);
+      if (!stat) {
+        summary.skippedDirectories.push(target);
+        continue;
+      }
+      if (!stat.isDirectory()) {
+        summary.skippedDirectories.push(target);
+        continue;
+      }
+      await fsp.rm(target, { recursive: true, force: true });
+      summary.removedDirectories.push(target);
+      console.log(`   purged local runtime directory: ${target}`);
+    } catch (error: any) {
+      summary.failedDirectories.push(target);
+      console.warn(`   failed to purge local runtime directory ${target}: ${error.message}`);
+    }
+  }
+
+  return summary;
 }
 
 async function seedDefaultAdminIfMissing(db: Database.Database, now: number): Promise<void> {
@@ -211,9 +363,39 @@ function updateResetMetadata(db: Database.Database, resetEpochMs: number): void 
   );
 }
 
+function applyResetPragmas(db: Database.Database): ResetPragmaState {
+  const state: ResetPragmaState = {
+    journalMode: String(db.pragma('journal_mode', { simple: true }) || 'wal'),
+    synchronous: Number(db.pragma('synchronous', { simple: true }) || 2),
+    tempStore: Number(db.pragma('temp_store', { simple: true }) || 0),
+    cacheSize: Number(db.pragma('cache_size', { simple: true }) || -2000),
+  };
+
+  db.pragma('journal_mode = MEMORY');
+  db.pragma('synchronous = OFF');
+  db.pragma('temp_store = MEMORY');
+  db.pragma('cache_size = -200000');
+
+  return state;
+}
+
+function restoreResetPragmas(db: Database.Database, state: ResetPragmaState): void {
+  db.pragma(`cache_size = ${state.cacheSize}`);
+  db.pragma(`temp_store = ${state.tempStore}`);
+  db.pragma(`synchronous = ${state.synchronous}`);
+  db.pragma(`journal_mode = ${state.journalMode}`);
+}
+
 async function main(): Promise<void> {
+  const resetMode = parseResetMode(process.argv.slice(2));
+  const localDocsRoot = path.resolve(getLocalDocsRoot());
+  const storagePath = resolveStoragePath(localDocsRoot);
+
   console.log('[factory-reset] starting');
+  console.log(`[factory-reset] mode: ${resetMode}`);
   console.log(`[factory-reset] database: ${DB_PATH}`);
+  console.log(`[factory-reset] local docs root: ${localDocsRoot}`);
+  console.log(`[factory-reset] storage path: ${storagePath}`);
 
   if (!fs.existsSync(DB_PATH)) {
     console.error(`[factory-reset] database file not found: ${DB_PATH}`);
@@ -221,6 +403,7 @@ async function main(): Promise<void> {
   }
 
   const db = new Database(DB_PATH);
+  const pragmaState = applyResetPragmas(db);
   const resetEpochMs = Date.now();
 
   try {
@@ -261,6 +444,10 @@ async function main(): Promise<void> {
         if (SYSTEM_TABLES.has(tableName)) {
           continue;
         }
+        if (FAST_RESET_TABLES.has(tableName) && rebuildTableFromSchema(db, tableName)) {
+          console.log(`   rebuilt table: ${tableName}`);
+          continue;
+        }
         db.prepare(`DELETE FROM ${tableName}`).run();
         console.log(`   cleared table: ${tableName}`);
       }
@@ -291,12 +478,32 @@ async function main(): Promise<void> {
     console.log(`   jobs remaining: ${finalJobs}`);
     console.log(`   nodes remaining: ${finalNodes}`);
 
+    const localPurgeSummary =
+      resetMode === RESET_MODE_FULL_FRESH
+        ? await purgeFullFreshLocalData(localDocsRoot, storagePath)
+        : {
+            removedDirectories: [],
+            skippedDirectories: [],
+            failedDirectories: [],
+          };
+
     await purgeImportArtifacts();
+
+    console.log('[factory-reset] local purge summary');
+    console.log(`   removed runtime directories: ${localPurgeSummary.removedDirectories.length}`);
+    console.log(`   skipped runtime directories: ${localPurgeSummary.skippedDirectories.length}`);
+    console.log(`   failed runtime directories: ${localPurgeSummary.failedDirectories.length}`);
+
     console.log('[factory-reset] complete');
   } catch (error: any) {
     console.error(`[factory-reset] failed: ${error.message}`);
     process.exit(1);
   } finally {
+    try {
+      restoreResetPragmas(db, pragmaState);
+    } catch {
+      // ignore
+    }
     try {
       db.pragma('foreign_keys = ON');
     } catch {

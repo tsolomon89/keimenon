@@ -241,4 +241,27 @@ describe('DatabaseWriteQueue Integration', () => {
       'Overlapping flush requests should be tracked while busy'
     );
   });
+
+  it('should flush large queues in bounded chunks per cycle', async () => {
+    const chunkedQueue = new DatabaseWriteQueue(db as any);
+    chunkedQueue.start();
+
+    try {
+      for (let i = 0; i < 1100; i++) {
+        chunkedQueue.enqueueNode(createTestNode(`bounded_${i}`));
+      }
+
+      await chunkedQueue.forceFlush();
+
+      const stats = chunkedQueue.getStats();
+      assert.strictEqual(
+        chunkedQueue.getQueueSizes().nodes,
+        0,
+        'All queued nodes should be drained'
+      );
+      assert.ok(stats.flushCount >= 3, 'Large flush should span multiple bounded flush cycles');
+    } finally {
+      await chunkedQueue.stop();
+    }
+  });
 });

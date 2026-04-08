@@ -3,6 +3,7 @@ import { getToken } from '../contexts/AuthContext';
 import { SettingControl, EffectiveSettingValue, SettingChange } from '@keimenon/types/src/settings';
 import { errorCapture } from '@/services/error-capture.service';
 import { API_BASE_URL } from '@/lib/env.config';
+import { authenticatedFetch } from '@/lib/api-client';
 
 interface SettingsData {
   [controlId: string]: EffectiveSettingValue;
@@ -13,6 +14,23 @@ interface SettingsMetadata {
   userId: string;
   permissionLevel: string;
   timestamp: number;
+}
+
+async function getResponseErrorMessage(response: Response, fallback: string): Promise<string> {
+  const payload = await response.json().catch(() => ({}) as Record<string, unknown>);
+  const baseMessage =
+    typeof payload?.error === 'string' && payload.error.trim().length > 0
+      ? payload.error
+      : fallback;
+
+  if (payload?.code === 'SETTINGS_SCHEMA_DRIFT') {
+    const remediation = (payload as any)?.diagnostics?.remediation;
+    if (typeof remediation === 'string' && remediation.trim().length > 0) {
+      return `${baseMessage}. ${remediation}`;
+    }
+  }
+
+  return baseMessage;
 }
 
 /**
@@ -60,18 +78,18 @@ export function useSettings() {
       // Add timeout to prevent hanging
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/settings`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/settings`, {
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to fetch settings (${response.status})`);
+        const message = await getResponseErrorMessage(
+          response,
+          `Failed to fetch settings (${response.status})`
+        );
+        throw new Error(message);
       }
 
       const data = await response.json();
@@ -155,18 +173,17 @@ export function useSettings() {
 
       // Save each changed setting
       const promises = Object.entries(unsavedChanges).map(async ([controlId, value]) => {
-        const response = await fetch(`${API_BASE_URL}/api/v1/settings/${controlId}`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/settings/${controlId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ value }),
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update setting');
+          const message = await getResponseErrorMessage(response, 'Failed to update setting');
+          throw new Error(message);
         }
 
         return response.json();
@@ -215,15 +232,13 @@ export function useSettings() {
       if (!token) return;
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/settings/${controlId}`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/settings/${controlId}`, {
           method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         });
 
         if (!response.ok) {
-          throw new Error('Failed to reset setting');
+          const message = await getResponseErrorMessage(response, 'Failed to reset setting');
+          throw new Error(message);
         }
 
         // Refetch settings
@@ -322,14 +337,13 @@ export function useSettingHistory(controlId: string | null) {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/settings/history/${controlId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await authenticatedFetch(
+          `${API_BASE_URL}/api/v1/settings/history/${controlId}`
+        );
 
         if (!response.ok) {
-          throw new Error('Failed to fetch history');
+          const message = await getResponseErrorMessage(response, 'Failed to fetch history');
+          throw new Error(message);
         }
 
         const data = await response.json();
@@ -398,14 +412,14 @@ export function useSettingDetails(controlId: string | null) {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/settings/${controlId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/settings/${controlId}`);
 
         if (!response.ok) {
-          throw new Error('Failed to fetch setting details');
+          const message = await getResponseErrorMessage(
+            response,
+            'Failed to fetch setting details'
+          );
+          throw new Error(message);
         }
 
         const data = await response.json();

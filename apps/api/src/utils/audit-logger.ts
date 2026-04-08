@@ -95,6 +95,12 @@ export function logAuditEvent(database: Database.Database, entry: AuditLogEntry)
     return; // Silent skip - no audit logs in test environment
   }
 
+  if (!entry.user_id || !entry.account_id) {
+    // Current schema requires FK-backed actor IDs, so unauthenticated/system events
+    // cannot be persisted safely. Skip instead of emitting noisy FK failures.
+    return;
+  }
+
   const id = randomUUID();
   const now = Date.now();
 
@@ -110,8 +116,8 @@ export function logAuditEvent(database: Database.Database, entry: AuditLogEntry)
       )
       .run(
         id,
-        entry.user_id || 'system',
-        entry.account_id || 'system',
+        entry.user_id,
+        entry.account_id,
         entry.account_id || null,
         mapEventTypeToAction(entry.event_type), // Map event_type to valid action
         'auth',
@@ -162,8 +168,25 @@ export function logLoginFailure(
   ipAddress?: string,
   userAgent?: string
 ): void {
+  const actorRow = database
+    .prepare(
+      `
+      SELECT u.id AS user_id, ua.account_id
+      FROM users u
+      LEFT JOIN user_accounts ua
+        ON ua.user_id = u.id
+       AND ua.status = 'active'
+      WHERE u.email = ?
+      ORDER BY ua.joined_at ASC
+      LIMIT 1
+    `
+    )
+    .get(email) as { user_id?: string; account_id?: string } | undefined;
+
   logAuditEvent(database, {
     event_type: 'login_failure',
+    user_id: actorRow?.user_id,
+    account_id: actorRow?.account_id,
     ip_address: ipAddress,
     user_agent: userAgent,
     details: { email, reason },

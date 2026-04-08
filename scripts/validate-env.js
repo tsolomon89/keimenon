@@ -111,8 +111,8 @@ function validateNodeVersion() {
   const nodeVersion = process.version;
   const majorVersion = parseInt(nodeVersion.slice(1).split('.')[0], 10);
 
-  if (majorVersion !== 22) {
-    errors.push(`Node.js ${nodeVersion} is unsupported (required: 22.x)`);
+  if (majorVersion !== 24) {
+    errors.push(`Node.js ${nodeVersion} is unsupported (required: 24.x)`);
   }
 
   return { valid: errors.length === 0, errors, warnings };

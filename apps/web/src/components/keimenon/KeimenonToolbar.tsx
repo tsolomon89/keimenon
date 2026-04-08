@@ -8,7 +8,6 @@ import {
   PanelRightClose,
   TerminalSquare,
   Grid3x3,
-  Layers3,
   ZoomIn,
   ZoomOut,
   Maximize2,
@@ -40,8 +39,8 @@ interface KeimenonToolbarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onCenterView: () => void;
-  keimenonSurface: 'keimenon' | 'legacy' | 'processing' | 'boards';
-  onKeimenonSurfaceChange: (surface: 'keimenon' | 'legacy' | 'processing' | 'boards') => void;
+  keimenonSurface: 'keimenon' | 'processing' | 'boards';
+  onKeimenonSurfaceChange: (surface: 'keimenon' | 'processing' | 'boards') => void;
   dashboardView: 'analytics' | 'storage' | 'workspaces' | 'conversations';
   onDashboardViewChange: (view: 'analytics' | 'storage' | 'workspaces' | 'conversations') => void;
   processingAvailable?: boolean;
@@ -195,15 +194,6 @@ export function KeimenonToolbar({
               title="Keimenon View"
             >
               <Grid3x3 className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={() => onKeimenonSurfaceChange('legacy')}
-              type="button"
-              className={surfaceButtonClass(keimenonSurface === 'legacy')}
-              title="Legacy Board View"
-            >
-              <Layers3 className="w-4 h-4" />
             </button>
 
             <button
