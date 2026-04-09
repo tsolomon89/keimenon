@@ -53,7 +53,6 @@ interface KeimenonSidebarProps {
   selectedUser?: any; // User selected from Settings > Users section
   onUserUpdate?: (user: any) => void; // Callback when user is updated
   activeOperation?: Operation | null;
-  onViewProcessing?: () => void;
   onZoomToFilteredNodes?: () => void;
 }
 
@@ -68,7 +67,6 @@ export function KeimenonSidebar({
   selectedUser,
   onUserUpdate,
   activeOperation,
-  onViewProcessing,
   onZoomToFilteredNodes,
 }: KeimenonSidebarProps) {
   const CollapsedSidebar = (
@@ -106,7 +104,7 @@ export function KeimenonSidebar({
     const sidebarSelectNode = useKeimenonStore((s) => s.selectNode);
     const hydrateGraphSubset = useKeimenonStore((s) => s.hydrateGraphSubset);
 
-    // Subscribe to keimenon selection for bidirectional sync (Keimenon → Navigation)
+    // Subscribe to keimenon selection for bidirectional sync (Keimenon -> Navigation)
     const keimenonSelectedNodeIds = useKeimenonStore((state) => state.selectedNodeIds);
     const keimenonSelectedArray = Array.from(keimenonSelectedNodeIds);
     const { groupIds: highlightedGroupIds } = useNodeGroupLookup(keimenonSelectedArray);
@@ -576,9 +574,6 @@ export function KeimenonSidebar({
                     setPanelHistory([]);
                     onInspectorPanelChange?.(undefined);
                   }}
-                  onSuccess={() => {
-                    onViewProcessing?.();
-                  }}
                 />
               ) : (
                 <ChatImportModal
@@ -652,7 +647,7 @@ export function KeimenonSidebar({
             // Settings Inspector
             <SettingsInspector selectedControlId={selectedSettingsControlId || null} />
           ) : rightShellMode === 'admin' && selectedAccounts.length > 1 ? (
-            // Admin mode with multi-select → Show multi-select inspector
+            // Admin mode with multi-select -> Show multi-select inspector
             <>
               <div className="h-full overflow-y-auto p-4">
                 <div className="space-y-4">
@@ -695,7 +690,7 @@ export function KeimenonSidebar({
               )}
             </>
           ) : rightShellMode === 'admin' && selectedAccount ? (
-            // Admin mode with single selected account → Account Inspector
+            // Admin mode with single selected account -> Account Inspector
             <>
               <AccountInspector
                 account={selectedAccount}
@@ -715,7 +710,7 @@ export function KeimenonSidebar({
               )}
             </>
           ) : selectedNodeIds.size > 1 ? (
-            // Multi-select → Selection Stack
+            // Multi-select -> Selection Stack
             <SelectionStack
               selectedNodes={nodes.filter((n) => selectedNodeIds.has(n.id))}
               onRemoveFromSelection={(nodeId) => deselectNode(nodeId)}
@@ -741,13 +736,13 @@ export function KeimenonSidebar({
               }}
             />
           ) : selectedNode ? (
-            // Single node selected → Source Inspector
+            // Single node selected -> Source Inspector
             <SourceInspector
               data={transformNodeToInspectorData(selectedNode)}
               onViewFullDetails={() => openDetailPanel(selectedNode)}
             />
           ) : (
-            // No selection → Empty state
+            // No selection -> Empty state
             <div className="h-full flex items-center justify-center p-6">
               <div className="text-center text-sm text-slate-500">
                 <Tag className="w-12 h-12 mb-4 text-slate-600 mx-auto" />

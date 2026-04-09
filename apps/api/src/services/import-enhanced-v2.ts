@@ -87,10 +87,6 @@ export interface ImportResult {
       weak: number;
       clusters: number;
     };
-    objective?: {
-      provisional: number;
-      clusters: number;
-    };
     // V2: Spine extraction stats
     spine?: {
       lexemes: number;
@@ -449,12 +445,6 @@ export class EnhancedImportServiceV2 {
       // Similarity-first graph birth (canonical deterministic weighted similarity)
       const similarityResult = await this.materializeSimilarityGraph(sources, uploadHash, config);
       await this.flushWritesStrict('canonicalize.similarity_graph');
-      const objectiveStats = await this.createProvisionalObjectiveClaims(
-        similarityResult.clusters,
-        sources,
-        uploadHash
-      );
-      await this.flushWritesStrict('canonicalize.objective_provision');
 
       await this.emitPipelineStage(hooks, 'span', 'Extracting immutable source spans');
       await this.emitStage(
@@ -559,7 +549,6 @@ export class EnhancedImportServiceV2 {
           },
           spine: config.spine?.enabled ? spineStats : undefined,
           similarity: similarityResult.stats,
-          objective: objectiveStats,
           proImport: {
             spans: spanResult.spansCreated,
             packets: packetResult.packetsCreated,
@@ -876,205 +865,6 @@ export class EnhancedImportServiceV2 {
       },
       clusters: result.clusters,
     };
-  }
-
-  private async createProvisionalObjectiveClaims(
-    clusters: SimilarityClusterV2[],
-    sources: MaterializedSource[],
-    uploadHash: string
-  ): Promise<{ provisional: number; clusters: number }> {
-    if (!this.context?.accountId || clusters.length === 0 || sources.length === 0) {
-      return { provisional: 0, clusters: 0 };
-    }
-
-    const sourceById = new Map<string, MaterializedSource>();
-    for (const source of sources) {
-      sourceById.set(source.id, source);
-    }
-
-    const rankedClusters = clusters
-      .map((cluster) => ({
-        ...cluster,
-        memberSourceIds: cluster.memberIds.filter((memberId) => sourceById.has(memberId)),
-      }))
-      .filter((cluster) => cluster.memberSourceIds.length > 0)
-      .sort((a, b) => b.mass - a.mass || a.id.localeCompare(b.id));
-
-    const majorClusters = rankedClusters.filter((cluster) => cluster.memberSourceIds.length >= 2);
-    const selectedClusters = (majorClusters.length > 0 ? majorClusters : rankedClusters).slice(
-      0,
-      24
-    );
-
-    let provisionalCreated = 0;
-
-    for (const cluster of selectedClusters) {
-      const objectiveId = `objective_${this.stableHash(`${this.context.accountId}:${uploadHash}:${cluster.id}`, 32)}`;
-      const claimText = this.buildProvisionalObjectiveClaimText(
-        cluster.memberSourceIds,
-        sourceById
-      );
-      const confidence = Math.max(0.35, Math.min(0.85, cluster.mass));
-
-      const createdObjective = await this.writeNodeIfAbsent({
-        id: objectiveId,
-        kind: 'ObjectiveClaim',
-        claim_text: claimText,
-        type: 'definition',
-        archetype: 'definition_anchor',
-        status: 'provisional',
-        confidence,
-        citations: cluster.memberSourceIds.map((sourceId) => ({ node_id: sourceId })),
-        supports: [],
-        contradicts: [],
-        created_at: Date.now(),
-        updated_at: Date.now(),
-        metadata: {
-          import_id: uploadHash,
-          importId: uploadHash,
-          import_batch: uploadHash,
-          cluster_id: cluster.id,
-          cluster_mass: cluster.mass,
-          member_source_count: cluster.memberSourceIds.length,
-          member_source_ids: cluster.memberSourceIds,
-          objective_archetype: 'definition_anchor',
-          objective_lifecycle: {
-            state: 'provisional',
-            next: 'verifying',
-            reason: 'created_from_similarity_cluster',
-            archetype: 'definition_anchor',
-          },
-        },
-      });
-
-      if (createdObjective) {
-        provisionalCreated++;
-      }
-
-      for (const sourceId of cluster.memberSourceIds) {
-        const sourcedFromEdgeId = `edge_objective_source_${this.stableHash(`${objectiveId}:${sourceId}`, 32)}`;
-        await this.writeEdgeIfAbsent({
-          id: sourcedFromEdgeId,
-          kind: 'SOURCED_FROM',
-          from: objectiveId,
-          to: sourceId,
-          created_at: Date.now(),
-          metadata: {
-            import_id: uploadHash,
-            importId: uploadHash,
-            cluster_id: cluster.id,
-            objective_status: 'provisional',
-          },
-        });
-      }
-
-      if (this.humanPrincipal?.id) {
-        const createdByEdgeId = `edge_objective_created_by_${this.stableHash(`${objectiveId}:${this.humanPrincipal.id}`, 32)}`;
-        await this.writeEdgeIfAbsent({
-          id: createdByEdgeId,
-          kind: 'CREATED_BY',
-          from: objectiveId,
-          to: this.humanPrincipal.id,
-          created_at: Date.now(),
-        });
-      }
-    }
-
-    return {
-      provisional: provisionalCreated,
-      clusters: selectedClusters.length,
-    };
-  }
-
-  private buildProvisionalObjectiveClaimText(
-    sourceIds: string[],
-    sourceById: Map<string, MaterializedSource>
-  ): string {
-    const corpus = sourceIds
-      .map((sourceId) => sourceById.get(sourceId)?.content || '')
-      .map((content) => content.slice(0, 2000))
-      .join('\n\n')
-      .slice(0, 20000);
-
-    const anchors = this.extractObjectiveAnchorTerms(corpus, 5);
-    if (anchors.length === 0) {
-      return `Provisional objective synthesized from ${sourceIds.length} related sources`;
-    }
-    return `Provisional objective around ${anchors.join(', ')}`;
-  }
-
-  private extractObjectiveAnchorTerms(content: string, limit: number): string[] {
-    const stopWords = new Set([
-      'about',
-      'after',
-      'also',
-      'been',
-      'because',
-      'before',
-      'being',
-      'between',
-      'could',
-      'from',
-      'have',
-      'into',
-      'just',
-      'more',
-      'most',
-      'only',
-      'other',
-      'should',
-      'than',
-      'that',
-      'their',
-      'there',
-      'these',
-      'this',
-      'those',
-      'were',
-      'what',
-      'when',
-      'where',
-      'which',
-      'while',
-      'with',
-      'would',
-      'your',
-      'you',
-      'and',
-      'the',
-      'for',
-      'are',
-      'was',
-      'were',
-      'has',
-      'had',
-      'its',
-      'our',
-      'not',
-      'but',
-    ]);
-
-    const tokens = content
-      .normalize('NFKC')
-      .toLowerCase()
-      .match(/[a-z0-9_]{3,}/g);
-
-    if (!tokens || tokens.length === 0) {
-      return [];
-    }
-
-    const frequencies = new Map<string, number>();
-    for (const token of tokens) {
-      if (stopWords.has(token)) {
-        continue;
-      }
-      frequencies.set(token, (frequencies.get(token) || 0) + 1);
-    }
-
-    return [...frequencies.entries()]
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .slice(0, limit)
-      .map(([token]) => token);
   }
 
   /**

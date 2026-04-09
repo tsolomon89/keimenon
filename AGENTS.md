@@ -1,6 +1,6 @@
 # AGENTS Truth: Keimenon Vision Contract
 
-Last updated: 2026-04-01
+Last updated: 2026-04-09
 Status: Active, canonical, and implementation-directive.
 
 This file is the objective source of truth for product behavior and engineering decisions.
@@ -90,6 +90,16 @@ Pro behavior:
 
 ## 5. Import Contract
 
+### 5.0 Canonical Import Rail
+
+Canonical import rail is chunked upload:
+
+- `POST /api/v1/uploads/initiate`
+- `POST /api/v1/uploads/:sessionId/chunks/:chunkIndex`
+- `GET /api/v1/uploads/:sessionId`
+
+`POST /api/v1/jobs/import` is compatibility-only and returns `410 Gone` with migration guidance.
+
 ### 5.1 Import Inputs
 
 Import must honor normalized options across UI/API/worker:
@@ -115,19 +125,12 @@ Import must honor normalized options across UI/API/worker:
 
 Import builds weighted similarity relationships from language structure/mass and materializes grouped graph structure.
 
-### 5.4 Objective Queueing and Optional Activation
+### 5.4 Objective Activation Is User-Triggered
 
 - Import completion does not require objective node materialization.
-- Objective queueing is an optional post-import activation path.
-
-Objective verification queueing requires all of:
-
-- objective entitlement enabled
-- agent runtime entitlement enabled
-- kill switch disabled
-- `agent.bootstrap == auto`
-
-If `agent.bootstrap == manual`, objective queueing is skipped with explicit reason.
+- Import does not auto-create objective claims/archetypes.
+- Import does not auto-queue objective verification.
+- Objective creation/enrichment/verification are explicit user-triggered post-import flows, gated by entitlements and runtime readiness.
 
 ### 5.5 Duplicate Review
 
@@ -147,7 +150,7 @@ Import success requires non-empty hierarchy materialization for the target accou
 
 If this invariant is not satisfied, import must terminate as failed with reason code
 `GRAPH_MATERIALIZATION_FAILED` and include actionable diagnostics.
-These checks are required for both multipart and chunked upload rails.
+These checks are required for the chunked upload rail.
 
 ## 6. Agent Behavior Contract
 
@@ -162,7 +165,7 @@ These checks are required for both multipart and chunked upload rails.
 ## 7. Canvas Fidelity Contract
 
 1. Backend node-kind fidelity must be preserved to client stores and render layers.
-2. Three.js is the required canonical renderer for all keimenon graph canvas surfaces (main viewport, legacy preview, board galaxy, processing mini-graph, and progress overlays).
+2. Three.js is the required canonical renderer shared across all graph canvas surfaces.
 3. Explicit dimensional lens behavior is required with toolbar-accessible controls:
    - `2D` lens: planar graph navigation
    - `3D` lens: depth-enabled graph navigation
@@ -190,8 +193,9 @@ These checks are required for both multipart and chunked upload rails.
 12. Node dragging is required in all lenses:
     - `2D` drag uses XY plane semantics
     - `3D` and `ND` drag use projected view-plane semantics while preserving camera usability
-13. Interaction semantics must be shared across all graph canvas surfaces (main viewport, legacy preview, board galaxy, processing mini-graph, and progress overlays) through one renderer interaction contract.
-14. Toolbar policy is desktop-full for canvas controls; smaller breakpoints use compact controls that are intentionally reduced and non-equivalent.
+13. Interaction semantics must be shared across all graph canvas surfaces through one renderer interaction contract.
+14. Primary runtime uses one canonical center graph surface, with import processing shown as a temporary blocking center-state gate that auto-dismisses at terminal job status.
+15. Toolbar policy is desktop-full for canvas controls; smaller breakpoints use compact controls that are intentionally reduced and non-equivalent.
 
 ## 8. Operational and Privacy Guarantees
 
@@ -203,7 +207,7 @@ These checks are required for both multipart and chunked upload rails.
 
 The implementation is acceptable only when all are true:
 
-1. Board is not blank after import (Free and Pro).
+1. Canonical center graph viewport is not blank after import (Free and Pro).
 2. Similarity-weighted grouping/edges/mass are visible.
 3. Raw content invariance and provenance are verifiable.
 4. Duplicate review is job-based, stable-ID, and non-destructive.

@@ -1,7 +1,6 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
-import dynamic from 'next/dynamic';
 import { ChatImportModal } from './ChatImportModal';
 import { UploadModal } from './UploadModal';
 import { ENABLE_LEGACY_IMPORTS, ENABLE_HYBRID_LOCAL_FIRST } from '@/lib/env.config';
@@ -25,25 +24,26 @@ export function ImportMethodSelector({ onClose, onSuccess }: ImportMethodSelecto
   const methods = [
     {
       value: 'job' as ImportMethod,
-      label: '✅ Job-Based (Primary Rail)',
+      label: 'Chunked Upload (Primary Rail)',
       enabled: true,
-      description: 'Production import via /api/v1/jobs/import with SSE progress tracking',
+      description:
+        'Production import via /api/v1/uploads/initiate + /api/v1/uploads/:sessionId/chunks/:chunkIndex',
     },
     {
       value: 'hybrid' as ImportMethod,
-      label: '⚠️ Hybrid Local-First',
+      label: 'Hybrid Local-First',
       enabled: ENABLE_HYBRID_LOCAL_FIRST,
       description: 'Browser processing with server fallback (experimental)',
     },
     {
       value: 'local' as ImportMethod,
-      label: '❌ Browser-Only (Broken)',
+      label: 'Browser-Only (Broken)',
       enabled: ENABLE_LEGACY_IMPORTS,
       description: 'Local-only processing - KNOWN BUG: Does not save to database',
     },
     {
       value: 'ingest' as ImportMethod,
-      label: '📄 File Ingest (Different Use Case)',
+      label: 'File Ingest (Different Use Case)',
       enabled: true,
       description: 'General file upload and processing system',
     },
@@ -57,7 +57,7 @@ export function ImportMethodSelector({ onClose, onSuccess }: ImportMethodSelecto
       {/* Debug Header */}
       <div className="p-4 bg-yellow-900/20 border-b border-yellow-600/30">
         <div className="flex items-start gap-3">
-          <div className="text-2xl">🔧</div>
+          <div className="text-2xl">!</div>
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-yellow-400 mb-1">
               Debug Mode: Import Method Selector

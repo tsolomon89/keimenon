@@ -24,7 +24,6 @@ import {
   featureManifestForAccountClass,
   type GraphMaterializationSummary,
   type ImportGraphBirthMetadata,
-  type ObjectiveBuildTaskInput,
   type NormalizedImportOptions,
 } from '@keimenon/types';
 import { normalizeImportOptions } from '../../jobs/domain/import-config-contract';
@@ -41,9 +40,7 @@ import {
 } from '../../jobs/domain/ChangeTracker';
 import { JobRepository } from '../../jobs/infrastructure/JobRepository';
 import { WORKER_CONFIG } from '../../jobs/jobs.config';
-import { getAgentService } from '../../../services/agent-service';
 import { appLogger } from '../../../utils/logger';
-import { isObjectiveEnqueueKillSwitchEnabled } from '../../../utils/gate-e-kill-switches';
 
 /**
  * Import Checkpoint State
@@ -1456,73 +1453,7 @@ export class ImportWorker extends BaseWorker {
         };
       }
 
-      let objectiveBuildTaskId: string | null = null;
-      const objectiveQueueDecision = evaluateObjectiveQueueDecision({
-        objectiveLayerEnabled: features.objective_layer,
-        agentRuntimeEnabled: features.agent_runtime,
-        agentBootstrapMode: config.agent.bootstrap,
-        objectiveEnqueueKillSwitchEnabled: isObjectiveEnqueueKillSwitchEnabled(),
-      });
-
-      if (objectiveQueueDecision.shouldEnqueue) {
-        try {
-          await this.reportProgress(
-            job,
-            99,
-            100,
-            IMPORT_STAGE_LABELS[ImportJobStage.OBJECTIVE_QUEUE],
-            context,
-            ImportJobStage.OBJECTIVE_QUEUE
-          );
-
-          objectiveBuildTaskId = await this.enqueueObjectiveBuildTask(job, uploadHash);
-
-          if (objectiveBuildTaskId) {
-            await this.reportProgress(
-              job,
-              99,
-              100,
-              IMPORT_STAGE_LABELS[ImportJobStage.OBJECTIVE_DONE],
-              context,
-              ImportJobStage.OBJECTIVE_DONE,
-              {
-                objectiveBuildTaskId,
-              }
-            );
-          }
-        } catch (objectiveError: any) {
-          const objectiveMessage = objectiveError?.message || String(objectiveError);
-          const isExpectedDuplicateAgent =
-            typeof objectiveMessage === 'string' &&
-            objectiveMessage.includes('UNIQUE constraint failed: nodes.id');
-          const isMissingAccountMembership =
-            typeof objectiveMessage === 'string' &&
-            objectiveMessage.includes('No user membership found for account');
-
-          if (isExpectedDuplicateAgent || isMissingAccountMembership) {
-            appLogger.debug(
-              `[ImportWorker] Objective build task queue skipped for job ${job.id}: ${objectiveMessage}`
-            );
-          } else {
-            appLogger.warn(
-              `[ImportWorker] Unable to queue objective build task for job ${job.id}: ${objectiveMessage}`
-            );
-          }
-        }
-      } else {
-        let skipReason = `feature entitlements missing (accountClass=${accountClass})`;
-        if (objectiveQueueDecision.reason === 'kill_switch_enabled') {
-          skipReason = 'kill switch enabled';
-        } else if (objectiveQueueDecision.reason === 'manual_activation_required') {
-          skipReason = 'manual activation required (agent.bootstrap=manual)';
-        }
-        appLogger.info(`[ImportWorker] Objective queue skipped for job ${job.id}: ${skipReason}`);
-      }
-
-      const graphBirthMetadata: ImportGraphBirthMetadata = {
-        ...importGraphBirth,
-        objectiveBuildTaskId: objectiveBuildTaskId || undefined,
-      };
+      const graphBirthMetadata: ImportGraphBirthMetadata = importGraphBirth;
       const existingMetadata = (job.state.metadata || {}) as Record<string, unknown>;
       const existingTimeline = Array.isArray(existingMetadata.importTimeline)
         ? (existingMetadata.importTimeline as unknown[])
@@ -1531,7 +1462,6 @@ export class ImportWorker extends BaseWorker {
         importGraphBirth: graphBirthMetadata,
         graphMaterialization,
         importTimeline: [...existingTimeline, ...importTimeline],
-        objectiveBuildTaskId: objectiveBuildTaskId || null,
       });
       await context.jobRepository.save(job);
       if (context.broadcaster) {
@@ -1763,36 +1693,6 @@ export class ImportWorker extends BaseWorker {
     summary.passed = invariant.passed;
     summary.missing = invariant.missing;
     return summary;
-  }
-
-  private async enqueueObjectiveBuildTask(job: Job, importBatchId: string): Promise<string | null> {
-    const agentService = getAgentService();
-    const objectiveInput: ObjectiveBuildTaskInput = {
-      importJobId: job.id,
-      accountId: job.accountId,
-      sourceBatchId: importBatchId,
-      targetId: importBatchId,
-      policy: {
-        domain_weights: {
-          'wikipedia.org': 0.85,
-          'arxiv.org': 0.95,
-          gov: 0.95,
-          edu: 0.9,
-        },
-        max_hops: 2,
-        max_sources: 8,
-      },
-    };
-    const taskResult = await agentService.executeTask({
-      type: 'VERIFY_SOURCE_CHAIN',
-      accountId: job.accountId,
-      input: objectiveInput as unknown as Record<string, unknown>,
-      config: {
-        version: '1.0.0',
-      },
-    });
-
-    return taskResult.task.id;
   }
 
   private resolveJobAccountClass(job: Job): 'free' | 'professional' | 'business' {

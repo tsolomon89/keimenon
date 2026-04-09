@@ -167,7 +167,7 @@ export function createApp(): { app: Express; context: AppContext } {
       version: '0.1.0',
       endpoints: {
         jobs: {
-          import: 'POST /api/v1/jobs/import',
+          importMultipartCompatibility: 'POST /api/v1/jobs/import (410 Gone)',
           delete: 'POST /api/v1/jobs/delete',
           list: 'GET /api/v1/jobs',
           get: 'GET /api/v1/jobs/:id',

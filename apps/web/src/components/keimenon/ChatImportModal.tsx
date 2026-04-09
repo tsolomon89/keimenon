@@ -18,7 +18,6 @@ import { DuplicateReviewPanel } from '../import/DuplicateReviewPanel';
 import {
   analyzeFiles,
   detectPlatform,
-  importChatFilesAsJob,
   applyDuplicateDecisions,
   getDuplicateReviewGroups,
   getDuplicateReviewStatus,
@@ -541,9 +540,11 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       importConfig: ChatImportConfig,
       detectedPlatform?: 'chatgpt' | 'claude' | 'gemini' | 'generic'
     ): Promise<string[]> => {
-      const concurrency = Math.min(3, filesToImport.length);
       const submittedJobIds: string[] = [];
-      let cursor = 0;
+      const uploadConfig = {
+        platform: detectedPlatform || 'generic',
+        ...importConfig,
+      };
 
       setMultiFileImports(
         filesToImport.map((file) => ({
@@ -554,59 +555,52 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         }))
       );
 
-      const workers = Array.from({ length: concurrency }).map(async () => {
-        while (cursor < filesToImport.length) {
-          const currentIndex = cursor;
-          cursor += 1;
-          const file = filesToImport[currentIndex];
+      for (const [currentIndex, file] of filesToImport.entries()) {
+        setMultiFileImports((previous) =>
+          previous.map((entry, index) =>
+            index === currentIndex
+              ? { ...entry, status: 'submitting', message: 'Uploading via chunked rail...' }
+              : entry
+          )
+        );
 
+        const result = await chunkedUpload.upload(file, uploadConfig);
+        if (result.success && result.jobId) {
+          submittedJobIds.push(result.jobId);
           setMultiFileImports((previous) =>
             previous.map((entry, index) =>
               index === currentIndex
-                ? { ...entry, status: 'submitting', message: 'Uploading and creating job...' }
+                ? {
+                    ...entry,
+                    jobId: result.jobId,
+                    status: 'submitted',
+                    progress: 0,
+                    message: 'Job created',
+                  }
                 : entry
             )
           );
-
-          try {
-            const result = await importChatFilesAsJob([file], importConfig, detectedPlatform);
-            submittedJobIds.push(result.jobId);
-
-            setMultiFileImports((previous) =>
-              previous.map((entry, index) =>
-                index === currentIndex
-                  ? {
-                      ...entry,
-                      jobId: result.jobId,
-                      status: 'submitted',
-                      progress: 0,
-                      message: 'Job created',
-                    }
-                  : entry
-              )
-            );
-          } catch (error) {
-            const message = error instanceof Error ? error.message : 'Failed to submit import';
-            setMultiFileImports((previous) =>
-              previous.map((entry, index) =>
-                index === currentIndex
-                  ? {
-                      ...entry,
-                      status: 'error',
-                      message,
-                      error: message,
-                    }
-                  : entry
-              )
-            );
-          }
+          continue;
         }
-      });
 
-      await Promise.all(workers);
+        const message = result.error || 'Failed to submit import';
+        setMultiFileImports((previous) =>
+          previous.map((entry, index) =>
+            index === currentIndex
+              ? {
+                  ...entry,
+                  status: 'error',
+                  message,
+                  error: message,
+                }
+              : entry
+          )
+        );
+      }
+
       return submittedJobIds;
     },
-    []
+    [chunkedUpload]
   );
 
   const handleImport = async () => {
@@ -655,7 +649,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         percent: 0,
         message:
           files.length > 1
-            ? `Submitting ${files.length} files (max 3 concurrent uploads)...`
+            ? `Submitting ${files.length} files through the chunked upload rail...`
             : 'Initiating chunked upload...',
       });
 
@@ -1087,7 +1081,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
             {DEBUG_IMPORT_SELECTOR && (
               <div className="mb-4 px-3 py-2 bg-slate-800/50 border border-slate-700 rounded text-xs text-slate-400 font-mono">
                 <span className="text-slate-500">Import Rail:</span>{' '}
-                <span className="text-green-400">job-based</span>
+                <span className="text-green-400">chunked uploads</span>
                 {' · '}
                 <span className="text-slate-500">Account:</span>{' '}
                 <span className="text-purple-400">{operating?.accountId || 'N/A'}</span>

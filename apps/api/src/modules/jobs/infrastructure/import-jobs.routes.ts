@@ -1,29 +1,19 @@
 /**
  * Import Jobs Routes
  *
- * File upload endpoint that creates background import jobs.
- * Replaces the synchronous /import/enhanced endpoint with async job-based processing.
- *
- * Flow:
- * 1. Accept multipart/form-data file upload
- * 2. Save files to temp storage
- * 3. Create import job with file paths
- * 4. Return job ID immediately
- * 5. Client monitors progress via SSE (/api/v1/stream/jobs)
+ * Compatibility routes for jobs surfaces that remain mounted under /api/v1/jobs.
+ * Multipart import creation has been retired in favor of chunked upload
+ * through /api/v1/uploads/*.
  */
 
 import { Router, Request, Response } from 'express';
 import { AuthService } from '../../../services/auth.service';
 import { requireAuth } from '../../../middleware/auth.middleware';
-import { streamingUploadService } from '../../../services/streaming-upload';
 import { SQLiteJobRepository } from './JobRepository';
 import { EnqueueJob, EnqueueJobCommand } from '../application/EnqueueJob';
-import { enqueueImportJob as enqueueImportJobWithConfig } from '../application/enqueue-import-job';
 import { SSEBroadcaster } from './SSEBroadcaster';
 import Database from 'better-sqlite3';
 import { ulid } from 'ulid';
-import { featureManifestForAccountClass } from '@keimenon/types';
-import { normalizeImportOptions } from '../domain/import-config-contract';
 import { appLogger } from '../../../utils/logger';
 
 /**
@@ -43,149 +33,31 @@ export function createImportJobsRoutes(
 
   /**
    * POST /api/v1/jobs/import
-   * Upload files and create import job
+   * Compatibility shim for retired multipart import rail.
    */
   router.post('/import', requireAuth(authService), async (req: Request, res: Response) => {
-    try {
-      // TENANCY SECURITY: Extract all tenancy fields from server-side validated token only
-      // NEVER trust client-sent account_id, user_type, or membership fields
-      const userId = (req as any).user?.userId;
-      const userAccountId = (req as any).user?.accountId;
-      const userEmail = (req as any).user?.email;
-      const userType = (req as any).user?.user_type || 'user';
-      const accountMembership = (req as any).user?.account_membership || 'member';
-      const accountClass = ((req as any).user?.accountClass || 'free') as
-        | 'free'
-        | 'professional'
-        | 'business';
-      const operating = (req as any).operating;
+    const userId = (req as any).user?.userId;
+    const userAccountId = (req as any).user?.accountId;
+    const operating = (req as any).operating;
+    const targetAccountId = operating?.accountId || userAccountId;
 
-      appLogger.info('jobs.import.request', {
-        userId,
-        userEmail,
-        accountId: userAccountId,
-        userType,
-        accountMembership,
-        contentType: req.headers['content-type'],
-        testDbPath: (req as any).testDbPath || req.headers['x-test-db-path'],
-      });
+    appLogger.info('jobs.import.multipart_retired', {
+      userId,
+      accountId: targetAccountId,
+      contentType: req.headers['content-type'],
+    });
 
-      if (!userAccountId || !userId) {
-        return res.status(401).json({
-          success: false,
-          error: 'Authentication required',
-        });
-      }
-
-      // Determine target account based on operating context
-      const targetAccountId = operating?.accountId || userAccountId;
-      const actorId = ulid();
-
-      // Handle streaming file upload
-      const uploadResult = await streamingUploadService.handleUploadWithFields(req);
-      const files = uploadResult.files;
-      const fields = uploadResult.fields;
-
-      if (files.length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'No files uploaded',
-        });
-      }
-
-      appLogger.info('jobs.import.uploaded', {
-        accountId: targetAccountId,
-        fileCount: files.length,
-        files: files.map((f) => ({ fileName: f.fileName, sizeBytes: f.size })),
-      });
-
-      // Parse import configuration from form fields
-      let importOptions = normalizeImportOptions();
-      if (fields.config) {
-        let parsedConfig: unknown;
-        try {
-          parsedConfig = JSON.parse(fields.config);
-        } catch (error: any) {
-          return res.status(400).json({
-            success: false,
-            error: `Invalid import config JSON: ${error.message}`,
-          });
-        }
-
-        try {
-          importOptions = normalizeImportOptions(parsedConfig);
-        } catch (error: any) {
-          return res.status(400).json({
-            success: false,
-            error: `Invalid import config: ${error.message}`,
-          });
-        }
-      }
-
-      const features = featureManifestForAccountClass(accountClass);
-      if (!features.auto_graph) {
-        return res.status(403).json({
-          success: false,
-          error: 'Current account tier does not permit automatic graph import.',
-        });
-      }
-
-      const testContext =
-        (req as any).testDbPath || req.headers['x-test-db-path']
-          ? {
-              dbPath: (req as any).testDbPath || (req.headers['x-test-db-path'] as string),
-              testId: (req as any).testId,
-            }
-          : undefined;
-
-      const result = await enqueueImportJobWithConfig(enqueueJob, {
-        accountId: targetAccountId,
-        createdBy: userId,
-        files: files.map((f) => ({
-          fileName: f.fileName,
-          fileSize: f.size,
-          mimeType: f.mimeType,
-          filePath: f.filePath,
-        })),
-        importOptions,
-        processingRail: 'multipart',
-        source: 'jobs-import-route',
-        tenancy: {
-          actorId,
-          userId,
-          accountId: targetAccountId,
-          userType,
-          accountMembership,
-          userEmail,
-          accountClass,
-          features,
-        },
-        testContext,
-      });
-
-      appLogger.info('jobs.import.created', {
-        jobId: result.jobId,
-        status: result.status,
-        accountId: targetAccountId,
-        actorId,
-      });
-
-      return res.status(201).json({
-        success: true,
-        jobId: result.jobId,
-        uploadIds: files.map((f) => f.uploadId),
-        message: 'Import job created. Monitor progress via SSE at /api/v1/stream/jobs',
-        job: result.job.toJSON(),
-      });
-    } catch (error: any) {
-      appLogger.error('jobs.import.failed', {
-        message: error?.message || 'Failed to create import job',
-      });
-      return res.status(500).json({
-        success: false,
-        error: error.message || 'Failed to create import job',
-      });
-    }
+    return res.status(410).json({
+      success: false,
+      code: 'IMPORT_MULTIPART_REMOVED',
+      error:
+        'Multipart import endpoint has been retired. Use chunked upload via /api/v1/uploads/initiate and /api/v1/uploads/:sessionId/chunks/:chunkIndex.',
+      migration: {
+        initiate: 'POST /api/v1/uploads/initiate',
+        chunk: 'POST /api/v1/uploads/:sessionId/chunks/:chunkIndex',
+        sessionStatus: 'GET /api/v1/uploads/:sessionId',
+      },
+    });
   });
 
   /**

@@ -7,10 +7,13 @@
 
 ## Scope
 
-This contract applies to both import upload rails:
+This contract applies to the canonical chunked upload rail:
 
-- `POST /api/v1/jobs/import` (multipart job-based import)
-- Chunked upload flow (`/api/v1/uploads/*`) that assembles a file and then creates an import job
+- `POST /api/v1/uploads/initiate`
+- `POST /api/v1/uploads/:sessionId/chunks/:chunkIndex`
+- `GET /api/v1/uploads/:sessionId`
+
+`POST /api/v1/jobs/import` is a compatibility shim that returns `410 Gone` with migration guidance.
 
 ## Processing Mode Semantics
 
@@ -26,10 +29,26 @@ This contract applies to both import upload rails:
 ## Compatibility and Backward Behavior
 
 - For this release, manual mode remains manual-priority with auto fallback.
-- No REST breaking changes are required.
+- Multipart import callers must migrate to chunked upload.
 - Import jobs include contract metadata for traceability:
   - `config.metadata.importContractVersion = "v2"`
-  - `config.metadata.processingRail = "multipart" | "chunked"`
+  - `config.metadata.processingRail = "chunked"`
+
+## Parser Mapping Contract
+
+Parser class names are legacy-stable and do not imply provider ownership. Runtime behavior is
+defined by `platform` output plus `canParse` shape matching.
+
+- `ChatGPTParser` consumes Claude mapping/tree export shapes and emits `platform = "claude"`.
+- `ClaudeParser` consumes ChatGPT `uuid/chat_messages/account` export shapes and emits
+  `platform = "chatgpt"`.
+- `GeminiParser` consumes Gemini-specific export variants and emits `platform = "gemini"`.
+- `ParserRegistry` remains source-of-truth for auto-detection precedence and fallback handling.
+
+Regression coverage:
+
+- `packages/parsers/src/parsers/parser-platform-mapping.test.ts`
+- `packages/parsers/src/parsers/role-normalization-edge-cases.test.ts`
 
 ## Runtime Expectations
 

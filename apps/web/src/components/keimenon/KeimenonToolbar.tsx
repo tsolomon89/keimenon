@@ -14,7 +14,6 @@ import {
   LayoutDashboard,
   Settings,
   Database,
-  Activity,
   Briefcase,
   Filter,
   Link2,
@@ -39,13 +38,8 @@ interface KeimenonToolbarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onCenterView: () => void;
-  keimenonSurface: 'keimenon' | 'processing' | 'boards';
-  onKeimenonSurfaceChange: (surface: 'keimenon' | 'processing' | 'boards') => void;
   dashboardView: 'analytics' | 'storage' | 'workspaces' | 'conversations';
   onDashboardViewChange: (view: 'analytics' | 'storage' | 'workspaces' | 'conversations') => void;
-  processingAvailable?: boolean;
-  autoSwitchToProcessingEnabled: boolean;
-  onAutoSwitchToProcessingChange: (enabled: boolean) => void;
   focusModeEnabled: boolean;
   onFocusModeToggle: () => void;
   includeConnectorNodes: boolean;
@@ -69,13 +63,8 @@ export function KeimenonToolbar({
   onZoomIn,
   onZoomOut,
   onCenterView,
-  keimenonSurface,
-  onKeimenonSurfaceChange,
   dashboardView,
   onDashboardViewChange,
-  processingAvailable = false,
-  autoSwitchToProcessingEnabled,
-  onAutoSwitchToProcessingChange,
   focusModeEnabled,
   onFocusModeToggle,
   includeConnectorNodes,
@@ -113,7 +102,6 @@ export function KeimenonToolbar({
 
   const handleKeimenonMode = () => {
     setKeimenonMode('keimenon');
-    onKeimenonSurfaceChange('keimenon');
   };
 
   const handleDashboardMode = () => {
@@ -186,37 +174,6 @@ export function KeimenonToolbar({
 
       {isKeimenonMode && (
         <div className="hidden lg:flex items-center gap-2 lg:gap-3">
-          <div className="flex items-center bg-slate-800/50 rounded-lg p-0.5 border border-slate-700/50 shadow-inner">
-            <button
-              onClick={() => onKeimenonSurfaceChange('keimenon')}
-              type="button"
-              className={surfaceButtonClass(keimenonSurface === 'keimenon')}
-              title="Keimenon View"
-            >
-              <Grid3x3 className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={() => onKeimenonSurfaceChange('processing')}
-              type="button"
-              disabled={!processingAvailable}
-              className={surfaceButtonClass(keimenonSurface === 'processing', !processingAvailable)}
-              title="Processing View"
-            >
-              <Activity className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => onKeimenonSurfaceChange('boards')}
-              type="button"
-              className={surfaceButtonClass(keimenonSurface === 'boards')}
-              title="Boards View"
-            >
-              <LayoutDashboard className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="w-px h-6 bg-slate-700" />
-
           <div className="flex items-center gap-1">
             <span className="text-[11px] uppercase tracking-wide text-slate-500 px-1">Lens</span>
             <button
@@ -403,20 +360,6 @@ export function KeimenonToolbar({
           </div>
 
           <div className="w-px h-6 bg-slate-700" />
-
-          <button
-            onClick={() => onAutoSwitchToProcessingChange(!autoSwitchToProcessingEnabled)}
-            type="button"
-            className={clsx(
-              'px-2.5 py-1.5 rounded text-xs font-medium border transition-colors',
-              autoSwitchToProcessingEnabled
-                ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40'
-                : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
-            )}
-            title="Automatically switch to Processing view when imports start"
-          >
-            Auto-Processing {autoSwitchToProcessingEnabled ? 'On' : 'Off'}
-          </button>
 
           {/* Source Role Filter */}
           <div className="relative" ref={filterRef}>

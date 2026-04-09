@@ -9,7 +9,6 @@ import { KeimenonViewport, KeimenonViewportHandle } from './KeimenonViewport';
 import { CRMDashboard } from './CRMDashboard';
 import { StorageStatsDashboard } from './StorageStatsDashboard';
 import { ProcessingKeimenonView } from './ProcessingKeimenonView';
-import { BoardViewContainer } from '../organization/BoardViewContainer';
 import { PortalWrapper } from './PortalWrapper';
 import { SettingsPage } from '../settings/SettingsPage';
 import { ConversationBrowser } from '../conversations/ConversationBrowser';
@@ -26,12 +25,7 @@ import { useBackgroundOperations, type Operation } from '@/contexts/BackgroundOp
 import { useConsole } from '@/contexts/ConsoleContext';
 import type { ImportJob } from './ImportsTableCard';
 import type { ImportUiStatus } from '@/lib/import-job-progress';
-import {
-  fetchSettings,
-  getCoreProcessReimportStatus,
-  type CoreProcessReimportStatus,
-  updateSetting,
-} from '@/lib/api-client';
+import { getCoreProcessReimportStatus, type CoreProcessReimportStatus } from '@/lib/api-client';
 import { DEFAULT_ND_CONFIG, type NdProjectionConfig, type RenderLens } from '@/lib/nd-projection';
 
 interface KeimenonLayoutProps {
@@ -56,19 +50,15 @@ export function KeimenonLayout({
   onClearRestoredOperation,
 }: KeimenonLayoutProps) {
   const { user } = useAuth();
-  const { shellMode, keimenonMode } = useShell();
+  const { keimenonMode } = useShell();
   const { operating } = useOperating();
   const { uiVersion } = useUIVersion();
   const { operations, getOperation, getActiveOperations, addOperation, updateOperation } =
     useBackgroundOperations();
   const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
   const keimenonViewportRef = useRef<KeimenonViewportHandle>(null);
-  const [isMobile, setIsMobile] = useState(false);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-  const [keimenonSurface, setKeimenonSurface] = useState<'keimenon' | 'processing' | 'boards'>(
-    'keimenon'
-  );
   const [dashboardView, setDashboardView] = useState<
     'analytics' | 'storage' | 'workspaces' | 'conversations'
   >('analytics');
@@ -82,13 +72,11 @@ export function KeimenonLayout({
   const [coreProcessReimport, setCoreProcessReimport] = useState<CoreProcessReimportStatus | null>(
     null
   );
-  const [autoSwitchProcessingView, setAutoSwitchProcessingView] = useState(true);
   const [focusModeEnabled, setFocusModeEnabled] = useState(false);
   const [includeConnectorNodes, setIncludeConnectorNodes] = useState(false);
   const [pinnedNodeCount, setPinnedNodeCount] = useState(0);
   const [renderLens, setRenderLens] = useState<RenderLens>('2d');
   const [ndConfig, setNdConfig] = useState<NdProjectionConfig>(DEFAULT_ND_CONFIG);
-  const previousRunningImportCountRef = useRef(0);
 
   const handleZoomToFilteredNodes = () => {
     keimenonViewportRef.current?.zoomToFitFilteredNodes();
@@ -130,34 +118,6 @@ export function KeimenonLayout({
   }, [user?.accountId]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    if (!user?.accountId) {
-      setAutoSwitchProcessingView(true);
-      return;
-    }
-
-    fetchSettings(user.accountId)
-      .then((response) => {
-        if (cancelled) {
-          return;
-        }
-
-        const configuredValue = response?.settings?.import_auto_switch_processing?.value;
-        setAutoSwitchProcessingView(typeof configuredValue === 'boolean' ? configuredValue : true);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAutoSwitchProcessingView(true);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.accountId]);
-
-  useEffect(() => {
     const onCoreProcessReimportComplete = () => {
       setCoreProcessReimport((previous) =>
         previous ? { ...previous, requiresReimport: false } : previous
@@ -190,89 +150,35 @@ export function KeimenonLayout({
     }
   }, [activeOperation, getActiveOperations]);
 
-  // Auto-switch to processing view when import job starts
-  // TODO: Add user preference to disable auto-switch (see docs/features/IMPORT_PREFERENCES.md)
-  useEffect(() => {
-    const runningImports = Array.from(operations.values()).filter(
-      (op) =>
-        op.type === 'import' &&
-        [
-          'queued',
-          'reading',
-          'parsing',
-          'normalizing',
-          'indexing',
-          'linking',
-          'processing',
-          'blocked',
-        ].includes(op.status)
-    );
-    const runningImportCount = runningImports.length;
-    const hadRunningImports = previousRunningImportCountRef.current > 0;
-    const hasNewRunningImport = !hadRunningImports && runningImportCount > 0;
+  const activeImportStatuses: Operation['status'][] = [
+    'queued',
+    'reading',
+    'parsing',
+    'normalizing',
+    'indexing',
+    'linking',
+    'processing',
+    'blocked',
+  ];
 
-    // Auto-switch only when imports transition from "none running" to "running".
-    // This avoids trapping users/tests in processing view due to stale background operations.
-    // Shows minigraph visualization and real-time pipeline progress
+  const processingGateOperation = useMemo(() => {
     if (
-      autoSwitchProcessingView &&
-      keimenonMode === 'keimenon' &&
-      hasNewRunningImport &&
-      keimenonSurface !== 'processing'
+      activeOperation &&
+      activeOperation.type === 'import' &&
+      activeImportStatuses.includes(activeOperation.status)
     ) {
-      console.debug('[KeimenonLayout] Auto-switching to processing view for import job');
-      setKeimenonSurface('processing');
-
-      // Set the first running import as active if none is selected
-      if (
-        !activeOperation ||
-        activeOperation.status === 'done' ||
-        activeOperation.status === 'error'
-      ) {
-        setActiveOperation(runningImports[0]);
-      }
+      return activeOperation;
     }
 
-    previousRunningImportCountRef.current = runningImportCount;
-  }, [operations, keimenonMode, keimenonSurface, activeOperation, autoSwitchProcessingView]);
-
-  const handleAutoSwitchProcessingViewChange = async (enabled: boolean) => {
-    setAutoSwitchProcessingView(enabled);
-
-    try {
-      await updateSetting('import_auto_switch_processing', enabled);
-    } catch (error) {
-      console.warn('[KeimenonLayout] Failed to persist auto-switch preference', error);
-    }
-  };
-
-  // Reset processing surface when there is no active operation
-  useEffect(() => {
-    if (keimenonSurface === 'processing' && !activeOperation) {
-      setKeimenonSurface('keimenon');
-    }
-  }, [keimenonSurface, activeOperation]);
-
-  const hasProcessingOperations = useMemo(
-    () =>
-      Array.from(operations.values()).some((op) =>
-        [
-          'queued',
-          'reading',
-          'parsing',
-          'normalizing',
-          'indexing',
-          'linking',
-          'processing',
-          'blocked',
-        ].includes(op.status)
-      ),
-    [operations]
-  );
-
-  const processingAvailable = hasProcessingOperations || !!activeOperation;
+    return (
+      Array.from(operations.values()).find(
+        (operation) =>
+          operation.type === 'import' && activeImportStatuses.includes(operation.status)
+      ) || null
+    );
+  }, [activeOperation, operations]);
   // Handler to open import flow in Inspector Bar
-  // NOTE(import-flow): ChatImportModal is the primary job-based import rail, rendered via KeimenonSidebar.
+  // NOTE(import-flow): ChatImportModal is the primary chunked import rail, rendered via KeimenonSidebar.
   const handleOpenImportFlow = () => {
     // Open import flow in Inspector Bar (no modals)
     setInspectorPanel('import-flow');
@@ -293,7 +199,7 @@ export function KeimenonLayout({
   // Handler for when user is updated in inspector
   const handleUserUpdate = (updatedUser: any) => {
     setSelectedUser(updatedUser);
-    // ✅ UsersListCard already handles refresh via onSuccess callback (line 371)
+    // UsersListCard already handles refresh via onSuccess callback (line 371)
     // The update is reflected immediately in the inspector
   };
 
@@ -384,7 +290,6 @@ export function KeimenonLayout({
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 1024; // lg breakpoint
-      setIsMobile(mobile);
       // Auto-close sidebars on mobile
       if (mobile) {
         setLeftSidebarOpen(false);
@@ -419,13 +324,6 @@ export function KeimenonLayout({
       setDashboardView('analytics');
     }
   }, [keimenonMode, dashboardView]);
-
-  // Reset non-primary surface when switching away from keimenon mode.
-  useEffect(() => {
-    if (keimenonMode !== 'keimenon' && keimenonSurface !== 'keimenon') {
-      setKeimenonSurface('keimenon');
-    }
-  }, [keimenonMode, keimenonSurface]);
 
   return (
     <div className="h-screen flex flex-col bg-slate-900 text-white overflow-hidden">
@@ -478,13 +376,8 @@ export function KeimenonLayout({
                 leftSidebarVisible={leftSidebarOpen}
                 rightSidebarVisible={rightSidebarOpen}
                 footerVisible={footerOpen}
-                keimenonSurface={keimenonSurface}
-                onKeimenonSurfaceChange={setKeimenonSurface}
                 dashboardView={dashboardView}
                 onDashboardViewChange={setDashboardView}
-                processingAvailable={processingAvailable}
-                autoSwitchToProcessingEnabled={autoSwitchProcessingView}
-                onAutoSwitchToProcessingChange={handleAutoSwitchProcessingViewChange}
                 focusModeEnabled={focusModeEnabled}
                 onFocusModeToggle={() => setFocusModeEnabled((previous) => !previous)}
                 includeConnectorNodes={includeConnectorNodes}
@@ -523,8 +416,8 @@ export function KeimenonLayout({
               ) : (
                 // Wrap content with PortalWrapper if admin is operating on an account
                 <PortalWrapper>
-                  {keimenonMode === 'keimenon' &&
-                    (keimenonSurface === 'keimenon' ? (
+                  {keimenonMode === 'keimenon' && (
+                    <div className="relative h-full">
                       <KeimenonViewport
                         ref={keimenonViewportRef}
                         onOpenUpload={handleOpenImportFlow}
@@ -535,15 +428,20 @@ export function KeimenonLayout({
                         includeConnectors={includeConnectorNodes}
                         onPinnedNodeCountChange={setPinnedNodeCount}
                       />
-                    ) : keimenonSurface === 'processing' ? (
-                      <ProcessingKeimenonView
-                        operation={activeOperation}
-                        renderLens={renderLens}
-                        ndConfig={ndConfig}
-                      />
-                    ) : (
-                      <BoardViewContainer renderLens={renderLens} ndConfig={ndConfig} />
-                    ))}
+                      {processingGateOperation && (
+                        <div
+                          className="absolute inset-0 z-20 border-l border-r border-slate-900"
+                          data-testid="processing-gate-overlay"
+                        >
+                          <ProcessingKeimenonView
+                            operation={processingGateOperation}
+                            renderLens={renderLens}
+                            ndConfig={ndConfig}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {keimenonMode === 'dashboard' &&
                     (dashboardView === 'analytics' ? (
@@ -578,7 +476,6 @@ export function KeimenonLayout({
               selectedUser={selectedUser}
               onUserUpdate={handleUserUpdate}
               activeOperation={activeOperation}
-              onViewProcessing={() => setKeimenonSurface('processing')}
             />
           </>
         )}

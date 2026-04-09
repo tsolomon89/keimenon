@@ -37,13 +37,23 @@ interface MockJobState {
   status: 'queued' | 'running' | 'succeeded';
 }
 
+interface MockUploadSessionState {
+  id: string;
+  totalChunks: number;
+  uploadedChunks: Set<number>;
+  chunkSize: number;
+  jobId: string | null;
+}
+
 describe('FileIngestionService integration contract', () => {
   let tempDir = '';
   let tempFilePath = '';
   let server: ReturnType<typeof createServer> | null = null;
   let port = 0;
   let nextJobId = 1;
+  let nextUploadId = 1;
   const jobs = new Map<string, MockJobState>();
+  const uploadSessions = new Map<string, MockUploadSessionState>();
   const sseClients = new Set<ServerResponse>();
 
   const emitJobsUpdate = (job: MockJobState) => {
@@ -77,7 +87,7 @@ describe('FileIngestionService integration contract', () => {
         try {
           const url = new URL(req.url || '/', 'http://127.0.0.1');
 
-          if (req.method === 'POST' && url.pathname === '/api/v1/jobs/import') {
+          if (req.method === 'POST' && url.pathname === '/api/v1/uploads/initiate') {
             const auth = req.headers.authorization;
             if (auth !== 'Bearer desktop-access-token') {
               res.statusCode = 401;
@@ -86,30 +96,107 @@ describe('FileIngestionService integration contract', () => {
               return;
             }
 
-            await consumeRequestBody(req);
+            let rawBody = '';
+            req.on('data', (chunk) => {
+              rawBody += chunk.toString();
+            });
+            await new Promise<void>((resolve, reject) => {
+              req.on('end', () => resolve());
+              req.on('error', (error) => reject(error));
+            });
+            const parsedBody = JSON.parse(rawBody || '{}') as {
+              fileSize?: number;
+              chunkSize?: number;
+            };
+            const chunkSize = parsedBody.chunkSize || 10 * 1024 * 1024;
+            const fileSize = parsedBody.fileSize || 0;
+            const totalChunks = Math.max(1, Math.ceil(fileSize / chunkSize));
+            const sessionId = `upl_desktop_${nextUploadId++}`;
 
-            const jobId = `job_desktop_${nextJobId++}`;
-            const job: MockJobState = { id: jobId, type: 'import', status: 'queued' };
-            jobs.set(jobId, job);
-            emitJobsUpdate(job);
-
-            setTimeout(() => {
-              const running = jobs.get(jobId);
-              if (!running) return;
-              running.status = 'running';
-              emitJobsUpdate(running);
-            }, 25);
-
-            setTimeout(() => {
-              const finished = jobs.get(jobId);
-              if (!finished) return;
-              finished.status = 'succeeded';
-              emitJobsUpdate(finished);
-            }, 50);
+            uploadSessions.set(sessionId, {
+              id: sessionId,
+              totalChunks,
+              uploadedChunks: new Set<number>(),
+              chunkSize,
+              jobId: null,
+            });
 
             res.statusCode = 201;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ success: true, jobId }));
+            res.end(
+              JSON.stringify({
+                success: true,
+                session: {
+                  id: sessionId,
+                  totalChunks,
+                  chunkSize,
+                  jobId: null,
+                },
+              })
+            );
+            return;
+          }
+
+          if (
+            req.method === 'POST' &&
+            /^\/api\/v1\/uploads\/[^/]+\/chunks\/\d+$/.test(url.pathname)
+          ) {
+            const auth = req.headers.authorization;
+            if (auth !== 'Bearer desktop-access-token') {
+              res.statusCode = 401;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: false, error: 'Unauthorized' }));
+              return;
+            }
+
+            const match = url.pathname.match(/^\/api\/v1\/uploads\/([^/]+)\/chunks\/(\d+)$/);
+            const sessionId = match?.[1] || '';
+            const chunkIndex = Number(match?.[2] || 0);
+            const session = uploadSessions.get(sessionId);
+            if (!session) {
+              res.statusCode = 404;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: false, error: 'Session not found' }));
+              return;
+            }
+
+            await consumeRequestBody(req);
+            session.uploadedChunks.add(chunkIndex);
+            const isComplete = session.uploadedChunks.size >= session.totalChunks;
+
+            if (isComplete && !session.jobId) {
+              const jobId = `job_desktop_${nextJobId++}`;
+              const job: MockJobState = { id: jobId, type: 'import', status: 'queued' };
+              jobs.set(jobId, job);
+              session.jobId = jobId;
+              emitJobsUpdate(job);
+
+              setTimeout(() => {
+                const running = jobs.get(jobId);
+                if (!running) return;
+                running.status = 'running';
+                emitJobsUpdate(running);
+              }, 25);
+
+              setTimeout(() => {
+                const finished = jobs.get(jobId);
+                if (!finished) return;
+                finished.status = 'succeeded';
+                emitJobsUpdate(finished);
+              }, 50);
+            }
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(
+              JSON.stringify({
+                success: true,
+                sessionId,
+                chunkIndex,
+                isComplete,
+                ...(session.jobId ? { jobId: session.jobId } : {}),
+              })
+            );
             return;
           }
 
@@ -248,8 +335,10 @@ describe('FileIngestionService integration contract', () => {
 
   beforeEach(async () => {
     jobs.clear();
+    uploadSessions.clear();
     sseClients.clear();
     nextJobId = 1;
+    nextUploadId = 1;
 
     mockSecureStorage.getActiveAccountId.mockResolvedValue('acc_desktop_1');
     mockSecureStorage.getAccountToken.mockResolvedValue('desktop-access-token');
@@ -274,6 +363,7 @@ describe('FileIngestionService integration contract', () => {
     }
     sseClients.clear();
     jobs.clear();
+    uploadSessions.clear();
 
     if (server) {
       await new Promise<void>((resolve) => server?.close(() => resolve()));

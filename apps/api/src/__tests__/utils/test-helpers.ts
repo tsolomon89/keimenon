@@ -323,36 +323,101 @@ export async function waitForChunkedImportCompletion(
 }
 
 /**
- * Create import job via API (job-based system)
- * Uses POST /api/v1/jobs/import (primary production rail)
+ * Create import job via API (chunked upload rail).
  */
 export async function createImportJob(
   filePath: string,
   token: string,
   config?: any
 ): Promise<{ jobId: string; uploadId: string }> {
-  const form = createFormData(filePath, config);
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Test file not found: ${filePath}`);
+  }
 
-  const response = await fetch(`${getApiUrl()}/api/v1/jobs/import`, {
+  const fileBuffer = fs.readFileSync(filePath);
+  const chunkSize = 1024 * 1024;
+  const fileName = path.basename(filePath);
+
+  const initiateResponse = await fetch(`${getApiUrl()}/api/v1/uploads/initiate`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      ...form.getHeaders(),
+      'Content-Type': 'application/json',
     },
-    body: form,
+    body: JSON.stringify({
+      fileName,
+      fileSize: fileBuffer.length,
+      mimeType: 'application/json',
+      chunkSize,
+      importConfig: config || undefined,
+    }),
   });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Import failed (${response.status}): ${error}`);
+  if (!initiateResponse.ok) {
+    const error = await initiateResponse.text();
+    throw new Error(`Upload initiate failed (${initiateResponse.status}): ${error}`);
   }
 
-  const data = (await response.json()) as ImportJobResponse;
+  const initiateData = (await initiateResponse.json()) as {
+    success: boolean;
+    session?: { id?: string; totalChunks?: number; jobId?: string | null };
+  };
+  const sessionId = initiateData.session?.id;
+  const totalChunks =
+    initiateData.session?.totalChunks || Math.max(1, Math.ceil(fileBuffer.length / chunkSize));
+  if (!sessionId) {
+    throw new Error('Upload initiate response missing session ID');
+  }
 
-  // Job-based response format: { success, jobId, uploadIds, job }
+  let jobId = initiateData.session?.jobId || undefined;
+  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+    const start = chunkIndex * chunkSize;
+    const end = Math.min(start + chunkSize, fileBuffer.length);
+    const payload = fileBuffer.subarray(start, end);
+    const chunkResponse = await fetch(
+      `${getApiUrl()}/api/v1/uploads/${sessionId}/chunks/${chunkIndex}`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/octet-stream',
+        },
+        body: payload,
+      }
+    );
+
+    const chunkData = (await chunkResponse.json().catch(() => ({}))) as {
+      success?: boolean;
+      error?: string;
+      message?: string;
+      jobId?: string;
+    };
+    if (!chunkResponse.ok || chunkData.success !== true) {
+      const error = chunkData.message || chunkData.error || `HTTP ${chunkResponse.status}`;
+      throw new Error(`Chunk upload failed (${chunkResponse.status}): ${error}`);
+    }
+    if (chunkData.jobId) {
+      jobId = chunkData.jobId;
+    }
+  }
+
+  if (!jobId) {
+    const statusResponse = await fetch(`${getApiUrl()}/api/v1/uploads/${sessionId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const statusData = (await statusResponse.json().catch(() => ({}))) as {
+      session?: { jobId?: string };
+    };
+    jobId = statusData.session?.jobId;
+  }
+
+  if (!jobId) {
+    throw new Error('Upload completed but no job ID was returned');
+  }
+
   return {
-    jobId: data.jobId,
-    uploadId: data.uploadIds?.[0] || data.jobId, // Use first uploadId or fallback to jobId
+    jobId,
+    uploadId: sessionId,
   };
 }
 

@@ -1,6 +1,6 @@
 # Keimenon Vision Gap Analysis (AGENTS-canonical Pass)
 
-Last updated: 2026-04-01 (golden-path usability closure pass).
+Last updated: 2026-04-09 (canonical import + objective correction pass).
 
 Scope: current implementation state versus canonical `AGENTS.md` at repository root, with `agent_context/Kiemenon.md` retained as supplementary intent evidence.
 
@@ -40,6 +40,10 @@ Scope: current implementation state versus canonical `AGENTS.md` at repository r
 19. Import worker now enforces golden-path graph materialization invariants and fails terminally with `GRAPH_MATERIALIZATION_FAILED` when hierarchy counts/links are missing.
 20. Duplicate review apply now uses deterministic state machine (`pending -> ready -> applying -> completed|failed`) with idempotent completion and explicit failure reason codes (`REVIEW_APPLY_TIMEOUT`, `REVIEW_APPLY_CONFLICT`).
 21. PR/nightly SLO gate infrastructure now emits/evaluates golden-path runtime artifacts via `tests/e2e/golden-path-slo.spec.ts` and `scripts/ops/evaluate-golden-path-slo.js`.
+22. Import entry points are now chunked-upload canonical (`/api/v1/uploads/*`), and multipart `/api/v1/jobs/import` is compatibility-only (`410 Gone`) with migration guidance.
+23. Import completion no longer auto-creates objective claims/archetypes and no longer auto-queues objective verification; objective activation is explicit user-triggered post-import behavior.
+24. Primary runtime now uses a single canonical center graph surface, with import processing shown as a temporary blocking center-state gate that auto-dismisses at terminal job status.
+25. Traceability and contract artifacts were re-aligned so chunked-only import, user-driven objective activation, and single-surface runtime behavior no longer conflict across matrices/specs.
 
 ## Notes
 

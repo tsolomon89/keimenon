@@ -354,7 +354,8 @@ export function createJobsRoutes(
   router.post('/', (_req: Request, res: Response) => {
     return res.status(404).json({
       success: false,
-      error: 'Endpoint removed. Use POST /api/v1/jobs/import or POST /api/v1/jobs/delete.',
+      error:
+        'Endpoint removed. Use chunked upload via POST /api/v1/uploads/initiate (then chunk upload) or POST /api/v1/jobs/delete.',
     });
   });
 

@@ -43,13 +43,8 @@ function renderToolbar(overrides: Partial<React.ComponentProps<typeof KeimenonTo
       onZoomIn={onZoomIn}
       onZoomOut={onZoomOut}
       onCenterView={onCenterView}
-      keimenonSurface="keimenon"
-      onKeimenonSurfaceChange={vi.fn()}
       dashboardView="analytics"
       onDashboardViewChange={vi.fn()}
-      processingAvailable={true}
-      autoSwitchToProcessingEnabled={true}
-      onAutoSwitchToProcessingChange={vi.fn()}
       focusModeEnabled={false}
       onFocusModeToggle={onFocusModeToggle}
       includeConnectorNodes={false}

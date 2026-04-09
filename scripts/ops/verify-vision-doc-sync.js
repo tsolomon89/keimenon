@@ -139,6 +139,34 @@ function main() {
       'vision-contract-v1.md must declare objective creation/enrichment as user-driven after import.'
     );
   }
+  const requiredImportRailClauses = [
+    /canonical import rail is chunked upload/i,
+    /\/api\/v1\/uploads\/initiate/i,
+    /\/api\/v1\/jobs\/import.*410\s+gone/i,
+  ];
+  for (const clause of requiredImportRailClauses) {
+    if (!clause.test(agents)) {
+      errors.push(`AGENTS.md missing required import-rail clause matching ${clause}.`);
+    }
+    if (!clause.test(contract)) {
+      errors.push(`vision-contract-v1.md missing required import-rail clause matching ${clause}.`);
+    }
+  }
+  const requiredSingleSurfaceClauses = [
+    /one canonical center graph surface/i,
+    /temporary blocking center-state gate/i,
+    /auto-dismisses at terminal/i,
+  ];
+  for (const clause of requiredSingleSurfaceClauses) {
+    if (!clause.test(agents)) {
+      errors.push(`AGENTS.md missing required single-surface clause matching ${clause}.`);
+    }
+    if (!clause.test(contract)) {
+      errors.push(
+        `vision-contract-v1.md missing required single-surface clause matching ${clause}.`
+      );
+    }
+  }
   const requiredCanvasClauses = [
     /Edge inspection hover/i,
     /Marquee multi-select/i,
@@ -188,6 +216,12 @@ function main() {
     ['agent_context/vision_gap_analysis.md', gapAnalysis],
   ];
   const forbiddenRendererPatterns = [/2d-only/i, /2D-only/i, /2d only/i];
+  const forbiddenImportRailPatterns = [
+    /multipart.*(primary|canonical|active)/i,
+    /two[\s-]?rail/i,
+    /both rails/i,
+    /\/api\/v1\/jobs\/import(?!.*410\s+gone)/i,
+  ];
   const forbiddenObjectiveMaterializationPatterns = [
     /objective baseline\/provisional/i,
     /provisional objective layer (is|are) materialized/i,
@@ -203,6 +237,11 @@ function main() {
     for (const pattern of forbiddenRendererPatterns) {
       if (pattern.test(content)) {
         errors.push(`${docPath} contains forbidden renderer wording matching ${pattern}.`);
+      }
+    }
+    for (const pattern of forbiddenImportRailPatterns) {
+      if (pattern.test(content)) {
+        errors.push(`${docPath} contains forbidden import-rail wording matching ${pattern}.`);
       }
     }
     for (const pattern of forbiddenObjectiveMaterializationPatterns) {

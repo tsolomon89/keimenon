@@ -1,6 +1,6 @@
 # Vision Contract v1 (Derived from AGENTS.md)
 
-Status: Active as of 2026-04-01.
+Status: Active as of 2026-04-09.
 
 This document is an implementation contract derived from root `AGENTS.md`.
 On conflict, `AGENTS.md` is authoritative.
@@ -37,6 +37,14 @@ Tier expectations:
 
 ## 3) Import Config Contract (Single Schema)
 
+Canonical import rail is chunked upload:
+
+- `POST /api/v1/uploads/initiate`
+- `POST /api/v1/uploads/:sessionId/chunks/:chunkIndex`
+- `GET /api/v1/uploads/:sessionId`
+
+Compatibility note: `POST /api/v1/jobs/import` is retained only as a `410 Gone` shim.
+
 Canonical fields:
 
 - `processingMode: automatic | manual | hybrid`
@@ -61,17 +69,11 @@ Rules:
 3. `processingMode=hybrid` allows manual groups plus automatic grouping in one run.
 4. Agent activation is manual-by-default at import (`agent.bootstrap=manual`).
 
-## 4) Objective Queue Contract
+## 4) Objective Activation Contract
 
 Import completion does not require objective node materialization.
-Objective build queueing is an optional post-import activation path, allowed only when all are true:
-
-- `objective_layer=true`
-- `agent_runtime=true`
-- objective enqueue kill switch is disabled
-- `agent.bootstrap=auto`
-
-When not queued, skip reason must be explicit (`entitlement_missing`, `kill_switch_enabled`, or `manual_activation_required`).
+Import does not auto-create objective claims/archetypes and does not auto-queue objective verification.
+Objective creation/enrichment/verification are explicit user-triggered post-import actions with entitlement and runtime gating.
 
 ## 5) Duplicate Review Contract
 
@@ -131,7 +133,7 @@ Requirements:
 Minimum rendering behavior:
 
 1. Preserve backend node kind fidelity in client store and viewport mapping.
-2. Three.js is the required canonical renderer for all graph canvas surfaces.
+2. Three.js is the required canonical renderer shared across all graph canvas surfaces.
 3. Explicit dimensional lens behavior is required with toolbar controls:
    - `2D` planar lens
    - `3D` depth lens
@@ -154,13 +156,14 @@ Minimum rendering behavior:
 10. Marquee multi-select must support replace/add/toggle semantics via plain/Shift/Ctrl(Cmd) drag modifiers.
 11. Node dragging must be available in all lenses with 2D XY drag and 3D/ND projected-plane drag.
 12. Interaction semantics must be shared across all graph canvas surfaces through a single renderer interaction contract.
-13. Toolbar policy is desktop-full for canvas controls with compact reduced controls at smaller breakpoints.
+13. Primary runtime uses one canonical center graph surface, with import processing shown as a temporary blocking center-state gate that auto-dismisses at terminal job status.
+14. Toolbar policy is desktop-full for canvas controls with compact reduced controls at smaller breakpoints.
 
 ## 9) Acceptance Baseline
 
 Implementation is acceptable only when all are true:
 
-1. Board is not blank after import in Free and Pro.
+1. Canonical center graph viewport is not blank after import in Free and Pro.
 2. Similarity-weighted grouping/edges/mass are visible.
 3. Raw content invariance and provenance are verifiable.
 4. Duplicate review is job-based, stable-ID, and non-destructive.
