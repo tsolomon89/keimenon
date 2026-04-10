@@ -3402,11 +3402,13 @@ ${JSON.stringify(e)}
               /sentryWrapped/.test(u(e).function || '') && e.pop(),
               e.reverse(),
               o.test(u(e).function || '') && (e.pop(), o.test(u(e).function || '') && e.pop()),
-              e.slice(0, 50).map((t) => ({
-                ...t,
-                filename: t.filename || u(e).filename,
-                function: t.function || r,
-              }))
+              e
+                .slice(0, 50)
+                .map((t) => ({
+                  ...t,
+                  filename: t.filename || u(e).filename,
+                  function: t.function || r,
+                }))
             );
           })(a.slice(s));
         };

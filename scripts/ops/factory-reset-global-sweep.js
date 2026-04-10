@@ -199,7 +199,9 @@ async function main() {
   const staleDbs = existingDbCandidates.filter((dbPath) => dbPath !== runtimePaths.dbPath);
 
   const backupDirectory = path.join(
-    path.resolve(__dirname, '..', '..', 'storage', 'backups', 'global-sweep'),
+    runtimePaths.localDocsRoot,
+    'maintenance-backups',
+    'global-sweep',
     nowStamp()
   );
 

@@ -42,6 +42,13 @@ export type InspectorPanel =
   | 'scope-builder' // Scope builder panel
   | 'user-detail'; // User detail inspector (Settings > Users)
 
+const ALWAYS_VISIBLE_HIERARCHY_KINDS = new Set([
+  'AccountNode',
+  'Principal',
+  'UserNode',
+  'AgentNode',
+]);
+
 interface KeimenonSidebarProps {
   side: 'left' | 'right';
   isOpen: boolean;
@@ -103,6 +110,7 @@ export function KeimenonSidebar({
     const sidebarClearSelection = useKeimenonStore((s) => s.clearSelection);
     const sidebarSelectNode = useKeimenonStore((s) => s.selectNode);
     const hydrateGraphSubset = useKeimenonStore((s) => s.hydrateGraphSubset);
+    const sidebarNodes = useKeimenonStore((s) => s.nodes);
 
     // Subscribe to keimenon selection for bidirectional sync (Keimenon -> Navigation)
     const keimenonSelectedNodeIds = useKeimenonStore((state) => state.selectedNodeIds);
@@ -261,9 +269,33 @@ export function KeimenonSidebar({
           try {
             const groupMembers = await fetchGroupMembers(node.id);
             const memberIds = groupMembers.nodeIds;
+            const alwaysVisibleHierarchyIds = sidebarNodes
+              .filter((candidate) =>
+                ALWAYS_VISIBLE_HIERARCHY_KINDS.has(candidate.kind || candidate.type)
+              )
+              .map((candidate) => candidate.id);
+            const revealIds = new Set<string>([
+              ...memberIds,
+              ...alwaysVisibleHierarchyIds,
+              node.id,
+            ]);
+            for (const hydratedNode of groupMembers.nodes) {
+              if (hydratedNode?.id) {
+                revealIds.add(String(hydratedNode.id));
+              }
+            }
+            for (const hydratedEdge of groupMembers.edges) {
+              if (hydratedEdge?.from) {
+                revealIds.add(String(hydratedEdge.from));
+              }
+              if (hydratedEdge?.to) {
+                revealIds.add(String(hydratedEdge.to));
+              }
+            }
             logDataEvent('Fetched group members', 'keimenon.navigation.groupMembers', {
               groupId: node.id,
               memberCount: memberIds.length,
+              revealCount: revealIds.size,
             });
 
             if (groupMembers.nodes.length > 0 || groupMembers.edges.length > 0) {
@@ -271,11 +303,13 @@ export function KeimenonSidebar({
             }
 
             // Filter keimenon nodes to show only group members
-            setFilteredNodeIds(memberIds);
+            setFilteredNodeIds(Array.from(revealIds));
 
             // Bidirectional sync: Also select the member nodes on keimenon
             sidebarClearSelection();
-            memberIds.forEach((id) => sidebarSelectNode(id, true));
+            (memberIds.length > 0 ? memberIds : [node.id]).forEach((id) =>
+              sidebarSelectNode(id, true)
+            );
 
             // Let store/state update settle before camera action.
             window.setTimeout(() => {

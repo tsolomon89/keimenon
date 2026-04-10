@@ -442,82 +442,85 @@
     1493: function (e, t, r) {
       r.d(t, {
         $P: function () {
-          return Z;
+          return ee;
         },
         $Q: function () {
-          return _;
+          return S;
         },
         Bk: function () {
-          return M;
+          return B;
         },
         E0: function () {
           return v;
         },
         EZ: function () {
-          return E;
+          return _;
         },
         FE: function () {
-          return G;
+          return x;
         },
         IU: function () {
-          return O;
-        },
-        In: function () {
           return R;
         },
+        In: function () {
+          return L;
+        },
         J$: function () {
-          return X;
-        },
-        NT: function () {
-          return C;
-        },
-        Ni: function () {
-          return I;
-        },
-        Nm: function () {
-          return z;
-        },
-        Nq: function () {
-          return K;
-        },
-        PR: function () {
-          return W;
-        },
-        PZ: function () {
           return V;
         },
-        SK: function () {
-          return et;
+        Jl: function () {
+          return E;
         },
-        T1: function () {
-          return q;
+        NT: function () {
+          return k;
         },
-        T8: function () {
-          return B;
+        Ni: function () {
+          return N;
         },
-        TE: function () {
+        Nm: function () {
+          return O;
+        },
+        Nq: function () {
+          return $;
+        },
+        PR: function () {
+          return Y;
+        },
+        PZ: function () {
           return H;
         },
+        SK: function () {
+          return er;
+        },
+        T1: function () {
+          return X;
+        },
+        T8: function () {
+          return F;
+        },
+        TE: function () {
+          return W;
+        },
         U0: function () {
-          return N;
+          return A;
         },
         UU: function () {
           return T;
         },
         W8: function () {
-          return U;
+          return M;
         },
         W9: function () {
           return w;
         },
         Zd: function () {
-          return P;
+          return z;
         },
         Zo: function () {
-          return A;
+          return b;
         },
         _A: function () {
-          return j;
+          return P;
         },
         ax: function () {
           return u;
@@ -526,10 +529,10 @@
           return f;
         },
         e_: function () {
-          return ee;
+          return et;
         },
         h8: function () {
-          return $;
+          return Q;
         },
         hi: function () {
           return h;
@@ -544,37 +547,37 @@
           return y;
         },
         qp: function () {
-          return k;
+          return I;
         },
         r4: function () {
-          return Y;
+          return K;
         },
         rT: function () {
-          return F;
-        },
-        tN: function () {
-          return L;
-        },
-        tl: function () {
-          return x;
-        },
-        tz: function () {
-          return S;
-        },
-        u1: function () {
-          return b;
-        },
-        v$: function () {
-          return D;
-        },
-        w3: function () {
           return J;
         },
+        tN: function () {
+          return G;
+        },
+        tl: function () {
+          return D;
+        },
+        tz: function () {
+          return C;
+        },
+        u1: function () {
+          return j;
+        },
+        v$: function () {
+          return U;
+        },
+        w3: function () {
+          return q;
+        },
         wv: function () {
-          return Q;
+          return Z;
         },
         x1: function () {
-          return er;
+          return eo;
         },
       });
       var o = r(2844),
@@ -801,6 +804,17 @@
         return await t.json();
       }
       async function E(e) {
+        let t = await l(''.concat(a.CT, '/api/v1/jobs/').concat(e, '/retry'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...c() },
+        });
+        if (!t.ok)
+          throw Error(
+            (await t.json().catch(() => ({}))).error || 'Failed to retry job: '.concat(t.statusText)
+          );
+        return await t.json();
+      }
+      async function _(e) {
         let t = await l(''.concat(a.CT, '/api/v1/jobs/').concat(e, '/pause'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...c() },
@@ -811,7 +825,7 @@
           );
         return await t.json();
       }
-      async function _(e) {
+      async function S(e) {
         let t = await l(''.concat(a.CT, '/api/v1/jobs/').concat(e, '/resume'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...c() },
@@ -823,7 +837,7 @@
           );
         return await t.json();
       }
-      async function S(e) {
+      async function C(e) {
         let t = '';
         try {
           var r, o, n, a, i, s, c;
@@ -884,13 +898,13 @@
           return { platform: 'unknown', confidence: 0 };
         }
       }
-      async function C(e) {
+      async function k(e) {
         let t = {},
           r = 0,
           o = 0;
         for (let n of e)
           try {
-            let e = await S(n);
+            let e = await C(n);
             if (((t[e.platform] = (t[e.platform] || 0) + 1), n.size > 52428800)) {
               console.log(
                 'Large file detected ('.concat(
@@ -926,7 +940,7 @@
           platforms: t,
         };
       }
-      async function k(e) {
+      async function I(e) {
         try {
           let t = await l(''.concat(a.CT, '/api/v1/content/message/').concat(e), { headers: c() });
           return (t.ok || (await (0, o.zG)({ response: t })), await t.json());
@@ -934,7 +948,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function I(e) {
+      async function N(e) {
         try {
           let t = await l(''.concat(a.CT, '/api/v1/content/source/').concat(e), { headers: c() });
           return (t.ok || (await (0, o.zG)({ response: t })), await t.json());
@@ -942,7 +956,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function N(e) {
+      async function A(e) {
         try {
           let t = await l(''.concat(a.CT, '/api/v1/content/code/').concat(e), { headers: c() });
           return (t.ok || (await (0, o.zG)({ response: t })), await t.json());
@@ -950,7 +964,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function A(e) {
+      async function b(e) {
         try {
           let t = await l(''.concat(a.CT, '/api/v1/content/conversation/').concat(e), {
             headers: c(),
@@ -960,7 +974,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function b(e) {
+      async function j(e) {
         try {
           var t, r, n;
           let i = await l(''.concat(a.CT, '/api/v1/nodes/').concat(e), { headers: c() });
@@ -981,7 +995,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function j(e) {
+      async function P(e) {
         try {
           var t, r, n, i, s;
           let u = await l(''.concat(a.CT, '/api/v1/nodes/').concat(e), { headers: c() });
@@ -1009,7 +1023,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function P(e) {
+      async function z(e) {
         try {
           var t, r, n, i;
           let s = await l(''.concat(a.CT, '/api/v1/nodes/').concat(e), { headers: c() });
@@ -1035,7 +1049,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function z(e) {
+      async function O(e) {
         try {
           var t, r, n, i, s, u, d;
           let p = await l(''.concat(a.CT, '/api/v1/nodes/').concat(e), { headers: c() });
@@ -1065,7 +1079,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function O(e) {
+      async function R(e) {
         try {
           var t, r, n, i, s;
           let u = await l(''.concat(a.CT, '/api/v1/nodes/').concat(e), { headers: c() });
@@ -1098,7 +1112,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function R() {
+      async function L() {
         try {
           let e = await l(''.concat(a.CT, '/api/v1/content/stats'), { headers: c() });
           return (e.ok || (await (0, o.zG)({ response: e })), await e.json());
@@ -1106,7 +1120,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function L(e, t) {
+      async function G(e, t) {
         if (!t) throw Error('jobId is required to apply duplicate review decisions');
         try {
           let r = await l(''.concat(a.CT, '/api/v1/jobs/').concat(t, '/duplicate-review/apply'), {
@@ -1119,7 +1133,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function G(e) {
+      async function x(e) {
         if (!e) throw Error('jobId is required to fetch duplicate review status');
         try {
           let t = await l(''.concat(a.CT, '/api/v1/jobs/').concat(e, '/duplicate-review/status'), {
@@ -1131,7 +1145,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function x(e) {
+      async function D(e) {
         if (!e) throw Error('jobId is required to fetch duplicate review groups');
         try {
           let t = await l(''.concat(a.CT, '/api/v1/jobs/').concat(e, '/duplicate-review/groups'), {
@@ -1143,7 +1157,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function D(e) {
+      async function U(e) {
         try {
           var t;
           let r = new URLSearchParams();
@@ -1163,7 +1177,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function U(e) {
+      async function M(e) {
         try {
           var t, r;
           let n = new URLSearchParams();
@@ -1190,7 +1204,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function M(e) {
+      async function B(e) {
         var t;
         let r = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : {},
           n = await l(''.concat(a.CT, '/api/v1/nodes/').concat(e, '/sequester'), {
@@ -1200,7 +1214,7 @@
           });
         return (n.ok || (await (0, o.zG)({ response: n })), n.json());
       }
-      async function B() {
+      async function F() {
         try {
           let e = await l(''.concat(a.CT, '/api/v1/accounts'), { headers: c() });
           return (e.ok || (await (0, o.zG)({ response: e })), await e.json());
@@ -1208,7 +1222,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function F(e) {
+      async function J(e) {
         try {
           let t = await l(''.concat(a.CT, '/api/v1/accounts/').concat(e, '/stats'), {
             headers: c(),
@@ -1218,7 +1232,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function J() {
+      async function q() {
         try {
           let e = await l(''.concat(a.CT, '/api/v1/analytics/overview'), { headers: c() });
           return (e.ok || (await (0, o.zG)({ response: e })), await e.json());
@@ -1226,7 +1240,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function q() {
+      async function X() {
         let e = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : 'usage',
           t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 10;
         try {
@@ -1242,7 +1256,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function X() {
+      async function V() {
         let e = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : 50;
         try {
           let t = await u(
@@ -1254,7 +1268,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function V() {
+      async function H() {
         try {
           let e = await l(''.concat(a.CT, '/api/v1/analytics/alerts'), { headers: c() });
           return (e.ok || (await (0, o.zG)({ response: e })), await e.json());
@@ -1262,7 +1276,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function H(e) {
+      async function W(e) {
         try {
           let t = await l(''.concat(a.CT, '/api/v1/accounts/').concat(e, '/users'), {
             headers: c(),
@@ -1272,7 +1286,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function W(e) {
+      async function Y(e) {
         try {
           let t = await l(''.concat(a.CT, '/api/v1/users/').concat(e), { headers: c() });
           return (t.ok || (await (0, o.zG)({ response: t })), await t.json());
@@ -1280,7 +1294,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function Y(e, t) {
+      async function K(e, t) {
         try {
           let r = await l(''.concat(a.CT, '/api/v1/accounts/').concat(e, '/users'), {
             method: 'POST',
@@ -1292,7 +1306,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function K(e, t) {
+      async function $(e, t) {
         try {
           let r = await l(''.concat(a.CT, '/api/v1/users/').concat(e), {
             method: 'PATCH',
@@ -1304,7 +1318,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function $(e) {
+      async function Q(e) {
         try {
           let t = await l(''.concat(a.CT, '/api/v1/users/').concat(e), {
             method: 'DELETE',
@@ -1315,11 +1329,11 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function Q(e) {
+      async function Z(e) {
         let t = await l(''.concat(a.CT, '/api/v1/settings?accountId=').concat(e), { headers: c() });
         return (t.ok || (await (0, o.zG)({ response: t })), t.json());
       }
-      async function Z(e, t) {
+      async function ee(e, t) {
         let r = await l(''.concat(a.CT, '/api/v1/ingest/url'), {
           method: 'POST',
           headers: { ...c(), 'Content-Type': 'application/json' },
@@ -1331,7 +1345,7 @@
         }
         return r.json();
       }
-      async function ee() {
+      async function et() {
         let e = await l(''.concat(a.CT, '/api/v1/system/reimport-status'), {
           method: 'GET',
           headers: c(),
@@ -1339,7 +1353,7 @@
         if (!e.ok) throw await (0, o.zG)({ response: e });
         return e.json();
       }
-      async function et() {
+      async function er() {
         let e = await l(''.concat(a.CT, '/api/v1/system/reimport-complete'), {
           method: 'POST',
           headers: { ...c(), 'Content-Type': 'application/json' },
@@ -1348,7 +1362,7 @@
         if (!e.ok) throw await (0, o.zG)({ response: e });
         return e.json();
       }
-      let er = {
+      let eo = {
         get: async (e, t) => {
           let r = await l(''.concat(a.CT).concat(e), {
             method: 'GET',
@@ -2136,6 +2150,7 @@
             sourceRoleFilter: new Set(),
           },
           currentAccountId: null,
+          graphLoadMetrics: null,
         },
         p = (0, o.Ue)()(
           (0, n.mW)(
@@ -2180,20 +2195,38 @@
                     }
                   if (!t || !r) throw Error('Failed to load graph data after retries');
                   let o = t.nodes.map(l),
-                    n = o;
-                  o.length > 5e3 &&
+                    n = o,
+                    i = o.length > 5e3;
+                  i &&
                     ((n = o.filter((e) => c.has(e.kind || e.type))),
                     console.info(
                       '[Keimenon] Smart filter: '
                         .concat(o.length, ' nodes → ')
                         .concat(n.length, ' structural nodes')
                     ));
-                  let i = new Set(n.map((e) => e.id)),
-                    d = r.edges.map(u).filter((e) => i.has(e.source) && i.has(e.target));
-                  e({ nodes: n, edges: d, isLoading: !1, error: null });
+                  let d = new Set(n.map((e) => e.id)),
+                    p = r.edges.map(u).filter((e) => d.has(e.source) && d.has(e.target));
+                  e({
+                    nodes: n,
+                    edges: p,
+                    isLoading: !1,
+                    error: null,
+                    graphLoadMetrics: {
+                      apiNodeCount: o.length,
+                      apiEdgeCount: r.edges.length,
+                      structuralNodeCount: n.length,
+                      renderedEdgeCount: p.length,
+                      smartFilterApplied: i,
+                      loadedAt: Date.now(),
+                    },
+                  });
                 } catch (t) {
                   (console.error('Failed to load graph data:', t),
-                    e({ isLoading: !1, error: t.message || 'Failed to load graph data' }));
+                    e({
+                      isLoading: !1,
+                      error: t.message || 'Failed to load graph data',
+                      graphLoadMetrics: null,
+                    }));
                 }
               },
               hydrateGraphSubset: function (t) {

@@ -61,6 +61,10 @@ export interface JobUpdate {
     fileName?: string; // Extracted from job config for display
     deleteScope?: string; // Extracted from delete job config
   };
+  blockedReason?: string;
+  blockedReasonCode?: string;
+  recoverableAfterRestart?: boolean;
+  interruptedReason?: string;
   timestamp: number;
 }
 

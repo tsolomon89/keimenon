@@ -3,14 +3,14 @@
   {
     6031: function () {},
     5881: function (e, t, s) {
-      Promise.resolve().then(s.bind(s, 5139));
+      Promise.resolve().then(s.bind(s, 8577));
     },
-    5139: function (e, t, s) {
+    8577: function (e, t, s) {
       'use strict';
       (s.r(t),
         s.d(t, {
           default: function () {
-            return lH;
+            return l4;
           },
         }));
       var a,
@@ -126,7 +126,7 @@
           let t = e && 'accountType' in e ? e.accountType : void 0;
           return (null == t ? void 0 : t.toLowerCase()) === 'admin' ? 'admin' : 'client';
         };
-      function A(e) {
+      function R(e) {
         let { currentAccount: t, allAccounts: s, onSwitch: a, className: l = '' } = e,
           [i, o] = (0, n.useState)(!1),
           [d, c] = (0, n.useState)(!1),
@@ -326,7 +326,7 @@
           ],
         });
       }
-      var R = s(4374),
+      var A = s(4374),
         L = s(3291);
       function O() {
         var e, t;
@@ -480,7 +480,7 @@
                   ],
                 }),
                 (0, r.jsx)('button', {
-                  onClick: () => R.O.getState().loadGraphData(),
+                  onClick: () => A.O.getState().loadGraphData(),
                   className:
                     'p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors',
                   title: 'Refresh graph data',
@@ -517,7 +517,7 @@
                 V &&
                   K &&
                   (null == a ? void 0 : a.allAccounts) &&
-                  (0, r.jsx)(A, { currentAccount: K, allAccounts: a.allAccounts, onSwitch: S }),
+                  (0, r.jsx)(R, { currentAccount: K, allAccounts: a.allAccounts, onSwitch: S }),
                 B &&
                   _ &&
                   (0, r.jsxs)('div', {
@@ -720,8 +720,8 @@
         q = s(1095),
         J = s(3890),
         G = s(9645),
-        X = s(7124),
-        W = s(3071),
+        W = s(7124),
+        X = s(3071),
         Y = s(5965),
         H = s(9886),
         Q = s(2917),
@@ -745,9 +745,9 @@
         },
         ea = ['imported', 'workspace', 'brief', 'agent_output', 'research_bundle'];
       function el() {
-        let e = (0, R.O)((e) => e.filters.sourceRoleFilter),
-          t = (0, R.O)((e) => e.setSourceRoleFilter),
-          s = (0, R.O)((e) => e.nodes),
+        let e = (0, A.O)((e) => e.filters.sourceRoleFilter),
+          t = (0, A.O)((e) => e.setSourceRoleFilter),
+          s = (0, A.O)((e) => e.nodes),
           a = (0, n.useMemo)(() => {
             let e = { imported: 0, workspace: 0, brief: 0, agent_output: 0, research_bundle: 0 };
             return (
@@ -837,10 +837,10 @@
           { keimenonMode: I, setKeimenonMode: E } = (0, et.St)(),
           [Z, T] = (0, n.useState)(!1),
           M = (0, n.useRef)(null),
-          D = (0, R.O)((e) => e.filters.sourceRoleFilter),
-          A = (null == _ ? void 0 : _.accountType) === 'admin',
+          D = (0, A.O)((e) => e.filters.sourceRoleFilter),
+          R = (null == _ ? void 0 : _.accountType) === 'admin',
           L = 'keimenon' === I,
-          O = A && 'dashboard' === I,
+          O = R && 'dashboard' === I,
           es = D.size > 0;
         (0, n.useEffect)(() => {
           function e(e) {
@@ -1110,7 +1110,7 @@
                         ),
                         title: 'Filter by Source Role',
                         children: [
-                          (0, r.jsx)(X.Z, { className: 'w-4 h-4' }),
+                          (0, r.jsx)(W.Z, { className: 'w-4 h-4' }),
                           es &&
                             (0, r.jsx)('span', {
                               className:
@@ -1199,7 +1199,7 @@
                       type: 'button',
                       className: er('analytics' === x),
                       title: 'Analytics Overview',
-                      children: (0, r.jsx)(W.Z, { className: 'w-4 h-4' }),
+                      children: (0, r.jsx)(X.Z, { className: 'w-4 h-4' }),
                     }),
                     (0, r.jsx)('button', {
                       onClick: () => p('storage'),
@@ -1242,15 +1242,15 @@
                       title: 'Keimenon',
                       children: (0, r.jsx)($.Z, { className: 'w-4 h-4' }),
                     }),
-                    A &&
+                    R &&
                       (0, r.jsx)('button', {
                         onClick: () => {
-                          A && (E('dashboard'), p('analytics'));
+                          R && (E('dashboard'), p('analytics'));
                         },
                         type: 'button',
                         className: en('dashboard' === I),
                         title: 'Dashboard',
-                        children: (0, r.jsx)(W.Z, { className: 'w-4 h-4' }),
+                        children: (0, r.jsx)(X.Z, { className: 'w-4 h-4' }),
                       }),
                     (0, r.jsx)('button', {
                       onClick: () => {
@@ -1421,7 +1421,7 @@
                       (0, r.jsxs)('div', {
                         className: 'flex items-center gap-2',
                         children: [
-                          (0, r.jsx)(X.Z, { className: 'w-4 h-4' }),
+                          (0, r.jsx)(W.Z, { className: 'w-4 h-4' }),
                           (0, r.jsx)('span', { children: 'Filters' }),
                         ],
                       }),
@@ -2729,8 +2729,8 @@
         });
       }
       var eD = s(2100),
-        eA = s(3349),
-        eR = s(4099);
+        eR = s(3349),
+        eA = s(4099);
       function eL(e) {
         let { account: t, isMultiSelect: s = !1, onCreateUser: a } = e,
           { setKeimenonMode: l } = (0, et.St)(),
@@ -2908,7 +2908,7 @@
                           (0, r.jsxs)('div', {
                             className: 'bg-slate-800/50 rounded-lg p-3 text-center',
                             children: [
-                              (0, r.jsx)(eA.Z, {
+                              (0, r.jsx)(eR.Z, {
                                 className: 'w-4 h-4 text-purple-400 mx-auto mb-1',
                               }),
                               (0, r.jsx)('p', {
@@ -2946,7 +2946,7 @@
                         'w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors',
                       title: "View this account's keimenon",
                       children: [
-                        (0, r.jsx)(eA.Z, { className: 'w-4 h-4' }),
+                        (0, r.jsx)(eR.Z, { className: 'w-4 h-4' }),
                         (0, r.jsx)('span', { children: 'View Keimenon' }),
                       ],
                     }),
@@ -2956,7 +2956,7 @@
                         'w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors',
                       title: 'Add user to this account',
                       children: [
-                        (0, r.jsx)(eR.Z, { className: 'w-4 h-4' }),
+                        (0, r.jsx)(eA.Z, { className: 'w-4 h-4' }),
                         (0, r.jsx)('span', { children: 'Add User' }),
                       ],
                     }),
@@ -3272,7 +3272,7 @@
           confidence: eF.Rx().min(0).max(1).default(0.8),
           status: eF.Km(['proposed', 'verified', 'disputed', 'refuted']).default('proposed'),
         }));
-      let eX = eF.Ry({
+      let eW = eF.Ry({
         id: eF.Z_(),
         kind: eF.Z_(),
         from: eF.Z_(),
@@ -3280,8 +3280,8 @@
         created_at: eF.Rx(),
         metadata: eF.IM(eF.Yj()).optional(),
       });
-      (eX.extend({ kind: eF.i0('CONTAINS'), rank: eF.Rx().optional() }),
-        eX.extend({
+      (eW.extend({ kind: eF.i0('CONTAINS'), rank: eF.Rx().optional() }),
+        eW.extend({
           kind: eF.i0('SEQUESTERS'),
           hidden_from_llm: eF.O7().default(!1),
           hidden_from_tools: eF.O7().default(!1),
@@ -3289,99 +3289,99 @@
           reason: eF.Km(['secret', 'noisy', 'untrusted', 'license', 'work_in_progress']),
           until: eF.Z_().optional(),
         }),
-        eX.extend({
+        eW.extend({
           kind: eF.i0('DERIVES_FROM'),
           span: eF.Z_().optional(),
           confidence: eF.Rx().min(0).max(1).optional(),
         }),
-        eX.extend({
+        eW.extend({
           kind: eF.i0('IN_SCOPE_FOR'),
           rank: eF.Rx().optional(),
           policy_chips: eF.IX(eF.Z_()).optional(),
         }),
-        eX.extend({
+        eW.extend({
           kind: eF.Km(['EQUIVALENT_TO', 'DUP_OF']),
           score: eF.Rx().min(0).max(1),
           canonical: eF.Z_(),
         }),
-        eX.extend({
+        eW.extend({
           kind: eF.Km(['SUPPORTS', 'REFUTES']),
           strength: eF.Rx().min(0).max(1).optional(),
         }),
-        eX.extend({
+        eW.extend({
           kind: eF.i0('VERIFIED_BY'),
           verifier_run_id: eF.Z_(),
           status: eF.Km(['pass', 'fail', 'inconclusive']),
           artifacts: eF.IM(eF.Yj()).optional(),
           expires_at: eF.Rx().optional(),
         }),
-        eX.extend({ kind: eF.i0('EXACT_DUP'), canonical: eF.Z_(), content_id: eF.Z_() }),
-        eX.extend({
+        eW.extend({ kind: eF.i0('EXACT_DUP'), canonical: eF.Z_(), content_id: eF.Z_() }),
+        eW.extend({
           kind: eF.i0('NEAR_DUP'),
           canonical: eF.Z_(),
           score: eF.Rx().min(0).max(1),
           features_used: eF.IX(eF.Z_()),
           algorithm: eF.Km(['jaccard', 'cosine', 'minhash', 'ast', 'combined']),
         }),
-        eX.extend({
+        eW.extend({
           kind: eF.i0('SPAN_CONTAINS'),
           byte_start: eF.Rx(),
           byte_end: eF.Rx(),
           blob_hash: eF.Z_(),
         }),
-        eX.extend({
+        eW.extend({
           kind: eF.i0('CLUSTER_MEMBER'),
           cluster_id: eF.Z_(),
           score: eF.Rx().min(0).max(1),
         }),
-        eX.extend({
+        eW.extend({
           kind: eF.i0('HAS_SPAN'),
           start_char: eF.Rx().min(0).optional(),
           end_char: eF.Rx().min(0).optional(),
           boundary_kind: eF.Km(['line', 'sentence', 'paragraph', 'token_window']).optional(),
         }),
-        eX.extend({
+        eW.extend({
           kind: eF.i0('OCCURS_IN_SPAN'),
           count: eF.Rx().min(1).default(1),
           mass: eF.Rx().optional(),
         }),
-        eX.extend({
+        eW.extend({
           kind: eF.i0('COMPOSED_OF_ATOMIC'),
           unit_type: eF.Km(['char', 'trigram']).optional(),
           position: eF.Rx().min(0).optional(),
         }),
-        eX.extend({
+        eW.extend({
           kind: eF.i0('MENTIONS'),
           count: eF.Rx().default(1),
           positions: eF.IX(eF.Rx()).optional(),
         }),
-        eX.extend({ kind: eF.i0('ABOUT'), relevance: eF.Rx().min(0).max(1).default(0.5) }),
-        eX.extend({
+        eW.extend({ kind: eF.i0('ABOUT'), relevance: eF.Rx().min(0).max(1).default(0.5) }),
+        eW.extend({
           kind: eF.i0('CO_OCCURS_WITH'),
           count: eF.Rx().default(1),
           pmi: eF.Rx().optional(),
         }),
-        eX.extend({ kind: eF.i0('BELONGS_TO_TOPIC'), weight: eF.Rx().min(0).max(1).default(0.5) }),
-        eX.extend({
+        eW.extend({ kind: eF.i0('BELONGS_TO_TOPIC'), weight: eF.Rx().min(0).max(1).default(0.5) }),
+        eW.extend({
           kind: eF.i0('SOURCED_FROM'),
           excerpt_span: eF.Z_().optional(),
           extraction_confidence: eF.Rx().min(0).max(1).default(0.8),
         }),
-        eX.extend({ kind: eF.i0('CREATED_BY') }),
-        eX.extend({
+        eW.extend({ kind: eF.i0('CREATED_BY') }),
+        eW.extend({
           kind: eF.i0('ATTACHED_TO'),
           role: eF.Km(['primary', 'collaborator', 'observer']).default('primary'),
         }),
-        eX.extend({
+        eW.extend({
           kind: eF.i0('PINS_CONTEXT'),
           pin_type: eF.Km(['explicit', 'derived']).default('explicit'),
         }),
-        eX.extend({ kind: eF.i0('INITIATED_BY') }),
-        eX.extend({
+        eW.extend({ kind: eF.i0('INITIATED_BY') }),
+        eW.extend({
           kind: eF.i0('PARTICIPATED_IN'),
           role: eF.Km(['agent', 'human', 'observer']).default('agent'),
         }),
-        eX.extend({ kind: eF.i0('PRODUCED_BY'), run_id: eF.Z_(), task_type: eF.Z_().optional() }),
+        eW.extend({ kind: eF.i0('PRODUCED_BY'), run_id: eF.Z_(), task_type: eF.Z_().optional() }),
         eF.Ry({
           max_file_size_mb: eF.Rx().default(10),
           allowed_mime_types: eF.IX(eF.Z_()),
@@ -3476,7 +3476,7 @@
           started_at: eF.Rx(),
           completed_at: eF.Rx().optional(),
         }));
-      let eW = eF.Ry({
+      let eX = eF.Ry({
           run_id: eF.Z_(),
           kind: eF.Km([
             'HTTP_CHECK',
@@ -3817,7 +3817,7 @@
         status: eF.Km(['provisional', 'verifying', 'verified', 'contested', 'stale']),
         receipt_id: eF.Z_(),
       });
-      eF.Ry({ verifier_run: eW, claim_status_updates: eF.IX(tr), notes: eF.IX(eF.Z_()) });
+      eF.Ry({ verifier_run: eX, claim_status_updates: eF.IX(tr), notes: eF.IX(eF.Z_()) });
       let tn = [
         {
           id: 'general',
@@ -5511,7 +5511,7 @@
               ],
             });
       }
-      function tA(e) {
+      function tR(e) {
         let { config: t, onConfigChange: s } = e,
           [a, l] = (0, n.useState)(!1),
           i = (e) => {
@@ -5771,7 +5771,7 @@
           ],
         });
       }
-      function tR(e) {
+      function tA(e) {
         let { config: t, onConfigChange: s } = e,
           [a, l] = (0, n.useState)(!1),
           i = (e) => {
@@ -6094,8 +6094,8 @@
             (0, r.jsx)(tZ, { config: t, onConfigChange: s }),
             (0, r.jsx)(tD, { config: t, onConfigChange: s }),
             (0, r.jsx)(tP, { config: t, onConfigChange: s, agentRuntimeEnabled: n }),
-            (0, r.jsx)(tA, { config: t, onConfigChange: s }),
             (0, r.jsx)(tR, { config: t, onConfigChange: s }),
+            (0, r.jsx)(tA, { config: t, onConfigChange: s }),
           ],
         });
       }
@@ -6623,7 +6623,7 @@
         });
       }
       var tG = s(8627);
-      function tX(e) {
+      function tW(e) {
         var t;
         let { candidate: s, decision: a, onDecision: l } = e,
           n = [
@@ -6918,7 +6918,7 @@
           ],
         });
       }
-      function tW(e) {
+      function tX(e) {
         let { groups: t, onReviewComplete: s, onCancel: a } = e,
           [l, i] = (0, n.useState)(t.length > 0 ? t[0].id : null),
           [o, d] = (0, n.useState)(null),
@@ -7295,7 +7295,7 @@
                   className: 'w-80 border-l border-slate-700 overflow-y-auto bg-slate-900/50',
                   children:
                     j &&
-                    (0, r.jsx)(tX, {
+                    (0, r.jsx)(tW, {
                       candidate: j,
                       decision: o ? x.get(o) : void 0,
                       onDecision: (e) => o && C(o, e),
@@ -7658,9 +7658,14 @@
       let tH = 'chunked_upload_',
         tQ = 'Session expired. Please log in again before uploading.';
       var t$ = s(2844);
-      let t0 = new Set(['reading', 'parsing', 'normalizing', 'indexing', 'linking', 'processing']),
-        t1 = ['queued', 'reading', 'parsing', 'normalizing', 'indexing', 'linking', 'done'],
-        t4 = {
+      let t0 = 'keimenon:import-graph-refresh';
+      function t1() {
+        let e = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : {};
+        window.dispatchEvent(new CustomEvent(t0, { detail: e }));
+      }
+      let t4 = new Set(['reading', 'parsing', 'normalizing', 'indexing', 'linking', 'processing']),
+        t2 = ['queued', 'reading', 'parsing', 'normalizing', 'indexing', 'linking', 'done'],
+        t5 = {
           queued: 0,
           reading: 3,
           parsing: 10,
@@ -7669,13 +7674,13 @@
           linking: 90,
           done: 100,
         };
-      function t2(e) {
-        return e ? t1.indexOf(e) : -1;
+      function t3(e) {
+        return e ? t2.indexOf(e) : -1;
       }
-      function t5(e) {
+      function t6(e) {
         return Number.isFinite(e) ? Math.max(0, Math.min(100, Math.round(e))) : 0;
       }
-      function t3(e, t) {
+      function t8(e, t) {
         switch (e) {
           case 'queued':
             return 'queued';
@@ -7696,7 +7701,7 @@
             return t;
         }
       }
-      function t6(e) {
+      function t7(e) {
         var t, s, a;
         let { backendStatus: r, jobType: n = 'import', progress: i, previousStatus: o } = e,
           d = 'import' === n,
@@ -7784,13 +7789,13 @@
               ? s
               : null,
           u =
-            null !== (a = o && t0.has(o) ? t3(o, 'parsing') : null) && void 0 !== a ? a : 'parsing';
+            null !== (a = o && t4.has(o) ? t8(o, 'parsing') : null) && void 0 !== a ? a : 'parsing';
         if ('succeeded' === r) return { status: 'done', stage: 'done' };
         if ('failed' === r || 'canceled' === r) return { status: 'error', stage: 'done' };
         if ('blocked' === r)
           return {
             status: 'blocked',
-            stage: t3(
+            stage: t8(
               c && 'queued' !== c && 'blocked' !== c && 'done' !== c && 'error' !== c
                 ? c
                 : null != o
@@ -7805,17 +7810,17 @@
           let e =
               c && 'queued' !== c && 'blocked' !== c && 'done' !== c && 'error' !== c
                 ? c
-                : t0.has(o)
+                : t4.has(o)
                   ? o
                   : 'parsing',
-            t = t0.has(o) ? o : null,
-            s = t && t2(t) > t2(e) ? t : e;
-          return { status: s, stage: t3(s, u) };
+            t = t4.has(o) ? o : null,
+            s = t && t3(t) > t3(e) ? t : e;
+          return { status: s, stage: t8(s, u) };
         }
         let m = d ? 'parsing' : 'processing';
-        return { status: m, stage: t3(m, u) };
+        return { status: m, stage: t8(m, u) };
       }
-      function t8(e) {
+      function t9(e) {
         var t;
         let {
           backendStatus: s,
@@ -7826,8 +7831,8 @@
           metadata: o,
         } = e;
         if ('succeeded' === s || 'done' === a) return 100;
-        let d = t5(null !== (t = null != r ? r : n) && void 0 !== t ? t : 0),
-          c = t4[a];
+        let d = t6(null !== (t = null != r ? r : n) && void 0 !== t ? t : 0),
+          c = t5[a];
         if (
           (('running' === s || 'blocked' === s) &&
             ('number' == typeof c && (d = Math.max(d, c)), 'error' !== a && (d = Math.min(d, 99))),
@@ -7835,7 +7840,7 @@
             'succeeded' !== s &&
             'failed' !== s &&
             'canceled' !== s &&
-            (d = Math.max(d, t5(n))),
+            (d = Math.max(d, t6(n))),
           'running' === s || 'blocked' === s)
         ) {
           let e = i ? String(i).toUpperCase() : '',
@@ -7849,9 +7854,9 @@
                 (d = Math.min(95, Math.max(d, d + Math.min(3, Math.floor(t / 6e5)))));
           }
         }
-        return t5(d);
+        return t6(d);
       }
-      function t7(e) {
+      function se(e) {
         var t, s, a, l, i;
         let { onDismiss: o } = e,
           { user: d } = (0, w.aC)(),
@@ -8207,16 +8212,24 @@
           [_, I] = (0, n.useState)(null),
           [E, Z] = (0, n.useState)([]),
           [T, M] = (0, n.useState)(null),
-          [D, A] = (0, n.useState)(null),
-          [R, O] = (0, n.useState)([]),
-          [P, F] = (0, n.useState)([]),
-          [z, U] = (0, n.useState)(''),
-          [B, V] = (0, n.useState)(''),
-          [K, q] = (0, n.useState)(!1),
-          [J, G] = (0, n.useState)(!1),
-          [X, W] = (0, n.useState)(null),
-          [Y, H] = (0, n.useState)(!1),
-          Q = (0, n.useCallback)(async () => {
+          [D, R] = (0, n.useState)(null),
+          [O, P] = (0, n.useState)([]),
+          [F, z] = (0, n.useState)([]),
+          [U, B] = (0, n.useState)(''),
+          [V, K] = (0, n.useState)(''),
+          [q, J] = (0, n.useState)(!1),
+          [G, W] = (0, n.useState)(!1),
+          [X, Y] = (0, n.useState)(null),
+          [H, Q] = (0, n.useState)(!1),
+          $ = (0, n.useCallback)(function (e) {
+            let t =
+                arguments.length > 1 && void 0 !== arguments[1]
+                  ? arguments[1]
+                  : 'import_modal_complete',
+              s = A.O.getState();
+            (s.setFilteredNodeIds(null), s.loadGraphData(), t1({ jobId: e, reason: t }));
+          }, []),
+          et = (0, n.useCallback)(async () => {
             try {
               if (!(await (0, eh.e_)()).requiresReimport) return;
               (await (0, eh.SK)(),
@@ -8226,12 +8239,12 @@
               console.warn('[ChatImportModal] Failed to clear core process reimport gate:', e);
             }
           }, []),
-          $ = (0, n.useCallback)(async () => {
+          es = (0, n.useCallback)(async () => {
             try {
               let e = await (0, eh.E0)(),
                 t = !!e.features.agent_runtime;
               return (
-                H(t),
+                Q(t),
                 t ||
                   g((e) =>
                     'manual' === e.agent.bootstrap
@@ -8243,132 +8256,132 @@
             } catch (e) {
               return (
                 console.warn('[ChatImportModal] Failed to fetch feature manifest:', e),
-                H(!1),
+                Q(!1),
                 null
               );
             }
           }, []),
-          et = (0, n.useCallback)(
+          ea = (0, n.useCallback)(
             async (e) => {
-              (q(!0), W(null));
+              (J(!0), Y(null));
               try {
                 var t;
                 let s = (await (0, eh.d)()).presets || [];
-                F(s);
+                z(s);
                 let a =
                   e && s.some((t) => t.id === e)
                     ? e
-                    : z && s.some((e) => e.id === z)
-                      ? z
+                    : U && s.some((e) => e.id === U)
+                      ? U
                       : (null === (t = s[0]) || void 0 === t ? void 0 : t.id) || '';
-                U(a);
+                B(a);
                 let l = s.find((e) => e.id === a);
-                V((null == l ? void 0 : l.name) || '');
+                K((null == l ? void 0 : l.name) || '');
               } catch (e) {
                 (console.error('[ChatImportModal] Failed to load import presets:', e),
-                  W(e instanceof Error ? e.message : 'Failed to load presets'));
+                  Y(e instanceof Error ? e.message : 'Failed to load presets'));
               } finally {
-                q(!1);
+                J(!1);
               }
             },
-            [z]
+            [U]
           );
         (0, n.useEffect)(() => {
-          'config' === m && (et(), $());
-        }, [m, et, $]);
-        let es = (0, n.useCallback)(() => {
-            if (!z) return;
-            let e = P.find((e) => e.id === z);
+          'config' === m && (ea(), es());
+        }, [m, ea, es]);
+        let el = (0, n.useCallback)(() => {
+            if (!U) return;
+            let e = F.find((e) => e.id === U);
             if (!e) {
-              W('Selected preset no longer exists.');
+              Y('Selected preset no longer exists.');
               return;
             }
             (g(
-              Y || 'auto' !== e.config.agent.bootstrap
+              H || 'auto' !== e.config.agent.bootstrap
                 ? e.config
                 : { ...e.config, agent: { ...e.config.agent, bootstrap: 'manual' } }
             ),
-              V(e.name),
-              W(null));
-          }, [Y, P, z]),
-          ea = (0, n.useCallback)(async () => {
-            let e = B.trim();
+              K(e.name),
+              Y(null));
+          }, [H, F, U]),
+          er = (0, n.useCallback)(async () => {
+            let e = V.trim();
             if (!e) {
-              W('Preset name is required.');
+              Y('Preset name is required.');
               return;
             }
-            (G(!0), W(null));
+            (W(!0), Y(null));
             try {
               let t = await (0, eh.W9)({ name: e, config: h });
-              await et(t.preset.id);
+              await ea(t.preset.id);
             } catch (e) {
               (console.error('[ChatImportModal] Failed to create preset:', e),
-                W(e instanceof Error ? e.message : 'Failed to create preset'));
+                Y(e instanceof Error ? e.message : 'Failed to create preset'));
             } finally {
-              G(!1);
+              W(!1);
             }
-          }, [h, et, B]),
-          el = (0, n.useCallback)(async () => {
-            if (!z) {
-              W('Select a preset to update.');
+          }, [h, ea, V]),
+          en = (0, n.useCallback)(async () => {
+            if (!U) {
+              Y('Select a preset to update.');
               return;
             }
-            let e = B.trim();
+            let e = V.trim();
             if (!e) {
-              W('Preset name is required.');
+              Y('Preset name is required.');
               return;
             }
-            (G(!0), W(null));
+            (W(!0), Y(null));
             try {
-              (await (0, eh.lq)(z, { name: e, config: h }), await et(z));
+              (await (0, eh.lq)(U, { name: e, config: h }), await ea(U));
             } catch (e) {
               (console.error('[ChatImportModal] Failed to update preset:', e),
-                W(e instanceof Error ? e.message : 'Failed to update preset'));
+                Y(e instanceof Error ? e.message : 'Failed to update preset'));
             } finally {
-              G(!1);
+              W(!1);
             }
-          }, [h, et, B, z]),
-          er = (0, n.useCallback)(async () => {
-            if (!z) {
-              W('Select a preset to delete.');
+          }, [h, ea, V, U]),
+          ei = (0, n.useCallback)(async () => {
+            if (!U) {
+              Y('Select a preset to delete.');
               return;
             }
-            let e = P.find((e) => e.id === z);
+            let e = F.find((e) => e.id === U);
             if (!e) {
-              W('Selected preset no longer exists.');
+              Y('Selected preset no longer exists.');
               return;
             }
             if (window.confirm('Delete preset "'.concat(e.name, '"?'))) {
-              (G(!0), W(null));
+              (W(!0), Y(null));
               try {
-                (await (0, eh.oI)(z), await et());
+                (await (0, eh.oI)(U), await ea());
               } catch (e) {
                 (console.error('[ChatImportModal] Failed to delete preset:', e),
-                  W(e instanceof Error ? e.message : 'Failed to delete preset'));
+                  Y(e instanceof Error ? e.message : 'Failed to delete preset'));
               } finally {
-                G(!1);
+                W(!1);
               }
             }
-          }, [P, et, z]),
-          { jobs: en, connected: ei } = tY(),
-          eo = T ? en.get(T) : void 0,
-          ec = (null == eo ? void 0 : eo.stats)
+          }, [F, ea, U]),
+          { jobs: eo, connected: ec } = tY(),
+          eu = T ? eo.get(T) : void 0,
+          em = (null == eu ? void 0 : eu.stats)
             ? {
                 conversationsProcessed:
-                  null !== (t = eo.stats.conversationsProcessed) && void 0 !== t ? t : 0,
+                  null !== (t = eu.stats.conversationsProcessed) && void 0 !== t ? t : 0,
                 messagesProcessed:
-                  null !== (s = eo.stats.messagesProcessed) && void 0 !== s ? s : 0,
-                nodesCreated: null !== (a = eo.stats.nodesCreated) && void 0 !== a ? a : 0,
-                edgesCreated: null !== (l = eo.stats.edgesCreated) && void 0 !== l ? l : 0,
-                sourcesCreated: null !== (i = eo.stats.sourcesCreated) && void 0 !== i ? i : 0,
+                  null !== (s = eu.stats.messagesProcessed) && void 0 !== s ? s : 0,
+                nodesCreated: null !== (a = eu.stats.nodesCreated) && void 0 !== a ? a : 0,
+                edgesCreated: null !== (l = eu.stats.edgesCreated) && void 0 !== l ? l : 0,
+                sourcesCreated: null !== (i = eu.stats.sourcesCreated) && void 0 !== i ? i : 0,
               }
             : null;
         ((0, n.useEffect)(() => {
           if (!T) return;
-          let e = en.get(T);
+          let e = eo.get(T);
           if (!e) return;
           console.log('[ChatImportModal] Job update received:', e);
-          let t = t6({
+          let t = t7({
               backendStatus: e.status,
               jobType: e.type,
               progress: { message: e.progress.message, stage: e.progress.stage },
@@ -8392,7 +8405,7 @@
           if (
             (S((l) => ({
               stage: s,
-              percent: t8({
+              percent: t9({
                 backendStatus: e.status,
                 status: t.status,
                 rawPercent: e.progress.percent,
@@ -8405,9 +8418,10 @@
             'succeeded' === e.status)
           ) {
             if (D === T) return;
-            (A(T),
+            (R(T),
               j(!1),
               console.log('[ChatImportModal] Import job completed successfully'),
+              $(T, 'import_modal_complete'),
               (async () => {
                 try {
                   let e = await (0, eh.FE)(T);
@@ -8430,7 +8444,7 @@
                 } catch (e) {
                   console.warn('[ChatImportModal] Failed to load duplicate review status:', e);
                 }
-                (p('complete'), Q());
+                (p('complete'), et());
               })(),
               (0, t$.Vo)('Import completed successfully', 'import.jobCompleted', {
                 jobId: T,
@@ -8464,16 +8478,16 @@
                 percent: a,
               }));
           }
-        }, [T, en, Q, D]),
+        }, [T, eo, et, D]),
           (0, n.useEffect)(() => {
-            0 !== R.length &&
-              O((e) =>
+            0 !== O.length &&
+              P((e) =>
                 e.map((e) => {
                   var t;
                   if (!e.jobId) return e;
-                  let s = en.get(e.jobId);
+                  let s = eo.get(e.jobId);
                   if (!s) return e;
-                  let a = t6({
+                  let a = t7({
                       backendStatus: s.status,
                       jobType: s.type,
                       progress: { message: s.progress.message, stage: s.progress.stage },
@@ -8483,7 +8497,7 @@
                   return {
                     ...e,
                     status: l ? 'error' : r ? 'done' : 'running',
-                    progress: t8({
+                    progress: t9({
                       backendStatus: s.status,
                       status: a.status,
                       rawPercent: s.progress.percent,
@@ -8500,7 +8514,7 @@
                   };
                 })
               );
-          }, [en, R.length]),
+          }, [eo, O.length]),
           (0, n.useEffect)(() => {
             let e = u.progress;
             'uploading' === e.status
@@ -8517,10 +8531,10 @@
                 : 'failed' === e.status &&
                   (S({ stage: 'error', percent: 0, message: e.error || 'Upload failed' }), j(!1));
           }, [u.progress]));
-        let eu = async (e) => {
+        let ex = async (e) => {
             try {
               (S({ stage: 'uploading', percent: 10, message: 'Uploading files...' }),
-                await em(300),
+                await ep(300),
                 S({ stage: 'detecting', percent: 30, message: 'Detecting platform...' }));
               let t = null;
               if (e.length > 0) {
@@ -8552,7 +8566,7 @@
                 filteredMessageCount: Math.floor(0.6 * s.total_messages),
               }),
                 S({ stage: 'ready', percent: 100, message: 'Ready for configuration' }),
-                await em(300),
+                await ep(300),
                 p('config'));
             } catch (e) {
               (console.error('Error processing files:', e),
@@ -8563,18 +8577,18 @@
                 }));
             }
           },
-          em = (e) => new Promise((t) => setTimeout(t, e)),
-          ex = (0, n.useCallback)(
+          ep = (e) => new Promise((t) => setTimeout(t, e)),
+          eg = (0, n.useCallback)(
             async (e) => {
-              (f(e), O([]), p('processing'), await eu(e));
+              (f(e), P([]), p('processing'), await ex(e));
             },
-            [eu]
+            [ex]
           ),
-          ep = (0, n.useCallback)(
+          eb = (0, n.useCallback)(
             async (e, t, s) => {
               let a = [],
                 l = { platform: s || 'generic', ...t };
-              for (let [t, s] of (O(
+              for (let [t, s] of (P(
                 e.map((e) => ({
                   fileName: e.name,
                   status: 'queued',
@@ -8583,7 +8597,7 @@
                 }))
               ),
               e.entries())) {
-                O((e) =>
+                P((e) =>
                   e.map((e, s) =>
                     s === t
                       ? { ...e, status: 'submitting', message: 'Uploading via chunked rail...' }
@@ -8593,7 +8607,7 @@
                 let e = await u.upload(s, l);
                 if (e.success && e.jobId) {
                   (a.push(e.jobId),
-                    O((s) =>
+                    P((s) =>
                       s.map((s, a) =>
                         a === t
                           ? {
@@ -8609,7 +8623,7 @@
                   continue;
                 }
                 let r = e.error || 'Failed to submit import';
-                O((e) =>
+                P((e) =>
                   e.map((e, s) => (s === t ? { ...e, status: 'error', message: r, error: r } : e))
                 );
               }
@@ -8617,7 +8631,7 @@
             },
             [u]
           ),
-          eg = async () => {
+          ef = async () => {
             try {
               if (
                 (console.log('[ChatImportModal] Starting chunked upload with config:', h),
@@ -8630,8 +8644,8 @@
                 alert('Please select files to import');
                 return;
               }
-              let e = Y,
-                t = await $();
+              let e = H,
+                t = await es();
               if (t && !t.features.auto_graph) {
                 alert('Your current account tier does not allow automatic graph import.');
                 return;
@@ -8661,7 +8675,7 @@
                 ));
               let a = { platform: (null == N ? void 0 : N.platform) || 'generic', ...s };
               if (b.length > 1) {
-                let e = await ep(b, s, null == N ? void 0 : N.platform),
+                let e = await eb(b, s, null == N ? void 0 : N.platform),
                   t = e.length,
                   a = b.length - t;
                 if ((j(!1), 0 === t)) {
@@ -8673,7 +8687,7 @@
                   return;
                 }
                 (M(e[0]),
-                  A(null),
+                  R(null),
                   S({
                     stage: 'ready',
                     percent: 100,
@@ -8703,7 +8717,7 @@
                 r.jobId
               ),
                 M(r.jobId),
-                A(null),
+                R(null),
                 (0, t$.Vo)(
                   'Import job created via chunked upload: '.concat(l.name),
                   'import.jobCreated',
@@ -8734,7 +8748,7 @@
                 alert('Import failed: '.concat(e instanceof Error ? e.message : 'Unknown error')));
             }
           },
-          eb = async (e) => {
+          ev = async (e) => {
             try {
               console.log('[ChatImportModal] Applying duplicate decisions:', e);
               let t = Array.from(e.entries()).map((e) => {
@@ -8788,7 +8802,8 @@
                   p('review'));
                 return;
               }
-              (await Q(),
+              (await et(),
+                $(T, 'duplicate_review_applied'),
                 S({ stage: 'ready', percent: 100, message: s.result.message }),
                 p('complete'),
                 setTimeout(() => {
@@ -8875,12 +8890,12 @@
               'review' === m
                 ? (0, r.jsx)('div', {
                     className: 'flex-1 flex flex-col min-h-0',
-                    children: (0, r.jsx)(tW, { groups: E, onReviewComplete: eb, onCancel: o }),
+                    children: (0, r.jsx)(tX, { groups: E, onReviewComplete: ev, onCancel: o }),
                   })
                 : (0, r.jsxs)('div', {
                     className: 'p-6',
                     children: [
-                      'select' === m && (0, r.jsx)(tm, { onFilesSelected: ex, files: b }),
+                      'select' === m && (0, r.jsx)(tm, { onFilesSelected: eg, files: b }),
                       'processing' === m &&
                         (0, r.jsxs)('div', {
                           className: 'space-y-4',
@@ -8888,22 +8903,22 @@
                             (0, r.jsx)(tC, {
                               platformDetection: N,
                               progress: C,
-                              runtimeStats: ec,
+                              runtimeStats: em,
                               onPause: u.pause,
                               onResume: u.resume,
                               isPaused: u.isPaused,
                             }),
-                            R.length > 0 &&
+                            O.length > 0 &&
                               (0, r.jsxs)('div', {
                                 className: 'border border-slate-700 rounded-xl p-4 bg-slate-950/40',
                                 children: [
                                   (0, r.jsxs)('h4', {
                                     className: 'text-sm font-semibold text-slate-300 mb-3',
-                                    children: ['Multi-file Uploads (', R.length, ')'],
+                                    children: ['Multi-file Uploads (', O.length, ')'],
                                   }),
                                   (0, r.jsx)('div', {
                                     className: 'space-y-2 max-h-48 overflow-y-auto',
-                                    children: R.map((e) =>
+                                    children: O.map((e) =>
                                       (0, r.jsxs)(
                                         'div',
                                         {
@@ -8966,7 +8981,7 @@
                                       className: 'text-sm font-semibold text-slate-300',
                                       children: 'Import Presets',
                                     }),
-                                    K &&
+                                    q &&
                                       (0, r.jsx)('span', {
                                         className: 'text-xs text-slate-500',
                                         children: 'Loading...',
@@ -8984,12 +8999,12 @@
                                           children: 'Saved presets',
                                         }),
                                         (0, r.jsxs)('select', {
-                                          value: z,
+                                          value: U,
                                           onChange: (e) => {
                                             let t = e.target.value;
-                                            U(t);
-                                            let s = P.find((e) => e.id === t);
-                                            V((null == s ? void 0 : s.name) || '');
+                                            B(t);
+                                            let s = F.find((e) => e.id === t);
+                                            K((null == s ? void 0 : s.name) || '');
                                           },
                                           className:
                                             'w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-slate-200',
@@ -8998,7 +9013,7 @@
                                               value: '',
                                               children: 'Select a preset',
                                             }),
-                                            P.map((e) =>
+                                            F.map((e) =>
                                               (0, r.jsx)(
                                                 'option',
                                                 { value: e.id, children: e.name },
@@ -9018,8 +9033,8 @@
                                         }),
                                         (0, r.jsx)('input', {
                                           type: 'text',
-                                          value: B,
-                                          onChange: (e) => V(e.target.value),
+                                          value: V,
+                                          onChange: (e) => K(e.target.value),
                                           placeholder: 'My default import',
                                           className:
                                             'w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-slate-200 placeholder-slate-500',
@@ -9033,32 +9048,32 @@
                                   children: [
                                     (0, r.jsx)('button', {
                                       type: 'button',
-                                      onClick: es,
-                                      disabled: !z || J,
+                                      onClick: el,
+                                      disabled: !U || G,
                                       className:
                                         'px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-slate-200 transition-colors',
                                       children: 'Load',
                                     }),
                                     (0, r.jsx)('button', {
                                       type: 'button',
-                                      onClick: ea,
-                                      disabled: J,
+                                      onClick: er,
+                                      disabled: G,
                                       className:
                                         'px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-slate-200 transition-colors',
                                       children: 'Create',
                                     }),
                                     (0, r.jsx)('button', {
                                       type: 'button',
-                                      onClick: el,
-                                      disabled: !z || J,
+                                      onClick: en,
+                                      disabled: !U || G,
                                       className:
                                         'px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-slate-200 transition-colors',
                                       children: 'Update',
                                     }),
                                     (0, r.jsx)('button', {
                                       type: 'button',
-                                      onClick: er,
-                                      disabled: !z || J,
+                                      onClick: ei,
+                                      disabled: !U || G,
                                       className:
                                         'px-3 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/30 disabled:bg-slate-900 disabled:text-slate-600 text-sm text-red-300 transition-colors',
                                       children: 'Delete',
@@ -9077,7 +9092,7 @@
                               onConfigChange: g,
                               platformDetection: N,
                               analysis: _,
-                              agentRuntimeEnabled: Y,
+                              agentRuntimeEnabled: H,
                             }),
                           ],
                         }),
@@ -9183,18 +9198,18 @@
                             children: [
                               (0, r.jsxs)('button', {
                                 onClick: () => {
-                                  z ? el() : ea();
+                                  U ? en() : er();
                                 },
-                                disabled: J || 0 === B.trim().length,
+                                disabled: G || 0 === V.trim().length,
                                 className:
                                   'flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 rounded-lg transition-colors',
                                 children: [
                                   (0, r.jsx)(eP.Z, { className: 'w-4 h-4' }),
-                                  z ? 'Update Preset' : 'Save Preset',
+                                  U ? 'Update Preset' : 'Save Preset',
                                 ],
                               }),
                               (0, r.jsx)('button', {
-                                onClick: eg,
+                                onClick: ef,
                                 disabled: v,
                                 className:
                                   'flex items-center gap-2 px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors',
@@ -9225,8 +9240,8 @@
           }),
         });
       }
-      var t9 = s(3250);
-      function se(e) {
+      var st = s(3250);
+      function ss(e) {
         let { onSuccess: t, onError: s, boardId: a } = e,
           [l, i] = (0, n.useState)(''),
           [o, d] = (0, n.useState)('idle'),
@@ -9494,7 +9509,7 @@
                                 className:
                                   'absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-slate-700 rounded transition-colors',
                                 title: 'Paste from clipboard',
-                                children: (0, r.jsx)(t9.Z, { className: 'w-4 h-4 text-slate-400' }),
+                                children: (0, r.jsx)(st.Z, { className: 'w-4 h-4 text-slate-400' }),
                               }),
                             ],
                           }),
@@ -9528,7 +9543,7 @@
               }),
             });
       }
-      function st(e) {
+      function sa(e) {
         var t;
         let { onClose: s } = e,
           [a, l] = (0, n.useState)('files'),
@@ -9799,7 +9814,7 @@
                           ],
                         })
                       : 'url' === a
-                        ? (0, r.jsx)(se, {
+                        ? (0, r.jsx)(ss, {
                             onSuccess: (e) => {
                               (b(e),
                                 h(!0),
@@ -10042,7 +10057,7 @@
           }),
         });
       }
-      function ss(e) {
+      function sl(e) {
         let { onClose: t, onSuccess: s } = e,
           [a, l] = (0, n.useState)('job'),
           i = [
@@ -10126,8 +10141,8 @@
             (0, r.jsxs)('div', {
               className: 'flex-1 overflow-hidden',
               children: [
-                'job' === a && (0, r.jsx)(t7, { onDismiss: t }),
-                'ingest' === a && (0, r.jsx)(st, { onClose: t }),
+                'job' === a && (0, r.jsx)(se, { onDismiss: t }),
+                'ingest' === a && (0, r.jsx)(sa, { onClose: t }),
                 'hybrid' === a && null,
                 'local' === a && null,
               ],
@@ -10135,10 +10150,10 @@
           ],
         });
       }
-      var sa = s(4915),
-        sl = s(9323),
-        sr = s(1569);
-      function sn(e) {
+      var sr = s(4915),
+        sn = s(9323),
+        si = s(1569);
+      function so(e) {
         let { user: t, onClose: s, onUpdate: a } = e,
           { user: l } = (0, w.aC)(),
           { setKeimenonMode: i } = (0, et.St)(),
@@ -10220,7 +10235,7 @@
                       className:
                         'flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm',
                       title: "View this user's keimenon",
-                      children: [(0, r.jsx)(eA.Z, { className: 'w-4 h-4' }), 'View Keimenon'],
+                      children: [(0, r.jsx)(eR.Z, { className: 'w-4 h-4' }), 'View Keimenon'],
                     }),
                     N &&
                       !o &&
@@ -10228,7 +10243,7 @@
                         onClick: () => d(!0),
                         className:
                           'flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors text-sm',
-                        children: [(0, r.jsx)(sa.Z, { className: 'w-4 h-4' }), 'Edit User'],
+                        children: [(0, r.jsx)(sr.Z, { className: 'w-4 h-4' }), 'Edit User'],
                       }),
                     N &&
                       o &&
@@ -10259,7 +10274,7 @@
                             children: c
                               ? (0, r.jsxs)(r.Fragment, {
                                   children: [
-                                    (0, r.jsx)(sl.Z, { className: 'w-4 h-4 animate-spin' }),
+                                    (0, r.jsx)(sn.Z, { className: 'w-4 h-4 animate-spin' }),
                                     'Saving...',
                                   ],
                                 })
@@ -10344,7 +10359,7 @@
                   children: [
                     (0, r.jsxs)('label', {
                       className: 'flex items-center gap-2 text-sm font-medium text-slate-400',
-                      children: [(0, r.jsx)(sr.Z, { className: 'w-4 h-4' }), 'Email'],
+                      children: [(0, r.jsx)(si.Z, { className: 'w-4 h-4' }), 'Email'],
                     }),
                     o
                       ? (0, r.jsx)('input', {
@@ -10594,7 +10609,7 @@
           ],
         });
       }
-      function si(e) {
+      function sd(e) {
         let { onClose: t, onSuccess: s } = e,
           [a, l] = (0, n.useState)(!1),
           [i, o] = (0, n.useState)(null),
@@ -10924,7 +10939,7 @@
           }),
         });
       }
-      function so(e) {
+      function sc(e) {
         let { account: t, accounts: s = [], onClose: a, onSuccess: l } = e,
           [i, o] = (0, n.useState)({
             name: '',
@@ -11138,8 +11153,8 @@
           }),
         });
       }
-      var sd = s(7051);
-      function sc() {
+      var su = s(7051);
+      function sm() {
         let { user: e } = (0, w.aC)(),
           [t, s] = (0, n.useState)([]),
           [a, l] = (0, n.useState)(!0),
@@ -11163,15 +11178,15 @@
                       icon: v.Z,
                       badge: t.length,
                       badgeColor: 'blue',
-                      children: t.map((e) => su(e)),
+                      children: t.map((e) => sx(e)),
                     },
                     {
                       id: 'debug-accounts',
                       label: 'Debug Accounts',
-                      icon: sd.Z,
+                      icon: su.Z,
                       badge: a.length,
                       badgeColor: 'yellow',
-                      children: a.map((e) => su(e)),
+                      children: a.map((e) => sx(e)),
                     },
                   ];
                 s(r);
@@ -11203,7 +11218,7 @@
           { treeData: t, loading: a, error: r }
         );
       }
-      function su(e) {
+      function sx(e) {
         let t = v.Z;
         'business' === e.account_class
           ? (t = eD.Z)
@@ -11244,14 +11259,13 @@
           }
         );
       }
-      var sm = s(7022);
-      let sx = 'keimenon_token';
-      function sp(e) {
+      var sp = s(7022);
+      function sh(e) {
         let t = eo.Z;
         'Folder' === e.kind
-          ? (t = sm.Z)
+          ? (t = sp.Z)
           : 'smart' === e.group_kind
-            ? (t = X.Z)
+            ? (t = W.Z)
             : 'cluster' === e.group_kind && (t = $.Z);
         let s = 'slate';
         return (
@@ -11266,18 +11280,16 @@
           }
         );
       }
-      async function sh(e) {
+      async function sg(e) {
         try {
-          let t = localStorage.getItem(sx);
-          if (!t) throw Error('Not authenticated');
-          let s = await fetch(''.concat(L.CT, '/api/v1/groups/').concat(e), {
-            headers: { Authorization: 'Bearer '.concat(t), 'Content-Type': 'application/json' },
+          let t = await (0, eh.ax)(''.concat(L.CT, '/api/v1/groups/').concat(e), {
+            headers: { 'Content-Type': 'application/json' },
           });
-          if (!s.ok) {
-            let e = await s.json().catch(() => ({}));
-            throw Error(e.error || 'HTTP '.concat(s.status));
+          if (!t.ok) {
+            let e = await t.json().catch(() => ({}));
+            throw Error(e.error || 'HTTP '.concat(t.status));
           }
-          return ((await s.json()).children || []).map((e) => sp(e));
+          return ((await t.json()).children || []).map((e) => sh(e));
         } catch (t) {
           throw (
             console.error('Failed to fetch folder children:', t),
@@ -11298,24 +11310,20 @@
           );
         }
       }
-      async function sg(e) {
+      async function sb(e) {
         let t = arguments.length > 1 && void 0 !== arguments[1] && arguments[1];
         try {
-          let s = localStorage.getItem(sx);
-          if (!s) throw Error('Not authenticated');
-          let a = ''
+          let s = ''
               .concat(L.CT, '/api/v1/groups/')
               .concat(e, '/nodes')
               .concat(t ? '?recursive=true' : ''),
-            l = await fetch(a, {
-              headers: { Authorization: 'Bearer '.concat(s), 'Content-Type': 'application/json' },
-            });
-          if (!l.ok) {
-            let e = await l.json().catch(() => ({}));
-            throw Error(e.error || 'HTTP '.concat(l.status));
+            a = await (0, eh.ax)(s, { headers: { 'Content-Type': 'application/json' } });
+          if (!a.ok) {
+            let e = await a.json().catch(() => ({}));
+            throw Error(e.error || 'HTTP '.concat(a.status));
           }
-          let r = await l.json();
-          return { nodeIds: r.node_ids || [], nodes: r.nodes || [], edges: r.edges || [] };
+          let l = await a.json();
+          return { nodeIds: l.node_ids || [], nodes: l.nodes || [], edges: l.edges || [] };
         } catch (s) {
           throw (
             console.error('Failed to fetch group members:', s),
@@ -11337,44 +11345,44 @@
           );
         }
       }
-      var sb = s(3502),
-        sf = s(113),
-        sv = s(9419),
-        sj = s(1026),
-        sN = s(1733),
-        sy = s(6085),
-        sw = s(3447),
-        sk = s(4078),
-        sC = s(324),
-        sS = s(670);
-      function s_(e) {
+      var sf = s(3502),
+        sv = s(113),
+        sj = s(9419),
+        sN = s(1026),
+        sy = s(1733),
+        sw = s(6085),
+        sk = s(3447),
+        sC = s(4078),
+        sS = s(324),
+        s_ = s(670);
+      function sI(e) {
         return (
           {
             Settings: N.Z,
-            Palette: sb.Z,
-            LayoutGrid: sf.Z,
+            Palette: sf.Z,
+            LayoutGrid: sv.Z,
             Building2: v.Z,
             Database: Y.Z,
-            Plug: sv.Z,
-            Bell: sj.Z,
+            Plug: sj.Z,
+            Bell: sN.Z,
             Shield: h.Z,
-            Download: sN.Z,
-            Wrench: sd.Z,
+            Download: sy.Z,
+            Wrench: su.Z,
             User: f.Z,
             Users: j.Z,
-            Lock: sy.Z,
-            Key: sw.Z,
-            Mail: sr.Z,
-            Globe: sk.Z,
+            Lock: sw.Z,
+            Key: sk.Z,
+            Mail: si.Z,
+            Globe: sC.Z,
             Zap: g.Z,
             Clock: ep.Z,
-            File: sC.Z,
-            Folder: sm.Z,
-            FolderOpen: sS.Z,
+            File: sS.Z,
+            Folder: sp.Z,
+            FolderOpen: s_.Z,
           }[e] || N.Z
         );
       }
-      class sI {
+      class sE {
         static get(e) {
           return 'settings' === e.keimenonMode
             ? this.getSettingsModel(e)
@@ -11426,7 +11434,8 @@
           };
         }
       }
-      function sE(e) {
+      let sZ = new Set(['AccountNode', 'Principal', 'UserNode', 'AgentNode']);
+      function sT(e) {
         var t, s;
         let {
             side: a,
@@ -11456,103 +11465,73 @@
           let { user: e } = (0, w.aC)(),
             { shellMode: t, keimenonMode: s } = (0, et.St)(),
             { operating: a, switchAccount: o } = (0, k.B)(),
-            { treeData: c, loading: u } = sc(),
+            { treeData: c, loading: u } = sm(),
             { treeData: m, loading: x } = (function () {
               let { user: e } = (0, w.aC)(),
                 [t, s] = (0, n.useState)([]),
                 [a, l] = (0, n.useState)(!0),
-                [r, i] = (0, n.useState)(null);
+                [r, i] = (0, n.useState)(null),
+                o = (0, n.useCallback)(async () => {
+                  if (!e) {
+                    (s([]), l(!1));
+                    return;
+                  }
+                  try {
+                    (l(!0), i(null));
+                    let e = await (0, eh.ax)(''.concat(L.CT, '/api/v1/groups'), {
+                      headers: { 'Content-Type': 'application/json' },
+                    });
+                    if (!e.ok) {
+                      let t = await e.json().catch(() => ({}));
+                      throw Error(t.error || 'HTTP '.concat(e.status));
+                    }
+                    let t = ((await e.json()).groups || []).map((e) => sh(e));
+                    s(t);
+                  } catch (t) {
+                    (console.error('Failed to fetch groups tree:', t),
+                      i(
+                        Z.I.capture(
+                          t,
+                          {
+                            domain: 'api',
+                            operation: 'groups.fetchTree',
+                            userId: e.userId,
+                            accountId: e.accountId,
+                            metadata: { component: 'useGroupsTree', endpoint: '/api/v1/groups' },
+                          },
+                          'error'
+                        ).userMessage ||
+                          t.message ||
+                          'Failed to load groups'
+                      ),
+                      s([]));
+                  } finally {
+                    l(!1);
+                  }
+                }, [e]);
               return (
                 (0, n.useEffect)(() => {
                   if (!e) {
                     (s([]), l(!1));
                     return;
                   }
-                  (async () => {
-                    try {
-                      (l(!0), i(null));
-                      let e = localStorage.getItem(sx);
-                      if (!e) throw Error('Not authenticated');
-                      let t = await fetch(''.concat(L.CT, '/api/v1/groups'), {
-                        headers: {
-                          Authorization: 'Bearer '.concat(e),
-                          'Content-Type': 'application/json',
-                        },
-                      });
-                      if (!t.ok) {
-                        let e = await t.json().catch(() => ({}));
-                        throw Error(e.error || 'HTTP '.concat(t.status));
-                      }
-                      let a = ((await t.json()).groups || []).map((e) => sp(e));
-                      s(a);
-                    } catch (t) {
-                      (console.error('Failed to fetch groups tree:', t),
-                        i(
-                          Z.I.capture(
-                            t,
-                            {
-                              domain: 'api',
-                              operation: 'groups.fetchTree',
-                              userId: e.userId,
-                              accountId: e.accountId,
-                              metadata: { component: 'useGroupsTree', endpoint: '/api/v1/groups' },
-                            },
-                            'error'
-                          ).userMessage ||
-                            t.message ||
-                            'Failed to load groups'
-                        ),
-                        s([]));
-                    } finally {
-                      l(!1);
+                  o();
+                  let t = () => {
+                    o();
+                  };
+                  return (
+                    window.addEventListener(t0, t),
+                    () => {
+                      window.removeEventListener(t0, t);
                     }
-                  })();
-                }, [e]),
+                  );
+                }, [o, e]),
                 {
                   treeData: t,
                   loading: a,
                   error: r,
                   refetch: async () => {
-                    if (e)
-                      try {
-                        (l(!0), i(null));
-                        let e = localStorage.getItem(sx);
-                        if (!e) throw Error('Not authenticated');
-                        let t = await fetch(''.concat(L.CT, '/api/v1/groups'), {
-                          headers: {
-                            Authorization: 'Bearer '.concat(e),
-                            'Content-Type': 'application/json',
-                          },
-                        });
-                        if (!t.ok) {
-                          let e = await t.json().catch(() => ({}));
-                          throw Error(e.error || 'HTTP '.concat(t.status));
-                        }
-                        let a = ((await t.json()).groups || []).map((e) => sp(e));
-                        s(a);
-                      } catch (t) {
-                        (console.error('Failed to refetch groups tree:', t),
-                          i(
-                            Z.I.capture(
-                              t,
-                              {
-                                domain: 'api',
-                                operation: 'groups.refetch',
-                                userId: e.userId,
-                                accountId: e.accountId,
-                                metadata: {
-                                  component: 'useGroupsTree.refetch',
-                                  endpoint: '/api/v1/groups',
-                                },
-                              },
-                              'error'
-                            ).userMessage ||
-                              t.message ||
-                              'Failed to reload groups'
-                          ));
-                      } finally {
-                        l(!1);
-                      }
+                    e && (await o());
                   },
                 }
               );
@@ -11580,7 +11559,7 @@
                         .sort((e, t) => e.order - t.order)
                         .map((e) =>
                           (function (e) {
-                            let t = s_(e.icon);
+                            let t = sI(e.icon);
                             return {
                               id: 'category_'.concat(e.id),
                               label: e.label,
@@ -11589,7 +11568,7 @@
                                 .sort((e, t) => e.order - t.order)
                                 .map((t) =>
                                   (function e(t, s) {
-                                    let a = t.icon ? s_(t.icon) : void 0;
+                                    let a = t.icon ? sI(t.icon) : void 0;
                                     return t.subsections && t.subsections.length > 0
                                       ? {
                                           id: 'section_'.concat(s, '_').concat(t.id),
@@ -11676,11 +11655,12 @@
             [C, S] = (0, n.useState)(!1),
             [_, I] = (0, n.useState)(new Set()),
             [E, T] = (0, n.useState)(null),
-            M = (0, R.O)((e) => e.setFilteredNodeIds),
-            D = (0, R.O)((e) => e.clearSelection),
-            A = (0, R.O)((e) => e.selectNode),
-            O = (0, R.O)((e) => e.hydrateGraphSubset),
-            { groupIds: P } = (function (e) {
+            M = (0, A.O)((e) => e.setFilteredNodeIds),
+            D = (0, A.O)((e) => e.clearSelection),
+            R = (0, A.O)((e) => e.selectNode),
+            O = (0, A.O)((e) => e.hydrateGraphSubset),
+            P = (0, A.O)((e) => e.nodes),
+            { groupIds: F } = (function (e) {
               let [t, s] = (0, n.useState)(new Set()),
                 [a, l] = (0, n.useState)([]),
                 [r, i] = (0, n.useState)(!1),
@@ -11723,15 +11703,15 @@
                 }, [c]),
                 { groupIds: t, groups: a, loading: r, error: o }
               );
-            })(Array.from((0, R.O)((e) => e.selectedNodeIds))),
+            })(Array.from((0, A.O)((e) => e.selectedNodeIds))),
             {
-              mode: F,
-              title: z,
-              searchPlaceholder: U,
-              emptyMessage: B,
-              data: V,
-              showCreateButton: K,
-            } = sI.get({
+              mode: z,
+              title: U,
+              searchPlaceholder: B,
+              emptyMessage: V,
+              data: K,
+              showCreateButton: q,
+            } = sE.get({
               shellMode: t,
               keimenonMode: s,
               operatingMode: a.mode,
@@ -11744,15 +11724,15 @@
               settingsLoading: h,
               settingsError: f,
             }),
-            q = async (e, s) => {
+            J = async (e, s) => {
               var a, l, r;
               if (
                 ((0, t$.bK)('Navigation item selected', 'keimenon.navigation.select', {
                   nodeId: e.id,
-                  navMode: F,
+                  navMode: z,
                   shellMode: t,
                 }),
-                'accounts' === F &&
+                'accounts' === z &&
                   (null === (a = e.metadata) || void 0 === a ? void 0 : a.accountId))
               ) {
                 let t = e.metadata.accountId,
@@ -11789,7 +11769,7 @@
                   o(t, 'crm', { accountType: a, accountName: e.label, serviceMode: l }));
               }
               if (
-                ('settings' === F &&
+                ('settings' === z &&
                   (d && d(e.id),
                   (0, t$.bK)(
                     'Settings navigation item selected',
@@ -11799,13 +11779,13 @@
                       sectionId: null === (l = e.metadata) || void 0 === l ? void 0 : l.sectionId,
                     }
                   )),
-                'groups' === F)
+                'groups' === z)
               ) {
                 if ((null === (r = e.metadata) || void 0 === r ? void 0 : r.kind) === 'Folder') {
                   if (!e.children || 0 === e.children.length) {
                     y((t) => new Set(t).add(e.id));
                     try {
-                      let t = await sh(e.id),
+                      let t = await sg(e.id),
                         s = (a) =>
                           a.map((a) =>
                             a.id === e.id
@@ -11831,16 +11811,23 @@
                   }
                 } else
                   try {
-                    let t = await sg(e.id),
-                      s = t.nodeIds;
+                    let t = await sb(e.id),
+                      s = t.nodeIds,
+                      a = P.filter((e) => sZ.has(e.kind || e.type)).map((e) => e.id),
+                      l = new Set([...s, ...a, e.id]);
+                    for (let e of t.nodes) (null == e ? void 0 : e.id) && l.add(String(e.id));
+                    for (let e of t.edges)
+                      ((null == e ? void 0 : e.from) && l.add(String(e.from)),
+                        (null == e ? void 0 : e.to) && l.add(String(e.to)));
                     ((0, t$.bK)('Fetched group members', 'keimenon.navigation.groupMembers', {
                       groupId: e.id,
                       memberCount: s.length,
+                      revealCount: l.size,
                     }),
                       (t.nodes.length > 0 || t.edges.length > 0) && O(t.nodes, t.edges),
-                      M(s),
+                      M(Array.from(l)),
                       D(),
-                      s.forEach((e) => A(e, !0)),
+                      (s.length > 0 ? s : [e.id]).forEach((e) => R(e, !0)),
                       window.setTimeout(() => {
                         null == g || g();
                       }, 0));
@@ -11871,13 +11858,13 @@
                         children: [
                           (0, r.jsx)('h2', {
                             className: 'text-sm font-semibold text-slate-300',
-                            children: z,
+                            children: U,
                           }),
                           (0, r.jsxs)('div', {
                             className: 'flex items-center gap-1',
                             children: [
-                              K &&
-                                'accounts' === F &&
+                              q &&
+                                'accounts' === z &&
                                 (0, r.jsx)('button', {
                                   onClick: () => S(!0),
                                   className:
@@ -11896,17 +11883,17 @@
                         ],
                       }),
                       (0, r.jsx)(ec, {
-                        mode: F,
-                        data: V,
-                        selectedId: 'accounts' === F ? a.accountId : void 0,
-                        selectedIds: 'accounts' === F ? _ : 'groups' === F ? P : void 0,
-                        multiSelect: 'accounts' === F || 'groups' === F,
-                        onSelect: q,
-                        searchPlaceholder: U,
-                        emptyMessage: B,
+                        mode: z,
+                        data: K,
+                        selectedId: 'accounts' === z ? a.accountId : void 0,
+                        selectedIds: 'accounts' === z ? _ : 'groups' === z ? F : void 0,
+                        multiSelect: 'accounts' === z || 'groups' === z,
+                        onSelect: J,
+                        searchPlaceholder: B,
+                        emptyMessage: V,
                       }),
                       C &&
-                        (0, r.jsx)(si, {
+                        (0, r.jsx)(sd, {
                           onClose: () => S(!1),
                           onSuccess: () => {
                             S(!1);
@@ -11920,16 +11907,16 @@
         }
         let { keimenonMode: f, shellMode: v } = (0, et.St)(),
           { operating: j } = (0, k.B)(),
-          { treeData: N } = sc(),
-          y = (0, R.O)((e) => e.selectedNode),
-          C = (0, R.O)((e) => e.selectedNodeIds),
-          S = (0, R.O)((e) => e.nodes),
-          _ = (0, R.O)((e) => e.deselectNode),
-          I = (0, R.O)((e) => e.clearSelection),
-          E = (0, R.O)((e) => e.openDetailPanel),
-          T = (0, R.O)((e) => e.setFilteredNodeIds),
+          { treeData: N } = sm(),
+          y = (0, A.O)((e) => e.selectedNode),
+          C = (0, A.O)((e) => e.selectedNodeIds),
+          S = (0, A.O)((e) => e.nodes),
+          _ = (0, A.O)((e) => e.deselectNode),
+          I = (0, A.O)((e) => e.clearSelection),
+          E = (0, A.O)((e) => e.openDetailPanel),
+          T = (0, A.O)((e) => e.setFilteredNodeIds),
           [M, D] = (0, n.useState)(!1),
-          [A, O] = (0, n.useState)([]),
+          [R, O] = (0, n.useState)([]),
           [P, F] = (0, n.useState)(null),
           [z, U] = (0, n.useState)([]),
           B = u || P,
@@ -11982,7 +11969,7 @@
               48
             );
           },
-          X = (e) => {
+          W = (e) => {
             O((t) => t.filter((t) => t !== e));
           };
         return l
@@ -12016,7 +12003,7 @@
                       className: 'flex-1 overflow-hidden',
                       children:
                         'user-detail' === B && x
-                          ? (0, r.jsx)(sn, {
+                          ? (0, r.jsx)(so, {
                               user: x,
                               onClose: () => {
                                 (F(null), U([]), null == m || m(void 0));
@@ -12026,12 +12013,12 @@
                           : 'import-flow' === B
                             ? (0, r.jsx)(r.Fragment, {
                                 children: L.yD
-                                  ? (0, r.jsx)(ss, {
+                                  ? (0, r.jsx)(sl, {
                                       onClose: () => {
                                         (F(null), U([]), null == m || m(void 0));
                                       },
                                     })
-                                  : (0, r.jsx)(t7, {
+                                  : (0, r.jsx)(se, {
                                       onDismiss: () => {
                                         (F(null), U([]), null == m || m(void 0));
                                       },
@@ -12047,7 +12034,7 @@
                                       children: [
                                         (0, r.jsxs)('h3', {
                                           className: 'text-sm font-semibold text-slate-300',
-                                          children: ['Scope Builder (', A.length, ')'],
+                                          children: ['Scope Builder (', R.length, ')'],
                                         }),
                                         (0, r.jsx)('button', {
                                           onClick: () => {
@@ -12064,13 +12051,13 @@
                                     (0, r.jsx)('div', {
                                       className: 'flex-1 overflow-y-auto p-4 space-y-2',
                                       children:
-                                        0 === A.length
+                                        0 === R.length
                                           ? (0, r.jsx)('p', {
                                               className: 'text-sm text-slate-500',
                                               children:
                                                 'Add nodes from selection actions to build a scoped view.',
                                             })
-                                          : A.map((e) => {
+                                          : R.map((e) => {
                                               let t = S.find((t) => t.id === e);
                                               return (0, r.jsxs)(
                                                 'div',
@@ -12094,7 +12081,7 @@
                                                       ],
                                                     }),
                                                     (0, r.jsx)('button', {
-                                                      onClick: () => X(e),
+                                                      onClick: () => W(e),
                                                       className:
                                                         'text-xs text-slate-400 hover:text-red-300',
                                                       children: 'Remove',
@@ -12110,8 +12097,8 @@
                                       children: [
                                         (0, r.jsx)('button', {
                                           onClick: () => {
-                                            (T(A.length > 0 ? A : null),
-                                              A.length > 0 && (null == g || g()));
+                                            (T(R.length > 0 ? R : null),
+                                              R.length > 0 && (null == g || g()));
                                           },
                                           className:
                                             'flex-1 px-3 py-2 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded',
@@ -12183,7 +12170,7 @@
                                           }),
                                         }),
                                         M &&
-                                          (0, r.jsx)(so, {
+                                          (0, r.jsx)(sc, {
                                             account: q[0],
                                             accounts: q,
                                             onClose: () => D(!1),
@@ -12198,7 +12185,7 @@
                                         children: [
                                           (0, r.jsx)(eL, { account: K, onCreateUser: () => D(!0) }),
                                           M &&
-                                            (0, r.jsx)(so, {
+                                            (0, r.jsx)(sc, {
                                               account: K,
                                               onClose: () => D(!1),
                                               onSuccess: () => {
@@ -12335,12 +12322,12 @@
             })
           : b;
       }
-      var sZ = s(5797),
-        sT = s(9790),
-        sM = s(4116),
-        sD = s(54);
-      let sA = (0, n.createContext)(void 0);
-      function sR(e) {
+      var sM = s(5797),
+        sD = s(9790),
+        sR = s(4116),
+        sA = s(54);
+      let sL = (0, n.createContext)(void 0);
+      function sO(e) {
         let { children: t } = e,
           [s, a] = (0, n.useState)([]),
           [l, i] = (0, n.useState)({ error: 0, warn: 0, info: 0, debug: 0 }),
@@ -12407,7 +12394,7 @@
             [o]
           ),
           f = (0, n.useCallback)((e) => ('json' === e ? Z.I.exportJSON(o) : Z.I.exportCSV(o)), [o]);
-        return (0, r.jsx)(sA.Provider, {
+        return (0, r.jsx)(sL.Provider, {
           value: {
             errors: s,
             errorCounts: l,
@@ -12425,12 +12412,12 @@
           children: t,
         });
       }
-      function sL() {
-        let e = (0, n.useContext)(sA);
+      function sP() {
+        let e = (0, n.useContext)(sL);
         if (!e) throw Error('useConsole must be used within ConsoleProvider');
         return e;
       }
-      function sO(e) {
+      function sF(e) {
         let { isOpen: t } = e,
           {
             errors: s,
@@ -12440,7 +12427,7 @@
             exportErrors: o,
             activeTab: d,
             setActiveTab: c,
-          } = sL(),
+          } = sP(),
           [u, m] = (0, n.useState)(''),
           [x, p] = (0, n.useState)('all'),
           [h, g] = (0, n.useState)('all');
@@ -12481,7 +12468,7 @@
                                 : 'hover:bg-slate-800/50 text-slate-400'
                             ),
                           children: [
-                            (0, r.jsx)(sZ.Z, { className: 'w-4 h-4' }),
+                            (0, r.jsx)(sM.Z, { className: 'w-4 h-4' }),
                             'Console',
                             a.error > 0 &&
                               (0, r.jsx)('span', {
@@ -12519,7 +12506,7 @@
                                 : 'hover:bg-slate-800/50 text-slate-400'
                             ),
                           children: [
-                            (0, r.jsx)(sT.Z, { className: 'w-4 h-4' }),
+                            (0, r.jsx)(sD.Z, { className: 'w-4 h-4' }),
                             'Tasks',
                             (0, r.jsx)('span', {
                               className:
@@ -12536,7 +12523,7 @@
                                 ? 'bg-slate-800 text-white'
                                 : 'hover:bg-slate-800/50 text-slate-400'
                             ),
-                          children: [(0, r.jsx)(sM.Z, { className: 'w-4 h-4' }), 'Shortcuts'],
+                          children: [(0, r.jsx)(sR.Z, { className: 'w-4 h-4' }), 'Shortcuts'],
                         }),
                       ],
                     }),
@@ -12551,7 +12538,7 @@
                               className:
                                 'p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors',
                               title: 'Export as JSON',
-                              children: (0, r.jsx)(sN.Z, { className: 'w-4 h-4' }),
+                              children: (0, r.jsx)(sy.Z, { className: 'w-4 h-4' }),
                             }),
                             (0, r.jsx)('button', {
                               onClick: i,
@@ -12570,7 +12557,7 @@
                     className:
                       'border-b border-slate-800 px-4 py-2 flex items-center gap-3 text-sm',
                     children: [
-                      (0, r.jsx)(X.Z, { className: 'w-4 h-4 text-slate-500' }),
+                      (0, r.jsx)(W.Z, { className: 'w-4 h-4 text-slate-500' }),
                       (0, r.jsxs)('select', {
                         value: x,
                         onChange: (e) => p(e.target.value),
@@ -12611,10 +12598,10 @@
                 (0, r.jsxs)('div', {
                   className: 'flex-1 overflow-y-auto',
                   children: [
-                    'console' === d && (0, r.jsx)(sP, { errors: s }),
-                    'logs' === d && (0, r.jsx)(sF, { errors: s }),
-                    'tasks' === d && (0, r.jsx)(sz, {}),
-                    'shortcuts' === d && (0, r.jsx)(sU, {}),
+                    'console' === d && (0, r.jsx)(sz, { errors: s }),
+                    'logs' === d && (0, r.jsx)(sU, { errors: s }),
+                    'tasks' === d && (0, r.jsx)(sB, {}),
+                    'shortcuts' === d && (0, r.jsx)(sV, {}),
                   ],
                 }),
               ],
@@ -12661,13 +12648,13 @@
               ],
             });
       }
-      function sP(e) {
+      function sz(e) {
         let { errors: t } = e;
         return 0 === t.length
           ? (0, r.jsxs)('div', {
               className: 'p-8 text-center text-slate-500',
               children: [
-                (0, r.jsx)(sZ.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
+                (0, r.jsx)(sM.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
                 (0, r.jsx)('p', { children: 'No errors captured' }),
                 (0, r.jsx)('p', {
                   className: 'text-xs mt-1',
@@ -12697,7 +12684,7 @@
                         'error' === e.severity &&
                           (0, r.jsx)(m.Z, { className: 'w-4 h-4 text-red-400 mt-0.5' }),
                         'warn' === e.severity &&
-                          (0, r.jsx)(sD.Z, { className: 'w-4 h-4 text-yellow-400 mt-0.5' }),
+                          (0, r.jsx)(sA.Z, { className: 'w-4 h-4 text-yellow-400 mt-0.5' }),
                         'info' === e.severity &&
                           (0, r.jsx)(eu.Z, { className: 'w-4 h-4 text-blue-400 mt-0.5' }),
                         (0, r.jsxs)('div', {
@@ -12789,7 +12776,7 @@
               }),
             });
       }
-      function sF(e) {
+      function sU(e) {
         let { errors: t } = e;
         return 0 === t.length
           ? (0, r.jsxs)('div', {
@@ -12841,11 +12828,11 @@
               ),
             });
       }
-      function sz() {
+      function sB() {
         return (0, r.jsxs)('div', {
           className: 'p-8 text-center text-slate-500',
           children: [
-            (0, r.jsx)(sT.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
+            (0, r.jsx)(sD.Z, { className: 'w-12 h-12 mx-auto mb-3 opacity-50' }),
             (0, r.jsx)('p', { children: 'No active tasks' }),
             (0, r.jsx)('p', {
               className: 'text-xs mt-1',
@@ -12854,7 +12841,7 @@
           ],
         });
       }
-      function sU() {
+      function sV() {
         return (0, r.jsxs)('div', {
           className: 'p-4',
           children: [
@@ -12893,12 +12880,12 @@
           ],
         });
       }
-      var sB = s(2878),
-        sV = s(612),
-        sK = s(2929),
-        sq = s(7878),
-        sJ = s(8813);
-      let sG = new Set([
+      var sK = s(2878),
+        sq = s(612),
+        sJ = s(2929),
+        sG = s(7878),
+        sW = s(8813);
+      let sX = new Set([
           'AccountNode',
           'Principal',
           'UserNode',
@@ -12909,8 +12896,8 @@
           'ObjectiveClaim',
           'UnifiedDoc',
         ]),
-        sX = new Set([
-          ...sG,
+        sY = new Set([
+          ...sX,
           'Source',
           'SourceDoc',
           'ChatThread',
@@ -12918,8 +12905,19 @@
           'VerifiedSource',
           'VerifiedClaim',
         ]),
-        sW = new Set([...sX, 'Topic', 'Phrase', 'Packet', 'CodeBlock', 'Lexeme', 'SourceSpan']),
-        sY = new Set([
+        sH = new Set([...sY, 'Topic', 'Phrase', 'Packet', 'CodeBlock', 'Lexeme', 'SourceSpan']),
+        sQ = new Set([
+          'AccountNode',
+          'Principal',
+          'UserNode',
+          'AgentNode',
+          'Group',
+          'Source',
+          'SourceDoc',
+          'ConversationThread',
+          'ChatThread',
+        ]),
+        s$ = new Set([
           'the',
           'a',
           'an',
@@ -12937,14 +12935,14 @@
           'this',
           'that',
         ]),
-        sH = { L0: 240, L1: 3200, L2: 14e3, L3: 6e4 },
-        sQ = { L0: 1600, L1: 14e3, L2: 6e4, L3: 18e4 },
-        s$ = { L0: 0.7, L1: 0.5, L2: 0.25, L3: 0 },
-        s0 = { L0: 0.6, L1: 0.25, L2: 0.05, L3: 0 };
-      function s1(e) {
+        s0 = { L0: 240, L1: 3200, L2: 14e3, L3: 6e4 },
+        s1 = { L0: 1600, L1: 14e3, L2: 6e4, L3: 18e4 },
+        s4 = { L0: 0.7, L1: 0.5, L2: 0.25, L3: 0 },
+        s2 = { L0: 0.6, L1: 0.25, L2: 0.05, L3: 0 };
+      function s5(e) {
         return 'string' == typeof e ? e : e.id;
       }
-      function s4(e) {
+      function s3(e) {
         var t, s, a, l;
         for (let r of [
           e.mass,
@@ -12962,7 +12960,7 @@
         }
         return 1;
       }
-      function s2(e) {
+      function s6(e) {
         var t, s, a, l;
         for (let r of [
           e.strength,
@@ -12977,8 +12975,14 @@
         }
         return 0.5;
       }
-      let s5 = { dims: 8, axes: [0, 1, 2], sliceDim: 3, sliceCenter: 0, sliceWidth: 0.35 };
-      function s3(e) {
+      function s8(e) {
+        return [...e].sort((e, t) => {
+          let s = s3(t) - s3(e);
+          return 0 !== s ? s : e.id.localeCompare(t.id);
+        });
+      }
+      let s7 = { dims: 8, axes: [0, 1, 2], sliceDim: 3, sliceCenter: 0, sliceWidth: 0.35 };
+      function s9(e) {
         return (
           (function (e) {
             let t = 2166136261;
@@ -12988,17 +12992,17 @@
           })(e) / 4294967295
         );
       }
-      function s6(e) {
+      function ae(e) {
         return 'number' == typeof e && Number.isFinite(e);
       }
-      function s8(e) {
+      function at(e) {
         let t = Math.sqrt(e.reduce((e, t) => e + t * t, 0));
         return t <= 0 ? e : e.map((e) => e / t);
       }
-      function s7(e, t) {
+      function as(e, t) {
         return Number.isFinite(e) ? Math.max(0, Math.min(t - 1, Math.floor(e))) : 0;
       }
-      function s9(e, t) {
+      function aa(e, t) {
         var s, a, l, r, n, i;
         let o = Math.max(3, Math.floor(t)),
           d = (function (e) {
@@ -13010,12 +13014,12 @@
               null === (s = e.metadata) || void 0 === s ? void 0 : s.vector,
             ]) {
               if (!Array.isArray(a)) continue;
-              let e = a.filter(s6);
+              let e = a.filter(ae);
               if (e.length > 0) return e;
             }
             return null;
           })(e);
-        if (d && d.length >= o) return s8(d.slice(0, o));
+        if (d && d.length >= o) return at(d.slice(0, o));
         let c = [],
           u = [
             e.mass,
@@ -13030,45 +13034,45 @@
             null === (r = e.metadata) || void 0 === r ? void 0 : r.importance,
             null === (n = e.metadata) || void 0 === n ? void 0 : n.confidence,
             null === (i = e.metadata) || void 0 === i ? void 0 : i.similarity,
-          ].filter(s6);
+          ].filter(ae);
         for (let e = 0; e < u.length && c.length < o; e += 1) c.push(Number(u[e]));
         for (; c.length < o; ) {
           let t = c.length,
             s = ''.concat(e.id, ':').concat(t, ':').concat(e.kind);
-          c.push(2 * s3(s) - 1);
+          c.push(2 * s9(s) - 1);
         }
-        return s8(c.slice(0, o));
+        return at(c.slice(0, o));
       }
-      function ae(e) {
+      function al(e) {
         let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 1200,
           s = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : 900;
-        return s6(e.x) && s6(e.y)
+        return ae(e.x) && ae(e.y)
           ? { x: e.x, y: e.y }
           : {
-              x: s3(''.concat(e.id, ':x:').concat(e.kind)) * t,
-              y: s3(''.concat(e.id, ':y:').concat(e.kind)) * s,
+              x: s9(''.concat(e.id, ':x:').concat(e.kind)) * t,
+              y: s9(''.concat(e.id, ':y:').concat(e.kind)) * s,
             };
       }
-      function at(e) {
+      function ar(e) {
         return Number.isFinite(e) ? e : 0;
       }
-      function as(e, t) {
+      function an(e, t) {
         let s = e.x - t.x,
           a = e.y - t.y;
         return s * s + a * a;
       }
-      function aa(e) {
+      function ai(e) {
         return '2d' === e ? 900 : 980;
       }
-      function al(e) {
+      function ao(e) {
         return 'string' == typeof e ? e : e.id;
       }
-      function ar(e) {
+      function ad(e) {
         if (0 === e.length) return [0, 0, 0];
         let t = e.reduce((e, t) => [e[0] + t[0], e[1] + t[1], e[2] + t[2]], [0, 0, 0]);
         return [t[0] / e.length, t[1] / e.length, t[2] / e.length];
       }
-      function an(e) {
+      function ac(e) {
         let { edgePositions: t } = e;
         return 0 === t.length
           ? null
@@ -13088,7 +13092,7 @@
               ],
             });
       }
-      function ai(e) {
+      function au(e) {
         let { renderNodes: t, onNodeClick: s, onNodePointerDown: a } = e;
         return (0, r.jsx)(r.Fragment, {
           children: t.map((e) =>
@@ -13115,7 +13119,16 @@
           ),
         });
       }
-      function ao(e) {
+      let am = new Set([
+        'AccountNode',
+        'Principal',
+        'UserNode',
+        'AgentNode',
+        'Group',
+        'Source',
+        'SourceDoc',
+      ]);
+      function ax(e) {
         let {
             renderLens: t,
             interactive: s,
@@ -13135,9 +13148,9 @@
             onNodeDrag: f,
           } = e,
           v = (0, n.useRef)(null),
-          { camera: j, gl: N, size: y } = (0, sV.D)(),
+          { camera: j, gl: N, size: y } = (0, sq.D)(),
           w = (0, n.useRef)([0, 0, 0]),
-          k = (0, n.useRef)(aa(t)),
+          k = (0, n.useRef)(ai(t)),
           C = (0, n.useRef)(0),
           S = (0, n.useRef)(new Map()),
           _ = (0, n.useRef)(null),
@@ -13158,14 +13171,14 @@
             },
             [N]
           ),
-          A = (0, n.useCallback)(
+          R = (0, n.useCallback)(
             (e) => {
-              let t = new sJ.Vector3(e[0], e[1], e[2]).project(j);
+              let t = new sW.Vector3(e[0], e[1], e[2]).project(j);
               return { x: (0.5 * t.x + 0.5) * y.width, y: (-(0.5 * t.y) + 0.5) * y.height };
             },
             [j, y.height, y.width]
           ),
-          R = (0, n.useCallback)(() => {
+          A = (0, n.useCallback)(() => {
             let e = w.current,
               t = k.current;
             (j.position.set(e[0], e[1], e[2] + t),
@@ -13177,7 +13190,7 @@
             (e) => {
               let t = e.map((e) => x.get(e)).filter((e) => !!e);
               if (0 === t.length) return;
-              let s = ar(t),
+              let s = ad(t),
                 a = 0;
               for (let e of t) {
                 let t = e[0] - s[0],
@@ -13185,9 +13198,9 @@
                   r = e[2] - s[2];
                 a = Math.max(a, Math.sqrt(t * t + l * l + r * r));
               }
-              ((w.current = s), (k.current = Math.max(160, 3.2 * a + 220)), R());
+              ((w.current = s), (k.current = Math.max(160, 3.2 * a + 220)), A());
             },
-            [R, x]
+            [A, x]
           ),
           O = (0, n.useCallback)(
             (e, t) => {
@@ -13204,7 +13217,7 @@
                   s = S.current.get(e.targetId);
                 t &&
                   s &&
-                  r.push({ edgeId: e.edge.id, source: A(t), target: A(s), metadata: e.edge.data });
+                  r.push({ edgeId: e.edge.id, source: R(t), target: R(s), metadata: e.edge.data });
               }
               let n = {
                 ...(function (e, t) {
@@ -13216,18 +13229,18 @@
                       let a = s.x - t.x,
                         l = s.y - t.y,
                         r = a * a + l * l;
-                      if (r <= 1e-6) return as(e, t);
+                      if (r <= 1e-6) return an(e, t);
                       let n = Math.max(0, Math.min(1, ((e.x - t.x) * a + (e.y - t.y) * l) / r));
-                      return as(e, { x: t.x + n * a, y: t.y + n * l });
+                      return an(e, { x: t.x + n * a, y: t.y + n * l });
                     })(e, s.source, s.target);
                     t < l && ((l = t), (a = s));
                   }
                   return !a || l > Math.max(1, s) * Math.max(1, s)
-                    ? { kind: 'none', screen: { x: at(e.x), y: at(e.y) } }
+                    ? { kind: 'none', screen: { x: ar(e.x), y: ar(e.y) } }
                     : {
                         kind: 'edge',
                         edgeId: a.edgeId,
-                        screen: { x: at(e.x), y: at(e.y) },
+                        screen: { x: ar(e.x), y: ar(e.y) },
                         metadata: a.metadata,
                       };
                 })(l, r, 10),
@@ -13240,30 +13253,30 @@
                 } else p(n);
               } else T.current && ((T.current = null), p(n));
             },
-            [s, p, o, D, A]
+            [s, p, o, D, R]
           );
         ((0, n.useEffect)(() => {
-          ((w.current = [0, 0, 0]), (k.current = aa(t)), R());
-        }, [R, t]),
+          ((w.current = [0, 0, 0]), (k.current = ai(t)), A());
+        }, [A, t]),
           (0, n.useEffect)(() => {
             m({
               zoomIn: () => {
-                ((k.current = Math.max(120, 0.82 * k.current)), R());
+                ((k.current = Math.max(120, 0.82 * k.current)), A());
               },
               zoomOut: () => {
-                ((k.current = Math.min(6400, 1.2 * k.current)), R());
+                ((k.current = Math.min(6400, 1.2 * k.current)), A());
               },
               centerView: () => {
-                ((w.current = [0, 0, 0]), (k.current = aa(t)), R());
+                ((w.current = [0, 0, 0]), (k.current = ai(t)), A());
               },
               setTargetById: function (e) {
                 let t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 1.6,
                   s = x.get(e);
-                s && ((w.current = s), (k.current = Math.max(120, 640 / Math.max(0.4, t))), R());
+                s && ((w.current = s), (k.current = Math.max(120, 640 / Math.max(0.4, t))), A());
               },
               zoomToFitNodes: L,
             });
-          }, [R, x, m, t, L]),
+          }, [A, x, m, t, L]),
           (0, n.useEffect)(() => {
             let e = (e) => {
                 let t = _.current;
@@ -13273,10 +13286,10 @@
                     l = s.y - t.lastScreen.y;
                   ((E.current += Math.abs(a) + Math.abs(l)), (t.lastScreen = s));
                   let r = j.position.distanceTo(
-                      new sJ.Vector3(t.currentWorld[0], t.currentWorld[1], t.currentWorld[2])
+                      new sW.Vector3(t.currentWorld[0], t.currentWorld[1], t.currentWorld[2])
                     ),
-                    n = new sJ.Vector3(1, 0, 0).applyQuaternion(j.quaternion).normalize(),
-                    i = new sJ.Vector3(0, 1, 0).applyQuaternion(j.quaternion).normalize(),
+                    n = new sW.Vector3(1, 0, 0).applyQuaternion(j.quaternion).normalize(),
+                    i = new sW.Vector3(0, 1, 0).applyQuaternion(j.quaternion).normalize(),
                     o = (function (e, t, s, a, l) {
                       let r = s.dx * a,
                         n = s.dy * a;
@@ -13337,7 +13350,7 @@
                       return (r.sort((e, t) => e.localeCompare(t)), r);
                     })(
                       i
-                        .map((e) => ({ nodeId: e.node.id, point: A(e.position) }))
+                        .map((e) => ({ nodeId: e.node.id, point: R(e.position) }))
                         .filter((e) => Number.isFinite(e.point.x) && Number.isFinite(e.point.y)),
                       s
                     ),
@@ -13354,7 +13367,7 @@
                   window.removeEventListener('pointerup', t));
               }
             );
-          }, [j, O, b, g, h, f, i, D, A]));
+          }, [j, O, b, g, h, f, i, D, R]));
         let P = (0, n.useCallback)(
             (e) => {
               if (!s || 0 !== e.button || _.current) return;
@@ -13399,7 +13412,7 @@
             [d]
           );
         return (
-          (0, sV.F)(() => {
+          (0, sq.F)(() => {
             if (!v.current) return;
             let e = v.current.object.position.distanceTo(v.current.target);
             k.current = e;
@@ -13411,9 +13424,9 @@
               (0, r.jsx)('ambientLight', { intensity: 0.45 }),
               (0, r.jsx)('pointLight', { position: [260, 220, 450], intensity: 0.65 }),
               (0, r.jsx)('pointLight', { position: [-260, -160, 260], intensity: 0.35 }),
-              (0, r.jsx)(an, { edgePositions: l }),
-              (0, r.jsx)(ai, { renderNodes: i, onNodeClick: z, onNodePointerDown: F }),
-              (0, r.jsx)(sq.z, {
+              (0, r.jsx)(ac, { edgePositions: l }),
+              (0, r.jsx)(au, { renderNodes: i, onNodeClick: z, onNodePointerDown: F }),
+              (0, r.jsx)(sG.z, {
                 ref: v,
                 enablePan: s && !a,
                 enableZoom: s && !a,
@@ -13440,14 +13453,14 @@
           })
         );
       }
-      let ad = (0, n.forwardRef)((e, t) => {
+      let ap = (0, n.forwardRef)((e, t) => {
         let {
             nodes: s,
             edges: a,
             width: l,
             height: i,
             renderLens: o,
-            ndConfig: d = s5,
+            ndConfig: d = s7,
             focusModeEnabled: c = !1,
             includeConnectors: u = !1,
             pinnedNodeIds: m = [],
@@ -13459,17 +13472,18 @@
             onLodStats: f,
             onPinnedNodeIdsChange: v,
             onInteractionStateChange: j,
+            onVisibilityDiagnostics: N,
           } = e,
-          [N, y] = (0, n.useState)(null),
-          [w, k] = (0, n.useState)([]),
-          [C, S] = (0, n.useState)(1),
-          [_, I] = (0, n.useState)(null),
-          [E, Z] = (0, n.useState)(null),
-          [T, M] = (0, n.useState)(null),
-          [D, A] = (0, n.useState)(new Map()),
-          R = (0, n.useRef)(null);
+          [y, w] = (0, n.useState)(null),
+          [k, C] = (0, n.useState)([]),
+          [S, _] = (0, n.useState)(1),
+          [I, E] = (0, n.useState)(null),
+          [Z, T] = (0, n.useState)(null),
+          [M, D] = (0, n.useState)(null),
+          [R, A] = (0, n.useState)(new Map()),
+          L = (0, n.useRef)(null);
         (0, n.useEffect)(() => {
-          y(
+          w(
             (function () {
               try {
                 let e = document.createElement('canvas');
@@ -13480,11 +13494,11 @@
             })()
           );
         }, []);
-        let L = (0, n.useMemo)(
+        let O = (0, n.useMemo)(
             () =>
               s.map((e) => {
                 var t, s;
-                let a = ae(e);
+                let a = al(e);
                 return {
                   ...e,
                   x: null !== (t = e.x) && void 0 !== t ? t : a.x,
@@ -13493,23 +13507,23 @@
               }),
             [s]
           ),
-          O = (0, n.useMemo)(() => new Set(L.map((e) => e.id)), [L]),
-          P = (0, n.useMemo)(
+          P = (0, n.useMemo)(() => new Set(O.map((e) => e.id)), [O]),
+          F = (0, n.useMemo)(
             () =>
               a.filter((e) => {
-                let t = al(e.source),
-                  s = al(e.target);
-                return O.has(t) && O.has(s);
+                let t = ao(e.source),
+                  s = ao(e.target);
+                return P.has(t) && P.has(s);
               }),
-            [a, O]
+            [a, P]
           ),
-          F = (0, n.useMemo)(() => {
+          z = (0, n.useMemo)(() => {
             let e = new Map();
-            for (let t of P) e.set(t.id, t);
+            for (let t of F) e.set(t.id, t);
             return e;
-          }, [P]),
-          z = 1 === w.length ? w[0] : null,
-          U = (0, n.useMemo)(
+          }, [F]),
+          U = 1 === k.length ? k[0] : null,
+          B = (0, n.useMemo)(
             () =>
               (function (e) {
                 var t;
@@ -13526,25 +13540,25 @@
                   i = !0 === e.includeConnectors,
                   o = Math.max(
                     Number.isFinite(e.minMass) ? Math.max(0, e.minMass) : 0,
-                    s0[s] + 0.08 * a
+                    s2[s] + 0.08 * a
                   ),
                   d = (function (e, t) {
-                    let s = sH[e];
+                    let s = s0[e];
                     return 0 === t ? s : Math.max(60, Math.floor(s / (1 + 0.35 * t)));
                   })(s, a),
                   c = (function (e, t) {
-                    let s = sQ[e];
+                    let s = s1[e];
                     return 0 === t ? s : Math.max(200, Math.floor(s / (1 + 0.4 * t)));
                   })(s, a),
                   u = e.nodes.filter((e) => {
                     var t;
                     return (
                       (t = e.kind),
-                      'L0' === s ? sG.has(t) : 'L1' === s ? sX.has(t) : 'L2' !== s || sW.has(t)
+                      'L0' === s ? sX.has(t) : 'L1' === s ? sY.has(t) : 'L2' !== s || sH.has(t)
                     );
                   });
                 if (
-                  ((u = u.filter((e) => s4(e) >= o)),
+                  ((u = u.filter((e) => s3(e) >= o)),
                   i ||
                     'L3' !== s ||
                     (u = u.filter((e) => {
@@ -13555,7 +13569,7 @@
                             return t.trim().toLowerCase();
                         return null;
                       })(e);
-                      return !t || !sY.has(t);
+                      return !t || !s$.has(t);
                     })),
                   l && r)
                 ) {
@@ -13563,8 +13577,8 @@
                     let a = new Map();
                     for (let e of t) {
                       var l, r;
-                      let t = s1(e.source),
-                        s = s1(e.target);
+                      let t = s5(e.source),
+                        s = s5(e.target);
                       (a.has(t) || a.set(t, new Set()),
                         a.has(s) || a.set(s, new Set()),
                         null === (l = a.get(t)) || void 0 === l || l.add(s),
@@ -13593,34 +13607,33 @@
                     a && (u.push(a), t.add(s));
                   }
                 }
+                if (e.nodes.length > 0 && 0 === u.length) {
+                  let t = e.nodes.filter((e) => sQ.has(e.kind));
+                  u =
+                    t.length > 0
+                      ? s8(t).slice(0, d)
+                      : s8(e.nodes).slice(0, Math.max(1, Math.min(d, 8)));
+                }
                 if (u.length > d) {
                   let e = u.filter((e) => m.has(e.id)),
                     t = u.filter((e) => !m.has(e.id)),
                     s = Math.max(0, d - e.length);
-                  u = [
-                    ...e,
-                    ...[...t]
-                      .sort((e, t) => {
-                        let s = s4(t) - s4(e);
-                        return 0 !== s ? s : e.id.localeCompare(t.id);
-                      })
-                      .slice(0, s),
-                  ];
+                  u = [...e, ...s8(t).slice(0, s)];
                 }
                 let x = new Set(u.map((e) => e.id)),
-                  p = s$[s] + 0.05 * a,
+                  p = s4[s] + 0.05 * a,
                   h = e.edges.filter((e) => {
-                    let t = s1(e.source),
-                      s = s1(e.target);
+                    let t = s5(e.source),
+                      s = s5(e.target);
                     return (
                       !!(x.has(t) && x.has(s)) &&
-                      (!!((l && (t === l || s === l)) || n.has(t) || n.has(s)) || s2(e) >= p)
+                      (!!((l && (t === l || s === l)) || n.has(t) || n.has(s)) || s6(e) >= p)
                     );
                   });
                 h.length > c &&
                   (h = [...h]
                     .sort((e, t) => {
-                      let s = s2(t) - s2(e);
+                      let s = s6(t) - s6(e);
                       return 0 !== s ? s : e.id.localeCompare(t.id);
                     })
                     .slice(0, c));
@@ -13634,11 +13647,11 @@
                             : 'default',
                       s = Math.max(
                         50,
-                        Math.floor(sH[e.level] * ('50k' === t ? 1.35 : '10k' === t ? 1.15 : 1))
+                        Math.floor(s0[e.level] * ('50k' === t ? 1.35 : '10k' === t ? 1.15 : 1))
                       ),
                       a = Math.max(
                         200,
-                        Math.floor(sQ[e.level] * ('50k' === t ? 1.4 : '10k' === t ? 1.2 : 1))
+                        Math.floor(s1[e.level] * ('50k' === t ? 1.4 : '10k' === t ? 1.2 : 1))
                       );
                     return {
                       datasetTier: t,
@@ -13675,28 +13688,28 @@
                   },
                 };
               })({
-                nodes: L,
-                edges: P,
-                zoom: C,
-                focusNodeId: z,
+                nodes: O,
+                edges: F,
+                zoom: S,
+                focusNodeId: U,
                 focusMode: c,
                 pinnedNodeIds: m,
                 includeConnectors: u,
               }),
-            [L, P, C, z, c, m, u]
+            [O, F, S, U, c, m, u]
           );
         (0, n.useEffect)(() => {
-          null == f || f(U.stats);
-        }, [U.stats, f]);
-        let B = (0, n.useMemo)(() => {
+          null == f || f(B.stats);
+        }, [B.stats, f]);
+        let V = (0, n.useMemo)(() => {
             let e = new Map(),
               t = Math.max(3, d.dims);
-            for (let s of U.visibleNodes) e.set(s.id, s9(s, t));
+            for (let s of B.visibleNodes) e.set(s.id, aa(s, t));
             return e;
-          }, [U.visibleNodes, d.dims]),
-          V = (0, n.useMemo)(
+          }, [B.visibleNodes, d.dims]),
+          K = (0, n.useMemo)(
             () =>
-              z && c
+              U && c
                 ? (function (e, t) {
                     let s = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : 2,
                       a = new Set([e]),
@@ -13704,104 +13717,118 @@
                     for (let e = 0; e < s; e += 1) {
                       let e = new Set();
                       for (let s of t) {
-                        let t = al(s.source),
-                          r = al(s.target);
+                        let t = ao(s.source),
+                          r = ao(s.target);
                         l.has(t) && !a.has(r) ? e.add(r) : l.has(r) && !a.has(t) && e.add(t);
                       }
                       if ((e.forEach((e) => a.add(e)), 0 === (l = e).size)) break;
                     }
                     return a;
-                  })(z, U.visibleEdges, 2)
+                  })(U, B.visibleEdges, 2)
                 : new Set(),
-            [z, c, U.visibleEdges]
+            [U, c, B.visibleEdges]
           ),
-          K = (0, n.useMemo)(() => new Set(m), [m]),
-          q = (0, n.useMemo)(() => new Set(w), [w]),
-          J = (0, n.useMemo)(
-            () =>
-              'nd' !== o
-                ? U.visibleNodes
-                : U.visibleNodes.filter((e) => {
-                    if (K.has(e.id) || q.has(e.id) || V.has(e.id)) return !0;
-                    let t = B.get(e.id);
-                    return (
-                      !t ||
-                      (function (e, t) {
-                        var s;
-                        let a = Math.max(3, Math.floor(t.dims)),
-                          l = null !== (s = e[s7(t.sliceDim, a)]) && void 0 !== s ? s : 0,
-                          r = Math.max(1e-4, t.sliceWidth / 2);
-                        return Math.abs(l - t.sliceCenter) <= r;
-                      })(t, d)
-                    );
-                  }),
-            [o, U.visibleNodes, K, q, V, B, d]
-          ),
-          G = (0, n.useMemo)(() => new Set(J.map((e) => e.id)), [J]),
+          q = (0, n.useMemo)(() => new Set(m), [m]),
+          J = (0, n.useMemo)(() => new Set(k), [k]),
+          G = (0, n.useMemo)(() => {
+            if ('nd' !== o) return B.visibleNodes;
+            let e = B.visibleNodes.filter((e) => {
+              if (q.has(e.id) || J.has(e.id) || K.has(e.id)) return !0;
+              let t = V.get(e.id);
+              return (
+                !t ||
+                (function (e, t) {
+                  var s;
+                  let a = Math.max(3, Math.floor(t.dims)),
+                    l = null !== (s = e[as(t.sliceDim, a)]) && void 0 !== s ? s : 0,
+                    r = Math.max(1e-4, t.sliceWidth / 2);
+                  return Math.abs(l - t.sliceCenter) <= r;
+                })(t, d)
+              );
+            });
+            if (e.length > 0 || 0 === B.visibleNodes.length) return e;
+            let t = B.visibleNodes.filter((e) => am.has(e.kind));
+            return t.length > 0
+              ? t.slice(0, Math.max(1, t.length))
+              : B.visibleNodes.slice(0, Math.max(1, Math.min(8, B.visibleNodes.length)));
+          }, [o, B.visibleNodes, q, J, K, V, d]);
+        (0, n.useEffect)(() => {
+          null == N ||
+            N({
+              webGlReady: y,
+              lens: o,
+              totalNodeCount: O.length,
+              lodVisibleNodeCount: B.visibleNodes.length,
+              lensVisibleNodeCount: G.length,
+              width: l,
+              height: i,
+            });
+        }, [i, B.visibleNodes.length, O.length, N, o, G.length, y, l]);
+        let W = (0, n.useMemo)(() => new Set(G.map((e) => e.id)), [G]),
           X = (0, n.useMemo)(
             () =>
-              U.visibleEdges.filter((e) => {
-                let t = al(e.source),
-                  s = al(e.target);
-                return G.has(t) && G.has(s);
+              B.visibleEdges.filter((e) => {
+                let t = ao(e.source),
+                  s = ao(e.target);
+                return W.has(t) && W.has(s);
               }),
-            [U.visibleEdges, G]
+            [B.visibleEdges, W]
           ),
-          W = (0, n.useMemo)(() => {
+          Y = (0, n.useMemo)(() => {
             let e = new Map(),
               t = [];
-            for (let r of J) {
+            for (let r of G) {
               var s, a, l;
               let n;
-              let i = ae(r, 1600, 1200);
+              let i = al(r, 1600, 1200);
               if ('2d' === o) n = [i.x, -i.y, 0];
               else if ('3d' === o) {
-                let e = null !== (s = B.get(r.id)) && void 0 !== s ? s : s9(r, d.dims);
+                let e = null !== (s = V.get(r.id)) && void 0 !== s ? s : aa(r, d.dims);
                 n = [i.x, -i.y, (null !== (a = e[2]) && void 0 !== a ? a : 0) * 260];
               } else {
                 let e = (function (e, t) {
                   var s, a, l;
                   let r = Math.max(3, Math.floor(t.dims)),
-                    n = s7(t.axes[0], r),
-                    i = s7(t.axes[1], r),
-                    o = s7(t.axes[2], r);
+                    n = as(t.axes[0], r),
+                    i = as(t.axes[1], r),
+                    o = as(t.axes[2], r);
                   return {
                     x: (null !== (s = e[n]) && void 0 !== s ? s : 0) * 320,
                     y: (null !== (a = e[i]) && void 0 !== a ? a : 0) * 320,
                     z: (null !== (l = e[o]) && void 0 !== l ? l : 0) * 320,
                   };
-                })(null !== (l = B.get(r.id)) && void 0 !== l ? l : s9(r, d.dims), d);
+                })(null !== (l = V.get(r.id)) && void 0 !== l ? l : aa(r, d.dims), d);
                 n = [e.x, e.y, e.z];
               }
               (t.push(n), e.set(r.id, n));
             }
-            let r = ar(t);
+            let r = ad(t);
             for (let [t, s] of e.entries()) e.set(t, [s[0] - r[0], s[1] - r[1], s[2] - r[2]]);
             return e;
-          }, [J, o, B, d]),
-          Y = (0, n.useMemo)(() => {
-            let e = new Map(W);
-            for (let [t, s] of D.entries()) e.has(t) && e.set(t, s);
+          }, [G, o, V, d]),
+          H = (0, n.useMemo)(() => {
+            let e = new Map(Y);
+            for (let [t, s] of R.entries()) e.has(t) && e.set(t, s);
             return e;
-          }, [W, D]);
+          }, [Y, R]);
         (0, n.useEffect)(() => {
-          let e = new Set(J.map((e) => e.id));
+          let e = new Set(G.map((e) => e.id));
           A((t) => {
             if (0 === t.size) return t;
             let s = new Map();
             for (let [a, l] of t.entries()) e.has(a) && s.set(a, l);
             return s;
           });
-        }, [J]);
-        let H = (0, n.useMemo)(
+        }, [G]);
+        let Q = (0, n.useMemo)(
             () =>
-              J.map((e) => {
+              G.map((e) => {
                 var t;
-                let s = q.has(e.id),
-                  a = K.has(e.id);
+                let s = J.has(e.id),
+                  a = q.has(e.id);
                 return {
                   node: e,
-                  position: null !== (t = Y.get(e.id)) && void 0 !== t ? t : [0, 0, 0],
+                  position: null !== (t = H.get(e.id)) && void 0 !== t ? t : [0, 0, 0],
                   radius: (function (e) {
                     switch (e) {
                       case 'Constellation':
@@ -13872,18 +13899,18 @@
                   isPinned: a,
                 };
               }),
-            [J, Y, q, K]
+            [G, H, J, q]
           ),
-          Q = (0, n.useMemo)(
-            () => X.map((e) => ({ edge: e, sourceId: al(e.source), targetId: al(e.target) })),
+          $ = (0, n.useMemo)(
+            () => X.map((e) => ({ edge: e, sourceId: ao(e.source), targetId: ao(e.target) })),
             [X]
           ),
-          $ = (0, n.useMemo)(() => {
-            let e = new Float32Array(6 * Q.length),
+          ee = (0, n.useMemo)(() => {
+            let e = new Float32Array(6 * $.length),
               t = 0;
-            for (let s of Q) {
-              let a = Y.get(s.sourceId),
-                l = Y.get(s.targetId);
+            for (let s of $) {
+              let a = H.get(s.sourceId),
+                l = H.get(s.targetId);
               a &&
                 l &&
                 ((e[t] = a[0]),
@@ -13895,61 +13922,61 @@
                 (t += 6));
             }
             return t === e.length ? e : e.slice(0, t);
-          }, [Q, Y]),
-          ee = (0, n.useCallback)(
+          }, [$, H]),
+          et = (0, n.useCallback)(
             (e) => {
-              (k(e), null == g || g(e));
+              (C(e), null == g || g(e));
             },
             [g]
           ),
-          et = (0, n.useCallback)(
+          es = (0, n.useCallback)(
             (e) => {
               let t = new Set(m);
               (t.has(e) ? t.delete(e) : t.add(e), null == v || v(Array.from(t)));
             },
             [v, m]
           ),
-          es = (0, n.useCallback)(
+          ea = (0, n.useCallback)(
             (e, t, s) => {
               let a;
-              let l = L.find((t) => t.id === e);
+              let l = O.find((t) => t.id === e);
               if (l) {
                 if (t.altKey) {
-                  et(e);
+                  es(e);
                   return;
                 }
                 if (t.shiftKey || t.ctrlKey || t.metaKey) {
-                  let t = new Set(w);
+                  let t = new Set(k);
                   (t.has(e) ? t.delete(e) : t.add(e), (a = Array.from(t)));
                 } else a = [e];
-                if ((ee(a), s)) {
+                if ((et(a), s)) {
                   var r;
                   (null == h || h(l),
-                    null === (r = R.current) || void 0 === r || r.setTargetById(l.id, 1.6));
+                    null === (r = L.current) || void 0 === r || r.setTargetById(l.id, 1.6));
                 } else null == p || p(l);
               }
             },
-            [L, p, h, w, et, ee]
+            [O, p, h, k, es, et]
           ),
-          ea = (0, n.useCallback)(() => {
-            (w.length > 0 && ee([]), I(null), null == b || b(null, { x: 0, y: 0 }));
-          }, [b, w.length, ee]),
-          el = (0, n.useCallback)(
+          el = (0, n.useCallback)(() => {
+            (k.length > 0 && et([]), E(null), null == b || b(null, { x: 0, y: 0 }));
+          }, [b, k.length, et]),
+          er = (0, n.useCallback)(
             (e) => {
               var t;
               if ('edge' !== e.kind || !e.edgeId) {
-                (I(null), null == b || b(null, e.screen));
+                (E(null), null == b || b(null, e.screen));
                 return;
               }
-              let s = F.get(e.edgeId) || null;
-              (I(null !== (t = null == s ? void 0 : s.id) && void 0 !== t ? t : null),
+              let s = z.get(e.edgeId) || null;
+              (E(null !== (t = null == s ? void 0 : s.id) && void 0 !== t ? t : null),
                 null == b || b(s, e.screen));
             },
-            [F, b]
+            [z, b]
           ),
-          er = (0, n.useCallback)(
+          en = (0, n.useCallback)(
             (e, t) => {
-              ee(
+              et(
                 (function (e, t, s) {
                   if (!s.shift && !s.ctrlOrMeta) return [...t];
                   let a = new Set(e);
@@ -13959,109 +13986,109 @@
                   }
                   for (let e of t) a.add(e);
                   return Array.from(a).sort((e, t) => e.localeCompare(t));
-                })(w, e, t)
+                })(k, e, t)
               );
             },
-            [w, ee]
+            [k, et]
           ),
-          en = (0, n.useCallback)((e, t) => {
+          ei = (0, n.useCallback)((e, t) => {
             A((s) => {
               let a = new Map(s);
               return (a.set(e, t), a);
             });
           }, []),
-          ei = (0, n.useMemo)(
-            () => ({ selectedNodeIds: w, hoveredEdgeId: _, marqueeSession: E, dragSession: T }),
-            [T, _, E, w]
+          eo = (0, n.useMemo)(
+            () => ({ selectedNodeIds: k, hoveredEdgeId: I, marqueeSession: Z, dragSession: M }),
+            [M, I, Z, k]
           );
         (0, n.useEffect)(() => {
-          null == j || j(ei);
-        }, [ei, j]);
-        let eo = (0, n.useMemo)(() => {
-          if (!E) return null;
-          let e = Math.min(E.start.x, E.current.x);
+          null == j || j(eo);
+        }, [eo, j]);
+        let ed = (0, n.useMemo)(() => {
+          if (!Z) return null;
+          let e = Math.min(Z.start.x, Z.current.x);
           return {
             left: e,
-            top: Math.min(E.start.y, E.current.y),
-            width: Math.abs(E.current.x - E.start.x),
-            height: Math.abs(E.current.y - E.start.y),
+            top: Math.min(Z.start.y, Z.current.y),
+            width: Math.abs(Z.current.x - Z.start.x),
+            height: Math.abs(Z.current.y - Z.start.y),
           };
-        }, [E]);
+        }, [Z]);
         return ((0, n.useImperativeHandle)(
           t,
           () => ({
             zoomIn: () => {
               var e;
-              return null === (e = R.current) || void 0 === e ? void 0 : e.zoomIn();
+              return null === (e = L.current) || void 0 === e ? void 0 : e.zoomIn();
             },
             zoomOut: () => {
               var e;
-              return null === (e = R.current) || void 0 === e ? void 0 : e.zoomOut();
+              return null === (e = L.current) || void 0 === e ? void 0 : e.zoomOut();
             },
             centerView: () => {
               var e;
-              return null === (e = R.current) || void 0 === e ? void 0 : e.centerView();
+              return null === (e = L.current) || void 0 === e ? void 0 : e.centerView();
             },
             focusOnNode: function (e) {
               var t;
               let s = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 1.6;
-              return null === (t = R.current) || void 0 === t ? void 0 : t.setTargetById(e, s);
+              return null === (t = L.current) || void 0 === t ? void 0 : t.setTargetById(e, s);
             },
             zoomToFitNodes: (e) => {
               var t;
-              return null === (t = R.current) || void 0 === t ? void 0 : t.zoomToFitNodes(e);
+              return null === (t = L.current) || void 0 === t ? void 0 : t.zoomToFitNodes(e);
             },
             resetView: () => {
               var e;
-              return null === (e = R.current) || void 0 === e ? void 0 : e.centerView();
+              return null === (e = L.current) || void 0 === e ? void 0 : e.centerView();
             },
             optimizeView: () => {
               var e;
-              return null === (e = R.current) || void 0 === e
+              return null === (e = L.current) || void 0 === e
                 ? void 0
-                : e.zoomToFitNodes(Array.from(G.values()));
+                : e.zoomToFitNodes(Array.from(W.values()));
             },
           }),
-          [G]
+          [W]
         ),
-        null === N)
+        null === y)
           ? (0, r.jsx)('div', { className: 'w-full h-full bg-slate-950' })
-          : N
+          : y
             ? (0, r.jsxs)('div', {
                 className: 'w-full h-full relative',
                 style: { width: l, height: i },
                 children: [
-                  (0, r.jsx)(sK.Xz, {
+                  (0, r.jsx)(sJ.Xz, {
                     gl: { antialias: !0, alpha: !0 },
                     dpr: [1, 2],
                     camera: { position: [0, 0, 920], fov: 52, near: 0.1, far: 12e3 },
-                    onPointerMissed: ea,
-                    children: (0, r.jsx)(ao, {
+                    onPointerMissed: el,
+                    children: (0, r.jsx)(ax, {
                       renderLens: o,
                       interactive: x,
-                      interactionLocked: !!T || !!E,
-                      edgePositions: $,
-                      renderNodes: H,
-                      renderEdges: Q,
-                      onNodeClickInternal: es,
-                      onMissedClick: ea,
-                      onZoomSample: S,
+                      interactionLocked: !!M || !!Z,
+                      edgePositions: ee,
+                      renderNodes: Q,
+                      renderEdges: $,
+                      onNodeClickInternal: ea,
+                      onMissedClick: el,
+                      onZoomSample: _,
                       registerController: (e) => {
-                        R.current = e;
+                        L.current = e;
                       },
-                      positionById: Y,
-                      onEdgePick: el,
-                      onMarqueeSessionChange: Z,
-                      onMarqueeComplete: er,
-                      onDragSessionChange: M,
-                      onNodeDrag: en,
+                      positionById: H,
+                      onEdgePick: er,
+                      onMarqueeSessionChange: T,
+                      onMarqueeComplete: en,
+                      onDragSessionChange: D,
+                      onNodeDrag: ei,
                     }),
                   }),
-                  eo &&
+                  ed &&
                     (0, r.jsx)('div', {
                       className:
                         'absolute pointer-events-none border border-sky-300/80 bg-sky-500/10 rounded-sm',
-                      style: { left: eo.left, top: eo.top, width: eo.width, height: eo.height },
+                      style: { left: ed.left, top: ed.top, width: ed.width, height: ed.height },
                     }),
                 ],
               })
@@ -14084,8 +14111,8 @@
                 }),
               });
       });
-      ad.displayName = 'SharedThreeGraphRenderer';
-      let ac = (0, n.memo)(
+      ap.displayName = 'SharedThreeGraphRenderer';
+      let ah = (0, n.memo)(
         (0, n.forwardRef)((e, t) => {
           let {
               nodes: s,
@@ -14105,42 +14132,43 @@
               onLodStats: f,
               onPinnedNodeIdsChange: v,
               onInteractionStateChange: j,
+              onVisibilityDiagnostics: N,
             } = e,
-            N = (0, n.useRef)(null);
+            y = (0, n.useRef)(null);
           return (
             (0, n.useImperativeHandle)(t, () => ({
               zoomIn: () => {
                 var e;
-                return null === (e = N.current) || void 0 === e ? void 0 : e.zoomIn();
+                return null === (e = y.current) || void 0 === e ? void 0 : e.zoomIn();
               },
               zoomOut: () => {
                 var e;
-                return null === (e = N.current) || void 0 === e ? void 0 : e.zoomOut();
+                return null === (e = y.current) || void 0 === e ? void 0 : e.zoomOut();
               },
               centerView: () => {
                 var e;
-                return null === (e = N.current) || void 0 === e ? void 0 : e.centerView();
+                return null === (e = y.current) || void 0 === e ? void 0 : e.centerView();
               },
               focusOnNode: function (e) {
                 var t;
                 let s = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 1.6;
-                return null === (t = N.current) || void 0 === t ? void 0 : t.focusOnNode(e, s);
+                return null === (t = y.current) || void 0 === t ? void 0 : t.focusOnNode(e, s);
               },
               zoomToFitNodes: (e) => {
                 var t;
-                return null === (t = N.current) || void 0 === t ? void 0 : t.zoomToFitNodes(e);
+                return null === (t = y.current) || void 0 === t ? void 0 : t.zoomToFitNodes(e);
               },
               resetView: () => {
                 var e;
-                return null === (e = N.current) || void 0 === e ? void 0 : e.resetView();
+                return null === (e = y.current) || void 0 === e ? void 0 : e.resetView();
               },
               optimizeView: () => {
                 var e;
-                return null === (e = N.current) || void 0 === e ? void 0 : e.optimizeView();
+                return null === (e = y.current) || void 0 === e ? void 0 : e.optimizeView();
               },
             })),
-            (0, r.jsx)(ad, {
-              ref: N,
+            (0, r.jsx)(ap, {
+              ref: y,
               nodes: s,
               edges: a,
               width: l,
@@ -14158,11 +14186,12 @@
               onLodStats: f,
               onPinnedNodeIdsChange: v,
               onInteractionStateChange: j,
+              onVisibilityDiagnostics: N,
             })
           );
         })
       );
-      function au(e) {
+      function ag(e) {
         var t, s, a;
         let { width: l, height: i, jobId: o, renderLens: d = '2d', ndConfig: c } = e,
           { jobs: u } = tY(),
@@ -14228,7 +14257,7 @@
               children: [
                 (0, r.jsx)('div', {
                   className: 'absolute inset-0 opacity-60',
-                  children: (0, r.jsx)(ad, {
+                  children: (0, r.jsx)(ap, {
                     nodes: p,
                     edges: h,
                     width: l,
@@ -14259,8 +14288,8 @@
             })
           : null;
       }
-      ac.displayName = 'Keimenon2D';
-      let am = {
+      ah.displayName = 'Keimenon2D';
+      let ab = {
           CONTAINS: {
             color: 'rgba(59, 130, 246, 0.4)',
             highlightColor: 'rgba(59, 130, 246, 0.8)',
@@ -14391,33 +14420,33 @@
             category: 'verification',
           },
         },
-        ax = {
+        af = {
           color: 'rgba(100, 116, 139, 0.3)',
           highlightColor: 'rgba(100, 116, 139, 0.6)',
           label: 'Related',
           category: 'structural',
         };
-      function ap(e) {
+      function av(e) {
         return 'number' == typeof e ? e : null;
       }
-      function ah(e) {
+      function aj(e) {
         return 'string' == typeof e ? e : null;
       }
-      function ag(e) {
+      function aN(e) {
         var t;
         let { edge: s, position: a, visible: l } = e;
         if (!l || !s) return null;
-        let n = am[s.kind] || ax,
+        let n = ab[s.kind] || af,
           i = s.data || {},
-          o = ap(i.score),
-          d = ap(i.count),
-          c = ap(i.pmi),
-          u = ap(i.weight),
-          m = ap(i.strength),
-          x = ap(i.rank),
-          p = ap(i.confidence),
-          h = ah(i.algorithm),
-          g = ah(i.span),
+          o = av(i.score),
+          d = av(i.count),
+          c = av(i.pmi),
+          u = av(i.weight),
+          m = av(i.strength),
+          x = av(i.rank),
+          p = av(i.confidence),
+          h = aj(i.algorithm),
+          g = aj(i.span),
           b =
             Array.isArray((t = i.features_used)) && t.every((e) => 'string' == typeof e) ? t : null;
         return (0, r.jsx)('div', {
@@ -14587,7 +14616,7 @@
           }),
         });
       }
-      function ab(e) {
+      function ay(e) {
         let t =
             arguments.length > 1 && void 0 !== arguments[1]
               ? arguments[1]
@@ -14618,127 +14647,231 @@
           s
         );
       }
-      let af = (0, n.forwardRef)((e, t) => {
+      let aw = (0, n.forwardRef)((e, t) => {
+        var s, a;
         let {
-            onOpenUpload: s,
-            onOpenChatImport: a,
-            focusModeEnabled: l = !1,
-            includeConnectors: i = !1,
-            renderLens: o = '2d',
-            ndConfig: d,
-            onPinnedNodeCountChange: c,
+            onOpenUpload: l,
+            onOpenChatImport: i,
+            focusModeEnabled: o = !1,
+            includeConnectors: d = !1,
+            renderLens: c = '2d',
+            ndConfig: u,
+            onPinnedNodeCountChange: m,
           } = e,
-          u = (0, n.useRef)(null),
-          m = (0, n.useRef)(null),
-          x = ab(u),
-          p = (0, R.O)((e) => e.nodes),
-          h = (0, R.O)((e) => e.edges),
-          g = (0, R.O)((e) => e.isLoading),
-          b = (0, R.O)((e) => e.error),
-          f = (0, R.O)((e) => e.filters),
-          v = (0, R.O)((e) => e.setSelectedNode),
-          j = (0, R.O)((e) => e.selectNode),
-          N = (0, R.O)((e) => e.clearSelection),
-          y = (0, R.O)((e) => e.loadGraphData),
-          { jobs: w } = tY({
+          x = (0, n.useRef)(null),
+          p = (0, n.useRef)(null),
+          h = ay(x),
+          g = (0, A.O)((e) => e.nodes),
+          b = (0, A.O)((e) => e.edges),
+          f = (0, A.O)((e) => e.isLoading),
+          v = (0, A.O)((e) => e.error),
+          j = (0, A.O)((e) => e.filters),
+          N = (0, A.O)((e) => e.graphLoadMetrics),
+          y = (0, A.O)((e) => e.setSelectedNode),
+          w = (0, A.O)((e) => e.selectNode),
+          k = (0, A.O)((e) => e.clearSelection),
+          C = (0, A.O)((e) => e.loadGraphData),
+          S = (0, A.O)((e) => e.setFilteredNodeIds),
+          { jobs: _ } = tY({
             onImportComplete: (0, n.useCallback)(
               (e) => {
                 ((0, t$.bK)('Import job completed, refreshing graph', 'keimenon.import.complete', {
                   jobId: e,
                 }),
-                  y());
+                  S(null),
+                  C(),
+                  t1({ jobId: e, reason: 'sse_import_complete' }));
               },
-              [y]
+              [C, S]
             ),
           }),
-          [k, C] = (0, n.useState)(null),
-          [S, _] = (0, n.useState)(null),
           [I, E] = (0, n.useState)(null),
-          [Z, T] = (0, n.useState)([]);
-        (0, n.useEffect)(() => {
-          let e = null;
-          (w.forEach((t, s) => {
-            'import' === t.type && 'running' === t.status && (e = s);
-          }),
-            C(e));
-        }, [w]);
-        let M = (0, n.useMemo)(() => {
-            let e = p;
-            if (f.filteredNodeIds) {
-              let t = new Set(f.filteredNodeIds);
+          [Z, T] = (0, n.useState)(null),
+          [M, D] = (0, n.useState)(null),
+          [R, L] = (0, n.useState)([]),
+          [O, P] = (0, n.useState)(null),
+          F = (0, n.useRef)(null);
+        ((0, n.useEffect)(() => {
+          let e = () => {
+            (S(null), C());
+          };
+          return (
+            window.addEventListener(t0, e),
+            () => {
+              window.removeEventListener(t0, e);
+            }
+          );
+        }, [C, S]),
+          (0, n.useEffect)(() => {
+            let e = null;
+            (_.forEach((t, s) => {
+              'import' === t.type && 'running' === t.status && (e = s);
+            }),
+              E(e));
+          }, [_]));
+        let z = (0, n.useMemo)(() => {
+            let e = g;
+            if (j.filteredNodeIds) {
+              let t = new Set(j.filteredNodeIds);
               e = e.filter((e) => t.has(e.id));
             }
             return (
-              f.sourceRoleFilter.size > 0 &&
+              j.sourceRoleFilter.size > 0 &&
                 (e = e.filter((e) => {
                   var t;
                   if ('source' !== e.type && 'Source' !== e.kind) return !0;
                   let s = null !== (t = e.sourceRole) && void 0 !== t ? t : 'imported';
-                  return f.sourceRoleFilter.has(s);
+                  return j.sourceRoleFilter.has(s);
                 })),
               e
             );
-          }, [p, f.filteredNodeIds, f.sourceRoleFilter]),
-          D = M.length > 0;
+          }, [g, j.filteredNodeIds, j.sourceRoleFilter]),
+          U = z.length > 0,
+          B = (null === (s = x.current) || void 0 === s ? void 0 : s.clientWidth) || 0,
+          V = (null === (a = x.current) || void 0 === a ? void 0 : a.clientHeight) || 0,
+          K = U && (h.width <= 0 || h.height <= 0 || B <= 0 || V <= 0),
+          q = U && !K && null !== O && !1 === O.webGlReady,
+          J = U && !K && null !== O && O.totalNodeCount > 0 && 0 === O.lensVisibleNodeCount,
+          G = U && h.width > 0 && h.height > 0;
         ((0, n.useEffect)(() => {
-          let e = new Set(M.map((e) => e.id));
-          T((t) => t.filter((t) => e.has(t)));
-        }, [M]),
+          let e = new Set(z.map((e) => e.id));
+          L((t) => t.filter((t) => e.has(t)));
+        }, [z]),
           (0, n.useEffect)(() => {
-            null == c || c(Z.length);
-          }, [c, Z.length]),
+            null == m || m(R.length);
+          }, [m, R.length]),
+          (0, n.useEffect)(() => {
+            var e, t, s, a, l, r, n, i, o;
+            let d = K
+              ? 'HAS_DATA_BUT_ZERO_VIEWPORT'
+              : q
+                ? 'HAS_DATA_BUT_RENDERER_NOT_READY'
+                : J
+                  ? 'HAS_DATA_BUT_ZERO_VISIBLE'
+                  : null;
+            if (!d) {
+              F.current = null;
+              return;
+            }
+            F.current !== d &&
+              ((F.current = d),
+              (0, t$.bK)('Keimenon visibility diagnostics', 'keimenon.visibility.'.concat(d), {
+                issue: d,
+                lens: c,
+                measuredViewportWidth: B,
+                measuredViewportHeight: V,
+                observedWidth: h.width,
+                observedHeight: h.height,
+                totalNodes:
+                  null !== (t = null == O ? void 0 : O.totalNodeCount) && void 0 !== t
+                    ? t
+                    : z.length,
+                lodVisibleNodes:
+                  null !==
+                    (a =
+                      null !== (s = null == O ? void 0 : O.lodVisibleNodeCount) && void 0 !== s
+                        ? s
+                        : null == M
+                          ? void 0
+                          : M.visibleNodeCount) && void 0 !== a
+                    ? a
+                    : 0,
+                lensVisibleNodes:
+                  null !== (l = null == O ? void 0 : O.lensVisibleNodeCount) && void 0 !== l
+                    ? l
+                    : 0,
+                storeNodeCount: g.length,
+                storeEdgeCount: b.length,
+                filterNodeIdCount:
+                  null !==
+                    (r = null === (e = j.filteredNodeIds) || void 0 === e ? void 0 : e.length) &&
+                  void 0 !== r
+                    ? r
+                    : null,
+                sourceRoleFilterCount: j.sourceRoleFilter.size,
+                apiNodeCount:
+                  null !== (n = null == N ? void 0 : N.apiNodeCount) && void 0 !== n ? n : null,
+                apiEdgeCount:
+                  null !== (i = null == N ? void 0 : N.apiEdgeCount) && void 0 !== i ? i : null,
+                smartFilterApplied:
+                  null !== (o = null == N ? void 0 : N.smartFilterApplied) && void 0 !== o
+                    ? o
+                    : null,
+              }));
+          }, [
+            b.length,
+            h.height,
+            h.width,
+            z.length,
+            j.filteredNodeIds,
+            j.sourceRoleFilter.size,
+            null == N ? void 0 : N.apiEdgeCount,
+            null == N ? void 0 : N.apiNodeCount,
+            null == N ? void 0 : N.smartFilterApplied,
+            q,
+            K,
+            J,
+            null == M ? void 0 : M.visibleNodeCount,
+            V,
+            B,
+            g.length,
+            c,
+            null == O ? void 0 : O.lensVisibleNodeCount,
+            null == O ? void 0 : O.lodVisibleNodeCount,
+            null == O ? void 0 : O.totalNodeCount,
+          ]),
           (0, n.useImperativeHandle)(
             t,
             () => ({
               zoomIn: () => {
                 var e;
-                return null === (e = m.current) || void 0 === e ? void 0 : e.zoomIn();
+                return null === (e = p.current) || void 0 === e ? void 0 : e.zoomIn();
               },
               zoomOut: () => {
                 var e;
-                return null === (e = m.current) || void 0 === e ? void 0 : e.zoomOut();
+                return null === (e = p.current) || void 0 === e ? void 0 : e.zoomOut();
               },
               centerView: () => {
                 var e;
-                return null === (e = m.current) || void 0 === e ? void 0 : e.centerView();
+                return null === (e = p.current) || void 0 === e ? void 0 : e.centerView();
               },
               zoomToFitFilteredNodes: () => {
                 var e;
-                return null === (e = m.current) || void 0 === e
+                return null === (e = p.current) || void 0 === e
                   ? void 0
-                  : e.zoomToFitNodes(M.map((e) => e.id));
+                  : e.zoomToFitNodes(z.map((e) => e.id));
               },
               focusOnNode: (e) => {
                 var t;
-                return null === (t = m.current) || void 0 === t
+                return null === (t = p.current) || void 0 === t
                   ? void 0
                   : t.focusOnNode(e, 1.6, 220);
               },
-              clearPinnedNodes: () => T([]),
+              clearPinnedNodes: () => L([]),
             }),
-            [M]
+            [z]
           ));
-        let A = (0, n.useMemo)(
+        let W = (0, n.useMemo)(
             () =>
-              M.map((e) => ({
+              z.map((e) => ({
                 id: e.id,
                 kind: e.kind || e.type,
                 x: e.position.x,
                 y: e.position.y,
                 ...e.data.metadata,
               })),
-            [M]
+            [z]
           ),
-          L = (0, n.useMemo)(() => new Set(A.map((e) => e.id)), [A]),
-          O = (0, n.useMemo)(() => {
+          X = (0, n.useMemo)(() => new Set(W.map((e) => e.id)), [W]),
+          Y = (0, n.useMemo)(() => {
             let e = new Map();
-            for (let t of M) e.set(t.id, t);
+            for (let t of z) e.set(t.id, t);
             return e;
-          }, [M]),
-          P = (0, n.useMemo)(
+          }, [z]),
+          H = (0, n.useMemo)(
             () =>
-              h
-                .filter((e) => L.has(e.source) && L.has(e.target))
+              b
+                .filter((e) => X.has(e.source) && X.has(e.target))
                 .map((e) => ({
                   id: e.id,
                   source: e.source,
@@ -14746,28 +14879,28 @@
                   kind: e.kind,
                   data: e.data,
                 })),
-            [h, L]
+            [b, X]
           ),
-          F = (0, n.useCallback)(
+          Q = (0, n.useCallback)(
             (e) => {
               (0, t$.bK)('Keimenon node clicked', 'keimenon.node.click', {
                 nodeId: e.id,
                 nodeKind: e.kind,
               });
-              let t = O.get(e.id);
-              t && v(t);
+              let t = Y.get(e.id);
+              t && y(t);
             },
-            [O, v]
+            [Y, y]
           ),
-          z = (0, n.useCallback)((e) => {
+          $ = (0, n.useCallback)((e) => {
             var t;
             ((0, t$.bK)('Keimenon node double-clicked', 'keimenon.node.doubleClick', {
               nodeId: e.id,
               nodeKind: e.kind,
             }),
-              null === (t = m.current) || void 0 === t || t.focusOnNode(e.id, 1.6, 220));
+              null === (t = p.current) || void 0 === t || t.focusOnNode(e.id, 1.6, 220));
           }, []),
-          U = (0, n.useCallback)(
+          et = (0, n.useCallback)(
             (e) => {
               if (
                 ((0, t$.bK)('Keimenon selection changed', 'keimenon.selection.change', {
@@ -14775,19 +14908,19 @@
                 }),
                 0 === e.length)
               )
-                N();
+                k();
               else if (1 === e.length) {
-                let t = O.get(e[0]);
-                t && v(t);
-              } else (N(), e.forEach((e) => j(e, !0)));
+                let t = Y.get(e[0]);
+                t && y(t);
+              } else (k(), e.forEach((e) => w(e, !0)));
             },
-            [O, v, N, j]
+            [Y, y, k, w]
           ),
-          B = (0, n.useCallback)((e, t) => {
-            e ? _({ edge: { id: e.id, kind: e.kind, data: e.data }, position: t }) : _(null);
+          es = (0, n.useCallback)((e, t) => {
+            e ? T({ edge: { id: e.id, kind: e.kind, data: e.data }, position: t }) : T(null);
           }, []);
         return (0, r.jsxs)('div', {
-          ref: u,
+          ref: x,
           className: 'flex-1 bg-slate-950 relative overflow-hidden',
           children: [
             (0, r.jsx)('div', {
@@ -14798,7 +14931,7 @@
                 backgroundSize: '40px 40px',
               },
             }),
-            g &&
+            f &&
               (0, r.jsx)('div', {
                 className: 'absolute inset-0 flex items-center justify-center',
                 children: (0, r.jsxs)('div', {
@@ -14815,7 +14948,7 @@
                   ],
                 }),
               }),
-            b &&
+            v &&
               (0, r.jsx)('div', {
                 className: 'absolute inset-0 flex items-center justify-center',
                 children: (0, r.jsxs)('div', {
@@ -14826,7 +14959,7 @@
                       className: 'text-xl font-semibold mb-2 text-white',
                       children: 'Failed to load graph',
                     }),
-                    (0, r.jsx)('p', { className: 'text-slate-400 mb-4', children: b }),
+                    (0, r.jsx)('p', { className: 'text-slate-400 mb-4', children: v }),
                     (0, r.jsx)('button', {
                       onClick: () => window.location.reload(),
                       className:
@@ -14836,43 +14969,44 @@
                   ],
                 }),
               }),
-            !g &&
-              !b &&
-              D &&
-              x.width > 0 &&
+            !f &&
+              !v &&
+              U &&
+              G &&
               (0, r.jsxs)(r.Fragment, {
                 children: [
-                  (0, r.jsx)(ac, {
-                    ref: m,
-                    nodes: A,
-                    edges: P,
-                    width: x.width,
-                    height: x.height,
-                    renderLens: o,
-                    ndConfig: d,
-                    focusModeEnabled: l,
-                    includeConnectors: i,
-                    pinnedNodeIds: Z,
-                    onNodeClick: F,
-                    onNodeDoubleClick: z,
-                    onSelectionChange: U,
-                    onEdgeHover: B,
-                    onLodStats: E,
-                    onPinnedNodeIdsChange: T,
-                  }),
-                  (0, r.jsx)(au, {
-                    width: x.width,
-                    height: x.height,
-                    jobId: k,
-                    renderLens: o,
-                    ndConfig: d,
+                  (0, r.jsx)(ah, {
+                    ref: p,
+                    nodes: W,
+                    edges: H,
+                    width: h.width,
+                    height: h.height,
+                    renderLens: c,
+                    ndConfig: u,
+                    focusModeEnabled: o,
+                    includeConnectors: d,
+                    pinnedNodeIds: R,
+                    onNodeClick: Q,
+                    onNodeDoubleClick: $,
+                    onSelectionChange: et,
+                    onEdgeHover: es,
+                    onLodStats: D,
+                    onPinnedNodeIdsChange: L,
+                    onVisibilityDiagnostics: P,
                   }),
                   (0, r.jsx)(ag, {
-                    edge: (null == S ? void 0 : S.edge) || null,
-                    position: (null == S ? void 0 : S.position) || { x: 0, y: 0 },
-                    visible: !!S,
+                    width: h.width,
+                    height: h.height,
+                    jobId: I,
+                    renderLens: c,
+                    ndConfig: u,
                   }),
-                  I &&
+                  (0, r.jsx)(aN, {
+                    edge: (null == Z ? void 0 : Z.edge) || null,
+                    position: (null == Z ? void 0 : Z.position) || { x: 0, y: 0 },
+                    visible: !!Z,
+                  }),
+                  M &&
                     (0, r.jsxs)('div', {
                       className:
                         'absolute top-4 right-4 z-10 bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 shadow-lg',
@@ -14880,28 +15014,28 @@
                         (0, r.jsxs)('div', {
                           className: 'font-semibold text-slate-100',
                           children: [
-                            I.level,
+                            M.level,
                             ' - ',
-                            I.visibleNodeCount,
+                            M.visibleNodeCount,
                             '/',
-                            I.totalNodeCount,
+                            M.totalNodeCount,
                             ' nodes',
                           ],
                         }),
                         (0, r.jsxs)('div', {
                           className: 'text-slate-400',
                           children: [
-                            I.visibleEdgeCount,
+                            M.visibleEdgeCount,
                             '/',
-                            I.totalEdgeCount,
+                            M.totalEdgeCount,
                             ' edges - gate',
                             ' ',
-                            I.gate.pass ? 'pass' : 'warn',
+                            M.gate.pass ? 'pass' : 'warn',
                           ],
                         }),
                         (0, r.jsxs)('div', {
                           className: 'text-slate-500',
-                          children: ['focus ', I.focusMode ? 'on' : 'off', ' - pinned ', Z.length],
+                          children: ['focus ', M.focusMode ? 'on' : 'off', ' - pinned ', R.length],
                         }),
                         (0, r.jsx)('button', {
                           type: 'button',
@@ -14909,7 +15043,7 @@
                             'mt-2 px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 border border-slate-600',
                           onClick: () => {
                             var e;
-                            return null === (e = m.current) || void 0 === e
+                            return null === (e = p.current) || void 0 === e
                               ? void 0
                               : e.optimizeView();
                           },
@@ -14919,9 +15053,60 @@
                     }),
                 ],
               }),
-            !g &&
-              !b &&
-              !D &&
+            !f &&
+              !v &&
+              U &&
+              K &&
+              (0, r.jsx)('div', {
+                className: 'absolute inset-0 flex items-center justify-center px-6',
+                children: (0, r.jsxs)('div', {
+                  className:
+                    'max-w-lg w-full rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 text-amber-100',
+                  children: [
+                    (0, r.jsx)('h3', {
+                      className: 'text-lg font-semibold mb-2',
+                      children: 'Canvas viewport is not ready',
+                    }),
+                    (0, r.jsx)('p', {
+                      className: 'text-sm text-amber-50/90 mb-4',
+                      children:
+                        'Data is loaded, but the renderer viewport reported zero size. Keimenon will retry on resize automatically.',
+                    }),
+                    (0, r.jsxs)('div', {
+                      className: 'text-xs text-amber-100/80 space-y-1 mb-4',
+                      children: [
+                        (0, r.jsxs)('p', { children: ['Measured element: ', B, ' x ', V] }),
+                        (0, r.jsxs)('p', {
+                          children: ['Observed canvas: ', h.width, ' x ', h.height],
+                        }),
+                      ],
+                    }),
+                    (0, r.jsx)('button', {
+                      type: 'button',
+                      onClick: () => {
+                        window.dispatchEvent(new Event('resize'));
+                      },
+                      className:
+                        'px-3 py-2 text-sm rounded bg-amber-400 text-slate-900 hover:bg-amber-300',
+                      children: 'Retry viewport measurement',
+                    }),
+                  ],
+                }),
+              }),
+            !f &&
+              !v &&
+              U &&
+              G &&
+              J &&
+              (0, r.jsx)('div', {
+                className:
+                  'absolute top-4 left-1/2 -translate-x-1/2 z-20 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100',
+                children:
+                  'Dataset loaded but no nodes are currently visible for this lens/LOD profile.',
+              }),
+            !f &&
+              !v &&
+              !U &&
               (0, r.jsx)('div', {
                 className: 'absolute inset-0 flex items-center justify-center',
                 children: (0, r.jsxs)('div', {
@@ -14944,7 +15129,7 @@
                       className: 'grid gap-4',
                       children: [
                         (0, r.jsx)('button', {
-                          onClick: s,
+                          onClick: l,
                           className:
                             'p-6 bg-slate-900/50 hover:bg-slate-800/50 border border-slate-800 hover:border-purple-500/50 rounded-xl text-left transition-all group',
                           children: (0, r.jsxs)('div', {
@@ -14975,7 +15160,7 @@
                           }),
                         }),
                         (0, r.jsx)('button', {
-                          onClick: a,
+                          onClick: i,
                           className:
                             'p-6 bg-slate-900/50 hover:bg-slate-800/50 border border-slate-800 hover:border-purple-500/50 rounded-xl text-left transition-all group',
                           children: (0, r.jsxs)('div', {
@@ -15014,7 +15199,7 @@
                               (0, r.jsx)('div', {
                                 className:
                                   'p-3 bg-purple-600/20 rounded-lg group-hover:bg-purple-600/30 transition-colors',
-                                children: (0, r.jsx)(sB.Z, {
+                                children: (0, r.jsx)(sK.Z, {
                                   className: 'w-6 h-6 text-purple-400',
                                 }),
                               }),
@@ -15042,12 +15227,13 @@
           ],
         });
       });
-      af.displayName = 'KeimenonViewport';
-      var av = s(8163),
-        aj = s(8177),
-        aN = s(7121);
-      let ay = (0, n.createContext)(void 0);
-      function aw(e) {
+      aw.displayName = 'KeimenonViewport';
+      var ak = s(8163),
+        aC = s(8177),
+        aS = s(7121),
+        a_ = s(1565);
+      let aI = (0, n.createContext)(void 0);
+      function aE(e) {
         switch (e) {
           case 'import':
             return 'import';
@@ -15059,7 +15245,7 @@
             return 'migration';
         }
       }
-      function ak(e, t) {
+      function aZ(e, t) {
         var s, a;
         return (null == t ? void 0 : t.title)
           ? t.title
@@ -15075,7 +15261,7 @@
                 ? 'Export job'
                 : 'Job '.concat(e.jobId);
       }
-      function aC(e, t) {
+      function aT(e, t) {
         var s, a;
         return (null == t ? void 0 : t.description)
           ? t.description
@@ -15089,7 +15275,7 @@
                 ? void 0
                 : t.description;
       }
-      function aS(e) {
+      function aM(e) {
         let { children: t, onRestoreOperation: s } = e,
           [a, l] = (0, n.useState)(new Map()),
           { jobs: i } = tY();
@@ -15109,9 +15295,9 @@
                           type:
                             null !== (d = null == t ? void 0 : t.type) && void 0 !== d
                               ? d
-                              : aw(e.type),
-                          title: ak(e, t),
-                          description: aC(e, t),
+                              : aE(e.type),
+                          title: aZ(e, t),
+                          description: aT(e, t),
                           fileName:
                             null !== (c = null == t ? void 0 : t.fileName) && void 0 !== c
                               ? c
@@ -15140,7 +15326,7 @@
                           state: null == t ? void 0 : t.state,
                         };
                       let N = null == t ? void 0 : t.status,
-                        y = t6({
+                        y = t7({
                           backendStatus: e.status,
                           jobType: e.type,
                           progress: {
@@ -15150,7 +15336,7 @@
                           previousStatus: N,
                         }),
                         w = y.status,
-                        k = t8({
+                        k = t9({
                           backendStatus: e.status,
                           status: y.status,
                           rawPercent:
@@ -15223,9 +15409,9 @@
                         type:
                           null !== (f = null == t ? void 0 : t.type) && void 0 !== f
                             ? f
-                            : aw(e.type),
-                        title: ak(e, t),
-                        description: aC(e, t),
+                            : aE(e.type),
+                        title: aZ(e, t),
+                        description: aT(e, t),
                         fileName:
                           null !== (v = null == t ? void 0 : t.fileName) && void 0 !== v
                             ? v
@@ -15345,7 +15531,7 @@
             }, 3e3);
             return () => clearInterval(e);
           }, []),
-          (0, r.jsx)(ay.Provider, {
+          (0, r.jsx)(aI.Provider, {
             value: {
               operations: a,
               addOperation: o,
@@ -15361,13 +15547,13 @@
           })
         );
       }
-      function a_() {
-        let e = (0, n.useContext)(ay);
+      function aD() {
+        let e = (0, n.useContext)(aI);
         if (!e)
           throw Error('useBackgroundOperations must be used within BackgroundOperationsProvider');
         return e;
       }
-      function aI(e) {
+      function aR(e) {
         var t, s, a, l;
         let {
             index: n,
@@ -15380,7 +15566,7 @@
           } = e,
           x = o[n],
           h = x.status,
-          g = aZ[h],
+          g = aL[h],
           b = d.has(x.id),
           f = ['reading', 'parsing', 'normalizing', 'indexing', 'linking', 'processing'].includes(
             x.status
@@ -15428,9 +15614,9 @@
               children: (0, r.jsxs)('div', {
                 className:
                   'inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium '.concat(
-                    aE[h]
+                    aA[h]
                   ),
-                children: [(0, r.jsx)(g, { className: 'w-3 h-3' }), aT[h]],
+                children: [(0, r.jsx)(g, { className: 'w-3 h-3' }), aO[h]],
               }),
             }),
             (0, r.jsx)('div', {
@@ -15535,34 +15721,64 @@
                           ],
                         })
                     : 'error' === x.status
-                      ? (0, r.jsx)('div', {
-                          className: 'text-red-400 truncate max-w-24',
-                          title: x.error,
-                          children: x.error || 'Failed',
+                      ? (0, r.jsxs)(r.Fragment, {
+                          children: [
+                            (0, r.jsx)('div', {
+                              className: 'text-red-400 truncate max-w-24',
+                              title: x.error,
+                              children: x.error || 'Failed',
+                            }),
+                            x.errorCode &&
+                              (0, r.jsx)('div', {
+                                className: 'text-[10px] text-red-300/80 truncate max-w-24',
+                                title: x.errorCode,
+                                children: x.errorCode,
+                              }),
+                          ],
                         })
-                      : 'deletion' === v
-                        ? (0, r.jsxs)('div', {
+                      : 'blocked' === x.status
+                        ? (0, r.jsxs)(r.Fragment, {
                             children: [
-                              null !==
-                                (l =
-                                  null === (s = x.stats.nodesDeleted) || void 0 === s
-                                    ? void 0
-                                    : s.toLocaleString()) && void 0 !== l
-                                ? l
-                                : 0,
-                              ' nodes deleted',
+                              (0, r.jsx)('div', {
+                                className: 'text-yellow-300 truncate max-w-24',
+                                title: x.blockedReason,
+                                children: x.blockedReason || 'Blocked',
+                              }),
+                              (0, r.jsx)('div', {
+                                className: 'text-[10px] text-yellow-200/80 truncate max-w-24',
+                                title: x.blockedReasonCode || x.interruptedReason,
+                                children:
+                                  x.blockedReasonCode ||
+                                  x.interruptedReason ||
+                                  (x.recoverableAfterRestart
+                                    ? 'Recoverable restart interruption'
+                                    : 'Manual pause'),
+                              }),
                             ],
                           })
-                        : (0, r.jsxs)(r.Fragment, {
-                            children: [
-                              (0, r.jsxs)('div', {
-                                children: [x.stats.nodesCreated.toLocaleString(), ' nodes'],
-                              }),
-                              (0, r.jsxs)('div', {
-                                children: [x.stats.sourcesCreated, ' sources'],
-                              }),
-                            ],
-                          }),
+                        : 'deletion' === v
+                          ? (0, r.jsxs)('div', {
+                              children: [
+                                null !==
+                                  (l =
+                                    null === (s = x.stats.nodesDeleted) || void 0 === s
+                                      ? void 0
+                                      : s.toLocaleString()) && void 0 !== l
+                                  ? l
+                                  : 0,
+                                ' nodes deleted',
+                              ],
+                            })
+                          : (0, r.jsxs)(r.Fragment, {
+                              children: [
+                                (0, r.jsxs)('div', {
+                                  children: [x.stats.nodesCreated.toLocaleString(), ' nodes'],
+                                }),
+                                (0, r.jsxs)('div', {
+                                  children: [x.stats.sourcesCreated, ' sources'],
+                                }),
+                              ],
+                            }),
               }),
             }),
             (0, r.jsx)('div', {
@@ -15590,7 +15806,7 @@
           ],
         });
       }
-      let aE = {
+      let aA = {
           queued: 'bg-slate-600/20 border-slate-500/30 text-slate-300',
           reading: 'bg-blue-600/20 border-blue-500/30 text-blue-300',
           parsing: 'bg-blue-600/20 border-blue-500/30 text-blue-300',
@@ -15602,7 +15818,7 @@
           done: 'bg-green-600/20 border-green-500/30 text-green-300',
           error: 'bg-red-600/20 border-red-500/30 text-red-300',
         },
-        aZ = {
+        aL = {
           queued: ep.Z,
           reading: eO.Z,
           parsing: eO.Z,
@@ -15610,11 +15826,11 @@
           indexing: ee.Z,
           linking: ee.Z,
           processing: p.Z,
-          blocked: aN.Z,
+          blocked: aS.Z,
           done: x.Z,
           error: tI.Z,
         },
-        aT = {
+        aO = {
           queued: 'Queued',
           reading: 'Reading',
           parsing: 'Parsing',
@@ -15626,7 +15842,7 @@
           done: 'Complete',
           error: 'Failed',
         };
-      function aM(e) {
+      function aP(e) {
         let { onJobSelect: t, onJobsMultiSelect: s } = e,
           [a, l] = (0, n.useState)([]),
           [i, o] = (0, n.useState)(new Set()),
@@ -15636,16 +15852,17 @@
           [b, f] = (0, n.useState)(new Set()),
           [v, j] = (0, n.useState)(!1),
           [N, y] = (0, n.useState)(!1),
-          { operating: C, isOperatingMode: S, operatingContextVersion: _ } = (0, k.B)(),
+          { operating: w, isOperatingMode: C, operatingContextVersion: S } = (0, k.B)(),
           {
-            getAllOperations: I,
-            getOperation: E,
-            restoreOperation: T,
-            removeOperationsByJobIds: M,
-          } = a_(),
+            getAllOperations: _,
+            getOperation: I,
+            restoreOperation: E,
+            removeOperationsByJobIds: T,
+          } = aD(),
+          M = (0, n.useRef)(null),
           D = (0, n.useRef)(null),
-          A = (0, n.useRef)(null),
-          O = tU(A, 400),
+          R = tU(D, 400),
+          O = (0, n.useRef)(new Set()),
           P = (0, n.useRef)(new Set());
         (0, n.useEffect)(() => {
           try {
@@ -15670,7 +15887,7 @@
               return t && ('queued' === t.status || 'running' === t.status);
             }) ||
               (console.log('[ImportsTable] All bulk operations complete via SSE'),
-              R.O.getState().loadGraphData(),
+              A.O.getState().loadGraphData(),
               x(!1),
               f(new Set())));
           let e = setTimeout(() => {
@@ -15694,7 +15911,27 @@
             () => 0 !== i.size && a.some((e) => i.has(e.id) && 'done' === e.status),
             [a, i]
           ),
-          K = (0, n.useCallback)((e) => {
+          K = (0, n.useMemo)(
+            () =>
+              a.filter(
+                (e) => i.has(e.id) && 'blocked' === e.status && !0 === e.recoverableAfterRestart
+              ),
+            [a, i]
+          ),
+          q = (0, n.useMemo)(
+            () => a.filter((e) => i.has(e.id) && ('error' === e.status || 'blocked' === e.status)),
+            [a, i]
+          ),
+          J = (0, n.useMemo)(() => {
+            let e = {};
+            return (
+              C &&
+                w.accountId &&
+                ((e['X-Operating-Account'] = w.accountId), (e['X-Operating-Mode'] = w.mode)),
+              e
+            );
+          }, [C, w.accountId, w.mode]),
+          G = (0, n.useCallback)((e) => {
             var t,
               s,
               a,
@@ -15728,15 +15965,19 @@
               T,
               M,
               D,
-              A,
               R,
+              A,
               L,
               O,
               P,
               F,
               z,
-              U;
-            let B = t6({
+              U,
+              B,
+              V,
+              K,
+              q;
+            let J = t7({
                 backendStatus: e.status,
                 jobType: e.type,
                 progress: {
@@ -15754,7 +15995,7 @@
                         : a.stage,
                 },
               }),
-              V =
+              G =
                 e.fileName ||
                 (null === (i = e.config) || void 0 === i
                   ? void 0
@@ -15764,121 +16005,135 @@
                       ? void 0
                       : r.fileName) ||
                 'Job '.concat(e.id.substring(0, 8)),
-              K = null === (o = e.config) || void 0 === o ? void 0 : o.platform;
+              W = null === (o = e.config) || void 0 === o ? void 0 : o.platform,
+              X = (null === (d = e.state_data) || void 0 === d ? void 0 : d.metadata) || {};
             return {
               id: e.id,
               type: e.type,
-              fileName: V,
+              fileName: G,
               fileType: 'import' === e.type ? 'chat' : 'unknown',
-              platform: K,
-              status: B.status,
-              progress: t8({
+              platform: W,
+              status: J.status,
+              progress: t9({
                 backendStatus: e.status,
-                status: B.status,
+                status: J.status,
                 rawPercent:
-                  null === (c = e.state_data) || void 0 === c
+                  null === (u = e.state_data) || void 0 === u
                     ? void 0
-                    : null === (d = c.progress) || void 0 === d
+                    : null === (c = u.progress) || void 0 === c
                       ? void 0
-                      : d.percent,
+                      : c.percent,
                 stage:
-                  null === (m = e.state_data) || void 0 === m
+                  null === (x = e.state_data) || void 0 === x
                     ? void 0
-                    : null === (u = m.progress) || void 0 === u
+                    : null === (m = x.progress) || void 0 === m
                       ? void 0
-                      : u.stage,
+                      : m.stage,
                 metadata:
-                  null === (p = e.state_data) || void 0 === p
+                  null === (h = e.state_data) || void 0 === h
                     ? void 0
-                    : null === (x = p.progress) || void 0 === x
+                    : null === (p = h.progress) || void 0 === p
                       ? void 0
-                      : x.metadata,
+                      : p.metadata,
               }),
               progressMessage:
-                null === (g = e.state_data) || void 0 === g
+                null === (b = e.state_data) || void 0 === b
                   ? void 0
-                  : null === (h = g.progress) || void 0 === h
+                  : null === (g = b.progress) || void 0 === g
                     ? void 0
-                    : h.message,
+                    : g.message,
               startedAt: e.created_at,
-              completedAt: null === (b = e.state_data) || void 0 === b ? void 0 : b.completedAt,
+              completedAt: null === (f = e.state_data) || void 0 === f ? void 0 : f.completedAt,
               stats: {
                 nodesCreated:
-                  (null === (v = e.state_data) || void 0 === v
+                  (null === (j = e.state_data) || void 0 === j
                     ? void 0
-                    : null === (f = v.stats) || void 0 === f
+                    : null === (v = j.stats) || void 0 === v
                       ? void 0
-                      : f.nodesCreated) || 0,
+                      : v.nodesCreated) || 0,
                 edgesCreated:
-                  (null === (N = e.state_data) || void 0 === N
+                  (null === (y = e.state_data) || void 0 === y
                     ? void 0
-                    : null === (j = N.stats) || void 0 === j
+                    : null === (N = y.stats) || void 0 === N
                       ? void 0
-                      : j.edgesCreated) || 0,
+                      : N.edgesCreated) || 0,
                 sourcesCreated:
-                  (null === (w = e.state_data) || void 0 === w
+                  (null === (k = e.state_data) || void 0 === k
                     ? void 0
-                    : null === (y = w.stats) || void 0 === y
+                    : null === (w = k.stats) || void 0 === w
                       ? void 0
-                      : y.sourcesCreated) || 0,
+                      : w.sourcesCreated) || 0,
                 conversationsProcessed:
-                  (null === (C = e.state_data) || void 0 === C
+                  (null === (S = e.state_data) || void 0 === S
                     ? void 0
-                    : null === (k = C.stats) || void 0 === k
+                    : null === (C = S.stats) || void 0 === C
                       ? void 0
-                      : k.conversationsProcessed) || 0,
+                      : C.conversationsProcessed) || 0,
                 messagesProcessed:
-                  (null === (_ = e.state_data) || void 0 === _
+                  (null === (I = e.state_data) || void 0 === I
                     ? void 0
-                    : null === (S = _.stats) || void 0 === S
+                    : null === (_ = I.stats) || void 0 === _
                       ? void 0
-                      : S.messagesProcessed) || 0,
+                      : _.messagesProcessed) || 0,
                 spansCreated:
-                  (null === (E = e.state_data) || void 0 === E
+                  (null === (Z = e.state_data) || void 0 === Z
                     ? void 0
-                    : null === (I = E.stats) || void 0 === I
+                    : null === (E = Z.stats) || void 0 === E
                       ? void 0
-                      : I.spansCreated) || 0,
+                      : E.spansCreated) || 0,
                 packetsCreated:
-                  (null === (T = e.state_data) || void 0 === T
+                  (null === (M = e.state_data) || void 0 === M
                     ? void 0
-                    : null === (Z = T.stats) || void 0 === Z
+                    : null === (T = M.stats) || void 0 === T
                       ? void 0
-                      : Z.packetsCreated) || 0,
+                      : T.packetsCreated) || 0,
                 atomicUnitsCreated:
-                  (null === (D = e.state_data) || void 0 === D
-                    ? void 0
-                    : null === (M = D.stats) || void 0 === M
-                      ? void 0
-                      : M.atomicUnitsCreated) || 0,
-                packetMassLinksCreated:
                   (null === (R = e.state_data) || void 0 === R
                     ? void 0
-                    : null === (A = R.stats) || void 0 === A
+                    : null === (D = R.stats) || void 0 === D
+                      ? void 0
+                      : D.atomicUnitsCreated) || 0,
+                packetMassLinksCreated:
+                  (null === (L = e.state_data) || void 0 === L
+                    ? void 0
+                    : null === (A = L.stats) || void 0 === A
                       ? void 0
                       : A.packetMassLinksCreated) || 0,
                 nodesDeleted:
-                  (null === (O = e.state_data) || void 0 === O
+                  (null === (P = e.state_data) || void 0 === P
                     ? void 0
-                    : null === (L = O.stats) || void 0 === L
+                    : null === (O = P.stats) || void 0 === O
                       ? void 0
-                      : L.nodesDeleted) || 0,
+                      : O.nodesDeleted) || 0,
                 edgesDeleted:
-                  (null === (F = e.state_data) || void 0 === F
+                  (null === (z = e.state_data) || void 0 === z
                     ? void 0
-                    : null === (P = F.stats) || void 0 === P
+                    : null === (F = z.stats) || void 0 === F
                       ? void 0
-                      : P.edgesDeleted) || 0,
+                      : F.edgesDeleted) || 0,
               },
               error:
-                null === (U = e.state_data) || void 0 === U
+                null === (B = e.state_data) || void 0 === B
                   ? void 0
-                  : null === (z = U.error) || void 0 === z
+                  : null === (U = B.error) || void 0 === U
                     ? void 0
-                    : z.message,
+                    : U.message,
+              errorCode:
+                null === (K = e.state_data) || void 0 === K
+                  ? void 0
+                  : null === (V = K.error) || void 0 === V
+                    ? void 0
+                    : V.code,
+              blockedReason: null === (q = e.state_data) || void 0 === q ? void 0 : q.blockedReason,
+              blockedReasonCode:
+                'string' == typeof X.interruptedReason ? X.interruptedReason : void 0,
+              recoverableAfterRestart:
+                !0 === X.recoverableAfterRestart && 'SERVER_RESTART' === X.interruptedReason,
+              interruptedReason:
+                'string' == typeof X.interruptedReason ? X.interruptedReason : void 0,
             };
           }, []),
-          q = (0, n.useCallback)((e, t) => {
+          W = (0, n.useCallback)((e, t) => {
             var s,
               a,
               l,
@@ -15911,23 +16166,27 @@
               T,
               M,
               D,
-              A,
               R,
+              A,
               L,
               O,
               P,
               F,
-              z;
-            let U;
-            let B = t6({
+              z,
+              U,
+              B,
+              V,
+              K;
+            let q;
+            let J = t7({
                 backendStatus: e.status,
                 jobType: e.type,
                 progress: { message: e.progress.message, stage: e.progress.stage },
                 previousStatus: null == t ? void 0 : t.status,
               }),
-              V =
-                null !== (p = null == t ? void 0 : t.stats) && void 0 !== p
-                  ? p
+              G =
+                null !== (h = null == t ? void 0 : t.stats) && void 0 !== h
+                  ? h
                   : {
                       nodesCreated: 0,
                       edgesCreated: 0,
@@ -15942,13 +16201,13 @@
                       edgesDeleted: 0,
                     };
             return (
-              (U = (null === (s = e.config) || void 0 === s ? void 0 : s.fileName)
+              (q = (null === (s = e.config) || void 0 === s ? void 0 : s.fileName)
                 ? e.config.fileName
                 : (null == t ? void 0 : t.fileName)
                   ? t.fileName
                   : 'delete' === e.type
                     ? 'keimenon' ===
-                      ((null === (h = e.config) || void 0 === h ? void 0 : h.deleteScope) ||
+                      ((null === (g = e.config) || void 0 === g ? void 0 : g.deleteScope) ||
                         'keimenon')
                       ? 'Delete Keimenon Data'
                       : 'Delete All Client Data'
@@ -15956,14 +16215,14 @@
               {
                 id: e.jobId,
                 type: e.type,
-                fileName: U,
+                fileName: q,
                 fileType:
-                  null !== (g = null == t ? void 0 : t.fileType) && void 0 !== g ? g : 'unknown',
+                  null !== (b = null == t ? void 0 : t.fileType) && void 0 !== b ? b : 'unknown',
                 platform: null == t ? void 0 : t.platform,
-                status: B.status,
-                progress: t8({
+                status: J.status,
+                progress: t9({
                   backendStatus: e.status,
-                  status: B.status,
+                  status: J.status,
                   rawPercent: e.progress.percent,
                   previousPercent: null == t ? void 0 : t.progress,
                   stage: e.progress.stage,
@@ -15971,11 +16230,11 @@
                 }),
                 progressMessage: e.progress.message,
                 startedAt:
-                  null !== (b = null == t ? void 0 : t.startedAt) && void 0 !== b ? b : e.timestamp,
+                  null !== (f = null == t ? void 0 : t.startedAt) && void 0 !== f ? f : e.timestamp,
                 completedAt:
-                  'done' === B.status || 'error' === B.status
-                    ? null !== (f = null == t ? void 0 : t.completedAt) && void 0 !== f
-                      ? f
+                  'done' === J.status || 'error' === J.status
+                    ? null !== (v = null == t ? void 0 : t.completedAt) && void 0 !== v
+                      ? v
                       : e.timestamp
                     : null == t
                       ? void 0
@@ -15983,131 +16242,159 @@
                 stats: {
                   nodesCreated:
                     null !==
-                      (j =
+                      (N =
                         null !==
-                          (v = null === (a = e.stats) || void 0 === a ? void 0 : a.nodesCreated) &&
-                        void 0 !== v
-                          ? v
-                          : V.nodesCreated) && void 0 !== j
-                      ? j
+                          (j = null === (a = e.stats) || void 0 === a ? void 0 : a.nodesCreated) &&
+                        void 0 !== j
+                          ? j
+                          : G.nodesCreated) && void 0 !== N
+                      ? N
                       : 0,
                   edgesCreated:
                     null !==
-                      (y =
+                      (w =
                         null !==
-                          (N = null === (l = e.stats) || void 0 === l ? void 0 : l.edgesCreated) &&
-                        void 0 !== N
-                          ? N
-                          : V.edgesCreated) && void 0 !== y
-                      ? y
+                          (y = null === (l = e.stats) || void 0 === l ? void 0 : l.edgesCreated) &&
+                        void 0 !== y
+                          ? y
+                          : G.edgesCreated) && void 0 !== w
+                      ? w
                       : 0,
                   sourcesCreated:
                     null !==
-                      (k =
+                      (C =
                         null !==
-                          (w =
+                          (k =
                             null === (r = e.stats) || void 0 === r ? void 0 : r.sourcesCreated) &&
-                        void 0 !== w
-                          ? w
-                          : V.sourcesCreated) && void 0 !== k
-                      ? k
+                        void 0 !== k
+                          ? k
+                          : G.sourcesCreated) && void 0 !== C
+                      ? C
                       : 0,
                   conversationsProcessed:
                     null !==
-                      (S =
+                      (_ =
                         null !==
-                          (C =
+                          (S =
                             null === (n = e.stats) || void 0 === n
                               ? void 0
-                              : n.conversationsProcessed) && void 0 !== C
-                          ? C
-                          : V.conversationsProcessed) && void 0 !== S
-                      ? S
+                              : n.conversationsProcessed) && void 0 !== S
+                          ? S
+                          : G.conversationsProcessed) && void 0 !== _
+                      ? _
                       : 0,
                   messagesProcessed:
                     null !==
-                      (I =
+                      (E =
                         null !==
-                          (_ =
+                          (I =
                             null === (i = e.stats) || void 0 === i
                               ? void 0
-                              : i.messagesProcessed) && void 0 !== _
-                          ? _
-                          : V.messagesProcessed) && void 0 !== I
-                      ? I
+                              : i.messagesProcessed) && void 0 !== I
+                          ? I
+                          : G.messagesProcessed) && void 0 !== E
+                      ? E
                       : 0,
                   spansCreated:
                     null !==
-                      (Z =
+                      (T =
                         null !==
-                          (E = null === (o = e.stats) || void 0 === o ? void 0 : o.spansCreated) &&
-                        void 0 !== E
-                          ? E
-                          : V.spansCreated) && void 0 !== Z
-                      ? Z
+                          (Z = null === (o = e.stats) || void 0 === o ? void 0 : o.spansCreated) &&
+                        void 0 !== Z
+                          ? Z
+                          : G.spansCreated) && void 0 !== T
+                      ? T
                       : 0,
                   packetsCreated:
                     null !==
-                      (M =
+                      (D =
                         null !==
-                          (T =
+                          (M =
                             null === (d = e.stats) || void 0 === d ? void 0 : d.packetsCreated) &&
-                        void 0 !== T
-                          ? T
-                          : V.packetsCreated) && void 0 !== M
-                      ? M
+                        void 0 !== M
+                          ? M
+                          : G.packetsCreated) && void 0 !== D
+                      ? D
                       : 0,
                   atomicUnitsCreated:
                     null !==
                       (A =
                         null !==
-                          (D =
+                          (R =
                             null === (c = e.stats) || void 0 === c
                               ? void 0
-                              : c.atomicUnitsCreated) && void 0 !== D
-                          ? D
-                          : V.atomicUnitsCreated) && void 0 !== A
+                              : c.atomicUnitsCreated) && void 0 !== R
+                          ? R
+                          : G.atomicUnitsCreated) && void 0 !== A
                       ? A
                       : 0,
                   packetMassLinksCreated:
                     null !==
-                      (L =
+                      (O =
                         null !==
-                          (R =
+                          (L =
                             null === (u = e.stats) || void 0 === u
                               ? void 0
-                              : u.packetMassLinksCreated) && void 0 !== R
-                          ? R
-                          : V.packetMassLinksCreated) && void 0 !== L
-                      ? L
+                              : u.packetMassLinksCreated) && void 0 !== L
+                          ? L
+                          : G.packetMassLinksCreated) && void 0 !== O
+                      ? O
                       : 0,
                   nodesDeleted:
                     null !==
-                      (P =
+                      (F =
                         null !==
-                          (O = null === (m = e.stats) || void 0 === m ? void 0 : m.nodesDeleted) &&
-                        void 0 !== O
-                          ? O
-                          : V.nodesDeleted) && void 0 !== P
-                      ? P
+                          (P = null === (m = e.stats) || void 0 === m ? void 0 : m.nodesDeleted) &&
+                        void 0 !== P
+                          ? P
+                          : G.nodesDeleted) && void 0 !== F
+                      ? F
                       : 0,
                   edgesDeleted:
                     null !==
-                      (z =
+                      (U =
                         null !==
-                          (F = null === (x = e.stats) || void 0 === x ? void 0 : x.edgesDeleted) &&
-                        void 0 !== F
-                          ? F
-                          : V.edgesDeleted) && void 0 !== z
-                      ? z
+                          (z = null === (x = e.stats) || void 0 === x ? void 0 : x.edgesDeleted) &&
+                        void 0 !== z
+                          ? z
+                          : G.edgesDeleted) && void 0 !== U
+                      ? U
                       : 0,
                 },
                 error:
-                  'error' === B.status
+                  'error' === J.status
                     ? e.progress.message ||
                       (null == t ? void 0 : t.error) ||
                       ('canceled' === e.status ? 'Job canceled' : 'Job failed')
                     : void 0,
+                errorCode:
+                  ('error' === J.status &&
+                    (null === (p = e.error) || void 0 === p ? void 0 : p.code)) ||
+                  (null == t ? void 0 : t.errorCode),
+                blockedReason:
+                  null !== (B = e.blockedReason) && void 0 !== B
+                    ? B
+                    : null == t
+                      ? void 0
+                      : t.blockedReason,
+                blockedReasonCode:
+                  null !== (V = e.blockedReasonCode) && void 0 !== V
+                    ? V
+                    : null == t
+                      ? void 0
+                      : t.blockedReasonCode,
+                recoverableAfterRestart:
+                  'boolean' == typeof e.recoverableAfterRestart
+                    ? e.recoverableAfterRestart
+                    : null == t
+                      ? void 0
+                      : t.recoverableAfterRestart,
+                interruptedReason:
+                  null !== (K = e.interruptedReason) && void 0 !== K
+                    ? K
+                    : null == t
+                      ? void 0
+                      : t.interruptedReason,
               }
             );
           }, []);
@@ -16116,10 +16403,20 @@
             l((e) => {
               let t = new Map(e.map((e) => [e.id, e]));
               return Array.from(F.values())
-                .map((e) => q(e, t.get(e.jobId)))
+                .map((e) => W(e, t.get(e.jobId)))
                 .sort((e, t) => t.startedAt - e.startedAt);
             });
-        }, [F, q]),
+        }, [F, W]),
+          (0, n.useEffect)(() => {
+            for (let e of a)
+              'import' !== e.type ||
+                'done' !== e.status ||
+                O.current.has(e.id) ||
+                (O.current.add(e.id),
+                A.O.getState().setFilteredNodeIds(null),
+                A.O.getState().loadGraphData(),
+                t1({ jobId: e.id, reason: 'import_modal_complete' }));
+          }, [a]),
           (0, n.useCallback)((e, t) => {
             l((s) =>
               s.find((t) => t.id === e)
@@ -16159,8 +16456,8 @@
                   ]
             );
           }, []));
-        let J = (0, n.useCallback)(() => {
-          let e = I(),
+        let X = (0, n.useCallback)(() => {
+          let e = _(),
             t = [...a];
           for (let s of e)
             a.some((e) => e.id === s.id) ||
@@ -16194,30 +16491,25 @@
               return !t || a;
             })
             .sort((e, t) => t.startedAt - e.startedAt);
-        }, [a, I]);
+        }, [a, _]);
         ((0, n.useEffect)(
           () => (
             (async () => {
-              D.current && D.current.abort();
+              M.current && M.current.abort();
               let e = new AbortController();
-              D.current = e;
+              M.current = e;
               try {
                 c(!0);
-                let t = (0, w.LP)(),
-                  s = { Authorization: 'Bearer '.concat(t), 'Content-Type': 'application/json' };
-                S &&
-                  C.accountId &&
-                  ((s['X-Operating-Account'] = C.accountId), (s['X-Operating-Mode'] = C.mode));
-                let a = setTimeout(() => e.abort(), 5e3),
-                  r = await fetch(''.concat(L.CT, '/api/v1/jobs?limit=50'), {
-                    headers: s,
+                let t = setTimeout(() => e.abort(), 5e3),
+                  s = await (0, eh.ax)(''.concat(L.CT, '/api/v1/jobs?limit=50'), {
+                    headers: { 'Content-Type': 'application/json', ...J },
                     signal: e.signal,
                   });
-                if ((clearTimeout(a), !r.ok))
-                  throw Error('HTTP '.concat(r.status, ': ').concat(r.statusText));
-                let n = await r.json();
-                if (n.success && n.jobs) {
-                  let e = n.jobs.map(K).filter((e) => !P.current.has(e.id));
+                if ((clearTimeout(t), !s.ok))
+                  throw Error('HTTP '.concat(s.status, ': ').concat(s.statusText));
+                let a = await s.json();
+                if (a.success && a.jobs) {
+                  let e = a.jobs.map(G).filter((e) => !P.current.has(e.id));
                   l((t) => (JSON.stringify(t) === JSON.stringify(e) ? t : [...e]));
                   let t = e.filter((e) =>
                     [
@@ -16242,10 +16534,10 @@
               }
             })(),
             () => {
-              D.current && D.current.abort();
+              M.current && M.current.abort();
             }
           ),
-          [C, S, _, K]
+          [J, S, G]
         ),
           (0, n.useEffect)(() => {
             let e = async () => {
@@ -16254,19 +16546,14 @@
                 let e = new AbortController(),
                   t = setTimeout(() => e.abort(), 5e3);
                 try {
-                  let s = (0, w.LP)(),
-                    a = { Authorization: 'Bearer '.concat(s), 'Content-Type': 'application/json' };
-                  S &&
-                    C.accountId &&
-                    ((a['X-Operating-Account'] = C.accountId), (a['X-Operating-Mode'] = C.mode));
-                  let r = await fetch(''.concat(L.CT, '/api/v1/jobs?limit=50'), {
-                    headers: a,
+                  let s = await (0, eh.ax)(''.concat(L.CT, '/api/v1/jobs?limit=50'), {
+                    headers: { 'Content-Type': 'application/json', ...J },
                     signal: e.signal,
                   });
-                  if ((clearTimeout(t), r.ok)) {
-                    let e = await r.json();
+                  if ((clearTimeout(t), s.ok)) {
+                    let e = await s.json();
                     if (e.success && e.jobs) {
-                      let t = e.jobs.map(K).filter((e) => !P.current.has(e.id));
+                      let t = e.jobs.map(G).filter((e) => !P.current.has(e.id));
                       l((e) => (JSON.stringify(e) === JSON.stringify(t) ? e : [...t]));
                     }
                   }
@@ -16280,8 +16567,8 @@
               document.addEventListener('visibilitychange', e),
               () => document.removeEventListener('visibilitychange', e)
             );
-          }, [C, S, K]));
-        let G = async () => {
+          }, [J, G]));
+        let Y = async () => {
             let e = new Set(i);
             (console.log('================================'),
               console.log('\uD83D\uDD34 DELETE BUTTON CLICKED - ENTRY POINT'),
@@ -16305,28 +16592,24 @@
             }
             y(!0);
           },
-          X = async () => {
+          H = async () => {
             y(!1);
             let e = new Set(i);
             (console.log('[DELETE] User confirmed deletion via dialog, proceeding...'),
               j(!0),
               console.log('[DELETE] State updated: isDeleting = true'));
             try {
-              let t = (0, w.LP)(),
-                s = { Authorization: 'Bearer '.concat(t), 'Content-Type': 'application/json' };
-              (S &&
-                C.accountId &&
-                ((s['X-Operating-Account'] = C.accountId), (s['X-Operating-Mode'] = C.mode)),
-                console.log('='.repeat(80)),
+              let t = { 'Content-Type': 'application/json', ...J };
+              (console.log('='.repeat(80)),
                 console.log('[DELETE] PRE-DELETE DIAGNOSTICS'),
                 console.log('='.repeat(80)),
                 console.log('[DELETE] Total jobs to delete: '.concat(e.size)),
                 console.log('[DELETE] Selected job IDs:', Array.from(e)));
-              let r = a.filter((t) => e.has(t.id));
+              let s = a.filter((t) => e.has(t.id));
               (console.log(
-                '[DELETE] Jobs found in local state: '.concat(r.length, '/').concat(e.size)
+                '[DELETE] Jobs found in local state: '.concat(s.length, '/').concat(e.size)
               ),
-                r.forEach((e) => {
+                s.forEach((e) => {
                   console.log(
                     '  ✓ Job '
                       .concat(e.id, ': ')
@@ -16334,70 +16617,69 @@
                       .concat(e.status, ')')
                   );
                 }));
-              let n = Array.from(e).filter((e) => F.has(e));
+              let r = Array.from(e).filter((e) => F.has(e));
               (console.log(
-                '[DELETE] Jobs found in SSE stream: '.concat(n.length, '/').concat(e.size)
+                '[DELETE] Jobs found in SSE stream: '.concat(r.length, '/').concat(e.size)
               ),
                 console.log('[DELETE] SSE stream total size: '.concat(F.size, ' jobs')));
-              let i = Array.from(e).filter((e) => !a.find((t) => t.id === e)),
-                d = Array.from(e).filter((e) => !F.has(e));
-              (i.length > 0 && console.warn('[DELETE] ⚠️  Jobs NOT in local state:', i),
-                d.length > 0 && console.warn('[DELETE] ⚠️  Jobs NOT in SSE stream:', d),
+              let n = Array.from(e).filter((e) => !a.find((t) => t.id === e)),
+                i = Array.from(e).filter((e) => !F.has(e));
+              (n.length > 0 && console.warn('[DELETE] ⚠️  Jobs NOT in local state:', n),
+                i.length > 0 && console.warn('[DELETE] ⚠️  Jobs NOT in SSE stream:', i),
                 console.log('[DELETE] Auth headers:', {
-                  hasToken: !!t,
-                  tokenLength: t ? t.length : 0,
-                  isOperatingMode: S,
-                  operatingAccountId: null == C ? void 0 : C.accountId,
-                  operatingMode: null == C ? void 0 : C.mode,
+                  hasToken: !0,
+                  isOperatingMode: C,
+                  operatingAccountId: null == w ? void 0 : w.accountId,
+                  operatingMode: null == w ? void 0 : w.mode,
                 }));
-              let c = Array.from(e).map(async (e) => {
+              let d = Array.from(e).map(async (e) => {
                   try {
-                    let t = await fetch(''.concat(L.CT, '/api/v1/jobs/').concat(e), {
+                    let s = await (0, eh.ax)(''.concat(L.CT, '/api/v1/jobs/').concat(e), {
                       method: 'DELETE',
-                      headers: s,
+                      headers: t,
                     });
-                    if (!t.ok) {
-                      if (404 === t.status)
+                    if (!s.ok) {
+                      if (404 === s.status)
                         return (
                           console.log(
                             '[DELETE] Job '.concat(e, ' not found (404), treating as deleted')
                           ),
                           { jobId: e, success: !0 }
                         );
-                      let s = await t.json().catch(() => ({ error: 'Unknown error' }));
+                      let t = await s.json().catch(() => ({ error: 'Unknown error' }));
                       return (
                         console.error('❌ [DELETE] FAILED for job '.concat(e)),
-                        console.error('   Status: '.concat(t.status, ' ').concat(t.statusText)),
-                        console.error('   Error data:', s),
+                        console.error('   Status: '.concat(s.status, ' ').concat(s.statusText)),
+                        console.error('   Error data:', t),
                         console.error('   Full response:', {
-                          status: t.status,
-                          statusText: t.statusText,
-                          headers: Object.fromEntries(t.headers.entries()),
-                          url: t.url,
+                          status: s.status,
+                          statusText: s.statusText,
+                          headers: Object.fromEntries(s.headers.entries()),
+                          url: s.url,
                         }),
-                        401 === t.status
+                        401 === s.status
                           ? console.error(
                               '   \uD83D\uDCA1 Diagnosis: Authentication failed - token invalid or expired'
                             )
-                          : 403 === t.status
+                          : 403 === s.status
                             ? console.error(
                                 '   \uD83D\uDCA1 Diagnosis: Permission denied - insufficient access rights'
                               )
-                            : 500 === t.status &&
+                            : 500 === s.status &&
                               console.error(
                                 '   \uD83D\uDCA1 Diagnosis: Server error - check API logs'
                               ),
                         console.error('='.repeat(80)),
                         Z.I.capture(
-                          Error(s.error || s.message || 'Failed to delete job'),
+                          Error(t.error || t.message || 'Failed to delete job'),
                           {
                             domain: 'jobs',
                             operation: 'delete',
-                            metadata: { jobId: e, statusCode: t.status, errorData: s },
+                            metadata: { jobId: e, statusCode: s.status, errorData: t },
                           },
                           'error'
                         ),
-                        { jobId: e, success: !1, error: s }
+                        { jobId: e, success: !1, error: t }
                       );
                     }
                     return { jobId: e, success: !0 };
@@ -16416,11 +16698,11 @@
                     );
                   }
                 }),
-                u = await Promise.allSettled(c),
-                m = u.filter((e) => 'fulfilled' === e.status && e.value.success).length,
-                x = e.size - m,
-                p = new Set(
-                  u
+                c = await Promise.allSettled(d),
+                u = c.filter((e) => 'fulfilled' === e.status && e.value.success).length,
+                m = e.size - u,
+                x = new Set(
+                  c
                     .filter((e) => 'fulfilled' === e.status && e.value.success)
                     .map((e) => e.value.jobId)
                 );
@@ -16429,44 +16711,44 @@
                 console.log('='.repeat(80)),
                 console.log('[DELETE] Results summary:'),
                 console.log('   Total requested: '.concat(e.size)),
-                console.log('   Successful: '.concat(m)),
-                console.log('   Failed: '.concat(x)),
-                console.log('[DELETE] Successful job IDs:', Array.from(p)));
-              let h = u.filter((e) => 'fulfilled' === e.status && !e.value.success);
-              h.length > 0 &&
+                console.log('   Successful: '.concat(u)),
+                console.log('   Failed: '.concat(m)),
+                console.log('[DELETE] Successful job IDs:', Array.from(x)));
+              let p = c.filter((e) => 'fulfilled' === e.status && !e.value.success);
+              p.length > 0 &&
                 (console.error('[DELETE] Failed job details:'),
-                h.forEach((e) => {
+                p.forEach((e) => {
                   let t = e.value;
                   console.error('   ❌ Job '.concat(t.jobId, ':'), t.error);
                 }));
-              let g = u.filter((e) => 'rejected' === e.status);
-              (g.length > 0 &&
+              let h = c.filter((e) => 'rejected' === e.status);
+              (h.length > 0 &&
                 (console.error('[DELETE] Rejected promises (network/unexpected errors):'),
-                g.forEach((e) => {
+                h.forEach((e) => {
                   console.error('   \uD83D\uDCA5', e.reason);
                 })),
-                0 === p.size
+                0 === x.size
                   ? (console.warn('[DELETE] ⚠️  WARNING: No jobs successfully deleted!'),
                     console.warn('[DELETE] removeJobsFromStream will NOT be called (empty array)'),
                     console.warn('[DELETE] UI state will NOT be updated'))
                   : console.log(
-                      '[DELETE] ✅ Will call removeJobsFromStream with '.concat(p.size, ' job IDs')
+                      '[DELETE] ✅ Will call removeJobsFromStream with '.concat(x.size, ' job IDs')
                     ),
                 console.log('='.repeat(80)),
+                u > 0 &&
+                  Z.I.info('Successfully deleted '.concat(u, ' job').concat(1 !== u ? 's' : ''), {
+                    domain: 'jobs',
+                    operation: 'bulkDelete',
+                    metadata: { totalSelected: e.size, successCount: u, failCount: m },
+                  }),
                 m > 0 &&
-                  Z.I.info('Successfully deleted '.concat(m, ' job').concat(1 !== m ? 's' : ''), {
+                  Z.I.warn('Failed to delete '.concat(m, ' job').concat(1 !== m ? 's' : ''), {
                     domain: 'jobs',
                     operation: 'bulkDelete',
-                    metadata: { totalSelected: e.size, successCount: m, failCount: x },
+                    metadata: { totalSelected: e.size, successCount: u, failCount: m },
                   }),
-                x > 0 &&
-                  Z.I.warn('Failed to delete '.concat(x, ' job').concat(1 !== x ? 's' : ''), {
-                    domain: 'jobs',
-                    operation: 'bulkDelete',
-                    metadata: { totalSelected: e.size, successCount: m, failCount: x },
-                  }),
-                l((e) => e.filter((e) => !p.has(e.id))),
-                p.forEach((e) => P.current.add(e)));
+                l((e) => e.filter((e) => !x.has(e.id))),
+                x.forEach((e) => P.current.add(e)));
               try {
                 sessionStorage.setItem(
                   'keimenon_deleted_jobs',
@@ -16477,10 +16759,10 @@
               }
               (f((e) => {
                 let t = new Set(e);
-                return (p.forEach((e) => t.delete(e)), t);
+                return (x.forEach((e) => t.delete(e)), t);
               }),
-                M(Array.from(p)),
-                B(Array.from(p)),
+                T(Array.from(x)),
+                B(Array.from(x)),
                 o(new Set()));
             } catch (t) {
               Z.I.capture(
@@ -16495,8 +16777,8 @@
                 console.log('[DELETE] Finally block complete - state should be reset'));
             }
           },
-          W = async () => {
-            if (0 === i.size) return;
+          Q = async () => {
+            if (0 === i.size || 0 === q.length) return;
             let e = Array.from(i).filter((e) => b.has(e));
             if (e.length > 0) {
               Z.I.warn(
@@ -16509,34 +16791,10 @@
             }
             (f((e) => new Set([...e, ...i])), x(!0));
             try {
-              let e = (0, w.LP)(),
-                t = { Authorization: 'Bearer '.concat(e), 'Content-Type': 'application/json' };
-              S &&
-                C.accountId &&
-                ((t['X-Operating-Account'] = C.accountId), (t['X-Operating-Mode'] = C.mode));
-              let s = Array.from(i).map(async (e) => {
+              let e = Array.from(i).map(async (e) => {
                   try {
-                    let s = await fetch(''.concat(L.CT, '/api/v1/jobs/').concat(e, '/retry'), {
-                      method: 'POST',
-                      headers: t,
-                    });
-                    if (!s.ok) {
-                      let t = await s.json().catch(() => ({ error: 'Unknown error' }));
-                      return (
-                        Z.I.capture(
-                          Error(t.error || t.message || 'Failed to retry job'),
-                          {
-                            domain: 'jobs',
-                            operation: 'retry',
-                            metadata: { jobId: e, statusCode: s.status, errorData: t },
-                          },
-                          'error'
-                        ),
-                        { jobId: e, success: !1, error: t }
-                      );
-                    }
-                    let a = await s.json();
-                    return { jobId: e, success: !0, newJob: a.newJob };
+                    let t = await (0, eh.Jl)(e);
+                    return { jobId: e, success: !0, newJobId: t.jobId };
                   } catch (t) {
                     return (
                       Z.I.capture(
@@ -16552,39 +16810,36 @@
                     );
                   }
                 }),
-                a = await Promise.allSettled(s),
-                l = a.filter((e) => 'fulfilled' === e.status && e.value.success).length,
-                r = i.size - l,
-                n = a
+                t = await Promise.allSettled(e),
+                s = t.filter((e) => 'fulfilled' === e.status && e.value.success).length,
+                a = i.size - s,
+                l = t
                   .filter((e) => 'fulfilled' === e.status && e.value.success)
-                  .map((e) => {
-                    var t;
-                    return null === (t = e.value.newJob) || void 0 === t ? void 0 : t.id;
-                  })
+                  .map((e) => e.value.newJobId)
                   .filter(Boolean);
-              (l > 0 &&
+              (s > 0 &&
                 Z.I.info(
                   'Successfully retried '
-                    .concat(l, ' job')
-                    .concat(1 !== l ? 's' : '', ', created ')
-                    .concat(n.length, ' new job')
-                    .concat(1 !== n.length ? 's' : ''),
+                    .concat(s, ' job')
+                    .concat(1 !== s ? 's' : '', ', created ')
+                    .concat(l.length, ' new job')
+                    .concat(1 !== l.length ? 's' : ''),
                   {
                     domain: 'jobs',
                     operation: 'bulkRetry',
                     metadata: {
                       totalSelected: i.size,
-                      successCount: l,
-                      failCount: r,
-                      newJobIds: n,
+                      successCount: s,
+                      failCount: a,
+                      newJobIds: l,
                     },
                   }
                 ),
-                r > 0 &&
-                  Z.I.warn('Failed to retry '.concat(r, ' job').concat(1 !== r ? 's' : ''), {
+                a > 0 &&
+                  Z.I.warn('Failed to retry '.concat(a, ' job').concat(1 !== a ? 's' : ''), {
                     domain: 'jobs',
                     operation: 'bulkRetry',
-                    metadata: { totalSelected: i.size, successCount: l, failCount: r },
+                    metadata: { totalSelected: i.size, successCount: s, failCount: a },
                   }),
                 o(new Set()));
             } catch (e) {
@@ -16601,7 +16856,62 @@
                 x(!1));
             }
           },
-          Y = (0, n.useCallback)(
+          $ = async () => {
+            if (0 === K.length) return;
+            let e = new Set(K.map((e) => e.id));
+            (f((t) => new Set([...t, ...e])), x(!0));
+            try {
+              let t = Array.from(e).map(async (e) => {
+                  try {
+                    return (await (0, eh.$Q)(e), { jobId: e, success: !0 });
+                  } catch (t) {
+                    return (
+                      Z.I.capture(
+                        t,
+                        {
+                          domain: 'jobs',
+                          operation: 'resume',
+                          metadata: { jobId: e, errorType: 'resume_failed' },
+                        },
+                        'error'
+                      ),
+                      { jobId: e, success: !1, error: t }
+                    );
+                  }
+                }),
+                s = (await Promise.allSettled(t)).filter(
+                  (e) => 'fulfilled' === e.status && e.value.success
+                ).length,
+                a = e.size - s;
+              (s > 0 &&
+                Z.I.info(
+                  'Resumed '
+                    .concat(s, ' recoverable job')
+                    .concat(1 === s ? '' : 's', ' from restart interruption'),
+                  {
+                    domain: 'jobs',
+                    operation: 'bulkResumeRecoverable',
+                    metadata: { successCount: s, failCount: a },
+                  }
+                ),
+                a > 0 &&
+                  Z.I.warn(
+                    'Failed to resume '.concat(a, ' recoverable job').concat(1 === a ? '' : 's'),
+                    {
+                      domain: 'jobs',
+                      operation: 'bulkResumeRecoverable',
+                      metadata: { successCount: s, failCount: a },
+                    }
+                  ));
+            } finally {
+              (f((t) => {
+                let s = new Set(t);
+                return (e.forEach((e) => s.delete(e)), s);
+              }),
+                x(!1));
+            }
+          },
+          et = (0, n.useCallback)(
             (e, l) => {
               let r = e.id;
               l.ctrlKey || l.metaKey
@@ -16617,7 +16927,7 @@
             },
             [a, t, s]
           ),
-          H = (0, n.useCallback)((e, t) => {
+          es = (0, n.useCallback)((e, t) => {
             if (!e || isNaN(e)) return '—';
             let s = Math.floor(((t || Date.now()) - e) / 1e3);
             return s < 0
@@ -16628,24 +16938,24 @@
                   ? ''.concat(Math.floor(s / 60), 'm')
                   : ''.concat(Math.floor(s / 3600), 'h ').concat(Math.floor((s % 3600) / 60), 'm');
           }, []),
-          Q = J(),
-          $ = (0, n.useCallback)(
+          ea = X(),
+          el = (0, n.useCallback)(
             (e) => (e.id.startsWith('del_') || 'delete' === e.type ? 'deletion' : 'import'),
             []
           ),
-          et = (0, n.useMemo)(
+          er = (0, n.useMemo)(
             () => ({
-              jobs: Q,
+              jobs: ea,
               selectedJobIds: i,
-              handleRowClick: Y,
-              formatTimeElapsed: H,
-              getOperationType: $,
+              handleRowClick: et,
+              formatTimeElapsed: es,
+              getOperationType: el,
             }),
-            [Q, i, Y, H, $]
+            [ea, i, et, es, el]
           );
         return ((0, n.useEffect)(() => {
           if (
-            !Q.some((e) =>
+            !ea.some((e) =>
               ['reading', 'parsing', 'normalizing', 'indexing', 'linking', 'processing'].includes(
                 e.status
               )
@@ -16656,8 +16966,8 @@
             g((e) => [...e]);
           }, 1e3);
           return () => clearInterval(e);
-        }, [Q]),
-        d && 0 === Q.length)
+        }, [ea]),
+        d && 0 === ea.length)
           ? (0, r.jsx)('div', {
               className: 'bg-slate-800 border border-slate-700 rounded-lg p-6',
               children: (0, r.jsx)('div', {
@@ -16680,12 +16990,12 @@
                           className: 'text-sm font-semibold text-slate-300',
                           children: 'Background Operations',
                         }),
-                        Q.length > 0 &&
+                        ea.length > 0 &&
                           (0, r.jsxs)('span', {
                             className: 'text-xs text-slate-500',
                             children: [
                               '(',
-                              Q.filter((e) =>
+                              ea.filter((e) =>
                                 [
                                   'reading',
                                   'parsing',
@@ -16710,16 +17020,37 @@
                             className: 'flex items-center gap-2',
                             children: [
                               (0, r.jsxs)('button', {
-                                onClick: W,
-                                disabled: m || V,
+                                onClick: $,
+                                disabled: m || 0 === K.length,
+                                className:
+                                  'flex items-center gap-1 px-2 py-1 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+                                title:
+                                  0 === K.length
+                                    ? 'Select blocked restart-interrupted jobs to resume'
+                                    : 'Resume selected recoverable jobs',
+                                children: [
+                                  m
+                                    ? (0, r.jsx)(p.Z, { className: 'w-3 h-3 animate-spin' })
+                                    : (0, r.jsx)(a_.Z, { className: 'w-3 h-3' }),
+                                  'Resume',
+                                ],
+                              }),
+                              (0, r.jsxs)('button', {
+                                onClick: Q,
+                                disabled: m || V || 0 === q.length,
                                 className:
                                   'flex items-center gap-1 px-2 py-1 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
-                                title: V ? 'Cannot retry succeeded jobs' : 'Retry selected jobs',
+                                title:
+                                  0 === q.length
+                                    ? 'Select failed or blocked jobs to start fresh'
+                                    : V
+                                      ? 'Cannot start fresh from succeeded jobs'
+                                      : 'Start fresh import from selected jobs',
                                 children: [
                                   m
                                     ? (0, r.jsx)(p.Z, { className: 'w-3 h-3 animate-spin' })
                                     : (0, r.jsx)(u.Z, { className: 'w-3 h-3' }),
-                                  'Retry',
+                                  'Start Fresh',
                                 ],
                               }),
                               (0, r.jsxs)('button', {
@@ -16731,7 +17062,7 @@
                                     selectedCount: i.size,
                                     bulkActionLoading: m,
                                   }),
-                                    G());
+                                    Y());
                                 },
                                 disabled: v,
                                 className:
@@ -16766,7 +17097,7 @@
                         (0, r.jsxs)('div', {
                           className: 'flex items-center gap-3 text-amber-400',
                           children: [
-                            (0, r.jsx)(sD.Z, { className: 'w-6 h-6' }),
+                            (0, r.jsx)(sA.Z, { className: 'w-6 h-6' }),
                             (0, r.jsx)('h3', {
                               className: 'text-lg font-semibold text-slate-100',
                               children: 'Confirm Deletion',
@@ -16796,7 +17127,7 @@
                               children: 'Cancel',
                             }),
                             (0, r.jsxs)('button', {
-                              onClick: X,
+                              onClick: H,
                               className:
                                 'px-4 py-2 rounded bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center gap-2',
                               disabled: v,
@@ -16810,7 +17141,7 @@
                       ],
                     }),
                   }),
-                Q.length > 0
+                ea.length > 0
                   ? (0, r.jsxs)('div', {
                       className: 'flex flex-col',
                       children: [
@@ -16843,15 +17174,15 @@
                           ],
                         }),
                         (0, r.jsx)('div', {
-                          ref: A,
+                          ref: D,
                           className: 'flex-1',
-                          style: { height: Math.min(68 * Q.length, 400) },
+                          style: { height: Math.min(68 * ea.length, 400) },
                           children: (0, r.jsx)(tz.aV, {
-                            style: { height: Math.min(68 * Q.length, O) },
-                            rowCount: Q.length,
+                            style: { height: Math.min(68 * ea.length, R) },
+                            rowCount: ea.length,
                             rowHeight: 68,
-                            rowComponent: aI,
-                            rowProps: et,
+                            rowComponent: aR,
+                            rowProps: er,
                           }),
                         }),
                       ],
@@ -16874,7 +17205,7 @@
               ],
             });
       }
-      function aD(e) {
+      function aF(e) {
         let { title: t, value: s, subtitle: a, icon: l, trend: n, color: i = 'slate' } = e;
         return (0, r.jsxs)('div', {
           className:
@@ -16916,7 +17247,7 @@
           ],
         });
       }
-      function aA(e) {
+      function az(e) {
         let { title: t, icon: s, children: a } = e;
         return (0, r.jsxs)('div', {
           children: [
@@ -16934,7 +17265,7 @@
           ],
         });
       }
-      function aR(e) {
+      function aU(e) {
         var t;
         let { onJobSelect: s } = e,
           [a, l] = (0, n.useState)(null),
@@ -16999,7 +17330,7 @@
                     }),
                   ],
                 }),
-                (0, r.jsx)(aM, {
+                (0, r.jsx)(aP, {
                   onJobSelect: (e, t) => {
                     console.log('Import job selected:', e, t);
                   },
@@ -17013,7 +17344,7 @@
                     children: (0, r.jsxs)('div', {
                       className: 'text-center',
                       children: [
-                        (0, r.jsx)(sl.Z, {
+                        (0, r.jsx)(sn.Z, {
                           className: 'w-8 h-8 animate-spin text-purple-500 mx-auto mb-4',
                         }),
                         (0, r.jsx)('p', {
@@ -17030,7 +17361,7 @@
                     children: (0, r.jsxs)('div', {
                       className: 'text-center',
                       children: [
-                        (0, r.jsx)(sD.Z, { className: 'w-8 h-8 text-red-500 mx-auto mb-4' }),
+                        (0, r.jsx)(sA.Z, { className: 'w-8 h-8 text-red-500 mx-auto mb-4' }),
                         (0, r.jsx)('p', { className: 'text-sm text-red-400', children: h }),
                       ],
                     }),
@@ -17040,31 +17371,31 @@
                   a &&
                   (0, r.jsxs)(r.Fragment, {
                     children: [
-                      (0, r.jsx)(aA, {
+                      (0, r.jsx)(az, {
                         title: 'Account Metrics',
                         icon: v.Z,
                         children: (0, r.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4',
                           children: [
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Active Accounts',
                               value: a.accounts.active,
                               icon: v.Z,
                               color: 'blue',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Total Seats',
                               value: a.accounts.total_seats,
                               icon: j.Z,
                               color: 'purple',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Free Tier',
                               value: a.accounts.tier_distribution.free,
                               icon: v.Z,
                               color: 'slate',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Business Tier',
                               value: a.accounts.tier_distribution.business,
                               icon: v.Z,
@@ -17073,27 +17404,27 @@
                           ],
                         }),
                       }),
-                      (0, r.jsx)(aA, {
+                      (0, r.jsx)(az, {
                         title: 'User Activity',
-                        icon: sT.Z,
+                        icon: sD.Z,
                         children: (0, r.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
                           children: [
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Last 7 Days',
                               value: a.user_activity.last_7_days,
                               subtitle: 'Active users',
                               icon: j.Z,
                               color: 'green',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Last 30 Days',
                               value: a.user_activity.last_30_days,
                               subtitle: 'Active users',
                               icon: j.Z,
                               color: 'green',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Avg Session Time',
                               value:
                                 (t = a.user_activity.avg_session_time_minutes) < 60
@@ -17105,31 +17436,31 @@
                           ],
                         }),
                       }),
-                      (0, r.jsx)(aA, {
+                      (0, r.jsx)(az, {
                         title: 'Storage & Resources',
                         icon: Y.Z,
                         children: (0, r.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4',
                           children: [
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Total Nodes',
                               value: a.storage.total_nodes.toLocaleString(),
-                              icon: eA.Z,
+                              icon: eR.Z,
                               color: 'blue',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Total Edges',
                               value: a.storage.total_edges.toLocaleString(),
-                              icon: eA.Z,
+                              icon: eR.Z,
                               color: 'purple',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Total Sources',
                               value: a.storage.total_sources.toLocaleString(),
                               icon: eO.Z,
                               color: 'green',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Storage Used',
                               value: ((e) => {
                                 if (0 === e) return '0 B';
@@ -17146,81 +17477,81 @@
                           ],
                         }),
                       }),
-                      (0, r.jsx)(aA, {
+                      (0, r.jsx)(az, {
                         title: 'Processing Jobs',
-                        icon: av.Z,
+                        icon: ak.Z,
                         children: (0, r.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
                           children: [
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Active Jobs',
                               value: a.processing.active,
-                              icon: av.Z,
+                              icon: ak.Z,
                               color: 'blue',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Completed Today',
                               value: a.processing.completed_today,
-                              icon: av.Z,
+                              icon: ak.Z,
                               color: 'green',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Failed Jobs',
                               value: a.processing.failed,
-                              icon: sD.Z,
+                              icon: sA.Z,
                               color: 'red',
                             }),
                           ],
                         }),
                       }),
-                      (0, r.jsx)(aA, {
+                      (0, r.jsx)(az, {
                         title: 'Billing & Revenue',
-                        icon: aj.Z,
+                        icon: aC.Z,
                         children: (0, r.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
                           children: [
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Monthly Recurring Revenue',
                               value: '$'.concat(a.billing.mrr.toLocaleString()),
-                              icon: aj.Z,
+                              icon: aC.Z,
                               color: 'green',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Churn Rate',
                               value: ''.concat(a.billing.churn_rate.toFixed(1), '%'),
                               icon: tf.Z,
                               color: 'yellow',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Customer LTV',
                               value: '$'.concat(a.billing.customer_ltv.toLocaleString()),
-                              icon: aj.Z,
+                              icon: aC.Z,
                               color: 'purple',
                             }),
                           ],
                         }),
                       }),
-                      (0, r.jsx)(aA, {
+                      (0, r.jsx)(az, {
                         title: 'System Health',
                         icon: g.Z,
                         children: (0, r.jsxs)('div', {
                           className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
                           children: [
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'API Latency',
                               value: ''.concat(a.system_health.api_latency_ms, 'ms'),
                               subtitle: 'Avg response time',
                               icon: g.Z,
                               color: 'blue',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Error Rate',
                               value: ''.concat(a.system_health.error_rate.toFixed(2), '%'),
                               subtitle: 'Last 24 hours',
-                              icon: sD.Z,
+                              icon: sA.Z,
                               color: 'green',
                             }),
-                            (0, r.jsx)(aD, {
+                            (0, r.jsx)(aF, {
                               title: 'Uptime',
                               value: ''.concat(a.system_health.uptime_percent.toFixed(1), '%'),
                               subtitle: 'Last 30 days',
@@ -17352,7 +17683,7 @@
                           (0, r.jsxs)('div', {
                             className: 'flex items-center gap-2 mb-4',
                             children: [
-                              (0, r.jsx)(sD.Z, { className: 'w-5 h-5 text-yellow-400' }),
+                              (0, r.jsx)(sA.Z, { className: 'w-5 h-5 text-yellow-400' }),
                               (0, r.jsx)('h3', {
                                 className: 'text-sm font-semibold text-slate-300',
                                 children: 'System Alerts',
@@ -17376,7 +17707,7 @@
                                       children: (0, r.jsxs)('div', {
                                         className: 'flex items-start gap-3',
                                         children: [
-                                          (0, r.jsx)(sD.Z, {
+                                          (0, r.jsx)(sA.Z, {
                                             className: 'w-5 h-5 flex-shrink-0 '.concat(
                                               'error' === e.type
                                                 ? 'text-red-400'
@@ -17418,7 +17749,7 @@
           })
         );
       }
-      function aL() {
+      function aB() {
         var e;
         let [t, s] = (0, n.useState)(null),
           [a, l] = (0, n.useState)(null),
@@ -17588,7 +17919,7 @@
                                       }),
                                       (0, r.jsx)('span', {
                                         className: 'font-medium text-gray-900',
-                                        children: aO(t.local_storage.totalSize),
+                                        children: aV(t.local_storage.totalSize),
                                       }),
                                     ],
                                   }),
@@ -17626,7 +17957,7 @@
                                                 }),
                                                 (0, r.jsxs)('span', {
                                                   className: 'text-gray-900',
-                                                  children: [s.count, ' (', aO(s.size), ')'],
+                                                  children: [s.count, ' (', aV(s.size), ')'],
                                                 }),
                                               ],
                                             },
@@ -17758,7 +18089,7 @@
                                         }),
                                         (0, r.jsx)('span', {
                                           className: 'font-medium text-yellow-800',
-                                          children: aO(a.spaceSaved),
+                                          children: aV(a.spaceSaved),
                                         }),
                                       ],
                                     }),
@@ -17831,15 +18162,14 @@
               ],
             });
       }
-      function aO(e) {
+      function aV(e) {
         if (0 === e) return '0 Bytes';
         let t = Math.floor(Math.log(e) / Math.log(1024));
         return (
           Math.round((e / Math.pow(1024, t)) * 100) / 100 + ' ' + ['Bytes', 'KB', 'MB', 'GB'][t]
         );
       }
-      var aP = s(1565);
-      function aF(e) {
+      function aK(e) {
         let {
             recentNodes: t = [],
             width: s = 400,
@@ -17888,7 +18218,7 @@
               className: 'w-full h-full flex items-center justify-center text-xs text-slate-500',
               children: 'Waiting for graph activity...',
             })
-          : (0, r.jsx)(ad, {
+          : (0, r.jsx)(ap, {
               nodes: o,
               edges: d,
               width: s,
@@ -17901,7 +18231,7 @@
               pinnedNodeIds: [],
             });
       }
-      let az = [
+      let aq = [
         { id: 'queued', label: 'Queued', icon: ep.Z, order: 0 },
         { id: 'reading', label: 'Reading', icon: eO.Z, order: 1 },
         { id: 'parsing', label: 'Parsing', icon: tv.Z, order: 2 },
@@ -17910,18 +18240,18 @@
         { id: 'linking', label: 'Linking', icon: J.Z, order: 5 },
         { id: 'done', label: 'Complete', icon: x.Z, order: 6 },
       ];
-      function aU(e) {
+      function aJ(e) {
         let { currentStage: t, progress: s, error: a } = e,
           l = (0, n.useMemo)(() => {
             var e, s;
             let l =
               null !==
                 (s =
-                  null === (e = az.find((e) => e.id === t)) || void 0 === e ? void 0 : e.order) &&
+                  null === (e = aq.find((e) => e.id === t)) || void 0 === e ? void 0 : e.order) &&
               void 0 !== s
                 ? s
                 : -1;
-            return az.map((e) =>
+            return aq.map((e) =>
               a && e.id === t
                 ? 'error'
                 : e.order < l
@@ -17945,7 +18275,7 @@
                     'absolute top-6 left-0 h-0.5 bg-gradient-to-r from-purple-500 to-blue-500 -z-10 transition-all duration-500',
                   style: { width: ''.concat((s / 100) * 100, '%') },
                 }),
-                az.map((e, t) => {
+                aq.map((e, t) => {
                   let s = l[t],
                     a = e.icon;
                   return (0, r.jsxs)(
@@ -18034,19 +18364,19 @@
           ],
         });
       }
-      var aB = s(5955),
-        aV = s(3627);
-      function aK(e) {
+      var aG = s(5955),
+        aW = s(3627);
+      function aX(e) {
         var t, s, a, l, i, o, d, c;
         let { operation: u, renderLens: m = '2d', ndConfig: x } = e,
           h = (0, n.useRef)(null),
-          g = ab(h, { width: 960, height: 360 }),
+          g = ay(h, { width: 960, height: 360 }),
           { jobs: b, graphUpdates: f, connected: v } = tY(),
           j = u ? b.get(u.id) : void 0,
           [N, y] = (0, n.useState)(!1),
           [w, k] = (0, n.useState)(!1),
           [C, S] = (0, n.useState)(!1),
-          _ = (0, aB.p)(),
+          _ = (0, aG.p)(),
           I =
             null !== (o = null == j ? void 0 : j.status) && void 0 !== o
               ? o
@@ -18061,7 +18391,7 @@
                       : 'running',
           E = (0, n.useMemo)(() => {
             var e, t;
-            return t6({
+            return t7({
               backendStatus: I,
               jobType: 'import',
               progress: {
@@ -18082,7 +18412,7 @@
             null == j ? void 0 : null === (s = j.progress) || void 0 === s ? void 0 : s.stage,
             null == u ? void 0 : u.status,
           ]),
-          Z = t8({
+          Z = t9({
             backendStatus: I,
             status: E.status,
             rawPercent:
@@ -18157,7 +18487,7 @@
               }
             }
           },
-          A = async () => {
+          R = async () => {
             if (
               (null == u ? void 0 : u.id) &&
               window.confirm(
@@ -18179,7 +18509,7 @@
               }
             }
           },
-          R = async () => {
+          A = async () => {
             if (null == u ? void 0 : u.id) {
               S(!0);
               try {
@@ -18236,7 +18566,7 @@
         return u
           ? (0, r.jsxs)(r.Fragment, {
               children: [
-                (0, r.jsx)(aV.Ix, { toasts: _.toasts, onClose: _.removeToast }),
+                (0, r.jsx)(aW.Ix, { toasts: _.toasts, onClose: _.removeToast }),
                 (0, r.jsxs)('div', {
                   className: 'flex flex-col h-full bg-slate-950',
                   children: [
@@ -18289,7 +18619,7 @@
                                 className: 'flex items-center gap-2 text-xs text-slate-400',
                                 children: [
                                   ['succeeded', 'failed', 'canceled', 'blocked'].includes(I)
-                                    ? (0, r.jsx)(aN.Z, { className: 'w-4 h-4' })
+                                    ? (0, r.jsx)(aS.Z, { className: 'w-4 h-4' })
                                     : (0, r.jsx)(p.Z, { className: 'w-4 h-4 animate-spin' }),
                                   (0, r.jsx)('span', { className: 'capitalize', children: T }),
                                 ],
@@ -18299,25 +18629,25 @@
                                 children: [
                                   'blocked' === I &&
                                     (0, r.jsxs)('button', {
-                                      onClick: R,
+                                      onClick: A,
                                       disabled: C,
                                       className:
                                         'px-3 py-1.5 rounded-lg border border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20 hover:border-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-medium flex items-center gap-1.5',
                                       title: 'Resume job from latest checkpoint',
                                       children: [
-                                        (0, r.jsx)(aP.Z, { className: 'w-3.5 h-3.5' }),
+                                        (0, r.jsx)(a_.Z, { className: 'w-3.5 h-3.5' }),
                                         C ? 'Resuming...' : 'Resume',
                                       ],
                                     }),
                                   'running' === I &&
                                     (0, r.jsxs)('button', {
-                                      onClick: A,
+                                      onClick: R,
                                       disabled: w,
                                       className:
                                         'px-3 py-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 hover:border-yellow-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-medium flex items-center gap-1.5',
                                       title: 'Pause job at next checkpoint',
                                       children: [
-                                        (0, r.jsx)(aN.Z, { className: 'w-3.5 h-3.5' }),
+                                        (0, r.jsx)(aS.Z, { className: 'w-3.5 h-3.5' }),
                                         w ? 'Pausing...' : 'Pause',
                                       ],
                                     }),
@@ -18345,7 +18675,7 @@
                       children: [
                         (0, r.jsx)('section', {
                           className: 'bg-slate-900/60 border border-slate-900 rounded-xl p-6',
-                          children: (0, r.jsx)(aU, { currentStage: P, progress: Z, error: M }),
+                          children: (0, r.jsx)(aJ, { currentStage: P, progress: Z, error: M }),
                         }),
                         (0, r.jsxs)('div', {
                           className: 'flex-1 grid grid-cols-1 xl:grid-cols-3 gap-6 overflow-hidden',
@@ -18357,7 +18687,7 @@
                                 (0, r.jsxs)('header', {
                                   className: 'flex items-center gap-3',
                                   children: [
-                                    (0, r.jsx)(aP.Z, { className: 'w-5 h-5 text-purple-400' }),
+                                    (0, r.jsx)(a_.Z, { className: 'w-5 h-5 text-purple-400' }),
                                     (0, r.jsxs)('div', {
                                       children: [
                                         (0, r.jsx)('h3', {
@@ -18415,7 +18745,7 @@
                                 (0, r.jsxs)('header', {
                                   className: 'flex items-center gap-3',
                                   children: [
-                                    (0, r.jsx)(sT.Z, { className: 'w-5 h-5 text-purple-400' }),
+                                    (0, r.jsx)(sD.Z, { className: 'w-5 h-5 text-purple-400' }),
                                     (0, r.jsxs)('div', {
                                       children: [
                                         (0, r.jsx)('h3', {
@@ -18436,7 +18766,7 @@
                                       ref: h,
                                       className:
                                         'flex-1 min-h-[320px] rounded-lg border border-slate-800 bg-slate-950',
-                                      children: (0, r.jsx)(aF, {
+                                      children: (0, r.jsx)(aK, {
                                         recentNodes: O.map((e) => ({
                                           ...e,
                                           label: e.label || e.kind || 'Node',
@@ -18451,7 +18781,7 @@
                                       className:
                                         'flex-1 min-h-[320px] rounded-lg border border-slate-800 bg-slate-950/70 flex flex-col items-center justify-center gap-3 text-slate-500 text-sm',
                                       children: [
-                                        (0, r.jsx)(sD.Z, { className: 'w-6 h-6' }),
+                                        (0, r.jsx)(sA.Z, { className: 'w-6 h-6' }),
                                         (0, r.jsx)('p', {
                                           children: 'No recent graph updates yet.',
                                         }),
@@ -18475,7 +18805,7 @@
           : (0, r.jsxs)('div', {
               className: 'h-full flex flex-col items-center justify-center gap-4 text-slate-500',
               children: [
-                (0, r.jsx)(sT.Z, { className: 'w-10 h-10' }),
+                (0, r.jsx)(sD.Z, { className: 'w-10 h-10' }),
                 (0, r.jsxs)('div', {
                   className: 'text-center space-y-2',
                   children: [
@@ -18493,7 +18823,7 @@
               ],
             });
       }
-      function aq(e) {
+      function aY(e) {
         let { children: t } = e,
           { user: s } = (0, w.aC)(),
           { operating: a, switchAccount: l } = (0, k.B)(),
@@ -18647,7 +18977,7 @@
                                   })
                                 : (0, r.jsxs)(r.Fragment, {
                                     children: [
-                                      (0, r.jsx)(sD.Z, {
+                                      (0, r.jsx)(sA.Z, {
                                         className: 'w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0',
                                       }),
                                       (0, r.jsxs)('div', {
@@ -18681,9 +19011,9 @@
             })
           : (0, r.jsx)(r.Fragment, { children: t });
       }
-      var aJ = s(3029),
-        aG = s(2461);
-      function aX(e) {
+      var aH = s(3029),
+        aQ = s(2461);
+      function a$(e) {
         var t;
         let { control: s, effectiveValue: a, onChange: l, onReset: i, disabled: o, error: d } = e,
           [c, u] = (0, n.useState)(a.value),
@@ -18694,7 +19024,7 @@
           g = a.canEdit && !o,
           b = a.canReset && !a.isDefault;
         return (0, r.jsxs)('div', {
-          className: (0, aV.cn)(
+          className: (0, aW.cn)(
             'bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-slate-600 transition-colors'
           ),
           children: [
@@ -18713,7 +19043,7 @@
                         }),
                         s.required &&
                           (0, r.jsx)('span', { className: 'text-xs text-red-400', children: '*' }),
-                        !g && (0, r.jsx)(sy.Z, { className: 'w-3 h-3 text-slate-500' }),
+                        !g && (0, r.jsx)(sw.Z, { className: 'w-3 h-3 text-slate-500' }),
                       ],
                     }),
                     s.description &&
@@ -18727,7 +19057,7 @@
                   className: 'flex items-center gap-2',
                   children: [
                     s.helpUrl &&
-                      (0, r.jsx)(aV.zx, {
+                      (0, r.jsx)(aW.zx, {
                         variant: 'ghost',
                         size: 'icon',
                         onClick: () => p(!x),
@@ -18736,7 +19066,7 @@
                         children: (0, r.jsx)(eu.Z, { className: 'w-4 h-4' }),
                       }),
                     b &&
-                      (0, r.jsx)(aV.zx, {
+                      (0, r.jsx)(aW.zx, {
                         variant: 'ghost',
                         size: 'icon',
                         onClick: () => {
@@ -18745,7 +19075,7 @@
                         disabled: !g,
                         className: 'text-slate-400 hover:text-purple-400',
                         title: 'Reset to default',
-                        children: (0, r.jsx)(aG.Z, { className: 'w-4 h-4' }),
+                        children: (0, r.jsx)(aQ.Z, { className: 'w-4 h-4' }),
                       }),
                   ],
                 }),
@@ -18767,9 +19097,9 @@
             (0, r.jsxs)('div', {
               className: 'mb-3',
               children: [
-                'boolean' === s.type && (0, r.jsx)(aW, { value: c, onChange: h, disabled: !g }),
+                'boolean' === s.type && (0, r.jsx)(a0, { value: c, onChange: h, disabled: !g }),
                 'string' === s.type &&
-                  (0, r.jsx)(aY, {
+                  (0, r.jsx)(a1, {
                     value: c,
                     onChange: h,
                     disabled: !g,
@@ -18777,7 +19107,7 @@
                     pattern: s.pattern,
                   }),
                 'number' === s.type &&
-                  (0, r.jsx)(aH, {
+                  (0, r.jsx)(a4, {
                     value: c,
                     onChange: h,
                     disabled: !g,
@@ -18788,13 +19118,13 @@
                   }),
                 'select' === s.type &&
                   s.options &&
-                  (0, r.jsx)(aQ, { value: c, onChange: h, disabled: !g, options: s.options }),
+                  (0, r.jsx)(a2, { value: c, onChange: h, disabled: !g, options: s.options }),
                 'multiselect' === s.type &&
                   s.options &&
-                  (0, r.jsx)(a$, { value: c, onChange: h, disabled: !g, options: s.options }),
-                'color' === s.type && (0, r.jsx)(a0, { value: c, onChange: h, disabled: !g }),
+                  (0, r.jsx)(a5, { value: c, onChange: h, disabled: !g, options: s.options }),
+                'color' === s.type && (0, r.jsx)(a3, { value: c, onChange: h, disabled: !g }),
                 'slider' === s.type &&
-                  (0, r.jsx)(a1, {
+                  (0, r.jsx)(a6, {
                     value: c,
                     onChange: h,
                     disabled: !g,
@@ -18803,7 +19133,7 @@
                     step: s.step || 1,
                     unit: s.unit,
                   }),
-                'json' === s.type && (0, r.jsx)(a4, { value: c, onChange: h, disabled: !g }),
+                'json' === s.type && (0, r.jsx)(a8, { value: c, onChange: h, disabled: !g }),
               ],
             }),
             d &&
@@ -18857,7 +19187,7 @@
           ],
         });
       }
-      function aW(e) {
+      function a0(e) {
         let { value: t, onChange: s, disabled: a } = e;
         return (0, r.jsxs)('label', {
           className: 'flex items-center gap-3 cursor-pointer',
@@ -18877,7 +19207,7 @@
           ],
         });
       }
-      function aY(e) {
+      function a1(e) {
         let { value: t, onChange: s, disabled: a, placeholder: l, pattern: n } = e;
         return (0, r.jsx)('input', {
           type: 'text',
@@ -18890,7 +19220,7 @@
             'w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50',
         });
       }
-      function aH(e) {
+      function a4(e) {
         let { value: t, onChange: s, disabled: a, min: l, max: n, step: i, unit: o } = e;
         return (0, r.jsxs)('div', {
           className: 'flex items-center gap-2',
@@ -18910,7 +19240,7 @@
           ],
         });
       }
-      function aQ(e) {
+      function a2(e) {
         let { value: t, onChange: s, disabled: a, options: l } = e;
         return (0, r.jsx)('select', {
           value: t,
@@ -18923,7 +19253,7 @@
           ),
         });
       }
-      function a$(e) {
+      function a5(e) {
         let { value: t, onChange: s, disabled: a, options: l } = e,
           n = (e) => {
             s(t.includes(e) ? t.filter((t) => t !== e) : [...t, e]);
@@ -18952,7 +19282,7 @@
           ),
         });
       }
-      function a0(e) {
+      function a3(e) {
         let { value: t, onChange: s, disabled: a } = e;
         return (0, r.jsxs)('div', {
           className: 'flex items-center gap-3',
@@ -18978,7 +19308,7 @@
           ],
         });
       }
-      function a1(e) {
+      function a6(e) {
         let { value: t, onChange: s, disabled: a, min: l, max: n, step: i, unit: o } = e;
         return (0, r.jsxs)('div', {
           className: 'space-y-2',
@@ -19005,7 +19335,7 @@
           ],
         });
       }
-      function a4(e) {
+      function a8(e) {
         let { value: t, onChange: s, disabled: a } = e,
           [l, i] = (0, n.useState)(JSON.stringify(t, null, 2)),
           [o, d] = (0, n.useState)(null),
@@ -19041,12 +19371,12 @@
           ],
         });
       }
-      let a2 = {
+      let a7 = {
         warning: {
           bg: 'bg-yellow-600/10',
           border: 'border-yellow-500/30',
           iconBg: 'bg-yellow-500/20',
-          icon: sD.Z,
+          icon: sA.Z,
           iconColor: 'text-yellow-400',
           titleColor: 'text-yellow-300',
           messageColor: 'text-yellow-200/80',
@@ -19087,7 +19417,7 @@
           confirmText: 'text-white',
         },
       };
-      function a5(e) {
+      function a9(e) {
         let {
           isOpen: t,
           onClose: s,
@@ -19103,7 +19433,7 @@
           minimizeText: x = 'Minimize',
         } = e;
         if (!t) return null;
-        let p = a2[l],
+        let p = a7[l],
           h = p.icon,
           g = () => {
             c || s();
@@ -19222,9 +19552,9 @@
           })
         );
       }
-      function a3() {
+      function le() {
         let { user: e } = (0, w.aC)(),
-          { addOperation: t, updateOperation: s, getOperation: a } = a_(),
+          { addOperation: t, updateOperation: s, getOperation: a } = aD(),
           { jobs: l } = tY(),
           [i, o] = (0, n.useState)(!1),
           [d, c] = (0, n.useState)(!1),
@@ -19244,7 +19574,7 @@
           (null == e ? void 0 : e.status) === 'succeeded'
             ? (y.current && (clearTimeout(y.current), (y.current = null)),
               console.log('[DataManagementCard] Deletion complete via SSE'),
-              R.O.getState().loadGraphData(),
+              A.O.getState().loadGraphData(),
               N('Data cleared successfully! Keimenon is now empty.'),
               setTimeout(() => {
                 (m(null), c(!1), N(null));
@@ -19544,7 +19874,7 @@
                   className:
                     'mt-4 flex items-start gap-2 px-3 py-2 bg-yellow-600/10 border border-yellow-500/30 rounded text-xs text-yellow-300',
                   children: [
-                    (0, r.jsx)(sD.Z, { className: 'w-4 h-4 flex-shrink-0 mt-0.5' }),
+                    (0, r.jsx)(sA.Z, { className: 'w-4 h-4 flex-shrink-0 mt-0.5' }),
                     (0, r.jsxs)('div', {
                       children: [
                         (0, r.jsx)('p', {
@@ -19562,7 +19892,7 @@
                 }),
               ],
             }),
-            (0, r.jsx)(a5, {
+            (0, r.jsx)(a9, {
               isOpen: i,
               onClose: () => o(!1),
               onConfirm: I,
@@ -19590,7 +19920,7 @@
           ],
         });
       }
-      function a6() {
+      function lt() {
         let { user: e } = (0, w.aC)(),
           [t, s] = (0, n.useState)(!1),
           [a, l] = (0, n.useState)(!1),
@@ -19693,7 +20023,7 @@
                   children: [
                     (0, r.jsx)('div', {
                       className: 'flex-shrink-0 bg-red-500/30 rounded-lg p-3',
-                      children: (0, r.jsx)(sD.Z, { className: 'w-6 h-6 text-red-400' }),
+                      children: (0, r.jsx)(sA.Z, { className: 'w-6 h-6 text-red-400' }),
                     }),
                     (0, r.jsxs)('div', {
                       className: 'flex-1',
@@ -19735,7 +20065,7 @@
                 }),
               ],
             }),
-            (0, r.jsx)(a5, {
+            (0, r.jsx)(a9, {
               isOpen: t,
               onClose: () => s(!1),
               onConfirm: u,
@@ -19750,7 +20080,7 @@
           ],
         });
       }
-      function a8(e) {
+      function ls(e) {
         let {
             index: t,
             style: s,
@@ -19833,7 +20163,7 @@
                           className:
                             'p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors',
                           title: 'Edit user',
-                          children: (0, r.jsx)(sa.Z, { className: 'w-4 h-4' }),
+                          children: (0, r.jsx)(sr.Z, { className: 'w-4 h-4' }),
                         }),
                         l !== u.id &&
                           (0, r.jsx)('button', {
@@ -19846,7 +20176,7 @@
                             title: 'Delete user',
                             children:
                               i === u.id
-                                ? (0, r.jsx)(sl.Z, { className: 'w-4 h-4 animate-spin' })
+                                ? (0, r.jsx)(sn.Z, { className: 'w-4 h-4 animate-spin' })
                                 : (0, r.jsx)(eC.Z, { className: 'w-4 h-4' }),
                           }),
                       ],
@@ -19857,7 +20187,7 @@
           }),
         });
       }
-      function a7(e) {
+      function la(e) {
         let { onUserSelect: t, onCreateUser: s } = e,
           { user: a } = (0, w.aC)(),
           [l, i] = (0, n.useState)([]),
@@ -19961,7 +20291,7 @@
               children: (0, r.jsxs)('div', {
                 className: 'text-center',
                 children: [
-                  (0, r.jsx)(sl.Z, {
+                  (0, r.jsx)(sn.Z, {
                     className: 'w-8 h-8 animate-spin text-purple-500 mx-auto mb-4',
                   }),
                   (0, r.jsx)('p', {
@@ -20105,7 +20435,7 @@
                           style: { height: Math.min(120 * C.length, k) },
                           rowCount: C.length,
                           rowHeight: 120,
-                          rowComponent: a8,
+                          rowComponent: ls,
                           rowProps: T,
                         }),
                       }),
@@ -20128,7 +20458,7 @@
                     }),
                   v &&
                     a &&
-                    (0, r.jsx)(so, {
+                    (0, r.jsx)(sc, {
                       account: {
                         id: a.accountId,
                         name: 'Current Account',
@@ -20154,14 +20484,14 @@
                 ],
               });
       }
-      var a9 = s(7354),
-        le = s(8155);
-      function lt() {
+      var ll = s(7354),
+        lr = s(8155);
+      function ln() {
         let [e, t] = (0, n.useState)(!1),
           [s, a] = (0, n.useState)(!1),
-          l = (0, le.d4)();
+          l = (0, lr.d4)();
         return ((0, n.useEffect)(() => {
-          t((0, le.h2)());
+          t((0, lr.h2)());
         }, []),
         l)
           ? (0, r.jsx)('div', {
@@ -20186,7 +20516,7 @@
                           (0, r.jsx)('button', {
                             onClick: () => {
                               let s = !e;
-                              ((0, le.tN)(s), t(s), s && (0, le.j6)());
+                              ((0, lr.tN)(s), t(s), s && (0, lr.j6)());
                             },
                             className:
                               'relative inline-flex h-6 w-11 items-center rounded-full transition-colors '.concat(
@@ -20231,7 +20561,7 @@
                                     (0, r.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, r.jsx)(a9.Z, {
+                                        (0, r.jsx)(ll.Z, {
                                           className: 'w-4 h-4 text-green-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, r.jsxs)('div', {
@@ -20252,7 +20582,7 @@
                                     (0, r.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, r.jsx)(a9.Z, {
+                                        (0, r.jsx)(ll.Z, {
                                           className: 'w-4 h-4 text-green-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, r.jsxs)('div', {
@@ -20274,7 +20604,7 @@
                                     (0, r.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, r.jsx)(a9.Z, {
+                                        (0, r.jsx)(ll.Z, {
                                           className: 'w-4 h-4 text-green-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, r.jsxs)('div', {
@@ -20295,7 +20625,7 @@
                                     (0, r.jsxs)('div', {
                                       className: 'flex items-start gap-2',
                                       children: [
-                                        (0, r.jsx)(a9.Z, {
+                                        (0, r.jsx)(ll.Z, {
                                           className: 'w-4 h-4 text-green-400 mt-0.5 flex-shrink-0',
                                         }),
                                         (0, r.jsxs)('div', {
@@ -20472,17 +20802,17 @@
               }),
             });
       }
-      var ls = s(3017);
-      let la = {
+      var li = s(3017);
+      let lo = {
           active: {
             label: 'Active',
             color: 'bg-green-500/15 text-green-300 border border-green-500/20',
-            icon: (0, r.jsx)(sT.Z, { className: 'w-3.5 h-3.5' }),
+            icon: (0, r.jsx)(sD.Z, { className: 'w-3.5 h-3.5' }),
           },
           legacy: {
             label: 'Legacy',
             color: 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/20',
-            icon: (0, r.jsx)(sS.Z, { className: 'w-3.5 h-3.5' }),
+            icon: (0, r.jsx)(s_.Z, { className: 'w-3.5 h-3.5' }),
           },
           quarantined: {
             label: 'Quarantined',
@@ -20497,10 +20827,10 @@
           archived: {
             label: 'Archived',
             color: 'bg-slate-500/15 text-slate-300 border border-slate-500/20',
-            icon: (0, r.jsx)(ls.Z, { className: 'w-3.5 h-3.5' }),
+            icon: (0, r.jsx)(li.Z, { className: 'w-3.5 h-3.5' }),
           },
         },
-        ll = [
+        ld = [
           {
             name: 'CreateAccountModal',
             path: 'apps/web/src/components/modals/CreateAccountModal.tsx',
@@ -20566,11 +20896,11 @@
             integration: 'Stored for reference only; not imported anywhere.',
           },
         ];
-      function lr() {
+      function lc() {
         let { user: e } = (0, w.aC)(),
           t = (0, n.useMemo)(
             () =>
-              ll.reduce((e, t) => ((e[t.status] += 1), e), {
+              ld.reduce((e, t) => ((e[t.status] += 1), e), {
                 active: 0,
                 legacy: 0,
                 quarantined: 0,
@@ -20605,7 +20935,7 @@
                   className: 'grid grid-cols-2 md:grid-cols-4 gap-3',
                   children: Object.entries(t).map((e) => {
                     let [t, s] = e,
-                      a = la[t];
+                      a = lo[t];
                     return (0, r.jsxs)(
                       'div',
                       {
@@ -20665,8 +20995,8 @@
                       }),
                       (0, r.jsx)('tbody', {
                         className: 'divide-y divide-slate-800',
-                        children: ll.map((e) => {
-                          let t = la[e.status];
+                        children: ld.map((e) => {
+                          let t = lo[e.status];
                           return (0, r.jsxs)(
                             'tr',
                             {
@@ -20718,10 +21048,10 @@
               ],
             });
       }
-      var ln = s(8248);
-      function li() {
+      var lu = s(8248);
+      function lm() {
         let { user: e } = (0, w.aC)(),
-          { addOperation: t, updateOperation: s, getOperation: a } = a_(),
+          { addOperation: t, updateOperation: s, getOperation: a } = aD(),
           [l, i] = (0, n.useState)(null),
           [o, d] = (0, n.useState)(!1),
           [c, x] = (0, n.useState)(null),
@@ -21026,7 +21356,7 @@
                           (0, r.jsxs)('div', {
                             className:
                               'text-sm font-medium text-blue-700 dark:text-blue-400 mb-1 flex items-center gap-1',
-                            children: [(0, r.jsx)(ln.Z, { className: 'w-4 h-4' }), 'Space Saved'],
+                            children: [(0, r.jsx)(lu.Z, { className: 'w-4 h-4' }), 'Space Saved'],
                           }),
                           (0, r.jsx)('div', {
                             className: 'text-2xl font-bold text-blue-900 dark:text-blue-300',
@@ -21152,7 +21482,7 @@
                 }),
               ],
             }),
-            (0, r.jsx)(a5, {
+            (0, r.jsx)(a9, {
               isOpen: k,
               onClose: () => C(!1),
               onConfirm: _,
@@ -21176,7 +21506,7 @@
           ],
         });
       }
-      function lo(e) {
+      function lx(e) {
         let { exportFormat: t } = e,
           [s, a] = (0, n.useState)(!1),
           [l, i] = (0, n.useState)(null),
@@ -21245,7 +21575,7 @@
               children: [
                 (0, r.jsx)('div', {
                   className: 'flex-shrink-0 bg-blue-500/20 rounded-lg p-3',
-                  children: (0, r.jsx)(sN.Z, { className: 'w-6 h-6 text-blue-400' }),
+                  children: (0, r.jsx)(sy.Z, { className: 'w-6 h-6 text-blue-400' }),
                 }),
                 (0, r.jsxs)('div', {
                   className: 'flex-1',
@@ -21286,14 +21616,14 @@
           ],
         });
       }
-      var ld = s(7113);
-      let lc = [
+      var lp = s(7113);
+      let lh = [
         { id: 'openai', name: 'OpenAI', description: 'Used for GPT-4 and Embeddings' },
         { id: 'anthropic', name: 'Anthropic', description: 'Used for Claude 3 Opus/Sonnet' },
         { id: 'google', name: 'Google Gemini', description: 'Used for Gemini Pro 1.5' },
         { id: 'groq', name: 'Groq', description: 'Used for fast Llama and Mixtral inference' },
       ];
-      function lu() {
+      function lg() {
         let [e, t] = (0, n.useState)({}),
           [s, a] = (0, n.useState)({}),
           [l, i] = (0, n.useState)({}),
@@ -21435,7 +21765,7 @@
                 (0, r.jsxs)('div', {
                   className: 'flex items-center gap-2 mb-6',
                   children: [
-                    (0, r.jsx)(sw.Z, { className: 'w-5 h-5 text-purple-400' }),
+                    (0, r.jsx)(sk.Z, { className: 'w-5 h-5 text-purple-400' }),
                     (0, r.jsx)('h2', {
                       className: 'text-lg font-semibold text-slate-100',
                       children: 'API Keys (BYOK)',
@@ -21456,7 +21786,7 @@
                   }),
                 (0, r.jsx)('div', {
                   className: 'grid gap-4',
-                  children: lc.map((a) => {
+                  children: lh.map((a) => {
                     let n = s[a.id],
                       i = c[a.id];
                     return (0, r.jsxs)(
@@ -21559,7 +21889,7 @@
                                 children: [
                                   o[a.id]
                                     ? (0, r.jsx)(p.Z, { className: 'w-4 h-4 animate-spin' })
-                                    : (0, r.jsx)(ld.Z, { className: 'w-4 h-4' }),
+                                    : (0, r.jsx)(lp.Z, { className: 'w-4 h-4' }),
                                   'Test',
                                 ],
                               }),
@@ -21595,7 +21925,7 @@
               ],
             });
       }
-      function lm(e) {
+      function lb(e) {
         var t;
         let { selectedSectionId: s, onControlSelect: a, onUserSelect: l } = e,
           {
@@ -21841,11 +22171,11 @@
                 ? { categoryId: e[1], sectionId: null }
                 : { categoryId: null, sectionId: null };
           }, [s]),
-          A = (0, n.useMemo)(() => (M ? tn.find((e) => e.id === M) : null), [M]),
-          R = (0, n.useMemo)(() => (A && D ? A.sections.find((e) => e.id === D) : null), [A, D]),
+          R = (0, n.useMemo)(() => (M ? tn.find((e) => e.id === M) : null), [M]),
+          A = (0, n.useMemo)(() => (R && D ? R.sections.find((e) => e.id === D) : null), [R, D]),
           O = (0, n.useMemo)(
-            () => (R ? R.controls : A ? A.sections.flatMap((e) => e.controls) : []),
-            [A, R]
+            () => (A ? A.controls : R ? R.sections.flatMap((e) => e.controls) : []),
+            [R, A]
           ),
           P = (e, t) => {
             g(e, t);
@@ -21898,8 +22228,8 @@
                   selectedSectionId: s,
                   categoryId: M,
                   sectionId: D,
-                  selectedCategory: null == A ? void 0 : A.id,
-                  selectedSection: null == R ? void 0 : R.id,
+                  selectedCategory: null == R ? void 0 : R.id,
+                  selectedSection: null == A ? void 0 : A.id,
                   controlsLength: O.length,
                   controls: O.map((e) => e.id),
                 }),
@@ -21921,14 +22251,14 @@
                                   (0, r.jsx)('h1', {
                                     className: 'text-2xl font-bold text-white',
                                     children:
-                                      (null == R ? void 0 : R.label) ||
                                       (null == A ? void 0 : A.label) ||
+                                      (null == R ? void 0 : R.label) ||
                                       'Settings',
                                   }),
-                                  (null == R ? void 0 : R.description) &&
+                                  (null == A ? void 0 : A.description) &&
                                     (0, r.jsx)('p', {
                                       className: 'text-sm text-slate-400 mt-1',
-                                      children: R.description,
+                                      children: A.description,
                                     }),
                                   o &&
                                     (0, r.jsxs)('p', {
@@ -22016,22 +22346,22 @@
                         (0, r.jsxs)('div', {
                           className: 'max-w-5xl mx-auto space-y-4',
                           children: [
-                            'management' === D && 'data' === M && (0, r.jsx)(a3, {}),
+                            'management' === D && 'data' === M && (0, r.jsx)(le, {}),
                             'admin_management' === D &&
                               'data' === M &&
                               (null == y ? void 0 : y.accountType) === 'admin' &&
-                              (0, r.jsx)(a6, {}),
-                            'users' === D && 'account' === M && (0, r.jsx)(a7, { onUserSelect: l }),
-                            'privacy' === D && 'security' === M && (0, r.jsx)(lt, {}),
-                            'deduplication' === D && 'data' === M && (0, r.jsx)(li, {}),
+                              (0, r.jsx)(lt, {}),
+                            'users' === D && 'account' === M && (0, r.jsx)(la, { onUserSelect: l }),
+                            'privacy' === D && 'security' === M && (0, r.jsx)(ln, {}),
+                            'deduplication' === D && 'data' === M && (0, r.jsx)(lm, {}),
                             'export' === D &&
                               'import_export' === M &&
-                              (0, r.jsx)(lo, { exportFormat: U }),
-                            'api_keys' === D && 'integrations' === M && (0, r.jsx)(lu, {}),
+                              (0, r.jsx)(lx, { exportFormat: U }),
+                            'api_keys' === D && 'integrations' === M && (0, r.jsx)(lg, {}),
                             'modals' === D &&
                               'debug' === M &&
                               (null == y ? void 0 : y.accountType) === 'admin' &&
-                              (0, r.jsx)(lr, {}),
+                              (0, r.jsx)(lc, {}),
                             'management' !== D &&
                               'admin_management' !== D &&
                               'users' !== D &&
@@ -22054,7 +22384,7 @@
                                     onClick: () => {
                                       (null == a || a(e.id), k && _(e.id));
                                     },
-                                    children: (0, r.jsx)(aX, {
+                                    children: (0, r.jsx)(a$, {
                                       control: e,
                                       effectiveValue: { ...t, value: s },
                                       onChange: (t) => P(e.id, t),
@@ -22241,7 +22571,7 @@
                                                   ? '(default)'
                                                   : String(e.oldValue),
                                             }),
-                                            (0, r.jsx)(aJ.Z, {
+                                            (0, r.jsx)(aH.Z, {
                                               className: 'w-3 h-3 text-slate-600 flex-shrink-0',
                                             }),
                                             (0, r.jsx)('span', {
@@ -22305,10 +22635,10 @@
                   }),
                 }));
       }
-      var lx = s(6315),
-        lp = s(4497),
-        lh = s(1296);
-      let lg = {
+      var lf = s(6315),
+        lv = s(4497),
+        lj = s(1296);
+      let lN = {
         listPrincipals: async () => (await eh.hi.get('/principals')).data.principals,
         listWorkspaces: async () => (await eh.hi.get('/workspaces')).data.workspaces,
         createWorkspace: async (e) => (await eh.hi.post('/workspaces', e)).data.workspace,
@@ -22318,7 +22648,7 @@
         listConversations: async () => (await eh.hi.get('/conversations')).data.conversations,
         createConversation: async (e) => (await eh.hi.post('/conversations', e)).data.conversation,
       };
-      function lb(e) {
+      function ly(e) {
         let {
             index: t,
             style: s,
@@ -22331,7 +22661,7 @@
         return (0, r.jsx)('div', {
           style: s,
           className: 'px-2 py-0.5',
-          children: (0, r.jsx)(lj, {
+          children: (0, r.jsx)(lC, {
             conversation: o,
             humanPrincipal: l.get(o.human_principal_id),
             agentPrincipal: o.agent_principal_id ? l.get(o.agent_principal_id) : void 0,
@@ -22340,7 +22670,7 @@
           }),
         });
       }
-      function lf(e) {
+      function lw(e) {
         let { onConversationSelect: t, onCreateConversation: s, className: a = '' } = e,
           [l, i] = (0, n.useState)([]),
           [o, c] = (0, n.useState)(new Map()),
@@ -22357,7 +22687,7 @@
         let k = async () => {
             try {
               (m(!0), h(null));
-              let [e, t] = await Promise.all([lg.listConversations(), lg.listPrincipals()]);
+              let [e, t] = await Promise.all([lN.listConversations(), lN.listPrincipals()]);
               i(e);
               let s = new Map();
               (t.forEach((e) => s.set(e.id, e)), c(s));
@@ -22495,18 +22825,18 @@
                               style: { height: Math.min(100 * _.length, w) },
                               rowCount: _.length,
                               rowHeight: 100,
-                              rowComponent: lb,
+                              rowComponent: ly,
                               rowProps: I,
                             }),
                           }),
                   }),
                   f &&
-                    (0, r.jsx)(lN, {
+                    (0, r.jsx)(lS, {
                       principals: Array.from(o.values()),
                       onClose: () => v(!1),
                       onCreate: async (e) => {
                         try {
-                          let s = await lg.createConversation(e);
+                          let s = await lN.createConversation(e);
                           (i((e) => [s, ...e]), v(!1), b(s.id), null == t || t(s));
                         } catch (e) {
                           (console.error('Failed to create conversation:', e),
@@ -22521,7 +22851,7 @@
                 ],
               });
       }
-      let lv = {
+      let lk = {
           summarize: {
             icon: (0, r.jsx)(eO.Z, { className: 'w-3.5 h-3.5' }),
             color: 'text-green-400 bg-green-500/10',
@@ -22533,7 +22863,7 @@
             label: 'Cluster',
           },
           draft: {
-            icon: (0, r.jsx)(lx.Z, { className: 'w-3.5 h-3.5' }),
+            icon: (0, r.jsx)(lf.Z, { className: 'w-3.5 h-3.5' }),
             color: 'text-blue-400 bg-blue-500/10',
             label: 'Draft',
           },
@@ -22543,7 +22873,7 @@
             label: 'Research',
           },
           refactor: {
-            icon: (0, r.jsx)(lp.Z, { className: 'w-3.5 h-3.5' }),
+            icon: (0, r.jsx)(lv.Z, { className: 'w-3.5 h-3.5' }),
             color: 'text-orange-400 bg-orange-500/10',
             label: 'Refactor',
           },
@@ -22553,12 +22883,12 @@
             label: 'Verify',
           },
           general: {
-            icon: (0, r.jsx)(lh.Z, { className: 'w-3.5 h-3.5' }),
+            icon: (0, r.jsx)(lj.Z, { className: 'w-3.5 h-3.5' }),
             color: 'text-slate-400 bg-slate-500/10',
             label: 'General',
           },
         },
-        lj = (0, n.memo)(function (e) {
+        lC = (0, n.memo)(function (e) {
           let {
               conversation: t,
               humanPrincipal: s,
@@ -22566,7 +22896,7 @@
               selected: l,
               onClick: n,
             } = e,
-            i = lv[t.purpose] || lv.general;
+            i = lk[t.purpose] || lk.general;
           return (0, r.jsxs)('div', {
             onClick: n,
             className:
@@ -22641,7 +22971,7 @@
             ],
           });
         });
-      function lN(e) {
+      function lS(e) {
         let { principals: t, onClose: s, onCreate: a } = e,
           [l, i] = (0, n.useState)(''),
           [o, d] = (0, n.useState)('general'),
@@ -22698,7 +23028,7 @@
                       }),
                       (0, r.jsx)('div', {
                         className: 'grid grid-cols-4 gap-2',
-                        children: Object.entries(lv).map((e) => {
+                        children: Object.entries(lk).map((e) => {
                           let [t, s] = e;
                           return (0, r.jsxs)(
                             'button',
@@ -22780,26 +23110,26 @@
           }),
         });
       }
-      var ly = s(6606),
-        lw = s(8340),
-        lk = s(5015);
-      let lC = new Set(['completed', 'failed', 'cancelled']);
-      async function lS(e) {
+      var l_ = s(6606),
+        lI = s(8340),
+        lE = s(5015);
+      let lZ = new Set(['completed', 'failed', 'cancelled']);
+      async function lT(e) {
         return (await eh.hi.post('/agent/tasks', e)).data.task;
       }
-      async function l_(e) {
+      async function lM(e) {
         return (await eh.hi.get('/agent/tasks/'.concat(e))).data;
       }
-      async function lI(e, t) {
+      async function lD(e, t) {
         var s, a, l;
         let r = null !== (s = null == t ? void 0 : t.timeoutMs) && void 0 !== s ? s : 12e4,
           n = null !== (a = null == t ? void 0 : t.pollIntervalMs) && void 0 !== a ? a : 1e3,
           i = Date.now();
         for (; Date.now() - i < r; ) {
-          let s = await l_(e);
+          let s = await lM(e);
           if (
             (null == t || null === (l = t.onUpdate) || void 0 === l || l.call(t, s),
-            lC.has(s.task.status))
+            lZ.has(s.task.status))
           )
             return s;
           await (function (e) {
@@ -22808,10 +23138,10 @@
         }
         throw Error('Task '.concat(e, ' timed out after ').concat(r, 'ms'));
       }
-      function lE() {
+      function lR() {
         var e, t, s, a, l, i;
-        let o = (0, R.O)((e) => e.detailPanelNode),
-          d = (0, R.O)((e) => e.closeDetailPanel),
+        let o = (0, A.O)((e) => e.detailPanelNode),
+          d = (0, A.O)((e) => e.closeDetailPanel),
           {
             loadContent: c,
             getContent: u,
@@ -22918,7 +23248,7 @@
               (v(!0), C(null), w(null), N(null));
               try {
                 var e, t, s, a, l, r, n, i;
-                let d = await lS({
+                let d = await lT({
                   type: 'VERIFY_TOPIC',
                   input: {
                     topicId: o.id,
@@ -22945,7 +23275,7 @@
                   },
                 });
                 N(d.status);
-                let c = await lI(d.id, {
+                let c = await lD(d.id, {
                   timeoutMs: 18e4,
                   pollIntervalMs: 1200,
                   onUpdate: (e) => N(e.task.status),
@@ -23278,13 +23608,13 @@
                   ? void 0
                   : null === (s = a.metadata) || void 0 === s
                     ? void 0
-                    : s.provenance) && (0, r.jsx)(lU, { provenance: o.data.metadata.provenance }),
+                    : s.provenance) && (0, r.jsx)(lJ, { provenance: o.data.metadata.provenance }),
                 'Principal' === o.type &&
-                  (0, r.jsx)(lB, {
+                  (0, r.jsx)(lG, {
                     metadata: (null === (l = o.data) || void 0 === l ? void 0 : l.metadata) || {},
                   }),
                 'ConversationThread' === o.type &&
-                  (0, r.jsx)(lV, {
+                  (0, r.jsx)(lW, {
                     metadata: (null === (i = o.data) || void 0 === i ? void 0 : i.metadata) || {},
                   }),
                 'Topic' === o.type &&
@@ -23405,7 +23735,7 @@
                 (0, r.jsxs)('div', {
                   className: 'p-4',
                   children: [
-                    Z && (0, r.jsx)(lZ, {}),
+                    Z && (0, r.jsx)(lA, {}),
                     T &&
                       (0, r.jsx)('div', {
                         className: 'bg-red-600/10 border border-red-500/30 rounded-lg p-3',
@@ -23421,7 +23751,7 @@
                           ],
                         }),
                       }),
-                    !Z && !T && E && (0, r.jsx)(lT, { content: E, nodeType: o.type }),
+                    !Z && !T && E && (0, r.jsx)(lL, { content: E, nodeType: o.type }),
                     !Z &&
                       !T &&
                       !E &&
@@ -23436,7 +23766,7 @@
           ],
         });
       }
-      function lZ() {
+      function lA() {
         return (0, r.jsxs)('div', {
           className: 'flex items-center justify-center py-8',
           children: [
@@ -23451,30 +23781,30 @@
           ],
         });
       }
-      function lT(e) {
+      function lL(e) {
         let { content: t, nodeType: s } = e;
         switch (s) {
           case 'message':
-            return (0, r.jsx)(lM, { content: t });
-          case 'source':
-            return (0, r.jsx)(lD, { content: t });
-          case 'code':
-            return (0, r.jsx)(lA, { content: t });
-          case 'Lexeme':
-            return (0, r.jsx)(lR, { content: t });
-          case 'Phrase':
-            return (0, r.jsx)(lL, { content: t });
-          case 'Topic':
             return (0, r.jsx)(lO, { content: t });
-          case 'VerifiedSource':
+          case 'source':
             return (0, r.jsx)(lP, { content: t });
-          case 'VerifiedClaim':
+          case 'code':
             return (0, r.jsx)(lF, { content: t });
-          default:
+          case 'Lexeme':
             return (0, r.jsx)(lz, { content: t });
+          case 'Phrase':
+            return (0, r.jsx)(lU, { content: t });
+          case 'Topic':
+            return (0, r.jsx)(lB, { content: t });
+          case 'VerifiedSource':
+            return (0, r.jsx)(lV, { content: t });
+          case 'VerifiedClaim':
+            return (0, r.jsx)(lK, { content: t });
+          default:
+            return (0, r.jsx)(lq, { content: t });
         }
       }
-      function lM(e) {
+      function lO(e) {
         let { content: t } = e;
         return (0, r.jsxs)('div', {
           children: [
@@ -23506,7 +23836,7 @@
           ],
         });
       }
-      function lD(e) {
+      function lP(e) {
         let { content: t } = e;
         return (0, r.jsxs)('div', {
           children: [
@@ -23536,7 +23866,7 @@
                       .replace(/\*\*(.*)\*\*/gim, '<strong class="text-slate-100">$1</strong>')
                       .replace(/\*(.*)\*/gim, '<em class="text-slate-300">$1</em>')
                       .replace(/\n/gim, '<br />');
-                    return ly.Z.sanitize(t, {
+                    return l_.Z.sanitize(t, {
                       ALLOWED_TAGS: ['h1', 'h2', 'h3', 'strong', 'em', 'br'],
                       ALLOWED_ATTR: ['class'],
                     });
@@ -23547,7 +23877,7 @@
           ],
         });
       }
-      function lA(e) {
+      function lF(e) {
         var t;
         let { content: s } = e,
           [a, l] = (0, n.useState)(!1);
@@ -23569,7 +23899,7 @@
                     'text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1.5 px-2 py-1 hover:bg-slate-800 rounded transition-colors',
                   children: a
                     ? (0, r.jsxs)(r.Fragment, {
-                        children: [(0, r.jsx)(a9.Z, { className: 'w-3.5 h-3.5' }), 'Copied!'],
+                        children: [(0, r.jsx)(ll.Z, { className: 'w-3.5 h-3.5' }), 'Copied!'],
                       })
                     : (0, r.jsxs)(r.Fragment, {
                         children: [(0, r.jsx)(ek.Z, { className: 'w-3.5 h-3.5' }), 'Copy'],
@@ -23595,7 +23925,7 @@
           ],
         });
       }
-      function lR(e) {
+      function lz(e) {
         let { content: t } = e;
         return (0, r.jsxs)('div', {
           children: [
@@ -23635,7 +23965,7 @@
           ],
         });
       }
-      function lL(e) {
+      function lU(e) {
         let { content: t } = e;
         return (0, r.jsxs)('div', {
           children: [
@@ -23705,7 +24035,7 @@
           ],
         });
       }
-      function lO(e) {
+      function lB(e) {
         let { content: t } = e,
           s = Math.round(100 * t.strength);
         return (0, r.jsxs)('div', {
@@ -23793,7 +24123,7 @@
           ],
         });
       }
-      function lP(e) {
+      function lV(e) {
         var t;
         let { content: s } = e,
           a = Math.round(100 * s.trust_score);
@@ -23911,7 +24241,7 @@
           ],
         });
       }
-      function lF(e) {
+      function lK(e) {
         let { content: t } = e,
           s = Math.round(100 * t.confidence),
           a = ((e) => {
@@ -23922,7 +24252,7 @@
                   icon: th.Z,
                 };
               case 'disputed':
-                return { color: 'bg-amber-600/20 text-amber-300 border-amber-500/30', icon: sD.Z };
+                return { color: 'bg-amber-600/20 text-amber-300 border-amber-500/30', icon: sA.Z };
               case 'refuted':
                 return { color: 'bg-red-600/20 text-red-300 border-red-500/30', icon: ed.Z };
               default:
@@ -24008,7 +24338,7 @@
           ],
         });
       }
-      function lz(e) {
+      function lq(e) {
         let { content: t } = e;
         return (0, r.jsx)('pre', {
           className:
@@ -24016,7 +24346,7 @@
           children: JSON.stringify(t, null, 2),
         });
       }
-      function lU(e) {
+      function lJ(e) {
         var t;
         let { provenance: s } = e,
           a = s.origin_type || (s.origin ? 'migrated' : void 0),
@@ -24038,13 +24368,13 @@
               case 'agent_import':
                 return {
                   label: 'Agent Import',
-                  icon: sk.Z,
+                  icon: sC.Z,
                   color: 'bg-amber-600/20 text-amber-300 border-amber-500/30',
                 };
               case 'agent_generated':
                 return {
                   label: 'AI Generated',
-                  icon: lw.Z,
+                  icon: lI.Z,
                   color: 'bg-pink-600/20 text-pink-300 border-pink-500/30',
                 };
               case 'system_seed':
@@ -24079,7 +24409,7 @@
                 return {
                   label: 'Unverified',
                   color: 'bg-amber-600/20 text-amber-300 border-amber-500/30',
-                  icon: sk.Z,
+                  icon: sC.Z,
                 };
               case 'verified_source':
                 return {
@@ -24200,7 +24530,7 @@
           ],
         });
       }
-      function lB(e) {
+      function lG(e) {
         var t;
         let { metadata: s } = e,
           a = (null == s ? void 0 : s.principal_kind) || 'unknown',
@@ -24347,7 +24677,7 @@
           ],
         });
       }
-      function lV(e) {
+      function lW(e) {
         var t;
         let { metadata: s } = e;
         return (0, r.jsxs)('div', {
@@ -24356,7 +24686,7 @@
             (0, r.jsxs)('h3', {
               className: 'text-sm font-medium text-slate-300 mb-3 flex items-center gap-2',
               children: [
-                (0, r.jsx)(lk.Z, { className: 'w-4 h-4 text-purple-400' }),
+                (0, r.jsx)(lE.Z, { className: 'w-4 h-4 text-purple-400' }),
                 'Conversation Details',
               ],
             }),
@@ -24487,12 +24817,12 @@
           ],
         });
       }
-      (Y.Z, sk.Z, eN.Z, sj.Z, sb.Z, Y.Z);
-      let lK = {
+      (Y.Z, sC.Z, eN.Z, sN.Z, sf.Z, Y.Z);
+      let lX = {
         general: {
           id: 'general',
           label: 'General',
-          icon: sk.Z,
+          icon: sC.Z,
           fields: ['language', 'timezone', 'dateFormat'],
         },
         privacy: {
@@ -24504,13 +24834,13 @@
         notifications: {
           id: 'notifications',
           label: 'Notifications',
-          icon: sj.Z,
+          icon: sN.Z,
           fields: ['emailNotifications', 'pushNotifications', 'notificationFrequency'],
         },
         appearance: {
           id: 'appearance',
           label: 'Appearance',
-          icon: sb.Z,
+          icon: sf.Z,
           fields: ['theme', 'primaryColor', 'fontSize'],
         },
         dataStorage: {
@@ -24520,7 +24850,7 @@
           fields: ['autoSave', 'defaultFileFormat', 'cacheSize'],
         },
       };
-      function lq() {
+      function lY() {
         let { shellMode: e, keimenonMode: t } = (0, et.St)(),
           { user: s } = (0, w.aC)(),
           [a, l] = (0, n.useState)(null),
@@ -24531,7 +24861,7 @@
           try {
             if ('settings' === t && a && (null == s ? void 0 : s.accountId)) {
               let e = await (0, eh.wv)(s.accountId),
-                t = Object.values(lK).find((e) => e.id === a),
+                t = Object.values(lX).find((e) => e.id === a),
                 l = (null == t ? void 0 : t.fields) || [],
                 r = (null == e ? void 0 : e.settings) || {},
                 n = l.reduce((e, t) => (r[t] && (e[t] = r[t]), e), {});
@@ -24569,7 +24899,7 @@
           (0, r.jsxs)('div', {
             className: 'flex-1 flex overflow-hidden',
             children: [
-              (0, r.jsx)(aV.$Q, {
+              (0, r.jsx)(aW.$Q, {
                 mode: 'navigation',
                 position: 'left',
                 title:
@@ -24578,10 +24908,10 @@
                 children: (0, r.jsxs)('div', {
                   className: 'p-4',
                   children: [
-                    (0, r.jsx)(aV.aV, {
+                    (0, r.jsx)(aW.aV, {
                       items:
                         'settings' === t
-                          ? Object.values(lK)
+                          ? Object.values(lX)
                           : 'dashboard' === t
                             ? [
                                 { id: 'overview', label: 'Overview', icon: Y.Z },
@@ -24592,7 +24922,7 @@
                       layout: 'vertical',
                       gap: 'sm',
                       renderItem: (e) =>
-                        (0, r.jsx)(aV.n9, {
+                        (0, r.jsx)(aW.n9, {
                           title: e.label,
                           icon: e.icon,
                           iconColor: a === e.id ? 'purple' : 'slate',
@@ -24601,11 +24931,11 @@
                         }),
                       emptyState: { message: 'No navigation items available' },
                     }),
-                    (0, r.jsxs)(aV.i4, {
+                    (0, r.jsxs)(aW.i4, {
                       variant: 'info',
                       className: 'mt-6',
                       children: [
-                        (0, r.jsx)(aV.xv, {
+                        (0, r.jsx)(aW.xv, {
                           role: 'label',
                           className: 'mb-2',
                           children: 'Debug Info',
@@ -24613,9 +24943,9 @@
                         (0, r.jsxs)('div', {
                           className: 'space-y-1',
                           children: [
-                            (0, r.jsxs)(aV.xv, { role: 'hint', children: ['Shell: ', e] }),
-                            (0, r.jsxs)(aV.xv, { role: 'hint', children: ['Keimenon: ', t] }),
-                            (0, r.jsxs)(aV.xv, {
+                            (0, r.jsxs)(aW.xv, { role: 'hint', children: ['Shell: ', e] }),
+                            (0, r.jsxs)(aW.xv, { role: 'hint', children: ['Keimenon: ', t] }),
+                            (0, r.jsxs)(aW.xv, {
                               role: 'hint',
                               children: ['Section: ', a || 'none'],
                             }),
@@ -24626,8 +24956,8 @@
                   ],
                 }),
               }),
-              (0, r.jsx)(aV.AE, { mode: t, data: i, loading: d }),
-              (0, r.jsx)(aV.$Q, {
+              (0, r.jsx)(aW.AE, { mode: t, data: i, loading: d }),
+              (0, r.jsx)(aW.$Q, {
                 mode: 'inspector',
                 position: 'right',
                 title: 'Details',
@@ -24635,20 +24965,20 @@
                 children: (0, r.jsx)('div', {
                   className: 'p-4',
                   children: a
-                    ? (0, r.jsxs)(aV.i4, {
+                    ? (0, r.jsxs)(aW.i4, {
                         title: 'Selection',
                         children: [
-                          (0, r.jsx)(aV.xv, {
+                          (0, r.jsx)(aW.xv, {
                             role: 'label',
                             className: 'mb-2',
                             children: 'Selected Section',
                           }),
-                          (0, r.jsx)(aV.xv, { role: 'value', children: a }),
+                          (0, r.jsx)(aW.xv, { role: 'value', children: a }),
                         ],
                       })
-                    : (0, r.jsx)(aV.i4, {
+                    : (0, r.jsx)(aW.i4, {
                         variant: 'subtle',
-                        children: (0, r.jsx)(aV.xv, {
+                        children: (0, r.jsx)(aW.xv, {
                           role: 'hint',
                           mode: 'muted',
                           className: 'text-center',
@@ -24661,21 +24991,21 @@
           })
         );
       }
-      function lJ(e) {
+      function lH(e) {
         let { onWorkspaceSelect: t, onCreateWorkspace: s, className: a = '' } = e,
           [l, i] = (0, n.useState)([]),
           [o, d] = (0, n.useState)(!0),
           [c, u] = (0, n.useState)(null),
           [m, x] = (0, n.useState)(null),
           [h, g] = (0, n.useState)(!1),
-          b = (0, R.O)((e) => e.selectedNodeIds);
+          b = (0, A.O)((e) => e.selectedNodeIds);
         (0, n.useEffect)(() => {
           f();
         }, []);
         let f = async () => {
             try {
               (d(!0), u(null));
-              let e = await lg.listWorkspaces();
+              let e = await lN.listWorkspaces();
               i(e);
             } catch (e) {
               (console.error('Failed to load workspaces:', e), u('Failed to load workspaces'));
@@ -24689,7 +25019,7 @@
           j = async (e, t) => {
             if ((t.stopPropagation(), confirm('Are you sure you want to delete this workspace?')))
               try {
-                (await lg.deleteWorkspace(e),
+                (await lN.deleteWorkspace(e),
                   i((t) => t.filter((t) => t.id !== e)),
                   m === e && x(null));
               } catch (e) {
@@ -24757,7 +25087,7 @@
                             className:
                               'flex flex-col items-center justify-center h-full p-6 text-center',
                             children: [
-                              (0, r.jsx)(sS.Z, { className: 'w-12 h-12 text-slate-600 mb-4' }),
+                              (0, r.jsx)(s_.Z, { className: 'w-12 h-12 text-slate-600 mb-4' }),
                               (0, r.jsx)('p', {
                                 className: 'text-sm text-slate-400 mb-2',
                                 children: 'No workspaces yet',
@@ -24783,7 +25113,7 @@
                             className: 'p-2 space-y-1',
                             children: l.map((e) =>
                               (0, r.jsx)(
-                                lG,
+                                lQ,
                                 {
                                   workspace: e,
                                   selected: e.id === m,
@@ -24796,12 +25126,12 @@
                           }),
                   }),
                   h &&
-                    (0, r.jsx)(lX, {
+                    (0, r.jsx)(l$, {
                       selectedNodeIds: Array.from(b),
                       onClose: () => g(!1),
                       onCreate: async (e) => {
                         try {
-                          let s = await lg.createWorkspace(e);
+                          let s = await lN.createWorkspace(e);
                           (i((e) => [s, ...e]), g(!1), x(s.id), null == t || t(s));
                         } catch (e) {
                           console.error('Failed to create workspace:', e);
@@ -24811,7 +25141,7 @@
                 ],
               });
       }
-      function lG(e) {
+      function lQ(e) {
         let { workspace: t, selected: s, onClick: a, onDelete: l } = e;
         return (0, r.jsxs)('div', {
           onClick: a,
@@ -24877,7 +25207,7 @@
           ],
         });
       }
-      function lX(e) {
+      function l$(e) {
         let { selectedNodeIds: t, onClose: s, onCreate: a } = e,
           [l, i] = (0, n.useState)(''),
           [o, d] = (0, n.useState)(!1),
@@ -24965,7 +25295,7 @@
           }),
         });
       }
-      function lW(e) {
+      function l0(e) {
         let {
             showUploadModal: t,
             onShowUploadModal: s,
@@ -24986,23 +25316,23 @@
             getActiveOperations: b,
             addOperation: f,
             updateOperation: v,
-          } = a_(),
-          { isOpen: j, setIsOpen: N } = sL(),
+          } = aD(),
+          { isOpen: j, setIsOpen: N } = sP(),
           y = (0, n.useRef)(null),
           [C, S] = (0, n.useState)(!0),
           [_, E] = (0, n.useState)(!0),
           [Z, T] = (0, n.useState)('analytics'),
           [M, D] = (0, n.useState)(void 0),
-          [A, R] = (0, n.useState)(null),
+          [R, A] = (0, n.useState)(null),
           [L, P] = (0, n.useState)(void 0),
           [F, z] = (0, n.useState)(null),
           [U, B] = (0, n.useState)(null),
           [V, K] = (0, n.useState)(null),
           [q, J] = (0, n.useState)(!1),
-          [G, X] = (0, n.useState)(!1),
-          [W, Y] = (0, n.useState)(0),
+          [G, W] = (0, n.useState)(!1),
+          [X, Y] = (0, n.useState)(0),
           [H, Q] = (0, n.useState)('2d'),
-          [$, ee] = (0, n.useState)(s5);
+          [$, ee] = (0, n.useState)(s7);
         ((0, n.useEffect)(() => {
           d && (B(d), P('import-flow'), E(!0), null == c || c());
         }, [d, c]),
@@ -25122,10 +25452,10 @@
                 className: 'flex-1 flex overflow-hidden',
                 children:
                   'primitives' === p
-                    ? (0, r.jsx)(lq, {})
+                    ? (0, r.jsx)(lY, {})
                     : (0, r.jsxs)(r.Fragment, {
                         children: [
-                          (0, r.jsx)(sE, {
+                          (0, r.jsx)(sT, {
                             side: 'left',
                             isOpen: C,
                             onToggle: () => S(!C),
@@ -25174,8 +25504,8 @@
                                 focusModeEnabled: q,
                                 onFocusModeToggle: () => J((e) => !e),
                                 includeConnectorNodes: G,
-                                onConnectorVisibilityToggle: () => X((e) => !e),
-                                pinnedNodeCount: W,
+                                onConnectorVisibilityToggle: () => W((e) => !e),
+                                pinnedNodeCount: X,
                                 onClearPinnedNodes: () => {
                                   var e;
                                   return null === (e = y.current) || void 0 === e
@@ -25206,13 +25536,13 @@
                                 },
                               }),
                               !(eo && !ed) || ec || ed
-                                ? (0, r.jsxs)(aq, {
+                                ? (0, r.jsxs)(aY, {
                                     children: [
                                       'keimenon' === m &&
                                         (0, r.jsxs)('div', {
                                           className: 'relative h-full',
                                           children: [
-                                            (0, r.jsx)(af, {
+                                            (0, r.jsx)(aw, {
                                               ref: y,
                                               onOpenUpload: el,
                                               onOpenChatImport: el,
@@ -25227,7 +25557,7 @@
                                                 className:
                                                   'absolute inset-0 z-20 border-l border-r border-slate-900',
                                                 'data-testid': 'processing-gate-overlay',
-                                                children: (0, r.jsx)(aK, {
+                                                children: (0, r.jsx)(aX, {
                                                   operation: ea,
                                                   renderLens: H,
                                                   ndConfig: $,
@@ -25237,7 +25567,7 @@
                                         }),
                                       'dashboard' === m &&
                                         ('analytics' === Z
-                                          ? (0, r.jsx)(aR, {
+                                          ? (0, r.jsx)(aU, {
                                               onJobSelect: (e) => {
                                                 var t, s, a, l, r, n, i;
                                                 let o = ei(e.status),
@@ -25321,14 +25651,14 @@
                                               },
                                             })
                                           : 'storage' === Z
-                                            ? (0, r.jsx)(aL, {})
+                                            ? (0, r.jsx)(aB, {})
                                             : 'workspaces' === Z
-                                              ? (0, r.jsx)(lJ, { className: 'h-full' })
-                                              : (0, r.jsx)(lf, { className: 'h-full' })),
+                                              ? (0, r.jsx)(lH, { className: 'h-full' })
+                                              : (0, r.jsx)(lw, { className: 'h-full' })),
                                       'settings' === m &&
-                                        (0, r.jsx)(lm, {
+                                        (0, r.jsx)(lb, {
                                           selectedSectionId: M,
-                                          onControlSelect: R,
+                                          onControlSelect: A,
                                           onUserSelect: (e) => {
                                             (z(e), P('user-detail'), E(!0));
                                           },
@@ -25361,11 +25691,11 @@
                                   }),
                             ],
                           }),
-                          (0, r.jsx)(sE, {
+                          (0, r.jsx)(sT, {
                             side: 'right',
                             isOpen: _,
                             onToggle: () => E(!_),
-                            selectedSettingsControlId: A,
+                            selectedSettingsControlId: R,
                             inspectorPanel: L,
                             onInspectorPanelChange: P,
                             selectedUser: F,
@@ -25377,15 +25707,15 @@
                         ],
                       }),
               }),
-              (0, r.jsx)(sO, { isOpen: j }),
-              t && (0, r.jsx)(st, { onClose: () => s(!1) }),
-              l && (0, r.jsx)(t7, { onDismiss: () => i(!1) }),
-              (0, r.jsx)(lE, {}),
+              (0, r.jsx)(sF, { isOpen: j }),
+              t && (0, r.jsx)(sa, { onClose: () => s(!1) }),
+              l && (0, r.jsx)(se, { onDismiss: () => i(!1) }),
+              (0, r.jsx)(lR, {}),
             ],
           })
         );
       }
-      function lY(e) {
+      function l1(e) {
         let { onDismiss: t, onOpenUpload: s, onOpenChatImport: a } = e;
         return (0, r.jsx)('div', {
           className:
@@ -25537,7 +25867,7 @@
           }),
         });
       }
-      function lH() {
+      function l4() {
         let e = (0, i.useRouter)(),
           { isAuthenticated: t, isLoading: s } = (0, w.aC)(),
           [a, l] = (0, n.useState)(!1),
@@ -25546,7 +25876,7 @@
           [m, x] = (0, n.useState)(!1),
           [p, h] = (0, n.useState)(null),
           g = (0, n.useRef)(!1),
-          b = (0, R.O)((e) => e.loadGraphData);
+          b = (0, A.O)((e) => e.loadGraphData);
         if (
           ((0, n.useEffect)(() => {
             if (!s) {
@@ -25600,12 +25930,12 @@
           v = () => {
             u(!0);
           };
-        return (0, r.jsx)(sR, {
-          children: (0, r.jsx)(aS, {
+        return (0, r.jsx)(sO, {
+          children: (0, r.jsx)(aM, {
             onRestoreOperation: h,
             children: (0, r.jsxs)(_, {
               children: [
-                (0, r.jsx)(lW, {
+                (0, r.jsx)(l0, {
                   showUploadModal: o,
                   onShowUploadModal: d,
                   onOpenUpload: f,
@@ -25616,7 +25946,7 @@
                   onClearRestoredOperation: () => h(null),
                 }),
                 a &&
-                  (0, r.jsx)(lY, {
+                  (0, r.jsx)(l1, {
                     onDismiss: () => {
                       (localStorage.setItem('keimenon_welcome_shown', 'true'), l(!1));
                     },

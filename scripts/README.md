@@ -14,8 +14,10 @@ npm run dev:clean:electron
 npm run dev:reset
 npm run factory-reset:status
 npm run factory-reset:global-sweep
+npm run factory-reset:assert-clean-baseline
 npm run settings:schema:repair
 npm run recovery:full-fresh-admin
+npm run recovery:full-fresh-admin:boot
 npm run validate
 npm run check-ports
 npm run kill-ports
@@ -130,7 +132,7 @@ npm run factory-reset:status
 Global sweep reset orchestrator:
 
 1. Resolve canonical runtime DB and storage paths.
-2. Backup known DB/runtime locations to `storage/backups/global-sweep/<timestamp>`.
+2. Backup known DB/runtime locations to `<LOCAL_DOCS_PATH>/maintenance-backups/global-sweep/<timestamp>`.
 3. Run canonical full-fresh factory reset.
 4. Purge stale non-canonical DB/runtime residues.
 
@@ -148,6 +150,32 @@ One-time repair for settings/BYOK schema drift (`account_api_keys`, `account_ai_
 npm run settings:schema:repair
 ```
 
+### `ops/repair-duplicate-groups.js`
+
+One-time canonicalization repair for duplicate group labels and stale catch-all groups.
+
+- merges duplicate `Group` nodes by account-scoped normalized label
+- rewires memberships/edges to the canonical group node
+- removes catch-all label groups (`Other / Uncategorized`) and their stale edges
+- recomputes `member_count` from `IN_GROUP` edges
+
+```bash
+npm run groups:repair:canonicalize
+```
+
+### `ops/assert-clean-baseline.js`
+
+Asserts a clean post-reset baseline on the canonical runtime DB:
+
+- `admin@admin.com` exists
+- no non-admin users/accounts remain
+- `jobs`, `upload_sessions`, and `sessions` are empty
+- graph only contains optional seed hierarchy kinds (`AccountNode`, `Principal`, legacy principal-compat kinds)
+
+```bash
+npm run factory-reset:assert-clean-baseline
+```
+
 ### `ops/recover-fresh-admin.js`
 
 One-shot recovery command for local dev incidents:
@@ -156,10 +184,38 @@ One-shot recovery command for local dev incidents:
 2. run global-sweep full-fresh reset
 3. repair settings schema
 4. print reset status
+5. assert clean baseline invariants
+6. optionally boot desktop stack
 
 ```bash
 npm run recovery:full-fresh-admin
+npm run recovery:full-fresh-admin:boot
 ```
+
+### `ops/split-chat-export.js`
+
+Deterministic conversation-boundary splitter for large AI chat export fixtures.
+
+- Keeps original conversation order.
+- Never splits inside a conversation.
+- Produces minified top-level JSON arrays for upload testing.
+- Replaces prior split outputs + manifest on re-run.
+
+```bash
+npm run test:data:split
+npm run test:data:split -- --verify
+npm run test:data:split -- --input agent_context/test_data/conversations.json --output-dir agent_context/test_data/splits --parts 10 --verify
+```
+
+Outputs:
+
+- `conversations.part-01-of-10.json` ... `conversations.part-10-of-10.json`
+- `conversations.split-manifest.json` with input hash/size plus per-part conversation/message/byte counts and conversation UUID bounds.
+
+Notes:
+
+- Generated files under `agent_context/test_data/splits/` are local test artifacts and are git-ignored.
+- If `--parts` is greater than conversation count, the script automatically uses one conversation per part (no empty split files).
 
 ## Gate E Hardening Scripts
 

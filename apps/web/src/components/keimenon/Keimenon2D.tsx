@@ -36,6 +36,15 @@ interface Keimenon2DProps {
   onLodStats?: (stats: LodPlanStats) => void;
   onPinnedNodeIdsChange?: (nodeIds: string[]) => void;
   onInteractionStateChange?: (state: GraphInteractionState) => void;
+  onVisibilityDiagnostics?: (payload: {
+    webGlReady: boolean | null;
+    lens: RenderLens;
+    totalNodeCount: number;
+    lodVisibleNodeCount: number;
+    lensVisibleNodeCount: number;
+    width: number;
+    height: number;
+  }) => void;
 }
 
 export interface Keimenon2DHandle {
@@ -69,6 +78,7 @@ export const Keimenon2D = memo(
         onLodStats,
         onPinnedNodeIdsChange,
         onInteractionStateChange,
+        onVisibilityDiagnostics,
       },
       ref
     ) => {
@@ -105,6 +115,7 @@ export const Keimenon2D = memo(
           onLodStats={onLodStats}
           onPinnedNodeIdsChange={onPinnedNodeIdsChange}
           onInteractionStateChange={onInteractionStateChange}
+          onVisibilityDiagnostics={onVisibilityDiagnostics}
         />
       );
     }

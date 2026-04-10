@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Folder, Tag, Filter, Grid } from 'lucide-react';
 import { TreeNode } from '@/components/common/NavigationBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { errorCapture } from '@/services/error-capture.service';
 import { API_BASE_URL } from '@/lib/env.config';
-import type { GraphNode, GraphEdge } from '@/lib/api-client';
-
-const TOKEN_KEY = 'keimenon_token';
+import { authenticatedFetch, type GraphNode, type GraphEdge } from '@/lib/api-client';
+import { IMPORT_GRAPH_REFRESH_EVENT } from '@/lib/import-refresh-events';
 
 interface GroupNode {
   id: string;
@@ -36,93 +35,19 @@ export function useGroupsTree() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Only fetch if user is authenticated
+  const fetchGroupsTree = useCallback(async () => {
     if (!user) {
       setTreeData([]);
       setLoading(false);
       return;
     }
 
-    const fetchGroupsTree = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Get auth token
-        const token = localStorage.getItem(TOKEN_KEY);
-        if (!token) {
-          throw new Error('Not authenticated');
-        }
-
-        // Fetch root groups and folders
-        const response = await fetch(`${API_BASE_URL}/api/v1/groups`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        const groups: GroupNode[] = data.groups || [];
-
-        // Transform to TreeNode format
-        const tree: TreeNode[] = groups.map((group) => groupToTreeNode(group));
-
-        setTreeData(tree);
-      } catch (err: any) {
-        console.error('Failed to fetch groups tree:', err);
-
-        // Capture error for console display
-        const capturedError = errorCapture.capture(
-          err,
-          {
-            domain: 'api',
-            operation: 'groups.fetchTree',
-            userId: user.userId,
-            accountId: user.accountId,
-            metadata: {
-              component: 'useGroupsTree',
-              endpoint: '/api/v1/groups',
-            },
-          },
-          'error'
-        );
-
-        const userMessage = capturedError.userMessage || err.message || 'Failed to load groups';
-        setError(userMessage);
-        setTreeData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchGroupsTree();
-  }, [user]);
-
-  /**
-   * Refetch groups (for after create/update/delete)
-   */
-  const refetch = async () => {
-    if (!user) return;
-
     try {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/v1/groups`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/groups`, {
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -135,32 +60,58 @@ export function useGroupsTree() {
       const data = await response.json();
       const groups: GroupNode[] = data.groups || [];
       const tree: TreeNode[] = groups.map((group) => groupToTreeNode(group));
-
       setTreeData(tree);
     } catch (err: any) {
-      console.error('Failed to refetch groups tree:', err);
+      console.error('Failed to fetch groups tree:', err);
 
-      // Capture error for console display
       const capturedError = errorCapture.capture(
         err,
         {
           domain: 'api',
-          operation: 'groups.refetch',
+          operation: 'groups.fetchTree',
           userId: user.userId,
           accountId: user.accountId,
           metadata: {
-            component: 'useGroupsTree.refetch',
+            component: 'useGroupsTree',
             endpoint: '/api/v1/groups',
           },
         },
         'error'
       );
 
-      const userMessage = capturedError.userMessage || err.message || 'Failed to reload groups';
+      const userMessage = capturedError.userMessage || err.message || 'Failed to load groups';
       setError(userMessage);
+      setTreeData([]);
     } finally {
       setLoading(false);
     }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setTreeData([]);
+      setLoading(false);
+      return;
+    }
+
+    void fetchGroupsTree();
+
+    const onImportGraphRefresh = () => {
+      void fetchGroupsTree();
+    };
+
+    window.addEventListener(IMPORT_GRAPH_REFRESH_EVENT, onImportGraphRefresh);
+    return () => {
+      window.removeEventListener(IMPORT_GRAPH_REFRESH_EVENT, onImportGraphRefresh);
+    };
+  }, [fetchGroupsTree, user]);
+
+  /**
+   * Refetch groups (for after create/update/delete)
+   */
+  const refetch = async () => {
+    if (!user) return;
+    await fetchGroupsTree();
   };
 
   return { treeData, loading, error, refetch };
@@ -209,14 +160,8 @@ function groupToTreeNode(group: GroupNode): TreeNode {
  */
 export async function fetchFolderChildren(folderId: string): Promise<TreeNode[]> {
   try {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) {
-      throw new Error('Not authenticated');
-    }
-
-    const response = await fetch(`${API_BASE_URL}/api/v1/groups/${folderId}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/groups/${folderId}`, {
       headers: {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
@@ -261,15 +206,9 @@ export async function fetchGroupMembers(
   recursive = false
 ): Promise<GroupMembersPayload> {
   try {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) {
-      throw new Error('Not authenticated');
-    }
-
     const url = `${API_BASE_URL}/api/v1/groups/${groupId}/nodes${recursive ? '?recursive=true' : ''}`;
-    const response = await fetch(url, {
+    const response = await authenticatedFetch(url, {
       headers: {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });

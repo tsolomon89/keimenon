@@ -225,4 +225,28 @@ describe('graph-lod', () => {
       expect(plan.stats.pinnedNodeCount).toBe(1);
     }
   });
+
+  it('falls back to hierarchy anchors when filters would hide all nodes', () => {
+    const nodes: GraphNode[] = [
+      createNode(21, 'AccountNode', 0.01),
+      createNode(22, 'Principal', 0.01),
+      createNode(23, 'Group', 0.01),
+      createNode(24, 'Lexeme', 0.01),
+    ];
+
+    const plan = buildLodPlan({
+      nodes,
+      edges: [],
+      zoom: 0.1,
+      minMass: 0.99,
+      optimizeLevel: 2,
+    });
+
+    expect(plan.visibleNodes.length).toBeGreaterThan(0);
+    expect(
+      plan.visibleNodes.some((node) =>
+        ['AccountNode', 'Principal', 'Group', 'Source', 'SourceDoc'].includes(node.kind)
+      )
+    ).toBe(true);
+  });
 });

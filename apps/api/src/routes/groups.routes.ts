@@ -29,6 +29,16 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
     return kind === 'Folder' ? 'Untitled Folder' : 'Untitled Group';
   };
 
+  const CATCH_ALL_LABEL_KEYS = new Set([
+    'other',
+    'uncategorized',
+    'other / uncategorized',
+    'other/uncategorized',
+  ]);
+
+  const normalizeGroupLabelKey = (raw: string): string =>
+    raw.replace(/\s+/g, ' ').trim().toLowerCase();
+
   /**
    * GET /api/v1/groups
    * List root folders and groups (tenant-scoped)
@@ -112,10 +122,41 @@ export function createGroupsRoutes(db: SQLiteClient, authService: AuthService): 
         };
       });
 
+      const dedupedTreeNodes: typeof treeNodes = [];
+      const byLabelKey = new Map<string, (typeof treeNodes)[number]>();
+
+      for (const node of treeNodes) {
+        if (node.kind !== 'Group') {
+          dedupedTreeNodes.push(node);
+          continue;
+        }
+
+        const labelKey = normalizeGroupLabelKey(node.label || '');
+        if (!labelKey || CATCH_ALL_LABEL_KEYS.has(labelKey)) {
+          continue;
+        }
+
+        const existing = byLabelKey.get(labelKey);
+        if (!existing) {
+          byLabelKey.set(labelKey, node);
+          dedupedTreeNodes.push(node);
+          continue;
+        }
+
+        const existingBadge = Number(existing.badge || 0);
+        const nextBadge = Number(node.badge || 0);
+        existing.badge = existingBadge + nextBadge;
+        existing.metadata = {
+          ...(existing.metadata || {}),
+          member_count: Number((existing.metadata || {}).member_count || 0) + nextBadge,
+          normalized_label_key: labelKey,
+        };
+      }
+
       return res.json({
         success: true,
-        groups: treeNodes,
-        count: treeNodes.length,
+        groups: dedupedTreeNodes,
+        count: dedupedTreeNodes.length,
       });
     } catch (error: any) {
       console.error('List groups error:', error);

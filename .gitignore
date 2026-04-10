@@ -153,6 +153,7 @@ ai_context/chat_data/claude_conversations.json
 ai_context/chat_data/gpt_conversations.json
 ai_context/chat_data/gpt_projects.json
 ai_context/chat_data/test-samples/medium.json
+agent_context/test_data/splits/
 
 # Large upload files
 apps/api/uploads/*

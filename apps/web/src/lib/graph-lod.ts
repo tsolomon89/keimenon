@@ -78,6 +78,18 @@ const L2_KINDS = new Set([
   'SourceSpan',
 ]);
 
+const HIERARCHY_ANCHOR_KINDS = new Set([
+  'AccountNode',
+  'Principal',
+  'UserNode',
+  'AgentNode',
+  'Group',
+  'Source',
+  'SourceDoc',
+  'ConversationThread',
+  'ChatThread',
+]);
+
 const COMMON_CONNECTOR_TERMS = new Set([
   'the',
   'a',
@@ -411,6 +423,15 @@ export function buildLodPlan(input: BuildLodPlanInput): LodPlan {
 
       visibleNodes.push(pinnedNode);
       currentlyVisible.add(pinnedNodeId);
+    }
+  }
+
+  if (input.nodes.length > 0 && visibleNodes.length === 0) {
+    const fallbackAnchors = input.nodes.filter((node) => HIERARCHY_ANCHOR_KINDS.has(node.kind));
+    if (fallbackAnchors.length > 0) {
+      visibleNodes = sortNodesByMass(fallbackAnchors).slice(0, nodeBudget);
+    } else {
+      visibleNodes = sortNodesByMass(input.nodes).slice(0, Math.max(1, Math.min(nodeBudget, 8)));
     }
   }
 

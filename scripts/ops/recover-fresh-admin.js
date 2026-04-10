@@ -6,6 +6,8 @@
  * 2) run global-sweep full fresh reset (admin preserved)
  * 3) repair settings schema
  * 4) print reset status
+ * 5) assert clean baseline invariants
+ * 6) optionally boot desktop stack
  */
 
 const path = require('node:path');
@@ -40,10 +42,17 @@ function runStep(label, scriptName) {
 }
 
 function main() {
+  const shouldBootDesktop = process.argv.includes('--boot');
+
   runStep('stop dev processes', 'dev:stop');
   runStep('global sweep reset', 'factory-reset:global-sweep');
   runStep('settings schema repair', 'settings:schema:repair');
   runStep('status report', 'factory-reset:status');
+  runStep('clean baseline assertion', 'factory-reset:assert-clean-baseline');
+
+  if (shouldBootDesktop) {
+    runStep('desktop clean boot', 'dev:clean:electron');
+  }
 
   console.log('[recover-fresh-admin] complete');
 }

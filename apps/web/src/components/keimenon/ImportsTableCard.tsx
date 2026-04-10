@@ -35,16 +35,16 @@ import {
   PlayCircle,
 } from 'lucide-react';
 import { useOperating } from '@/contexts/OperatingContext';
-import { getToken } from '@/contexts/AuthContext';
 import {
   useBackgroundOperations,
   type OperationType,
 } from '@/contexts/BackgroundOperationsContext';
 import { useJobStream, type JobUpdate } from '@/hooks/useJobStream';
 import { errorCapture } from '@/services/error-capture.service';
-import { cancelJob, pauseJob, resumeJob } from '@/lib/api-client';
+import { authenticatedFetch, resumeJob, retryJob } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/env.config';
 import { useKeimenonStore } from '@/store/keimenonStore';
+import { emitImportGraphRefresh } from '@/lib/import-refresh-events';
 import {
   deriveImportProgress,
   normalizeImportProgressPercent,
@@ -90,6 +90,11 @@ export interface ImportJob {
     edgesDeleted?: number;
   };
   error?: string;
+  errorCode?: string;
+  blockedReason?: string;
+  blockedReasonCode?: string;
+  recoverableAfterRestart?: boolean;
+  interruptedReason?: string;
 }
 
 interface ImportsTableCardProps {
@@ -241,9 +246,35 @@ function JobRow({
               </>
             )
           ) : job.status === 'error' ? (
-            <div className="text-red-400 truncate max-w-24" title={job.error}>
-              {job.error || 'Failed'}
-            </div>
+            <>
+              <div className="text-red-400 truncate max-w-24" title={job.error}>
+                {job.error || 'Failed'}
+              </div>
+              {job.errorCode && (
+                <div
+                  className="text-[10px] text-red-300/80 truncate max-w-24"
+                  title={job.errorCode}
+                >
+                  {job.errorCode}
+                </div>
+              )}
+            </>
+          ) : job.status === 'blocked' ? (
+            <>
+              <div className="text-yellow-300 truncate max-w-24" title={job.blockedReason}>
+                {job.blockedReason || 'Blocked'}
+              </div>
+              <div
+                className="text-[10px] text-yellow-200/80 truncate max-w-24"
+                title={job.blockedReasonCode || job.interruptedReason}
+              >
+                {job.blockedReasonCode ||
+                  job.interruptedReason ||
+                  (job.recoverableAfterRestart
+                    ? 'Recoverable restart interruption'
+                    : 'Manual pause')}
+              </div>
+            </>
           ) : operationType === 'deletion' ? (
             <div>{job.stats.nodesDeleted?.toLocaleString() ?? 0} nodes deleted</div>
           ) : (
@@ -338,6 +369,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
   const abortControllerRef = useRef<AbortController | null>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
   const listHeight = useContainerHeight(listContainerRef, 400);
+  const refreshedCompletedImportsRef = useRef<Set<string>>(new Set());
 
   // Track locally deleted jobs to prevent "zombie" resurrections from API race conditions
   const deletedJobIdsRef = useRef<Set<string>>(new Set());
@@ -427,6 +459,34 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
     return jobs.some((job) => selectedJobIds.has(job.id) && job.status === 'done');
   }, [jobs, selectedJobIds]);
 
+  const selectedRecoverableBlockedJobs = useMemo(
+    () =>
+      jobs.filter(
+        (job) =>
+          selectedJobIds.has(job.id) &&
+          job.status === 'blocked' &&
+          job.recoverableAfterRestart === true
+      ),
+    [jobs, selectedJobIds]
+  );
+
+  const selectedFreshRetryJobs = useMemo(
+    () =>
+      jobs.filter(
+        (job) => selectedJobIds.has(job.id) && (job.status === 'error' || job.status === 'blocked')
+      ),
+    [jobs, selectedJobIds]
+  );
+
+  const operatingContextHeaders = useMemo((): HeadersInit => {
+    const headers: HeadersInit = {};
+    if (isOperatingMode && operating.accountId) {
+      headers['X-Operating-Account'] = operating.accountId;
+      headers['X-Operating-Mode'] = operating.mode;
+    }
+    return headers;
+  }, [isOperatingMode, operating.accountId, operating.mode]);
+
   // Convert unified Job API format to ImportJob format
   const convertAPIJobToImportJob = useCallback((apiJob: any): ImportJob => {
     const derived = deriveImportProgress({
@@ -441,6 +501,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
     const fileName =
       apiJob.fileName || apiJob.config?.files?.[0]?.fileName || `Job ${apiJob.id.substring(0, 8)}`;
     const platform = apiJob.config?.platform;
+    const stateMetadata = apiJob.state_data?.metadata || {};
 
     return {
       id: apiJob.id,
@@ -473,6 +534,19 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
         edgesDeleted: apiJob.state_data?.stats?.edgesDeleted || 0,
       },
       error: apiJob.state_data?.error?.message,
+      errorCode: apiJob.state_data?.error?.code,
+      blockedReason: apiJob.state_data?.blockedReason,
+      blockedReasonCode:
+        typeof stateMetadata.interruptedReason === 'string'
+          ? stateMetadata.interruptedReason
+          : undefined,
+      recoverableAfterRestart:
+        stateMetadata.recoverableAfterRestart === true &&
+        stateMetadata.interruptedReason === 'SERVER_RESTART',
+      interruptedReason:
+        typeof stateMetadata.interruptedReason === 'string'
+          ? stateMetadata.interruptedReason
+          : undefined,
     };
   }, []);
 
@@ -557,6 +631,17 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
               existing?.error ||
               (sseJob.status === 'canceled' ? 'Job canceled' : 'Job failed')
             : undefined,
+        errorCode:
+          derived.status === 'error'
+            ? sseJob.error?.code || existing?.errorCode
+            : existing?.errorCode,
+        blockedReason: sseJob.blockedReason ?? existing?.blockedReason,
+        blockedReasonCode: sseJob.blockedReasonCode ?? existing?.blockedReasonCode,
+        recoverableAfterRestart:
+          typeof sseJob.recoverableAfterRestart === 'boolean'
+            ? sseJob.recoverableAfterRestart
+            : existing?.recoverableAfterRestart,
+        interruptedReason: sseJob.interruptedReason ?? existing?.interruptedReason,
       };
     },
     []
@@ -579,6 +664,25 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       });
     }
   }, [sseJobs, convertSSEJobToImportJob]);
+
+  // Deterministic post-import refresh fallback:
+  // if a job reaches terminal "done" in this panel, force graph + group refresh once.
+  useEffect(() => {
+    for (const job of jobs) {
+      if (job.type !== 'import' || job.status !== 'done') {
+        continue;
+      }
+
+      if (refreshedCompletedImportsRef.current.has(job.id)) {
+        continue;
+      }
+
+      refreshedCompletedImportsRef.current.add(job.id);
+      useKeimenonStore.getState().setFilteredNodeIds(null);
+      void useKeimenonStore.getState().loadGraphData();
+      emitImportGraphRefresh({ jobId: job.id, reason: 'import_modal_complete' });
+    }
+  }, [jobs]);
 
   // Update job from SSE progress event
   const updateJobFromProgress = useCallback((uploadId: string, progress: any) => {
@@ -694,24 +798,14 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       try {
         setLoading(true);
 
-        // Prepare headers with operating context
-        const token = getToken();
-        const headers: HeadersInit = {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        };
-
-        // Add operating context headers if in CRM/nested mode
-        if (isOperatingMode && operating.accountId) {
-          headers['X-Operating-Account'] = operating.accountId;
-          headers['X-Operating-Mode'] = operating.mode;
-        }
-
         // Fetch from real API endpoint with 5 second timeout
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/jobs?limit=50`, {
-          headers,
+        const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/jobs?limit=50`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...operatingContextHeaders,
+          },
           signal: controller.signal,
         });
 
@@ -779,7 +873,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
         abortControllerRef.current.abort();
       }
     };
-  }, [operating, isOperatingMode, operatingContextVersion, convertAPIJobToImportJob]); // Re-fetch when operating context changes
+  }, [operatingContextHeaders, operatingContextVersion, convertAPIJobToImportJob]); // Re-fetch when operating context changes
 
   // Auto-refresh on tab focus - catch any updates that happened while tab was hidden
   useEffect(() => {
@@ -792,19 +886,11 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         try {
-          const token = getToken();
-          const headers: HeadersInit = {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          };
-
-          if (isOperatingMode && operating.accountId) {
-            headers['X-Operating-Account'] = operating.accountId;
-            headers['X-Operating-Mode'] = operating.mode;
-          }
-
-          const response = await fetch(`${API_BASE_URL}/api/v1/jobs?limit=50`, {
-            headers,
+          const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/jobs?limit=50`, {
+            headers: {
+              'Content-Type': 'application/json',
+              ...operatingContextHeaders,
+            },
             signal: controller.signal,
           });
 
@@ -835,7 +921,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [operating, isOperatingMode, convertAPIJobToImportJob]);
+  }, [operatingContextHeaders, convertAPIJobToImportJob]);
 
   // Handle bulk delete
   const handleDeleteSelected = async () => {
@@ -915,17 +1001,10 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
     console.log('[DELETE] State updated: isDeleting = true');
 
     try {
-      const token = getToken();
       const headers: HeadersInit = {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
+        ...operatingContextHeaders,
       };
-
-      // Add operating context headers if in CRM/nested mode
-      if (isOperatingMode && operating.accountId) {
-        headers['X-Operating-Account'] = operating.accountId;
-        headers['X-Operating-Mode'] = operating.mode;
-      }
 
       // ==================== PRE-DELETE VALIDATION & DIAGNOSTICS ====================
       console.log('='.repeat(80));
@@ -962,8 +1041,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
 
       // Log auth context
       console.log(`[DELETE] Auth headers:`, {
-        hasToken: !!token,
-        tokenLength: token ? token.length : 0,
+        hasToken: true,
         isOperatingMode,
         operatingAccountId: operating?.accountId,
         operatingMode: operating?.mode,
@@ -973,7 +1051,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       // Delete each selected job
       const deletePromises = Array.from(jobIdsToDelete).map(async (jobId) => {
         try {
-          const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}`, {
+          const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/jobs/${jobId}`, {
             method: 'DELETE',
             headers,
           });
@@ -1192,6 +1270,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
   // Handle bulk retry
   const handleRetrySelected = async () => {
     if (selectedJobIds.size === 0) return;
+    if (selectedFreshRetryJobs.length === 0) return;
 
     // Check if any selected jobs are currently being operated on
     const conflictingJobs = Array.from(selectedJobIds).filter((id) => jobsBeingOperated.has(id));
@@ -1212,49 +1291,11 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
     setBulkActionLoading(true);
 
     try {
-      const token = getToken();
-      const headers: HeadersInit = {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
-
-      // Add operating context headers if in CRM/nested mode
-      if (isOperatingMode && operating.accountId) {
-        headers['X-Operating-Account'] = operating.accountId;
-        headers['X-Operating-Mode'] = operating.mode;
-      }
-
       // Retry each selected job
       const retryPromises = Array.from(selectedJobIds).map(async (jobId) => {
         try {
-          const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/retry`, {
-            method: 'POST',
-            headers,
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-
-            // Capture error with ErrorCaptureService
-            errorCapture.capture(
-              new Error(errorData.error || errorData.message || 'Failed to retry job'),
-              {
-                domain: 'jobs',
-                operation: 'retry',
-                metadata: {
-                  jobId,
-                  statusCode: response.status,
-                  errorData,
-                },
-              },
-              'error'
-            );
-
-            return { jobId, success: false, error: errorData };
-          }
-
-          const data = await response.json();
-          return { jobId, success: true, newJob: data.newJob };
+          const data = await retryJob(jobId);
+          return { jobId, success: true, newJobId: data.jobId };
         } catch (error: any) {
           // Capture network/unexpected errors
           errorCapture.capture(
@@ -1279,7 +1320,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       // Extract new job IDs for success logging
       const newJobIds = results
         .filter((r) => r.status === 'fulfilled' && r.value.success)
-        .map((r) => (r as any).value.newJob?.id)
+        .map((r) => (r as any).value.newJobId)
         .filter(Boolean);
 
       // Log success to console
@@ -1332,6 +1373,77 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
       setJobsBeingOperated((prev) => {
         const next = new Set(prev);
         selectedJobIds.forEach((id) => next.delete(id));
+        return next;
+      });
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleResumeRecoverableSelected = async () => {
+    if (selectedRecoverableBlockedJobs.length === 0) {
+      return;
+    }
+
+    const selectedRecoverableIds = new Set(selectedRecoverableBlockedJobs.map((job) => job.id));
+    setJobsBeingOperated((prev) => new Set([...prev, ...selectedRecoverableIds]));
+    setBulkActionLoading(true);
+
+    try {
+      const resumePromises = Array.from(selectedRecoverableIds).map(async (jobId) => {
+        try {
+          await resumeJob(jobId);
+          return { jobId, success: true };
+        } catch (error: any) {
+          errorCapture.capture(
+            error,
+            {
+              domain: 'jobs',
+              operation: 'resume',
+              metadata: { jobId, errorType: 'resume_failed' },
+            },
+            'error'
+          );
+          return { jobId, success: false, error };
+        }
+      });
+
+      const results = await Promise.allSettled(resumePromises);
+      const successCount = results.filter(
+        (result) => result.status === 'fulfilled' && result.value.success
+      ).length;
+      const failCount = selectedRecoverableIds.size - successCount;
+
+      if (successCount > 0) {
+        errorCapture.info(
+          `Resumed ${successCount} recoverable job${successCount === 1 ? '' : 's'} from restart interruption`,
+          {
+            domain: 'jobs',
+            operation: 'bulkResumeRecoverable',
+            metadata: {
+              successCount,
+              failCount,
+            },
+          }
+        );
+      }
+
+      if (failCount > 0) {
+        errorCapture.warn(
+          `Failed to resume ${failCount} recoverable job${failCount === 1 ? '' : 's'}`,
+          {
+            domain: 'jobs',
+            operation: 'bulkResumeRecoverable',
+            metadata: {
+              successCount,
+              failCount,
+            },
+          }
+        );
+      }
+    } finally {
+      setJobsBeingOperated((prev) => {
+        const next = new Set(prev);
+        selectedRecoverableIds.forEach((id) => next.delete(id));
         return next;
       });
       setBulkActionLoading(false);
@@ -1474,13 +1586,36 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
             <span>{selectedJobIds.size} selected</span>
             <div className="flex items-center gap-2">
               <button
+                onClick={handleResumeRecoverableSelected}
+                disabled={bulkActionLoading || selectedRecoverableBlockedJobs.length === 0}
+                className="flex items-center gap-1 px-2 py-1 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title={
+                  selectedRecoverableBlockedJobs.length === 0
+                    ? 'Select blocked restart-interrupted jobs to resume'
+                    : 'Resume selected recoverable jobs'
+                }
+              >
+                {bulkActionLoading ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <PlayCircle className="w-3 h-3" />
+                )}
+                Resume
+              </button>
+              <button
                 onClick={handleRetrySelected}
-                disabled={bulkActionLoading || selectedJobsIncludeSucceeded}
+                disabled={
+                  bulkActionLoading ||
+                  selectedJobsIncludeSucceeded ||
+                  selectedFreshRetryJobs.length === 0
+                }
                 className="flex items-center gap-1 px-2 py-1 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title={
-                  selectedJobsIncludeSucceeded
-                    ? 'Cannot retry succeeded jobs'
-                    : 'Retry selected jobs'
+                  selectedFreshRetryJobs.length === 0
+                    ? 'Select failed or blocked jobs to start fresh'
+                    : selectedJobsIncludeSucceeded
+                      ? 'Cannot start fresh from succeeded jobs'
+                      : 'Start fresh import from selected jobs'
                 }
               >
                 {bulkActionLoading ? (
@@ -1488,7 +1623,7 @@ export function ImportsTableCard({ onJobSelect, onJobsMultiSelect }: ImportsTabl
                 ) : (
                   <RefreshCw className="w-3 h-3" />
                 )}
-                Retry
+                Start Fresh
               </button>
               <button
                 onClick={(e) => {

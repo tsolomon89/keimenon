@@ -36,6 +36,8 @@ import { logApiEvent, logJobEvent } from '@/lib/error-handler';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOperating } from '@/contexts/OperatingContext';
 import { DEBUG_IMPORT_SELECTOR } from '@/lib/env.config';
+import { useKeimenonStore } from '@/store/keimenonStore';
+import { emitImportGraphRefresh } from '@/lib/import-refresh-events';
 import {
   deriveImportProgress,
   mapImportStatusToUploadStage,
@@ -88,6 +90,19 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
   const [presetBusy, setPresetBusy] = useState(false);
   const [presetError, setPresetError] = useState<string | null>(null);
   const [agentRuntimeEnabled, setAgentRuntimeEnabled] = useState(false);
+
+  const triggerGraphRefresh = useCallback(
+    (
+      jobId?: string,
+      reason: 'import_modal_complete' | 'duplicate_review_applied' = 'import_modal_complete'
+    ) => {
+      const store = useKeimenonStore.getState();
+      store.setFilteredNodeIds(null);
+      void store.loadGraphData();
+      emitImportGraphRefresh({ jobId, reason });
+    },
+    []
+  );
 
   const clearCoreProcessReimportGate = useCallback(async () => {
     try {
@@ -333,6 +348,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       console.log('[ChatImportModal] Import job completed successfully');
 
       const resolvedJobId = currentJobId;
+      triggerGraphRefresh(resolvedJobId, 'import_modal_complete');
       void (async () => {
         try {
           const reviewStatus = await getDuplicateReviewStatus(resolvedJobId);
@@ -811,6 +827,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       }
 
       await clearCoreProcessReimportGate();
+      triggerGraphRefresh(currentJobId, 'duplicate_review_applied');
       setProgress({
         stage: 'ready',
         percent: 100,

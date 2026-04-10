@@ -200,6 +200,14 @@ interface KeimenonState {
 
   // Account isolation
   currentAccountId: string | null;
+  graphLoadMetrics: {
+    apiNodeCount: number;
+    apiEdgeCount: number;
+    structuralNodeCount: number;
+    renderedEdgeCount: number;
+    smartFilterApplied: boolean;
+    loadedAt: number;
+  } | null;
 
   // Actions
   setNodes: (nodes: KeimenonNode[]) => void;
@@ -264,6 +272,7 @@ const initialState = {
     sourceRoleFilter: new Set<SourceRole>(),
   },
   currentAccountId: null,
+  graphLoadMetrics: null,
 };
 
 export const useKeimenonStore = create<KeimenonState>()(
@@ -309,7 +318,8 @@ export const useKeimenonStore = create<KeimenonState>()(
           // Performance: auto-filter to structural nodes when data volume is large
           // This prevents the D3 simulation from choking on 100K+ Lexeme/Phrase nodes
           let keimenonNodes = allNodes;
-          if (allNodes.length > SMART_FILTER_THRESHOLD) {
+          const smartFilterApplied = allNodes.length > SMART_FILTER_THRESHOLD;
+          if (smartFilterApplied) {
             keimenonNodes = allNodes.filter((n) => STRUCTURAL_KINDS.has(n.kind || n.type));
             console.info(
               `[Keimenon] Smart filter: ${allNodes.length} nodes → ${keimenonNodes.length} structural nodes`
@@ -329,12 +339,21 @@ export const useKeimenonStore = create<KeimenonState>()(
             edges: keimenonEdges,
             isLoading: false,
             error: null,
+            graphLoadMetrics: {
+              apiNodeCount: allNodes.length,
+              apiEdgeCount: edgesResult.edges.length,
+              structuralNodeCount: keimenonNodes.length,
+              renderedEdgeCount: keimenonEdges.length,
+              smartFilterApplied,
+              loadedAt: Date.now(),
+            },
           });
         } catch (error: any) {
           console.error('Failed to load graph data:', error);
           set({
             isLoading: false,
             error: error.message || 'Failed to load graph data',
+            graphLoadMetrics: null,
           });
         }
       },

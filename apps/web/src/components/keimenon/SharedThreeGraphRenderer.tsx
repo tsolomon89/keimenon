@@ -75,6 +75,15 @@ export interface SharedThreeGraphRendererProps {
   onLodStats?: (stats: LodPlanStats) => void;
   onPinnedNodeIdsChange?: (nodeIds: string[]) => void;
   onInteractionStateChange?: (state: GraphInteractionState) => void;
+  onVisibilityDiagnostics?: (payload: {
+    webGlReady: boolean | null;
+    lens: RenderLens;
+    totalNodeCount: number;
+    lodVisibleNodeCount: number;
+    lensVisibleNodeCount: number;
+    width: number;
+    height: number;
+  }) => void;
 }
 
 export interface SharedThreeGraphRendererHandle {
@@ -96,6 +105,16 @@ interface RenderEdgeReference {
   sourceId: string;
   targetId: string;
 }
+
+const LENS_FALLBACK_ANCHOR_KINDS = new Set([
+  'AccountNode',
+  'Principal',
+  'UserNode',
+  'AgentNode',
+  'Group',
+  'Source',
+  'SourceDoc',
+]);
 
 interface SceneController {
   zoomIn: () => void;
@@ -649,6 +668,7 @@ export const SharedThreeGraphRenderer = forwardRef<
       onLodStats,
       onPinnedNodeIdsChange,
       onInteractionStateChange,
+      onVisibilityDiagnostics,
     },
     ref
   ) => {
@@ -755,7 +775,7 @@ export const SharedThreeGraphRenderer = forwardRef<
         return lodPlan.visibleNodes;
       }
 
-      return lodPlan.visibleNodes.filter((node) => {
+      const sliced = lodPlan.visibleNodes.filter((node) => {
         if (pinnedSet.has(node.id) || selectedSet.has(node.id) || focusNeighborhood.has(node.id)) {
           return true;
         }
@@ -765,6 +785,18 @@ export const SharedThreeGraphRenderer = forwardRef<
         }
         return passesNdSlice(vector, ndConfig);
       });
+      if (sliced.length > 0 || lodPlan.visibleNodes.length === 0) {
+        return sliced;
+      }
+
+      const fallbackAnchors = lodPlan.visibleNodes.filter((node) =>
+        LENS_FALLBACK_ANCHOR_KINDS.has(node.kind)
+      );
+      if (fallbackAnchors.length > 0) {
+        return fallbackAnchors.slice(0, Math.max(1, fallbackAnchors.length));
+      }
+
+      return lodPlan.visibleNodes.slice(0, Math.max(1, Math.min(8, lodPlan.visibleNodes.length)));
     }, [
       renderLens,
       lodPlan.visibleNodes,
@@ -773,6 +805,27 @@ export const SharedThreeGraphRenderer = forwardRef<
       focusNeighborhood,
       vectorById,
       ndConfig,
+    ]);
+
+    useEffect(() => {
+      onVisibilityDiagnostics?.({
+        webGlReady,
+        lens: renderLens,
+        totalNodeCount: normalizedNodes.length,
+        lodVisibleNodeCount: lodPlan.visibleNodes.length,
+        lensVisibleNodeCount: visibleNodesForLens.length,
+        width,
+        height,
+      });
+    }, [
+      height,
+      lodPlan.visibleNodes.length,
+      normalizedNodes.length,
+      onVisibilityDiagnostics,
+      renderLens,
+      visibleNodesForLens.length,
+      webGlReady,
+      width,
     ]);
 
     const visibleNodeIdSet = useMemo(

@@ -20,6 +20,7 @@ import { logDataEvent } from '@/lib/error-handler';
 import type { LodPlanStats } from '@/lib/graph-lod';
 import type { NdProjectionConfig, RenderLens } from '@/lib/nd-projection';
 import { useElementSize } from '@/hooks/useElementSize';
+import { IMPORT_GRAPH_REFRESH_EVENT, emitImportGraphRefresh } from '@/lib/import-refresh-events';
 
 interface KeimenonViewportProps {
   onOpenUpload: () => void;
@@ -62,10 +63,12 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
     const isLoading = useKeimenonStore((state) => state.isLoading);
     const error = useKeimenonStore((state) => state.error);
     const filters = useKeimenonStore((state) => state.filters);
+    const graphLoadMetrics = useKeimenonStore((state) => state.graphLoadMetrics);
     const setSelectedNode = useKeimenonStore((state) => state.setSelectedNode);
     const selectNode = useKeimenonStore((state) => state.selectNode);
     const clearSelection = useKeimenonStore((state) => state.clearSelection);
     const loadGraphData = useKeimenonStore((state) => state.loadGraphData);
+    const setFilteredNodeIds = useKeimenonStore((state) => state.setFilteredNodeIds);
 
     // Auto-refresh graph when import job completes
     const handleImportComplete = useCallback(
@@ -73,9 +76,11 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
         logDataEvent('Import job completed, refreshing graph', 'keimenon.import.complete', {
           jobId,
         });
+        setFilteredNodeIds(null);
         loadGraphData();
+        emitImportGraphRefresh({ jobId, reason: 'sse_import_complete' });
       },
-      [loadGraphData]
+      [loadGraphData, setFilteredNodeIds]
     );
 
     // Track active import job for progress visualization
@@ -89,8 +94,30 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
     } | null>(null);
     const [lodStats, setLodStats] = useState<LodPlanStats | null>(null);
     const [pinnedNodeIds, setPinnedNodeIds] = useState<string[]>([]);
+    const [visibilityDiagnostics, setVisibilityDiagnostics] = useState<{
+      webGlReady: boolean | null;
+      lens: RenderLens;
+      totalNodeCount: number;
+      lodVisibleNodeCount: number;
+      lensVisibleNodeCount: number;
+      width: number;
+      height: number;
+    } | null>(null);
+    const lastVisibilityIssueRef = useRef<string | null>(null);
 
     // Find active import job
+    useEffect(() => {
+      const onImportRefresh = () => {
+        setFilteredNodeIds(null);
+        void loadGraphData();
+      };
+
+      window.addEventListener(IMPORT_GRAPH_REFRESH_EVENT, onImportRefresh);
+      return () => {
+        window.removeEventListener(IMPORT_GRAPH_REFRESH_EVENT, onImportRefresh);
+      };
+    }, [loadGraphData, setFilteredNodeIds]);
+
     useEffect(() => {
       let activeJob: string | null = null;
 
@@ -131,6 +158,26 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
     }, [nodes, filters.filteredNodeIds, filters.sourceRoleFilter]);
 
     const hasContent = displayNodes.length > 0;
+    const measuredViewportWidth = containerRef.current?.clientWidth || 0;
+    const measuredViewportHeight = containerRef.current?.clientHeight || 0;
+    const hasZeroViewport =
+      hasContent &&
+      (dimensions.width <= 0 ||
+        dimensions.height <= 0 ||
+        measuredViewportWidth <= 0 ||
+        measuredViewportHeight <= 0);
+    const hasRendererReadyFailure =
+      hasContent &&
+      !hasZeroViewport &&
+      visibilityDiagnostics !== null &&
+      visibilityDiagnostics.webGlReady === false;
+    const hasZeroVisibleNodes =
+      hasContent &&
+      !hasZeroViewport &&
+      visibilityDiagnostics !== null &&
+      visibilityDiagnostics.totalNodeCount > 0 &&
+      visibilityDiagnostics.lensVisibleNodeCount === 0;
+    const canRenderCanvas = hasContent && dimensions.width > 0 && dimensions.height > 0;
 
     useEffect(() => {
       const validNodeIds = new Set(displayNodes.map((node) => node.id));
@@ -140,6 +187,67 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
     useEffect(() => {
       onPinnedNodeCountChange?.(pinnedNodeIds.length);
     }, [onPinnedNodeCountChange, pinnedNodeIds.length]);
+
+    useEffect(() => {
+      const nextIssue = hasZeroViewport
+        ? 'HAS_DATA_BUT_ZERO_VIEWPORT'
+        : hasRendererReadyFailure
+          ? 'HAS_DATA_BUT_RENDERER_NOT_READY'
+          : hasZeroVisibleNodes
+            ? 'HAS_DATA_BUT_ZERO_VISIBLE'
+            : null;
+
+      if (!nextIssue) {
+        lastVisibilityIssueRef.current = null;
+        return;
+      }
+
+      if (lastVisibilityIssueRef.current === nextIssue) {
+        return;
+      }
+
+      lastVisibilityIssueRef.current = nextIssue;
+      logDataEvent('Keimenon visibility diagnostics', `keimenon.visibility.${nextIssue}`, {
+        issue: nextIssue,
+        lens: renderLens,
+        measuredViewportWidth,
+        measuredViewportHeight,
+        observedWidth: dimensions.width,
+        observedHeight: dimensions.height,
+        totalNodes: visibilityDiagnostics?.totalNodeCount ?? displayNodes.length,
+        lodVisibleNodes:
+          visibilityDiagnostics?.lodVisibleNodeCount ?? lodStats?.visibleNodeCount ?? 0,
+        lensVisibleNodes: visibilityDiagnostics?.lensVisibleNodeCount ?? 0,
+        storeNodeCount: nodes.length,
+        storeEdgeCount: edges.length,
+        filterNodeIdCount: filters.filteredNodeIds?.length ?? null,
+        sourceRoleFilterCount: filters.sourceRoleFilter.size,
+        apiNodeCount: graphLoadMetrics?.apiNodeCount ?? null,
+        apiEdgeCount: graphLoadMetrics?.apiEdgeCount ?? null,
+        smartFilterApplied: graphLoadMetrics?.smartFilterApplied ?? null,
+      });
+    }, [
+      edges.length,
+      dimensions.height,
+      dimensions.width,
+      displayNodes.length,
+      filters.filteredNodeIds,
+      filters.sourceRoleFilter.size,
+      graphLoadMetrics?.apiEdgeCount,
+      graphLoadMetrics?.apiNodeCount,
+      graphLoadMetrics?.smartFilterApplied,
+      hasRendererReadyFailure,
+      hasZeroViewport,
+      hasZeroVisibleNodes,
+      lodStats?.visibleNodeCount,
+      measuredViewportHeight,
+      measuredViewportWidth,
+      nodes.length,
+      renderLens,
+      visibilityDiagnostics?.lensVisibleNodeCount,
+      visibilityDiagnostics?.lodVisibleNodeCount,
+      visibilityDiagnostics?.totalNodeCount,
+    ]);
 
     // Expose camera control methods to parent via ref.
     useImperativeHandle(
@@ -306,7 +414,7 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
         )}
 
         {/* Keimenon content or empty state */}
-        {!isLoading && !error && hasContent && dimensions.width > 0 && (
+        {!isLoading && !error && hasContent && canRenderCanvas && (
           <>
             <Keimenon2D
               ref={keimenon2DRef}
@@ -325,6 +433,7 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
               onEdgeHover={handleEdgeHover}
               onLodStats={setLodStats}
               onPinnedNodeIdsChange={setPinnedNodeIds}
+              onVisibilityDiagnostics={setVisibilityDiagnostics}
             />
 
             {/* Progress Visualization Overlay - Game Dev Techniques */}
@@ -365,6 +474,41 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
               </div>
             )}
           </>
+        )}
+
+        {!isLoading && !error && hasContent && hasZeroViewport && (
+          <div className="absolute inset-0 flex items-center justify-center px-6">
+            <div className="max-w-lg w-full rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 text-amber-100">
+              <h3 className="text-lg font-semibold mb-2">Canvas viewport is not ready</h3>
+              <p className="text-sm text-amber-50/90 mb-4">
+                Data is loaded, but the renderer viewport reported zero size. Keimenon will retry on
+                resize automatically.
+              </p>
+              <div className="text-xs text-amber-100/80 space-y-1 mb-4">
+                <p>
+                  Measured element: {measuredViewportWidth} x {measuredViewportHeight}
+                </p>
+                <p>
+                  Observed canvas: {dimensions.width} x {dimensions.height}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(new Event('resize'));
+                }}
+                className="px-3 py-2 text-sm rounded bg-amber-400 text-slate-900 hover:bg-amber-300"
+              >
+                Retry viewport measurement
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!isLoading && !error && hasContent && canRenderCanvas && hasZeroVisibleNodes && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+            Dataset loaded but no nodes are currently visible for this lens/LOD profile.
+          </div>
         )}
 
         {!isLoading && !error && !hasContent && (
