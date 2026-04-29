@@ -2308,6 +2308,30 @@ export async function completeCoreProcessReimport(): Promise<{ success: boolean 
   return response.json();
 }
 
+export async function createUnifiedDocument(payload: {
+  plan: any;
+  title?: string;
+}): Promise<{ success: boolean; unifiedDocument: any }> {
+  try {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/spine/unified-doc`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
 /**
  * Axios-style API client for compatibility with existing code
  * Now includes automatic token expiration handling and 401/403 interception

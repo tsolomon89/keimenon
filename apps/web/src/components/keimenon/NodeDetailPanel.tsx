@@ -42,6 +42,7 @@ import {
   promoteTopic,
   rejectTopic,
   renameTopic,
+  createUnifiedDocument,
 } from '@/lib/api-client';
 import { useKeimenonStore } from '@/store/keimenonStore';
 import { getNodeLabel, LabelableNode } from '@/lib/node-labels';
@@ -115,6 +116,9 @@ function readVerifyTopicOutput(value: unknown): VerifyTopicTaskOutput | null {
 export function NodeDetailPanel() {
   const detailPanelNode = useKeimenonStore((s) => s.detailPanelNode);
   const closeDetailPanel = useKeimenonStore((s) => s.closeDetailPanel);
+  const selectNode = useKeimenonStore((s) => s.selectNode);
+  const loadGraphData = useKeimenonStore((s) => s.loadGraphData);
+  const openDetailPanel = useKeimenonStore((s) => s.openDetailPanel);
   const { loadContent, getContent, isLoading, getError } = useContentLoader();
   const [autoLoaded, setAutoLoaded] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -133,6 +137,12 @@ export function NodeDetailPanel() {
   const [isEditingTopicName, setIsEditingTopicName] = useState(false);
   const [editedTopicName, setEditedTopicName] = useState('');
   const [topicLifecycleError, setTopicLifecycleError] = useState<string | null>(null);
+
+  // Synthesis state
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [synthesizeError, setSynthesizeError] = useState<string | null>(null);
+  const [synthesizeResultId, setSynthesizeResultId] = useState<string | null>(null);
+
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Handle topic verification
@@ -234,6 +244,46 @@ export function NodeDetailPanel() {
     }
   }, [detailPanelNode, editedTopicName]);
 
+  // Handle synthesize
+  const handleSynthesizeUnifiedDocument = useCallback(async () => {
+    if (!detailPanelNode || (detailPanelNode.type !== 'Topic' && detailPanelNode.type !== 'phrase'))
+      return;
+    setIsSynthesizing(true);
+    setSynthesizeError(null);
+    setSynthesizeResultId(null);
+    try {
+      const plan = {
+        rootNodeIds: [detailPanelNode.id],
+        maxHops: 2,
+        includeSuggestedTopics: detailPanelNode.type === 'Topic' && topicStatus === 'suggested',
+      };
+      const response = await createUnifiedDocument({
+        plan,
+        title: `Unified Document from ${detailPanelNode.data?.label || 'Topic/Phrase'}`,
+      });
+      if (response.success && response.unifiedDocument?.nodeId) {
+        setSynthesizeResultId(response.unifiedDocument.nodeId);
+        // Refresh graph to fetch the newly created node and edges
+        await loadGraphData();
+        // The store is updated asynchronously, wait a moment before trying to select
+        setTimeout(() => {
+          const state = useKeimenonStore.getState();
+          const newNode = state.nodes.find((n) => n.id === response.unifiedDocument.nodeId);
+          if (newNode) {
+            selectNode(newNode.id, false);
+            openDetailPanel(newNode);
+          }
+        }, 500);
+      } else {
+        throw new Error('No node ID returned in synthesis response');
+      }
+    } catch (err: any) {
+      setSynthesizeError(err?.message || 'Synthesis failed');
+    } finally {
+      setIsSynthesizing(false);
+    }
+  }, [detailPanelNode, topicStatus, loadGraphData, selectNode, openDetailPanel]);
+
   // Auto-load content when panel opens
   // Bug fix #15: Reset autoLoaded when node changes to ensure new node content loads
   const prevNodeId = useRef<string | null>(null);
@@ -251,6 +301,11 @@ export function NodeDetailPanel() {
       );
       setTopicLifecycleError(null);
       setIsEditingTopicName(false);
+
+      // Reset synthesis state
+      setIsSynthesizing(false);
+      setSynthesizeError(null);
+      setSynthesizeResultId(null);
     }
 
     if (detailPanelNode && !autoLoaded) {
@@ -404,6 +459,44 @@ export function NodeDetailPanel() {
           <ConversationThreadDetailsSection metadata={detailPanelNode.data?.metadata || {}} />
         )}
 
+        {/* Actions - Phrase */}
+        {(detailPanelNode.type === 'Phrase' || detailPanelNode.type === 'phrase') && (
+          <div className="p-4 border-b border-slate-700 bg-slate-800/30">
+            <h3 className="text-sm font-medium text-slate-300 mb-3">Actions</h3>
+
+            <button
+              onClick={handleSynthesizeUnifiedDocument}
+              disabled={isSynthesizing}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-700/80 hover:bg-teal-600 disabled:bg-slate-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
+            >
+              {isSynthesizing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Synthesizing...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4" />
+                  Synthesize Unified Document
+                </>
+              )}
+            </button>
+
+            {synthesizeError && (
+              <div className="mt-3 p-3 bg-red-600/10 border border-red-500/30 rounded-lg">
+                <p className="text-sm text-red-300">{synthesizeError}</p>
+              </div>
+            )}
+
+            {synthesizeResultId && (
+              <div className="mt-3 p-3 bg-emerald-600/10 border border-emerald-500/30 rounded-lg">
+                <p className="text-sm text-emerald-300 font-medium">Synthesis Complete</p>
+                <p className="text-xs text-slate-400 mt-1">ID: {synthesizeResultId}</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Actions - Topic lifecycle + Verify */}
         {detailPanelNode.type === 'Topic' && (
           <div className="p-4 border-b border-slate-700 bg-slate-800/30">
@@ -522,6 +615,38 @@ export function NodeDetailPanel() {
                 </>
               )}
             </button>
+
+            {/* Synthesize topic button */}
+            <button
+              onClick={handleSynthesizeUnifiedDocument}
+              disabled={isSynthesizing}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-700/80 hover:bg-teal-600 disabled:bg-slate-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm mt-3"
+            >
+              {isSynthesizing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Synthesizing...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4" />
+                  Synthesize Unified Document
+                </>
+              )}
+            </button>
+
+            {synthesizeError && (
+              <div className="mt-3 p-3 bg-red-600/10 border border-red-500/30 rounded-lg">
+                <p className="text-sm text-red-300">{synthesizeError}</p>
+              </div>
+            )}
+
+            {synthesizeResultId && (
+              <div className="mt-3 p-3 bg-emerald-600/10 border border-emerald-500/30 rounded-lg">
+                <p className="text-sm text-emerald-300 font-medium">Synthesis Complete</p>
+                <p className="text-xs text-slate-400 mt-1">ID: {synthesizeResultId}</p>
+              </div>
+            )}
 
             {verificationStatus && isVerifying && (
               <div className="mt-3 p-3 bg-slate-700/30 border border-slate-600 rounded-lg">
