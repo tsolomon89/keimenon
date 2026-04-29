@@ -178,5 +178,5 @@ apps/api/uploads/*
 docs/PROJECT_STATUS.md
 docs/OVERVIEW.md
 
-# Large files
-agent_context/test_data/
+# Agent artifacts
+agent_context/
