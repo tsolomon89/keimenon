@@ -81,6 +81,9 @@ export interface SharedThreeGraphRendererProps {
     totalNodeCount: number;
     lodVisibleNodeCount: number;
     lensVisibleNodeCount: number;
+    totalEdgeCount: number;
+    lodVisibleEdgeCount: number;
+    lensVisibleEdgeCount: number;
     width: number;
     height: number;
   }) => void;
@@ -114,6 +117,16 @@ const LENS_FALLBACK_ANCHOR_KINDS = new Set([
   'Group',
   'Source',
   'SourceDoc',
+]);
+
+const LENS_EDGE_SURVIVAL_FLOOR = 16;
+const LENS_HIERARCHY_EDGE_KINDS = new Set([
+  'OWNED_BY',
+  'CREATED_BY',
+  'IN_GROUP',
+  'FOLDS_INTO_FOLDER',
+  'CONTAINS',
+  'HAS_MESSAGE',
 ]);
 
 interface SceneController {
@@ -216,6 +229,24 @@ function resolveNodeColor(node: GraphNode, selected: boolean, pinned: boolean): 
     default:
       return '#64748b';
   }
+}
+
+function sortLensFallbackEdges(edges: GraphEdgeWithData[]): GraphEdgeWithData[] {
+  return [...edges].sort((a, b) => {
+    const aPriority = LENS_HIERARCHY_EDGE_KINDS.has(a.kind) ? 1 : 0;
+    const bPriority = LENS_HIERARCHY_EDGE_KINDS.has(b.kind) ? 1 : 0;
+    if (aPriority !== bPriority) {
+      return bPriority - aPriority;
+    }
+
+    const aStrength = Number(a.data?.strength ?? a.data?.score ?? a.data?.similarity ?? 0);
+    const bStrength = Number(b.data?.strength ?? b.data?.score ?? b.data?.similarity ?? 0);
+    if (aStrength !== bStrength) {
+      return bStrength - aStrength;
+    }
+
+    return a.id.localeCompare(b.id);
+  });
 }
 
 interface SceneRootProps {
@@ -807,27 +838,6 @@ export const SharedThreeGraphRenderer = forwardRef<
       ndConfig,
     ]);
 
-    useEffect(() => {
-      onVisibilityDiagnostics?.({
-        webGlReady,
-        lens: renderLens,
-        totalNodeCount: normalizedNodes.length,
-        lodVisibleNodeCount: lodPlan.visibleNodes.length,
-        lensVisibleNodeCount: visibleNodesForLens.length,
-        width,
-        height,
-      });
-    }, [
-      height,
-      lodPlan.visibleNodes.length,
-      normalizedNodes.length,
-      onVisibilityDiagnostics,
-      renderLens,
-      visibleNodesForLens.length,
-      webGlReady,
-      width,
-    ]);
-
     const visibleNodeIdSet = useMemo(
       () => new Set(visibleNodesForLens.map((node) => node.id)),
       [visibleNodesForLens]
@@ -842,6 +852,53 @@ export const SharedThreeGraphRenderer = forwardRef<
         }),
       [lodPlan.visibleEdges, visibleNodeIdSet]
     );
+
+    const resilientVisibleEdgesForLens = useMemo(() => {
+      if (
+        visibleNodesForLens.length > 0 &&
+        visibleEdgesForLens.length === 0 &&
+        lodPlan.visibleEdges.length > 0
+      ) {
+        const fallbackCandidates = (lodPlan.visibleEdges as GraphEdgeWithData[]).filter((edge) => {
+          const sourceId = edgeEndpointId(edge.source as string | GraphNode);
+          const targetId = edgeEndpointId(edge.target as string | GraphNode);
+          return visibleNodeIdSet.has(sourceId) && visibleNodeIdSet.has(targetId);
+        });
+
+        if (fallbackCandidates.length > 0) {
+          return sortLensFallbackEdges(fallbackCandidates).slice(0, LENS_EDGE_SURVIVAL_FLOOR);
+        }
+      }
+
+      return visibleEdgesForLens;
+    }, [lodPlan.visibleEdges, visibleEdgesForLens, visibleNodeIdSet, visibleNodesForLens.length]);
+
+    useEffect(() => {
+      onVisibilityDiagnostics?.({
+        webGlReady,
+        lens: renderLens,
+        totalNodeCount: normalizedNodes.length,
+        lodVisibleNodeCount: lodPlan.visibleNodes.length,
+        lensVisibleNodeCount: visibleNodesForLens.length,
+        totalEdgeCount: normalizedEdges.length,
+        lodVisibleEdgeCount: lodPlan.visibleEdges.length,
+        lensVisibleEdgeCount: resilientVisibleEdgesForLens.length,
+        width,
+        height,
+      });
+    }, [
+      height,
+      lodPlan.visibleEdges.length,
+      lodPlan.visibleNodes.length,
+      normalizedEdges.length,
+      normalizedNodes.length,
+      onVisibilityDiagnostics,
+      renderLens,
+      resilientVisibleEdgesForLens.length,
+      visibleNodesForLens.length,
+      webGlReady,
+      width,
+    ]);
 
     const baseProjectedPositionById = useMemo(() => {
       const positions = new Map<string, [number, number, number]>();
@@ -919,12 +976,12 @@ export const SharedThreeGraphRenderer = forwardRef<
 
     const renderEdges = useMemo<RenderEdgeReference[]>(
       () =>
-        visibleEdgesForLens.map((edge) => ({
+        resilientVisibleEdgesForLens.map((edge) => ({
           edge,
           sourceId: edgeEndpointId(edge.source as string | GraphNode),
           targetId: edgeEndpointId(edge.target as string | GraphNode),
         })),
-      [visibleEdgesForLens]
+      [resilientVisibleEdgesForLens]
     );
 
     const edgePositions = useMemo(() => {

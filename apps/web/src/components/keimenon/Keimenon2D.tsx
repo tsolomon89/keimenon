@@ -42,6 +42,9 @@ interface Keimenon2DProps {
     totalNodeCount: number;
     lodVisibleNodeCount: number;
     lensVisibleNodeCount: number;
+    totalEdgeCount: number;
+    lodVisibleEdgeCount: number;
+    lensVisibleEdgeCount: number;
     width: number;
     height: number;
   }) => void;

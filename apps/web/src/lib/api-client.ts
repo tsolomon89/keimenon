@@ -1364,6 +1364,22 @@ export interface GraphEdge {
   [key: string]: any;
 }
 
+export interface GraphSnapshotMetadata {
+  total_nodes: number;
+  total_edges: number;
+  selected_node_count: number;
+  selected_edge_count: number;
+  truncated: boolean;
+  selection_strategy: string;
+  edge_kind_breakdown: Record<string, number>;
+}
+
+export interface GraphSnapshotResponse {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  metadata: GraphSnapshotMetadata;
+}
+
 /**
  * Get all nodes from the database
  */
@@ -1431,6 +1447,50 @@ export async function getEdges(params?: {
     return {
       edges: data.edges || [],
       total: data.total || data.metadata?.total || data.edges?.length || 0,
+    };
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+/**
+ * Get deterministic center-graph snapshot for canonical viewport loading.
+ */
+export async function getGraphSnapshot(params?: {
+  node_budget?: number;
+  edge_budget?: number;
+  seed_node_ids?: string[];
+}): Promise<GraphSnapshotResponse> {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params?.node_budget) queryParams.append('node_budget', String(params.node_budget));
+    if (params?.edge_budget) queryParams.append('edge_budget', String(params.edge_budget));
+    if (params?.seed_node_ids && params.seed_node_ids.length > 0) {
+      queryParams.append('seed_node_ids', params.seed_node_ids.join(','));
+    }
+
+    const url = `${API_BASE_URL}/api/v1/graph/snapshot${
+      queryParams.toString() ? `?${queryParams.toString()}` : ''
+    }`;
+    const response = await authenticatedFetch(url);
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    const data = await response.json();
+    return {
+      nodes: data.nodes || [],
+      edges: data.edges || [],
+      metadata: data.metadata || {
+        total_nodes: 0,
+        total_edges: 0,
+        selected_node_count: 0,
+        selected_edge_count: 0,
+        truncated: false,
+        selection_strategy: 'unknown',
+        edge_kind_breakdown: {},
+      },
     };
   } catch (error: any) {
     throw await handleApiError(error);

@@ -27,6 +27,7 @@ export interface WriteQueueMetrics {
   deadLetterItems: number;
   deadLetterEnqueues: number;
   sqlVariableSplitRetries: number;
+  foreignKeyDeferredRetries: number;
 }
 
 export interface SqlVariableSplitDiagnostics {
@@ -46,9 +47,15 @@ export interface FlushResult {
   edgesWritten: number;
   circuitOpen: boolean;
   deadLetterCount: number;
+  deferredForeignKeyCount?: number;
+  deferredEdges?: AnyEdge[];
   diagnostics?: {
     sqlVariableSplit?: SqlVariableSplitDiagnostics;
   };
+}
+
+export interface HandleFlushOptions {
+  allowForeignKeyRequeue?: boolean;
 }
 
 export interface DeadLetterItem {
@@ -73,6 +80,7 @@ export interface WriteQueueErrorHandlerOptions {
 interface EdgeWriteResult {
   success: boolean;
   deferredForeignKey?: boolean;
+  deferredEdge?: AnyEdge;
 }
 
 export class WriteQueueErrorHandler {
@@ -95,6 +103,7 @@ export class WriteQueueErrorHandler {
     deadLetterItems: 0,
     deadLetterEnqueues: 0,
     sqlVariableSplitRetries: 0,
+    foreignKeyDeferredRetries: 0,
   };
 
   private options: Required<WriteQueueErrorHandlerOptions>;
@@ -119,8 +128,13 @@ export class WriteQueueErrorHandler {
   /**
    * Handle flush operation with error recovery.
    */
-  async handleFlush(nodes: AnyNode[], edges: AnyEdge[]): Promise<FlushResult> {
+  async handleFlush(
+    nodes: AnyNode[],
+    edges: AnyEdge[],
+    options: HandleFlushOptions = {}
+  ): Promise<FlushResult> {
     this.metrics.totalAttempts++;
+    const allowForeignKeyRequeue = options.allowForeignKeyRequeue !== false;
 
     if (this.circuitOpen && this.options.enableCircuitBreaker) {
       const resetTimeout = this.options.circuitBreakerResetMs;
@@ -167,9 +181,13 @@ export class WriteQueueErrorHandler {
         const splitResult = await this.tryChunkedWritesForSqlVariableLimit(
           nodes,
           edges,
-          normalizedError
+          normalizedError,
+          allowForeignKeyRequeue
         );
-        if (splitResult.totalWritten === nodes.length + edges.length) {
+        if (
+          splitResult.totalWritten + (splitResult.deferredForeignKeyCount || 0) ===
+          nodes.length + edges.length
+        ) {
           this.consecutiveFailures = 0;
           return splitResult;
         }
@@ -188,14 +206,15 @@ export class WriteQueueErrorHandler {
         this.openCircuit();
       }
 
-      return this.tryIndividualWrites(nodes, edges);
+      return this.tryIndividualWrites(nodes, edges, allowForeignKeyRequeue);
     }
   }
 
   private async tryChunkedWritesForSqlVariableLimit(
     nodes: AnyNode[],
     edges: AnyEdge[],
-    originalError: Error
+    originalError: Error,
+    allowForeignKeyRequeue: boolean
   ): Promise<FlushResult> {
     const diagnostics: SqlVariableSplitDiagnostics = {
       stage: 'write_queue_flush',
@@ -214,8 +233,12 @@ export class WriteQueueErrorHandler {
     );
 
     const nodeWriteResult = await this.processNodesWithAdaptiveChunking(nodes, diagnostics);
-    const edgeWriteResult = await this.processEdgesWithAdaptiveChunking(edges, diagnostics);
-    const successCount = nodeWriteResult + edgeWriteResult;
+    const edgeWriteResult = await this.processEdgesWithAdaptiveChunking(
+      edges,
+      diagnostics,
+      allowForeignKeyRequeue
+    );
+    const successCount = nodeWriteResult + edgeWriteResult.written;
 
     if (successCount > 0) {
       this.metrics.partialSuccesses++;
@@ -224,9 +247,11 @@ export class WriteQueueErrorHandler {
     return {
       totalWritten: successCount,
       nodesWritten: nodeWriteResult,
-      edgesWritten: edgeWriteResult,
+      edgesWritten: edgeWriteResult.written,
       circuitOpen: this.circuitOpen,
       deadLetterCount: this.deadLetterQueue.length,
+      deferredForeignKeyCount: edgeWriteResult.deferredEdges.length,
+      deferredEdges: edgeWriteResult.deferredEdges,
       diagnostics: {
         sqlVariableSplit: diagnostics,
       },
@@ -310,15 +335,18 @@ export class WriteQueueErrorHandler {
 
   private async processEdgesWithAdaptiveChunking(
     edges: AnyEdge[],
-    diagnostics: SqlVariableSplitDiagnostics
-  ): Promise<number> {
+    diagnostics: SqlVariableSplitDiagnostics,
+    allowForeignKeyRequeue: boolean
+  ): Promise<{ written: number; deferredEdges: AnyEdge[] }> {
     if (edges.length === 0) {
-      return 0;
+      return { written: 0, deferredEdges: [] };
     }
 
-    const writeChunk = async (chunk: AnyEdge[]): Promise<number> => {
+    const writeChunk = async (
+      chunk: AnyEdge[]
+    ): Promise<{ written: number; deferredEdges: AnyEdge[] }> => {
       if (chunk.length === 0) {
-        return 0;
+        return { written: 0, deferredEdges: [] };
       }
 
       diagnostics.edgeChunksProcessed += 1;
@@ -328,24 +356,28 @@ export class WriteQueueErrorHandler {
           await this.db.createEdges(chunk);
         } else {
           let fallbackWritten = 0;
+          const deferredEdges: AnyEdge[] = [];
           diagnostics.edgeFallbackWrites += chunk.length;
           for (const edge of chunk) {
-            const result = await this.tryWriteEdge(edge, 0, false);
+            const result = await this.tryWriteEdge(edge, 0, false, allowForeignKeyRequeue);
             if (result.success) {
               fallbackWritten++;
               this.metrics.successfulWrites++;
               this.metrics.successfulEdgeWrites++;
+            } else if (result.deferredForeignKey && result.deferredEdge) {
+              deferredEdges.push(result.deferredEdge);
+              this.metrics.foreignKeyDeferredRetries++;
             } else {
               this.metrics.failedWrites++;
               this.metrics.failedEdgeWrites++;
             }
           }
-          return fallbackWritten;
+          return { written: fallbackWritten, deferredEdges };
         }
 
         this.metrics.successfulWrites += chunk.length;
         this.metrics.successfulEdgeWrites += chunk.length;
-        return chunk.length;
+        return { written: chunk.length, deferredEdges: [] };
       } catch (error: any) {
         const normalized = this.ensureError(error);
         if (this.isSqlVariableLimitError(normalized) && chunk.length > 1) {
@@ -354,42 +386,60 @@ export class WriteQueueErrorHandler {
           this.metrics.sqlVariableSplitRetries += 1;
           const left = await writeChunk(chunk.slice(0, midpoint));
           const right = await writeChunk(chunk.slice(midpoint));
-          return left + right;
+          return {
+            written: left.written + right.written,
+            deferredEdges: [...left.deferredEdges, ...right.deferredEdges],
+          };
         }
 
         diagnostics.edgeFallbackWrites += chunk.length;
         let fallbackWritten = 0;
+        const deferredEdges: AnyEdge[] = [];
         for (const edge of chunk) {
-          const result = await this.tryWriteEdge(edge, 0, false);
+          const result = await this.tryWriteEdge(edge, 0, false, allowForeignKeyRequeue);
           if (result.success) {
             fallbackWritten++;
             this.metrics.successfulWrites++;
             this.metrics.successfulEdgeWrites++;
+          } else if (result.deferredForeignKey && result.deferredEdge) {
+            deferredEdges.push(result.deferredEdge);
+            this.metrics.foreignKeyDeferredRetries++;
           } else {
             this.metrics.failedWrites++;
             this.metrics.failedEdgeWrites++;
           }
         }
-        return fallbackWritten;
+        return { written: fallbackWritten, deferredEdges };
       }
     };
 
     let totalWritten = 0;
+    const deferredEdges: AnyEdge[] = [];
     for (let index = 0; index < edges.length; index += this.SQL_VARIABLE_SAFE_CHUNK_SIZE) {
       const chunk = edges.slice(index, index + this.SQL_VARIABLE_SAFE_CHUNK_SIZE);
-      totalWritten += await writeChunk(chunk);
+      const chunkResult = await writeChunk(chunk);
+      totalWritten += chunkResult.written;
+      deferredEdges.push(...chunkResult.deferredEdges);
     }
 
-    return totalWritten;
+    return {
+      written: totalWritten,
+      deferredEdges,
+    };
   }
 
   /**
    * Try writing items individually for partial success.
    */
-  private async tryIndividualWrites(nodes: AnyNode[], edges: AnyEdge[]): Promise<FlushResult> {
+  private async tryIndividualWrites(
+    nodes: AnyNode[],
+    edges: AnyEdge[],
+    allowForeignKeyRequeue: boolean
+  ): Promise<FlushResult> {
     let nodesWritten = 0;
     let edgesWritten = 0;
     const deferredForeignKeyEdges: AnyEdge[] = [];
+    const unresolvedForeignKeyEdges: AnyEdge[] = [];
 
     for (const node of nodes) {
       const success = await this.tryWriteNode(node);
@@ -409,8 +459,8 @@ export class WriteQueueErrorHandler {
         edgesWritten++;
         this.metrics.successfulWrites++;
         this.metrics.successfulEdgeWrites++;
-      } else if (result.deferredForeignKey) {
-        deferredForeignKeyEdges.push(edge);
+      } else if (result.deferredForeignKey && result.deferredEdge) {
+        deferredForeignKeyEdges.push(result.deferredEdge);
       } else {
         this.metrics.failedWrites++;
         this.metrics.failedEdgeWrites++;
@@ -419,11 +469,14 @@ export class WriteQueueErrorHandler {
 
     // Single deferred retry pass after node writes complete in this flush cycle.
     for (const edge of deferredForeignKeyEdges) {
-      const retryResult = await this.tryWriteEdge(edge, 0, false);
+      const retryResult = await this.tryWriteEdge(edge, 0, false, allowForeignKeyRequeue);
       if (retryResult.success) {
         edgesWritten++;
         this.metrics.successfulWrites++;
         this.metrics.successfulEdgeWrites++;
+      } else if (retryResult.deferredForeignKey && retryResult.deferredEdge) {
+        unresolvedForeignKeyEdges.push(retryResult.deferredEdge);
+        this.metrics.foreignKeyDeferredRetries++;
       } else {
         this.metrics.failedWrites++;
         this.metrics.failedEdgeWrites++;
@@ -441,6 +494,8 @@ export class WriteQueueErrorHandler {
       edgesWritten,
       circuitOpen: this.circuitOpen,
       deadLetterCount: this.deadLetterQueue.length,
+      deferredForeignKeyCount: unresolvedForeignKeyEdges.length,
+      deferredEdges: unresolvedForeignKeyEdges,
     };
   }
 
@@ -468,7 +523,8 @@ export class WriteQueueErrorHandler {
   private async tryWriteEdge(
     edge: AnyEdge,
     attemptCount: number = 0,
-    deferForeignKeyDeadLetter: boolean = false
+    deferForeignKeyDeadLetter: boolean = false,
+    allowForeignKeyRequeue: boolean = false
   ): Promise<EdgeWriteResult> {
     try {
       if (this.db.createEdge) {
@@ -491,8 +547,8 @@ export class WriteQueueErrorHandler {
         this.metrics.fkConstraintFailures++;
       }
 
-      if (isForeignKeyFailure && deferForeignKeyDeadLetter) {
-        return { success: false, deferredForeignKey: true };
+      if (isForeignKeyFailure && (deferForeignKeyDeadLetter || allowForeignKeyRequeue)) {
+        return { success: false, deferredForeignKey: true, deferredEdge: edge };
       }
 
       this.addToDeadLetterQueue(
@@ -504,6 +560,22 @@ export class WriteQueueErrorHandler {
       );
       return { success: false };
     }
+  }
+
+  forceDeadLetterEdge(
+    edge: AnyEdge,
+    reason: string = 'FK_MISSING_ENDPOINT',
+    message: string = 'Unresolved foreign-key edge endpoint after deferred retries'
+  ): void {
+    this.addToDeadLetterQueue(
+      'edge',
+      edge,
+      new Error(message),
+      this.options.maxRetries + 1,
+      reason
+    );
+    this.metrics.failedWrites++;
+    this.metrics.failedEdgeWrites++;
   }
 
   private calculateRetryDelay(attemptCount: number): number {
@@ -595,6 +667,7 @@ export class WriteQueueErrorHandler {
       deadLetterItems: 0,
       deadLetterEnqueues: 0,
       sqlVariableSplitRetries: 0,
+      foreignKeyDeferredRetries: 0,
     };
   }
 

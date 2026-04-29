@@ -15,6 +15,7 @@ import {
 import { useConsole } from '@/contexts/ConsoleContext';
 import { ErrorDomain, ErrorSeverity } from '@/services/error-capture.service';
 import { useState, useEffect } from 'react';
+import { useKeimenonStore } from '@/store/keimenonStore';
 
 interface KeimenonFooterProps {
   isOpen: boolean;
@@ -23,6 +24,8 @@ interface KeimenonFooterProps {
 export function KeimenonFooter({ isOpen }: KeimenonFooterProps) {
   const { errors, errorCounts, setFilters, clearErrors, exportErrors, activeTab, setActiveTab } =
     useConsole();
+  const nodeCount = useKeimenonStore((state) => state.nodes.length);
+  const edgeCount = useKeimenonStore((state) => state.edges.length);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDomain, setSelectedDomain] = useState<ErrorDomain | 'all'>('all');
@@ -55,7 +58,9 @@ export function KeimenonFooter({ isOpen }: KeimenonFooterProps) {
         <div className="flex items-center gap-4 text-slate-500">
           <span>Ready</span>
           <span>•</span>
-          <span>0 nodes, 0 edges</span>
+          <span>
+            {nodeCount.toLocaleString()} nodes, {edgeCount.toLocaleString()} edges
+          </span>
           {errorCounts.error > 0 && (
             <>
               <span>•</span>

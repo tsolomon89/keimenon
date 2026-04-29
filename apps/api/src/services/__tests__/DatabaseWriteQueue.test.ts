@@ -13,7 +13,7 @@ import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { DatabaseWriteQueue } from '../DatabaseWriteQueue';
-import { AnyNode } from '@keimenon/types';
+import { AnyNode, AnyEdge } from '@keimenon/types';
 
 // Database-level type for testing (matches actual DB schema, not application types)
 type DBNode = {
@@ -112,6 +112,19 @@ function createTestNode(id: string): AnyNode {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function createTestEdge(id: string, fromId: string, toId: string): AnyEdge {
+  return {
+    id,
+    kind: 'CONTAINS',
+    from: fromId,
+    to: toId,
+    created_at: Date.now(),
+    metadata: {},
+    account_id: 'test_account',
+    created_by: 'test_user',
+  } as unknown as AnyEdge;
 }
 
 describe('DatabaseWriteQueue Integration', () => {
@@ -262,6 +275,80 @@ describe('DatabaseWriteQueue Integration', () => {
       assert.ok(stats.flushCount >= 3, 'Large flush should span multiple bounded flush cycles');
     } finally {
       await chunkedQueue.stop();
+    }
+  });
+
+  it('should defer edges until dependent node chunks are persisted', async () => {
+    const persistedNodes = new Set<string>();
+    const persistedEdges = new Set<string>();
+    const mockDb = {
+      createNodes: async (nodes: Array<any>) => {
+        for (const node of nodes) {
+          persistedNodes.add(node.id);
+        }
+      },
+      createEdges: async (edges: Array<any>) => {
+        for (const edge of edges) {
+          const fromId = edge.from || edge.from_id;
+          const toId = edge.to || edge.to_id;
+          if (!persistedNodes.has(fromId) || !persistedNodes.has(toId)) {
+            throw new Error('SQLITE_CONSTRAINT_FOREIGNKEY: FOREIGN KEY constraint failed');
+          }
+          persistedEdges.add(edge.id);
+        }
+      },
+      createNode: async (node: any) => {
+        persistedNodes.add(node.id);
+      },
+      createEdge: async (edge: any) => {
+        const fromId = edge.from || edge.from_id;
+        const toId = edge.to || edge.to_id;
+        if (!persistedNodes.has(fromId) || !persistedNodes.has(toId)) {
+          throw new Error('SQLITE_CONSTRAINT_FOREIGNKEY: FOREIGN KEY constraint failed');
+        }
+        persistedEdges.add(edge.id);
+      },
+    };
+
+    const queueUnderTest = new DatabaseWriteQueue(mockDb as any);
+    queueUnderTest.start();
+
+    try {
+      const batchPrefix = `fk_defer_${Date.now()}`;
+      for (let i = 0; i < 450; i++) {
+        queueUnderTest.enqueueNode({
+          id: `${batchPrefix}_node_${i}`,
+          kind: 'Source',
+          created_at: Date.now(),
+          account_id: 'test_account',
+          created_by: 'test_user',
+          metadata: {},
+        } as unknown as AnyNode);
+      }
+
+      // This edge references nodes that are still in queued node chunks.
+      queueUnderTest.enqueueEdge(
+        createTestEdge(`${batchPrefix}_edge`, `${batchPrefix}_node_448`, `${batchPrefix}_node_449`)
+      );
+
+      await queueUnderTest.forceFlush();
+
+      assert.strictEqual(
+        queueUnderTest.getQueueSizes().edges,
+        0,
+        'Deferred FK edges should eventually drain after node dependency flushes'
+      );
+      assert.strictEqual(
+        queueUnderTest.getDeadLetterQueue().length,
+        0,
+        'Dependency-ordered edge flush should not dead-letter valid edges'
+      );
+      assert.ok(
+        persistedEdges.has(`${batchPrefix}_edge`),
+        'Dependent edge should persist once required nodes are committed'
+      );
+    } finally {
+      await queueUnderTest.stop();
     }
   });
 });

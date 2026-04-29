@@ -130,6 +130,17 @@ const EDGE_STRENGTH_MINIMUM: Record<LODLevel, number> = {
   L3: 0,
 };
 
+const EDGE_SURVIVAL_FLOOR = 24;
+
+const HIERARCHY_CONNECTOR_EDGE_KINDS = new Set([
+  'OWNED_BY',
+  'CREATED_BY',
+  'IN_GROUP',
+  'FOLDS_INTO_FOLDER',
+  'CONTAINS',
+  'HAS_MESSAGE',
+]);
+
 const MASS_MINIMUM_BY_LEVEL: Record<LODLevel, number> = {
   L0: 0.6,
   L1: 0.25,
@@ -349,6 +360,23 @@ function sortEdgesByStrength(edges: GraphEdge[]): GraphEdge[] {
   });
 }
 
+function sortEdgesByConnectorPriority(edges: GraphEdge[]): GraphEdge[] {
+  return [...edges].sort((a, b) => {
+    const aPriority = HIERARCHY_CONNECTOR_EDGE_KINDS.has(a.kind) ? 1 : 0;
+    const bPriority = HIERARCHY_CONNECTOR_EDGE_KINDS.has(b.kind) ? 1 : 0;
+    if (aPriority !== bPriority) {
+      return bPriority - aPriority;
+    }
+
+    const strengthDelta = extractEdgeStrength(b) - extractEdgeStrength(a);
+    if (strengthDelta !== 0) {
+      return strengthDelta;
+    }
+
+    return a.id.localeCompare(b.id);
+  });
+}
+
 export function evaluateLodPerformanceGate(input: {
   level: LODLevel;
   totalNodeCount: number;
@@ -465,6 +493,21 @@ export function buildLodPlan(input: BuildLodPlanInput): LodPlan {
 
   if (visibleEdges.length > edgeBudget) {
     visibleEdges = sortEdgesByStrength(visibleEdges).slice(0, edgeBudget);
+  }
+
+  if (visibleNodes.length > 0 && visibleEdges.length === 0 && input.edges.length > 0) {
+    const fallbackCandidates = input.edges.filter((edge) => {
+      const sourceId = edgeEndpointId(edge.source);
+      const targetId = edgeEndpointId(edge.target);
+      return visibleNodeIds.has(sourceId) && visibleNodeIds.has(targetId);
+    });
+
+    if (fallbackCandidates.length > 0) {
+      visibleEdges = sortEdgesByConnectorPriority(fallbackCandidates).slice(
+        0,
+        Math.min(edgeBudget, EDGE_SURVIVAL_FLOOR)
+      );
+    }
   }
 
   const visibleEdgeIds = new Set(visibleEdges.map((edge) => edge.id));

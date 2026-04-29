@@ -417,7 +417,7 @@ export function KeimenonLayout({
                 // Wrap content with PortalWrapper if admin is operating on an account
                 <PortalWrapper>
                   {keimenonMode === 'keimenon' && (
-                    <div className="relative h-full">
+                    <div className="relative flex-1 min-h-0">
                       <KeimenonViewport
                         ref={keimenonViewportRef}
                         onOpenUpload={handleOpenImportFlow}
@@ -443,23 +443,28 @@ export function KeimenonLayout({
                     </div>
                   )}
 
-                  {keimenonMode === 'dashboard' &&
-                    (dashboardView === 'analytics' ? (
-                      <CRMDashboard onJobSelect={focusOperationFromJob} />
-                    ) : dashboardView === 'storage' ? (
-                      <StorageStatsDashboard />
-                    ) : dashboardView === 'workspaces' ? (
-                      <WorkspaceBrowser className="h-full" />
-                    ) : (
-                      <ConversationBrowser className="h-full" />
-                    ))}
+                  {keimenonMode === 'dashboard' && (
+                    <div className="flex-1 min-h-0">
+                      {dashboardView === 'analytics' ? (
+                        <CRMDashboard onJobSelect={focusOperationFromJob} />
+                      ) : dashboardView === 'storage' ? (
+                        <StorageStatsDashboard />
+                      ) : dashboardView === 'workspaces' ? (
+                        <WorkspaceBrowser className="h-full" />
+                      ) : (
+                        <ConversationBrowser className="h-full" />
+                      )}
+                    </div>
+                  )}
 
                   {keimenonMode === 'settings' && (
-                    <SettingsPage
-                      selectedSectionId={selectedSettingsSectionId}
-                      onControlSelect={setSelectedSettingsControlId}
-                      onUserSelect={handleUserSelect}
-                    />
+                    <div className="flex-1 min-h-0">
+                      <SettingsPage
+                        selectedSectionId={selectedSettingsSectionId}
+                        onControlSelect={setSelectedSettingsControlId}
+                        onUserSelect={handleUserSelect}
+                      />
+                    </div>
                   )}
                 </PortalWrapper>
               )}

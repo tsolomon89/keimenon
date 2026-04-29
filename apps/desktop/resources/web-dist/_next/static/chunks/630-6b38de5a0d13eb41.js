@@ -210,7 +210,7 @@
             },
             [E]
           ),
-          S = (0, n.useCallback)(
+          C = (0, n.useCallback)(
             async function (e, t, r) {
               let o = arguments.length > 3 && void 0 !== arguments[3] ? arguments[3] : 'free',
                 n = r.trim();
@@ -265,7 +265,7 @@
             },
             [E]
           ),
-          C = (0, n.useCallback)(
+          S = (0, n.useCallback)(
             async (e, t, r) => {
               T(!0);
               try {
@@ -421,9 +421,9 @@
             isAuthenticated: !!r,
             isLoading: v,
             login: _,
-            selectAccount: C,
+            selectAccount: S,
             switchAccount: k,
-            register: S,
+            register: C,
             logout: I,
             refreshUser: A,
           },
@@ -442,13 +442,16 @@
     1493: function (e, t, r) {
       r.d(t, {
         $P: function () {
-          return ee;
+          return Z;
         },
         $Q: function () {
-          return S;
+          return C;
         },
         Bk: function () {
-          return B;
+          return M;
+        },
+        CD: function () {
+          return U;
         },
         E0: function () {
           return v;
@@ -466,7 +469,7 @@
           return L;
         },
         J$: function () {
-          return V;
+          return X;
         },
         Jl: function () {
           return E;
@@ -481,34 +484,31 @@
           return O;
         },
         Nq: function () {
-          return $;
+          return K;
         },
         PR: function () {
           return Y;
         },
         PZ: function () {
-          return H;
+          return V;
         },
         SK: function () {
-          return er;
+          return et;
         },
         T1: function () {
-          return X;
+          return q;
         },
         T8: function () {
           return F;
         },
         TE: function () {
-          return W;
+          return H;
         },
         U0: function () {
           return A;
         },
         UU: function () {
           return T;
-        },
-        W8: function () {
-          return M;
         },
         W9: function () {
           return w;
@@ -529,7 +529,7 @@
           return f;
         },
         e_: function () {
-          return et;
+          return ee;
         },
         h8: function () {
           return Q;
@@ -550,10 +550,10 @@
           return I;
         },
         r4: function () {
-          return K;
+          return W;
         },
         rT: function () {
-          return J;
+          return B;
         },
         tN: function () {
           return G;
@@ -562,22 +562,19 @@
           return D;
         },
         tz: function () {
-          return C;
+          return S;
         },
         u1: function () {
           return j;
         },
-        v$: function () {
-          return U;
-        },
         w3: function () {
-          return q;
+          return J;
         },
         wv: function () {
-          return Z;
+          return $;
         },
         x1: function () {
-          return eo;
+          return er;
         },
       });
       var o = r(2844),
@@ -825,7 +822,7 @@
           );
         return await t.json();
       }
-      async function S(e) {
+      async function C(e) {
         let t = await l(''.concat(a.CT, '/api/v1/jobs/').concat(e, '/resume'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...c() },
@@ -837,7 +834,7 @@
           );
         return await t.json();
       }
-      async function C(e) {
+      async function S(e) {
         let t = '';
         try {
           var r, o, n, a, i, s, c;
@@ -904,7 +901,7 @@
           o = 0;
         for (let n of e)
           try {
-            let e = await C(n);
+            let e = await S(n);
             if (((t[e.platform] = (t[e.platform] || 0) + 1), n.size > 52428800)) {
               console.log(
                 'Large file detected ('.concat(
@@ -1159,52 +1156,36 @@
       }
       async function U(e) {
         try {
-          var t;
-          let r = new URLSearchParams();
-          ((null == e ? void 0 : e.kind) && r.append('kind', e.kind),
-            (null == e ? void 0 : e.limit) && r.append('limit', e.limit.toString()),
-            (null == e ? void 0 : e.offset) && r.append('offset', e.offset.toString()),
-            (null == e ? void 0 : e.search) && r.append('search', e.search));
-          let n = ''.concat(a.CT, '/api/v1/nodes').concat(r.toString() ? '?'.concat(r) : ''),
-            i = await u(n);
-          i.ok || (await (0, o.zG)({ response: i }));
-          let s = await i.json();
+          let t = new URLSearchParams();
+          ((null == e ? void 0 : e.node_budget) && t.append('node_budget', String(e.node_budget)),
+            (null == e ? void 0 : e.edge_budget) && t.append('edge_budget', String(e.edge_budget)),
+            (null == e ? void 0 : e.seed_node_ids) &&
+              e.seed_node_ids.length > 0 &&
+              t.append('seed_node_ids', e.seed_node_ids.join(',')));
+          let r = ''
+              .concat(a.CT, '/api/v1/graph/snapshot')
+              .concat(t.toString() ? '?'.concat(t.toString()) : ''),
+            n = await u(r);
+          n.ok || (await (0, o.zG)({ response: n }));
+          let i = await n.json();
           return {
-            nodes: s.nodes || [],
-            total: s.total || (null === (t = s.nodes) || void 0 === t ? void 0 : t.length) || 0,
+            nodes: i.nodes || [],
+            edges: i.edges || [],
+            metadata: i.metadata || {
+              total_nodes: 0,
+              total_edges: 0,
+              selected_node_count: 0,
+              selected_edge_count: 0,
+              truncated: !1,
+              selection_strategy: 'unknown',
+              edge_kind_breakdown: {},
+            },
           };
         } catch (e) {
           throw await (0, o.zG)(e);
         }
       }
       async function M(e) {
-        try {
-          var t, r;
-          let n = new URLSearchParams();
-          ((null == e ? void 0 : e.kind) && n.append('kind', e.kind),
-            (null == e ? void 0 : e.limit) && n.append('limit', e.limit.toString()),
-            (null == e ? void 0 : e.offset) && n.append('offset', e.offset.toString()),
-            (null == e ? void 0 : e.skip) !== void 0 && n.append('skip', e.skip.toString()),
-            (null == e ? void 0 : e.cursor) && n.append('cursor', e.cursor),
-            (null == e ? void 0 : e.sort) && n.append('sort', e.sort),
-            (null == e ? void 0 : e.order) && n.append('order', e.order));
-          let i = ''.concat(a.CT, '/api/v1/edges').concat(n.toString() ? '?'.concat(n) : ''),
-            s = await u(i);
-          s.ok || (await (0, o.zG)({ response: s }));
-          let c = await s.json();
-          return {
-            edges: c.edges || [],
-            total:
-              c.total ||
-              (null === (t = c.metadata) || void 0 === t ? void 0 : t.total) ||
-              (null === (r = c.edges) || void 0 === r ? void 0 : r.length) ||
-              0,
-          };
-        } catch (e) {
-          throw await (0, o.zG)(e);
-        }
-      }
-      async function B(e) {
         var t;
         let r = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : {},
           n = await l(''.concat(a.CT, '/api/v1/nodes/').concat(e, '/sequester'), {
@@ -1222,7 +1203,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function J(e) {
+      async function B(e) {
         try {
           let t = await l(''.concat(a.CT, '/api/v1/accounts/').concat(e, '/stats'), {
             headers: c(),
@@ -1232,7 +1213,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function q() {
+      async function J() {
         try {
           let e = await l(''.concat(a.CT, '/api/v1/analytics/overview'), { headers: c() });
           return (e.ok || (await (0, o.zG)({ response: e })), await e.json());
@@ -1240,7 +1221,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function X() {
+      async function q() {
         let e = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : 'usage',
           t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 10;
         try {
@@ -1256,7 +1237,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function V() {
+      async function X() {
         let e = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : 50;
         try {
           let t = await u(
@@ -1268,7 +1249,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function H() {
+      async function V() {
         try {
           let e = await l(''.concat(a.CT, '/api/v1/analytics/alerts'), { headers: c() });
           return (e.ok || (await (0, o.zG)({ response: e })), await e.json());
@@ -1276,7 +1257,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function W(e) {
+      async function H(e) {
         try {
           let t = await l(''.concat(a.CT, '/api/v1/accounts/').concat(e, '/users'), {
             headers: c(),
@@ -1294,7 +1275,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function K(e, t) {
+      async function W(e, t) {
         try {
           let r = await l(''.concat(a.CT, '/api/v1/accounts/').concat(e, '/users'), {
             method: 'POST',
@@ -1306,7 +1287,7 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function $(e, t) {
+      async function K(e, t) {
         try {
           let r = await l(''.concat(a.CT, '/api/v1/users/').concat(e), {
             method: 'PATCH',
@@ -1329,11 +1310,11 @@
           throw await (0, o.zG)(e);
         }
       }
-      async function Z(e) {
+      async function $(e) {
         let t = await l(''.concat(a.CT, '/api/v1/settings?accountId=').concat(e), { headers: c() });
         return (t.ok || (await (0, o.zG)({ response: t })), t.json());
       }
-      async function ee(e, t) {
+      async function Z(e, t) {
         let r = await l(''.concat(a.CT, '/api/v1/ingest/url'), {
           method: 'POST',
           headers: { ...c(), 'Content-Type': 'application/json' },
@@ -1345,7 +1326,7 @@
         }
         return r.json();
       }
-      async function et() {
+      async function ee() {
         let e = await l(''.concat(a.CT, '/api/v1/system/reimport-status'), {
           method: 'GET',
           headers: c(),
@@ -1353,7 +1334,7 @@
         if (!e.ok) throw await (0, o.zG)({ response: e });
         return e.json();
       }
-      async function er() {
+      async function et() {
         let e = await l(''.concat(a.CT, '/api/v1/system/reimport-complete'), {
           method: 'POST',
           headers: { ...c(), 'Content-Type': 'application/json' },
@@ -1362,7 +1343,7 @@
         if (!e.ok) throw await (0, o.zG)({ response: e });
         return e.json();
       }
-      let eo = {
+      let er = {
         get: async (e, t) => {
           let r = await l(''.concat(a.CT).concat(e), {
             method: 'GET',
@@ -2161,14 +2142,10 @@
               loadGraphData: async () => {
                 e({ isLoading: !0, error: null });
                 try {
-                  let t = null,
-                    r = null;
+                  let t = null;
                   for (let e = 0; e <= s.length; e += 1)
                     try {
-                      [t, r] = await Promise.all([
-                        (0, a.v$)({ limit: 1e5 }),
-                        (0, a.W8)({ limit: 2e5, sort: 'created_at', order: 'desc' }),
-                      ]);
+                      t = await (0, a.CD)();
                       break;
                     } catch (t) {
                       if (
@@ -2193,33 +2170,30 @@
                         return new Promise((t) => setTimeout(t, e));
                       })(s[e]);
                     }
-                  if (!t || !r) throw Error('Failed to load graph data after retries');
-                  let o = t.nodes.map(l),
+                  if (!t) throw Error('Failed to load graph data after retries');
+                  let r = t.metadata,
+                    o = t.nodes.map(l),
                     n = o,
-                    i = o.length > 5e3;
-                  i &&
-                    ((n = o.filter((e) => c.has(e.kind || e.type))),
-                    console.info(
-                      '[Keimenon] Smart filter: '
-                        .concat(o.length, ' nodes → ')
-                        .concat(n.length, ' structural nodes')
-                    ));
-                  let d = new Set(n.map((e) => e.id)),
-                    p = r.edges.map(u).filter((e) => d.has(e.source) && d.has(e.target));
-                  e({
-                    nodes: n,
-                    edges: p,
-                    isLoading: !1,
-                    error: null,
-                    graphLoadMetrics: {
-                      apiNodeCount: o.length,
-                      apiEdgeCount: r.edges.length,
-                      structuralNodeCount: n.length,
-                      renderedEdgeCount: p.length,
-                      smartFilterApplied: i,
-                      loadedAt: Date.now(),
-                    },
-                  });
+                    i = new Set(n.map((e) => e.id)),
+                    d = t.edges.map(u).filter((e) => i.has(e.source) && i.has(e.target));
+                  (o.length > 5e3 &&
+                    n.length > 5e3 &&
+                    0 === d.length &&
+                    (n = o.filter((e) => c.has(e.kind || e.type))),
+                    e({
+                      nodes: n,
+                      edges: d,
+                      isLoading: !1,
+                      error: null,
+                      graphLoadMetrics: {
+                        apiNodeCount: r.total_nodes || o.length,
+                        apiEdgeCount: r.total_edges || t.edges.length,
+                        structuralNodeCount: n.length,
+                        renderedEdgeCount: d.length,
+                        smartFilterApplied: !1,
+                        loadedAt: Date.now(),
+                      },
+                    }));
                 } catch (t) {
                   (console.error('Failed to load graph data:', t),
                     e({

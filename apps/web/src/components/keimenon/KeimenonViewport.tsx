@@ -22,6 +22,8 @@ import type { NdProjectionConfig, RenderLens } from '@/lib/nd-projection';
 import { useElementSize } from '@/hooks/useElementSize';
 import { IMPORT_GRAPH_REFRESH_EVENT, emitImportGraphRefresh } from '@/lib/import-refresh-events';
 
+const FILTER_RECOVERY_NODE_KINDS = new Set(['AccountNode', 'Principal', 'Group', 'Source']);
+
 interface KeimenonViewportProps {
   onOpenUpload: () => void;
   onOpenChatImport: () => void;
@@ -100,6 +102,9 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
       totalNodeCount: number;
       lodVisibleNodeCount: number;
       lensVisibleNodeCount: number;
+      totalEdgeCount: number;
+      lodVisibleEdgeCount: number;
+      lensVisibleEdgeCount: number;
       width: number;
       height: number;
     } | null>(null);
@@ -130,9 +135,11 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
       setActiveImportJobId(activeJob);
     }, [jobs]);
 
-    // Filter nodes by filteredNodeIds and sourceRoleFilter
-    const displayNodes = useMemo(() => {
+    // Filter nodes by filteredNodeIds and sourceRoleFilter.
+    // Recovery: never allow stale filters to force a blank canvas when data exists.
+    const displaySelection = useMemo(() => {
       let filtered = nodes;
+      let recoveredFromFilterZeroMatch = false;
 
       // Filter by specific node IDs if set
       if (filters.filteredNodeIds) {
@@ -154,8 +161,21 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
         });
       }
 
-      return filtered;
+      if (filters.filteredNodeIds && filtered.length === 0 && nodes.length > 0) {
+        const hierarchyAnchors = nodes.filter((node) =>
+          FILTER_RECOVERY_NODE_KINDS.has(node.kind || node.type)
+        );
+        filtered = hierarchyAnchors.length > 0 ? hierarchyAnchors : nodes;
+        recoveredFromFilterZeroMatch = true;
+      }
+
+      return {
+        nodes: filtered,
+        recoveredFromFilterZeroMatch,
+      };
     }, [nodes, filters.filteredNodeIds, filters.sourceRoleFilter]);
+    const displayNodes = displaySelection.nodes;
+    const recoveredFromFilterZeroMatch = displaySelection.recoveredFromFilterZeroMatch;
 
     const hasContent = displayNodes.length > 0;
     const measuredViewportWidth = containerRef.current?.clientWidth || 0;
@@ -177,12 +197,42 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
       visibilityDiagnostics !== null &&
       visibilityDiagnostics.totalNodeCount > 0 &&
       visibilityDiagnostics.lensVisibleNodeCount === 0;
+    const hasZeroVisibleEdgesAfterLod =
+      hasContent &&
+      !hasZeroViewport &&
+      visibilityDiagnostics !== null &&
+      visibilityDiagnostics.totalEdgeCount > 0 &&
+      visibilityDiagnostics.lensVisibleNodeCount > 0 &&
+      visibilityDiagnostics.lensVisibleEdgeCount === 0;
     const canRenderCanvas = hasContent && dimensions.width > 0 && dimensions.height > 0;
 
     useEffect(() => {
       const validNodeIds = new Set(displayNodes.map((node) => node.id));
       setPinnedNodeIds((previous) => previous.filter((nodeId) => validNodeIds.has(nodeId)));
     }, [displayNodes]);
+
+    useEffect(() => {
+      if (!recoveredFromFilterZeroMatch) {
+        return;
+      }
+
+      logDataEvent(
+        'Recovered from stale filter that produced zero visible nodes',
+        'keimenon.visibility.HAS_DATA_BUT_FILTER_EXCLUDED_ALL',
+        {
+          filterNodeIdCount: filters.filteredNodeIds?.length ?? 0,
+          storeNodeCount: nodes.length,
+          recoveredNodeCount: displayNodes.length,
+        }
+      );
+      setFilteredNodeIds(null);
+    }, [
+      displayNodes.length,
+      filters.filteredNodeIds,
+      nodes.length,
+      recoveredFromFilterZeroMatch,
+      setFilteredNodeIds,
+    ]);
 
     useEffect(() => {
       onPinnedNodeCountChange?.(pinnedNodeIds.length);
@@ -195,7 +245,9 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
           ? 'HAS_DATA_BUT_RENDERER_NOT_READY'
           : hasZeroVisibleNodes
             ? 'HAS_DATA_BUT_ZERO_VISIBLE'
-            : null;
+            : hasZeroVisibleEdgesAfterLod
+              ? 'HAS_DATA_BUT_ZERO_EDGES_AFTER_LOD'
+              : null;
 
       if (!nextIssue) {
         lastVisibilityIssueRef.current = null;
@@ -218,6 +270,10 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
         lodVisibleNodes:
           visibilityDiagnostics?.lodVisibleNodeCount ?? lodStats?.visibleNodeCount ?? 0,
         lensVisibleNodes: visibilityDiagnostics?.lensVisibleNodeCount ?? 0,
+        totalEdges: visibilityDiagnostics?.totalEdgeCount ?? edges.length,
+        lodVisibleEdges:
+          visibilityDiagnostics?.lodVisibleEdgeCount ?? lodStats?.visibleEdgeCount ?? 0,
+        lensVisibleEdges: visibilityDiagnostics?.lensVisibleEdgeCount ?? 0,
         storeNodeCount: nodes.length,
         storeEdgeCount: edges.length,
         filterNodeIdCount: filters.filteredNodeIds?.length ?? null,
@@ -237,6 +293,7 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
       graphLoadMetrics?.apiNodeCount,
       graphLoadMetrics?.smartFilterApplied,
       hasRendererReadyFailure,
+      hasZeroVisibleEdgesAfterLod,
       hasZeroViewport,
       hasZeroVisibleNodes,
       lodStats?.visibleNodeCount,
@@ -245,7 +302,10 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
       nodes.length,
       renderLens,
       visibilityDiagnostics?.lensVisibleNodeCount,
+      visibilityDiagnostics?.lensVisibleEdgeCount,
+      visibilityDiagnostics?.lodVisibleEdgeCount,
       visibilityDiagnostics?.lodVisibleNodeCount,
+      visibilityDiagnostics?.totalEdgeCount,
       visibilityDiagnostics?.totalNodeCount,
     ]);
 
@@ -373,7 +433,7 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
     );
 
     return (
-      <div ref={containerRef} className="flex-1 bg-slate-950 relative overflow-hidden">
+      <div ref={containerRef} className="w-full h-full bg-slate-950 relative overflow-hidden">
         {/* Grid background */}
         <div
           className="absolute inset-0 opacity-20 pointer-events-none"
@@ -508,6 +568,12 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
         {!isLoading && !error && hasContent && canRenderCanvas && hasZeroVisibleNodes && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
             Dataset loaded but no nodes are currently visible for this lens/LOD profile.
+          </div>
+        )}
+
+        {!isLoading && !error && hasContent && canRenderCanvas && hasZeroVisibleEdgesAfterLod && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+            Nodes are visible but no connector edges survived lens/LOD filtering.
           </div>
         )}
 

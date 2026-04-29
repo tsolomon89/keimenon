@@ -41,6 +41,7 @@ import {
 import { JobRepository } from '../../jobs/infrastructure/JobRepository';
 import { WORKER_CONFIG } from '../../jobs/jobs.config';
 import { appLogger } from '../../../utils/logger';
+import type { SqlVariableSplitDiagnostics } from '../../../services/WriteQueueErrorHandler';
 
 /**
  * Import Checkpoint State
@@ -742,6 +743,16 @@ export class ImportWorker extends BaseWorker {
       let totalPacketsCreated = 0;
       let totalAtomicUnitsCreated = 0;
       let totalPacketMassLinksCreated = 0;
+      let totalGroupingEligibleMessages = 0;
+      let totalGroupingAssignedMessages = 0;
+      let totalGroupingUnmatchedMessages = 0;
+      let totalGroupingDuplicateAssignments = 0;
+      let totalGroupingNonCatchAllGroups = 0;
+      const groupingTopLabels = new Set<string>();
+      let totalSqlVariableSplitRetries = 0;
+      let totalDeferredForeignKeyEdges = 0;
+      let totalFkRequeueEscalations = 0;
+      let lastSqlVariableSplit: SqlVariableSplitDiagnostics | undefined;
       let startFileIndex = 0;
       let startBatchIndex = 0;
 
@@ -1161,6 +1172,47 @@ export class ImportWorker extends BaseWorker {
                     totalPacketMassLinksCreated += Number(
                       result.stats?.proImport?.packetMassLinks ?? 0
                     );
+                    const groupingDiagnostics = result.stats?.grouping?.diagnostics;
+                    if (groupingDiagnostics) {
+                      totalGroupingEligibleMessages += Number(
+                        groupingDiagnostics.eligibleMessages ?? 0
+                      );
+                      totalGroupingAssignedMessages += Number(
+                        groupingDiagnostics.assignedMessages ?? 0
+                      );
+                      totalGroupingUnmatchedMessages += Number(
+                        groupingDiagnostics.unmatchedMessages ?? 0
+                      );
+                      totalGroupingDuplicateAssignments += Number(
+                        groupingDiagnostics.duplicateAssignments ?? 0
+                      );
+                      totalGroupingNonCatchAllGroups += Number(
+                        groupingDiagnostics.nonCatchAllGroupCount ?? 0
+                      );
+                      const labels = Array.isArray(groupingDiagnostics.topLabels)
+                        ? groupingDiagnostics.topLabels
+                        : [];
+                      for (const label of labels) {
+                        if (typeof label === 'string' && label.trim().length > 0) {
+                          groupingTopLabels.add(label);
+                        }
+                      }
+                    }
+                    const writeQueueDiagnostics = result.stats?.processing?.writeQueue;
+                    if (writeQueueDiagnostics) {
+                      totalSqlVariableSplitRetries += Number(
+                        writeQueueDiagnostics.sqlVariableSplitRetries ?? 0
+                      );
+                      totalDeferredForeignKeyEdges += Number(
+                        writeQueueDiagnostics.deferredForeignKeyEdges ?? 0
+                      );
+                      totalFkRequeueEscalations += Number(
+                        writeQueueDiagnostics.fkRequeueEscalations ?? 0
+                      );
+                      if (writeQueueDiagnostics.lastSqlVariableSplit) {
+                        lastSqlVariableSplit = writeQueueDiagnostics.lastSqlVariableSplit;
+                      }
+                    }
                     conversationsSinceCheckpoint += result.conversations;
 
                     console.log(
@@ -1358,6 +1410,20 @@ export class ImportWorker extends BaseWorker {
       }
 
       const parseErrorRate = parseAttemptCount > 0 ? parseErrorCount / parseAttemptCount : 0;
+      const groupingDiagnostics = {
+        eligibleMessages: totalGroupingEligibleMessages,
+        assignedMessages: totalGroupingAssignedMessages,
+        unmatchedMessages: totalGroupingUnmatchedMessages,
+        duplicateAssignments: totalGroupingDuplicateAssignments,
+        nonCatchAllGroupCount: totalGroupingNonCatchAllGroups,
+        topLabels: Array.from(groupingTopLabels).slice(0, 12),
+      };
+      const writeQueueDiagnostics = {
+        sqlVariableSplitRetries: totalSqlVariableSplitRetries,
+        deferredForeignKeyEdges: totalDeferredForeignKeyEdges,
+        fkRequeueEscalations: totalFkRequeueEscalations,
+        lastSqlVariableSplit: lastSqlVariableSplit || null,
+      };
       const parseQualityFailure = evaluateParseQualityGate({
         parseAttemptCount,
         parseErrorCount,
@@ -1372,6 +1438,8 @@ export class ImportWorker extends BaseWorker {
           metadata: {
             uploadHash,
             changeTracker: serializeChangeTracker(changeTracker),
+            groupingDiagnostics,
+            writeQueueDiagnostics,
             parseErrors: {
               count: parseErrorCount,
               attempts: parseAttemptCount,
@@ -1442,6 +1510,8 @@ export class ImportWorker extends BaseWorker {
             importGraphBirth,
             graphMaterialization,
             importTimeline,
+            groupingDiagnostics,
+            writeQueueDiagnostics,
             parseErrors: {
               count: parseErrorCount,
               attempts: parseAttemptCount,
@@ -1462,6 +1532,8 @@ export class ImportWorker extends BaseWorker {
         importGraphBirth: graphBirthMetadata,
         graphMaterialization,
         importTimeline: [...existingTimeline, ...importTimeline],
+        groupingDiagnostics,
+        writeQueueDiagnostics,
       });
       await context.jobRepository.save(job);
       if (context.broadcaster) {
@@ -1493,6 +1565,8 @@ export class ImportWorker extends BaseWorker {
           importGraphBirth: graphBirthMetadata,
           graphMaterialization,
           importTimeline,
+          groupingDiagnostics,
+          writeQueueDiagnostics,
           parseErrors: {
             count: parseErrorCount,
             attempts: parseAttemptCount,
@@ -1533,6 +1607,21 @@ export class ImportWorker extends BaseWorker {
             message:
               error.message ||
               'Import failed due to write queue integrity errors (dead-letter or circuit-breaker).',
+            details: error.details,
+          },
+          metadata: { changeTracker: serializeChangeTracker(changeTracker) },
+        };
+      }
+
+      if (
+        error?.code === 'GROUPING_INTEGRITY_FAILED' ||
+        error?.code === 'GROUPING_QUALITY_FAILED'
+      ) {
+        return {
+          success: false,
+          error: {
+            code: error.code,
+            message: error.message || 'Import failed due to grouping validation',
             details: error.details,
           },
           metadata: { changeTracker: serializeChangeTracker(changeTracker) },

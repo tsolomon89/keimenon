@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import {
-  getNodes,
-  getEdges,
+  getGraphSnapshot,
   GraphNode as APIGraphNode,
   GraphEdge as APIGraphEdge,
 } from '@/lib/api-client';
@@ -287,15 +286,11 @@ export const useKeimenonStore = create<KeimenonState>()(
         set({ isLoading: true, error: null });
 
         try {
-          let nodesResult: Awaited<ReturnType<typeof getNodes>> | null = null;
-          let edgesResult: Awaited<ReturnType<typeof getEdges>> | null = null;
+          let snapshotResult: Awaited<ReturnType<typeof getGraphSnapshot>> | null = null;
 
           for (let attempt = 0; attempt <= GRAPH_LOAD_RETRY_DELAYS_MS.length; attempt += 1) {
             try {
-              [nodesResult, edgesResult] = await Promise.all([
-                getNodes({ limit: 100000 }),
-                getEdges({ limit: 200000, sort: 'created_at', order: 'desc' }),
-              ]);
+              snapshotResult = await getGraphSnapshot();
               break;
             } catch (error) {
               const canRetry =
@@ -308,31 +303,33 @@ export const useKeimenonStore = create<KeimenonState>()(
             }
           }
 
-          if (!nodesResult || !edgesResult) {
+          if (!snapshotResult) {
             throw new Error('Failed to load graph data after retries');
           }
 
-          // Transform API nodes to Keimenon nodes
-          const allNodes: KeimenonNode[] = nodesResult.nodes.map(mapApiNodeToKeimenon);
+          const snapshotMetadata = snapshotResult.metadata;
+          const allNodes: KeimenonNode[] = snapshotResult.nodes.map(mapApiNodeToKeimenon);
 
-          // Performance: auto-filter to structural nodes when data volume is large
-          // This prevents the D3 simulation from choking on 100K+ Lexeme/Phrase nodes
+          // Snapshot path is canonical for center-graph boot.
+          // Keep raw snapshot selection unless a defensive structural fallback is required.
           let keimenonNodes = allNodes;
-          const smartFilterApplied = allNodes.length > SMART_FILTER_THRESHOLD;
-          if (smartFilterApplied) {
-            keimenonNodes = allNodes.filter((n) => STRUCTURAL_KINDS.has(n.kind || n.type));
-            console.info(
-              `[Keimenon] Smart filter: ${allNodes.length} nodes → ${keimenonNodes.length} structural nodes`
-            );
-          }
+          const smartFilterApplied = false;
 
           // Build a set of visible node IDs for edge filtering
           const visibleNodeIds = new Set(keimenonNodes.map((n) => n.id));
 
           // Transform API edges, filtering out edges that reference hidden nodes
-          const keimenonEdges: KeimenonEdge[] = edgesResult.edges
+          const keimenonEdges: KeimenonEdge[] = snapshotResult.edges
             .map(mapApiEdgeToKeimenon)
             .filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
+
+          if (
+            allNodes.length > SMART_FILTER_THRESHOLD &&
+            keimenonNodes.length > SMART_FILTER_THRESHOLD &&
+            keimenonEdges.length === 0
+          ) {
+            keimenonNodes = allNodes.filter((n) => STRUCTURAL_KINDS.has(n.kind || n.type));
+          }
 
           set({
             nodes: keimenonNodes,
@@ -340,8 +337,8 @@ export const useKeimenonStore = create<KeimenonState>()(
             isLoading: false,
             error: null,
             graphLoadMetrics: {
-              apiNodeCount: allNodes.length,
-              apiEdgeCount: edgesResult.edges.length,
+              apiNodeCount: snapshotMetadata.total_nodes || allNodes.length,
+              apiEdgeCount: snapshotMetadata.total_edges || snapshotResult.edges.length,
               structuralNodeCount: keimenonNodes.length,
               renderedEdgeCount: keimenonEdges.length,
               smartFilterApplied,

@@ -285,4 +285,81 @@ describe('EnhancedImportServiceV2 source materialization fidelity', () => {
       extractAndRemoveRepeat.dispose();
     }
   });
+
+  it('canonicalizes duplicate labels to one account-scoped group and drops catch-all labels', async () => {
+    const harness = createHarness();
+    const serviceAny = harness.service as any;
+
+    try {
+      const sqlite = serviceAny.sqliteDb as any;
+      sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS nodes (
+          id TEXT PRIMARY KEY,
+          kind TEXT NOT NULL,
+          properties TEXT NOT NULL,
+          account_id TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+      `);
+
+      sqlite
+        .prepare(
+          `
+          INSERT INTO nodes (id, kind, properties, account_id, created_at, updated_at)
+          VALUES (?, 'Group', ?, 'acc_fixture', ?, ?)
+        `
+        )
+        .run(
+          'grp_existing_2025',
+          JSON.stringify({
+            id: 'grp_existing_2025',
+            kind: 'Group',
+            name: '2025',
+            metadata: {
+              normalized_label_key: '2025',
+              keywords: ['year'],
+            },
+          }),
+          1000,
+          1000
+        );
+
+      const canonical = serviceAny.canonicalizeGroupsForAccount(
+        [
+          {
+            id: 'grp_tmp_a',
+            name: '2025',
+            keywords: ['plan'],
+            sources: ['msg_a'],
+            isManual: false,
+          },
+          {
+            id: 'grp_tmp_b',
+            name: '  2025  ',
+            keywords: ['roadmap'],
+            sources: ['msg_b'],
+            isManual: true,
+          },
+          {
+            id: 'grp_tmp_catchall',
+            name: 'Other / Uncategorized',
+            keywords: [],
+            sources: ['msg_c'],
+            isManual: false,
+            isCatchAll: true,
+          },
+        ] as Group[],
+        'acc_fixture'
+      ) as Group[];
+
+      expect(canonical).toHaveLength(1);
+      expect(canonical[0].id).toBe('grp_existing_2025');
+      expect(canonical[0].sources.slice().sort()).toEqual(['msg_a', 'msg_b']);
+      expect(canonical[0].keywords.slice().sort()).toEqual(['plan', 'roadmap']);
+      expect(canonical[0].isManual).toBe(true);
+    } finally {
+      harness.dispose();
+    }
+  });
 });

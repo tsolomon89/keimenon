@@ -1,6 +1,6 @@
 # Keimenon Vision Gap Analysis (AGENTS-canonical Pass)
 
-Last updated: 2026-04-09 (canonical import + objective correction pass).
+Last updated: 2026-04-11 (snapshot-first edge visibility closure pass).
 
 Scope: current implementation state versus canonical `AGENTS.md` at repository root, with `agent_context/Kiemenon.md` retained as supplementary intent evidence.
 
@@ -44,6 +44,7 @@ Scope: current implementation state versus canonical `AGENTS.md` at repository r
 23. Import completion no longer auto-creates objective claims/archetypes and no longer auto-queues objective verification; objective activation is explicit user-triggered post-import behavior.
 24. Primary runtime now uses a single canonical center graph surface, with import processing shown as a temporary blocking center-state gate that auto-dismisses at terminal job status.
 25. Traceability and contract artifacts were re-aligned so chunked-only import, user-driven objective activation, and single-surface runtime behavior no longer conflict across matrices/specs.
+26. Center graph boot now uses canonical `/api/v1/graph/snapshot` selection instead of independent `/nodes` + `/edges` caps, restoring deterministic connector-edge visibility and adding explicit zero-edge diagnostics (`HAS_DATA_BUT_ZERO_EDGES_AFTER_LOD`).
 
 ## Notes
 

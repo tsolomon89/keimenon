@@ -9,6 +9,7 @@ import { DatabaseClient } from '@keimenon/db';
 import { AnyNode, AnyEdge } from '@keimenon/types';
 import { SSEBroadcaster } from '../modules/jobs/infrastructure/SSEBroadcaster';
 import { WriteQueueErrorHandler } from './WriteQueueErrorHandler';
+import type { SqlVariableSplitDiagnostics } from './WriteQueueErrorHandler';
 
 interface NodePreview {
   id: string;
@@ -45,6 +46,10 @@ export interface WriteQueueStats {
   flushRequestedWhileBusy: number;
   serializedFlushLoops: number;
   fkConstraintFailures: number;
+  deferredForeignKeyEdges: number;
+  fkRequeueEscalations: number;
+  sqlVariableSplitRetries: number;
+  lastSqlVariableSplit?: SqlVariableSplitDiagnostics;
 }
 
 type FlushTrigger = 'interval' | 'threshold' | 'force' | 'stop';
@@ -70,12 +75,18 @@ export class DatabaseWriteQueue {
     flushRequestedWhileBusy: 0,
     serializedFlushLoops: 0,
     fkConstraintFailures: 0,
+    deferredForeignKeyEdges: 0,
+    fkRequeueEscalations: 0,
+    sqlVariableSplitRetries: 0,
+    lastSqlVariableSplit: undefined,
   };
 
   private readonly FLUSH_INTERVAL_MS = 100;
   private readonly BATCH_SIZE_THRESHOLD = 50;
   private readonly MAX_NODES_PER_FLUSH = 400;
   private readonly MAX_EDGES_PER_FLUSH = 600;
+  private readonly MAX_EDGE_FK_REQUEUE_ATTEMPTS = 4;
+  private edgeForeignKeyRequeueAttempts: Map<string, number> = new Map();
 
   constructor(
     private db: DatabaseClient,
@@ -293,12 +304,59 @@ export class DatabaseWriteQueue {
         bucket.edgesAdded += 1;
       }
 
-      const flushResult = await this.errorHandler.handleFlush(nodes, edges);
+      const flushResult = {
+        totalWritten: 0,
+        nodesWritten: 0,
+        edgesWritten: 0,
+      };
+      let deferredForeignKeyCount = 0;
+      const sqlVariableSplits: SqlVariableSplitDiagnostics[] = [];
+
+      if (nodes.length > 0) {
+        const nodeFlush = await this.errorHandler.handleFlush(nodes, [], {
+          allowForeignKeyRequeue: false,
+        });
+        flushResult.totalWritten += nodeFlush.totalWritten;
+        flushResult.nodesWritten += nodeFlush.nodesWritten;
+        if (nodeFlush.diagnostics?.sqlVariableSplit) {
+          sqlVariableSplits.push(nodeFlush.diagnostics.sqlVariableSplit);
+        }
+      }
+
+      if (edges.length > 0) {
+        if (this.nodeQueue.length > 0) {
+          this.requeueEdgesToFront(edges);
+          deferredForeignKeyCount += edges.length;
+          console.warn(
+            `[DatabaseWriteQueue] deferred ${edges.length} edge(s) until pending node queue drains (remainingNodes=${this.nodeQueue.length})`
+          );
+        } else {
+          const edgeFlush = await this.errorHandler.handleFlush([], edges, {
+            allowForeignKeyRequeue: true,
+          });
+          flushResult.totalWritten += edgeFlush.totalWritten;
+          flushResult.edgesWritten += edgeFlush.edgesWritten;
+          deferredForeignKeyCount += edgeFlush.deferredForeignKeyCount || 0;
+          if (edgeFlush.diagnostics?.sqlVariableSplit) {
+            sqlVariableSplits.push(edgeFlush.diagnostics.sqlVariableSplit);
+          }
+          this.clearResolvedDeferredEdgeAttempts(edges, edgeFlush.deferredEdges || []);
+          if (edgeFlush.deferredEdges && edgeFlush.deferredEdges.length > 0) {
+            this.requeueDeferredForeignKeyEdges(edgeFlush.deferredEdges);
+          }
+        }
+      }
+
       const errorMetrics = this.errorHandler.getMetrics();
 
       this.stats.nodesFlushed = errorMetrics.successfulNodeWrites;
       this.stats.edgesFlushed = errorMetrics.successfulEdgeWrites;
       this.stats.fkConstraintFailures = errorMetrics.fkConstraintFailures;
+      this.stats.sqlVariableSplitRetries = errorMetrics.sqlVariableSplitRetries;
+      this.stats.deferredForeignKeyEdges += deferredForeignKeyCount;
+      if (sqlVariableSplits.length > 0) {
+        this.stats.lastSqlVariableSplit = sqlVariableSplits[sqlVariableSplits.length - 1];
+      }
       this.stats.flushCount++;
       this.stats.lastFlushTime = Date.now();
 
@@ -317,8 +375,7 @@ export class DatabaseWriteQueue {
       console.log(
         `[DatabaseWriteQueue] flushed ${flushResult.totalWritten}/${nodes.length + edges.length} items in ${durationMs}ms`
       );
-      if (flushResult.diagnostics?.sqlVariableSplit) {
-        const split = flushResult.diagnostics.sqlVariableSplit;
+      for (const split of sqlVariableSplits) {
         console.warn(
           `[DatabaseWriteQueue] SQL variable split retry applied ` +
             `(nodes=${split.nodesAttempted}, edges=${split.edgesAttempted}, ` +
@@ -356,6 +413,66 @@ export class DatabaseWriteQueue {
     } finally {
       this.flushInProgress = false;
       this.stats.flushInFlight = 0;
+    }
+  }
+
+  private requeueEdgesToFront(edges: AnyEdge[]): void {
+    for (let index = edges.length - 1; index >= 0; index -= 1) {
+      this.edgeQueue.unshift(edges[index]);
+    }
+  }
+
+  private getEdgeIdentifier(edge: AnyEdge): string {
+    const edgeData = edge as any;
+    return typeof edgeData.id === 'string' && edgeData.id.length > 0
+      ? edgeData.id
+      : `edge_${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  private clearResolvedDeferredEdgeAttempts(
+    attemptedEdges: AnyEdge[],
+    deferredEdges: AnyEdge[]
+  ): void {
+    if (attemptedEdges.length === 0) {
+      return;
+    }
+
+    const deferredIds = new Set(deferredEdges.map((edge) => this.getEdgeIdentifier(edge)));
+    for (const edge of attemptedEdges) {
+      const edgeId = this.getEdgeIdentifier(edge);
+      if (!deferredIds.has(edgeId)) {
+        this.edgeForeignKeyRequeueAttempts.delete(edgeId);
+      }
+    }
+  }
+
+  private requeueDeferredForeignKeyEdges(deferredEdges: AnyEdge[]): void {
+    const edgesToRetry: AnyEdge[] = [];
+
+    for (const edge of deferredEdges) {
+      const edgeId = this.getEdgeIdentifier(edge);
+      const attemptCount = (this.edgeForeignKeyRequeueAttempts.get(edgeId) || 0) + 1;
+      this.edgeForeignKeyRequeueAttempts.set(edgeId, attemptCount);
+
+      if (attemptCount > this.MAX_EDGE_FK_REQUEUE_ATTEMPTS) {
+        this.errorHandler.forceDeadLetterEdge(
+          edge,
+          'FK_MISSING_ENDPOINT',
+          `Edge endpoint unresolved after ${attemptCount} deferred flush attempts`
+        );
+        this.edgeForeignKeyRequeueAttempts.delete(edgeId);
+        this.stats.fkRequeueEscalations += 1;
+        continue;
+      }
+
+      edgesToRetry.push(edge);
+    }
+
+    if (edgesToRetry.length > 0) {
+      this.requeueEdgesToFront(edgesToRetry);
+      console.warn(
+        `[DatabaseWriteQueue] re-queued ${edgesToRetry.length} deferred FK edge(s) for dependency resolution`
+      );
     }
   }
 }

@@ -64,6 +64,10 @@ export interface SSEJobUpdate {
     fileName?: string; // Extracted from config.files[0].fileName
     deleteScope?: string; // Extracted from config.deleteScope
   };
+  blockedReason?: string;
+  blockedReasonCode?: string;
+  recoverableAfterRestart?: boolean;
+  interruptedReason?: string;
   timestamp: number;
 }
 
@@ -228,6 +232,22 @@ export class SSEBroadcaster {
               error: job.state.error,
               stats: job.stats, // ✅ Include stats for real-time updates
               config: configMetadata,
+              blockedReason: job.state.blockedReason,
+              blockedReasonCode:
+                typeof (job.state.metadata as Record<string, unknown> | undefined)
+                  ?.interruptedReason === 'string'
+                  ? ((job.state.metadata as Record<string, unknown>).interruptedReason as string)
+                  : undefined,
+              recoverableAfterRestart:
+                (job.state.metadata as Record<string, unknown> | undefined)
+                  ?.recoverableAfterRestart === true &&
+                (job.state.metadata as Record<string, unknown> | undefined)?.interruptedReason ===
+                  'SERVER_RESTART',
+              interruptedReason:
+                typeof (job.state.metadata as Record<string, unknown> | undefined)
+                  ?.interruptedReason === 'string'
+                  ? ((job.state.metadata as Record<string, unknown>).interruptedReason as string)
+                  : undefined,
               timestamp: Date.now(), // ✅ Timestamp of when update was sent
             };
           });
@@ -365,6 +385,15 @@ export class SSEBroadcaster {
       typeof jobLike.stats === 'object' && jobLike.stats !== null
         ? (jobLike.stats as SSEJobUpdate['stats'])
         : undefined;
+    const stateMetadata =
+      typeof state.metadata === 'object' && state.metadata !== null
+        ? (state.metadata as Record<string, unknown>)
+        : {};
+    const blockedReason = typeof state.blockedReason === 'string' ? state.blockedReason : undefined;
+    const interruptedReason =
+      typeof stateMetadata.interruptedReason === 'string'
+        ? stateMetadata.interruptedReason
+        : undefined;
     const type = typeof jobLike.type === 'string' ? jobLike.type : 'import';
     const status = typeof jobLike.status === 'string' ? jobLike.status : 'queued';
 
@@ -377,6 +406,11 @@ export class SSEBroadcaster {
       error,
       stats,
       config: configMetadata,
+      blockedReason,
+      blockedReasonCode: interruptedReason,
+      recoverableAfterRestart:
+        stateMetadata.recoverableAfterRestart === true && interruptedReason === 'SERVER_RESTART',
+      interruptedReason,
       timestamp: Date.now(),
     });
 

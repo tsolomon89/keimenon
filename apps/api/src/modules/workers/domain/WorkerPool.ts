@@ -403,6 +403,11 @@ export class WorkerPool {
       const pausedAfterAbort =
         !result.success && result.error?.code === 'CANCELED' && updatedJob.status === 'blocked';
 
+      if (result.metadata && Object.keys(result.metadata).length > 0) {
+        updatedJob.updateStateMetadata(result.metadata);
+        await this.jobRepository.save(updatedJob);
+      }
+
       // Update job status based on result (only if not already terminal)
       if (!updatedJob.isTerminal) {
         if (pausedAfterAbort) {
@@ -771,6 +776,21 @@ export class WorkerPool {
       }
 
       job.block(reason || 'User paused job');
+      const metadata = (job.state.metadata || {}) as Record<string, unknown>;
+      const timeline = Array.isArray(metadata.recoveryTimeline)
+        ? [...(metadata.recoveryTimeline as Array<Record<string, unknown>>)]
+        : [];
+      timeline.push({
+        event: 'manual_pause',
+        timestamp: Date.now(),
+        reason: 'USER_PAUSE',
+      });
+      job.updateStateMetadata({
+        recoverableAfterRestart: false,
+        interruptedReason: 'USER_PAUSE',
+        recoveryTimeline: timeline.slice(-50),
+        lastRecoveryEvent: 'manual_pause',
+      });
       await this.jobRepository.save(job);
 
       if (this.broadcaster) {
@@ -824,11 +844,36 @@ export class WorkerPool {
             job.block(
               'Server restarted while import was running. Resume to continue from the latest checkpoint.'
             );
+            const metadata = (job.state.metadata || {}) as Record<string, unknown>;
+            const timeline = Array.isArray(metadata.recoveryTimeline)
+              ? [...(metadata.recoveryTimeline as Array<Record<string, unknown>>)]
+              : [];
+            timeline.push({
+              event: 'recovered_blocked',
+              timestamp: Date.now(),
+              reason: 'SERVER_RESTART',
+            });
             job.updateStateMetadata({
               recoverableAfterRestart: true,
               interruptedAt: Date.now(),
               interruptedReason: 'SERVER_RESTART',
+              recoveryTimeline: timeline.slice(-50),
+              lastRecoveryEvent: 'recovered_blocked',
             });
+            if (job.canResume) {
+              job.retry();
+              timeline.push({
+                event: 'auto_resumed',
+                timestamp: Date.now(),
+                reason: 'SERVER_RESTART',
+              });
+              job.updateStateMetadata({
+                recoveryTimeline: timeline.slice(-50),
+                lastRecoveryEvent: 'auto_resumed',
+                autoResumedAt: Date.now(),
+                autoResumeReason: 'SERVER_RESTART',
+              });
+            }
             await this.jobRepository.save(job);
           } else {
             job.fail({
@@ -846,6 +891,46 @@ export class WorkerPool {
           console.log(`  ⚠️ Recovered: ${job.id} (type=${job.type}, status=${job.status})`);
         } catch (jobError: any) {
           console.error(`  ❌ Failed to recover ${job.id}: ${jobError.message}`);
+        }
+      }
+
+      const recoverableBlockedJobs = await this.jobRepository.find({
+        status: ['blocked'],
+        limit: 1000,
+      });
+      for (const blockedJob of recoverableBlockedJobs) {
+        if (blockedJob.type !== 'import') {
+          continue;
+        }
+        const metadata = (blockedJob.state.metadata || {}) as Record<string, unknown>;
+        if (
+          metadata.recoverableAfterRestart !== true ||
+          String(metadata.interruptedReason || '') !== 'SERVER_RESTART'
+        ) {
+          continue;
+        }
+        if (!blockedJob.canResume) {
+          continue;
+        }
+        blockedJob.retry();
+        const timeline = Array.isArray(metadata.recoveryTimeline)
+          ? [...(metadata.recoveryTimeline as Array<Record<string, unknown>>)]
+          : [];
+        timeline.push({
+          event: 'auto_resumed',
+          timestamp: Date.now(),
+          reason: 'SERVER_RESTART',
+          source: 'blocked_job_scan',
+        });
+        blockedJob.updateStateMetadata({
+          recoveryTimeline: timeline.slice(-50),
+          lastRecoveryEvent: 'auto_resumed',
+          autoResumedAt: Date.now(),
+          autoResumeReason: 'SERVER_RESTART',
+        });
+        await this.jobRepository.save(blockedJob);
+        if (this.broadcaster) {
+          this.broadcaster.broadcastJobUpdate(blockedJob);
         }
       }
 

@@ -253,6 +253,29 @@ export function createJobsRoutes(
     });
   }
 
+  function appendJobLifecycleTimeline(
+    job: {
+      state: { metadata?: Record<string, unknown> };
+      updateStateMetadata: (metadata: Record<string, unknown>) => void;
+    },
+    event: 'manual_pause' | 'manual_resume',
+    details: Record<string, unknown> = {}
+  ): void {
+    const metadata = parseRecord(job.state.metadata || {});
+    const timeline = Array.isArray(metadata.recoveryTimeline)
+      ? [...(metadata.recoveryTimeline as Array<Record<string, unknown>>)]
+      : [];
+    timeline.push({
+      event,
+      timestamp: Date.now(),
+      ...details,
+    });
+    job.updateStateMetadata({
+      recoveryTimeline: timeline.slice(-50),
+      lastRecoveryEvent: event,
+    });
+  }
+
   function setModelScopeExcluded(
     database: Database.Database,
     params: {
@@ -645,6 +668,13 @@ export function createJobsRoutes(
 
       // Fallback path for environments without worker orchestration
       job.pause();
+      appendJobLifecycleTimeline(job as any, 'manual_pause', {
+        reason: 'USER_PAUSE',
+      });
+      job.updateStateMetadata({
+        recoverableAfterRestart: false,
+        interruptedReason: 'USER_PAUSE',
+      });
       await jobRepository.save(job);
       if (sseBroadcaster) {
         sseBroadcaster.broadcastJobUpdate(job);
@@ -698,6 +728,12 @@ export function createJobsRoutes(
       }
 
       job.resume();
+      appendJobLifecycleTimeline(job as any, 'manual_resume', {
+        reason: 'USER_RESUME',
+      });
+      job.updateStateMetadata({
+        interruptedReason: 'USER_RESUME',
+      });
       await jobRepository.save(job);
 
       if (sseBroadcaster) {

@@ -79,4 +79,62 @@ describe('EnhancedAutogroupService processing mode semantics', () => {
     expect(result.stats.manualGroups).toBeGreaterThanOrEqual(1);
     expect(result.groups.some((group) => group.name === 'Manual Keyword Group')).toBe(true);
   });
+
+  test('produces deterministic group ids and diagnostics for identical input', async () => {
+    const service = new EnhancedAutogroupService();
+    const config: AutogroupRuntimeConfig = {
+      mode: 'automatic',
+      automatic: {
+        targetGroupCount: 4,
+        createCatchAll: true,
+        minGroupSize: 1,
+        algorithm: 'tfidf',
+      },
+    };
+
+    const first = await service.autoGroupMessages(messages, config);
+    const second = await service.autoGroupMessages(messages, config);
+
+    expect(first.groups.map((group) => group.id)).toEqual(second.groups.map((group) => group.id));
+    expect(first.stats.diagnostics.featureModel).toBe('tfidf_mixed_features_v1');
+    expect(first.stats.diagnostics.eligibleMessages).toBe(messages.length);
+    expect(
+      first.stats.diagnostics.assignedMessages + first.stats.diagnostics.unmatchedMessages
+    ).toBe(messages.length);
+    expect(first.stats.catchAllGroup).toBe(false);
+    expect(first.groups.some((group) => group.isCatchAll)).toBe(false);
+  });
+
+  test('extracts phrase/ngram signals for clustering labels', async () => {
+    const service = new EnhancedAutogroupService();
+    const phraseMessages = [
+      { id: 'p1', role: 'user', content: 'Project Moonlight roadmap phase planning milestone' },
+      {
+        id: 'p2',
+        role: 'assistant',
+        content: 'Project Moonlight release notes and milestone risk',
+      },
+      {
+        id: 'p3',
+        role: 'user',
+        content: 'system architecture migration sequence and deployment plan',
+      },
+    ];
+
+    const result = await service.autoGroupMessages(phraseMessages, {
+      mode: 'automatic',
+      automatic: {
+        targetGroupCount: 3,
+        createCatchAll: true,
+        minGroupSize: 1,
+      },
+    });
+
+    const joinedKeywords = result.groups.flatMap((group) => group.keywords).join(' ');
+    expect(
+      joinedKeywords.includes('bi:') ||
+        joinedKeywords.includes('tri:') ||
+        joinedKeywords.includes('phrase:')
+    ).toBe(true);
+  });
 });

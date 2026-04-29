@@ -9,9 +9,12 @@ import {
   EnhancedAutogroupService,
   type AutogroupRuntimeConfig,
   type Group,
+  type GroupingDiagnostics,
+  normalizeGroupLabelKey,
 } from './autogroup-enhanced';
 import { getLocalDocumentStore } from './local-document-store';
 import { DatabaseWriteQueue } from './DatabaseWriteQueue';
+import type { SqlVariableSplitDiagnostics } from './WriteQueueErrorHandler';
 import type {
   ImportJobStage,
   NormalizedImportOptions,
@@ -75,10 +78,17 @@ export interface ImportResult {
       autoGroups: number;
       catchAllGroup: boolean;
       avgGroupSize: number;
+      diagnostics: GroupingDiagnostics;
     };
     processing: {
       durationMs: number;
       messagesPerSecond: number;
+      writeQueue?: {
+        sqlVariableSplitRetries: number;
+        deferredForeignKeyEdges: number;
+        fkRequeueEscalations: number;
+        lastSqlVariableSplit?: SqlVariableSplitDiagnostics;
+      };
     };
     similarity?: {
       edges: number;
@@ -185,6 +195,23 @@ export class EnhancedImportServiceV2 {
   private importMode: string = 'unknown';
   private knownNodeIds: Set<string> = new Set();
   private knownEdgeIds: Set<string> = new Set();
+  private readonly GROUPING_QUALITY_MIN_ELIGIBLE_MESSAGES = Number.parseInt(
+    process.env.IMPORT_GROUPING_QUALITY_MIN_ELIGIBLE_MESSAGES || '40',
+    10
+  );
+  private readonly GROUPING_QUALITY_MIN_NON_CATCHALL_GROUPS = Number.parseInt(
+    process.env.IMPORT_GROUPING_MIN_NON_CATCHALL_GROUPS || '2',
+    10
+  );
+  private readonly GROUPING_QUALITY_MAX_UNMATCHED_RATIO = Number.parseFloat(
+    process.env.IMPORT_GROUPING_MAX_UNMATCHED_RATIO || '0.35'
+  );
+  private readonly CATCH_ALL_GROUP_LABEL_KEYS = new Set([
+    'other',
+    'uncategorized',
+    'other / uncategorized',
+    'other/uncategorized',
+  ]);
 
   // Track created entities for ChangeTracker rollback support
   private createdNodeIds: string[] = [];
@@ -282,24 +309,46 @@ export class EnhancedImportServiceV2 {
 
     const deadLetters = this.writeQueue.getDeadLetterQueue();
     const circuitOpen = this.writeQueue.isCircuitOpen();
+    const queueStats = this.writeQueue.getStats();
 
     if (deadLetters.length === 0 && !circuitOpen) {
       return;
     }
 
+    const hasForeignKeyDeadLetters = deadLetters.some(
+      (item) =>
+        item.type === 'edge' &&
+        (item.normalizedReason === 'FK_MISSING_ENDPOINT' ||
+          String(item.error?.message || '')
+            .toUpperCase()
+            .includes('FOREIGN KEY'))
+    );
+    const sampleErrors = deadLetters.slice(0, 5).map((item) => ({
+      type: item.type,
+      reason: item.normalizedReason || 'UNKNOWN',
+      message: item.error?.message,
+      attemptCount: item.attemptCount,
+    }));
+    const errorCode =
+      hasForeignKeyDeadLetters || stage.startsWith('canonicalize')
+        ? 'GROUPING_INTEGRITY_FAILED'
+        : 'WRITE_QUEUE_FAILURE';
+
     const error: Error & { code?: string; details?: Record<string, unknown> } = new Error(
       `[Import] Write queue integrity failure at stage "${stage}" (deadLetters=${deadLetters.length}, circuitOpen=${circuitOpen})`
     );
-    error.code = 'WRITE_QUEUE_FAILURE';
+    error.code = errorCode;
     error.details = {
       stage,
       deadLetterCount: deadLetters.length,
       circuitOpen,
-      sampleErrors: deadLetters.slice(0, 3).map((item) => ({
-        type: item.type,
-        reason: item.normalizedReason || 'UNKNOWN',
-        message: item.error?.message,
-      })),
+      sampleErrors,
+      writeQueue: {
+        deferredForeignKeyEdges: queueStats.deferredForeignKeyEdges,
+        fkRequeueEscalations: queueStats.fkRequeueEscalations,
+        sqlVariableSplitRetries: queueStats.sqlVariableSplitRetries,
+        lastSqlVariableSplit: queueStats.lastSqlVariableSplit || null,
+      },
     };
     getImportMetrics().recordWriteQueueIntegrityFailure({
       mode: this.importMode,
@@ -432,15 +481,21 @@ export class EnhancedImportServiceV2 {
         allMessages,
         this.toGroupingConfig(config)
       );
+      this.assertGroupingIntegrityAndQuality(groupResult);
+      const canonicalGroups = this.context?.accountId
+        ? this.canonicalizeGroupsForAccount(groupResult.groups, this.context.accountId)
+        : groupResult.groups;
 
       // Step 4: Save conversations, messages, and groups to database
-      await this.saveToDatabase(conversations, groupResult.groups, uploadHash, config);
+      await this.saveToDatabase(conversations, canonicalGroups, uploadHash, config);
       await this.flushWritesStrict('canonicalize.save_to_database');
 
       // Step 5: Create sources from messages
       await this.emitPipelineStage(hooks, 'source', 'Materializing source nodes');
-      const sources = await this.createSources(allMessages, groupResult.groups, config, uploadHash);
+      const sources = await this.createSources(allMessages, canonicalGroups, config, uploadHash);
       await this.flushWritesStrict('canonicalize.create_sources');
+      await this.refreshGroupMemberCounts(canonicalGroups);
+      await this.flushWritesStrict('canonicalize.refresh_group_member_counts');
 
       // Similarity-first graph birth (canonical deterministic weighted similarity)
       const similarityResult = await this.materializeSimilarityGraph(sources, uploadHash, config);
@@ -526,12 +581,13 @@ export class EnhancedImportServiceV2 {
       const endTime = Date.now();
       const durationMs = endTime - startTime;
       const totalMessages = conversations.reduce((sum, c) => sum + c.messages.length, 0);
+      const writeQueueStats = this.writeQueue?.getStats();
 
       return {
         uploadHash,
         conversations: conversations.length,
         messages: totalMessages,
-        groups: groupResult.groups,
+        groups: canonicalGroups,
         sources: sources.length,
         codeBlocks,
         duplicatesForReview,
@@ -542,10 +598,19 @@ export class EnhancedImportServiceV2 {
             autoGroups: groupResult.stats.autoGroups,
             catchAllGroup: groupResult.stats.catchAllGroup,
             avgGroupSize: groupResult.stats.avgGroupSize,
+            diagnostics: groupResult.stats.diagnostics,
           },
           processing: {
             durationMs,
             messagesPerSecond: Math.round((totalMessages / durationMs) * 1000),
+            writeQueue: writeQueueStats
+              ? {
+                  sqlVariableSplitRetries: writeQueueStats.sqlVariableSplitRetries,
+                  deferredForeignKeyEdges: writeQueueStats.deferredForeignKeyEdges,
+                  fkRequeueEscalations: writeQueueStats.fkRequeueEscalations,
+                  lastSqlVariableSplit: writeQueueStats.lastSqlVariableSplit || undefined,
+                }
+              : undefined,
           },
           spine: config.spine?.enabled ? spineStats : undefined,
           similarity: similarityResult.stats,
@@ -721,12 +786,305 @@ export class EnhancedImportServiceV2 {
       mode,
       automatic: {
         targetGroupCount: 25,
-        createCatchAll: true,
+        createCatchAll: false,
         minGroupSize: 2,
         algorithm: 'tfidf',
       },
       manual,
     };
+  }
+
+  private parseNodeProperties(raw: unknown): Record<string, any> {
+    if (typeof raw !== 'string' || raw.length === 0) {
+      return {};
+    }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  }
+
+  private mergeUniqueStrings(values: Array<unknown>): string[] {
+    const deduped = new Set<string>();
+    for (const value of values) {
+      if (typeof value !== 'string') {
+        continue;
+      }
+      const normalized = value.trim();
+      if (normalized.length > 0) {
+        deduped.add(normalized);
+      }
+    }
+    return Array.from(deduped).sort((a, b) => a.localeCompare(b));
+  }
+
+  private isCatchAllGroupLabelKey(labelKey: string): boolean {
+    return this.CATCH_ALL_GROUP_LABEL_KEYS.has(labelKey);
+  }
+
+  private canonicalizeGroupsForAccount(groups: Group[], accountId: string): Group[] {
+    const existingRows = this.sqliteDb
+      .prepare(
+        `
+        SELECT id, properties, created_at
+        FROM nodes
+        WHERE account_id = ? AND kind = 'Group'
+        ORDER BY created_at ASC, id ASC
+      `
+      )
+      .all(accountId) as Array<{ id: string; properties: string; created_at: number }>;
+
+    const existingByLabelKey = new Map<string, { id: string; name: string }>();
+    for (const row of existingRows) {
+      const props = this.parseNodeProperties(row.properties);
+      const existingName =
+        typeof props.name === 'string' && props.name.trim().length > 0 ? props.name : row.id;
+      const existingLabelKey = normalizeGroupLabelKey(
+        typeof props.normalized_label_key === 'string' && props.normalized_label_key.length > 0
+          ? props.normalized_label_key
+          : existingName
+      );
+
+      if (!existingLabelKey || this.isCatchAllGroupLabelKey(existingLabelKey)) {
+        continue;
+      }
+      if (!existingByLabelKey.has(existingLabelKey)) {
+        existingByLabelKey.set(existingLabelKey, { id: row.id, name: existingName });
+      }
+    }
+
+    const mergedByLabelKey = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        keywords: Set<string>;
+        sources: Set<string>;
+        isManual: boolean;
+        confidence?: number;
+      }
+    >();
+
+    let skippedCatchAllGroups = 0;
+    for (const group of groups) {
+      const labelKey = normalizeGroupLabelKey(group.name || '');
+      if (!labelKey || this.isCatchAllGroupLabelKey(labelKey) || group.isCatchAll) {
+        skippedCatchAllGroups += 1;
+        continue;
+      }
+
+      const existing = existingByLabelKey.get(labelKey);
+      const stableId =
+        existing?.id || `grp_label_${this.stableHash(`${accountId}:${labelKey}`, 20)}`;
+      const stableName = existing?.name || group.name.trim() || 'Untitled Group';
+
+      const target =
+        mergedByLabelKey.get(labelKey) ||
+        (() => {
+          const next = {
+            id: stableId,
+            name: stableName,
+            keywords: new Set<string>(),
+            sources: new Set<string>(),
+            isManual: false,
+            confidence: undefined as number | undefined,
+          };
+          mergedByLabelKey.set(labelKey, next);
+          return next;
+        })();
+
+      for (const keyword of group.keywords || []) {
+        if (typeof keyword === 'string' && keyword.trim().length > 0) {
+          target.keywords.add(keyword.trim());
+        }
+      }
+
+      for (const sourceId of group.sources || []) {
+        if (typeof sourceId === 'string' && sourceId.trim().length > 0) {
+          target.sources.add(sourceId.trim());
+        }
+      }
+
+      target.isManual = target.isManual || group.isManual;
+      if (typeof group.confidence === 'number' && Number.isFinite(group.confidence)) {
+        target.confidence =
+          typeof target.confidence === 'number'
+            ? Math.max(target.confidence, group.confidence)
+            : group.confidence;
+      }
+    }
+
+    const canonicalGroups = Array.from(mergedByLabelKey.values())
+      .map((merged) => ({
+        id: merged.id,
+        name: merged.name,
+        keywords: Array.from(merged.keywords).sort((left, right) => left.localeCompare(right)),
+        sources: Array.from(merged.sources).sort((left, right) => left.localeCompare(right)),
+        isManual: merged.isManual,
+        confidence: merged.confidence,
+      }))
+      .filter((group) => group.sources.length > 0)
+      .sort(
+        (left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
+      );
+
+    console.log(
+      '[Import] Canonicalized groups',
+      JSON.stringify({
+        inputGroupCount: groups.length,
+        canonicalGroupCount: canonicalGroups.length,
+        skippedCatchAllGroups,
+      })
+    );
+
+    return canonicalGroups;
+  }
+
+  private async refreshGroupMemberCounts(groups: Group[]): Promise<void> {
+    if (!this.context || groups.length === 0) {
+      return;
+    }
+
+    const now = Date.now();
+    const accountId = this.context.accountId;
+    const uniqueGroupIds = Array.from(new Set(groups.map((group) => group.id)));
+
+    for (const groupId of uniqueGroupIds) {
+      const groupRow = this.sqliteDb
+        .prepare(
+          `
+          SELECT properties
+          FROM nodes
+          WHERE id = ? AND account_id = ? AND kind = 'Group'
+        `
+        )
+        .get(groupId, accountId) as { properties: string } | undefined;
+
+      if (!groupRow) {
+        continue;
+      }
+
+      const properties = this.parseNodeProperties(groupRow.properties);
+      const groupName =
+        typeof properties.name === 'string' && properties.name.trim().length > 0
+          ? properties.name
+          : groupId;
+      const labelKey = normalizeGroupLabelKey(
+        typeof properties.normalized_label_key === 'string' &&
+          properties.normalized_label_key.trim().length > 0
+          ? properties.normalized_label_key
+          : groupName
+      );
+
+      const memberCountRow = this.sqliteDb
+        .prepare(
+          `
+          SELECT COUNT(*) as count
+          FROM edges
+          WHERE kind = 'IN_GROUP' AND to_id = ? AND account_id = ?
+        `
+        )
+        .get(groupId, accountId) as { count: number };
+
+      const metadata =
+        typeof properties.metadata === 'object' && properties.metadata
+          ? { ...(properties.metadata as Record<string, unknown>) }
+          : {};
+      metadata.normalized_label_key = labelKey;
+      properties.metadata = metadata;
+      properties.normalized_label_key = labelKey;
+      properties.member_count = memberCountRow.count;
+      properties.updated_at = now;
+
+      this.sqliteDb
+        .prepare(
+          `
+          UPDATE nodes
+          SET properties = ?, updated_at = ?
+          WHERE id = ? AND account_id = ? AND kind = 'Group'
+        `
+        )
+        .run(JSON.stringify(properties), now, groupId, accountId);
+    }
+  }
+
+  private assertGroupingIntegrityAndQuality(groupResult: {
+    stats: {
+      diagnostics: GroupingDiagnostics;
+      totalSources: number;
+      unmatchedSources: number;
+      totalGroups: number;
+    };
+  }): void {
+    const diagnostics = groupResult.stats.diagnostics;
+    const integrityViolations: string[] = [];
+
+    if (
+      diagnostics.assignedMessages + diagnostics.unmatchedMessages !==
+      diagnostics.eligibleMessages
+    ) {
+      integrityViolations.push('assignment_accounting_mismatch');
+    }
+
+    if (diagnostics.assignedMessages > diagnostics.eligibleMessages) {
+      integrityViolations.push('assigned_messages_exceed_eligible');
+    }
+
+    if (diagnostics.duplicateAssignments > 0) {
+      integrityViolations.push('duplicate_group_assignments_detected');
+    }
+
+    if (integrityViolations.length > 0) {
+      const error: Error & { code?: string; details?: Record<string, unknown> } = new Error(
+        '[Import] Grouping integrity gate failed'
+      );
+      error.code = 'GROUPING_INTEGRITY_FAILED';
+      error.details = {
+        violations: integrityViolations,
+        diagnostics,
+      };
+      throw error;
+    }
+
+    const isNonTrivialImport =
+      diagnostics.eligibleMessages >= this.GROUPING_QUALITY_MIN_ELIGIBLE_MESSAGES;
+    if (!isNonTrivialImport) {
+      return;
+    }
+
+    const unmatchedRatio =
+      diagnostics.eligibleMessages > 0
+        ? diagnostics.unmatchedMessages / diagnostics.eligibleMessages
+        : 0;
+    const qualityViolations: string[] = [];
+
+    if (diagnostics.nonCatchAllGroupCount < this.GROUPING_QUALITY_MIN_NON_CATCHALL_GROUPS) {
+      qualityViolations.push('insufficient_non_catchall_groups');
+    }
+    if (unmatchedRatio > this.GROUPING_QUALITY_MAX_UNMATCHED_RATIO) {
+      qualityViolations.push('unmatched_ratio_exceeded');
+    }
+
+    if (qualityViolations.length > 0) {
+      const error: Error & { code?: string; details?: Record<string, unknown> } = new Error(
+        '[Import] Grouping quality gate failed'
+      );
+      error.code = 'GROUPING_QUALITY_FAILED';
+      error.details = {
+        qualityViolations,
+        thresholds: {
+          minimumEligibleMessages: this.GROUPING_QUALITY_MIN_ELIGIBLE_MESSAGES,
+          minimumNonCatchAllGroups: this.GROUPING_QUALITY_MIN_NON_CATCHALL_GROUPS,
+          maximumUnmatchedRatio: this.GROUPING_QUALITY_MAX_UNMATCHED_RATIO,
+        },
+        diagnostics: {
+          ...diagnostics,
+          unmatchedRatio,
+        },
+      };
+      throw error;
+    }
   }
 
   private async ensureSimilarityMetadataStorage(): Promise<void> {
@@ -975,17 +1333,64 @@ export class EnhancedImportServiceV2 {
 
     // Save groups
     for (const group of groups) {
+      const existingGroupRow: { properties: string; created_at: number } | undefined = this.context
+        ? (this.sqliteDb
+            .prepare(
+              `
+          SELECT properties, created_at
+          FROM nodes
+          WHERE id = ? AND account_id = ? AND kind = 'Group'
+        `
+            )
+            .get(group.id, this.context.accountId) as
+            | { properties: string; created_at: number }
+            | undefined)
+        : undefined;
+
+      const existingProps = this.parseNodeProperties(existingGroupRow?.properties);
+      const existingKeywords = Array.isArray(existingProps?.metadata?.keywords)
+        ? (existingProps.metadata.keywords as unknown[])
+        : [];
+      const existingName =
+        typeof existingProps.name === 'string' && existingProps.name.trim().length > 0
+          ? existingProps.name
+          : undefined;
+      const normalizedLabelKey = normalizeGroupLabelKey(
+        typeof existingProps.normalized_label_key === 'string' &&
+          existingProps.normalized_label_key.trim().length > 0
+          ? existingProps.normalized_label_key
+          : group.name
+      );
+      const existingMemberCountRow: { count: number } = this.context
+        ? (this.sqliteDb
+            .prepare(
+              `
+          SELECT COUNT(*) as count
+          FROM edges
+          WHERE kind = 'IN_GROUP' AND to_id = ? AND account_id = ?
+        `
+            )
+            .get(group.id, this.context.accountId) as { count: number })
+        : { count: 0 };
+
+      const mergedKeywords = this.mergeUniqueStrings([
+        ...existingKeywords,
+        ...(group.keywords || []),
+      ]);
+      const mergedMemberCount = existingMemberCountRow.count + new Set(group.sources).size;
       await this.writeNode({
         id: group.id,
         kind: 'Group',
-        name: group.name,
-        member_count: group.sources.length,
-        created_at: Date.now(),
+        name: existingName || group.name,
+        normalized_label_key: normalizedLabelKey,
+        member_count: mergedMemberCount,
+        created_at: existingGroupRow?.created_at || Date.now(),
         updated_at: Date.now(),
         metadata: {
-          keywords: group.keywords,
-          isManual: group.isManual,
-          isCatchAll: group.isCatchAll,
+          keywords: mergedKeywords,
+          normalized_label_key: normalizedLabelKey,
+          isManual: Boolean(existingProps?.metadata?.isManual) || group.isManual,
+          isCatchAll: false,
           confidence: group.confidence,
         },
       });

@@ -21,9 +21,9 @@ export function PortalWrapper({ children }: PortalWrapperProps) {
   const isAdmin = user?.accountType === 'admin';
   const hasAccountSelected = operating.accountId && operating.mode !== 'native';
 
-  // If not in Portal mode or no account selected, just render children
+  // If not in Portal mode or no account selected, keep a stable sizing wrapper.
   if (!isAdmin || !hasAccountSelected) {
-    return <>{children}</>;
+    return <div className="relative flex flex-col flex-1 min-h-0 w-full">{children}</div>;
   }
 
   const handleToggleServiceMode = () => {
@@ -40,7 +40,7 @@ export function PortalWrapper({ children }: PortalWrapperProps) {
   };
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative flex flex-col flex-1 min-h-0 w-full">
       {/* Admin Controls Banner - Top */}
       <div className="absolute top-0 left-0 right-0 z-50 bg-purple-900/90 backdrop-blur-sm border-b border-purple-700">
         <div className="flex items-center justify-between px-4 py-2">
@@ -153,7 +153,7 @@ export function PortalWrapper({ children }: PortalWrapperProps) {
       </div>
 
       {/* Client Content - Offset by banner height */}
-      <div className="h-full pt-10" style={{ paddingTop: showInfo ? '160px' : '40px' }}>
+      <div className="flex-1 min-h-0 pt-10" style={{ paddingTop: showInfo ? '160px' : '40px' }}>
         {children}
       </div>
     </div>

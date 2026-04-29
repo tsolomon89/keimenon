@@ -46,6 +46,7 @@ import healthRoutes from './routes/health.routes';
 import { createPrincipalsRoutes } from './routes/principals.routes';
 import { createWorkspaceRoutes } from './routes/workspace.routes';
 import { createConversationsRoutes } from './routes/conversations.routes';
+import { createGraphRoutes } from './routes/graph.routes';
 import { SSEBroadcaster } from './modules/jobs/infrastructure/SSEBroadcaster';
 import { WorkerPool } from './modules/workers/domain/WorkerPool';
 import { DatabaseWriteQueue } from './services/DatabaseWriteQueue';
@@ -197,6 +198,9 @@ export function createApp(): { app: Express; context: AppContext } {
           deletePreset: 'DELETE /api/v1/import/presets/:id',
           statsSeries: 'GET /api/v1/import/stats/series',
         },
+        graph: {
+          snapshot: 'GET /api/v1/graph/snapshot',
+        },
       },
     });
   });
@@ -239,6 +243,7 @@ export function createApp(): { app: Express; context: AppContext } {
   let principalsRoutes: any = null;
   let workspaceRoutes: any = null;
   let conversationsRoutes: any = null;
+  let graphRoutes: any = null;
   let agentRoutes: any = null;
   let devAuthRoutes: any = null;
   let systemRoutes: any = null;
@@ -283,6 +288,7 @@ export function createApp(): { app: Express; context: AppContext } {
     principalsRoutes = createPrincipalsRoutes(dbClient, authService);
     workspaceRoutes = createWorkspaceRoutes(dbClient, authService);
     conversationsRoutes = createConversationsRoutes(dbClient, authService);
+    graphRoutes = createGraphRoutes(authService);
     agentRoutes = createAgentRoutes(authService as any);
     systemRoutes = createSystemRoutes(authService as any);
     meRoutes = createMeRoutes(authService as any);
@@ -426,6 +432,11 @@ export function createApp(): { app: Express; context: AppContext } {
 
   app.use('/api/v1/nodes', (req, res, next) => {
     if (nodesRoutes) return nodesRoutes(req, res, next);
+    return res.status(503).json({ error: 'Auth service not initialized' });
+  });
+
+  app.use('/api/v1/graph', (req, res, next) => {
+    if (graphRoutes) return graphRoutes(req, res, next);
     return res.status(503).json({ error: 'Auth service not initialized' });
   });
 

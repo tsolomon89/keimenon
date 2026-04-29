@@ -4,6 +4,7 @@ import {
   CapabilityAuthorizationService,
   PrincipalCapabilities,
 } from '../services/auth.service';
+import { PrincipalService } from '../services/principal-service';
 
 function shouldLogCapabilityLookupWarnings(): boolean {
   if (process.env.AUTH_CAPABILITY_LOOKUP_LOG_ERRORS === '1') {
@@ -36,6 +37,7 @@ declare global {
         overrides?: Record<string, boolean>;
         sessionId: string; // Session ID for tracking
         allAccounts?: string[]; // All accessible account IDs
+        principalId?: string; // Resolved human principal id for current account
         // World Model V5: Principal capabilities for unified authorization
         capabilities?: PrincipalCapabilities;
       };
@@ -96,11 +98,34 @@ export function requireAuth(authService: AuthServiceV2) {
         const dbClient = (authService as any).db;
         if (dbClient) {
           const capabilityService = new CapabilityAuthorizationService(dbClient);
+          let capabilityPrincipalId = payload.userId;
+
+          try {
+            const principalService = new PrincipalService(dbClient);
+            const principal = await principalService.resolveHumanPrincipal(
+              payload.accountId,
+              payload.userId,
+              payload.email,
+              payload.email
+            );
+            if (principal?.id) {
+              capabilityPrincipalId = principal.id;
+            }
+          } catch (principalResolveError) {
+            if (shouldLogCapabilityLookupWarnings()) {
+              console.warn(
+                '[AuthMiddleware] Could not resolve human principal for capability lookup:',
+                principalResolveError
+              );
+            }
+          }
+
           const capabilities = await capabilityService.getPrincipalCapabilities(
-            payload.userId,
+            capabilityPrincipalId,
             payload.accountId
           );
           req.user.capabilities = capabilities;
+          req.user.principalId = capabilityPrincipalId;
         }
       } catch (capError) {
         // Non-fatal: default to no special capabilities if lookup fails

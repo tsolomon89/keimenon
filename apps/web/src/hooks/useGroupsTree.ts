@@ -4,7 +4,12 @@ import { TreeNode } from '@/components/common/NavigationBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { errorCapture } from '@/services/error-capture.service';
 import { API_BASE_URL } from '@/lib/env.config';
-import { authenticatedFetch, type GraphNode, type GraphEdge } from '@/lib/api-client';
+import {
+  authenticatedFetch,
+  getGraphSnapshot,
+  type GraphNode,
+  type GraphEdge,
+} from '@/lib/api-client';
 import { IMPORT_GRAPH_REFRESH_EVENT } from '@/lib/import-refresh-events';
 
 interface GroupNode {
@@ -219,10 +224,53 @@ export async function fetchGroupMembers(
     }
 
     const data = await response.json();
-    return {
+    const basePayload: GroupMembersPayload = {
       nodeIds: data.node_ids || [],
       nodes: data.nodes || [],
       edges: data.edges || [],
+    };
+
+    if (basePayload.nodeIds.length === 0) {
+      return basePayload;
+    }
+
+    if (basePayload.edges.length > 0) {
+      return basePayload;
+    }
+
+    // Snapshot-aligned scoped hydration fallback:
+    // when group member edges are sparse/empty, ask the canonical selector
+    // for strongest connectors among this scope.
+    let snapshot;
+    try {
+      snapshot = await getGraphSnapshot({
+        seed_node_ids: [groupId, ...basePayload.nodeIds].slice(0, 300),
+        node_budget: 3000,
+        edge_budget: 10000,
+      });
+    } catch {
+      return basePayload;
+    }
+
+    const mergedNodesById = new Map<string, GraphNode>();
+    for (const node of basePayload.nodes) {
+      mergedNodesById.set(node.id, node);
+    }
+    for (const node of snapshot.nodes) {
+      if (!mergedNodesById.has(node.id)) {
+        mergedNodesById.set(node.id, node);
+      }
+    }
+
+    const mergedEdgesById = new Map<string, GraphEdge>();
+    for (const edge of snapshot.edges) {
+      mergedEdgesById.set(edge.id, edge);
+    }
+
+    return {
+      nodeIds: basePayload.nodeIds,
+      nodes: Array.from(mergedNodesById.values()),
+      edges: Array.from(mergedEdgesById.values()),
     };
   } catch (error: any) {
     console.error('Failed to fetch group members:', error);
