@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Tag, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Tag, Plus, Search, Sparkles, FolderTree } from 'lucide-react';
+import { CorpusSearchPanel } from './CorpusSearchPanel';
+import { TopicInboxPanel } from './TopicInboxPanel';
 import { NavigationBar, TreeNode } from '../common/NavigationBar';
 import { SettingsInspector } from '../settings/SettingsInspector';
 import { SourceInspector } from './SourceInspector';
@@ -103,6 +105,7 @@ export function KeimenonSidebar({
     } = useSettingsTree();
     const [expandedTreeData, setExpandedTreeData] = useState<TreeNode[]>(groupsTreeData);
     const [_loadingFolders, setLoadingFolders] = useState<Set<string>>(new Set());
+    const [leftTab, setLeftTab] = useState<'navigator' | 'search' | 'topics'>('navigator');
     const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
     const [selectedAccountIds, setSelectedAccountIds] = useState<Set<string>>(new Set());
     const [lastSelectedAccountId, setLastSelectedAccountId] = useState<string | null>(null);
@@ -331,6 +334,16 @@ export function KeimenonSidebar({
       return CollapsedSidebar;
     }
 
+    const isKeimenon = keimenonMode === 'keimenon';
+    const showTabs = isKeimenon;
+
+    const tabButtonClass = (active: boolean) =>
+      `flex items-center justify-center p-2 rounded transition-colors ${
+        active
+          ? 'bg-slate-800 text-purple-400 shadow-inner'
+          : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+      }`;
+
     return (
       <>
         {/* Mobile overlay backdrop */}
@@ -340,10 +353,12 @@ export function KeimenonSidebar({
         <aside className="fixed lg:static inset-y-0 left-0 z-50 lg:z-auto w-64 lg:w-64 border-r border-slate-800 bg-slate-900 lg:bg-slate-900/50 backdrop-blur-sm flex flex-col shadow-2xl lg:shadow-none">
           {/* Header */}
           <div className="min-h-[48px] border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm flex items-center justify-between px-3">
-            <h2 className="text-sm font-semibold text-slate-300">{navTitle}</h2>
+            <h2 className="text-sm font-semibold text-slate-300">
+              {leftTab === 'search' ? 'Search' : leftTab === 'topics' ? 'Topics' : navTitle}
+            </h2>
             <div className="flex items-center gap-1">
               {/* + Account button (from navigation model) */}
-              {showCreateButton && navMode === 'accounts' && (
+              {showCreateButton && navMode === 'accounts' && leftTab === 'navigator' && (
                 <button
                   onClick={() => setShowCreateAccountModal(true)}
                   className="p-1 hover:bg-slate-800 rounded text-purple-400 hover:text-purple-300"
@@ -361,23 +376,57 @@ export function KeimenonSidebar({
             </div>
           </div>
 
-          {/* NavigationBar */}
-          <NavigationBar
-            mode={navMode}
-            data={navData}
-            selectedId={navMode === 'accounts' ? operating.accountId : undefined}
-            selectedIds={
-              navMode === 'accounts'
-                ? selectedAccountIds
-                : navMode === 'groups'
-                  ? highlightedGroupIds
-                  : undefined
-            }
-            multiSelect={navMode === 'accounts' || navMode === 'groups'}
-            onSelect={handleSelect}
-            searchPlaceholder={searchPlaceholder}
-            emptyMessage={emptyMessage}
-          />
+          {/* Tab bar — only shown in keimenon graph mode */}
+          {showTabs && (
+            <div className="flex items-center gap-0.5 px-2 py-1 border-b border-slate-800 bg-slate-900/30">
+              <button
+                onClick={() => setLeftTab('navigator')}
+                className={tabButtonClass(leftTab === 'navigator')}
+                title="Navigator"
+              >
+                <FolderTree className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setLeftTab('search')}
+                className={tabButtonClass(leftTab === 'search')}
+                title="Search Corpus"
+              >
+                <Search className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setLeftTab('topics')}
+                className={tabButtonClass(leftTab === 'topics')}
+                title="Topic Inbox"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Tab content */}
+          {leftTab === 'search' && showTabs ? (
+            <CorpusSearchPanel />
+          ) : leftTab === 'topics' && showTabs ? (
+            <TopicInboxPanel />
+          ) : (
+            /* Default: NavigationBar */
+            <NavigationBar
+              mode={navMode}
+              data={navData}
+              selectedId={navMode === 'accounts' ? operating.accountId : undefined}
+              selectedIds={
+                navMode === 'accounts'
+                  ? selectedAccountIds
+                  : navMode === 'groups'
+                    ? highlightedGroupIds
+                    : undefined
+              }
+              multiSelect={navMode === 'accounts' || navMode === 'groups'}
+              onSelect={handleSelect}
+              searchPlaceholder={searchPlaceholder}
+              emptyMessage={emptyMessage}
+            />
+          )}
 
           {/* Create Account Modal */}
           {showCreateAccountModal && (

@@ -927,6 +927,7 @@ export class GraphSpineBuilder {
         description: `Topic cluster containing: ${keywords.slice(0, 3).join(', ')}`,
         keywords,
         strength,
+        topic_status: 'suggested' as const,
         created_at: Date.now(),
         updated_at: Date.now(),
         metadata: {

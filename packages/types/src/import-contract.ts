@@ -81,6 +81,23 @@ export const ImportConfigSchema = z
         autoApproveExact: false,
         autoMergeThreshold: 0.95,
       }),
+    spine: z
+      .object({
+        enabled: z.boolean().default(true),
+        extractLexemes: z.boolean().default(true),
+        extractPhrases: z.boolean().default(true),
+        clusterTopics: z.boolean().default(true),
+        minPhraseFrequency: z.number().min(1).default(1),
+        minPhrasesPerTopic: z.number().min(1).default(2),
+      })
+      .default({
+        enabled: true,
+        extractLexemes: true,
+        extractPhrases: true,
+        clusterTopics: true,
+        minPhraseFrequency: 1,
+        minPhrasesPerTopic: 2,
+      }),
   })
   .partial();
 
@@ -124,6 +141,14 @@ export interface NormalizedImportOptions {
     autoApproveExact: boolean;
     autoMergeThreshold: number;
   };
+  spine: {
+    enabled: boolean;
+    extractLexemes: boolean;
+    extractPhrases: boolean;
+    clusterTopics: boolean;
+    minPhraseFrequency: number;
+    minPhrasesPerTopic: number;
+  };
 }
 
 const DEFAULT_IMPORT_OPTIONS: NormalizedImportOptions = {
@@ -163,6 +188,14 @@ const DEFAULT_IMPORT_OPTIONS: NormalizedImportOptions = {
     autoApproveExact: false,
     autoMergeThreshold: 0.95,
   },
+  spine: {
+    enabled: true,
+    extractLexemes: true,
+    extractPhrases: true,
+    clusterTopics: true,
+    minPhraseFrequency: 1,
+    minPhrasesPerTopic: 2,
+  },
 };
 
 function cloneDefaults(): NormalizedImportOptions {
@@ -195,6 +228,11 @@ export function normalizeImportOptions(input?: unknown): NormalizedImportOptions
       similarityThreshold:
         parsed.duplicateDetection?.similarityThreshold ??
         defaults.duplicateDetection.similarityThreshold,
+    },
+    spine: {
+      ...(parsed.spine ?? defaults.spine),
+      minPhraseFrequency: parsed.spine?.minPhraseFrequency ?? defaults.spine.minPhraseFrequency,
+      minPhrasesPerTopic: parsed.spine?.minPhrasesPerTopic ?? defaults.spine.minPhrasesPerTopic,
     },
   };
 }

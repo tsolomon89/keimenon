@@ -7,6 +7,7 @@ import {
   getLexemeContent,
   getPhraseContent,
   getTopicContent,
+  getUnifiedDocContent,
   getVerifiedSourceContent,
   getVerifiedClaimContent,
   MessageContent,
@@ -16,6 +17,7 @@ import {
   LexemeContent,
   PhraseContent,
   TopicContent,
+  UnifiedDocContent,
   VerifiedSourceContent,
   VerifiedClaimContent,
 } from '@/lib/api-client';
@@ -28,6 +30,7 @@ export type ContentType =
   | 'lexeme'
   | 'phrase'
   | 'topic'
+  | 'unified-doc'
   | 'verified-source'
   | 'verified-claim';
 
@@ -39,6 +42,7 @@ export type LoadedContent =
   | LexemeContent
   | PhraseContent
   | TopicContent
+  | UnifiedDocContent
   | VerifiedSourceContent
   | VerifiedClaimContent;
 
@@ -131,6 +135,9 @@ export function useContentLoader(): UseContentLoaderReturn {
               break;
             case 'topic':
               content = await getTopicContent(id);
+              break;
+            case 'unified-doc':
+              content = await getUnifiedDocContent(id);
               break;
             case 'verified-source':
               content = await getVerifiedSourceContent(id);

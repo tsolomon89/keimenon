@@ -102,6 +102,10 @@ const EDGE_KIND_BASE_PRIORITY: Record<string, number> = {
   COMPILED_FROM: 154,
   EXTRACTED_FROM: 152,
   SIMILAR_TO: 148,
+  ABOUT: 166,
+  BELONGS_TO_TOPIC: 164,
+  MENTIONS: 158,
+  CO_OCCURS_WITH: 156,
   DUP_OF: 140,
   COMPOSED_OF_ATOMIC: 120,
 };
@@ -131,7 +135,21 @@ function extractNodeMass(node: SnapshotNodeRecord): number {
 
 function extractEdgeStrength(edge: SnapshotEdgeRecord): number {
   const props = edge.properties || {};
+  const metadata =
+    props.metadata && typeof props.metadata === 'object'
+      ? (props.metadata as Record<string, unknown>)
+      : {};
   const candidates = [props.strength, props.score, props.similarity, props.weight];
+  candidates.push(
+    metadata.strength,
+    metadata.score,
+    metadata.similarity,
+    metadata.weight,
+    props.relevance,
+    metadata.relevance,
+    props.confidence,
+    metadata.confidence
+  );
   for (const candidate of candidates) {
     const parsed = parseFiniteNumber(candidate, Number.NaN);
     if (Number.isFinite(parsed) && parsed >= 0) {

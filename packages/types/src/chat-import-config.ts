@@ -31,6 +31,7 @@ export const DEFAULT_IMPORT_CONFIG: ChatImportConfig = {
   processingMode: IMPORT_DEFAULTS.processingMode,
   groups: [],
   duplicateDetection: { ...IMPORT_DEFAULTS.duplicateDetection },
+  spine: { ...IMPORT_DEFAULTS.spine },
   extractCode: IMPORT_DEFAULTS.extractCode,
   codeSettings: {
     minLength: IMPORT_DEFAULTS.codeSettings.minLength,

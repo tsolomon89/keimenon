@@ -24,6 +24,9 @@ import {
   AlertTriangle,
   Users,
   MessageCircle,
+  ThumbsUp,
+  ThumbsDown,
+  Pencil,
 } from 'lucide-react';
 import { useContentLoader, ContentType } from '@/hooks/useContentLoader';
 import {
@@ -33,8 +36,12 @@ import {
   LexemeContent,
   PhraseContent,
   TopicContent,
+  UnifiedDocContent,
   VerifiedSourceContent,
   VerifiedClaimContent,
+  promoteTopic,
+  rejectTopic,
+  renameTopic,
 } from '@/lib/api-client';
 import { useKeimenonStore } from '@/store/keimenonStore';
 import { getNodeLabel, LabelableNode } from '@/lib/node-labels';
@@ -119,6 +126,13 @@ export function NodeDetailPanel() {
     credibilityScore: number;
   } | null>(null);
   const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [topicLifecycleAction, setTopicLifecycleAction] = useState<
+    'promoting' | 'rejecting' | 'renaming' | null
+  >(null);
+  const [topicStatus, setTopicStatus] = useState<string | null>(null);
+  const [isEditingTopicName, setIsEditingTopicName] = useState(false);
+  const [editedTopicName, setEditedTopicName] = useState('');
+  const [topicLifecycleError, setTopicLifecycleError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Handle topic verification
@@ -175,6 +189,51 @@ export function NodeDetailPanel() {
     }
   }, [detailPanelNode]);
 
+  // Handle topic promote
+  const handlePromoteTopic = useCallback(async () => {
+    if (!detailPanelNode || detailPanelNode.type !== 'Topic') return;
+    setTopicLifecycleAction('promoting');
+    setTopicLifecycleError(null);
+    try {
+      await promoteTopic(detailPanelNode.id);
+      setTopicStatus('promoted');
+    } catch (err: any) {
+      setTopicLifecycleError(err?.message || 'Promotion failed');
+    } finally {
+      setTopicLifecycleAction(null);
+    }
+  }, [detailPanelNode]);
+
+  // Handle topic reject
+  const handleRejectTopic = useCallback(async () => {
+    if (!detailPanelNode || detailPanelNode.type !== 'Topic') return;
+    setTopicLifecycleAction('rejecting');
+    setTopicLifecycleError(null);
+    try {
+      await rejectTopic(detailPanelNode.id);
+      setTopicStatus('rejected');
+    } catch (err: any) {
+      setTopicLifecycleError(err?.message || 'Rejection failed');
+    } finally {
+      setTopicLifecycleAction(null);
+    }
+  }, [detailPanelNode]);
+
+  // Handle topic rename
+  const handleRenameTopic = useCallback(async () => {
+    if (!detailPanelNode || detailPanelNode.type !== 'Topic' || !editedTopicName.trim()) return;
+    setTopicLifecycleAction('renaming');
+    setTopicLifecycleError(null);
+    try {
+      await renameTopic(detailPanelNode.id, { name: editedTopicName.trim() });
+      setIsEditingTopicName(false);
+    } catch (err: any) {
+      setTopicLifecycleError(err?.message || 'Rename failed');
+    } finally {
+      setTopicLifecycleAction(null);
+    }
+  }, [detailPanelNode, editedTopicName]);
+
   // Auto-load content when panel opens
   // Bug fix #15: Reset autoLoaded when node changes to ensure new node content loads
   const prevNodeId = useRef<string | null>(null);
@@ -184,6 +243,14 @@ export function NodeDetailPanel() {
     if (detailPanelNode?.id !== prevNodeId.current) {
       setAutoLoaded(false);
       prevNodeId.current = detailPanelNode?.id ?? null;
+      // Reset topic lifecycle state for new node
+      setTopicStatus(
+        detailPanelNode?.data?.metadata?.topic_status ||
+          (detailPanelNode?.data as any)?.topic_status ||
+          null
+      );
+      setTopicLifecycleError(null);
+      setIsEditingTopicName(false);
     }
 
     if (detailPanelNode && !autoLoaded) {
@@ -337,14 +404,111 @@ export function NodeDetailPanel() {
           <ConversationThreadDetailsSection metadata={detailPanelNode.data?.metadata || {}} />
         )}
 
-        {/* Actions - V2: Verify Topic button for Topic nodes */}
+        {/* Actions - Topic lifecycle + Verify */}
         {detailPanelNode.type === 'Topic' && (
           <div className="p-4 border-b border-slate-700 bg-slate-800/30">
-            <h3 className="text-sm font-medium text-slate-300 mb-3">Actions</h3>
+            {/* Topic status badge */}
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-slate-300">Actions</h3>
+              {(topicStatus || detailPanelNode.data?.metadata?.topic_status) && (
+                <TopicStatusBadge
+                  status={
+                    topicStatus || detailPanelNode.data?.metadata?.topic_status || 'suggested'
+                  }
+                />
+              )}
+            </div>
+
+            {/* Lifecycle error */}
+            {topicLifecycleError && (
+              <div className="mb-3 p-2 bg-red-600/10 border border-red-500/30 rounded-lg">
+                <p className="text-xs text-red-300">{topicLifecycleError}</p>
+              </div>
+            )}
+
+            {/* Rename inline editor */}
+            {isEditingTopicName ? (
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  value={editedTopicName}
+                  onChange={(e) => setEditedTopicName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRenameTopic();
+                    if (e.key === 'Escape') setIsEditingTopicName(false);
+                  }}
+                  className="flex-1 px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-sm text-slate-200 focus:outline-none focus:border-purple-500/50"
+                  placeholder="New topic name"
+                  autoFocus
+                />
+                <button
+                  onClick={handleRenameTopic}
+                  disabled={topicLifecycleAction === 'renaming' || !editedTopicName.trim()}
+                  className="px-2 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 disabled:cursor-not-allowed text-white rounded text-xs"
+                >
+                  {topicLifecycleAction === 'renaming' ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    'Save'
+                  )}
+                </button>
+                <button
+                  onClick={() => setIsEditingTopicName(false)}
+                  className="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-xs"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : null}
+
+            {/* Promote / Reject / Rename buttons */}
+            {topicStatus !== 'promoted' && topicStatus !== 'rejected' && (
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={handlePromoteTopic}
+                  disabled={!!topicLifecycleAction}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
+                >
+                  {topicLifecycleAction === 'promoting' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <ThumbsUp className="w-3.5 h-3.5" />
+                  )}
+                  Promote
+                </button>
+                <button
+                  onClick={handleRejectTopic}
+                  disabled={!!topicLifecycleAction}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-red-600/80 hover:bg-red-500 disabled:bg-red-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
+                >
+                  {topicLifecycleAction === 'rejecting' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <ThumbsDown className="w-3.5 h-3.5" />
+                  )}
+                  Reject
+                </button>
+                <button
+                  onClick={() => {
+                    setEditedTopicName(
+                      detailPanelNode.data?.label || detailPanelNode.data?.metadata?.name || ''
+                    );
+                    setIsEditingTopicName(true);
+                  }}
+                  disabled={!!topicLifecycleAction}
+                  className="px-3 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:cursor-not-allowed text-slate-200 rounded-lg transition-colors text-sm"
+                  title="Rename topic"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Verify topic button */}
             <button
               onClick={handleVerifyTopic}
               disabled={isVerifying}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm"
             >
               {isVerifying ? (
                 <>
@@ -448,6 +612,8 @@ function getContentType(type: string): ContentType | null {
       return 'phrase';
     case 'Topic':
       return 'topic';
+    case 'UnifiedDoc':
+      return 'unified-doc';
     case 'VerifiedSource':
       return 'verified-source';
     case 'VerifiedClaim':
@@ -518,6 +684,8 @@ function ContentDisplay({ content, nodeType }: ContentDisplayProps) {
       return <PhraseContentDisplay content={content as PhraseContent} />;
     case 'Topic':
       return <TopicContentDisplay content={content as TopicContent} />;
+    case 'UnifiedDoc':
+      return <UnifiedDocContentDisplay content={content as UnifiedDocContent} />;
     case 'VerifiedSource':
       return <VerifiedSourceContentDisplay content={content as VerifiedSourceContent} />;
     case 'VerifiedClaim':
@@ -753,6 +921,47 @@ function TopicContentDisplay({ content }: { content: TopicContent }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function UnifiedDocContentDisplay({ content }: { content: UnifiedDocContent }) {
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2">
+        <span className="px-2 py-1 rounded text-xs font-medium bg-teal-600/20 text-teal-300 border border-teal-500/30 flex items-center gap-1">
+          <FileText className="w-3 h-3" />
+          Unified Document
+        </span>
+        <span className="text-xs text-slate-500">
+          {content.token_count.toLocaleString()} tokens
+        </span>
+      </div>
+
+      <h3 className="text-md font-semibold text-white mb-3">{content.title}</h3>
+      <div className="prose prose-sm prose-invert max-w-none">
+        <div
+          className="whitespace-pre-wrap text-slate-200 bg-slate-800 p-3 rounded-lg border border-slate-700"
+          dangerouslySetInnerHTML={{ __html: formatMarkdown(content.content_markdown) }}
+        />
+      </div>
+
+      {content.citations.length > 0 && (
+        <div className="mt-4">
+          <p className="text-slate-400 text-xs mb-2">Citations</p>
+          <div className="space-y-1">
+            {content.citations.slice(0, 12).map((citation, index) => (
+              <div
+                key={`${citation.node_id}-${index}`}
+                className="text-xs text-slate-300 font-mono"
+              >
+                {citation.node_id}
+                {citation.span ? ` ${citation.span}` : ''}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1406,4 +1615,34 @@ function formatMarkdown(markdown: string): string {
     ALLOWED_TAGS: ['h1', 'h2', 'h3', 'strong', 'em', 'br'],
     ALLOWED_ATTR: ['class'],
   });
+}
+
+/**
+ * TopicStatusBadge — Visual indicator for topic lifecycle state.
+ */
+function TopicStatusBadge({ status }: { status: string }) {
+  const config: Record<string, { label: string; classes: string }> = {
+    suggested: {
+      label: 'Suggested',
+      classes: 'bg-amber-600/20 text-amber-300 border-amber-500/30',
+    },
+    promoted: {
+      label: 'Promoted',
+      classes: 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30',
+    },
+    rejected: {
+      label: 'Rejected',
+      classes: 'bg-red-600/20 text-red-300 border-red-500/30',
+    },
+  };
+
+  const cfg = config[status] || config.suggested;
+
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${cfg.classes}`}
+    >
+      {cfg.label}
+    </span>
+  );
 }

@@ -909,6 +909,15 @@ export interface TopicContent {
   source: 'database';
 }
 
+export interface UnifiedDocContent {
+  id: string;
+  title: string;
+  content_markdown: string;
+  token_count: number;
+  citations: Array<{ node_id: string; span?: string }>;
+  source: 'database';
+}
+
 export interface VerifiedSourceContent {
   id: string;
   url: string;
@@ -1056,7 +1065,8 @@ export async function getLexemeContent(id: string): Promise<LexemeContent> {
       await handleApiError({ response });
     }
 
-    const node = await response.json();
+    const payload = await response.json();
+    const node = payload.node || payload;
     return {
       id: node.id,
       lemma: node.lemma || node.properties?.lemma || '',
@@ -1082,7 +1092,8 @@ export async function getPhraseContent(id: string): Promise<PhraseContent> {
       await handleApiError({ response });
     }
 
-    const node = await response.json();
+    const payload = await response.json();
+    const node = payload.node || payload;
     return {
       id: node.id,
       text: node.text || node.properties?.text || '',
@@ -1110,13 +1121,42 @@ export async function getTopicContent(id: string): Promise<TopicContent> {
       await handleApiError({ response });
     }
 
-    const node = await response.json();
+    const payload = await response.json();
+    const node = payload.node || payload;
     return {
       id: node.id,
       name: node.name || node.properties?.name || '',
       description: node.description || node.properties?.description,
       keywords: node.keywords || node.properties?.keywords || [],
       strength: node.strength || node.properties?.strength || 0,
+      source: 'database',
+    };
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+/**
+ * Get UnifiedDoc node content from database
+ */
+export async function getUnifiedDocContent(id: string): Promise<UnifiedDocContent> {
+  try {
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1/nodes/${id}`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    const payload = await response.json();
+    const node = payload.node || payload;
+    return {
+      id: node.id,
+      title: node.title || node.properties?.title || '',
+      content_markdown: node.content_markdown || node.properties?.content_markdown || '',
+      token_count: node.token_count || node.properties?.token_count || 0,
+      citations: node.citations || node.properties?.citations || [],
       source: 'database',
     };
   } catch (error: any) {
@@ -1137,7 +1177,8 @@ export async function getVerifiedSourceContent(id: string): Promise<VerifiedSour
       await handleApiError({ response });
     }
 
-    const node = await response.json();
+    const payload = await response.json();
+    const node = payload.node || payload;
     return {
       id: node.id,
       url: node.url || node.properties?.url || '',
@@ -1167,7 +1208,8 @@ export async function getVerifiedClaimContent(id: string): Promise<VerifiedClaim
       await handleApiError({ response });
     }
 
-    const node = await response.json();
+    const payload = await response.json();
+    const node = payload.node || payload;
     return {
       id: node.id,
       claim_text: node.claim_text || node.properties?.claim_text || '',
@@ -1540,6 +1582,202 @@ export async function sequesterNode(
       sequester: options.sequester ?? true,
     }),
   });
+
+  if (!response.ok) {
+    await handleApiError({ response });
+  }
+
+  return response.json();
+}
+
+// ==================== Semantic Search & Topic Lifecycle API ====================
+
+/**
+ * Search result from BM25-ranked inverted index
+ */
+export interface SearchResult {
+  nodeId: string;
+  sourceId: string;
+  score: number;
+  text: string;
+  normalizedText?: string;
+  matchedTerms: string[];
+  scoreComponents?: {
+    termFrequency: number;
+    inverseDocFrequency: number;
+    fieldLength: number;
+    boost: number;
+  };
+}
+
+export interface SearchResponse {
+  success: boolean;
+  query: string;
+  resultCount: number;
+  results: SearchResult[];
+}
+
+/**
+ * BM25-ranked search over SourceSpan nodes.
+ */
+export async function searchCorpus(
+  q: string,
+  options: { limit?: number; minScore?: number; explain?: boolean } = {}
+): Promise<SearchResponse> {
+  const params = new URLSearchParams({ q });
+  if (options.limit) params.set('limit', String(options.limit));
+  if (options.minScore) params.set('minScore', String(options.minScore));
+  if (options.explain !== undefined) params.set('explain', String(options.explain));
+
+  const response = await fetchWithAuthInterceptor(
+    `${API_BASE_URL}/api/v1/search/query?${params.toString()}`,
+    { headers: getAuthHeaders() }
+  );
+
+  if (!response.ok) {
+    await handleApiError({ response });
+  }
+
+  return response.json();
+}
+
+/**
+ * Explain why two sources are connected.
+ */
+export async function explainConnection(
+  sourceA: string,
+  sourceB: string
+): Promise<{ success: boolean; explanation: any }> {
+  const params = new URLSearchParams({ sourceA, sourceB });
+  const response = await fetchWithAuthInterceptor(
+    `${API_BASE_URL}/api/v1/search/explain-connection?${params.toString()}`,
+    { headers: getAuthHeaders() }
+  );
+
+  if (!response.ok) {
+    await handleApiError({ response });
+  }
+
+  return response.json();
+}
+
+/**
+ * Topic suggestion from the spine.
+ */
+export interface TopicSuggestion {
+  id: string;
+  name: string;
+  description?: string;
+  keywords?: string[];
+  strength?: number;
+  phraseCount: number;
+  edgeCount: number;
+  topicStatus: 'suggested' | 'promoted' | 'rejected';
+}
+
+/**
+ * Fetch suggested topics for review.
+ */
+export async function getTopicSuggestions(
+  limit: number = 50
+): Promise<{ success: boolean; suggestions: TopicSuggestion[] }> {
+  const response = await fetchWithAuthInterceptor(
+    `${API_BASE_URL}/api/v1/spine/topics/suggestions?limit=${limit}`,
+    { headers: getAuthHeaders() }
+  );
+
+  if (!response.ok) {
+    await handleApiError({ response });
+  }
+
+  return response.json();
+}
+
+/**
+ * Promote a suggested topic to 'promoted' status.
+ */
+export async function promoteTopic(
+  topicId: string
+): Promise<{ success: boolean; topicId: string; status: string }> {
+  const response = await fetchWithAuthInterceptor(
+    `${API_BASE_URL}/api/v1/spine/topics/${topicId}/promote`,
+    {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+    }
+  );
+
+  if (!response.ok) {
+    await handleApiError({ response });
+  }
+
+  return response.json();
+}
+
+/**
+ * Reject a topic (non-destructive — does not delete underlying phrases/spans).
+ */
+export async function rejectTopic(
+  topicId: string
+): Promise<{ success: boolean; topicId: string; status: string }> {
+  const response = await fetchWithAuthInterceptor(
+    `${API_BASE_URL}/api/v1/spine/topics/${topicId}/reject`,
+    {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+    }
+  );
+
+  if (!response.ok) {
+    await handleApiError({ response });
+  }
+
+  return response.json();
+}
+
+/**
+ * Rename a topic (update name and/or keywords).
+ */
+export async function renameTopic(
+  topicId: string,
+  updates: { name?: string; keywords?: string[] }
+): Promise<{ success: boolean; topicId: string; name: string; keywords: string[] }> {
+  const response = await fetchWithAuthInterceptor(
+    `${API_BASE_URL}/api/v1/spine/topics/${topicId}`,
+    {
+      method: 'PATCH',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }
+  );
+
+  if (!response.ok) {
+    await handleApiError({ response });
+  }
+
+  return response.json();
+}
+
+/**
+ * Merge a topic into a target topic. Preserves provenance.
+ */
+export async function mergeTopics(
+  sourceTopicId: string,
+  targetTopicId: string
+): Promise<{
+  success: boolean;
+  sourceTopicId: string;
+  targetTopicId: string;
+  redirectedEdges: number;
+}> {
+  const response = await fetchWithAuthInterceptor(
+    `${API_BASE_URL}/api/v1/spine/topics/${sourceTopicId}/merge`,
+    {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetTopicId }),
+    }
+  );
 
   if (!response.ok) {
     await handleApiError({ response });

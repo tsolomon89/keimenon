@@ -525,6 +525,12 @@ export const TopicNodeSchema = BaseNodeSchema.extend({
   description: z.string().optional(),
   keywords: z.array(z.string()), // Phrase IDs or text
   strength: z.number().default(1.0),
+
+  // Topic lifecycle
+  topic_status: z.enum(['suggested', 'promoted', 'rejected']).default('suggested'),
+  promoted_at: z.number().optional(),
+  promoted_by: z.string().optional(), // Principal ID who promoted
+  merge_target_id: z.string().optional(), // Redirect target when merged
 });
 
 export type TopicNode = z.infer<typeof TopicNodeSchema>;

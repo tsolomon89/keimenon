@@ -26,15 +26,13 @@ import {
   IntegratedDuplicateDetectionService,
   type DuplicateDetectionResult,
 } from './duplicate-detection-integrated';
-import { GraphSpineBuilder } from './graph-spine-builder';
+import { SemanticSpineService, type SemanticSpineBuildConfig } from './semantic-spine.service';
 import { PrincipalService, AgentPlatform } from './principal-service';
 import {
   ensureAccountContainsPrincipal,
   ensureHumanPrincipalHierarchyForUser,
 } from './graph-hierarchy.service';
-import { WORKER_CONFIG } from '../modules/jobs/jobs.config';
 import { getImportMetrics } from './metrics/ImportMetrics';
-import type { LexemeNode, PhraseNode, TopicNode } from '@keimenon/types';
 import type { ImportPipelineStage } from '../modules/import-pipeline/stages';
 import { createHash } from 'crypto';
 import {
@@ -126,17 +124,8 @@ interface MaterializedSource {
   messageIds: string[];
 }
 
-type SpineImportOptions = {
-  enabled?: boolean;
-  extractLexemes?: boolean;
-  extractPhrases?: boolean;
-  clusterTopics?: boolean;
-  minPhraseFrequency?: number;
-  minPhrasesPerTopic?: number;
-};
-
 type ImportRuntimeConfig = NormalizedImportOptions & {
-  spine?: SpineImportOptions;
+  spine?: SemanticSpineBuildConfig;
 };
 
 interface MaterializedSpan {
@@ -184,6 +173,7 @@ export class EnhancedImportServiceV2 {
   private autogroupService: EnhancedAutogroupService;
   private duplicateService: IntegratedDuplicateDetectionService;
   private similarityEngine: SimilarityEngineV2;
+  private semanticSpineService: SemanticSpineService;
   private principalService: PrincipalService;
   private sqliteDb: ReturnType<SQLiteClient['getDatabase']>;
   private context: {
@@ -228,6 +218,7 @@ export class EnhancedImportServiceV2 {
     this.autogroupService = new EnhancedAutogroupService();
     this.principalService = new PrincipalService(db);
     this.similarityEngine = new SimilarityEngineV2();
+    this.semanticSpineService = new SemanticSpineService();
 
     // CRITICAL FIX: FTS5 service needs the underlying better-sqlite3 Database instance
     // DatabaseClient is an interface, but IntegratedDuplicateDetectionService expects Database.Database
@@ -562,15 +553,38 @@ export class EnhancedImportServiceV2 {
       let bundles = 0;
       bundles = await this.createBundles(sources, config);
 
-      // Step 9: Extract spine (V2 - if enabled)
+      // Step 9: Extract source/span-backed semantic spine
       await this.emitPipelineStage(hooks, 'spine', 'Building graph spine');
+      const resolvedSpineConfig = this.resolveSpineConfig(config);
       let spineStats = { lexemes: 0, phrases: 0, topics: 0 };
-      if (config.spine?.enabled) {
+      if (resolvedSpineConfig.enabled) {
         console.log('[Import] Step 9: Spine extraction ENABLED');
-        spineStats = await this.extractSpine(allMessages, config);
+        spineStats = await this.extractSpine(sources, spanResult.spans, resolvedSpineConfig);
         console.log(
           `[Import] Spine extraction complete: ${spineStats.lexemes} lexemes, ${spineStats.phrases} phrases, ${spineStats.topics} topics`
         );
+      }
+
+      // Step 10: Post-spine indexing pipeline (search index + authority scores)
+      await this.emitPipelineStage(hooks, 'spine', 'Building search index and authority scores');
+      try {
+        const { InvertedIndexService } = await import('./inverted-index.service');
+        const { AuthorityScoringService } = await import('./authority-scoring.service');
+        const indexService = new InvertedIndexService(this.sqliteDb);
+        if (indexService.hasIndexTables() && this.context?.accountId) {
+          const indexStats = indexService.rebuildIndex(this.context.accountId);
+          console.log(
+            `[Import] Search index built: ${indexStats.postingCount} postings, ${indexStats.uniqueTerms} unique terms`
+          );
+          const authorityService = new AuthorityScoringService(this.sqliteDb);
+          const authorityStats = authorityService.computeAuthority(this.context.accountId);
+          console.log(
+            `[Import] Authority scores computed: ${authorityStats.phraseScores} phrases, ${authorityStats.sourceScores} sources, ${authorityStats.topicScores} topics`
+          );
+        }
+      } catch (indexError: any) {
+        // Non-fatal: index can be rebuilt later via POST /api/v1/search/index/rebuild
+        console.warn('[Import] Post-spine indexing skipped:', indexError.message);
       }
 
       // Flush all pending writes before completing
@@ -612,7 +626,7 @@ export class EnhancedImportServiceV2 {
                 }
               : undefined,
           },
-          spine: config.spine?.enabled ? spineStats : undefined,
+          spine: resolvedSpineConfig.enabled ? spineStats : undefined,
           similarity: similarityResult.stats,
           proImport: {
             spans: spanResult.spansCreated,
@@ -2649,172 +2663,69 @@ export class EnhancedImportServiceV2 {
     return bundlesCreated;
   }
 
+  private resolveSpineConfig(config: ImportRuntimeConfig): Required<SemanticSpineBuildConfig> {
+    return {
+      enabled: config.spine?.enabled ?? true,
+      extractLexemes: config.spine?.extractLexemes ?? true,
+      extractPhrases: config.spine?.extractPhrases ?? true,
+      clusterTopics: config.spine?.clusterTopics ?? true,
+      minPhraseFrequency: config.spine?.minPhraseFrequency ?? 1,
+      minPhrasesPerTopic: config.spine?.minPhrasesPerTopic ?? 2,
+    };
+  }
+
   /**
-   * Extract spine (V2): Create Lexeme, Phrase, and Topic nodes from imported content
-   * This implements "Step 2" of the Vision workflow: building the UGC wiki spine
-   *
-   * CROSS-CONVERSATION DEDUPLICATION:
-   * Uses extractSpineBatch to check for existing Lexeme/Phrase nodes before creating new ones.
-   * This enables cross-conversation linking where "Dark Matter" mentioned in multiple chats
-   * becomes a single hub node with multiple MENTIONS edges.
-   *
-   * BATCH PROCESSING (Performance Fix):
-   * Instead of O(n) DB queries (one per message), we process in batches of SPINE_BATCH_SIZE,
-   * reducing DB round-trips from O(n) to O(n/batchSize) = effectively O(1) for typical imports.
+   * Extract the source/span-backed semantic spine.
+   * Stable account-scoped IDs make phrases/topics reusable across imports.
    */
   private async extractSpine(
-    messages: ImportMessage[],
-    config: ImportRuntimeConfig
+    sources: MaterializedSource[],
+    spans: MaterializedSpan[],
+    spineConfig: Required<SemanticSpineBuildConfig>
   ): Promise<{ lexemes: number; phrases: number; topics: number }> {
-    const spineBuilder = GraphSpineBuilder.getInstance();
-    const spineConfig = config.spine;
-
-    if (!spineConfig?.enabled) {
-      return { lexemes: 0, phrases: 0, topics: 0 };
-    }
-
-    // Bug fix #12: Validate context before spine extraction
     if (!this.context?.accountId || !this.context?.userId) {
       console.error('[Import] Cannot extract spine: no context available');
       return { lexemes: 0, phrases: 0, topics: 0 };
     }
 
     const { accountId, userId } = this.context;
-    const spineBatchSize = WORKER_CONFIG.import.spineBatchSize;
+    const result = await this.semanticSpineService.buildForSources({
+      accountId,
+      userId,
+      sources: sources.map((source) => ({
+        id: source.id,
+        content: source.content,
+        conversationId: source.conversationId,
+        messageId: source.messageId,
+        messageIds: source.messageIds,
+        timestamp: source.timestamp,
+      })),
+      spans: spans.map((span) => ({
+        id: span.id,
+        sourceId: span.sourceId,
+        messageId: span.messageId,
+        conversationId: span.conversationId,
+        text: span.text,
+        normalizedText: span.normalizedText,
+        startChar: span.startChar,
+        endChar: span.endChar,
+        boundaryKind: span.boundaryKind,
+      })),
+      config: spineConfig,
+      write: {
+        writeNode: async (node) => {
+          await this.writeNodeIfAbsent(node);
+        },
+        writeEdge: async (edge) => {
+          await this.writeEdgeIfAbsent(edge);
+        },
+      },
+    });
 
-    let totalLexemes = 0;
-    let totalPhrases = 0;
-    let linkedLexemes = 0;
-    let linkedPhrases = 0;
-    const allPhrases: PhraseNode[] = [];
-
-    // Process messages in batches to reduce DB round-trips
-    for (let i = 0; i < messages.length; i += spineBatchSize) {
-      const batch = messages.slice(i, i + spineBatchSize);
-
-      // Single batch call replaces N sequential calls
-      const result = await spineBuilder.extractSpineBatch(
-        this.db as SQLiteClient,
-        accountId,
-        batch.map((m) => ({ id: m.id, content: m.content })),
-        userId
-      );
-
-      // Save NEW Lexeme nodes (if enabled)
-      if (spineConfig.extractLexemes) {
-        for (const lexeme of result.newLexemes) {
-          await this.writeNode({
-            id: lexeme.id,
-            kind: 'Lexeme',
-            lemma: lexeme.lemma,
-            pos: lexeme.pos,
-            frequency: lexeme.frequency,
-            created_at: lexeme.created_at,
-            updated_at: lexeme.updated_at,
-            metadata: lexeme.metadata,
-          });
-          totalLexemes++;
-        }
-        linkedLexemes += result.existingLexemes.length;
-      }
-
-      // Save NEW Phrase nodes (if enabled)
-      if (spineConfig.extractPhrases) {
-        // Filter new phrases by minimum frequency
-        const filteredNewPhrases = result.newPhrases.filter(
-          (p) => p.frequency >= (spineConfig.minPhraseFrequency || 2)
-        );
-
-        for (const phrase of filteredNewPhrases) {
-          await this.writeNode({
-            id: phrase.id,
-            kind: 'Phrase',
-            text: phrase.text,
-            normalized_text: phrase.normalized_text,
-            type: phrase.type,
-            entity_type: phrase.entity_type,
-            frequency: phrase.frequency,
-            created_at: phrase.created_at,
-            updated_at: phrase.updated_at,
-            metadata: phrase.metadata,
-          });
-          allPhrases.push(phrase);
-          totalPhrases++;
-        }
-
-        linkedPhrases += result.existingPhrases.length;
-        // Add existing phrases to allPhrases for topic clustering
-        allPhrases.push(...result.existingPhrases);
-      }
-
-      // Save ALL MENTIONS edges (creates cross-conversation links)
-      for (const edge of result.edges) {
-        await this.writeEdge({
-          id: edge.id,
-          kind: 'MENTIONS',
-          from: edge.from,
-          to: edge.to,
-          created_at: edge.created_at,
-          metadata: {
-            count: edge.count,
-            ...(edge.metadata || {}),
-          },
-        });
-      }
-    }
-
-    // Log cross-conversation linking stats
-    if (linkedLexemes > 0 || linkedPhrases > 0) {
-      console.log(
-        `[Import] Cross-conversation links: ${linkedLexemes} lexemes, ${linkedPhrases} phrases linked to existing nodes`
-      );
-    }
-
-    // Cluster phrases into topics (if enabled)
-    let totalTopics = 0;
-    if (spineConfig.clusterTopics && allPhrases.length >= (spineConfig.minPhrasesPerTopic || 3)) {
-      const topics = spineBuilder.clusterTopics(allPhrases);
-
-      // Build phrase lookup map for O(1) keyword matching
-      const phraseByText = new Map<string, PhraseNode>();
-      for (const phrase of allPhrases) {
-        phraseByText.set(phrase.text, phrase);
-      }
-
-      for (const topic of topics) {
-        await this.writeNode({
-          id: topic.id,
-          kind: 'Topic',
-          name: topic.name,
-          description: topic.description,
-          keywords: topic.keywords,
-          strength: topic.strength,
-          created_at: topic.created_at,
-          updated_at: topic.updated_at,
-          metadata: topic.metadata,
-        });
-
-        // Create BELONGS_TO_TOPIC edges from phrases to topic (O(1) lookup)
-        for (const keyword of topic.keywords) {
-          const matchingPhrase = phraseByText.get(keyword);
-          if (matchingPhrase) {
-            await this.writeEdge({
-              id: `edge_belongs_${nanoid()}`,
-              kind: 'BELONGS_TO_TOPIC',
-              from: matchingPhrase.id,
-              to: topic.id,
-              created_at: Date.now(),
-              metadata: {
-                weight: 1.0 / topic.keywords.length,
-              },
-            });
-          }
-        }
-
-        totalTopics++;
-      }
-    }
-
-    return { lexemes: totalLexemes, phrases: totalPhrases, topics: totalTopics };
+    return {
+      lexemes: result.lexemes,
+      phrases: result.phrases,
+      topics: result.topics,
+    };
   }
 }

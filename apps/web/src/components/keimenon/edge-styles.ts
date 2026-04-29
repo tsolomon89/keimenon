@@ -180,6 +180,11 @@ export function getEdgeThickness(
   baseThickness: number = 2
 ): number {
   if (!metadata) return baseThickness;
+  const nested =
+    metadata.metadata && typeof metadata.metadata === 'object'
+      ? (metadata.metadata as Record<string, unknown>)
+      : {};
+  metadata = { ...nested, ...metadata };
 
   // NEAR_DUP: thickness based on score (0-1)
   if (kind === 'NEAR_DUP' && typeof metadata.score === 'number') {
@@ -223,6 +228,11 @@ export function getEdgeThickness(
  */
 export function getEdgeOpacity(kind: string, metadata?: Record<string, unknown>): number {
   if (!metadata) return 1.0;
+  const nested =
+    metadata.metadata && typeof metadata.metadata === 'object'
+      ? (metadata.metadata as Record<string, unknown>)
+      : {};
+  metadata = { ...nested, ...metadata };
 
   // Score-based edges (NEAR_DUP, CLUSTER_MEMBER)
   if (typeof metadata.score === 'number') {

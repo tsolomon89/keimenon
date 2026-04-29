@@ -19,3 +19,4 @@ export * from './chat-import-config';
 export * from './import-contract';
 export * from './features';
 export * from './ai';
+export * from './traversal';

@@ -36,6 +36,7 @@ import { createTestHelperRoutes } from './routes/test-helpers';
 import { createMetricsRoutes } from './routes/metrics.routes';
 import { createUploadRoutes } from './routes/uploads.routes';
 import { createSpineRoutes } from './routes/spine.routes';
+import { createSearchRoutes } from './routes/search.routes';
 import { createAgentRoutes } from './routes/agent.routes';
 import { createDevAuthRoutes } from './routes/dev-auth.routes';
 import { createSystemRoutes } from './routes/system.routes';
@@ -240,6 +241,7 @@ export function createApp(): { app: Express; context: AppContext } {
   let metricsRoutes: any = null;
   let uploadRoutes: any = null;
   let spineRoutes: any = null;
+  let searchRoutes: any = null;
   let principalsRoutes: any = null;
   let workspaceRoutes: any = null;
   let conversationsRoutes: any = null;
@@ -285,6 +287,7 @@ export function createApp(): { app: Express; context: AppContext } {
     metricsRoutes = createMetricsRoutes(authService);
     uploadRoutes = createUploadRoutes(authService);
     spineRoutes = createSpineRoutes(authService);
+    searchRoutes = createSearchRoutes(authService);
     principalsRoutes = createPrincipalsRoutes(dbClient, authService);
     workspaceRoutes = createWorkspaceRoutes(dbClient, authService);
     conversationsRoutes = createConversationsRoutes(dbClient, authService);
@@ -468,6 +471,11 @@ export function createApp(): { app: Express; context: AppContext } {
     if (!context.authService)
       return res.status(503).json({ error: 'Auth service not initialized' });
     return configRoutes(req, res, next);
+  });
+
+  app.use('/api/v1/search', (req, res, next) => {
+    if (searchRoutes) return searchRoutes(req, res, next);
+    return res.status(503).json({ error: 'Search service not initialized' });
   });
 
   app.use('/api/v1/spine', (req, res, next) => {

@@ -1,9 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, X, Link, Eye, EyeOff, Trash2, Pin, PinOff } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  X,
+  Link,
+  Eye,
+  EyeOff,
+  Trash2,
+  Pin,
+  PinOff,
+  Loader2,
+  GitCompareArrows,
+} from 'lucide-react';
 import { KeimenonNode } from '@/store/keimenonStore';
 import { getNodeLabel, type LabelableNode } from '@/lib/node-labels';
+import { explainConnection } from '@/lib/api-client';
 
 interface SelectionStackProps {
   selectedNodes: KeimenonNode[];
@@ -24,6 +37,12 @@ export function SelectionStack({
 }: SelectionStackProps) {
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [pinnedCards, setPinnedCards] = useState<Set<string>>(new Set());
+  const [connectionExplanation, setConnectionExplanation] = useState<{
+    sharedPhrases?: Array<{ text?: string; phrase?: string; weight?: number }>;
+    overlapScore?: number;
+  } | null>(null);
+  const [isExplaining, setIsExplaining] = useState(false);
+  const [explainError, setExplainError] = useState<string | null>(null);
 
   const toggleExpanded = (nodeId: string) => {
     setExpandedCards((prev) => {
@@ -225,10 +244,88 @@ export function SelectionStack({
         })}
       </div>
 
+      {/* Connection explanation panel */}
+      {connectionExplanation && (
+        <div className="p-4 border-t border-slate-800 bg-slate-800/30">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-medium text-slate-300">Connection Explanation</h4>
+            <button
+              onClick={() => {
+                setConnectionExplanation(null);
+                setExplainError(null);
+              }}
+              className="text-xs text-slate-500 hover:text-slate-300"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+          {connectionExplanation.sharedPhrases && connectionExplanation.sharedPhrases.length > 0 ? (
+            <div className="space-y-1">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Shared Phrases</p>
+              {connectionExplanation.sharedPhrases.slice(0, 8).map((phrase, i: number) => (
+                <div key={i} className="flex justify-between text-xs">
+                  <span className="text-slate-300 truncate">
+                    {phrase.text || phrase.phrase || '(unnamed)'}
+                  </span>
+                  {phrase.weight && (
+                    <span className="text-purple-400/70 text-[10px]">
+                      {phrase.weight.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">No shared phrases found.</p>
+          )}
+          {connectionExplanation.overlapScore != null && (
+            <div className="mt-2 flex justify-between text-xs">
+              <span className="text-slate-400">Overlap Score</span>
+              <span className="text-purple-300 font-medium">
+                {(connectionExplanation.overlapScore * 100).toFixed(1)}%
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {explainError && (
+        <div className="p-3 m-3 bg-red-600/10 border border-red-500/20 rounded">
+          <p className="text-xs text-red-300">{explainError}</p>
+        </div>
+      )}
+
       {/* Footer with batch actions */}
       <div className="p-4 border-t border-slate-800">
         <p className="text-xs text-slate-500 mb-2">Batch Operations:</p>
         <div className="flex flex-wrap gap-2">
+          {/* Explain Connection — only when exactly 2 nodes selected */}
+          {selectedNodes.length === 2 && (
+            <button
+              onClick={async () => {
+                setIsExplaining(true);
+                setExplainError(null);
+                setConnectionExplanation(null);
+                try {
+                  const resp = await explainConnection(selectedNodes[0].id, selectedNodes[1].id);
+                  setConnectionExplanation(resp.explanation);
+                } catch (err: any) {
+                  setExplainError(err?.message || 'Failed to explain connection');
+                } finally {
+                  setIsExplaining(false);
+                }
+              }}
+              disabled={isExplaining}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 rounded transition-colors text-cyan-400 disabled:opacity-50"
+            >
+              {isExplaining ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <GitCompareArrows className="w-3 h-3" />
+              )}
+              Explain Connection
+            </button>
+          )}
           {onAddToScope && (
             <button
               onClick={() => {

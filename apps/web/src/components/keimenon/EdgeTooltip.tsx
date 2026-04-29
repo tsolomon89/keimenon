@@ -26,14 +26,19 @@ function getString(val: unknown): string | null {
 
 // Helper to safely extract string array
 function getStringArray(val: unknown): string[] | null {
-  return Array.isArray(val) && val.every(v => typeof v === 'string') ? val : null;
+  return Array.isArray(val) && val.every((v) => typeof v === 'string') ? val : null;
 }
 
 export function EdgeTooltip({ edge, position, visible }: EdgeTooltipProps) {
   if (!visible || !edge) return null;
 
   const style = getEdgeStyle(edge.kind);
-  const metadata = edge.data || {};
+  const rawMetadata = edge.data || {};
+  const nestedMetadata =
+    rawMetadata.metadata && typeof rawMetadata.metadata === 'object'
+      ? (rawMetadata.metadata as Record<string, unknown>)
+      : {};
+  const metadata = { ...nestedMetadata, ...rawMetadata };
 
   // Extract typed values
   const score = getNumber(metadata.score);
@@ -46,6 +51,8 @@ export function EdgeTooltip({ edge, position, visible }: EdgeTooltipProps) {
   const algorithm = getString(metadata.algorithm);
   const span = getString(metadata.span);
   const featuresUsed = getStringArray(metadata.features_used);
+  const explanation = getString(metadata.explanation);
+  const relation = getString(metadata.relation);
 
   return (
     <div
@@ -72,9 +79,7 @@ export function EdgeTooltip({ edge, position, visible }: EdgeTooltipProps) {
           {score !== null && (
             <div className="flex justify-between">
               <dt className="text-slate-400">Similarity:</dt>
-              <dd className="text-slate-200 font-mono">
-                {(score * 100).toFixed(1)}%
-              </dd>
+              <dd className="text-slate-200 font-mono">{(score * 100).toFixed(1)}%</dd>
             </div>
           )}
 
@@ -90,9 +95,7 @@ export function EdgeTooltip({ edge, position, visible }: EdgeTooltipProps) {
           {pmi !== null && (
             <div className="flex justify-between">
               <dt className="text-slate-400">PMI:</dt>
-              <dd className="text-slate-200 font-mono">
-                {pmi.toFixed(3)}
-              </dd>
+              <dd className="text-slate-200 font-mono">{pmi.toFixed(3)}</dd>
             </div>
           )}
 
@@ -100,9 +103,7 @@ export function EdgeTooltip({ edge, position, visible }: EdgeTooltipProps) {
           {weight !== null && (
             <div className="flex justify-between">
               <dt className="text-slate-400">Weight:</dt>
-              <dd className="text-slate-200 font-mono">
-                {(weight * 100).toFixed(1)}%
-              </dd>
+              <dd className="text-slate-200 font-mono">{(weight * 100).toFixed(1)}%</dd>
             </div>
           )}
 
@@ -110,9 +111,7 @@ export function EdgeTooltip({ edge, position, visible }: EdgeTooltipProps) {
           {strength !== null && (
             <div className="flex justify-between">
               <dt className="text-slate-400">Strength:</dt>
-              <dd className="text-slate-200 font-mono">
-                {(strength * 100).toFixed(1)}%
-              </dd>
+              <dd className="text-slate-200 font-mono">{(strength * 100).toFixed(1)}%</dd>
             </div>
           )}
 
@@ -128,9 +127,7 @@ export function EdgeTooltip({ edge, position, visible }: EdgeTooltipProps) {
           {featuresUsed && featuresUsed.length > 0 && (
             <div className="flex justify-between items-start">
               <dt className="text-slate-400">Features:</dt>
-              <dd className="text-slate-200 text-right">
-                {featuresUsed.join(', ')}
-              </dd>
+              <dd className="text-slate-200 text-right">{featuresUsed.join(', ')}</dd>
             </div>
           )}
 
@@ -146,9 +143,7 @@ export function EdgeTooltip({ edge, position, visible }: EdgeTooltipProps) {
           {confidence !== null && (
             <div className="flex justify-between">
               <dt className="text-slate-400">Confidence:</dt>
-              <dd className="text-slate-200 font-mono">
-                {(confidence * 100).toFixed(1)}%
-              </dd>
+              <dd className="text-slate-200 font-mono">{(confidence * 100).toFixed(1)}%</dd>
             </div>
           )}
 
@@ -157,6 +152,20 @@ export function EdgeTooltip({ edge, position, visible }: EdgeTooltipProps) {
             <div className="flex justify-between">
               <dt className="text-slate-400">Span:</dt>
               <dd className="text-slate-200 font-mono text-right">{span}</dd>
+            </div>
+          )}
+
+          {relation && (
+            <div className="flex justify-between">
+              <dt className="text-slate-400">Relation:</dt>
+              <dd className="text-slate-200 text-right">{relation}</dd>
+            </div>
+          )}
+
+          {explanation && (
+            <div className="pt-1">
+              <dt className="text-slate-400 mb-1">Why:</dt>
+              <dd className="text-slate-200 leading-snug">{explanation}</dd>
             </div>
           )}
         </dl>

@@ -114,7 +114,7 @@ export type DuplicateConfig = z.infer<typeof DuplicateConfigSchema>;
  */
 export const SpineConfigSchema = z.object({
   // Enable/disable spine extraction
-  enabled: z.boolean().default(false),
+  enabled: z.boolean().default(true),
 
   // Extract individual word tokens as Lexeme nodes
   extractLexemes: z.boolean().default(true),
@@ -126,10 +126,10 @@ export const SpineConfigSchema = z.object({
   clusterTopics: z.boolean().default(true),
 
   // Minimum phrase frequency to create a node (filter noise)
-  minPhraseFrequency: z.number().min(1).default(2),
+  minPhraseFrequency: z.number().min(1).default(1),
 
   // Minimum number of phrases to form a topic
-  minPhrasesPerTopic: z.number().min(1).default(3),
+  minPhrasesPerTopic: z.number().min(1).default(2),
 });
 
 export type SpineConfig = z.infer<typeof SpineConfigSchema>;

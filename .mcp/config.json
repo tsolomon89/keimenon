@@ -49,6 +49,17 @@
       "enabled": false,
       "permissions": ["read", "write"],
       "note": "Enable for git workflow assistance"
+    },
+    "keimenon-semantic-search-read": {
+      "command": "node",
+      "args": ["servers/semantic-search/index.js"],
+      "description": "Read-only semantic search, source explanation, and graph traversal over the local Keimenon corpus",
+      "enabled": true,
+      "permissions": ["read"],
+      "env": {
+        "KEIMENON_API_URL": "http://localhost:3001",
+        "KEIMENON_MCP_TOKEN": "${KEIMENON_MCP_TOKEN}"
+      }
     }
   },
   "version": "1.0.0"
