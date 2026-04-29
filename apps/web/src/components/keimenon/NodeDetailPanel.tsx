@@ -246,8 +246,14 @@ export function NodeDetailPanel() {
 
   // Handle synthesize
   const handleSynthesizeUnifiedDocument = useCallback(async () => {
-    if (!detailPanelNode || (detailPanelNode.type !== 'Topic' && detailPanelNode.type !== 'phrase'))
+    if (
+      !detailPanelNode ||
+      (detailPanelNode.type !== 'Topic' &&
+        detailPanelNode.type !== 'Phrase' &&
+        detailPanelNode.type !== 'phrase')
+    ) {
       return;
+    }
     setIsSynthesizing(true);
     setSynthesizeError(null);
     setSynthesizeResultId(null);
@@ -265,15 +271,14 @@ export function NodeDetailPanel() {
         setSynthesizeResultId(response.unifiedDocument.nodeId);
         // Refresh graph to fetch the newly created node and edges
         await loadGraphData();
-        // The store is updated asynchronously, wait a moment before trying to select
-        setTimeout(() => {
-          const state = useKeimenonStore.getState();
-          const newNode = state.nodes.find((n) => n.id === response.unifiedDocument.nodeId);
-          if (newNode) {
-            selectNode(newNode.id, false);
-            openDetailPanel(newNode);
-          }
-        }, 500);
+
+        // Immediate store lookup
+        const state = useKeimenonStore.getState();
+        const newNode = state.getNode(response.unifiedDocument.nodeId);
+        if (newNode) {
+          selectNode(newNode.id, false);
+          openDetailPanel(newNode);
+        }
       } else {
         throw new Error('No node ID returned in synthesis response');
       }
