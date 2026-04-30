@@ -1236,28 +1236,140 @@ export class SQLiteClient {
     const isDuplicate = !!existingNode;
     const originalNodeId = isDuplicate ? existingNode.id : null;
 
-    const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO nodes (
-        id, kind, properties, account_id, created_by, created_at, updated_at, data_tag,
-        content_hash, canonical_content, is_duplicate, original_node_id
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    if (node.kind === 'SourceSpan') {
+      const span: any = node;
+      const metadata = span.metadata ? JSON.stringify(span.metadata) : null;
+      this.db
+        .prepare(
+          `
+        INSERT OR REPLACE INTO source_spans (
+          id, account_id, source_id, message_id, conversation_id, text, normalized_text,
+          start_char, end_char, boundary_kind, span_hash, created_by, created_at, updated_at, data_tag, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+        )
+        .run(
+          span.id,
+          span.account_id,
+          span.source_id,
+          span.message_id || null,
+          span.conversation_id || null,
+          span.text,
+          span.normalized_text,
+          span.start_char,
+          span.end_char,
+          span.boundary_kind || 'sentence',
+          span.span_hash,
+          span.created_by,
+          span.created_at,
+          span.updated_at,
+          span.data_tag || 'real',
+          metadata
+        );
+    } else if (node.kind === 'Phrase') {
+      const phrase: any = node;
+      const metadata = phrase.metadata ? JSON.stringify(phrase.metadata) : null;
+      this.db
+        .prepare(
+          `
+        INSERT OR REPLACE INTO phrases (
+          id, account_id, text, normalized_text, type, entity_type, frequency,
+          created_by, created_at, updated_at, data_tag, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+        )
+        .run(
+          phrase.id,
+          phrase.account_id,
+          phrase.text,
+          phrase.normalized_text,
+          phrase.type || 'n-gram',
+          phrase.entity_type || null,
+          phrase.frequency || 0,
+          phrase.created_by,
+          phrase.created_at,
+          phrase.updated_at,
+          phrase.data_tag || 'real',
+          metadata
+        );
+    } else if (node.kind === 'Packet') {
+      const packet: any = node;
+      const metadata = packet.metadata ? JSON.stringify(packet.metadata) : null;
+      this.db
+        .prepare(
+          `
+        INSERT OR REPLACE INTO packets (
+          id, account_id, text, normalized_text, occurrences, mass, coverage, idf, entropy_factor, packet_hash,
+          created_by, created_at, updated_at, data_tag, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+        )
+        .run(
+          packet.id,
+          packet.account_id,
+          packet.text,
+          packet.normalized_text,
+          packet.occurrences || 1,
+          packet.mass || 0,
+          packet.coverage || 0,
+          packet.idf || 0,
+          packet.entropy_factor || 0,
+          packet.packet_hash,
+          packet.created_by,
+          packet.created_at,
+          packet.updated_at,
+          packet.data_tag || 'real',
+          metadata
+        );
+    } else if (node.kind === 'AtomicUnit') {
+      const unit: any = node;
+      const metadata = unit.metadata ? JSON.stringify(unit.metadata) : null;
+      this.db
+        .prepare(
+          `
+        INSERT OR REPLACE INTO atomic_units (
+          id, account_id, unit_type, value, normalized_value, unit_hash,
+          created_by, created_at, updated_at, data_tag, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+        )
+        .run(
+          unit.id,
+          unit.account_id,
+          unit.unit_type,
+          unit.value,
+          unit.normalized_value,
+          unit.unit_hash,
+          unit.created_by,
+          unit.created_at,
+          unit.updated_at,
+          unit.data_tag || 'real',
+          metadata
+        );
+    } else {
+      const stmt = this.db.prepare(`
+        INSERT OR REPLACE INTO nodes (
+          id, kind, properties, account_id, created_by, created_at, updated_at, data_tag,
+          content_hash, canonical_content, is_duplicate, original_node_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
 
-    stmt.run(
-      node.id,
-      node.kind,
-      JSON.stringify(node),
-      nodeData.account_id,
-      nodeData.created_by,
-      node.created_at,
-      node.updated_at,
-      nodeData.data_tag || 'real',
-      contentHash,
-      canonicalContent,
-      isDuplicate ? 1 : 0,
-      originalNodeId
-    );
+      stmt.run(
+        node.id,
+        node.kind,
+        JSON.stringify(node),
+        nodeData.account_id,
+        nodeData.created_by,
+        node.created_at,
+        node.updated_at,
+        nodeData.data_tag || 'real',
+        contentHash,
+        canonicalContent,
+        isDuplicate ? 1 : 0,
+        originalNodeId
+      );
+    }
   }
 
   /**
@@ -1307,6 +1419,34 @@ export class SQLiteClient {
     // Also detect duplicates within the batch itself
     const batchSeenHashes = new Map<string, string>(); // content_hash -> first node_id in batch
 
+    const insertSpan = this.db.prepare(`
+      INSERT OR REPLACE INTO source_spans (
+        id, account_id, source_id, message_id, conversation_id, text, normalized_text,
+        start_char, end_char, boundary_kind, span_hash, created_by, created_at, updated_at, data_tag, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertPhrase = this.db.prepare(`
+      INSERT OR REPLACE INTO phrases (
+        id, account_id, text, normalized_text, type, entity_type, frequency,
+        created_by, created_at, updated_at, data_tag, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertPacket = this.db.prepare(`
+      INSERT OR REPLACE INTO packets (
+        id, account_id, text, normalized_text, occurrences, mass, coverage, idf, entropy_factor, packet_hash,
+        created_by, created_at, updated_at, data_tag, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertAtomic = this.db.prepare(`
+      INSERT OR REPLACE INTO atomic_units (
+        id, account_id, unit_type, value, normalized_value, unit_hash,
+        created_by, created_at, updated_at, data_tag, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
     const insert = this.db.prepare(`
       INSERT OR REPLACE INTO nodes (
         id, kind, properties, account_id, created_by, created_at, updated_at, data_tag,
@@ -1318,6 +1458,86 @@ export class SQLiteClient {
     const transaction = this.db.transaction((nodesWithHashes: NodeWithHash[]) => {
       for (const { node, contentHash, canonicalContent } of nodesWithHashes) {
         const nodeData: any = node;
+
+        if (node.kind === 'SourceSpan') {
+          const span: any = node;
+          const metadata = span.metadata ? JSON.stringify(span.metadata) : null;
+          insertSpan.run(
+            span.id,
+            span.account_id,
+            span.source_id,
+            span.message_id || null,
+            span.conversation_id || null,
+            span.text,
+            span.normalized_text,
+            span.start_char,
+            span.end_char,
+            span.boundary_kind || 'sentence',
+            span.span_hash,
+            span.created_by,
+            span.created_at,
+            span.updated_at,
+            span.data_tag || 'real',
+            metadata
+          );
+          continue;
+        } else if (node.kind === 'Phrase') {
+          const phrase: any = node;
+          const metadata = phrase.metadata ? JSON.stringify(phrase.metadata) : null;
+          insertPhrase.run(
+            phrase.id,
+            phrase.account_id,
+            phrase.text,
+            phrase.normalized_text,
+            phrase.type || 'n-gram',
+            phrase.entity_type || null,
+            phrase.frequency || 0,
+            phrase.created_by,
+            phrase.created_at,
+            phrase.updated_at,
+            phrase.data_tag || 'real',
+            metadata
+          );
+          continue;
+        } else if (node.kind === 'Packet') {
+          const packet: any = node;
+          const metadata = packet.metadata ? JSON.stringify(packet.metadata) : null;
+          insertPacket.run(
+            packet.id,
+            packet.account_id,
+            packet.text,
+            packet.normalized_text,
+            packet.occurrences || 1,
+            packet.mass || 0,
+            packet.coverage || 0,
+            packet.idf || 0,
+            packet.entropy_factor || 0,
+            packet.packet_hash,
+            packet.created_by,
+            packet.created_at,
+            packet.updated_at,
+            packet.data_tag || 'real',
+            metadata
+          );
+          continue;
+        } else if (node.kind === 'AtomicUnit') {
+          const unit: any = node;
+          const metadata = unit.metadata ? JSON.stringify(unit.metadata) : null;
+          insertAtomic.run(
+            unit.id,
+            unit.account_id,
+            unit.unit_type,
+            unit.value,
+            unit.normalized_value,
+            unit.unit_hash,
+            unit.created_by,
+            unit.created_at,
+            unit.updated_at,
+            unit.data_tag || 'real',
+            metadata
+          );
+          continue;
+        }
 
         // Determine if this is a duplicate
         let isDuplicate = false;
@@ -1369,32 +1589,109 @@ export class SQLiteClient {
     const stmt = this.db.prepare('SELECT * FROM nodes WHERE id = ?');
     const row = stmt.get(id) as any;
 
-    if (!row) {
-      return null;
+    if (row) {
+      const parsedNode = safeJsonParse<Record<string, unknown>>(row.properties, `node ${id}`);
+      if (!parsedNode) return null;
+      return {
+        ...parsedNode,
+        id: row.id,
+        kind: row.kind,
+        account_id: row.account_id,
+        created_by: row.created_by,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        data_tag: row.data_tag,
+      } as unknown as AnyNode;
     }
 
-    // Parse the entire node from properties JSON column
-    // The database stores the complete node structure as JSON
-    const parsedNode = safeJsonParse<Record<string, unknown>>(row.properties, `node ${id}`);
-    if (!parsedNode) {
-      console.error(`[SQLiteClient] Corrupted node data for id ${id}`);
-      return null;
+    // Fallbacks for normalized tables
+    const spanStmt = this.db.prepare('SELECT * FROM source_spans WHERE id = ?');
+    const spanRow = spanStmt.get(id) as any;
+    if (spanRow) {
+      return {
+        ...(safeJsonParse(spanRow.metadata || '{}') || {}),
+        id: spanRow.id,
+        kind: 'SourceSpan',
+        account_id: spanRow.account_id,
+        source_id: spanRow.source_id,
+        message_id: spanRow.message_id,
+        conversation_id: spanRow.conversation_id,
+        text: spanRow.text,
+        normalized_text: spanRow.normalized_text,
+        start_char: spanRow.start_char,
+        end_char: spanRow.end_char,
+        boundary_kind: spanRow.boundary_kind,
+        span_hash: spanRow.span_hash,
+        created_by: spanRow.created_by,
+        created_at: spanRow.created_at,
+        updated_at: spanRow.updated_at,
+        data_tag: spanRow.data_tag,
+      } as unknown as AnyNode;
     }
 
-    // Return the parsed node with database-level fields overridden for consistency
-    // Type assertion via unknown is needed because parsedNode is Record<string, unknown>
-    // and we need to merge it with authoritative database values
-    return {
-      ...parsedNode,
-      // Override with authoritative database values
-      id: row.id,
-      kind: row.kind,
-      account_id: row.account_id,
-      created_by: row.created_by,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-      data_tag: row.data_tag,
-    } as unknown as AnyNode;
+    const phraseStmt = this.db.prepare('SELECT * FROM phrases WHERE id = ?');
+    const phraseRow = phraseStmt.get(id) as any;
+    if (phraseRow) {
+      return {
+        ...(safeJsonParse(phraseRow.metadata || '{}') || {}),
+        id: phraseRow.id,
+        kind: 'Phrase',
+        account_id: phraseRow.account_id,
+        text: phraseRow.text,
+        normalized_text: phraseRow.normalized_text,
+        type: phraseRow.type,
+        entity_type: phraseRow.entity_type,
+        frequency: phraseRow.frequency,
+        created_by: phraseRow.created_by,
+        created_at: phraseRow.created_at,
+        updated_at: phraseRow.updated_at,
+        data_tag: phraseRow.data_tag,
+      } as unknown as AnyNode;
+    }
+
+    const packetStmt = this.db.prepare('SELECT * FROM packets WHERE id = ?');
+    const packetRow = packetStmt.get(id) as any;
+    if (packetRow) {
+      return {
+        ...(safeJsonParse(packetRow.metadata || '{}') || {}),
+        id: packetRow.id,
+        kind: 'Packet',
+        account_id: packetRow.account_id,
+        text: packetRow.text,
+        normalized_text: packetRow.normalized_text,
+        occurrences: packetRow.occurrences,
+        mass: packetRow.mass,
+        coverage: packetRow.coverage,
+        idf: packetRow.idf,
+        entropy_factor: packetRow.entropy_factor,
+        packet_hash: packetRow.packet_hash,
+        created_by: packetRow.created_by,
+        created_at: packetRow.created_at,
+        updated_at: packetRow.updated_at,
+        data_tag: packetRow.data_tag,
+      } as unknown as AnyNode;
+    }
+
+    const atomicStmt = this.db.prepare('SELECT * FROM atomic_units WHERE id = ?');
+    const atomicRow = atomicStmt.get(id) as any;
+    if (atomicRow) {
+      return {
+        ...(safeJsonParse(atomicRow.metadata || '{}') || {}),
+        id: atomicRow.id,
+        kind: 'AtomicUnit',
+        account_id: atomicRow.account_id,
+        unit_type: atomicRow.unit_type,
+        value: atomicRow.value,
+        normalized_value: atomicRow.normalized_value,
+        unit_hash: atomicRow.unit_hash,
+        created_by: atomicRow.created_by,
+        created_at: atomicRow.created_at,
+        updated_at: atomicRow.updated_at,
+        data_tag: atomicRow.data_tag,
+      } as unknown as AnyNode;
+    }
+
+    return null;
   }
 
   /**
@@ -1415,6 +1712,36 @@ export class SQLiteClient {
 
     let query: string;
     let params: any[];
+
+    const normalizedKinds: Record<string, string> = {
+      SourceSpan: 'source_spans',
+      Phrase: 'phrases',
+      Packet: 'packets',
+      AtomicUnit: 'atomic_units',
+    };
+
+    const tableName = normalizedKinds[kind];
+
+    if (tableName) {
+      if (options?.accountId) {
+        query = `SELECT * FROM ${tableName} WHERE account_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        params = [options.accountId, limit, offset];
+      } else {
+        query = `SELECT * FROM ${tableName} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        params = [limit, offset];
+      }
+      const stmt = this.db.prepare(query);
+      const rows = stmt.all(...params) as any[];
+
+      return rows.map((row) => {
+        const metadata = safeJsonParse(row.metadata || '{}') || {};
+        return {
+          ...metadata,
+          ...row,
+          kind,
+        } as unknown as AnyNode;
+      });
+    }
 
     if (options?.accountId) {
       // Multi-tenant filtered query with pagination
@@ -1453,20 +1780,39 @@ export class SQLiteClient {
       throw new Error('Database not connected');
     }
 
+    const normalizedKinds: Record<string, string> = {
+      SourceSpan: 'source_spans',
+      Phrase: 'phrases',
+      Packet: 'packets',
+      AtomicUnit: 'atomic_units',
+    };
+
+    const tableName = normalizedKinds[kind];
+
     let query: string;
     let params: any[];
 
     if (accountId) {
-      query = 'SELECT COUNT(*) as count FROM nodes WHERE kind = ? AND account_id = ?';
-      params = [kind, accountId];
+      if (tableName) {
+        query = `SELECT COUNT(*) as count FROM ${tableName} WHERE account_id = ?`;
+        params = [accountId];
+      } else {
+        query = 'SELECT COUNT(*) as count FROM nodes WHERE kind = ? AND account_id = ?';
+        params = [kind, accountId];
+      }
     } else {
-      query = 'SELECT COUNT(*) as count FROM nodes WHERE kind = ?';
-      params = [kind];
+      if (tableName) {
+        query = `SELECT COUNT(*) as count FROM ${tableName}`;
+        params = [];
+      } else {
+        query = 'SELECT COUNT(*) as count FROM nodes WHERE kind = ?';
+        params = [kind];
+      }
     }
 
     const stmt = this.db.prepare(query);
-    const result = stmt.get(...params) as { count: number };
-    return result.count;
+    const row = stmt.get(...params) as { count: number };
+    return row.count;
   }
 
   /**

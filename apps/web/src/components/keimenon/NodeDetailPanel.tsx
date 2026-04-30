@@ -464,6 +464,15 @@ export function NodeDetailPanel() {
           <ConversationThreadDetailsSection metadata={detailPanelNode.data?.metadata || {}} />
         )}
 
+        {/* Semantic Spine: UnifiedDoc details */}
+        {detailPanelNode.type === 'UnifiedDoc' && (
+          <UnifiedDocDetailsSection
+            metadata={detailPanelNode.data?.metadata || {}}
+            citations={(content as UnifiedDocContent)?.citations}
+            tokenCount={(content as UnifiedDocContent)?.token_count}
+          />
+        )}
+
         {/* Actions - Phrase */}
         {(detailPanelNode.type === 'Phrase' || detailPanelNode.type === 'phrase') && (
           <div className="p-4 border-b border-slate-700 bg-slate-800/30">
@@ -1774,5 +1783,97 @@ function TopicStatusBadge({ status }: { status: string }) {
     >
       {cfg.label}
     </span>
+  );
+}
+
+function UnifiedDocDetailsSection({
+  metadata,
+  citations,
+  tokenCount,
+}: {
+  metadata: any;
+  citations?: Array<{ node_id: string; span?: string }>;
+  tokenCount?: number;
+}) {
+  return (
+    <div className="p-4 border-b border-slate-700 bg-slate-800/30">
+      <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+        <FileText className="w-4 h-4 text-teal-400" />
+        Synthesis Metadata
+      </h3>
+
+      <dl className="space-y-3 text-sm">
+        {metadata?.synthesis_mode && (
+          <div className="flex justify-between items-start">
+            <dt className="text-slate-400">Mode:</dt>
+            <dd>
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-teal-600/20 text-teal-300 border border-teal-500/30">
+                {metadata.synthesis_mode}
+              </span>
+            </dd>
+          </div>
+        )}
+
+        {metadata?.context_pack_id && (
+          <div className="flex flex-col gap-1 mt-2">
+            <dt className="text-slate-400">Context Pack ID:</dt>
+            <dd className="text-slate-200 font-mono text-xs bg-slate-900/50 p-1.5 rounded truncate">
+              {metadata.context_pack_id}
+            </dd>
+          </div>
+        )}
+
+        {metadata?.traversal_plan?.rootNodeIds && (
+          <div className="flex flex-col gap-1 mt-2">
+            <dt className="text-slate-400">Root Node IDs:</dt>
+            <dd className="flex flex-wrap gap-1">
+              {(metadata.traversal_plan.rootNodeIds as string[]).map((id: string, i: number) => (
+                <span
+                  key={i}
+                  className="text-slate-300 font-mono text-xs bg-slate-700 px-1.5 py-0.5 rounded"
+                >
+                  {id}
+                </span>
+              ))}
+            </dd>
+          </div>
+        )}
+
+        {metadata?.traversal_plan?.maxHops !== undefined && (
+          <div className="flex justify-between items-start mt-2">
+            <dt className="text-slate-400">Max Hops:</dt>
+            <dd className="text-slate-200">{metadata.traversal_plan.maxHops}</dd>
+          </div>
+        )}
+
+        {metadata?.source_ids && metadata.source_ids.length > 0 && (
+          <div className="flex justify-between items-start mt-2">
+            <dt className="text-slate-400">Sources Extracted:</dt>
+            <dd className="text-slate-200">{metadata.source_ids.length}</dd>
+          </div>
+        )}
+
+        {metadata?.traversal_edge_ids && metadata.traversal_edge_ids.length > 0 && (
+          <div className="flex justify-between items-start mt-2">
+            <dt className="text-slate-400">Edges Traversed:</dt>
+            <dd className="text-slate-200">{metadata.traversal_edge_ids.length}</dd>
+          </div>
+        )}
+
+        {citations && citations.length > 0 && (
+          <div className="flex justify-between items-start mt-2">
+            <dt className="text-slate-400">Citations (Spans):</dt>
+            <dd className="text-slate-200">{citations.length}</dd>
+          </div>
+        )}
+
+        {tokenCount !== undefined && (
+          <div className="flex justify-between items-start mt-2">
+            <dt className="text-slate-400">Token Count:</dt>
+            <dd className="text-slate-200">{tokenCount.toLocaleString()}</dd>
+          </div>
+        )}
+      </dl>
+    </div>
   );
 }

@@ -7,9 +7,12 @@
 
 import { DatabaseClient } from '@keimenon/db';
 import { AnyNode, AnyEdge } from '@keimenon/types';
+import { contentHashForNodeType, canonicalizeForNodeType } from '@keimenon/parsers';
 import { SSEBroadcaster } from '../modules/jobs/infrastructure/SSEBroadcaster';
 import { WriteQueueErrorHandler } from './WriteQueueErrorHandler';
 import type { SqlVariableSplitDiagnostics } from './WriteQueueErrorHandler';
+import type { DbWorkerClient } from '../workers/DbWorkerClient';
+import type { SerializedNode, SerializedEdge } from '../workers/db-worker-protocol';
 
 interface NodePreview {
   id: string;
@@ -63,6 +66,7 @@ export class DatabaseWriteQueue {
   private flushRequested = false;
   private flushLoopPromise: Promise<void> | null = null;
   private flushInProgress = false;
+  private dbWorker: DbWorkerClient | null = null;
 
   private stats: WriteQueueStats = {
     nodesQueued: 0,
@@ -104,6 +108,16 @@ export class DatabaseWriteQueue {
       enableCircuitBreaker: true,
       deadLetterQueueSize: 1000,
     });
+  }
+
+  /**
+   * Set the off-main-thread DB worker for non-blocking flushes.
+   * When set, flushOnce delegates write operations to the worker thread
+   * instead of executing them on the main thread.
+   */
+  setDbWorker(worker: DbWorkerClient): void {
+    this.dbWorker = worker;
+    console.log('[DatabaseWriteQueue] DB worker attached — flushes will run off-thread');
   }
 
   start(): void {
@@ -254,6 +268,47 @@ export class DatabaseWriteQueue {
     }
   }
 
+  /**
+   * Serialize an AnyNode into the flat shape the worker expects.
+   * Pre-computes content hash and canonical form on the main thread
+   * (these are CPU-light string operations) so the worker only does INSERTs.
+   */
+  private serializeNode(node: AnyNode): SerializedNode {
+    const nodeData: any = node;
+    return {
+      id: node.id,
+      kind: node.kind,
+      properties: JSON.stringify(node),
+      account_id: nodeData.account_id,
+      created_by: nodeData.created_by,
+      created_at: node.created_at,
+      updated_at: node.updated_at,
+      data_tag: nodeData.data_tag || 'real',
+      content_hash: contentHashForNodeType(node.kind, node),
+      canonical_content: canonicalizeForNodeType(node.kind, node),
+      is_duplicate: 0,
+      original_node_id: null,
+    };
+  }
+
+  /**
+   * Serialize an AnyEdge into the flat shape the worker expects.
+   */
+  private serializeEdge(edge: AnyEdge): SerializedEdge {
+    const edgeData: any = edge;
+    return {
+      id: edge.id,
+      kind: edge.kind,
+      from_id: edge.from,
+      to_id: edge.to,
+      properties: JSON.stringify(edge),
+      account_id: edgeData.account_id,
+      created_by: edgeData.created_by,
+      created_at: edge.created_at,
+      data_tag: edgeData.data_tag || 'real',
+    };
+  }
+
   private async flushOnce(): Promise<void> {
     if (this.nodeQueue.length === 0 && this.edgeQueue.length === 0) {
       return;
@@ -262,6 +317,49 @@ export class DatabaseWriteQueue {
     const nodes = this.nodeQueue.splice(0, this.MAX_NODES_PER_FLUSH);
     const edges = this.edgeQueue.splice(0, this.MAX_EDGES_PER_FLUSH);
     const startTime = Date.now();
+
+    // ── Off-thread path ──────────────────────────────────────────────
+    // When the DB worker is available, serialize and dispatch the batch
+    // to the worker thread. The main thread remains unblocked.
+    if (this.dbWorker?.isReady()) {
+      this.flushInProgress = true;
+      this.stats.flushInFlight = 1;
+
+      try {
+        const serializedNodes = nodes.map((n) => this.serializeNode(n));
+        const serializedEdges = edges.map((e) => this.serializeEdge(e));
+
+        const result = await this.dbWorker.flushImportBatch(serializedNodes, serializedEdges);
+
+        this.stats.nodesFlushed += result.nodesWritten;
+        this.stats.edgesFlushed += result.edgesWritten;
+        this.stats.fkConstraintFailures += result.fkFailures;
+        this.stats.flushCount++;
+        this.stats.lastFlushTime = Date.now();
+
+        const durationMs = Date.now() - startTime;
+        console.log(
+          `[DatabaseWriteQueue] worker flushed ${result.totalWritten}/${nodes.length + edges.length} items in ${durationMs}ms`
+        );
+
+        // Broadcast SSE updates (still on main thread)
+        this.broadcastFlushUpdates(nodes, edges);
+      } catch (workerErr: any) {
+        console.error(
+          '[DatabaseWriteQueue] Worker flush failed, falling back to main thread:',
+          workerErr.message
+        );
+        // Re-queue and fall through to main-thread path on next tick
+        this.nodeQueue.unshift(...nodes);
+        this.edgeQueue.unshift(...edges);
+        // Disable worker for this session to prevent repeated failures
+        this.dbWorker = null;
+      } finally {
+        this.flushInProgress = false;
+        this.stats.flushInFlight = 0;
+      }
+      return;
+    }
 
     this.flushInProgress = true;
     this.stats.flushInFlight = 1;
@@ -413,6 +511,66 @@ export class DatabaseWriteQueue {
     } finally {
       this.flushInProgress = false;
       this.stats.flushInFlight = 0;
+    }
+  }
+
+  /**
+   * Broadcast SSE graph updates for a flush batch (used by both on-thread
+   * and off-thread flush paths).
+   */
+  private broadcastFlushUpdates(nodes: AnyNode[], edges: AnyEdge[]): void {
+    if (!this.broadcaster) return;
+
+    const perAccount = new Map<
+      string,
+      { nodesAdded: number; edgesAdded: number; recentNodes: NodePreview[] }
+    >();
+
+    const ensureBucket = (accountId: string) => {
+      if (!perAccount.has(accountId)) {
+        perAccount.set(accountId, { nodesAdded: 0, edgesAdded: 0, recentNodes: [] });
+      }
+      return perAccount.get(accountId)!;
+    };
+
+    for (const node of nodes as Array<any>) {
+      const accountId = node.account_id;
+      if (!accountId) continue;
+      const bucket = ensureBucket(accountId);
+      bucket.nodesAdded += 1;
+      bucket.recentNodes.unshift({
+        id: node.id,
+        kind: node.kind,
+        label: deriveNodeLabel(node),
+      });
+      if (bucket.recentNodes.length > 20) {
+        bucket.recentNodes = bucket.recentNodes.slice(0, 20);
+      }
+    }
+
+    for (const edge of edges as Array<any>) {
+      const accountId = edge.account_id;
+      if (!accountId) continue;
+      ensureBucket(accountId).edgesAdded += 1;
+    }
+
+    if (perAccount.size > 0) {
+      const queueStats = {
+        nodesQueued: this.nodeQueue.length,
+        edgesQueued: this.edgeQueue.length,
+        nodesFlushed: this.stats.nodesFlushed,
+        edgesFlushed: this.stats.edgesFlushed,
+      };
+      const timestamp = Date.now();
+      for (const [accountId, data] of perAccount.entries()) {
+        this.broadcaster.broadcastGraphUpdate(accountId, {
+          nodesAdded: data.nodesAdded,
+          edgesAdded: data.edgesAdded,
+          queueStats,
+          timestamp,
+          recentNodes: data.recentNodes,
+        });
+      }
     }
   }
 

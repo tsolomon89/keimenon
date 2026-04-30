@@ -367,9 +367,8 @@ CREATE TABLE IF NOT EXISTS nodes (
   kind TEXT NOT NULL CHECK(kind IN (
     'UploadItem', 'Chat', 'MessageRef', 'Source', 'Group', 'CodeBlock', 'Folder',
     'ChatThread', 'Message', 'ObjectiveClaim', 'UnifiedDoc', 'Constellation', 'UserNode', 'AccountNode', 'Board',
-    'SourceDoc', 'Lexeme', 'Phrase', 'Topic', 'VerifiedSource', 'VerifiedClaim', 'AgentNode',
-    'CanonicalDoc', 'DuplicateCluster', 'Evidence', 'Principal', 'ConversationThread',
-    'SourceSpan', 'Packet', 'AtomicUnit'
+    'SourceDoc', 'Lexeme', 'Topic', 'VerifiedSource', 'VerifiedClaim', 'AgentNode',
+    'CanonicalDoc', 'DuplicateCluster', 'Evidence', 'Principal', 'ConversationThread'
   )),
   properties TEXT NOT NULL,
   account_id TEXT NOT NULL,
@@ -632,6 +631,101 @@ CREATE INDEX IF NOT EXISTS idx_edges_workspace ON edges(kind) WHERE kind IN ('CR
 CREATE INDEX IF NOT EXISTS idx_edges_conversation ON edges(kind) WHERE kind IN ('INITIATED_BY', 'PARTICIPATED_IN');
 CREATE INDEX IF NOT EXISTS idx_edges_run_attribution ON edges(kind) WHERE kind = 'PRODUCED_BY';
 CREATE INDEX IF NOT EXISTS idx_edges_pro_import ON edges(kind) WHERE kind IN ('HAS_SPAN', 'OCCURS_IN_SPAN', 'COMPOSED_OF_ATOMIC');
+
+-- =============================================================================
+-- NORMALIZED HIGH-VOLUME NODE TABLES
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS source_spans (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  message_id TEXT,
+  conversation_id TEXT,
+  text TEXT NOT NULL,
+  normalized_text TEXT NOT NULL,
+  start_char INTEGER NOT NULL,
+  end_char INTEGER NOT NULL,
+  boundary_kind TEXT NOT NULL DEFAULT 'sentence',
+  span_hash TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real',
+  metadata TEXT,
+  FOREIGN KEY (account_id) REFERENCES accounts(id),
+  FOREIGN KEY (source_id) REFERENCES nodes(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_source_spans_account_source ON source_spans(account_id, source_id);
+CREATE INDEX IF NOT EXISTS idx_source_spans_hash ON source_spans(account_id, span_hash);
+
+CREATE TABLE IF NOT EXISTS phrases (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  text TEXT NOT NULL,
+  normalized_text TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'n-gram',
+  entity_type TEXT,
+  frequency INTEGER NOT NULL DEFAULT 0,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real',
+  metadata TEXT,
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE TABLE IF NOT EXISTS packets (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  text TEXT NOT NULL,
+  normalized_text TEXT NOT NULL,
+  occurrences INTEGER NOT NULL DEFAULT 1,
+  mass REAL NOT NULL DEFAULT 0,
+  coverage REAL NOT NULL DEFAULT 0,
+  idf REAL NOT NULL DEFAULT 0,
+  entropy_factor REAL NOT NULL DEFAULT 0,
+  packet_hash TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real',
+  metadata TEXT,
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE TABLE IF NOT EXISTS atomic_units (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  unit_type TEXT NOT NULL,
+  value TEXT NOT NULL,
+  normalized_value TEXT NOT NULL,
+  unit_hash TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real',
+  metadata TEXT,
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE TABLE IF NOT EXISTS bulk_insert_quarantine (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  batch_id TEXT NOT NULL,
+  import_id TEXT,
+  row_kind TEXT NOT NULL CHECK(row_kind IN ('node', 'edge', 'source_span', 'phrase', 'packet', 'atomic_unit')),
+  row_id TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  error_message TEXT,
+  payload_json TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_quarantine_account ON bulk_insert_quarantine(account_id);
+CREATE INDEX IF NOT EXISTS idx_quarantine_batch ON bulk_insert_quarantine(batch_id);
 
 -- Job Indexes
 CREATE INDEX IF NOT EXISTS idx_jobs_account ON jobs(account_id);

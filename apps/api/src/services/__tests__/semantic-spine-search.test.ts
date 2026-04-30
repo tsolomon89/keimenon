@@ -176,6 +176,26 @@ function seedCorpus(db: Database.Database, accountId: string) {
     boundary_kind: 'sentence',
   });
 
+  // HAS_SPAN edges
+  insertEdge(db, accountId, {
+    id: `edge_span_1a_${accountId}`,
+    kind: 'HAS_SPAN',
+    from_id: `src_1_${accountId}`,
+    to_id: `span_1a_${accountId}`,
+  });
+  insertEdge(db, accountId, {
+    id: `edge_span_2a_${accountId}`,
+    kind: 'HAS_SPAN',
+    from_id: `src_2_${accountId}`,
+    to_id: `span_2a_${accountId}`,
+  });
+  insertEdge(db, accountId, {
+    id: `edge_span_3a_${accountId}`,
+    kind: 'HAS_SPAN',
+    from_id: `src_3_${accountId}`,
+    to_id: `span_3a_${accountId}`,
+  });
+
   // Shared phrase: "symbolic necessity"
   const phraseId = `phrase_symbolic_necessity_${accountId}`;
   insertNode(db, accountId, {
@@ -652,5 +672,83 @@ describe('Semantic Spine Search', () => {
 
     expect(explanation.connected).toBe(false);
     expect(explanation.sharedPhraseIds.length).toBe(0);
+  });
+
+  // Test 15: Full Runtime Vertical Slice
+  it('full runtime vertical slice verifies provenance, metadata, and markdown structure', () => {
+    // 1. Verify Phrase and Topic nodes exist
+    const phraseRow = db
+      .prepare(`SELECT id FROM nodes WHERE account_id = ? AND id = ?`)
+      .get(ACCOUNT_A, `phrase_symbolic_necessity_${ACCOUNT_A}`) as { id: string };
+    expect(phraseRow).toBeDefined();
+
+    const topicRow = db
+      .prepare(`SELECT id FROM nodes WHERE account_id = ? AND id = ?`)
+      .get(ACCOUNT_A, `topic_promoted_${ACCOUNT_A}`) as { id: string };
+    expect(topicRow).toBeDefined();
+
+    // Verify HAS_SPAN edges exist
+    const hasSpanEdge = db
+      .prepare(`SELECT id FROM edges WHERE account_id = ? AND kind = 'HAS_SPAN'`)
+      .get(ACCOUNT_A) as { id: string };
+    expect(hasSpanEdge).toBeDefined();
+
+    // 2. Synthesize from Phrase
+    const traversal = new SemanticTraversalService(db);
+    const phraseDoc = traversal.createUnifiedDocument(ACCOUNT_A, 'test-user', {
+      rootNodeIds: [`phrase_symbolic_necessity_${ACCOUNT_A}`],
+      maxHops: 2,
+    });
+    expect(phraseDoc.nodeId).toBeTruthy();
+    expect(phraseDoc.derivedEdgeIds.length).toBeGreaterThan(0);
+
+    // 3. Synthesize from Suggested Topic with includeSuggestedTopics flag
+    const suggestedTopicDoc = traversal.createUnifiedDocument(ACCOUNT_A, 'test-user', {
+      rootNodeIds: [`topic_suggested_${ACCOUNT_A}`],
+      maxHops: 2,
+      includeSuggestedTopics: true,
+    });
+    expect(suggestedTopicDoc.nodeId).toBeTruthy();
+    expect(suggestedTopicDoc.contextPack.sourceIds.length).toBeGreaterThan(0);
+
+    // 4. Detailed verification of UnifiedDoc from Promoted Topic
+    const topicDoc = traversal.createUnifiedDocument(ACCOUNT_A, 'test-user', {
+      rootNodeIds: [`topic_promoted_${ACCOUNT_A}`],
+      maxHops: 2,
+    });
+
+    const unifiedNode = db
+      .prepare(`SELECT properties FROM nodes WHERE account_id = ? AND id = ?`)
+      .get(ACCOUNT_A, topicDoc.nodeId) as { properties: string };
+    expect(unifiedNode).toBeDefined();
+
+    const props = JSON.parse(unifiedNode.properties);
+    expect(props.metadata.synthesis_mode).toBe('deterministic');
+    expect(props.metadata.context_pack_id).toBeTruthy();
+    expect(props.metadata.traversal_plan).toBeDefined();
+    expect(props.metadata.traversal_edge_ids).toBeDefined();
+    expect(props.metadata.source_ids.length).toBeGreaterThan(0);
+
+    // Verify markdown headers
+    const md = props.content_markdown as string;
+    expect(md).toContain('## Summary');
+    expect(md).toContain('## Central Phrases');
+    expect(md).toContain('## Related Topics');
+    expect(md).toContain('## Main Source Clusters');
+    expect(md).toContain('## Supporting Excerpts');
+    expect(md).toContain('## Provenance');
+    expect(md).toContain('## Traversal Metadata');
+
+    // Verify DERIVES_FROM edges point back to source/spans
+    const derivesEdges = db
+      .prepare(
+        `SELECT to_id FROM edges WHERE account_id = ? AND kind = 'DERIVES_FROM' AND from_id = ?`
+      )
+      .all(ACCOUNT_A, topicDoc.nodeId) as Array<{ to_id: string }>;
+    expect(derivesEdges.length).toBeGreaterThan(0);
+
+    // At least one derived target should be a source or span
+    const targetId = derivesEdges[0].to_id;
+    expect(targetId.startsWith('src_') || targetId.startsWith('span_')).toBe(true);
   });
 });

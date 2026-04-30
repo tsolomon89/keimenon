@@ -727,7 +727,41 @@ export class ImportWorker extends BaseWorker {
       const isTestMode = !!job.config.testContext?.dbPath;
       const writeQueue = isTestMode ? undefined : this.writeQueue;
 
-      const pipelineRunner = new ImportPipelineRunner(dbClient, writeQueue);
+      const { getDbWorker } = await import('../db-worker-singleton');
+      const dbWorker = getDbWorker();
+      const { BulkGraphWriteSink, LegacyQueuedGraphWriteSink } =
+        await import('../../../services/GraphWriteSink');
+      const { GraphBatchAccumulator } = await import('../../../services/GraphBatchAccumulator');
+
+      let batchAccumulator: any;
+      if (process.env.KEIMENON_BULK_INSERTS !== '0') {
+        if (dbWorker?.isReady()) {
+          const sink = new BulkGraphWriteSink(dbWorker as any, (progress) => {
+            void this.reportProgress(
+              job,
+              progress.nodesWritten + progress.edgesWritten,
+              -1, // total is handled by the overall ImportPipeline logic
+              `Writing graph batch ${progress.batchIndex}...`,
+              context,
+              ImportJobStage.MATERIALIZE,
+              {
+                elapsedMsInBatch: progress.elapsedMs,
+                nodesWritten: progress.nodesWritten,
+                edgesWritten: progress.edgesWritten,
+                payloadsWritten: progress.payloadsWritten,
+                quarantinedRows: progress.quarantinedRows,
+                batchPhase: progress.phase,
+              }
+            );
+          });
+          batchAccumulator = new GraphBatchAccumulator(sink, job.accountId, job.userId, job.id);
+        } else if (writeQueue) {
+          const sink = new LegacyQueuedGraphWriteSink(writeQueue);
+          batchAccumulator = new GraphBatchAccumulator(sink, job.accountId, job.userId, job.id);
+        }
+      }
+
+      const pipelineRunner = new ImportPipelineRunner(dbClient, writeQueue, batchAccumulator);
 
       // Step 1b: Check for existing checkpoint (resume scenario)
       let checkpoint: ImportCheckpoint | null = null;

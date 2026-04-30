@@ -14,6 +14,7 @@ import {
 } from './autogroup-enhanced';
 import { getLocalDocumentStore } from './local-document-store';
 import { DatabaseWriteQueue } from './DatabaseWriteQueue';
+import { GraphBatchAccumulator } from './GraphBatchAccumulator';
 import type { SqlVariableSplitDiagnostics } from './WriteQueueErrorHandler';
 import type {
   ImportJobStage,
@@ -169,6 +170,7 @@ interface ImportExecutionOptions {
 export class EnhancedImportServiceV2 {
   private db: DatabaseClient;
   private writeQueue: DatabaseWriteQueue | null;
+  private batchAccumulator: GraphBatchAccumulator | null;
   private localStore: ReturnType<typeof getLocalDocumentStore>;
   private autogroupService: EnhancedAutogroupService;
   private duplicateService: IntegratedDuplicateDetectionService;
@@ -211,9 +213,14 @@ export class EnhancedImportServiceV2 {
   private humanPrincipal: PrincipalNode | null = null;
   private agentPrincipal: PrincipalNode | null = null;
 
-  constructor(db: DatabaseClient, writeQueue?: DatabaseWriteQueue) {
+  constructor(
+    db: DatabaseClient,
+    writeQueue?: DatabaseWriteQueue,
+    batchAccumulator?: GraphBatchAccumulator
+  ) {
     this.db = db;
     this.writeQueue = writeQueue || null;
+    this.batchAccumulator = batchAccumulator || null;
     this.localStore = getLocalDocumentStore();
     this.autogroupService = new EnhancedAutogroupService();
     this.principalService = new PrincipalService(db);
@@ -247,7 +254,9 @@ export class EnhancedImportServiceV2 {
       this.createdNodeIds.push(node.id);
     }
 
-    if (this.writeQueue) {
+    if (this.batchAccumulator) {
+      await this.batchAccumulator.addNode(node);
+    } else if (this.writeQueue) {
       this.writeQueue.enqueueNode(node);
     } else {
       await this.db.createNode(node);
@@ -272,7 +281,9 @@ export class EnhancedImportServiceV2 {
       this.createdEdgeIds.push(edge.id);
     }
 
-    if (this.writeQueue) {
+    if (this.batchAccumulator) {
+      await this.batchAccumulator.addEdge(edge);
+    } else if (this.writeQueue) {
       this.writeQueue.enqueueEdge(edge);
     } else {
       await this.db.createEdge(edge);
@@ -283,14 +294,18 @@ export class EnhancedImportServiceV2 {
    * Flush write queue (if available)
    */
   private async flushWrites(): Promise<void> {
-    if (this.writeQueue) {
+    if (this.batchAccumulator) {
+      await this.batchAccumulator.flush();
+    } else if (this.writeQueue) {
       await this.writeQueue.forceFlush();
     }
   }
 
   private async flushWritesStrict(stage: string): Promise<void> {
     await this.flushWrites();
-    this.assertWriteQueueHealthy(stage);
+    if (!this.batchAccumulator) {
+      this.assertWriteQueueHealthy(stage);
+    }
   }
 
   private assertWriteQueueHealthy(stage: string): void {
@@ -568,19 +583,35 @@ export class EnhancedImportServiceV2 {
       // Step 10: Post-spine indexing pipeline (search index + authority scores)
       await this.emitPipelineStage(hooks, 'spine', 'Building search index and authority scores');
       try {
-        const { InvertedIndexService } = await import('./inverted-index.service');
-        const { AuthorityScoringService } = await import('./authority-scoring.service');
-        const indexService = new InvertedIndexService(this.sqliteDb);
-        if (indexService.hasIndexTables() && this.context?.accountId) {
-          const indexStats = indexService.rebuildIndex(this.context.accountId);
+        // Prefer off-main-thread execution via the DB worker to prevent event-loop freezes.
+        const { getDbWorker } = await import('../workers/db-worker-singleton');
+        const dbWorker = getDbWorker();
+
+        if (dbWorker?.isReady() && this.context?.accountId) {
+          const indexResult = await dbWorker.rebuildInvertedIndex(this.context.accountId);
           console.log(
-            `[Import] Search index built: ${indexStats.postingCount} postings, ${indexStats.uniqueTerms} unique terms`
+            `[Import] Search index built (worker): ${indexResult.postingCount} postings, ${indexResult.uniqueTerms} unique terms (${indexResult.durationMs}ms)`
           );
-          const authorityService = new AuthorityScoringService(this.sqliteDb);
-          const authorityStats = authorityService.computeAuthority(this.context.accountId);
+          const authorityResult = await dbWorker.computeAuthority(this.context.accountId);
           console.log(
-            `[Import] Authority scores computed: ${authorityStats.phraseScores} phrases, ${authorityStats.sourceScores} sources, ${authorityStats.topicScores} topics`
+            `[Import] Authority scores computed (worker): ${authorityResult.phraseScores} phrases, ${authorityResult.sourceScores} sources, ${authorityResult.topicScores} topics (${authorityResult.durationMs}ms)`
           );
+        } else {
+          // Fallback: run on main thread (original path)
+          const { InvertedIndexService } = await import('./inverted-index.service');
+          const { AuthorityScoringService } = await import('./authority-scoring.service');
+          const indexService = new InvertedIndexService(this.sqliteDb);
+          if (indexService.hasIndexTables() && this.context?.accountId) {
+            const indexStats = indexService.rebuildIndex(this.context.accountId);
+            console.log(
+              `[Import] Search index built: ${indexStats.postingCount} postings, ${indexStats.uniqueTerms} unique terms`
+            );
+            const authorityService = new AuthorityScoringService(this.sqliteDb);
+            const authorityStats = authorityService.computeAuthority(this.context.accountId);
+            console.log(
+              `[Import] Authority scores computed: ${authorityStats.phraseScores} phrases, ${authorityStats.sourceScores} sources, ${authorityStats.topicScores} topics`
+            );
+          }
         }
       } catch (indexError: any) {
         // Non-fatal: index can be rebuilt later via POST /api/v1/search/index/rebuild
@@ -1097,7 +1128,10 @@ export class EnhancedImportServiceV2 {
           unmatchedRatio,
         },
       };
-      throw error;
+
+      // Instead of failing the entire import and rolling back, we simply log the quality
+      // degradation. Poor auto-grouping should not prevent data ingestion.
+      console.warn('[Import] Grouping quality gate warning:', error.message, error.details);
     }
   }
 

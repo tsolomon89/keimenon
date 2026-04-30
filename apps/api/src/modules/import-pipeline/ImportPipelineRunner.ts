@@ -6,6 +6,7 @@ import {
   ImportResult,
 } from '../../services/import-enhanced-v2';
 import { DatabaseWriteQueue } from '../../services/DatabaseWriteQueue';
+import { GraphBatchAccumulator } from '../../services/GraphBatchAccumulator';
 import { ImportPipelineCompensationService } from './ImportPipelineCompensationService';
 import { ImportPipelineStage } from './stages';
 
@@ -38,9 +39,10 @@ export class ImportPipelineRunner {
 
   constructor(
     private readonly dbClient: DatabaseClient,
-    writeQueue?: DatabaseWriteQueue
+    writeQueue?: DatabaseWriteQueue,
+    batchAccumulator?: GraphBatchAccumulator
   ) {
-    this.importService = new EnhancedImportServiceV2(dbClient, writeQueue);
+    this.importService = new EnhancedImportServiceV2(dbClient, writeQueue, batchAccumulator);
     this.compensationService = new ImportPipelineCompensationService(dbClient);
   }
 

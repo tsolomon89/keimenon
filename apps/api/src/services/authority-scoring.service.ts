@@ -82,15 +82,23 @@ export class AuthorityScoringService {
     const placeholders = nodeIds.map(() => '?').join(', ');
     const rows = this.db
       .prepare(
-        `SELECT id, kind, properties FROM nodes
+        `SELECT id, kind, properties as raw_data FROM nodes
+         WHERE account_id = ? AND id IN (${placeholders})
+         UNION ALL
+         SELECT id, 'Phrase' as kind, metadata as raw_data FROM phrases
          WHERE account_id = ? AND id IN (${placeholders})`
       )
-      .all(accountId, ...nodeIds) as NodeRow[];
+      .all(accountId, ...nodeIds, accountId, ...nodeIds) as any[];
 
     return rows
       .map((row) => {
-        const props = this.parseProperties(row.properties);
-        const metadata = (props.metadata || {}) as Record<string, unknown>;
+        let metadata: Record<string, unknown> = {};
+        const parsed = this.parseProperties(row.raw_data);
+        if (row.kind === 'Phrase') {
+          metadata = parsed;
+        } else {
+          metadata = (parsed.metadata || {}) as Record<string, unknown>;
+        }
 
         return {
           nodeId: row.id,
@@ -108,25 +116,24 @@ export class AuthorityScoringService {
   private scorePhrases(accountId: string): number {
     const phrases = this.db
       .prepare(
-        `SELECT id, properties FROM nodes
-         WHERE account_id = ? AND kind = 'Phrase'
+        `SELECT id, text, metadata FROM phrases
+         WHERE account_id = ?
          ORDER BY id ASC`
       )
-      .all(accountId) as NodeRow[];
+      .all(accountId) as any[];
 
     if (phrases.length === 0) {
       return 0;
     }
 
     const updateStmt = this.db.prepare(
-      `UPDATE nodes SET properties = ?, updated_at = ?
+      `UPDATE phrases SET metadata = ?, updated_at = ?
        WHERE account_id = ? AND id = ?`
     );
 
     const transaction = this.db.transaction(() => {
       for (const phrase of phrases) {
-        const props = this.parseProperties(phrase.properties);
-        const metadata = { ...((props.metadata as Record<string, unknown>) || {}) };
+        const metadata = this.parseProperties(phrase.metadata || '{}');
 
         // Source count: how many distinct sources MENTION this phrase
         const sourceCount = this.countDistinctEdges(
@@ -150,7 +157,7 @@ export class AuthorityScoringService {
         const coOccurrenceDegree = this.countEdgesOfKind(accountId, phrase.id, 'CO_OCCURS_WITH');
 
         // Heading/title boost: if phrase text appears in any source title
-        const headingBoost = this.computeHeadingBoost(accountId, String(props.text || ''));
+        const headingBoost = this.computeHeadingBoost(accountId, String(phrase.text || ''));
 
         // Promotion boost: if the phrase belongs to a promoted topic
         const promotionBoost = this.computePhrasePromotionBoost(accountId, phrase.id);
@@ -178,8 +185,7 @@ export class AuthorityScoringService {
         metadata.score_components = components;
         metadata.authority_computed_at = Date.now();
 
-        props.metadata = metadata;
-        updateStmt.run(JSON.stringify(props), Date.now(), accountId, phrase.id);
+        updateStmt.run(JSON.stringify(metadata), Date.now(), accountId, phrase.id);
       }
     });
 
@@ -346,21 +352,41 @@ export class AuthorityScoringService {
     return row?.cnt ?? 0;
   }
 
+  private sourceTitlesCache: Map<string, string[]> = new Map();
+
+  private getSourceTitles(accountId: string): string[] {
+    if (!this.sourceTitlesCache.has(accountId)) {
+      const rows = this.db
+        .prepare(`SELECT properties FROM nodes WHERE account_id = ? AND kind = 'Source'`)
+        .all(accountId) as NodeRow[];
+
+      const titles = rows
+        .map((row) => {
+          const props = this.parseProperties(row.properties);
+          return typeof props.title === 'string' ? props.title.toLowerCase() : '';
+        })
+        .filter((t) => t.length > 0);
+
+      this.sourceTitlesCache.set(accountId, titles);
+    }
+    return this.sourceTitlesCache.get(accountId)!;
+  }
+
   private computeHeadingBoost(accountId: string, phraseText: string): number {
     if (!phraseText || phraseText.length < 3) {
       return 0;
     }
 
     const lowerPhrase = phraseText.toLowerCase();
-    const row = this.db
-      .prepare(
-        `SELECT COUNT(*) as cnt FROM nodes
-         WHERE account_id = ? AND kind = 'Source'
-           AND LOWER(json_extract(properties, '$.title')) LIKE ?`
-      )
-      .get(accountId, `%${lowerPhrase}%`) as { cnt: number } | undefined;
+    const titles = this.getSourceTitles(accountId);
 
-    return (row?.cnt ?? 0) > 0 ? 1 : 0;
+    for (const title of titles) {
+      if (title.includes(lowerPhrase)) {
+        return 1;
+      }
+    }
+
+    return 0;
   }
 
   private computePhrasePromotionBoost(accountId: string, phraseId: string): number {

@@ -761,23 +761,59 @@ export class SemanticTraversalService {
     lines.push(
       `This deterministic synthesis uses ${contextPack.snippets.length} source-backed snippet(s) from ${contextPack.sourceIds.length} source node(s).`
     );
-    if (topicLabels.length > 0) {
-      lines.push(`Primary topic path: ${topicLabels.join(', ')}.`);
-    }
+
+    lines.push('');
+    lines.push('## Central Phrases');
     if (phraseLabels.length > 0) {
-      lines.push(`Key phrases: ${phraseLabels.join(', ')}.`);
+      phraseLabels.forEach((label) => lines.push(`- ${label}`));
+    } else {
+      lines.push('No central phrases identified.');
     }
 
     lines.push('');
-    lines.push('## Sections');
-    const sectionLabel = topicLabels[0] || phraseLabels[0] || 'Evidence';
-    lines.push(`### ${sectionLabel}`);
+    lines.push('## Related Topics');
+    if (topicLabels.length > 0) {
+      topicLabels.forEach((label) => lines.push(`- ${label}`));
+    } else {
+      lines.push('No related topics identified.');
+    }
+
+    lines.push('');
+    lines.push('## Main Source Clusters');
+    const snippetsBySource = new Map<string, ContextPackSnippet[]>();
     for (const snippet of contextPack.snippets) {
-      const spanRef =
-        typeof snippet.startChar === 'number' && typeof snippet.endChar === 'number'
-          ? `${snippet.spanId || snippet.sourceId}@${snippet.startChar}-${snippet.endChar}`
-          : snippet.spanId || snippet.sourceId;
-      lines.push(`- ${snippet.text.trim()} [${spanRef}]`);
+      const group = snippetsBySource.get(snippet.sourceId) || [];
+      group.push(snippet);
+      snippetsBySource.set(snippet.sourceId, group);
+    }
+
+    if (snippetsBySource.size > 0) {
+      for (const [sourceId, snippets] of snippetsBySource.entries()) {
+        lines.push(`### Source: ${sourceId}`);
+        for (const snippet of snippets) {
+          const spanRef =
+            typeof snippet.startChar === 'number' && typeof snippet.endChar === 'number'
+              ? `${snippet.spanId || snippet.sourceId}@${snippet.startChar}-${snippet.endChar}`
+              : snippet.spanId || snippet.sourceId;
+          lines.push(`- Span Reference: ${spanRef}`);
+        }
+      }
+    } else {
+      lines.push('No source clusters identified.');
+    }
+
+    lines.push('');
+    lines.push('## Supporting Excerpts');
+    if (contextPack.snippets.length > 0) {
+      for (const snippet of contextPack.snippets) {
+        const spanRef =
+          typeof snippet.startChar === 'number' && typeof snippet.endChar === 'number'
+            ? `${snippet.spanId || snippet.sourceId}@${snippet.startChar}-${snippet.endChar}`
+            : snippet.spanId || snippet.sourceId;
+        lines.push(`- "${snippet.text.trim()}" [${spanRef}]`);
+      }
+    } else {
+      lines.push('No excerpts available.');
     }
 
     lines.push('');

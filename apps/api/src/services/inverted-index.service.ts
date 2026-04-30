@@ -192,7 +192,8 @@ export interface IndexStats {
 
 interface SpanRow {
   id: string;
-  properties: string;
+  text: string;
+  source_id: string;
 }
 
 interface PostingRow {
@@ -226,8 +227,8 @@ export class InvertedIndexService {
     // Load all SourceSpan nodes for this account
     const spanRows = this.db
       .prepare(
-        `SELECT id, properties FROM nodes
-         WHERE account_id = ? AND kind = 'SourceSpan'
+        `SELECT id, text, source_id FROM source_spans
+         WHERE account_id = ?
          ORDER BY created_at ASC, id ASC`
       )
       .all(accountId) as SpanRow[];
@@ -250,9 +251,8 @@ export class InvertedIndexService {
 
     const transaction = this.db.transaction(() => {
       for (const row of spanRows) {
-        const props = this.parseProperties(row.properties);
-        const text = String(props.text || '');
-        const sourceId = String(props.source_id || '');
+        const text = String(row.text || '');
+        const sourceId = String(row.source_id || '');
         if (!text || !sourceId) {
           continue;
         }
@@ -458,18 +458,17 @@ export class InvertedIndexService {
     const spanTextPlaceholders = scoredSpanIds.map(() => '?').join(', ');
     const spanTexts = this.db
       .prepare(
-        `SELECT id, properties FROM nodes
+        `SELECT id, text, start_char, end_char FROM source_spans
          WHERE account_id = ? AND id IN (${spanTextPlaceholders})`
       )
-      .all(accountId, ...scoredSpanIds) as SpanRow[];
+      .all(accountId, ...scoredSpanIds) as any[];
 
     const spanTextMap = new Map<string, { text: string; startChar?: number; endChar?: number }>();
     for (const row of spanTexts) {
-      const props = this.parseProperties(row.properties);
       spanTextMap.set(row.id, {
-        text: String(props.text || ''),
-        startChar: typeof props.start_char === 'number' ? props.start_char : undefined,
-        endChar: typeof props.end_char === 'number' ? props.end_char : undefined,
+        text: String(row.text || ''),
+        startChar: typeof row.start_char === 'number' ? row.start_char : undefined,
+        endChar: typeof row.end_char === 'number' ? row.end_char : undefined,
       });
     }
 
@@ -540,14 +539,13 @@ export class InvertedIndexService {
       const placeholders = sharedPhraseIds.map(() => '?').join(', ');
       const phraseRows = this.db
         .prepare(
-          `SELECT id, properties FROM nodes
+          `SELECT id, text FROM phrases
            WHERE account_id = ? AND id IN (${placeholders})`
         )
-        .all(accountId, ...sharedPhraseIds) as SpanRow[];
+        .all(accountId, ...sharedPhraseIds) as any[];
 
       for (const row of phraseRows) {
-        const props = this.parseProperties(row.properties);
-        sharedPhraseTexts.push(String(props.text || props.normalized_text || row.id));
+        sharedPhraseTexts.push(String(row.text || row.id));
       }
     }
 
@@ -559,18 +557,18 @@ export class InvertedIndexService {
       const spansA = this.db
         .prepare(
           `SELECT e.from_id as span_id FROM edges e
-           JOIN nodes n ON n.id = e.from_id AND n.kind = 'SourceSpan' AND n.account_id = ?
+           JOIN source_spans s ON s.id = e.from_id AND s.account_id = ?
            WHERE e.account_id = ? AND e.kind = 'MENTIONS' AND e.to_id = ?
-             AND json_extract(n.properties, '$.source_id') = ?`
+             AND s.source_id = ?`
         )
         .all(accountId, accountId, phraseId, sourceA) as Array<{ span_id: string }>;
 
       const spansB = this.db
         .prepare(
           `SELECT e.from_id as span_id FROM edges e
-           JOIN nodes n ON n.id = e.from_id AND n.kind = 'SourceSpan' AND n.account_id = ?
+           JOIN source_spans s ON s.id = e.from_id AND s.account_id = ?
            WHERE e.account_id = ? AND e.kind = 'MENTIONS' AND e.to_id = ?
-             AND json_extract(n.properties, '$.source_id') = ?`
+             AND s.source_id = ?`
         )
         .all(accountId, accountId, phraseId, sourceB) as Array<{ span_id: string }>;
 
@@ -613,7 +611,7 @@ export class InvertedIndexService {
           `SELECT id, properties FROM nodes
            WHERE account_id = ? AND id IN (${tPlaceholders})`
         )
-        .all(accountId, ...sharedTopicIds) as SpanRow[];
+        .all(accountId, ...sharedTopicIds) as Array<{ id: string; properties: string }>;
 
       for (const row of topicRows) {
         const props = this.parseProperties(row.properties);

@@ -239,14 +239,15 @@ export class SemanticIndexingPipeline {
 
     for (const source of sources) {
       // Check if spans already exist for this source
+      // Optimized: Use HAS_SPAN edges to avoid O(N) json_extract full table scan
       const existingSpans = this.db
         .prepare(
-          `SELECT id, properties FROM nodes
-           WHERE account_id = ? AND kind = 'SourceSpan'
-             AND json_extract(properties, '$.source_id') = ?
-           ORDER BY created_at ASC, id ASC`
+          `SELECT n.id, n.properties FROM edges e
+           JOIN nodes n ON n.id = e.to_id AND n.account_id = ? AND n.kind = 'SourceSpan'
+           WHERE e.account_id = ? AND e.kind = 'HAS_SPAN' AND e.from_id = ?
+           ORDER BY n.created_at ASC, n.id ASC`
         )
-        .all(accountId, source.id) as NodeRow[];
+        .all(accountId, accountId, source.id) as NodeRow[];
 
       if (existingSpans.length > 0) {
         for (const row of existingSpans) {

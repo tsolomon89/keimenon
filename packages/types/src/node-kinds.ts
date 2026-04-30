@@ -208,7 +208,21 @@ export function isVerifiedNode(kind: string): kind is VerifiedNodeKind {
  * const query = `SELECT * FROM nodes WHERE kind IN (${getKeimenonDataInClause()})`;
  */
 export function getKeimenonDataInClause(): string {
-  return CANVAS_DATA_NODE_KINDS.map((k) => `'${k}'`).join(', ');
+  // Include all user-generated content: canvas data, spine, verified, agent, and synthesis nodes.
+  // System nodes (UserNode, AccountNode, Board, Constellation, AgentNode) are deliberately excluded.
+  const allDeletableKinds = [
+    ...CANVAS_DATA_NODE_KINDS,
+    ...SPINE_NODE_KINDS,
+    ...VERIFIED_NODE_KINDS,
+    // Agent-generated content (CanonicalDoc, DuplicateCluster, Evidence) — AgentNode is system-level
+    'CanonicalDoc',
+    'DuplicateCluster',
+    'Evidence',
+    // Synthesis outputs
+    'UnifiedDoc',
+    'ObjectiveClaim',
+  ];
+  return allDeletableKinds.map((k) => `'${k}'`).join(', ');
 }
 
 /**

@@ -31,6 +31,7 @@ import {
 } from '../../jobs/domain/ChangeTracker';
 import { getKeimenonDataInClause, getSystemNodeInClause } from '@keimenon/types';
 import { getDeleteMetrics } from '../../../services/metrics/DeleteMetrics';
+import { getDbWorker } from '../../../workers/db-worker-singleton';
 
 export class DeleteWorker extends BaseWorker {
   readonly type = 'delete' as const;
@@ -138,44 +139,69 @@ Node Count Check: Starting...
       // Step 2: Delete nodes and edges (batched with progress reporting)
       await this.reportProgress(job, 10, 100, `Deleting ${nodeCount} nodes...`, context);
 
-      // @ts-ignore
-      const deleteResult = await this.deleteNodes(
-        dbClient,
-        scope,
-        job.accountId!,
-        changeTracker,
-        job,
-        context,
-        isAdmin
-      );
-      const deletedNodes = deleteResult.deletedCount;
-      changeTracker = deleteResult.changeTracker;
+      // Prefer off-main-thread deletion via the DB worker
+      const dbWorker = getDbWorker();
+      let deletedNodes: number;
+      let deletedEdges: number;
 
-      if (this.shouldCancel(context.signal)) {
-        return {
-          success: false,
-          error: {
-            code: 'CANCELED',
-            message: 'Job was canceled during deletion',
-          },
-          metadata: {
-            changeTracker: serializeChangeTracker(changeTracker),
-          },
-        };
+      if (dbWorker?.isReady() && !job.config.testContext) {
+        const deleteResult = await dbWorker.deleteSubgraph(
+          job.accountId!,
+          scope as 'keimenon' | 'all-clients',
+          isAdmin,
+          (progress) => {
+            void this.reportProgress(
+              job,
+              10 + Math.min(Math.round((progress.current / Math.max(progress.total, 1)) * 70), 70),
+              100,
+              progress.message || `Deleting nodes...`,
+              context
+            );
+          }
+        );
+        deletedNodes = deleteResult.nodesDeleted;
+        deletedEdges = deleteResult.edgesDeleted;
+      } else {
+        // Fallback: on-thread deletion (original path)
+        // @ts-ignore
+        const deleteResult = await this.deleteNodes(
+          dbClient,
+          scope,
+          job.accountId!,
+          changeTracker,
+          job,
+          context,
+          isAdmin
+        );
+        deletedNodes = deleteResult.deletedCount;
+        changeTracker = deleteResult.changeTracker;
+
+        if (this.shouldCancel(context.signal)) {
+          return {
+            success: false,
+            error: {
+              code: 'CANCELED',
+              message: 'Job was canceled during deletion',
+            },
+            metadata: {
+              changeTracker: serializeChangeTracker(changeTracker),
+            },
+          };
+        }
+
+        // Step 3: Delete edges (cascade delete should handle most)
+        await this.reportProgress(job, 80, 100, 'Cleaning up edges...', context);
+
+        // @ts-ignore
+        const edgeResult = await this.deleteOrphanedEdges(
+          dbClient,
+          job.accountId,
+          changeTracker,
+          isAdmin
+        );
+        deletedEdges = edgeResult.deletedCount;
+        changeTracker = edgeResult.changeTracker;
       }
-
-      // Step 3: Delete edges (cascade delete should handle most)
-      await this.reportProgress(job, 80, 100, 'Cleaning up edges...', context);
-
-      // @ts-ignore
-      const edgeResult = await this.deleteOrphanedEdges(
-        dbClient,
-        job.accountId,
-        changeTracker,
-        isAdmin
-      );
-      const deletedEdges = edgeResult.deletedCount;
-      changeTracker = edgeResult.changeTracker;
 
       // ✅ Update stats with edge count
       job.updateStats({ edgesDeleted: deletedEdges });
@@ -270,32 +296,31 @@ Node Count Check: Starting...
     accountId: string,
     isAdmin = false
   ): Promise<number> {
+    const sqliteDb = this.getSqliteDatabase(db);
+    const systemKindsClause = getSystemNodeInClause();
+
     if (scope === 'keimenon') {
-      // Only count keimenon data nodes (ChatThread, Message, Source, CodeBlock, Group, Folder)
-      // System nodes are excluded: UserNode, AccountNode, Board, Constellation
-      // Scope is always account-bound, even for admin initiators.
-      const query = `SELECT COUNT(*) as count FROM nodes WHERE account_id = ? AND kind IN (${getKeimenonDataInClause()})`;
-      const params = [accountId];
-      const result = await db.execute(query, params);
-      if (!result?.records?.length) {
-        console.warn(
-          `[DeleteWorker] Count query returned no records: scope=${scope}, accountId=${accountId}, isAdmin=${isAdmin}`
-        );
-      }
-      return result.records[0]?.count ?? 0;
+      // Count all non-system nodes for this account.
+      // Uses NOT IN (system kinds) instead of IN (data kinds) for faster query planning.
+      const stmt = sqliteDb.prepare(
+        `SELECT COUNT(*) as count FROM nodes WHERE account_id = ? AND kind NOT IN (${systemKindsClause})`
+      );
+      const row = stmt.get(accountId) as { count: number } | undefined;
+      return row?.count ?? 0;
     } else if (scope === 'all-clients') {
-      // Count all client data (exclude system nodes only)
-      const query = isAdmin
-        ? `SELECT COUNT(*) as count FROM nodes WHERE kind NOT IN (${getSystemNodeInClause()})`
-        : `SELECT COUNT(*) as count FROM nodes WHERE account_id = ? AND kind NOT IN (${getSystemNodeInClause()})`;
-      const params = isAdmin ? [] : [accountId];
-      const result = await db.execute(query, params);
-      if (!result?.records?.length) {
-        console.warn(
-          `[DeleteWorker] Count query returned no records: scope=${scope}, accountId=${accountId}, isAdmin=${isAdmin}`
+      if (isAdmin) {
+        const stmt = sqliteDb.prepare(
+          `SELECT COUNT(*) as count FROM nodes WHERE kind NOT IN (${systemKindsClause})`
         );
+        const row = stmt.get() as { count: number } | undefined;
+        return row?.count ?? 0;
+      } else {
+        const stmt = sqliteDb.prepare(
+          `SELECT COUNT(*) as count FROM nodes WHERE account_id = ? AND kind NOT IN (${systemKindsClause})`
+        );
+        const row = stmt.get(accountId) as { count: number } | undefined;
+        return row?.count ?? 0;
       }
-      return result.records[0]?.count ?? 0;
     }
 
     return 0;
@@ -322,12 +347,11 @@ Node Count Check: Starting...
     isAdmin = false
   ): Promise<{ deletedCount: number; changeTracker: ChangeTracker }> {
     console.log(`🗑️ Deleting nodes for scope: ${scope}, account: ${accountId}`);
-    console.log(`Checking database path (via db client): ${(db as any).databasePath || 'unknown'}`);
 
     const BATCH_SIZE = 500;
     let totalDeleted = 0;
     let batchNumber = 0;
-    let tracker = changeTracker;
+    const tracker = changeTracker;
 
     // Get total count for progress calculation
     const totalNodes = await this.countNodesToDelete(db, scope, accountId, isAdmin);
@@ -340,70 +364,166 @@ Node Count Check: Starting...
     console.log(`   Batch size: ${BATCH_SIZE}`);
     console.log(`   Estimated batches: ${Math.ceil(totalNodes / BATCH_SIZE)}`);
 
-    // Delete in batches
-    while (true) {
-      batchNumber++;
+    // Use raw SQLite handle for direct, fast batch deletes.
+    // better-sqlite3 is synchronous — we prepare a statement once and reuse it.
+    const sqliteDb = this.getSqliteDatabase(db);
 
-      // Check for cancellation
-      if (context && this.shouldCancel(context.signal)) {
-        console.log(`   ⚠️ Deletion canceled after ${totalDeleted} nodes (batch ${batchNumber})`);
-        throw new Error('Deletion canceled by user');
-      }
+    // PERFORMANCE FIX: Use NOT IN (system kinds) instead of IN (22 data kinds).
+    // SQLite's query planner handles the smaller exclusion set much faster because:
+    // - System kinds list is only 5 items vs 22+ data kinds
+    // - For 'keimenon' scope, we want all user data anyway — excluding system is equivalent
+    // - This avoids the catastrophic full-table scan that blocked the event loop for minutes
+    const systemKindsClause = getSystemNodeInClause();
 
-      // Get batch of node IDs
-      const nodeIds = await this.getNodeIdBatch(db, scope, accountId, BATCH_SIZE, isAdmin);
+    let deleteQuery: string;
+    let deleteParams: any[];
 
-      if (nodeIds.length === 0) {
-        // No more nodes to delete
-        break;
-      }
-
-      // ✅ Track node IDs BEFORE deletion (for potential rollback)
-      tracker = trackNodesDeleted(tracker, nodeIds);
-
-      // Delete this batch (with CASCADE for edges)
-      const batchDeleted = await this.deleteBatch(db, scope, nodeIds, accountId, isAdmin);
-      totalDeleted += batchDeleted;
-
-      console.log(
-        `   Batch ${batchNumber}: Requested deletion of ${nodeIds.length} IDs. Database reported ${batchDeleted} changes. (${totalDeleted}/${totalNodes} total, ${((totalDeleted / totalNodes) * 100).toFixed(1)}%)`
-      );
-
-      // Prevent infinite loops if selection/deletion predicates diverge.
-      if (batchDeleted === 0) {
-        const remaining = await this.countNodesToDelete(db, scope, accountId, isAdmin);
-        if (remaining === 0) {
-          break;
-        }
-
-        throw new Error(
-          `Delete worker stalled: zero deletions for non-empty batch (scope=${scope}, remaining=${remaining})`
-        );
-      }
-
-      // Report progress to job system
-      if (job && context) {
-        const progressPercent = Math.min(
-          Math.round((totalDeleted / totalNodes) * 70), // 10-80% range reserved for deletion
-          70
-        );
-        // ✅ Update stats for real-time SSE feedback
-        job.updateStats({ nodesDeleted: totalDeleted });
-        await this.reportProgress(
-          job,
-          10 + progressPercent,
-          100,
-          `Deleted ${totalDeleted.toLocaleString()} of ${totalNodes.toLocaleString()} nodes...`,
-          context
-        );
-      }
-
-      // CRITICAL: Yield to event loop to prevent blocking
-      // This allows HTTP requests, SSE broadcasts, and UI updates to process
-      await this.yieldToEventLoop();
+    if (scope === 'keimenon') {
+      // Delete all non-system nodes for this account
+      deleteQuery = `DELETE FROM nodes WHERE rowid IN (
+        SELECT rowid FROM nodes
+        WHERE account_id = ? AND kind NOT IN (${systemKindsClause})
+        LIMIT ?
+      )`;
+      deleteParams = [accountId, BATCH_SIZE];
+    } else if (scope === 'all-clients' && isAdmin) {
+      deleteQuery = `DELETE FROM nodes WHERE rowid IN (
+        SELECT rowid FROM nodes
+        WHERE kind NOT IN (${systemKindsClause})
+        LIMIT ?
+      )`;
+      deleteParams = [BATCH_SIZE];
+    } else if (scope === 'all-clients') {
+      deleteQuery = `DELETE FROM nodes WHERE rowid IN (
+        SELECT rowid FROM nodes
+        WHERE account_id = ? AND kind NOT IN (${systemKindsClause})
+        LIMIT ?
+      )`;
+      deleteParams = [accountId, BATCH_SIZE];
+    } else {
+      return { deletedCount: 0, changeTracker: tracker };
     }
 
-    console.log(`   ✅ Deletion complete: ${totalDeleted} nodes deleted in ${batchNumber} batches`);
+    const deleteStmt = sqliteDb.prepare(deleteQuery);
+
+    console.log(`   Starting optimized batch deletion in transaction...`);
+
+    // We must drop FTS5 triggers before mass deletion to avoid catastrophic O(N^2) performance.
+    // FTS5 external deletes perform full table scans when the reference column is UNINDEXED.
+    // By wrapping this in a transaction and yielding to the event loop, we:
+    // 1. Maintain data integrity (if it crashes, triggers are rolled back).
+    // 2. Prevent blocking the Node.js event loop (SSE heartbeats and reads continue).
+    // 3. Temporarily block other writers (acceptable during a massive account clear).
+    sqliteDb.exec('BEGIN IMMEDIATE');
+
+    try {
+      // 1. Drop the slow FTS triggers
+      sqliteDb.exec('DROP TRIGGER IF EXISTS nodes_fts_delete');
+      sqliteDb.exec('DROP TRIGGER IF EXISTS nodes_fts_update');
+      sqliteDb.exec('DROP TRIGGER IF EXISTS messages_fts_duplicate_delete');
+      sqliteDb.exec('DROP TRIGGER IF EXISTS messages_fts_duplicate_update');
+
+      // 2. Manually clean up FTS tables for the target scope
+      if (scope === 'all-clients' && isAdmin) {
+        sqliteDb.exec('DELETE FROM messages_fts_duplicate');
+        sqliteDb.exec('DELETE FROM nodes_fts');
+      } else {
+        sqliteDb.prepare('DELETE FROM messages_fts_duplicate WHERE account_id = ?').run(accountId);
+        sqliteDb
+          .prepare(
+            'DELETE FROM nodes_fts WHERE id IN (SELECT id FROM nodes WHERE account_id = ? AND kind NOT IN (' +
+              systemKindsClause +
+              '))'
+          )
+          .run(accountId);
+      }
+
+      // 3. Delete nodes in batches
+      while (true) {
+        batchNumber++;
+
+        // Check for cancellation
+        if (context && this.shouldCancel(context.signal)) {
+          console.log(`   ⚠️ Deletion canceled after ${totalDeleted} nodes (batch ${batchNumber})`);
+          throw new Error('Deletion canceled by user');
+        }
+
+        const result = deleteStmt.run(...deleteParams);
+        const batchDeleted = Number(result.changes || 0);
+
+        if (batchDeleted === 0) {
+          break; // No more nodes to delete
+        }
+
+        totalDeleted += batchDeleted;
+
+        // Log every 10th batch
+        if (batchNumber <= 3 || batchNumber % 10 === 0) {
+          console.log(
+            `   Batch ${batchNumber}: Deleted ${batchDeleted} nodes. (${totalDeleted}/${totalNodes} total, ${((totalDeleted / totalNodes) * 100).toFixed(1)}%)`
+          );
+        }
+
+        // Report progress to job system
+        if (job && context) {
+          const progressPercent = Math.min(
+            Math.round((totalDeleted / totalNodes) * 70), // 10-80% range reserved for deletion
+            70
+          );
+          job.updateStats({ nodesDeleted: totalDeleted });
+          await this.reportProgress(
+            job,
+            10 + progressPercent,
+            100,
+            `Deleted ${totalDeleted.toLocaleString()} of ${totalNodes.toLocaleString()} nodes...`,
+            context
+          );
+        }
+
+        // Yield to event loop to allow reads and SSE to continue
+        await this.yieldToEventLoop();
+      }
+
+      // 4. Recreate the FTS triggers
+      sqliteDb.exec(`
+        CREATE TRIGGER IF NOT EXISTS nodes_fts_update AFTER UPDATE ON nodes BEGIN
+          DELETE FROM nodes_fts WHERE id = old.id;
+          INSERT INTO nodes_fts(id, content) VALUES (new.id, new.properties);
+        END;
+        CREATE TRIGGER IF NOT EXISTS nodes_fts_delete AFTER DELETE ON nodes BEGIN
+          DELETE FROM nodes_fts WHERE id = old.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS messages_fts_duplicate_update
+        AFTER UPDATE ON nodes
+        WHEN new.kind = 'Message'
+          AND (old.canonical_content != new.canonical_content OR old.canonical_content IS NULL)
+          AND new.canonical_content IS NOT NULL
+        BEGIN
+          DELETE FROM messages_fts_duplicate WHERE node_id = old.id;
+          INSERT INTO messages_fts_duplicate(node_id, content, account_id)
+          VALUES (new.id, new.canonical_content, new.account_id);
+        END;
+        CREATE TRIGGER IF NOT EXISTS messages_fts_duplicate_delete
+        AFTER DELETE ON nodes
+        WHEN old.kind = 'Message'
+        BEGIN
+          DELETE FROM messages_fts_duplicate WHERE node_id = old.id;
+        END;
+      `);
+
+      // 5. Commit transaction
+      sqliteDb.exec('COMMIT');
+      console.log(
+        `   ✅ Deletion complete: ${totalDeleted} nodes deleted in ${batchNumber} batches`
+      );
+    } catch (error) {
+      console.error(`   ❌ Deletion failed during transaction, rolling back...`);
+      if (sqliteDb.inTransaction) {
+        sqliteDb.exec('ROLLBACK');
+      }
+      throw error;
+    }
+
     return { deletedCount: totalDeleted, changeTracker: tracker };
   }
 

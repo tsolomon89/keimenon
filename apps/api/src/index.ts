@@ -27,6 +27,7 @@ import { runCoreProcessVersionGate } from './services/core-process-version-gate'
 import { getAgentService } from './services/agent-service';
 import { initializeObjectiveBuildJobBridge } from './services/objective-build-job-bridge';
 import { assertRawStoragePolicy } from './utils/raw-storage-policy';
+import { initDbWorker, stopDbWorker } from './workers/db-worker-singleton';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 validateAndFailFast();
@@ -217,6 +218,17 @@ async function start(config?: ServerConfig) {
 
     writeQueue = new DatabaseWriteQueue(dbClient, sseBroadcaster);
     writeQueue.start();
+
+    // Start the off-main-thread DB worker for heavy operations
+    try {
+      const dbWorker = await initDbWorker(sqlitePath);
+      writeQueue.setDbWorker(dbWorker);
+      console.log('[Startup] DB worker thread initialized for off-thread writes');
+    } catch (workerErr: any) {
+      console.warn(
+        `[Startup] DB worker failed to start (falling back to main-thread writes): ${workerErr.message}`
+      );
+    }
 
     const jobRepository = new SQLiteJobRepository((dbClient as any).db);
     (global as any).jobRepository = jobRepository;
