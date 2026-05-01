@@ -36,25 +36,54 @@ export class LegacyQueuedGraphWriteSink implements GraphWriteSink {
     let nodesAdded = 0;
     let edgesAdded = 0;
 
-    // Skinny nodes, generic nodes, and payloads are essentially nodes.
-    // We treat the raw payload JSON as the source of truth if we can,
-    // or just assume nodes are already queued before.
-    // To support the legacy queue properly, we just reconstruct objects:
     const nodesToQueue: AnyNode[] = [];
 
+    // Skinny nodes: reconstruct from properties (JSON-serialized node)
     for (const n of batch.skinnyNodes) {
-      nodesToQueue.push(JSON.parse(n.canonical_content) as AnyNode);
+      try {
+        const parsed = JSON.parse(n.properties);
+        // Ensure the parsed node has at minimum id and kind
+        if (parsed && typeof parsed === 'object') {
+          parsed.id = parsed.id || n.id;
+          parsed.kind = parsed.kind || n.kind;
+          parsed.account_id = parsed.account_id || n.account_id;
+          parsed.created_by = parsed.created_by || n.created_by;
+          parsed.created_at = parsed.created_at || n.created_at;
+          parsed.updated_at = parsed.updated_at || n.updated_at;
+          nodesToQueue.push(parsed as AnyNode);
+        }
+      } catch {
+        // Skip malformed skinny nodes — they can't be queued via legacy path
+        console.warn(`[LegacyQueuedGraphWriteSink] Skipping malformed skinny node ${n.id}`);
+      }
     }
 
     for (const gn of batch.genericNodes) {
-      nodesToQueue.push(JSON.parse(gn.properties) as AnyNode);
+      try {
+        const parsed = JSON.parse(gn.properties);
+        if (parsed && typeof parsed === 'object') {
+          nodesToQueue.push(parsed as AnyNode);
+        }
+      } catch {
+        console.warn(`[LegacyQueuedGraphWriteSink] Skipping malformed generic node ${gn.id}`);
+      }
     }
 
     // In legacy, normalized payloads don't exist as separate objects to insert via the queue,
     // they are part of the 'nodes' JSON that gets created/updated.
     // So we don't need to explicitly push them if skinnyNodes covers the node creation.
 
-    const edgesToQueue: AnyEdge[] = batch.edges.map((e) => JSON.parse(e.properties) as AnyEdge);
+    const edgesToQueue: AnyEdge[] = [];
+    for (const e of batch.edges) {
+      try {
+        const parsed = JSON.parse(e.properties);
+        if (parsed && typeof parsed === 'object') {
+          edgesToQueue.push(parsed as AnyEdge);
+        }
+      } catch {
+        console.warn(`[LegacyQueuedGraphWriteSink] Skipping malformed edge ${e.id}`);
+      }
+    }
 
     this.queue.enqueueNodes(nodesToQueue);
     this.queue.enqueueEdges(edgesToQueue);

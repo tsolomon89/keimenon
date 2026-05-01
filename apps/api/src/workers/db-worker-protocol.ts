@@ -63,47 +63,50 @@ export interface FlushImportBatchOp {
   };
 }
 
-export interface SkinnyNode {
-  id: string;
-  kind: string;
-  account_id: string;
-  created_by: string;
-  created_at: number;
-  updated_at: number;
-  data_tag: string;
-  content_hash: string;
-  canonical_content: string;
-  is_duplicate: number;
-  original_node_id: string | null;
-}
-
 export interface SourceSpanPayload {
   node_id: string;
   source_id: string;
-  start_index: number;
-  end_index: number;
+  message_id?: string | null;
+  conversation_id?: string | null;
   text: string;
+  normalized_text: string;
+  start_char: number;
+  end_char: number;
+  boundary_kind?: string;
+  span_hash: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface PhrasePayload {
   node_id: string;
   text: string;
-  language: string;
-  token_count: number;
-  is_noun_chunk: boolean;
+  normalized_text: string;
+  type?: string;
+  entity_type?: string | null;
+  frequency?: number;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface PacketPayload {
   node_id: string;
-  role: string;
-  timestamp: number;
-  content: string;
+  text: string;
+  normalized_text: string;
+  occurrences?: number;
+  mass?: number;
+  coverage?: number;
+  idf?: number;
+  entropy_factor?: number;
+  packet_hash: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface AtomicUnitPayload {
   node_id: string;
-  content: string;
   unit_type: string;
+  value: string;
+  normalized_value: string;
+  unit_hash: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface GraphBatchPayload {
@@ -115,8 +118,9 @@ export interface GraphBatchPayload {
     batchIndex: number;
     totalBatches: number;
     source?: string;
+    isFinalBatch?: boolean;
   };
-  skinnyNodes: SkinnyNode[];
+  skinnyNodes: SerializedNode[];
   normalizedPayloads: {
     sourceSpans: SourceSpanPayload[];
     phrases: PhrasePayload[];

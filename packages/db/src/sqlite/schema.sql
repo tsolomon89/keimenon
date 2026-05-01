@@ -367,8 +367,9 @@ CREATE TABLE IF NOT EXISTS nodes (
   kind TEXT NOT NULL CHECK(kind IN (
     'UploadItem', 'Chat', 'MessageRef', 'Source', 'Group', 'CodeBlock', 'Folder',
     'ChatThread', 'Message', 'ObjectiveClaim', 'UnifiedDoc', 'Constellation', 'UserNode', 'AccountNode', 'Board',
-    'SourceDoc', 'Lexeme', 'Topic', 'VerifiedSource', 'VerifiedClaim', 'AgentNode',
-    'CanonicalDoc', 'DuplicateCluster', 'Evidence', 'Principal', 'ConversationThread'
+    'SourceDoc', 'Lexeme', 'Phrase', 'Topic', 'VerifiedSource', 'VerifiedClaim', 'AgentNode',
+    'CanonicalDoc', 'DuplicateCluster', 'Evidence', 'Principal', 'ConversationThread',
+    'SourceSpan', 'Packet', 'AtomicUnit'
   )),
   properties TEXT NOT NULL,
   account_id TEXT NOT NULL,
@@ -653,6 +654,7 @@ CREATE TABLE IF NOT EXISTS source_spans (
   updated_at INTEGER NOT NULL,
   data_tag TEXT DEFAULT 'real',
   metadata TEXT,
+  FOREIGN KEY (id) REFERENCES nodes(id) ON DELETE CASCADE,
   FOREIGN KEY (account_id) REFERENCES accounts(id),
   FOREIGN KEY (source_id) REFERENCES nodes(id)
 );
@@ -673,6 +675,7 @@ CREATE TABLE IF NOT EXISTS phrases (
   updated_at INTEGER NOT NULL,
   data_tag TEXT DEFAULT 'real',
   metadata TEXT,
+  FOREIGN KEY (id) REFERENCES nodes(id) ON DELETE CASCADE,
   FOREIGN KEY (account_id) REFERENCES accounts(id)
 );
 
@@ -692,6 +695,7 @@ CREATE TABLE IF NOT EXISTS packets (
   updated_at INTEGER NOT NULL,
   data_tag TEXT DEFAULT 'real',
   metadata TEXT,
+  FOREIGN KEY (id) REFERENCES nodes(id) ON DELETE CASCADE,
   FOREIGN KEY (account_id) REFERENCES accounts(id)
 );
 
@@ -707,6 +711,7 @@ CREATE TABLE IF NOT EXISTS atomic_units (
   updated_at INTEGER NOT NULL,
   data_tag TEXT DEFAULT 'real',
   metadata TEXT,
+  FOREIGN KEY (id) REFERENCES nodes(id) ON DELETE CASCADE,
   FOREIGN KEY (account_id) REFERENCES accounts(id)
 );
 

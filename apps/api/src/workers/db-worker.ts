@@ -175,6 +175,21 @@ function handleFlushImportBatch(
   const writeNodes = db.transaction((batch: SerializedNode[]) => {
     for (const node of batch) {
       if (node.kind === 'SourceSpan') {
+        // Insert skinny graph identity node first (FK target)
+        insertNodeStmt!.run(
+          node.id,
+          node.kind,
+          '{}',
+          node.account_id,
+          node.created_by,
+          node.created_at,
+          node.updated_at,
+          node.data_tag,
+          node.content_hash,
+          node.canonical_content,
+          node.is_duplicate,
+          node.original_node_id
+        );
         const props = JSON.parse(node.properties);
         insertSourceSpanStmt!.run(
           node.id,
@@ -183,11 +198,11 @@ function handleFlushImportBatch(
           props.message_id || null,
           props.conversation_id || null,
           props.text,
-          props.normalized_text,
+          props.normalized_text || (props.text || '').toLowerCase(),
           props.start_char,
           props.end_char,
           props.boundary_kind || 'sentence',
-          props.span_hash,
+          props.span_hash || node.content_hash || '',
           node.created_by,
           node.created_at,
           node.updated_at,
@@ -195,15 +210,29 @@ function handleFlushImportBatch(
           props.metadata ? JSON.stringify(props.metadata) : null
         );
       } else if (node.kind === 'Phrase') {
+        insertNodeStmt!.run(
+          node.id,
+          node.kind,
+          '{}',
+          node.account_id,
+          node.created_by,
+          node.created_at,
+          node.updated_at,
+          node.data_tag,
+          node.content_hash,
+          node.canonical_content,
+          node.is_duplicate,
+          node.original_node_id
+        );
         const props = JSON.parse(node.properties);
         insertPhraseStmt!.run(
           node.id,
           node.account_id,
           props.text,
-          props.normalized_text,
+          props.normalized_text || (props.text || '').toLowerCase(),
           props.type || 'n-gram',
           props.entity_type || null,
-          props.frequency || 0,
+          typeof props.frequency === 'number' ? props.frequency : 0,
           node.created_by,
           node.created_at,
           node.updated_at,
@@ -211,18 +240,32 @@ function handleFlushImportBatch(
           props.metadata ? JSON.stringify(props.metadata) : null
         );
       } else if (node.kind === 'Packet') {
+        insertNodeStmt!.run(
+          node.id,
+          node.kind,
+          '{}',
+          node.account_id,
+          node.created_by,
+          node.created_at,
+          node.updated_at,
+          node.data_tag,
+          node.content_hash,
+          node.canonical_content,
+          node.is_duplicate,
+          node.original_node_id
+        );
         const props = JSON.parse(node.properties);
         insertPacketStmt!.run(
           node.id,
           node.account_id,
           props.text,
-          props.normalized_text,
-          props.occurrences || 1,
-          props.mass || 0,
-          props.coverage || 0,
-          props.idf || 0,
-          props.entropy_factor || 0,
-          props.packet_hash,
+          props.normalized_text || (props.text || '').toLowerCase(),
+          typeof props.occurrences === 'number' ? props.occurrences : 1,
+          typeof props.mass === 'number' ? props.mass : 0,
+          typeof props.coverage === 'number' ? props.coverage : 0,
+          typeof props.idf === 'number' ? props.idf : 0,
+          typeof props.entropy_factor === 'number' ? props.entropy_factor : 0,
+          props.packet_hash || node.content_hash || '',
           node.created_by,
           node.created_at,
           node.updated_at,
@@ -230,14 +273,28 @@ function handleFlushImportBatch(
           props.metadata ? JSON.stringify(props.metadata) : null
         );
       } else if (node.kind === 'AtomicUnit') {
+        insertNodeStmt!.run(
+          node.id,
+          node.kind,
+          '{}',
+          node.account_id,
+          node.created_by,
+          node.created_at,
+          node.updated_at,
+          node.data_tag,
+          node.content_hash,
+          node.canonical_content,
+          node.is_duplicate,
+          node.original_node_id
+        );
         const props = JSON.parse(node.properties);
         insertAtomicUnitStmt!.run(
           node.id,
           node.account_id,
           props.unit_type,
           props.value,
-          props.normalized_value,
-          props.unit_hash,
+          props.normalized_value || (props.value || '').toLowerCase(),
+          props.unit_hash || node.content_hash || '',
           node.created_by,
           node.created_at,
           node.updated_at,
@@ -322,6 +379,18 @@ function sendBulkProgress(id: string, progress: BulkProgressEvent): void {
   port.postMessage(msg);
 }
 
+/**
+ * Quarantine row collected during transaction. Written after rollback
+ * in a separate transaction so that diagnostic data survives failures.
+ */
+interface PendingQuarantineRow {
+  kind: string;
+  rowId: string;
+  reason: string;
+  errMessage: string;
+  rowPayload: any;
+}
+
 function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): void {
   ensureStatements();
   const start = Date.now();
@@ -351,29 +420,48 @@ function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): voi
     }
   };
 
-  const writeQuarantine = (
+  // Collect quarantine rows during transaction; flush them durably afterward
+  const pendingQuarantine: PendingQuarantineRow[] = [];
+
+  const collectQuarantine = (
     kind: string,
     rowId: string,
     reason: string,
     errMessage: string,
     rowPayload: any
   ) => {
-    insertQuarantineStmt!.run(
-      `quar_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      payload.accountId,
-      payload.batchId,
-      payload.importId || null,
-      kind,
-      rowId,
-      reason,
-      errMessage,
-      JSON.stringify(rowPayload),
-      Date.now()
-    );
+    pendingQuarantine.push({ kind, rowId, reason, errMessage, rowPayload });
     quarantinedRows++;
   };
 
+  /** Flush all collected quarantine rows in their own transaction */
+  const flushQuarantine = () => {
+    if (pendingQuarantine.length === 0) return;
+    const writeQ = db.transaction((rows: PendingQuarantineRow[]) => {
+      for (const q of rows) {
+        insertQuarantineStmt!.run(
+          `quar_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          payload.accountId,
+          payload.batchId,
+          payload.importId || null,
+          q.kind,
+          q.rowId,
+          q.reason,
+          q.errMessage,
+          JSON.stringify(q.rowPayload),
+          Date.now()
+        );
+      }
+    });
+    try {
+      writeQ(pendingQuarantine);
+    } catch (qErr: any) {
+      console.error(`[db-worker] Failed to flush quarantine rows: ${qErr.message}`);
+    }
+  };
+
   const quarantinedNodeIds = new Set<string>();
+  const now = Date.now();
 
   emitProgress('validate', true);
 
@@ -384,7 +472,6 @@ function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): voi
     // 1. Skinny Nodes & Generic Nodes
     emitProgress('insert_nodes', true);
 
-    // Attempt skinny nodes
     for (const node of payload.skinnyNodes) {
       try {
         insertNodeStmt!.run(
@@ -404,12 +491,11 @@ function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): voi
         nodesWritten++;
         emitProgress('insert_nodes');
       } catch (err: any) {
-        writeQuarantine('node', node.id, 'SKINNY_NODE_INSERT_FAILED', err.message, node);
+        collectQuarantine('node', node.id, 'SKINNY_NODE_INSERT_FAILED', err.message, node);
         quarantinedNodeIds.add(node.id);
       }
     }
 
-    // Attempt generic nodes
     for (const node of payload.genericNodes) {
       try {
         insertNodeStmt!.run(
@@ -429,18 +515,18 @@ function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): voi
         nodesWritten++;
         emitProgress('insert_nodes');
       } catch (err: any) {
-        writeQuarantine('node', node.id, 'GENERIC_NODE_INSERT_FAILED', err.message, node);
+        collectQuarantine('node', node.id, 'GENERIC_NODE_INSERT_FAILED', err.message, node);
         quarantinedNodeIds.add(node.id);
       }
     }
 
     emitProgress('insert_payloads', true);
 
-    // 2. Normalized Payloads
+    // 2. Normalized Payloads — uses real fields from corrected protocol types
     const writePayloadRow = (kind: string, row: any, runInsert: () => void) => {
       const nodeId = row.node_id;
       if (quarantinedNodeIds.has(nodeId)) {
-        writeQuarantine(
+        collectQuarantine(
           kind,
           nodeId,
           'MISSING_ENDPOINT_DUE_TO_QUARANTINED_NODE',
@@ -454,7 +540,7 @@ function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): voi
         payloadsWritten++;
         emitProgress('insert_payloads');
       } catch (err: any) {
-        writeQuarantine(kind, nodeId, 'PAYLOAD_INSERT_FAILED', err.message, row);
+        collectQuarantine(kind, nodeId, 'PAYLOAD_INSERT_FAILED', err.message, row);
       }
     };
 
@@ -464,19 +550,19 @@ function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): voi
           span.node_id,
           payload.accountId,
           span.source_id,
-          null,
-          null,
+          span.message_id || null,
+          span.conversation_id || null,
           span.text,
-          span.text.toLowerCase(),
-          span.start_index,
-          span.end_index,
-          'sentence',
-          'hash-placeholder',
+          span.normalized_text,
+          span.start_char,
+          span.end_char,
+          span.boundary_kind || 'sentence',
+          span.span_hash,
           payload.createdBy,
-          Date.now(),
-          Date.now(),
+          now,
+          now,
           'real',
-          null
+          span.metadata ? JSON.stringify(span.metadata) : null
         );
       });
     }
@@ -487,15 +573,15 @@ function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): voi
           phrase.node_id,
           payload.accountId,
           phrase.text,
-          phrase.text.toLowerCase(),
-          'n-gram',
-          null,
-          phrase.token_count,
+          phrase.normalized_text,
+          phrase.type || 'n-gram',
+          phrase.entity_type || null,
+          typeof phrase.frequency === 'number' ? phrase.frequency : 0,
           payload.createdBy,
-          Date.now(),
-          Date.now(),
+          now,
+          now,
           'real',
-          null
+          phrase.metadata ? JSON.stringify(phrase.metadata) : null
         );
       });
     }
@@ -505,19 +591,19 @@ function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): voi
         insertPacketStmt!.run(
           packet.node_id,
           payload.accountId,
-          packet.content,
-          packet.content.toLowerCase(),
-          1,
-          0,
-          0,
-          0,
-          0,
-          'hash-placeholder',
+          packet.text,
+          packet.normalized_text,
+          typeof packet.occurrences === 'number' ? packet.occurrences : 1,
+          typeof packet.mass === 'number' ? packet.mass : 0,
+          typeof packet.coverage === 'number' ? packet.coverage : 0,
+          typeof packet.idf === 'number' ? packet.idf : 0,
+          typeof packet.entropy_factor === 'number' ? packet.entropy_factor : 0,
+          packet.packet_hash,
           payload.createdBy,
-          Date.now(),
-          Date.now(),
+          now,
+          now,
           'real',
-          null
+          packet.metadata ? JSON.stringify(packet.metadata) : null
         );
       });
     }
@@ -528,14 +614,14 @@ function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): voi
           au.node_id,
           payload.accountId,
           au.unit_type,
-          au.content,
-          au.content.toLowerCase(),
-          'hash-placeholder',
+          au.value,
+          au.normalized_value,
+          au.unit_hash,
           payload.createdBy,
-          Date.now(),
-          Date.now(),
+          now,
+          now,
           'real',
-          null
+          au.metadata ? JSON.stringify(au.metadata) : null
         );
       });
     }
@@ -545,7 +631,7 @@ function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): voi
     // 3. Edges
     for (const edge of payload.edges) {
       if (quarantinedNodeIds.has(edge.from_id) || quarantinedNodeIds.has(edge.to_id)) {
-        writeQuarantine(
+        collectQuarantine(
           'edge',
           edge.id,
           'MISSING_ENDPOINT_DUE_TO_QUARANTINED_NODE',
@@ -569,7 +655,7 @@ function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): voi
         edgesWritten++;
         emitProgress('insert_edges');
       } catch (err: any) {
-        writeQuarantine('edge', edge.id, 'EDGE_INSERT_FAILED', err.message, edge);
+        collectQuarantine('edge', edge.id, 'EDGE_INSERT_FAILED', err.message, edge);
       }
     }
 
@@ -582,6 +668,10 @@ function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): voi
 
     emitProgress('commit', true);
     db.exec('COMMIT');
+
+    // Flush quarantine rows (from per-row errors) in a separate transaction
+    emitProgress('quarantine', true);
+    flushQuarantine();
 
     emitProgress('complete', true);
 
@@ -597,13 +687,18 @@ function handleBulkInsertGraphBatch(id: string, payload: GraphBatchPayload): voi
     if (db.inTransaction) {
       db.exec('ROLLBACK');
     }
+
+    // Quarantine rows must survive rollback — write them in a separate transaction
+    emitProgress('quarantine', true);
+    flushQuarantine();
+
     emitProgress('error', true, err.message);
     const errResult: BatchResult = {
       success: false,
       nodesWritten: 0,
       edgesWritten: 0,
       payloadsWritten: 0,
-      quarantinedRows: 0,
+      quarantinedRows,
       error: err.message,
     };
     sendResult(id, errResult);
@@ -827,7 +922,7 @@ function handleDeleteSubgraph(
     } else {
       const edgeResult = db
         .prepare(
-          'DELETE FROM edges WHERE account_id = ? AND from_id NOT IN (SELECT id FROM nodes) OR to_id NOT IN (SELECT id FROM nodes)'
+          'DELETE FROM edges WHERE account_id = ? AND (from_id NOT IN (SELECT id FROM nodes) OR to_id NOT IN (SELECT id FROM nodes))'
         )
         .run(accountId);
       edgesDeleted = Number(edgeResult.changes || 0);
