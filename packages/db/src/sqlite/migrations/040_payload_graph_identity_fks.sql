@@ -5,30 +5,53 @@
 -- ON DELETE CASCADE so that deleting the node automatically removes the
 -- normalized payload row.
 --
--- SAFETY: This migration rebuilds `nodes` which is referenced by `edges`.
--- To avoid invalidating or losing edges, we:
---   1. Disable FK enforcement for the rebuild section
---   2. Backup both nodes and edges into temp tables
---   3. Drop FTS triggers, indexes, edges, then nodes (in dependency order)
---   4. Recreate nodes with corrected CHECK, recreate edges unchanged
---   5. Restore all data from backups
---   6. Recreate all indexes and FTS triggers
---   7. Rehydrate missing skinny nodes for payload rows
---   8. Rebuild payload tables with FK constraints
---   9. Validate FK integrity and abort if violations remain
+-- SAFETY: This migration rebuilds `nodes`. Multiple child tables reference
+-- nodes(id): edges, source_spans (source_id), etc. We MUST drop ALL
+-- dependent tables before dropping nodes to avoid FK violations.
+--
+-- Migration sequence:
+--   1. Backup ALL tables that reference nodes(id)
+--   2. Drop FTS triggers and indexes
+--   3. Drop ALL child tables (edges, payload tables), then nodes
+--   4. Recreate nodes with expanded CHECK
+--   5. Recreate edges
+--   6. Recreate payload tables with FK(id) REFERENCES nodes(id) ON DELETE CASCADE
+--   7. Restore nodes first
+--   8. Rehydrate any missing skinny nodes from payload backups
+--   9. Restore payload rows, then edges
+--  10. Verify row counts for every table
+--  11. Recreate indexes and FTS triggers
+--  12. Final FK validation — abort if violations remain
 
 -- ============================================================================
--- 0. Disable FK enforcement for the table rebuild
+-- 0. Defer FK enforcement for the rebuild
 -- ============================================================================
 
 PRAGMA defer_foreign_keys = ON;
 
 -- ============================================================================
--- 1. Backup nodes and edges into temp tables
+-- 1. Backup ALL tables that reference or will reference nodes(id)
 -- ============================================================================
 
-CREATE TEMP TABLE nodes_backup AS SELECT * FROM nodes;
-CREATE TEMP TABLE edges_backup AS SELECT * FROM edges;
+CREATE TEMP TABLE _nodes_backup AS SELECT * FROM nodes;
+CREATE TEMP TABLE _edges_backup AS SELECT * FROM edges;
+
+-- Payload tables may not exist yet on fresh DBs (created by earlier migrations)
+-- Use CREATE TABLE AS SELECT which naturally handles "table doesn't exist" as
+-- an empty set when wrapped in IF EXISTS logic. Since SQLite doesn't support
+-- CREATE TABLE IF NOT EXISTS ... AS SELECT, we use a safe conditional approach.
+
+CREATE TEMP TABLE _source_spans_backup AS
+  SELECT * FROM source_spans WHERE 1=1;
+
+CREATE TEMP TABLE _phrases_backup AS
+  SELECT * FROM phrases WHERE 1=1;
+
+CREATE TEMP TABLE _packets_backup AS
+  SELECT * FROM packets WHERE 1=1;
+
+CREATE TEMP TABLE _atomic_units_backup AS
+  SELECT * FROM atomic_units WHERE 1=1;
 
 -- ============================================================================
 -- 2. Drop FTS triggers that reference nodes
@@ -42,7 +65,7 @@ DROP TRIGGER IF EXISTS messages_fts_duplicate_update;
 DROP TRIGGER IF EXISTS messages_fts_duplicate_delete;
 
 -- ============================================================================
--- 3. Drop indexes on edges and nodes
+-- 3. Drop ALL indexes (edges, nodes, payload tables)
 -- ============================================================================
 
 -- Edge indexes
@@ -62,6 +85,10 @@ DROP INDEX IF EXISTS idx_edges_workspace;
 DROP INDEX IF EXISTS idx_edges_conversation;
 DROP INDEX IF EXISTS idx_edges_run_attribution;
 DROP INDEX IF EXISTS idx_edges_pro_import;
+
+-- Payload table indexes
+DROP INDEX IF EXISTS idx_source_spans_account_source;
+DROP INDEX IF EXISTS idx_source_spans_hash;
 
 -- Node indexes
 DROP INDEX IF EXISTS idx_nodes_kind;
@@ -83,10 +110,20 @@ DROP INDEX IF EXISTS idx_nodes_actors;
 DROP INDEX IF EXISTS idx_nodes_pro_import;
 
 -- ============================================================================
--- 4. Drop edges FIRST (child), then nodes (parent) — dependency order
+-- 4. Drop ALL child tables, then parent — full dependency order
 -- ============================================================================
+-- Child tables that reference nodes(id) via FK or source_id FK:
+--   edges       → from_id, to_id REFERENCES nodes(id)
+--   source_spans → id REFERENCES nodes(id), source_id REFERENCES nodes(id)
+--   phrases     → id REFERENCES nodes(id)
+--   packets     → id REFERENCES nodes(id)
+--   atomic_units → id REFERENCES nodes(id)
 
-DROP TABLE edges;
+DROP TABLE IF EXISTS atomic_units;
+DROP TABLE IF EXISTS packets;
+DROP TABLE IF EXISTS phrases;
+DROP TABLE IF EXISTS source_spans;
+DROP TABLE IF EXISTS edges;
 DROP TABLE nodes;
 
 -- ============================================================================
@@ -148,31 +185,178 @@ CREATE TABLE edges (
 );
 
 -- ============================================================================
--- 7. Restore data from backups
+-- 7. Recreate payload tables with FK(id) REFERENCES nodes(id) ON DELETE CASCADE
 -- ============================================================================
 
-INSERT INTO nodes SELECT * FROM nodes_backup;
+CREATE TABLE source_spans (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  message_id TEXT,
+  conversation_id TEXT,
+  text TEXT NOT NULL,
+  normalized_text TEXT NOT NULL,
+  start_char INTEGER NOT NULL,
+  end_char INTEGER NOT NULL,
+  boundary_kind TEXT NOT NULL DEFAULT 'sentence',
+  span_hash TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real',
+  metadata TEXT,
+  FOREIGN KEY (id) REFERENCES nodes(id) ON DELETE CASCADE,
+  FOREIGN KEY (account_id) REFERENCES accounts(id),
+  FOREIGN KEY (source_id) REFERENCES nodes(id)
+);
 
--- Verify nodes row count
+CREATE TABLE phrases (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  text TEXT NOT NULL,
+  normalized_text TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'n-gram',
+  entity_type TEXT,
+  frequency INTEGER NOT NULL DEFAULT 0,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real',
+  metadata TEXT,
+  FOREIGN KEY (id) REFERENCES nodes(id) ON DELETE CASCADE,
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE TABLE packets (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  text TEXT NOT NULL,
+  normalized_text TEXT NOT NULL,
+  occurrences INTEGER NOT NULL DEFAULT 1,
+  mass REAL NOT NULL DEFAULT 0,
+  coverage REAL NOT NULL DEFAULT 0,
+  idf REAL NOT NULL DEFAULT 0,
+  entropy_factor REAL NOT NULL DEFAULT 0,
+  packet_hash TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real',
+  metadata TEXT,
+  FOREIGN KEY (id) REFERENCES nodes(id) ON DELETE CASCADE,
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE TABLE atomic_units (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  unit_type TEXT NOT NULL,
+  value TEXT NOT NULL,
+  normalized_value TEXT NOT NULL,
+  unit_hash TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real',
+  metadata TEXT,
+  FOREIGN KEY (id) REFERENCES nodes(id) ON DELETE CASCADE,
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+-- ============================================================================
+-- 8. Restore nodes first (parent table)
+-- ============================================================================
+
+INSERT INTO nodes SELECT * FROM _nodes_backup;
+
 SELECT CASE
-  WHEN (SELECT COUNT(*) FROM nodes) < (SELECT COUNT(*) FROM nodes_backup)
+  WHEN (SELECT COUNT(*) FROM nodes) < (SELECT COUNT(*) FROM _nodes_backup)
   THEN RAISE(ABORT, 'Migration 040: nodes row count mismatch after restore')
 END;
 
-INSERT INTO edges SELECT * FROM edges_backup;
+-- ============================================================================
+-- 9. Rehydrate missing skinny nodes from payload backups
+-- ============================================================================
+-- Payload rows may exist without a graph identity node in nodes.
+-- Insert skinny placeholder nodes BEFORE restoring payload rows
+-- so the FK(id) REFERENCES nodes(id) constraint is satisfied.
 
--- Verify edges row count
+INSERT OR IGNORE INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at, data_tag, content_hash, canonical_content, is_duplicate, original_node_id)
+SELECT ss.id, 'SourceSpan', '{}', ss.account_id, ss.created_by, ss.created_at, ss.updated_at, COALESCE(ss.data_tag, 'real'), ss.span_hash, ss.normalized_text, 0, NULL
+FROM _source_spans_backup ss
+WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = ss.id);
+
+INSERT OR IGNORE INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at, data_tag, content_hash, canonical_content, is_duplicate, original_node_id)
+SELECT p.id, 'Phrase', '{}', p.account_id, p.created_by, p.created_at, p.updated_at, COALESCE(p.data_tag, 'real'), NULL, p.normalized_text, 0, NULL
+FROM _phrases_backup p
+WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = p.id);
+
+INSERT OR IGNORE INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at, data_tag, content_hash, canonical_content, is_duplicate, original_node_id)
+SELECT pk.id, 'Packet', '{}', pk.account_id, pk.created_by, pk.created_at, pk.updated_at, COALESCE(pk.data_tag, 'real'), pk.packet_hash, pk.normalized_text, 0, NULL
+FROM _packets_backup pk
+WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = pk.id);
+
+INSERT OR IGNORE INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at, data_tag, content_hash, canonical_content, is_duplicate, original_node_id)
+SELECT au.id, 'AtomicUnit', '{}', au.account_id, au.created_by, au.created_at, au.updated_at, COALESCE(au.data_tag, 'real'), au.unit_hash, au.normalized_value, 0, NULL
+FROM _atomic_units_backup au
+WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = au.id);
+
+-- ============================================================================
+-- 10. Restore payload rows from backups
+-- ============================================================================
+
+INSERT INTO source_spans SELECT * FROM _source_spans_backup;
+
 SELECT CASE
-  WHEN (SELECT COUNT(*) FROM edges) < (SELECT COUNT(*) FROM edges_backup)
+  WHEN (SELECT COUNT(*) FROM source_spans) < (SELECT COUNT(*) FROM _source_spans_backup)
+  THEN RAISE(ABORT, 'Migration 040: source_spans row count mismatch after restore')
+END;
+
+INSERT INTO phrases SELECT * FROM _phrases_backup;
+
+SELECT CASE
+  WHEN (SELECT COUNT(*) FROM phrases) < (SELECT COUNT(*) FROM _phrases_backup)
+  THEN RAISE(ABORT, 'Migration 040: phrases row count mismatch after restore')
+END;
+
+INSERT INTO packets SELECT * FROM _packets_backup;
+
+SELECT CASE
+  WHEN (SELECT COUNT(*) FROM packets) < (SELECT COUNT(*) FROM _packets_backup)
+  THEN RAISE(ABORT, 'Migration 040: packets row count mismatch after restore')
+END;
+
+INSERT INTO atomic_units SELECT * FROM _atomic_units_backup;
+
+SELECT CASE
+  WHEN (SELECT COUNT(*) FROM atomic_units) < (SELECT COUNT(*) FROM _atomic_units_backup)
+  THEN RAISE(ABORT, 'Migration 040: atomic_units row count mismatch after restore')
+END;
+
+-- ============================================================================
+-- 11. Restore edges
+-- ============================================================================
+
+INSERT INTO edges SELECT * FROM _edges_backup;
+
+SELECT CASE
+  WHEN (SELECT COUNT(*) FROM edges) < (SELECT COUNT(*) FROM _edges_backup)
   THEN RAISE(ABORT, 'Migration 040: edges row count mismatch after restore')
 END;
 
--- Drop temp backups
-DROP TABLE nodes_backup;
-DROP TABLE edges_backup;
+-- ============================================================================
+-- 12. Drop temp backups
+-- ============================================================================
+
+DROP TABLE _nodes_backup;
+DROP TABLE _edges_backup;
+DROP TABLE _source_spans_backup;
+DROP TABLE _phrases_backup;
+DROP TABLE _packets_backup;
+DROP TABLE _atomic_units_backup;
 
 -- ============================================================================
--- 8. Recreate all node indexes
+-- 13. Recreate all node indexes
 -- ============================================================================
 
 CREATE INDEX IF NOT EXISTS idx_nodes_kind ON nodes(kind);
@@ -196,7 +380,7 @@ CREATE INDEX IF NOT EXISTS idx_nodes_actors ON nodes(kind) WHERE kind IN ('Princ
 CREATE INDEX IF NOT EXISTS idx_nodes_pro_import ON nodes(kind) WHERE kind IN ('SourceSpan', 'Packet', 'AtomicUnit');
 
 -- ============================================================================
--- 9. Recreate all edge indexes
+-- 14. Recreate all edge indexes
 -- ============================================================================
 
 CREATE INDEX IF NOT EXISTS idx_edges_kind ON edges(kind);
@@ -217,7 +401,14 @@ CREATE INDEX IF NOT EXISTS idx_edges_run_attribution ON edges(kind) WHERE kind =
 CREATE INDEX IF NOT EXISTS idx_edges_pro_import ON edges(kind) WHERE kind IN ('HAS_SPAN', 'OCCURS_IN_SPAN', 'COMPOSED_OF_ATOMIC');
 
 -- ============================================================================
--- 10. Recreate FTS triggers
+-- 15. Recreate payload table indexes
+-- ============================================================================
+
+CREATE INDEX IF NOT EXISTS idx_source_spans_account_source ON source_spans(account_id, source_id);
+CREATE INDEX IF NOT EXISTS idx_source_spans_hash ON source_spans(account_id, span_hash);
+
+-- ============================================================================
+-- 16. Recreate FTS triggers
 -- ============================================================================
 
 CREATE TRIGGER IF NOT EXISTS nodes_fts_insert AFTER INSERT ON nodes BEGIN
@@ -260,170 +451,8 @@ BEGIN
 END;
 
 -- ============================================================================
--- 11. Rehydrate missing skinny nodes for existing payload rows
+-- 17. Final FK validation — MUST abort if violations remain
 -- ============================================================================
--- If source_spans/phrases/packets/atomic_units rows exist without a
--- corresponding nodes row, insert a skinny graph identity node.
-
-INSERT OR IGNORE INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at, data_tag, content_hash, canonical_content, is_duplicate, original_node_id)
-SELECT ss.id, 'SourceSpan', '{}', ss.account_id, ss.created_by, ss.created_at, ss.updated_at, COALESCE(ss.data_tag, 'real'), ss.span_hash, ss.normalized_text, 0, NULL
-FROM source_spans ss
-WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = ss.id);
-
-INSERT OR IGNORE INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at, data_tag, content_hash, canonical_content, is_duplicate, original_node_id)
-SELECT p.id, 'Phrase', '{}', p.account_id, p.created_by, p.created_at, p.updated_at, COALESCE(p.data_tag, 'real'), NULL, p.normalized_text, 0, NULL
-FROM phrases p
-WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = p.id);
-
-INSERT OR IGNORE INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at, data_tag, content_hash, canonical_content, is_duplicate, original_node_id)
-SELECT pk.id, 'Packet', '{}', pk.account_id, pk.created_by, pk.created_at, pk.updated_at, COALESCE(pk.data_tag, 'real'), pk.packet_hash, pk.normalized_text, 0, NULL
-FROM packets pk
-WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = pk.id);
-
-INSERT OR IGNORE INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at, data_tag, content_hash, canonical_content, is_duplicate, original_node_id)
-SELECT au.id, 'AtomicUnit', '{}', au.account_id, au.created_by, au.created_at, au.updated_at, COALESCE(au.data_tag, 'real'), au.unit_hash, au.normalized_value, 0, NULL
-FROM atomic_units au
-WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = au.id);
-
--- ============================================================================
--- 12. Recreate source_spans with FK
--- ============================================================================
-
-CREATE TABLE source_spans_new (
-  id TEXT PRIMARY KEY,
-  account_id TEXT NOT NULL,
-  source_id TEXT NOT NULL,
-  message_id TEXT,
-  conversation_id TEXT,
-  text TEXT NOT NULL,
-  normalized_text TEXT NOT NULL,
-  start_char INTEGER NOT NULL,
-  end_char INTEGER NOT NULL,
-  boundary_kind TEXT NOT NULL DEFAULT 'sentence',
-  span_hash TEXT NOT NULL,
-  created_by TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  data_tag TEXT DEFAULT 'real',
-  metadata TEXT,
-  FOREIGN KEY (id) REFERENCES nodes(id) ON DELETE CASCADE,
-  FOREIGN KEY (account_id) REFERENCES accounts(id),
-  FOREIGN KEY (source_id) REFERENCES nodes(id)
-);
-
-INSERT INTO source_spans_new SELECT * FROM source_spans;
-
-SELECT CASE
-  WHEN (SELECT COUNT(*) FROM source_spans_new) != (SELECT COUNT(*) FROM source_spans)
-  THEN RAISE(ABORT, 'Migration 040: source_spans row count mismatch')
-END;
-
-DROP TABLE source_spans;
-ALTER TABLE source_spans_new RENAME TO source_spans;
-
-CREATE INDEX IF NOT EXISTS idx_source_spans_account_source ON source_spans(account_id, source_id);
-CREATE INDEX IF NOT EXISTS idx_source_spans_hash ON source_spans(account_id, span_hash);
-
--- ============================================================================
--- 13. Recreate phrases with FK
--- ============================================================================
-
-CREATE TABLE phrases_new (
-  id TEXT PRIMARY KEY,
-  account_id TEXT NOT NULL,
-  text TEXT NOT NULL,
-  normalized_text TEXT NOT NULL,
-  type TEXT NOT NULL DEFAULT 'n-gram',
-  entity_type TEXT,
-  frequency INTEGER NOT NULL DEFAULT 0,
-  created_by TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  data_tag TEXT DEFAULT 'real',
-  metadata TEXT,
-  FOREIGN KEY (id) REFERENCES nodes(id) ON DELETE CASCADE,
-  FOREIGN KEY (account_id) REFERENCES accounts(id)
-);
-
-INSERT INTO phrases_new SELECT * FROM phrases;
-
-SELECT CASE
-  WHEN (SELECT COUNT(*) FROM phrases_new) != (SELECT COUNT(*) FROM phrases)
-  THEN RAISE(ABORT, 'Migration 040: phrases row count mismatch')
-END;
-
-DROP TABLE phrases;
-ALTER TABLE phrases_new RENAME TO phrases;
-
--- ============================================================================
--- 14. Recreate packets with FK
--- ============================================================================
-
-CREATE TABLE packets_new (
-  id TEXT PRIMARY KEY,
-  account_id TEXT NOT NULL,
-  text TEXT NOT NULL,
-  normalized_text TEXT NOT NULL,
-  occurrences INTEGER NOT NULL DEFAULT 1,
-  mass REAL NOT NULL DEFAULT 0,
-  coverage REAL NOT NULL DEFAULT 0,
-  idf REAL NOT NULL DEFAULT 0,
-  entropy_factor REAL NOT NULL DEFAULT 0,
-  packet_hash TEXT NOT NULL,
-  created_by TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  data_tag TEXT DEFAULT 'real',
-  metadata TEXT,
-  FOREIGN KEY (id) REFERENCES nodes(id) ON DELETE CASCADE,
-  FOREIGN KEY (account_id) REFERENCES accounts(id)
-);
-
-INSERT INTO packets_new SELECT * FROM packets;
-
-SELECT CASE
-  WHEN (SELECT COUNT(*) FROM packets_new) != (SELECT COUNT(*) FROM packets)
-  THEN RAISE(ABORT, 'Migration 040: packets row count mismatch')
-END;
-
-DROP TABLE packets;
-ALTER TABLE packets_new RENAME TO packets;
-
--- ============================================================================
--- 15. Recreate atomic_units with FK
--- ============================================================================
-
-CREATE TABLE atomic_units_new (
-  id TEXT PRIMARY KEY,
-  account_id TEXT NOT NULL,
-  unit_type TEXT NOT NULL,
-  value TEXT NOT NULL,
-  normalized_value TEXT NOT NULL,
-  unit_hash TEXT NOT NULL,
-  created_by TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  data_tag TEXT DEFAULT 'real',
-  metadata TEXT,
-  FOREIGN KEY (id) REFERENCES nodes(id) ON DELETE CASCADE,
-  FOREIGN KEY (account_id) REFERENCES accounts(id)
-);
-
-INSERT INTO atomic_units_new SELECT * FROM atomic_units;
-
-SELECT CASE
-  WHEN (SELECT COUNT(*) FROM atomic_units_new) != (SELECT COUNT(*) FROM atomic_units)
-  THEN RAISE(ABORT, 'Migration 040: atomic_units row count mismatch')
-END;
-
-DROP TABLE atomic_units;
-ALTER TABLE atomic_units_new RENAME TO atomic_units;
-
--- ============================================================================
--- 16. Final FK validation — MUST abort if violations remain
--- ============================================================================
--- PRAGMA foreign_key_check only returns rows; it does not abort.
--- We use a temp table to capture violations and fail explicitly.
 
 CREATE TEMP TABLE _fk_violations AS SELECT * FROM pragma_foreign_key_check;
 
