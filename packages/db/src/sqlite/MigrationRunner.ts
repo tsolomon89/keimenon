@@ -17,7 +17,7 @@ interface MigrationFile {
   path: string;
 }
 
-const DESTRUCTIVE_MIGRATION_PREFIXES = ['026_', '027_'];
+const DESTRUCTIVE_MIGRATION_PREFIXES = ['026_', '027_', '040_'];
 
 export class MigrationRunner {
   constructor(

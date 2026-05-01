@@ -204,3 +204,74 @@ export function createBulkTestDb(): Database.Database {
 
   return db;
 }
+
+/**
+ * Create a file-based bulk-insert-compatible test database.
+ *
+ * Same as createBulkTestDb() but writes to a temp file path so that
+ * DbWorkerClient (which requires a file path, not :memory:) can connect.
+ * Returns { db, dbPath }. Caller must close db and unlink dbPath.
+ */
+export function createBulkTestDbFile(): { db: Database.Database; dbPath: string } {
+  const pathMod = require('path');
+  const fsMod = require('fs');
+  const os = require('os');
+
+  const dbPath = pathMod.join(
+    os.tmpdir(),
+    `bulk-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.db`
+  );
+
+  const schemaPath = pathMod.resolve(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    '..',
+    'packages',
+    'db',
+    'src',
+    'sqlite',
+    'schema.sql'
+  );
+
+  let resolvedSchemaPath = schemaPath;
+  if (!fsMod.existsSync(resolvedSchemaPath)) {
+    const candidates = [
+      pathMod.resolve(process.cwd(), 'packages', 'db', 'src', 'sqlite', 'schema.sql'),
+      pathMod.resolve(process.cwd(), '..', 'packages', 'db', 'src', 'sqlite', 'schema.sql'),
+      pathMod.resolve(process.cwd(), '..', '..', 'packages', 'db', 'src', 'sqlite', 'schema.sql'),
+    ];
+    for (const c of candidates) {
+      if (fsMod.existsSync(c)) {
+        resolvedSchemaPath = c;
+        break;
+      }
+    }
+  }
+
+  const db = new Database(dbPath);
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+
+  const schemaSql = fsMod.readFileSync(resolvedSchemaPath, 'utf8');
+  db.exec(schemaSql);
+
+  const now = Date.now();
+  db.prepare(
+    `INSERT OR IGNORE INTO accounts (id, account_type, account_class, email, name, created_at, updated_at)
+     VALUES (?, 'client', 'free', 'test@test.com', 'Test Account', ?, ?)`
+  ).run('acc_test', now, now);
+
+  db.prepare(
+    `INSERT OR IGNORE INTO users (id, email, password_hash, name, permission_level, user_class, is_active, created_at, updated_at, primary_account_id)
+     VALUES (?, 'testuser@test.com', 'hash', 'Test User', 'admin', 'person', 1, ?, ?, 'acc_test')`
+  ).run('user_test', now, now);
+
+  db.prepare(
+    `INSERT OR IGNORE INTO user_accounts (id, user_id, account_id, permission_level, role_rank, joined_at, created_at, updated_at)
+     VALUES (?, 'user_test', 'acc_test', 'admin', 1, ?, ?, ?)`
+  ).run('ua_test', now, now, now);
+
+  return { db, dbPath };
+}

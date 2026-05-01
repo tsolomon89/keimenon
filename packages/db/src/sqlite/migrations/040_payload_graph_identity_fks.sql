@@ -5,45 +5,95 @@
 -- ON DELETE CASCADE so that deleting the node automatically removes the
 -- normalized payload row.
 --
--- Since SQLite cannot ALTER TABLE ADD CONSTRAINT, we recreate each table.
---
--- Steps per table:
---   1. Rehydrate any missing skinny nodes (so FK won't reject existing data)
---   2. Create new table with FK constraint
---   3. Copy data
---   4. Verify row counts
---   5. Drop old table
---   6. Rename new table
---   7. Recreate indexes
+-- SAFETY: This migration rebuilds `nodes` which is referenced by `edges`.
+-- To avoid invalidating or losing edges, we:
+--   1. Disable FK enforcement for the rebuild section
+--   2. Backup both nodes and edges into temp tables
+--   3. Drop FTS triggers, indexes, edges, then nodes (in dependency order)
+--   4. Recreate nodes with corrected CHECK, recreate edges unchanged
+--   5. Restore all data from backups
+--   6. Recreate all indexes and FTS triggers
+--   7. Rehydrate missing skinny nodes for payload rows
+--   8. Rebuild payload tables with FK constraints
+--   9. Validate FK integrity and abort if violations remain
 
 -- ============================================================================
--- 0. Ensure nodes.kind CHECK allows the normalized kinds
+-- 0. Disable FK enforcement for the table rebuild
 -- ============================================================================
--- SQLite CHECK constraints are immutable after creation, but we can work
--- around this: if the constraint already allows these kinds (from client.ts
--- embedded schema) this is a no-op. If not, we rebuild the nodes table.
--- We test by attempting a dummy insert and catching the error.
--- For safety and simplicity, we just ensure the skinny node inserts below
--- use INSERT OR IGNORE which will silently fail if CHECK blocks them.
--- Migration 038 already deleted these kinds from nodes, so if the CHECK
--- doesn't include them, we need to rebuild nodes too.
-
--- First, let's see if nodes accepts SourceSpan kind by checking the schema.
--- If the DB was created from schema.sql (which may lack these kinds), we
--- need to rebuild. If from client.ts embedded schema, they're already there.
-
--- We handle this by recreating nodes with the correct CHECK constraint
--- only if needed. We use a conditional approach:
 
 PRAGMA defer_foreign_keys = ON;
 
 -- ============================================================================
--- 0a. Rebuild nodes table with expanded CHECK (idempotent)
+-- 1. Backup nodes and edges into temp tables
 -- ============================================================================
--- This is the nuclear option but it's the only way to alter a CHECK in SQLite.
--- We preserve all data.
 
-CREATE TABLE IF NOT EXISTS nodes_new (
+CREATE TEMP TABLE nodes_backup AS SELECT * FROM nodes;
+CREATE TEMP TABLE edges_backup AS SELECT * FROM edges;
+
+-- ============================================================================
+-- 2. Drop FTS triggers that reference nodes
+-- ============================================================================
+
+DROP TRIGGER IF EXISTS nodes_fts_insert;
+DROP TRIGGER IF EXISTS nodes_fts_update;
+DROP TRIGGER IF EXISTS nodes_fts_delete;
+DROP TRIGGER IF EXISTS messages_fts_duplicate_insert;
+DROP TRIGGER IF EXISTS messages_fts_duplicate_update;
+DROP TRIGGER IF EXISTS messages_fts_duplicate_delete;
+
+-- ============================================================================
+-- 3. Drop indexes on edges and nodes
+-- ============================================================================
+
+-- Edge indexes
+DROP INDEX IF EXISTS idx_edges_kind;
+DROP INDEX IF EXISTS idx_edges_account;
+DROP INDEX IF EXISTS idx_edges_created_by;
+DROP INDEX IF EXISTS idx_edges_from;
+DROP INDEX IF EXISTS idx_edges_to;
+DROP INDEX IF EXISTS idx_edges_from_to;
+DROP INDEX IF EXISTS idx_edges_created;
+DROP INDEX IF EXISTS idx_edges_data_tag;
+DROP INDEX IF EXISTS idx_edges_account_tag;
+DROP INDEX IF EXISTS idx_edges_spine;
+DROP INDEX IF EXISTS idx_edges_verified;
+DROP INDEX IF EXISTS idx_edges_agent;
+DROP INDEX IF EXISTS idx_edges_workspace;
+DROP INDEX IF EXISTS idx_edges_conversation;
+DROP INDEX IF EXISTS idx_edges_run_attribution;
+DROP INDEX IF EXISTS idx_edges_pro_import;
+
+-- Node indexes
+DROP INDEX IF EXISTS idx_nodes_kind;
+DROP INDEX IF EXISTS idx_nodes_account;
+DROP INDEX IF EXISTS idx_nodes_created_by;
+DROP INDEX IF EXISTS idx_nodes_created;
+DROP INDEX IF EXISTS idx_nodes_updated;
+DROP INDEX IF EXISTS idx_nodes_data_tag;
+DROP INDEX IF EXISTS idx_nodes_account_tag;
+DROP INDEX IF EXISTS idx_nodes_content_hash;
+DROP INDEX IF EXISTS idx_nodes_account_hash;
+DROP INDEX IF EXISTS idx_nodes_spine;
+DROP INDEX IF EXISTS idx_nodes_verified;
+DROP INDEX IF EXISTS idx_nodes_objective_claim_status;
+DROP INDEX IF EXISTS idx_nodes_agent;
+DROP INDEX IF EXISTS idx_nodes_principal;
+DROP INDEX IF EXISTS idx_nodes_conversation;
+DROP INDEX IF EXISTS idx_nodes_actors;
+DROP INDEX IF EXISTS idx_nodes_pro_import;
+
+-- ============================================================================
+-- 4. Drop edges FIRST (child), then nodes (parent) — dependency order
+-- ============================================================================
+
+DROP TABLE edges;
+DROP TABLE nodes;
+
+-- ============================================================================
+-- 5. Recreate nodes with expanded CHECK constraint
+-- ============================================================================
+
+CREATE TABLE nodes (
   id TEXT PRIMARY KEY,
   kind TEXT NOT NULL CHECK(kind IN (
     'UploadItem', 'Chat', 'MessageRef', 'Source', 'Group', 'CodeBlock', 'Folder',
@@ -66,45 +116,65 @@ CREATE TABLE IF NOT EXISTS nodes_new (
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
 );
 
-INSERT OR IGNORE INTO nodes_new SELECT * FROM nodes;
+-- ============================================================================
+-- 6. Recreate edges with identical schema
+-- ============================================================================
 
--- Verify row counts
+CREATE TABLE edges (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL CHECK(kind IN (
+    'CONTAINS', 'DERIVES_FROM', 'EXTRACTED_FROM', 'SIMILAR_TO',
+    'SEQUESTERS', 'HAS_MESSAGE', 'COMPILED_FROM', 'STITCHED_FROM',
+    'IN_SCOPE_FOR', 'EQUIVALENT_TO', 'DUP_OF', 'SUPPORTS', 'REFUTES',
+    'VERIFIED_BY', 'ASSOCIATED_WITH_USER', 'PROMOTES_TO_GROUP',
+    'FOLDS_INTO_FOLDER', 'IN_GROUP', 'AFFINITY', 'DISCOURSE', 'OWNER_OF',
+    'EXACT_DUP', 'NEAR_DUP', 'SPAN_CONTAINS', 'CLUSTER_MEMBER', 'MENTIONS', 'ABOUT',
+    'CO_OCCURS_WITH', 'BELONGS_TO_TOPIC', 'SOURCED_FROM', 'DERIVED_FROM', 'CANDIDATE_DUP',
+    'CREATED_BY_AGENT', 'EVIDENCE_FOR', 'CREATED_BY', 'ATTACHED_TO', 'PINS_CONTEXT',
+    'INITIATED_BY', 'PARTICIPATED_IN', 'PRODUCED_BY',
+    'HAS_SPAN', 'OCCURS_IN_SPAN', 'COMPOSED_OF_ATOMIC'
+  )),
+  from_id TEXT NOT NULL,
+  to_id TEXT NOT NULL,
+  properties TEXT,
+  account_id TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual')),
+  FOREIGN KEY (from_id) REFERENCES nodes(id) ON DELETE CASCADE,
+  FOREIGN KEY (to_id) REFERENCES nodes(id) ON DELETE CASCADE,
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ============================================================================
+-- 7. Restore data from backups
+-- ============================================================================
+
+INSERT INTO nodes SELECT * FROM nodes_backup;
+
+-- Verify nodes row count
 SELECT CASE
-  WHEN (SELECT COUNT(*) FROM nodes_new) < (SELECT COUNT(*) FROM nodes)
-  THEN RAISE(ABORT, 'Migration 040: nodes_new row count mismatch during rebuild')
+  WHEN (SELECT COUNT(*) FROM nodes) < (SELECT COUNT(*) FROM nodes_backup)
+  THEN RAISE(ABORT, 'Migration 040: nodes row count mismatch after restore')
 END;
 
--- Drop FTS triggers that reference nodes (we'll recreate them)
-DROP TRIGGER IF EXISTS nodes_fts_insert;
-DROP TRIGGER IF EXISTS nodes_fts_update;
-DROP TRIGGER IF EXISTS nodes_fts_delete;
-DROP TRIGGER IF EXISTS messages_fts_duplicate_insert;
-DROP TRIGGER IF EXISTS messages_fts_duplicate_update;
-DROP TRIGGER IF EXISTS messages_fts_duplicate_delete;
+INSERT INTO edges SELECT * FROM edges_backup;
 
--- Drop indexes on nodes (they'll be recreated after rename)
-DROP INDEX IF EXISTS idx_nodes_kind;
-DROP INDEX IF EXISTS idx_nodes_account;
-DROP INDEX IF EXISTS idx_nodes_created_by;
-DROP INDEX IF EXISTS idx_nodes_created;
-DROP INDEX IF EXISTS idx_nodes_updated;
-DROP INDEX IF EXISTS idx_nodes_data_tag;
-DROP INDEX IF EXISTS idx_nodes_account_tag;
-DROP INDEX IF EXISTS idx_nodes_content_hash;
-DROP INDEX IF EXISTS idx_nodes_account_hash;
-DROP INDEX IF EXISTS idx_nodes_spine;
-DROP INDEX IF EXISTS idx_nodes_verified;
-DROP INDEX IF EXISTS idx_nodes_objective_claim_status;
-DROP INDEX IF EXISTS idx_nodes_agent;
-DROP INDEX IF EXISTS idx_nodes_principal;
-DROP INDEX IF EXISTS idx_nodes_conversation;
-DROP INDEX IF EXISTS idx_nodes_actors;
-DROP INDEX IF EXISTS idx_nodes_pro_import;
+-- Verify edges row count
+SELECT CASE
+  WHEN (SELECT COUNT(*) FROM edges) < (SELECT COUNT(*) FROM edges_backup)
+  THEN RAISE(ABORT, 'Migration 040: edges row count mismatch after restore')
+END;
 
-DROP TABLE nodes;
-ALTER TABLE nodes_new RENAME TO nodes;
+-- Drop temp backups
+DROP TABLE nodes_backup;
+DROP TABLE edges_backup;
 
--- Recreate nodes indexes
+-- ============================================================================
+-- 8. Recreate all node indexes
+-- ============================================================================
+
 CREATE INDEX IF NOT EXISTS idx_nodes_kind ON nodes(kind);
 CREATE INDEX IF NOT EXISTS idx_nodes_account ON nodes(account_id);
 CREATE INDEX IF NOT EXISTS idx_nodes_created_by ON nodes(created_by);
@@ -125,7 +195,31 @@ CREATE INDEX IF NOT EXISTS idx_nodes_conversation ON nodes(kind) WHERE kind = 'C
 CREATE INDEX IF NOT EXISTS idx_nodes_actors ON nodes(kind) WHERE kind IN ('Principal', 'UserNode', 'AgentNode');
 CREATE INDEX IF NOT EXISTS idx_nodes_pro_import ON nodes(kind) WHERE kind IN ('SourceSpan', 'Packet', 'AtomicUnit');
 
--- Recreate FTS triggers
+-- ============================================================================
+-- 9. Recreate all edge indexes
+-- ============================================================================
+
+CREATE INDEX IF NOT EXISTS idx_edges_kind ON edges(kind);
+CREATE INDEX IF NOT EXISTS idx_edges_account ON edges(account_id);
+CREATE INDEX IF NOT EXISTS idx_edges_created_by ON edges(created_by);
+CREATE INDEX IF NOT EXISTS idx_edges_from ON edges(from_id);
+CREATE INDEX IF NOT EXISTS idx_edges_to ON edges(to_id);
+CREATE INDEX IF NOT EXISTS idx_edges_from_to ON edges(from_id, to_id);
+CREATE INDEX IF NOT EXISTS idx_edges_created ON edges(created_at);
+CREATE INDEX IF NOT EXISTS idx_edges_data_tag ON edges(data_tag);
+CREATE INDEX IF NOT EXISTS idx_edges_account_tag ON edges(account_id, data_tag);
+CREATE INDEX IF NOT EXISTS idx_edges_spine ON edges(kind) WHERE kind IN ('MENTIONS', 'ABOUT', 'CO_OCCURS_WITH', 'BELONGS_TO_TOPIC');
+CREATE INDEX IF NOT EXISTS idx_edges_verified ON edges(kind) WHERE kind IN ('SOURCED_FROM', 'VERIFIED_BY');
+CREATE INDEX IF NOT EXISTS idx_edges_agent ON edges(kind) WHERE kind IN ('DERIVED_FROM', 'CANDIDATE_DUP', 'CREATED_BY_AGENT', 'EVIDENCE_FOR');
+CREATE INDEX IF NOT EXISTS idx_edges_workspace ON edges(kind) WHERE kind IN ('CREATED_BY', 'ATTACHED_TO', 'PINS_CONTEXT');
+CREATE INDEX IF NOT EXISTS idx_edges_conversation ON edges(kind) WHERE kind IN ('INITIATED_BY', 'PARTICIPATED_IN');
+CREATE INDEX IF NOT EXISTS idx_edges_run_attribution ON edges(kind) WHERE kind = 'PRODUCED_BY';
+CREATE INDEX IF NOT EXISTS idx_edges_pro_import ON edges(kind) WHERE kind IN ('HAS_SPAN', 'OCCURS_IN_SPAN', 'COMPOSED_OF_ATOMIC');
+
+-- ============================================================================
+-- 10. Recreate FTS triggers
+-- ============================================================================
+
 CREATE TRIGGER IF NOT EXISTS nodes_fts_insert AFTER INSERT ON nodes BEGIN
   INSERT INTO nodes_fts(id, content) VALUES (new.id, new.properties);
 END;
@@ -166,7 +260,7 @@ BEGIN
 END;
 
 -- ============================================================================
--- 1. Rehydrate missing skinny nodes for existing payload rows
+-- 11. Rehydrate missing skinny nodes for existing payload rows
 -- ============================================================================
 -- If source_spans/phrases/packets/atomic_units rows exist without a
 -- corresponding nodes row, insert a skinny graph identity node.
@@ -192,7 +286,7 @@ FROM atomic_units au
 WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = au.id);
 
 -- ============================================================================
--- 2. Recreate source_spans with FK
+-- 12. Recreate source_spans with FK
 -- ============================================================================
 
 CREATE TABLE source_spans_new (
@@ -231,7 +325,7 @@ CREATE INDEX IF NOT EXISTS idx_source_spans_account_source ON source_spans(accou
 CREATE INDEX IF NOT EXISTS idx_source_spans_hash ON source_spans(account_id, span_hash);
 
 -- ============================================================================
--- 3. Recreate phrases with FK
+-- 13. Recreate phrases with FK
 -- ============================================================================
 
 CREATE TABLE phrases_new (
@@ -262,7 +356,7 @@ DROP TABLE phrases;
 ALTER TABLE phrases_new RENAME TO phrases;
 
 -- ============================================================================
--- 4. Recreate packets with FK
+-- 14. Recreate packets with FK
 -- ============================================================================
 
 CREATE TABLE packets_new (
@@ -296,7 +390,7 @@ DROP TABLE packets;
 ALTER TABLE packets_new RENAME TO packets;
 
 -- ============================================================================
--- 5. Recreate atomic_units with FK
+-- 15. Recreate atomic_units with FK
 -- ============================================================================
 
 CREATE TABLE atomic_units_new (
@@ -326,7 +420,16 @@ DROP TABLE atomic_units;
 ALTER TABLE atomic_units_new RENAME TO atomic_units;
 
 -- ============================================================================
--- 6. Final FK check
+-- 16. Final FK validation — MUST abort if violations remain
 -- ============================================================================
+-- PRAGMA foreign_key_check only returns rows; it does not abort.
+-- We use a temp table to capture violations and fail explicitly.
 
-PRAGMA foreign_key_check;
+CREATE TEMP TABLE _fk_violations AS SELECT * FROM pragma_foreign_key_check;
+
+SELECT CASE
+  WHEN (SELECT COUNT(*) FROM _fk_violations) > 0
+  THEN RAISE(ABORT, 'Migration 040: foreign key violations remain after migration')
+END;
+
+DROP TABLE _fk_violations;

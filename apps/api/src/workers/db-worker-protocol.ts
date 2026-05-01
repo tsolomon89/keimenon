@@ -24,8 +24,8 @@ export interface SerializedNode {
   created_at: number;
   updated_at: number;
   data_tag: string;
-  content_hash: string;
-  canonical_content: string;
+  content_hash: string | null;
+  canonical_content: string | null;
   is_duplicate: number; // 0 or 1
   original_node_id: string | null;
 }
