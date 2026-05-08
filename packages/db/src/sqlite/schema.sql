@@ -749,6 +749,55 @@ CREATE INDEX IF NOT EXISTS idx_job_items_status ON job_items(status);
 CREATE INDEX IF NOT EXISTS idx_job_items_data_tag ON job_items(data_tag);
 
 -- =============================================================================
+-- SEARCH INDEX TABLES
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS search_postings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id TEXT NOT NULL,
+  term TEXT NOT NULL,
+  span_id TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  term_count INTEGER NOT NULL DEFAULT 1,
+  positions TEXT,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_postings_account_term ON search_postings(account_id, term);
+CREATE INDEX IF NOT EXISTS idx_search_postings_account_span ON search_postings(account_id, span_id);
+CREATE INDEX IF NOT EXISTS idx_search_postings_account_source ON search_postings(account_id, source_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_search_postings_unique ON search_postings(account_id, term, span_id);
+
+CREATE TABLE IF NOT EXISTS search_doc_stats (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id TEXT NOT NULL,
+  span_id TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  total_terms INTEGER NOT NULL DEFAULT 0,
+  char_count INTEGER NOT NULL DEFAULT 0,
+  content_hash TEXT,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_search_doc_stats_account_span ON search_doc_stats(account_id, span_id);
+CREATE INDEX IF NOT EXISTS idx_search_doc_stats_account_source ON search_doc_stats(account_id, source_id);
+CREATE INDEX IF NOT EXISTS idx_search_doc_stats_content_hash ON search_doc_stats(account_id, content_hash);
+
+CREATE TABLE IF NOT EXISTS search_index_runs (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  run_type TEXT NOT NULL DEFAULT 'full',
+  source_count INTEGER NOT NULL DEFAULT 0,
+  span_count INTEGER NOT NULL DEFAULT 0,
+  posting_count INTEGER NOT NULL DEFAULT 0,
+  duration_ms INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  data_tag TEXT DEFAULT 'real' CHECK(data_tag IN ('test', 'real', 'automated', 'manual'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_index_runs_account ON search_index_runs(account_id, created_at DESC);
+
+-- =============================================================================
 -- FULL-TEXT SEARCH
 -- =============================================================================
 

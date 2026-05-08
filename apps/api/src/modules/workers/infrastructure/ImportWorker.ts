@@ -727,7 +727,7 @@ export class ImportWorker extends BaseWorker {
       const isTestMode = !!job.config.testContext?.dbPath;
       const writeQueue = isTestMode ? undefined : this.writeQueue;
 
-      const { getDbWorker } = await import('../db-worker-singleton');
+      const { getDbWorker } = await import('../../../workers/db-worker-singleton');
       const dbWorker = getDbWorker();
       const { BulkGraphWriteSink, LegacyQueuedGraphWriteSink } =
         await import('../../../services/GraphWriteSink');
@@ -754,10 +754,10 @@ export class ImportWorker extends BaseWorker {
               }
             );
           });
-          batchAccumulator = new GraphBatchAccumulator(sink, job.accountId, job.userId, job.id);
+          batchAccumulator = new GraphBatchAccumulator(sink, job.accountId, job.createdBy, job.id);
         } else if (writeQueue) {
           const sink = new LegacyQueuedGraphWriteSink(writeQueue);
-          batchAccumulator = new GraphBatchAccumulator(sink, job.accountId, job.userId, job.id);
+          batchAccumulator = new GraphBatchAccumulator(sink, job.accountId, job.createdBy, job.id);
         }
       }
 

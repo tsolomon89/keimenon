@@ -1,7 +1,16 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Search, X, Loader2, FileText, ChevronRight, AlertCircle } from 'lucide-react';
+import {
+  Search,
+  X,
+  Loader2,
+  FileText,
+  ChevronRight,
+  AlertCircle,
+  Quote,
+  ExternalLink,
+} from 'lucide-react';
 import { searchCorpus, type SearchResult } from '@/lib/api-client';
 import { useKeimenonStore } from '@/store/keimenonStore';
 
@@ -12,8 +21,11 @@ interface CorpusSearchPanelProps {
 /**
  * CorpusSearchPanel — BM25-ranked search over the user's knowledge corpus.
  *
- * Renders a search input + results list. Clicking a result selects the
- * corresponding node on the graph canvas.
+ * Renders a search input + results list. Clicking a result opens the
+ * exact evidence:
+ *   Tier 1: SourceSpan node in store → select + open detail panel
+ *   Tier 2: Evidence detail view (lightweight, no graph node required)
+ *   Tier 3: Fallback to parent Source node
  */
 export function CorpusSearchPanel({ onResultSelect }: CorpusSearchPanelProps) {
   const [query, setQuery] = useState('');
@@ -27,6 +39,7 @@ export function CorpusSearchPanel({ onResultSelect }: CorpusSearchPanelProps) {
 
   const selectNode = useKeimenonStore((s) => s.selectNode);
   const openDetailPanel = useKeimenonStore((s) => s.openDetailPanel);
+  const openEvidenceDetail = useKeimenonStore((s) => s.openEvidenceDetail);
   const nodes = useKeimenonStore((s) => s.nodes);
 
   // Focus input on mount
@@ -106,26 +119,74 @@ export function CorpusSearchPanel({ onResultSelect }: CorpusSearchPanelProps) {
     inputRef.current?.focus();
   };
 
+  /**
+   * 3-tier evidence selection:
+   *   1. SourceSpan node in store → select + open detail panel
+   *   2. Evidence detail view (lightweight, data from SearchResult)
+   *   3. Fallback to parent Source node
+   */
   const handleResultClick = (result: SearchResult) => {
-    // Try to select the source node on the graph
+    const evidenceNodeId = result.spanId || result.nodeId;
+
+    // Tier 1: Check if the exact SourceSpan is already in the graph store
+    const spanNode = nodes.find((n) => n.id === evidenceNodeId);
+    if (spanNode) {
+      selectNode(evidenceNodeId, false);
+      openDetailPanel(spanNode);
+      onResultSelect?.(evidenceNodeId, result.sourceId);
+      return;
+    }
+
+    // Tier 2: Open lightweight evidence detail view using search result data
+    // The SourceSpan is excluded from the default graph snapshot by design,
+    // so we display the evidence directly without requiring a graph node.
+    openEvidenceDetail({
+      spanId: evidenceNodeId,
+      sourceId: result.sourceId,
+      text: result.text,
+      excerpt: result.excerpt,
+      matchedTerms: result.matchedTerms,
+      score: result.finalScore ?? result.score,
+      provenance: result.provenance,
+    });
+
+    // Also select the parent Source if present in the graph (visual highlight)
     const sourceNode = nodes.find((n) => n.id === result.sourceId);
     if (sourceNode) {
       selectNode(result.sourceId, false);
-      openDetailPanel(sourceNode);
-    } else {
-      // Fallback: try the span node
-      const spanNode = nodes.find((n) => n.id === result.nodeId);
-      if (spanNode) {
-        selectNode(result.nodeId, false);
-        openDetailPanel(spanNode);
-      }
     }
-    onResultSelect?.(result.nodeId, result.sourceId);
+
+    onResultSelect?.(evidenceNodeId, result.sourceId);
   };
 
   const truncateText = (text: string, maxLen: number) => {
     if (text.length <= maxLen) return text;
     return text.substring(0, maxLen) + '…';
+  };
+
+  /** Highlight matched terms in the result text */
+  const highlightText = (text: string, terms: string[], maxLen: number) => {
+    const truncated = truncateText(text, maxLen);
+    if (terms.length === 0) return <>{truncated}</>;
+
+    // Build a regex that matches any of the terms (case-insensitive)
+    const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const pattern = new RegExp(`(${escaped.join('|')})`, 'gi');
+    const parts = truncated.split(pattern);
+
+    return (
+      <>
+        {parts.map((part, i) =>
+          pattern.test(part) ? (
+            <mark key={i} className="bg-purple-500/30 text-purple-200 rounded-sm px-0.5">
+              {part}
+            </mark>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+      </>
+    );
   };
 
   return (
@@ -193,33 +254,48 @@ export function CorpusSearchPanel({ onResultSelect }: CorpusSearchPanelProps) {
           </div>
         )}
 
-        {results.map((result, index) => (
-          <button
-            key={`${result.nodeId}-${index}`}
-            onClick={() => handleResultClick(result)}
-            className="w-full text-left px-3 py-2.5 border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors group"
-          >
-            <div className="flex items-start gap-2">
-              <FileText className="w-3.5 h-3.5 text-slate-500 mt-0.5 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-slate-200 leading-relaxed">
-                  {truncateText(result.text, 140)}
-                </p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-[10px] font-mono text-purple-400/80">
-                    {result.score.toFixed(2)}
-                  </span>
-                  {result.matchedTerms.length > 0 && (
-                    <span className="text-[10px] text-slate-500 truncate">
-                      {result.matchedTerms.slice(0, 3).join(', ')}
+        {results.map((result, index) => {
+          const isSpanInStore = nodes.some((n) => n.id === (result.spanId || result.nodeId));
+          return (
+            <button
+              key={`${result.nodeId}-${index}`}
+              onClick={() => handleResultClick(result)}
+              className="w-full text-left px-3 py-2.5 border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors group"
+            >
+              <div className="flex items-start gap-2">
+                {/* Icon: Quote for SourceSpan evidence, FileText for parent source */}
+                {isSpanInStore ? (
+                  <Quote className="w-3.5 h-3.5 text-purple-400 mt-0.5 shrink-0" />
+                ) : (
+                  <FileText className="w-3.5 h-3.5 text-slate-500 mt-0.5 shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-slate-200 leading-relaxed">
+                    {highlightText(result.text, result.matchedTerms, 140)}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="text-[10px] font-mono text-purple-400/80">
+                      {(result.finalScore ?? result.score).toFixed(2)}
                     </span>
-                  )}
+                    {/* SourceSpan indicator */}
+                    {(result.spanId || result.provenance) && (
+                      <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-emerald-400/70 bg-emerald-500/10 px-1 py-0.5 rounded">
+                        <ExternalLink className="w-2.5 h-2.5" />
+                        span
+                      </span>
+                    )}
+                    {result.matchedTerms.length > 0 && (
+                      <span className="text-[10px] text-slate-500 truncate">
+                        {result.matchedTerms.slice(0, 3).join(', ')}
+                      </span>
+                    )}
+                  </div>
                 </div>
+                <ChevronRight className="w-3 h-3 text-slate-600 opacity-0 group-hover:opacity-100 mt-1 shrink-0 transition-opacity" />
               </div>
-              <ChevronRight className="w-3 h-3 text-slate-600 opacity-0 group-hover:opacity-100 mt-1 shrink-0 transition-opacity" />
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

@@ -202,15 +202,47 @@ async function runBenchmark() {
   for (const n of data.nodes) {
     kindCounts[n.kind] = (kindCounts[n.kind] || 0) + 1;
   }
+  const edgeKindCounts: Record<string, number> = {};
+  for (const e of data.edges) {
+    edgeKindCounts[e.kind] = (edgeKindCounts[e.kind] || 0) + 1;
+  }
   console.log('Node breakdown:', kindCounts);
+  console.log('Edge breakdown:', edgeKindCounts);
+
+  // Define structures for results
+  const metrics: any = {
+    legacy: {},
+    bulk: {},
+    verification: {},
+  };
+
+  // Event Loop Drift Tracker
+  function createDriftTracker() {
+    const drifts: number[] = [];
+    const interval = setInterval(() => {
+      const start = performance.now();
+      setImmediate(() => {
+        drifts.push(performance.now() - start);
+      });
+    }, 10);
+    return {
+      stop: () => {
+        clearInterval(interval);
+        const max = drifts.length ? Math.max(...drifts) : 0;
+        const avg = drifts.length ? drifts.reduce((a, b) => a + b, 0) / drifts.length : 0;
+        return { max, avg };
+      },
+    };
+  }
 
   // 1. Test Legacy Queue path
   console.log('\n[Legacy Queue] Initializing...');
-  let db = createBulkTestDb();
-  let queue = new DatabaseWriteQueue(db as unknown as DatabaseClient);
+  const db = createBulkTestDb();
+  const queue = new DatabaseWriteQueue(db as unknown as DatabaseClient);
   let sink: GraphWriteSink = new LegacyQueuedGraphWriteSink(queue);
-  let accumulator = new GraphBatchAccumulator(sink, 'acc_test', 'user_test');
+  let accumulator = new GraphBatchAccumulator(sink, 'acc_test', 'user_test', 'bench-legacy');
 
+  let tracker = createDriftTracker();
   let start = Date.now();
   for (const node of data.nodes) {
     await accumulator.addNode(node);
@@ -221,7 +253,16 @@ async function runBenchmark() {
   await accumulator.complete();
 
   let end = Date.now();
-  console.log(`[Legacy Queue] Completed in ${end - start}ms`);
+  const legacyDrift = tracker.stop();
+  metrics.legacy = {
+    wallTimeMs: end - start,
+    maxEventLoopDriftMs: legacyDrift.max,
+    avgEventLoopDriftMs: legacyDrift.avg,
+  };
+  console.log(`[Legacy Queue] Completed in ${metrics.legacy.wallTimeMs}ms`);
+  console.log(
+    `[Legacy Queue] Event loop drift: max ${legacyDrift.max.toFixed(2)}ms, avg ${legacyDrift.avg.toFixed(2)}ms`
+  );
   db.close();
 
   // 2. Test Bulk Pipeline (off-thread DB worker)
@@ -261,8 +302,9 @@ async function runBenchmark() {
   sink = new BulkGraphWriteSink(dbWorker as any, (prog) => {
     // Optional progress logging
   });
-  accumulator = new GraphBatchAccumulator(sink, 'acc_test', 'user_test');
+  accumulator = new GraphBatchAccumulator(sink, 'acc_test', 'user_test', 'bench-bulk');
 
+  tracker = createDriftTracker();
   start = Date.now();
   for (const node of data.nodes) {
     await accumulator.addNode(node);
@@ -273,9 +315,18 @@ async function runBenchmark() {
   await accumulator.complete();
 
   end = Date.now();
-  console.log(`[Bulk Pipeline] Completed in ${end - start}ms`);
+  const bulkDrift = tracker.stop();
+  metrics.bulk = {
+    wallTimeMs: end - start,
+    maxEventLoopDriftMs: bulkDrift.max,
+    avgEventLoopDriftMs: bulkDrift.avg,
+  };
+  console.log(`[Bulk Pipeline] Completed in ${metrics.bulk.wallTimeMs}ms`);
+  console.log(
+    `[Bulk Pipeline] Event loop drift: max ${bulkDrift.max.toFixed(2)}ms, avg ${bulkDrift.avg.toFixed(2)}ms`
+  );
 
-  // Verify data integrity
+  // Verify data integrity and sizes
   const verifyDb = new Database(tmpPath, { readonly: true });
   const nodeCount = (verifyDb.prepare('SELECT COUNT(*) as c FROM nodes').get() as any).c;
   const edgeCount = (verifyDb.prepare('SELECT COUNT(*) as c FROM edges').get() as any).c;
@@ -283,8 +334,43 @@ async function runBenchmark() {
   const phraseCount = (verifyDb.prepare('SELECT COUNT(*) as c FROM phrases').get() as any).c;
   const packetCount = (verifyDb.prepare('SELECT COUNT(*) as c FROM packets').get() as any).c;
   const auCount = (verifyDb.prepare('SELECT COUNT(*) as c FROM atomic_units').get() as any).c;
+
+  let quarantineCount = 0;
+  try {
+    quarantineCount = (verifyDb.prepare('SELECT COUNT(*) as c FROM data_quarantine').get() as any)
+      .c;
+  } catch (e) {
+    // Table might not exist if migration hasn't run, though schema.sql should have it
+  }
+
+  // Get file sizes
+  const dbStat = fs.statSync(tmpPath);
+  let walStat = { size: 0 };
+  try {
+    walStat = fs.statSync(tmpPath + '-wal');
+  } catch (e) {
+    // Ignore if WAL file doesn't exist
+  }
+
+  metrics.verification = {
+    dbSizeBytes: dbStat.size,
+    walSizeBytes: walStat.size,
+    counts: {
+      nodes: nodeCount,
+      edges: edgeCount,
+      spans: spanCount,
+      phrases: phraseCount,
+      packets: packetCount,
+      atomicUnits: auCount,
+      quarantine: quarantineCount,
+    },
+  };
+
   console.log(
-    `\n[Verification] nodes=${nodeCount} edges=${edgeCount} spans=${spanCount} phrases=${phraseCount} packets=${packetCount} au=${auCount}`
+    `\n[Verification] nodes=${nodeCount} edges=${edgeCount} spans=${spanCount} phrases=${phraseCount} packets=${packetCount} au=${auCount} quarantine=${quarantineCount}`
+  );
+  console.log(
+    `[Database Size] DB: ${(dbStat.size / 1024 / 1024).toFixed(2)}MB, WAL: ${(walStat.size / 1024 / 1024).toFixed(2)}MB`
   );
 
   verifyDb.close();
@@ -292,9 +378,15 @@ async function runBenchmark() {
   fileDb.close();
   try {
     fs.unlinkSync(tmpPath);
-  } catch (e) {}
+    if (fs.existsSync(tmpPath + '-wal')) fs.unlinkSync(tmpPath + '-wal');
+    if (fs.existsSync(tmpPath + '-shm')) fs.unlinkSync(tmpPath + '-shm');
+  } catch (e) {
+    // Ignore cleanup errors
+  }
 
-  console.log('\n--- Benchmark Complete ---');
+  console.log('\n--- Structured JSON Summary ---');
+  console.log(JSON.stringify(metrics, null, 2));
+  console.log('--- Benchmark Complete ---');
 }
 
 runBenchmark().catch(console.error);

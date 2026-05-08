@@ -1593,20 +1593,33 @@ export async function sequesterNode(
 // ==================== Semantic Search & Topic Lifecycle API ====================
 
 /**
- * Search result from BM25-ranked inverted index
+ * Search result from BM25-ranked inverted index.
+ * Backend canonical fields are spanId + provenance; nodeId is a frontend alias for spanId.
  */
 export interface SearchResult {
   nodeId: string;
+  spanId?: string;
   sourceId: string;
   score: number;
+  finalScore?: number;
   text: string;
+  excerpt?: string;
   normalizedText?: string;
   matchedTerms: string[];
+  provenance?: {
+    sourceId: string;
+    spanId: string;
+    startChar?: number;
+    endChar?: number;
+  };
   scoreComponents?: {
     termFrequency: number;
     inverseDocFrequency: number;
     fieldLength: number;
     boost: number;
+    bm25?: number;
+    phraseBoost?: number;
+    termCoverage?: number;
   };
 }
 
@@ -2321,6 +2334,51 @@ export async function createUnifiedDocument(payload: {
       },
       body: JSON.stringify(payload),
     });
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+/**
+ * Hub detail for a Phrase or Topic node, with full evidence subgraph.
+ * Fetched on-demand because the default graph snapshot excludes SourceSpan
+ * nodes and HAS_SPAN / OCCURS_IN_SPAN edges.
+ */
+export interface HubDetail {
+  id: string;
+  kind: 'Phrase' | 'Topic' | string;
+  label: string;
+  properties: Record<string, any>;
+  connectedSpans: Array<{
+    id: string;
+    text: string;
+    sourceId: string;
+    startChar?: number;
+    endChar?: number;
+  }>;
+  memberPhrases: Array<{ id: string; text: string; frequency: number }>;
+  parentTopics: Array<{ id: string; name: string; status: string }>;
+  relatedPhrases: Array<{ id: string; text: string; sharedSpanCount: number }>;
+  derivedDocs: Array<{ id: string; title: string }>;
+  edgeSummary: Record<string, number>;
+}
+
+/**
+ * Fetch detailed evidence subgraph for a Phrase or Topic hub node.
+ * This is the primary API for inspector evidence display.
+ */
+export async function getHubDetail(nodeId: string): Promise<{ success: boolean; hub: HubDetail }> {
+  try {
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/spine/hub/${encodeURIComponent(nodeId)}`,
+      { headers: getAuthHeaders() }
+    );
 
     if (!response.ok) {
       await handleApiError({ response });

@@ -43,6 +43,8 @@ import {
   rejectTopic,
   renameTopic,
   createUnifiedDocument,
+  getHubDetail,
+  type HubDetail,
 } from '@/lib/api-client';
 import { useKeimenonStore } from '@/store/keimenonStore';
 import { getNodeLabel, LabelableNode } from '@/lib/node-labels';
@@ -115,7 +117,9 @@ function readVerifyTopicOutput(value: unknown): VerifyTopicTaskOutput | null {
  */
 export function NodeDetailPanel() {
   const detailPanelNode = useKeimenonStore((s) => s.detailPanelNode);
+  const evidenceDetail = useKeimenonStore((s) => s.evidenceDetail);
   const closeDetailPanel = useKeimenonStore((s) => s.closeDetailPanel);
+  const clearEvidenceDetail = useKeimenonStore((s) => s.clearEvidenceDetail);
   const selectNode = useKeimenonStore((s) => s.selectNode);
   const loadGraphData = useKeimenonStore((s) => s.loadGraphData);
   const openDetailPanel = useKeimenonStore((s) => s.openDetailPanel);
@@ -142,6 +146,11 @@ export function NodeDetailPanel() {
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [synthesizeError, setSynthesizeError] = useState<string | null>(null);
   const [synthesizeResultId, setSynthesizeResultId] = useState<string | null>(null);
+
+  // Hub Detail state (for Phrase/Topic subgraph evidence)
+  const [hubDetail, setHubDetail] = useState<HubDetail | null>(null);
+  const [isHubLoading, setIsHubLoading] = useState(false);
+  const [hubError, setHubError] = useState<string | null>(null);
 
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -324,8 +333,28 @@ export function NodeDetailPanel() {
     // Reset when panel closes
     if (!detailPanelNode) {
       setAutoLoaded(false);
+      setHubDetail(null);
     }
   }, [detailPanelNode, autoLoaded, loadContent]);
+
+  // Fetch hub detail for Phrase/Topic
+  useEffect(() => {
+    if (
+      detailPanelNode &&
+      (detailPanelNode.type === 'Topic' ||
+        detailPanelNode.type === 'Phrase' ||
+        detailPanelNode.type === 'phrase')
+    ) {
+      setIsHubLoading(true);
+      setHubError(null);
+      getHubDetail(detailPanelNode.id)
+        .then((res) => setHubDetail(res.hub))
+        .catch((err) => setHubError(err.message || 'Failed to load hub evidence'))
+        .finally(() => setIsHubLoading(false));
+    } else {
+      setHubDetail(null);
+    }
+  }, [detailPanelNode]);
 
   // Handle click outside to close
   useEffect(() => {
@@ -366,8 +395,106 @@ export function NodeDetailPanel() {
     return undefined;
   }, [detailPanelNode, closeDetailPanel]);
 
-  if (!detailPanelNode) {
+  // If neither detail mode is active, don't render
+  if (!detailPanelNode && !evidenceDetail) {
     return null;
+  }
+
+  // Handle standalone Evidence Detail view (Search UX Tier 2)
+  if (!detailPanelNode && evidenceDetail) {
+    return (
+      <>
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 transition-opacity duration-200"
+          aria-hidden="true"
+        />
+
+        {/* Panel */}
+        <div
+          ref={panelRef}
+          className="fixed right-0 top-0 h-full w-[28rem] bg-slate-900 border-l border-slate-700 shadow-2xl overflow-y-auto z-50 transform transition-all duration-300 ease-in-out flex flex-col"
+        >
+          <div className="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-4 flex items-center justify-between z-10 shrink-0">
+            <div className="flex-1 min-w-0 flex items-center gap-2">
+              <Quote className="w-4 h-4 text-emerald-400 shrink-0" />
+              <h2 className="text-lg font-semibold text-white truncate">Source Evidence</h2>
+              <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded text-[10px] uppercase font-bold border border-emerald-500/30">
+                Found
+              </span>
+            </div>
+            <button
+              onClick={clearEvidenceDetail}
+              className="ml-3 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
+              aria-label="Close panel"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-3">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                Exact Span
+              </h3>
+              <p className="text-sm text-slate-200 leading-relaxed font-serif bg-slate-900/50 p-3 rounded border border-slate-800">
+                "{evidenceDetail.text}"
+              </p>
+
+              <div className="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-slate-700 pt-3">
+                <span className="flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5" />
+                  Index Match: {evidenceDetail.score.toFixed(2)}
+                </span>
+                {evidenceDetail.matchedTerms.length > 0 && (
+                  <span className="bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded border border-purple-500/30 font-mono">
+                    {evidenceDetail.matchedTerms.slice(0, 3).join(', ')}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {evidenceDetail.provenance && (
+              <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-3">
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  Provenance
+                </h3>
+                <dl className="space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">Source ID:</dt>
+                    <dd className="text-slate-300 font-mono">
+                      {evidenceDetail.provenance.sourceId}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">Span ID:</dt>
+                    <dd className="text-slate-300 font-mono">{evidenceDetail.provenance.spanId}</dd>
+                  </div>
+                  {evidenceDetail.provenance.startChar !== undefined && (
+                    <div className="flex justify-between">
+                      <dt className="text-slate-500">Position:</dt>
+                      <dd className="text-slate-300 font-mono">
+                        [{evidenceDetail.provenance.startChar} - {evidenceDetail.provenance.endChar}
+                        ]
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              </div>
+            )}
+
+            <div className="p-3 bg-blue-900/10 border border-blue-500/20 rounded-lg flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+              <p className="text-xs text-blue-300 leading-relaxed">
+                This exact phrase is recorded in your semantic index but excluded from the current
+                overview graph snapshot to maintain readability. You can synthesize it into a Topic
+                or Phrase if you want to elevate its structural importance.
+              </p>
+            </div>
+          </div>
+        </div>
+      </>
+    );
   }
 
   const content = getContent(detailPanelNode.id);
@@ -704,6 +831,138 @@ export function NodeDetailPanel() {
                 </dl>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Hub Evidence (Fetched on-demand from /spine/hub API) */}
+        {hubDetail && (
+          <div className="p-4 border-b border-slate-700 bg-slate-800/40">
+            <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+              <Link2 className="w-4 h-4 text-indigo-400" />
+              Hub Evidence
+            </h3>
+
+            {/* Evidence Spans */}
+            {hubDetail.connectedSpans.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  Connected Spans ({hubDetail.connectedSpans.length})
+                </h4>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {hubDetail.connectedSpans.map((span) => (
+                    <div
+                      key={span.id}
+                      className="bg-slate-900/50 p-2 rounded border border-slate-700/50"
+                    >
+                      <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed font-serif">
+                        "{span.text}"
+                      </p>
+                      <div className="mt-1.5 flex justify-between items-center text-[10px] text-slate-500">
+                        <span className="font-mono truncate max-w-[140px]">{span.sourceId}</span>
+                        {span.startChar !== undefined && (
+                          <span className="bg-slate-800 px-1 rounded">
+                            [{span.startChar}-{span.endChar}]
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Member Phrases (for Topics) */}
+            {hubDetail.kind === 'Topic' && hubDetail.memberPhrases.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  Member Phrases ({hubDetail.memberPhrases.length})
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {hubDetail.memberPhrases.map((phrase) => (
+                    <span
+                      key={phrase.id}
+                      className="bg-purple-900/20 text-purple-300 px-2 py-1 rounded text-xs border border-purple-500/20 flex items-center gap-1.5"
+                    >
+                      {phrase.text}
+                      <span className="text-[10px] text-purple-400/70 bg-purple-950 px-1 rounded-sm">
+                        {phrase.frequency}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Parent Topics (for Phrases) */}
+            {hubDetail.kind === 'Phrase' && hubDetail.parentTopics.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  Parent Topics
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {hubDetail.parentTopics.map((topic) => (
+                    <span
+                      key={topic.id}
+                      className="bg-emerald-900/20 text-emerald-300 px-2 py-1 rounded text-xs border border-emerald-500/20"
+                    >
+                      {topic.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Related Phrases (via co-occurrence) */}
+            {hubDetail.kind === 'Phrase' && hubDetail.relatedPhrases.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  Co-occurring Phrases
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {hubDetail.relatedPhrases.slice(0, 10).map((phrase) => (
+                    <span
+                      key={phrase.id}
+                      className="text-xs text-slate-400 hover:text-slate-300 cursor-pointer border-b border-dashed border-slate-600"
+                    >
+                      {phrase.text}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Derived Unified Documents */}
+            {hubDetail.derivedDocs.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  Derived Synthesis
+                </h4>
+                <div className="space-y-1">
+                  {hubDetail.derivedDocs.map((doc) => (
+                    <div key={doc.id} className="flex items-center gap-2 text-xs text-slate-300">
+                      <FileText className="w-3 h-3 text-teal-500" />
+                      <span className="truncate">{doc.title}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Loading / Error States for Hub */}
+        {isHubLoading && (
+          <div className="p-4 border-b border-slate-700 bg-slate-800/20 flex items-center justify-center">
+            <Loader2 className="w-4 h-4 text-slate-500 animate-spin mr-2" />
+            <span className="text-xs text-slate-400">Loading evidence subgraph...</span>
+          </div>
+        )}
+        {hubError && (
+          <div className="p-4 border-b border-slate-700 bg-red-900/10">
+            <p className="text-xs text-red-400 flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Failed to load evidence: {hubError}
+            </p>
           </div>
         )}
 

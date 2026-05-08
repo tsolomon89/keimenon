@@ -53,16 +53,24 @@ describe('DB Worker — Bulk Insert Integration', () => {
   afterEach(async () => {
     try {
       await worker.stop();
-    } catch {}
+    } catch {
+      // Ignore worker stop error
+    }
     try {
       fs.unlinkSync(dbPath);
-    } catch {}
+    } catch (e) {
+      // Ignore cleanup error
+    }
     try {
       fs.unlinkSync(dbPath + '-wal');
-    } catch {}
+    } catch (e) {
+      // Ignore cleanup error
+    }
     try {
       fs.unlinkSync(dbPath + '-shm');
-    } catch {}
+    } catch (e) {
+      // Ignore cleanup error
+    }
   });
 
   // -----------------------------------------------------------------------

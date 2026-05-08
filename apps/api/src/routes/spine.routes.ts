@@ -587,6 +587,264 @@ export function createSpineRoutes(authService: AuthService) {
     }
   });
 
+  /**
+   * GET /api/v1/spine/hub/:nodeId
+   * Return detailed evidence subgraph for a single Phrase or Topic node.
+   *
+   * The default graph snapshot deliberately excludes SourceSpan nodes and
+   * HAS_SPAN / OCCURS_IN_SPAN edges. This endpoint provides on-demand
+   * evidence hydration so the inspector can display supporting spans,
+   * member phrases, parent topics, related phrases, and derived documents
+   * without polluting the canvas snapshot.
+   */
+  router.get('/hub/:nodeId', async (req: Request, res: Response) => {
+    try {
+      const accountId = resolveAccountId(req);
+      if (!accountId) {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+
+      const { nodeId } = req.params;
+      const db = await getDbClient(req);
+      const database = (db as any).getDatabase?.();
+      if (!database) {
+        return res.status(500).json({ success: false, error: 'SQLite database unavailable' });
+      }
+
+      // 1. Fetch the hub node itself
+      const hubRow = database
+        .prepare(
+          `SELECT id, kind, properties FROM nodes
+           WHERE account_id = ? AND id = ?`
+        )
+        .get(accountId, nodeId) as { id: string; kind: string; properties: string } | undefined;
+
+      if (!hubRow) {
+        return res
+          .status(404)
+          .json({ success: false, error: 'Hub node not found in account scope' });
+      }
+
+      const hubProps = parseProperties(hubRow.properties);
+      const hubKind = hubRow.kind;
+
+      // 2. Fetch all edges touching this node
+      const edges = database
+        .prepare(
+          `SELECT id, kind, from_id, to_id, properties FROM edges
+           WHERE account_id = ? AND (from_id = ? OR to_id = ?)`
+        )
+        .all(accountId, nodeId, nodeId) as Array<{
+        id: string;
+        kind: string;
+        from_id: string;
+        to_id: string;
+        properties: string;
+      }>;
+
+      // Collect all connected node IDs
+      const connectedIds = new Set<string>();
+      for (const edge of edges) {
+        const otherId = edge.from_id === nodeId ? edge.to_id : edge.from_id;
+        connectedIds.add(otherId);
+      }
+
+      // 3. Batch-fetch connected nodes
+      const connectedNodes = new Map<
+        string,
+        { id: string; kind: string; properties: Record<string, any> }
+      >();
+      if (connectedIds.size > 0) {
+        const idList = Array.from(connectedIds);
+        // SQLite has a variable limit; batch in groups of 500
+        for (let i = 0; i < idList.length; i += 500) {
+          const batch = idList.slice(i, i + 500);
+          const placeholders = batch.map(() => '?').join(', ');
+          const rows = database
+            .prepare(
+              `SELECT id, kind, properties FROM nodes
+               WHERE account_id = ? AND id IN (${placeholders})`
+            )
+            .all(accountId, ...batch) as Array<{ id: string; kind: string; properties: string }>;
+          for (const row of rows) {
+            connectedNodes.set(row.id, {
+              id: row.id,
+              kind: row.kind,
+              properties: parseProperties(row.properties),
+            });
+          }
+        }
+      }
+
+      // 4. Classify edges into evidence categories
+      const connectedSpans: Array<{
+        id: string;
+        text: string;
+        sourceId: string;
+        startChar?: number;
+        endChar?: number;
+      }> = [];
+      const memberPhrases: Array<{ id: string; text: string; frequency: number }> = [];
+      const parentTopics: Array<{ id: string; name: string; status: string }> = [];
+      const derivedDocs: Array<{ id: string; title: string }> = [];
+      const edgeSummary: Record<string, number> = {};
+
+      // Track span IDs for related-phrase co-occurrence
+      const hubSpanIds = new Set<string>();
+
+      for (const edge of edges) {
+        edgeSummary[edge.kind] = (edgeSummary[edge.kind] || 0) + 1;
+        const otherId = edge.from_id === nodeId ? edge.to_id : edge.from_id;
+        const otherNode = connectedNodes.get(otherId);
+        if (!otherNode) continue;
+
+        // SourceSpan connections (via MENTIONS or OCCURS_IN_SPAN)
+        if (otherNode.kind === 'SourceSpan') {
+          hubSpanIds.add(otherNode.id);
+          connectedSpans.push({
+            id: otherNode.id,
+            text: String(otherNode.properties.text || otherNode.properties.normalized_text || ''),
+            sourceId: String(otherNode.properties.source_id || ''),
+            startChar:
+              typeof otherNode.properties.start_char === 'number'
+                ? otherNode.properties.start_char
+                : undefined,
+            endChar:
+              typeof otherNode.properties.end_char === 'number'
+                ? otherNode.properties.end_char
+                : undefined,
+          });
+        }
+
+        // Member Phrases (for Topics: BELONGS_TO_TOPIC edges where this topic is the target)
+        if (
+          hubKind === 'Topic' &&
+          edge.kind === 'BELONGS_TO_TOPIC' &&
+          edge.to_id === nodeId &&
+          otherNode.kind === 'Phrase'
+        ) {
+          memberPhrases.push({
+            id: otherNode.id,
+            text: String(otherNode.properties.text || otherNode.properties.normalized_text || ''),
+            frequency: Number(
+              otherNode.properties.frequency || otherNode.properties.metadata?.total_frequency || 0
+            ),
+          });
+        }
+
+        // Parent Topics (for Phrases: BELONGS_TO_TOPIC edges where this phrase is the source)
+        if (
+          hubKind === 'Phrase' &&
+          edge.kind === 'BELONGS_TO_TOPIC' &&
+          edge.from_id === nodeId &&
+          otherNode.kind === 'Topic'
+        ) {
+          parentTopics.push({
+            id: otherNode.id,
+            name: String(otherNode.properties.name || otherNode.id),
+            status: String(otherNode.properties.topic_status || 'suggested'),
+          });
+        }
+
+        // Derived Documents (DERIVES_FROM edges where the UnifiedDoc derives from this node)
+        if (
+          edge.kind === 'DERIVES_FROM' &&
+          edge.from_id !== nodeId &&
+          otherNode.kind === 'UnifiedDoc'
+        ) {
+          derivedDocs.push({
+            id: otherNode.id,
+            title: String(otherNode.properties.title || otherNode.properties.name || otherNode.id),
+          });
+        }
+      }
+
+      // 5. Related phrases via co-occurrence (phrases sharing the same spans)
+      const relatedPhrases: Array<{ id: string; text: string; sharedSpanCount: number }> = [];
+      if (hubKind === 'Phrase' && hubSpanIds.size > 0) {
+        // Find other phrases that MENTIONS the same spans
+        const spanIdList = Array.from(hubSpanIds);
+        for (let i = 0; i < spanIdList.length; i += 500) {
+          const batch = spanIdList.slice(i, i + 500);
+          const placeholders = batch.map(() => '?').join(', ');
+          const coEdges = database
+            .prepare(
+              `SELECT e.from_id, COUNT(*) as shared_count
+               FROM edges e
+               JOIN nodes n ON n.id = e.from_id AND n.account_id = ?
+               WHERE e.account_id = ?
+                 AND e.kind = 'MENTIONS'
+                 AND e.to_id IN (${placeholders})
+                 AND e.from_id != ?
+                 AND n.kind = 'Phrase'
+               GROUP BY e.from_id
+               ORDER BY shared_count DESC
+               LIMIT 20`
+            )
+            .all(accountId, accountId, ...batch, nodeId) as Array<{
+            from_id: string;
+            shared_count: number;
+          }>;
+
+          for (const row of coEdges) {
+            const phraseNode = connectedNodes.get(row.from_id);
+            // May need a fresh fetch if not in connectedNodes
+            if (phraseNode) {
+              relatedPhrases.push({
+                id: phraseNode.id,
+                text: String(
+                  phraseNode.properties.text || phraseNode.properties.normalized_text || ''
+                ),
+                sharedSpanCount: row.shared_count,
+              });
+            } else {
+              const freshRow = database
+                .prepare(`SELECT id, properties FROM nodes WHERE account_id = ? AND id = ?`)
+                .get(accountId, row.from_id) as { id: string; properties: string } | undefined;
+              if (freshRow) {
+                const freshProps = parseProperties(freshRow.properties);
+                relatedPhrases.push({
+                  id: freshRow.id,
+                  text: String(freshProps.text || freshProps.normalized_text || ''),
+                  sharedSpanCount: row.shared_count,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // Sort member phrases by frequency desc
+      memberPhrases.sort((a, b) => b.frequency - a.frequency);
+
+      return res.json({
+        success: true,
+        hub: {
+          id: hubRow.id,
+          kind: hubKind,
+          label:
+            hubProps.name ||
+            hubProps.text ||
+            hubProps.normalized_text ||
+            hubProps.lemma ||
+            hubRow.id,
+          properties: hubProps,
+          connectedSpans,
+          memberPhrases,
+          parentTopics,
+          relatedPhrases,
+          derivedDocs,
+          edgeSummary,
+        },
+      });
+    } catch (error: any) {
+      console.error('[SpineRoutes] Hub detail failed:', error);
+      return res
+        .status(500)
+        .json({ success: false, error: 'Hub detail query failed', details: error.message });
+    }
+  });
+
   router.post('/traverse', async (req: Request, res: Response) => {
     try {
       const accountId = resolveAccountId(req);

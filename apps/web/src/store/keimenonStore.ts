@@ -186,6 +186,22 @@ interface KeimenonState {
   // Detail panel
   detailPanelNode: KeimenonNode | null;
 
+  // Evidence detail — lightweight search result display when SourceSpan is not in graph snapshot
+  evidenceDetail: {
+    spanId: string;
+    sourceId: string;
+    text: string;
+    excerpt?: string;
+    matchedTerms: string[];
+    score: number;
+    provenance?: {
+      sourceId: string;
+      spanId: string;
+      startChar?: number;
+      endChar?: number;
+    };
+  } | null;
+
   // Viewport
   viewport: KeimenonViewport;
 
@@ -230,6 +246,8 @@ interface KeimenonState {
   // Detail panel actions
   openDetailPanel: (node: KeimenonNode) => void;
   closeDetailPanel: () => void;
+  openEvidenceDetail: (evidence: NonNullable<KeimenonState['evidenceDetail']>) => void;
+  clearEvidenceDetail: () => void;
 
   // Viewport actions
   setViewport: (viewport: Partial<KeimenonViewport>) => void;
@@ -263,6 +281,7 @@ const initialState = {
   selectedNodeIds: new Set<string>(),
   hoveredNodeId: null,
   detailPanelNode: null,
+  evidenceDetail: null,
   viewport: { x: 0, y: 0, zoom: 1 },
   filters: {
     nodeTypes: new Set<string>(),
@@ -455,9 +474,13 @@ export const useKeimenonStore = create<KeimenonState>()(
 
       setHoveredNode: (id) => set({ hoveredNodeId: id }),
 
-      openDetailPanel: (node) => set({ detailPanelNode: node }),
+      openDetailPanel: (node) => set({ detailPanelNode: node, evidenceDetail: null }),
 
-      closeDetailPanel: () => set({ detailPanelNode: null }),
+      closeDetailPanel: () => set({ detailPanelNode: null, evidenceDetail: null }),
+
+      openEvidenceDetail: (evidence) => set({ evidenceDetail: evidence, detailPanelNode: null }),
+
+      clearEvidenceDetail: () => set({ evidenceDetail: null }),
 
       setViewport: (viewport) =>
         set((state) => ({

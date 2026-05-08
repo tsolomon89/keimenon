@@ -269,10 +269,13 @@ CREATE TABLE atomic_units (
 
 INSERT INTO nodes SELECT * FROM _nodes_backup;
 
-SELECT CASE
-  WHEN (SELECT COUNT(*) FROM nodes) < (SELECT COUNT(*) FROM _nodes_backup)
-  THEN RAISE(ABORT, 'Migration 040: nodes row count mismatch after restore')
-END;
+CREATE TEMP TABLE IF NOT EXISTS _nodes_migration_check (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  success INTEGER NOT NULL CHECK (success = 1)
+);
+INSERT INTO _nodes_migration_check (id, success)
+SELECT 1, CASE WHEN (SELECT COUNT(*) FROM nodes) < (SELECT COUNT(*) FROM _nodes_backup) THEN 0 ELSE 1 END;
+DROP TABLE _nodes_migration_check;
 
 -- ============================================================================
 -- 9. Rehydrate missing skinny nodes from payload backups
@@ -305,33 +308,27 @@ WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = au.id);
 -- 10. Restore payload rows from backups
 -- ============================================================================
 
+CREATE TEMP TABLE _migration_abort_check (val INTEGER CHECK (val = 0));
+
 INSERT INTO source_spans SELECT * FROM _source_spans_backup;
 
-SELECT CASE
-  WHEN (SELECT COUNT(*) FROM source_spans) < (SELECT COUNT(*) FROM _source_spans_backup)
-  THEN RAISE(ABORT, 'Migration 040: source_spans row count mismatch after restore')
-END;
+INSERT INTO _migration_abort_check
+SELECT 1 WHERE (SELECT COUNT(*) FROM source_spans) < (SELECT COUNT(*) FROM _source_spans_backup);
 
 INSERT INTO phrases SELECT * FROM _phrases_backup;
 
-SELECT CASE
-  WHEN (SELECT COUNT(*) FROM phrases) < (SELECT COUNT(*) FROM _phrases_backup)
-  THEN RAISE(ABORT, 'Migration 040: phrases row count mismatch after restore')
-END;
+INSERT INTO _migration_abort_check
+SELECT 1 WHERE (SELECT COUNT(*) FROM phrases) < (SELECT COUNT(*) FROM _phrases_backup);
 
 INSERT INTO packets SELECT * FROM _packets_backup;
 
-SELECT CASE
-  WHEN (SELECT COUNT(*) FROM packets) < (SELECT COUNT(*) FROM _packets_backup)
-  THEN RAISE(ABORT, 'Migration 040: packets row count mismatch after restore')
-END;
+INSERT INTO _migration_abort_check
+SELECT 1 WHERE (SELECT COUNT(*) FROM packets) < (SELECT COUNT(*) FROM _packets_backup);
 
 INSERT INTO atomic_units SELECT * FROM _atomic_units_backup;
 
-SELECT CASE
-  WHEN (SELECT COUNT(*) FROM atomic_units) < (SELECT COUNT(*) FROM _atomic_units_backup)
-  THEN RAISE(ABORT, 'Migration 040: atomic_units row count mismatch after restore')
-END;
+INSERT INTO _migration_abort_check
+SELECT 1 WHERE (SELECT COUNT(*) FROM atomic_units) < (SELECT COUNT(*) FROM _atomic_units_backup);
 
 -- ============================================================================
 -- 11. Restore edges
@@ -339,10 +336,8 @@ END;
 
 INSERT INTO edges SELECT * FROM _edges_backup;
 
-SELECT CASE
-  WHEN (SELECT COUNT(*) FROM edges) < (SELECT COUNT(*) FROM _edges_backup)
-  THEN RAISE(ABORT, 'Migration 040: edges row count mismatch after restore')
-END;
+INSERT INTO _migration_abort_check
+SELECT 1 WHERE (SELECT COUNT(*) FROM edges) < (SELECT COUNT(*) FROM _edges_backup);
 
 -- ============================================================================
 -- 12. Drop temp backups
@@ -456,9 +451,8 @@ END;
 
 CREATE TEMP TABLE _fk_violations AS SELECT * FROM pragma_foreign_key_check;
 
-SELECT CASE
-  WHEN (SELECT COUNT(*) FROM _fk_violations) > 0
-  THEN RAISE(ABORT, 'Migration 040: foreign key violations remain after migration')
-END;
+INSERT INTO _migration_abort_check
+SELECT 1 WHERE (SELECT COUNT(*) FROM _fk_violations) > 0;
 
 DROP TABLE _fk_violations;
+DROP TABLE _migration_abort_check;
