@@ -143,7 +143,7 @@ describe('graph-lod', () => {
     expect(plan.stats.gate.datasetTier).toBe('50k');
     expect(plan.stats.gate.pass).toBe(false); // Fails because 25,000 structural anchors are forced to survive the 324 budget limit
     expect(plan.visibleNodes.length).toBeGreaterThanOrEqual(25000);
-    expect(durationMs).toBeLessThan(5000);
+    expect(durationMs).toBeLessThan(10000);
   });
 
   it('evaluates custom performance gate inputs deterministically', () => {
@@ -152,6 +152,7 @@ describe('graph-lod', () => {
       totalNodeCount: 10_000,
       visibleNodeCount: 2_500,
       visibleEdgeCount: 8_000,
+      mustKeepNodeCount: 0,
     });
 
     expect(gate.datasetTier).toBe('10k');

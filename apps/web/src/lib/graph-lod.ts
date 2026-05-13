@@ -29,6 +29,7 @@ export interface LodPerformanceGate {
   edgeBudget: number;
   visibleNodes: number;
   visibleEdges: number;
+  overflowReason?: 'intentional_anchors' | 'lod_failure' | null;
 }
 
 export interface LodPlanStats {
@@ -399,6 +400,7 @@ export function evaluateLodPerformanceGate(input: {
   totalNodeCount: number;
   visibleNodeCount: number;
   visibleEdgeCount: number;
+  mustKeepNodeCount: number;
 }): LodPerformanceGate {
   const tier: LodPerformanceGate['datasetTier'] =
     input.totalNodeCount >= 50_000 ? '50k' : input.totalNodeCount >= 10_000 ? '10k' : 'default';
@@ -409,13 +411,32 @@ export function evaluateLodPerformanceGate(input: {
   const nodeBudget = Math.max(50, Math.floor(BASE_NODE_BUDGETS[input.level] * tierNodeMultiplier));
   const edgeBudget = Math.max(200, Math.floor(BASE_EDGE_BUDGETS[input.level] * tierEdgeMultiplier));
 
+  const pass = input.visibleNodeCount <= nodeBudget && input.visibleEdgeCount <= edgeBudget;
+  let overflowReason: 'intentional_anchors' | 'lod_failure' | null = null;
+
+  if (!pass) {
+    if (input.visibleNodeCount > nodeBudget) {
+      if (
+        input.mustKeepNodeCount >= input.visibleNodeCount ||
+        input.mustKeepNodeCount > nodeBudget
+      ) {
+        overflowReason = 'intentional_anchors';
+      } else {
+        overflowReason = 'lod_failure';
+      }
+    } else {
+      overflowReason = 'lod_failure';
+    }
+  }
+
   return {
     datasetTier: tier,
-    pass: input.visibleNodeCount <= nodeBudget && input.visibleEdgeCount <= edgeBudget,
+    pass,
     nodeBudget,
     edgeBudget,
     visibleNodes: input.visibleNodeCount,
     visibleEdges: input.visibleEdgeCount,
+    overflowReason,
   };
 }
 
@@ -506,6 +527,7 @@ export function buildLodPlan(input: BuildLodPlanInput): LodPlan {
       totalNodeCount: input.nodes.length,
       visibleNodeCount: allVisibleNodes.length,
       visibleEdgeCount: allVisibleEdges.length,
+      mustKeepNodeCount: pinnedNodeIds.size,
     });
 
     return {
@@ -645,6 +667,7 @@ export function buildLodPlan(input: BuildLodPlanInput): LodPlan {
     totalNodeCount: input.nodes.length,
     visibleNodeCount: visibleNodes.length,
     visibleEdgeCount: visibleEdges.length,
+    mustKeepNodeCount: mustKeepNodeIds.size,
   });
 
   return {
