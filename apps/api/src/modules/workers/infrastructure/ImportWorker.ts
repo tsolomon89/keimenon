@@ -768,6 +768,12 @@ export class ImportWorker extends BaseWorker {
             throw error;
           }
         }
+      } else {
+        const error = new Error(
+          'Bypass mode (KEIMENON_BULK_INSERTS=0) is a narrow non-import debug path and does not support normalized graph imports due to strict FK constraints (Migration 040).'
+        ) as Error & { code: string };
+        error.code = 'BYPASS_UNSUPPORTED_FOR_IMPORTS';
+        throw error;
       }
 
       const pipelineRunner = new ImportPipelineRunner(dbClient, writeQueue, batchAccumulator);

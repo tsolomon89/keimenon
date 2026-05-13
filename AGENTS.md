@@ -139,10 +139,9 @@ The **only** supported import rail is chunked upload:
 
 Implementation: `apps/api/src/routes/uploads.routes.ts`
 
-The old multipart `POST /api/v1/jobs/import` endpoint has been **retired**.
-The 410 compatibility shim has been removed from the route registration
-(commented out and marked `[DEAD CODE QUARANTINE]` in `import-jobs.routes.ts`).
-This file now only serves the `POST /api/v1/jobs/delete` route.
+The old multipart `POST /api/v1/jobs/import` endpoint is retired and removed.
+Chunked upload is the only supported import rail.
+`import-jobs.routes.ts` currently serves only valid remaining jobs routes, namely delete jobs.
 
 Do not re-introduce multipart import. Do not add new compatibility shims for retired rails.
 
@@ -214,7 +213,7 @@ Non-test import runs must fail loudly with `IMPORT_DB_WORKER_UNAVAILABLE` if the
 ### 6.2 Dev/Test Bypass: KEIMENON_BULK_INSERTS=0
 
 If `KEIMENON_BULK_INSERTS='0'` is set, the system bypasses the DB worker and writes nodes/edges synchronously via `DatabaseClient`.
-This is strictly a **dev/test/debug-only bypass** and is not a supported production runtime mode.
+This is strictly a **narrow non-import debug path**. Because `DatabaseClient` does not support inserting the graph identity payloads required by the Migration 040 foreign key constraints (such as `SourceSpan`, `Phrase`, `Packet`, and `AtomicUnit`), this bypass **fails loudly** if used during import. It is not a supported production runtime mode, and is not supported for full graph materialization.
 
 ### 6.3 DatabaseWriteQueue
 
