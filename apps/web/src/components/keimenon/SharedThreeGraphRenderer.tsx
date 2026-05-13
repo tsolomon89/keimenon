@@ -256,6 +256,14 @@ function sortLensFallbackEdges(edges: GraphEdgeWithData[]): GraphEdgeWithData[] 
   });
 }
 
+function matricesEqual(a: THREE.Matrix4, b: THREE.Matrix4 | null): boolean {
+  if (!b) return false;
+  for (let i = 0; i < 16; i++) {
+    if (a.elements[i] !== b.elements[i]) return false;
+  }
+  return true;
+}
+
 interface SceneRootProps {
   renderLens: RenderLens;
   interactive: boolean;
@@ -308,6 +316,26 @@ function SceneRoot({
   const suppressClickNodeIdRef = useRef<string | null>(null);
   const hoveredEdgeIdRef = useRef<string | null>(null);
   const lastHoverAtRef = useRef<number>(0);
+
+  const screenEdgesCacheRef = useRef<{
+    edges: ScreenEdgeGeometry[];
+    projectionMatrix: THREE.Matrix4;
+    matrixWorldInverse: THREE.Matrix4;
+    renderNodesVersion: number;
+    renderEdgesVersion: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  const renderNodesVersionRef = useRef(0);
+  useEffect(() => {
+    renderNodesVersionRef.current += 1;
+  }, [renderNodes]);
+
+  const renderEdgesVersionRef = useRef(0);
+  useEffect(() => {
+    renderEdgesVersionRef.current += 1;
+  }, [renderEdges]);
 
   useEffect(() => {
     const next = new Map<string, [number, number, number]>();
@@ -394,20 +422,40 @@ function SceneRoot({
       }
 
       const local = toLocalPoint(clientX, clientY);
-      const screenEdges: ScreenEdgeGeometry[] = [];
 
-      for (const entry of renderEdges) {
-        const source = renderNodeMapRef.current.get(entry.sourceId);
-        const target = renderNodeMapRef.current.get(entry.targetId);
-        if (!source || !target) {
-          continue;
+      let screenEdges: ScreenEdgeGeometry[] = [];
+      const cache = screenEdgesCacheRef.current;
+      const projEq = cache && matricesEqual(camera.projectionMatrix, cache.projectionMatrix);
+      const viewEq = cache && matricesEqual(camera.matrixWorldInverse, cache.matrixWorldInverse);
+      const edgesEq = cache && cache.renderEdgesVersion === renderEdgesVersionRef.current;
+      const nodesEq = cache && cache.renderNodesVersion === renderNodesVersionRef.current;
+      const sizeEq = cache && cache.width === size.width && cache.height === size.height;
+
+      if (cache && projEq && viewEq && edgesEq && nodesEq && sizeEq) {
+        screenEdges = cache.edges;
+      } else {
+        for (const entry of renderEdges) {
+          const source = renderNodeMapRef.current.get(entry.sourceId);
+          const target = renderNodeMapRef.current.get(entry.targetId);
+          if (!source || !target) {
+            continue;
+          }
+          screenEdges.push({
+            edgeId: entry.edge.id,
+            source: worldToScreen(source),
+            target: worldToScreen(target),
+            metadata: entry.edge.data,
+          });
         }
-        screenEdges.push({
-          edgeId: entry.edge.id,
-          source: worldToScreen(source),
-          target: worldToScreen(target),
-          metadata: entry.edge.data,
-        });
+        screenEdgesCacheRef.current = {
+          edges: screenEdges,
+          projectionMatrix: camera.projectionMatrix.clone(),
+          matrixWorldInverse: camera.matrixWorldInverse.clone(),
+          renderNodesVersion: renderNodesVersionRef.current,
+          renderEdgesVersion: renderEdgesVersionRef.current,
+          width: size.width,
+          height: size.height,
+        };
       }
 
       const localPick = pickNearestEdge(local, screenEdges, 10);
@@ -428,7 +476,16 @@ function SceneRoot({
         onEdgePick(pick);
       }
     },
-    [interactive, onEdgePick, renderEdges, toLocalPoint, worldToScreen]
+    [
+      interactive,
+      onEdgePick,
+      renderEdges,
+      toLocalPoint,
+      worldToScreen,
+      camera,
+      size.width,
+      size.height,
+    ]
   );
 
   useEffect(() => {

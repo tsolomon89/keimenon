@@ -124,7 +124,8 @@ describe('graph-lod', () => {
 
     expect(plan.level).toBe('L0');
     expect(plan.stats.gate.datasetTier).toBe('10k');
-    expect(plan.stats.gate.pass).toBe(true);
+    expect(plan.stats.gate.pass).toBe(false); // Fails because 5,000 structural anchors are forced to survive the 276 budget limit
+    expect(plan.visibleNodes.length).toBeGreaterThanOrEqual(5000);
     expect(durationMs).toBeLessThan(3000);
   });
 
@@ -140,7 +141,8 @@ describe('graph-lod', () => {
 
     expect(plan.level).toBe('L0');
     expect(plan.stats.gate.datasetTier).toBe('50k');
-    expect(plan.stats.gate.pass).toBe(true);
+    expect(plan.stats.gate.pass).toBe(false); // Fails because 25,000 structural anchors are forced to survive the 324 budget limit
+    expect(plan.visibleNodes.length).toBeGreaterThanOrEqual(25000);
     expect(durationMs).toBeLessThan(5000);
   });
 
@@ -248,5 +250,25 @@ describe('graph-lod', () => {
         ['AccountNode', 'Principal', 'Group', 'Source', 'SourceDoc'].includes(node.kind)
       )
     ).toBe(true);
+  });
+
+  it('preserves structural anchors even when the node budget is exceeded', () => {
+    const nodes: GraphNode[] = [];
+    for (let i = 0; i < 100; i++) {
+      nodes.push(createNode(i, 'Source', 0.1)); // anchors with low mass
+    }
+    for (let i = 100; i < 1100; i++) {
+      nodes.push(createNode(i, 'Topic', 0.9)); // non-anchors with high mass
+    }
+
+    const plan = buildLodPlan({
+      nodes,
+      edges: [],
+      zoom: 0.1,
+      optimizeLevel: 5, // Force tight budget
+    });
+
+    const sourceCount = plan.visibleNodes.filter((n) => n.kind === 'Source').length;
+    expect(sourceCount).toBe(100);
   });
 });

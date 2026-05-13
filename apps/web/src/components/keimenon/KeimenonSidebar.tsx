@@ -63,6 +63,7 @@ interface KeimenonSidebarProps {
   onUserUpdate?: (user: any) => void; // Callback when user is updated
   activeOperation?: Operation | null;
   onZoomToFilteredNodes?: () => void;
+  onStartConversation?: (nodes: KeimenonNode[]) => void;
 }
 
 export function KeimenonSidebar({
@@ -77,6 +78,7 @@ export function KeimenonSidebar({
   onUserUpdate,
   activeOperation,
   onZoomToFilteredNodes,
+  onStartConversation,
 }: KeimenonSidebarProps) {
   const CollapsedSidebar = (
     <button
@@ -817,6 +819,7 @@ export function KeimenonSidebar({
                   }
                 })();
               }}
+              onStartConversation={onStartConversation}
             />
           ) : selectedNode ? (
             // Single node selected -> Source Inspector

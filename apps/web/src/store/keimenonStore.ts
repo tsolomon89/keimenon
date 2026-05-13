@@ -333,7 +333,7 @@ export const useKeimenonStore = create<KeimenonState>()(
 
           // Snapshot path is canonical for center-graph boot.
           // Keep raw snapshot selection unless a defensive structural fallback is required.
-          let keimenonNodes = allNodes;
+          const keimenonNodes = allNodes;
           const smartFilterApplied = false;
 
           // Build a set of visible node IDs for edge filtering

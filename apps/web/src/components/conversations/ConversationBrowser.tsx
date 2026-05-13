@@ -37,6 +37,18 @@ interface ConversationBrowserProps {
   onConversationSelect?: (conversation: ConversationThread) => void;
   onCreateConversation?: () => void;
   className?: string;
+  initialContextSpec?: {
+    source_ids: string[];
+    group_ids: string[];
+    workspace_id?: string;
+    include_pinned: boolean;
+    expansion_rule: 'none' | 'neighbors' | 'connected';
+  };
+  initialContextSummary?: {
+    selectedNodeCount: number;
+    unsupportedNodeCount: number;
+  };
+  onInitialContextConsumed?: () => void;
 }
 
 // Row height for virtualized conversation list
@@ -86,6 +98,9 @@ export function ConversationBrowser({
   onConversationSelect,
   onCreateConversation,
   className = '',
+  initialContextSpec,
+  initialContextSummary,
+  onInitialContextConsumed,
 }: ConversationBrowserProps) {
   const [conversations, setConversations] = useState<ConversationThread[]>([]);
   const [principals, setPrincipals] = useState<Map<string, Principal>>(new Map());
@@ -94,6 +109,23 @@ export function ConversationBrowser({
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Track context spec in state so we can pass it to the modal
+  // even after clearing it from the parent
+  const [modalContextSpec, setModalContextSpec] =
+    useState<ConversationBrowserProps['initialContextSpec']>(undefined);
+  const [modalContextSummary, setModalContextSummary] =
+    useState<ConversationBrowserProps['initialContextSummary']>(undefined);
+
+  // Auto-open modal if initial context is provided
+  useEffect(() => {
+    if (initialContextSpec) {
+      setModalContextSpec(initialContextSpec);
+      setModalContextSummary(initialContextSummary);
+      setShowCreateModal(true);
+      onInitialContextConsumed?.();
+    }
+  }, [initialContextSpec, initialContextSummary, onInitialContextConsumed]);
 
   // Virtualization refs
   const listContainerRef = useRef<HTMLDivElement>(null);
@@ -140,6 +172,8 @@ export function ConversationBrowser({
     if (onCreateConversation) {
       onCreateConversation();
     } else {
+      setModalContextSpec(undefined);
+      setModalContextSummary(undefined);
       setShowCreateModal(true);
     }
   };
@@ -260,6 +294,8 @@ export function ConversationBrowser({
       {showCreateModal && (
         <CreateConversationModal
           principals={Array.from(principals.values())}
+          contextSpec={modalContextSpec}
+          contextSummary={modalContextSummary}
           onClose={() => setShowCreateModal(false)}
           onCreate={async (input) => {
             try {
@@ -407,11 +443,28 @@ const ConversationCard = memo(function ConversationCard({
 // Create Conversation Modal
 interface CreateConversationModalProps {
   principals: Principal[];
+  contextSpec?: {
+    source_ids: string[];
+    group_ids: string[];
+    workspace_id?: string;
+    include_pinned: boolean;
+    expansion_rule: 'none' | 'neighbors' | 'connected';
+  };
+  contextSummary?: {
+    selectedNodeCount: number;
+    unsupportedNodeCount: number;
+  };
   onClose: () => void;
   onCreate: (input: CreateConversationInput) => Promise<void>;
 }
 
-function CreateConversationModal({ principals, onClose, onCreate }: CreateConversationModalProps) {
+function CreateConversationModal({
+  principals,
+  contextSpec,
+  contextSummary,
+  onClose,
+  onCreate,
+}: CreateConversationModalProps) {
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState<ConversationThread['purpose']>('general');
   const [agentId, setAgentId] = useState<string>('');
@@ -429,6 +482,7 @@ function CreateConversationModal({ principals, onClose, onCreate }: CreateConver
         title: title.trim(),
         purpose,
         agent_principal_id: agentId || undefined,
+        context_spec: contextSpec,
       });
     } finally {
       setCreating(false);
@@ -497,6 +551,23 @@ function CreateConversationModal({ principals, onClose, onCreate }: CreateConver
               ))}
             </select>
           </div>
+
+          {/* Context Summary Warning */}
+          {contextSummary && (
+            <div className="mb-6 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <h4 className="text-sm font-medium text-blue-400 mb-1">Canvas Selection</h4>
+              <p className="text-xs text-slate-300">
+                Discussing {contextSummary.selectedNodeCount - contextSummary.unsupportedNodeCount}{' '}
+                valid sources/groups.
+              </p>
+              {contextSummary.unsupportedNodeCount > 0 && (
+                <p className="text-xs text-amber-400 mt-1">
+                  Note: {contextSummary.unsupportedNodeCount} nodes were excluded (only canonical
+                  Sources and Groups are supported).
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-end gap-3">
             <button

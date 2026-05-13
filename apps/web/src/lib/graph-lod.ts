@@ -558,6 +558,14 @@ export function buildLodPlan(input: BuildLodPlanInput): LodPlan {
     mustKeepNodeIds.add(focusNodeId);
   }
 
+  // Phase 2: LOD Policy Hardening
+  // Ensure structural anchors are always preserved and bypass mass/budget culling.
+  for (const node of input.nodes) {
+    if (HIERARCHY_ANCHOR_KINDS.has(node.kind)) {
+      mustKeepNodeIds.add(node.id);
+    }
+  }
+
   if (mustKeepNodeIds.size > 0) {
     const currentlyVisible = new Set(visibleNodes.map((node) => node.id));
     for (const pinnedNodeId of mustKeepNodeIds) {

@@ -23,6 +23,11 @@ import { useOperating } from '@/contexts/OperatingContext';
 import { useUIVersion } from '@/contexts/UIVersionContext';
 import { useBackgroundOperations, type Operation } from '@/contexts/BackgroundOperationsContext';
 import { useConsole } from '@/contexts/ConsoleContext';
+import { KeimenonNode } from '@/store/keimenonStore';
+import {
+  buildConversationContextFromSelection,
+  type ConversationContextSummary,
+} from '@/lib/conversation-context';
 import type { ImportJob } from './ImportsTableCard';
 import type { ImportUiStatus } from '@/lib/import-job-progress';
 import { getCoreProcessReimportStatus, type CoreProcessReimportStatus } from '@/lib/api-client';
@@ -56,6 +61,7 @@ export function KeimenonLayout({
   const { operations, getOperation, getActiveOperations, addOperation, updateOperation } =
     useBackgroundOperations();
   const { isOpen: footerOpen, setIsOpen: setFooterOpen } = useConsole();
+  const { setKeimenonMode } = useShell();
   const keimenonViewportRef = useRef<KeimenonViewportHandle>(null);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
@@ -77,6 +83,22 @@ export function KeimenonLayout({
   const [pinnedNodeCount, setPinnedNodeCount] = useState(0);
   const [renderLens, setRenderLens] = useState<RenderLens>('2d');
   const [ndConfig, setNdConfig] = useState<NdProjectionConfig>(DEFAULT_ND_CONFIG);
+  const [pendingConversationContext, setPendingConversationContext] =
+    useState<ConversationContextSummary | null>(null);
+
+  const handleStartConversationFromSelection = (nodes: KeimenonNode[]) => {
+    const contextSummary = buildConversationContextFromSelection(nodes);
+
+    // Only navigate if there are eligible nodes
+    if (
+      contextSummary.contextSpec.source_ids.length > 0 ||
+      contextSummary.contextSpec.group_ids.length > 0
+    ) {
+      setPendingConversationContext(contextSummary);
+      setKeimenonMode('dashboard');
+      setDashboardView('conversations');
+    }
+  };
 
   const handleZoomToFilteredNodes = () => {
     keimenonViewportRef.current?.zoomToFitFilteredNodes();
@@ -452,7 +474,20 @@ export function KeimenonLayout({
                       ) : dashboardView === 'workspaces' ? (
                         <WorkspaceBrowser className="h-full" />
                       ) : (
-                        <ConversationBrowser className="h-full" />
+                        <ConversationBrowser
+                          className="h-full"
+                          initialContextSpec={pendingConversationContext?.contextSpec}
+                          initialContextSummary={
+                            pendingConversationContext
+                              ? {
+                                  selectedNodeCount: pendingConversationContext.selectedNodeCount,
+                                  unsupportedNodeCount:
+                                    pendingConversationContext.unsupportedNodeCount,
+                                }
+                              : undefined
+                          }
+                          onInitialContextConsumed={() => setPendingConversationContext(null)}
+                        />
                       )}
                     </div>
                   )}
@@ -481,6 +516,7 @@ export function KeimenonLayout({
               selectedUser={selectedUser}
               onUserUpdate={handleUserUpdate}
               activeOperation={activeOperation}
+              onStartConversation={handleStartConversationFromSelection}
             />
           </>
         )}
