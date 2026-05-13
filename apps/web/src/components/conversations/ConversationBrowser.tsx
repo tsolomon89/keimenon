@@ -32,22 +32,14 @@ import {
   CreateConversationInput,
   Principal,
 } from '@/services/organization-service';
+import { ConversationContextSpec, ConversationContextSummary } from '@/lib/conversation-context';
 
 interface ConversationBrowserProps {
   onConversationSelect?: (conversation: ConversationThread) => void;
   onCreateConversation?: () => void;
   className?: string;
-  initialContextSpec?: {
-    source_ids: string[];
-    group_ids: string[];
-    workspace_id?: string;
-    include_pinned: boolean;
-    expansion_rule: 'none' | 'neighbors' | 'connected';
-  };
-  initialContextSummary?: {
-    selectedNodeCount: number;
-    unsupportedNodeCount: number;
-  };
+  initialContextSpec?: ConversationContextSpec;
+  initialContextSummary?: Omit<ConversationContextSummary, 'contextSpec'>;
   onInitialContextConsumed?: () => void;
 }
 
@@ -296,12 +288,18 @@ export function ConversationBrowser({
           principals={Array.from(principals.values())}
           contextSpec={modalContextSpec}
           contextSummary={modalContextSummary}
-          onClose={() => setShowCreateModal(false)}
+          onClose={() => {
+            setShowCreateModal(false);
+            setModalContextSpec(undefined);
+            setModalContextSummary(undefined);
+          }}
           onCreate={async (input) => {
             try {
               const newConversation = await organizationService.createConversation(input);
               setConversations((prev) => [newConversation, ...prev]);
               setShowCreateModal(false);
+              setModalContextSpec(undefined);
+              setModalContextSummary(undefined);
               setSelectedConversationId(newConversation.id);
               onConversationSelect?.(newConversation);
             } catch (err: any) {
@@ -443,17 +441,8 @@ const ConversationCard = memo(function ConversationCard({
 // Create Conversation Modal
 interface CreateConversationModalProps {
   principals: Principal[];
-  contextSpec?: {
-    source_ids: string[];
-    group_ids: string[];
-    workspace_id?: string;
-    include_pinned: boolean;
-    expansion_rule: 'none' | 'neighbors' | 'connected';
-  };
-  contextSummary?: {
-    selectedNodeCount: number;
-    unsupportedNodeCount: number;
-  };
+  contextSpec?: ConversationContextSpec;
+  contextSummary?: Omit<ConversationContextSummary, 'contextSpec'>;
   onClose: () => void;
   onCreate: (input: CreateConversationInput) => Promise<void>;
 }

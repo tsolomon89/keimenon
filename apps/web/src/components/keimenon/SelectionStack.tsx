@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ChevronDown,
   ChevronUp,
@@ -47,6 +47,11 @@ export function SelectionStack({
   } | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
   const [explainError, setExplainError] = useState<string | null>(null);
+
+  const conversationContext = useMemo(
+    () => buildConversationContextFromSelection(selectedNodes),
+    [selectedNodes]
+  );
 
   const toggleExpanded = (nodeId: string) => {
     setExpandedCards((prev) => {
@@ -355,27 +360,22 @@ export function SelectionStack({
           {onStartConversation && (
             <button
               onClick={() => {
-                const contextSummary = buildConversationContextFromSelection(selectedNodes);
                 if (
-                  contextSummary.contextSpec.source_ids.length > 0 ||
-                  contextSummary.contextSpec.group_ids.length > 0
+                  conversationContext.contextSpec.source_ids.length > 0 ||
+                  conversationContext.contextSpec.group_ids.length > 0
                 ) {
                   onStartConversation(selectedNodes);
                 }
               }}
               disabled={
-                buildConversationContextFromSelection(selectedNodes).contextSpec.source_ids
-                  .length === 0 &&
-                buildConversationContextFromSelection(selectedNodes).contextSpec.group_ids
-                  .length === 0
+                conversationContext.contextSpec.source_ids.length === 0 &&
+                conversationContext.contextSpec.group_ids.length === 0
               }
               title={
-                buildConversationContextFromSelection(selectedNodes).contextSpec.source_ids
-                  .length === 0 &&
-                buildConversationContextFromSelection(selectedNodes).contextSpec.group_ids
-                  .length === 0
+                conversationContext.contextSpec.source_ids.length === 0 &&
+                conversationContext.contextSpec.group_ids.length === 0
                   ? 'No eligible sources or groups selected'
-                  : `Discuss selection (${buildConversationContextFromSelection(selectedNodes).contextSpec.source_ids.length} sources, ${buildConversationContextFromSelection(selectedNodes).contextSpec.group_ids.length} groups)`
+                  : `Discuss selection (${conversationContext.contextSpec.source_ids.length} sources, ${conversationContext.contextSpec.group_ids.length} groups)`
               }
               className="flex items-center gap-1 px-3 py-1.5 text-xs bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 rounded transition-colors text-indigo-400 disabled:opacity-50"
             >
