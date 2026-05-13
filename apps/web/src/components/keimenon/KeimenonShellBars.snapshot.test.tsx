@@ -18,11 +18,14 @@ const storeState = {
     sourceRoleFilter: new Set<string>(),
   },
   nodes: [] as Array<{ sourceRole?: string }>,
+  edges: [] as Array<unknown>,
   setSourceRoleFilter: vi.fn(),
+  setFilteredNodeIds: vi.fn(),
 };
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => mockUseAuth(),
+  getToken: vi.fn(() => 'test-token'),
 }));
 
 vi.mock('@/contexts/OperatingContext', () => ({

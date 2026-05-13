@@ -45,6 +45,7 @@ vi.mock('@/store/keimenonStore', () => ({
   useKeimenonStore: {
     getState: vi.fn(() => ({
       loadGraphData: vi.fn(),
+      setFilteredNodeIds: vi.fn(),
     })),
   },
 }));
@@ -65,6 +66,8 @@ vi.mock('@/lib/api-client', () => ({
   cancelJob: vi.fn(),
   pauseJob: vi.fn(),
   resumeJob: vi.fn(),
+  authenticatedFetch: vi.fn((url: string, init?: RequestInit) => global.fetch(url, init)),
+  getGraphSnapshot: vi.fn().mockResolvedValue({ nodes: [], edges: [] }),
 }));
 
 import { useJobStream } from '../../hooks/useJobStream';

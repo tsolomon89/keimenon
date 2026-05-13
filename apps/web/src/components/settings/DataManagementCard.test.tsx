@@ -19,6 +19,7 @@ import { DataManagementCard, AdminDataManagementCard } from './DataManagementCar
 // Mock the contexts
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: vi.fn(),
+  getToken: vi.fn(() => 'test-token'),
 }));
 
 vi.mock('@/contexts/BackgroundOperationsContext', () => ({
@@ -27,6 +28,25 @@ vi.mock('@/contexts/BackgroundOperationsContext', () => ({
 
 vi.mock('@/lib/env.config', () => ({
   API_BASE_URL: 'http://localhost:3000',
+}));
+
+// Mock api-client — authenticatedFetch delegates to global.fetch so tests can
+// control responses via global.fetch mocks without JWT decode issues.
+// Preserves the real function's token-guard behavior for auth edge-case tests.
+vi.mock('@/lib/api-client', () => ({
+  authenticatedFetch: vi.fn((url: string, init?: RequestInit) => {
+    const token = localStorage.getItem('keimenon_token');
+    if (!token) {
+      return Promise.reject(new Error('Not authenticated'));
+    }
+    return global.fetch(url, {
+      ...init,
+      headers: {
+        ...(init?.headers as Record<string, string>),
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }),
 }));
 
 // Mock useJobStream (relative path to avoid alias issues)

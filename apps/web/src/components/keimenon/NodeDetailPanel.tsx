@@ -22,11 +22,13 @@ import {
   Link2,
   CheckCircle,
   AlertTriangle,
+  AlertCircle,
   Users,
   MessageCircle,
   ThumbsUp,
   ThumbsDown,
   Pencil,
+  Quote,
 } from 'lucide-react';
 import { useContentLoader, ContentType } from '@/hooks/useContentLoader';
 import {
@@ -497,9 +499,15 @@ export function NodeDetailPanel() {
     );
   }
 
-  const content = getContent(detailPanelNode.id);
-  const loading = isLoading(detailPanelNode.id);
-  const error = getError(detailPanelNode.id);
+  // At this point detailPanelNode is guaranteed non-null:
+  // - Line 399: early return when both are null
+  // - Line 404: early return when detailPanelNode is null but evidenceDetail is truthy
+  // TypeScript can't narrow through the JSX returns above, so we assert explicitly.
+  const node = detailPanelNode!;
+
+  const content = getContent(node.id);
+  const loading = isLoading(node.id);
+  const error = getError(node.id);
 
   return (
     <>
@@ -517,10 +525,8 @@ export function NodeDetailPanel() {
         {/* Header */}
         <div className="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-4 flex items-center justify-between z-10">
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-semibold text-white truncate">
-              {getNodeTitle(detailPanelNode)}
-            </h2>
-            <p className="text-sm text-slate-400">{detailPanelNode.type}</p>
+            <h2 className="text-lg font-semibold text-white truncate">{getNodeTitle(node)}</h2>
+            <p className="text-sm text-slate-400">{node.type}</p>
           </div>
           <button
             onClick={closeDetailPanel}
@@ -537,23 +543,21 @@ export function NodeDetailPanel() {
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between items-start">
               <dt className="text-slate-400">ID:</dt>
-              <dd className="text-slate-200 font-mono text-xs">
-                {detailPanelNode.id.substring(0, 16)}...
-              </dd>
+              <dd className="text-slate-200 font-mono text-xs">{node.id.substring(0, 16)}...</dd>
             </div>
-            {detailPanelNode.data.metadata?.timestamp && (
+            {node.data.metadata?.timestamp && (
               <div className="flex justify-between items-start">
                 <dt className="text-slate-400">Time:</dt>
                 <dd className="text-slate-200 text-xs">
-                  {new Date(detailPanelNode.data.metadata.timestamp).toLocaleString()}
+                  {new Date(node.data.metadata.timestamp).toLocaleString()}
                 </dd>
               </div>
             )}
-            {detailPanelNode.data.metadata?.char_count && (
+            {node.data.metadata?.char_count && (
               <div className="flex justify-between items-start">
                 <dt className="text-slate-400">Size:</dt>
                 <dd className="text-slate-200">
-                  {detailPanelNode.data.metadata.char_count.toLocaleString()} chars
+                  {node.data.metadata.char_count.toLocaleString()} chars
                 </dd>
               </div>
             )}
@@ -577,31 +581,31 @@ export function NodeDetailPanel() {
         </div>
 
         {/* Provenance - World Model V5: WHO/HOW/FROM/VERIFIED */}
-        {detailPanelNode.data?.metadata?.provenance && (
-          <ProvenanceSection provenance={detailPanelNode.data.metadata.provenance} />
+        {node.data?.metadata?.provenance && (
+          <ProvenanceSection provenance={node.data.metadata.provenance} />
         )}
 
         {/* World Model V5: Principal node details */}
-        {detailPanelNode.type === 'Principal' && (
-          <PrincipalDetailsSection metadata={detailPanelNode.data?.metadata || {}} />
+        {node.type === 'Principal' && (
+          <PrincipalDetailsSection metadata={node.data?.metadata || {}} />
         )}
 
         {/* World Model V5: ConversationThread node details */}
-        {detailPanelNode.type === 'ConversationThread' && (
-          <ConversationThreadDetailsSection metadata={detailPanelNode.data?.metadata || {}} />
+        {node.type === 'ConversationThread' && (
+          <ConversationThreadDetailsSection metadata={node.data?.metadata || {}} />
         )}
 
         {/* Semantic Spine: UnifiedDoc details */}
-        {detailPanelNode.type === 'UnifiedDoc' && (
+        {node.type === 'UnifiedDoc' && (
           <UnifiedDocDetailsSection
-            metadata={detailPanelNode.data?.metadata || {}}
+            metadata={node.data?.metadata || {}}
             citations={(content as UnifiedDocContent)?.citations}
             tokenCount={(content as UnifiedDocContent)?.token_count}
           />
         )}
 
         {/* Actions - Phrase */}
-        {(detailPanelNode.type === 'Phrase' || detailPanelNode.type === 'phrase') && (
+        {(node.type === 'Phrase' || node.type === 'phrase') && (
           <div className="p-4 border-b border-slate-700 bg-slate-800/30">
             <h3 className="text-sm font-medium text-slate-300 mb-3">Actions</h3>
 
@@ -639,16 +643,14 @@ export function NodeDetailPanel() {
         )}
 
         {/* Actions - Topic lifecycle + Verify */}
-        {detailPanelNode.type === 'Topic' && (
+        {node.type === 'Topic' && (
           <div className="p-4 border-b border-slate-700 bg-slate-800/30">
             {/* Topic status badge */}
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-medium text-slate-300">Actions</h3>
-              {(topicStatus || detailPanelNode.data?.metadata?.topic_status) && (
+              {(topicStatus || node.data?.metadata?.topic_status) && (
                 <TopicStatusBadge
-                  status={
-                    topicStatus || detailPanelNode.data?.metadata?.topic_status || 'suggested'
-                  }
+                  status={topicStatus || node.data?.metadata?.topic_status || 'suggested'}
                 />
               )}
             </div>
@@ -724,9 +726,7 @@ export function NodeDetailPanel() {
                 </button>
                 <button
                   onClick={() => {
-                    setEditedTopicName(
-                      detailPanelNode.data?.label || detailPanelNode.data?.metadata?.name || ''
-                    );
+                    setEditedTopicName(node.data?.label || node.data?.metadata?.name || '');
                     setIsEditingTopicName(true);
                   }}
                   disabled={!!topicLifecycleAction}
@@ -979,7 +979,7 @@ export function NodeDetailPanel() {
           )}
 
           {!loading && !error && content && (
-            <ContentDisplay content={content} nodeType={detailPanelNode.type} />
+            <ContentDisplay content={content} nodeType={node.type} />
           )}
 
           {!loading && !error && !content && (

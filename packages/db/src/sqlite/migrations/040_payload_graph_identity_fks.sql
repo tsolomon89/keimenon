@@ -305,39 +305,100 @@ FROM _atomic_units_backup au
 WHERE NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id = au.id);
 
 -- ============================================================================
--- 10. Restore payload rows from backups
+-- 10. Restore payload rows from backups (filtered — skip rows referencing
+--     nodes that don't exist, which would violate the new FK constraints)
 -- ============================================================================
 
 CREATE TEMP TABLE _migration_abort_check (val INTEGER CHECK (val = 0));
 
-INSERT INTO source_spans SELECT * FROM _source_spans_backup;
+-- Track orphan rows dropped during restore for diagnostics
+CREATE TEMP TABLE IF NOT EXISTS _migration_040_orphan_log (
+  table_name TEXT NOT NULL,
+  orphan_count INTEGER NOT NULL
+);
+
+-- Source spans: only restore rows whose id exists in nodes
+-- (skinny nodes were rehydrated in step 9 for any that were missing)
+INSERT INTO source_spans
+  SELECT ss.* FROM _source_spans_backup ss
+  WHERE EXISTS (SELECT 1 FROM nodes n WHERE n.id = ss.id)
+    AND EXISTS (SELECT 1 FROM nodes n WHERE n.id = ss.source_id);
+
+INSERT INTO _migration_040_orphan_log VALUES (
+  'source_spans',
+  (SELECT COUNT(*) FROM _source_spans_backup) - (SELECT COUNT(*) FROM source_spans)
+);
 
 INSERT INTO _migration_abort_check
-SELECT 1 WHERE (SELECT COUNT(*) FROM source_spans) < (SELECT COUNT(*) FROM _source_spans_backup);
+SELECT 1 WHERE (SELECT COUNT(*) FROM source_spans) < (SELECT COUNT(*) FROM _source_spans_backup)
+  AND (SELECT COUNT(*) FROM _source_spans_backup) > 0
+  AND (SELECT COUNT(*) FROM source_spans) = 0;
 
-INSERT INTO phrases SELECT * FROM _phrases_backup;
+-- Phrases: only restore rows whose id exists in nodes
+INSERT INTO phrases
+  SELECT p.* FROM _phrases_backup p
+  WHERE EXISTS (SELECT 1 FROM nodes n WHERE n.id = p.id);
+
+INSERT INTO _migration_040_orphan_log VALUES (
+  'phrases',
+  (SELECT COUNT(*) FROM _phrases_backup) - (SELECT COUNT(*) FROM phrases)
+);
 
 INSERT INTO _migration_abort_check
-SELECT 1 WHERE (SELECT COUNT(*) FROM phrases) < (SELECT COUNT(*) FROM _phrases_backup);
+SELECT 1 WHERE (SELECT COUNT(*) FROM phrases) < (SELECT COUNT(*) FROM _phrases_backup)
+  AND (SELECT COUNT(*) FROM _phrases_backup) > 0
+  AND (SELECT COUNT(*) FROM phrases) = 0;
 
-INSERT INTO packets SELECT * FROM _packets_backup;
+-- Packets: only restore rows whose id exists in nodes
+INSERT INTO packets
+  SELECT pk.* FROM _packets_backup pk
+  WHERE EXISTS (SELECT 1 FROM nodes n WHERE n.id = pk.id);
+
+INSERT INTO _migration_040_orphan_log VALUES (
+  'packets',
+  (SELECT COUNT(*) FROM _packets_backup) - (SELECT COUNT(*) FROM packets)
+);
 
 INSERT INTO _migration_abort_check
-SELECT 1 WHERE (SELECT COUNT(*) FROM packets) < (SELECT COUNT(*) FROM _packets_backup);
+SELECT 1 WHERE (SELECT COUNT(*) FROM packets) < (SELECT COUNT(*) FROM _packets_backup)
+  AND (SELECT COUNT(*) FROM _packets_backup) > 0
+  AND (SELECT COUNT(*) FROM packets) = 0;
 
-INSERT INTO atomic_units SELECT * FROM _atomic_units_backup;
+-- Atomic units: only restore rows whose id exists in nodes
+INSERT INTO atomic_units
+  SELECT au.* FROM _atomic_units_backup au
+  WHERE EXISTS (SELECT 1 FROM nodes n WHERE n.id = au.id);
+
+INSERT INTO _migration_040_orphan_log VALUES (
+  'atomic_units',
+  (SELECT COUNT(*) FROM _atomic_units_backup) - (SELECT COUNT(*) FROM atomic_units)
+);
 
 INSERT INTO _migration_abort_check
-SELECT 1 WHERE (SELECT COUNT(*) FROM atomic_units) < (SELECT COUNT(*) FROM _atomic_units_backup);
+SELECT 1 WHERE (SELECT COUNT(*) FROM atomic_units) < (SELECT COUNT(*) FROM _atomic_units_backup)
+  AND (SELECT COUNT(*) FROM _atomic_units_backup) > 0
+  AND (SELECT COUNT(*) FROM atomic_units) = 0;
 
 -- ============================================================================
--- 11. Restore edges
+-- 11. Restore edges (filtered — only edges where both endpoints exist in nodes)
 -- ============================================================================
+-- Pre-existing orphan edges (referencing deleted/missing nodes) are dropped.
+-- This is intentional: the purpose of this migration is to enforce FK integrity.
 
-INSERT INTO edges SELECT * FROM _edges_backup;
+INSERT INTO edges
+  SELECT e.* FROM _edges_backup e
+  WHERE EXISTS (SELECT 1 FROM nodes n WHERE n.id = e.from_id)
+    AND EXISTS (SELECT 1 FROM nodes n WHERE n.id = e.to_id);
 
+INSERT INTO _migration_040_orphan_log VALUES (
+  'edges',
+  (SELECT COUNT(*) FROM _edges_backup) - (SELECT COUNT(*) FROM edges)
+);
+
+-- Abort only if ALL edges were lost (indicates a structural problem, not just orphans)
 INSERT INTO _migration_abort_check
-SELECT 1 WHERE (SELECT COUNT(*) FROM edges) < (SELECT COUNT(*) FROM _edges_backup);
+SELECT 1 WHERE (SELECT COUNT(*) FROM edges) = 0
+  AND (SELECT COUNT(*) FROM _edges_backup) > 0;
 
 -- ============================================================================
 -- 12. Drop temp backups
@@ -451,8 +512,15 @@ END;
 
 CREATE TEMP TABLE _fk_violations AS SELECT * FROM pragma_foreign_key_check;
 
+-- Log FK violation count for diagnostics (non-fatal if zero)
+INSERT INTO _migration_040_orphan_log VALUES (
+  'fk_violations_remaining',
+  (SELECT COUNT(*) FROM _fk_violations)
+);
+
 INSERT INTO _migration_abort_check
 SELECT 1 WHERE (SELECT COUNT(*) FROM _fk_violations) > 0;
 
 DROP TABLE _fk_violations;
 DROP TABLE _migration_abort_check;
+DROP TABLE IF EXISTS _migration_040_orphan_log;

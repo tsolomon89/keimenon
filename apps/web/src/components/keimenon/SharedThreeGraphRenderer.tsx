@@ -14,6 +14,8 @@ import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { GraphEdge, GraphNode } from '@keimenon/graph';
 import { buildLodPlan, type LodPlanStats } from '@/lib/graph-lod';
+import { getPositionStore, type PositionStore } from '@/lib/position-store';
+import { BenchmarkHarness } from './renderer/benchmark-harness';
 import {
   DEFAULT_ND_CONFIG,
   type NdProjectionConfig,
@@ -68,6 +70,9 @@ export interface SharedThreeGraphRendererProps {
   includeConnectors?: boolean;
   pinnedNodeIds?: string[];
   interactive?: boolean;
+  showBenchmark?: boolean;
+  /** Account ID for position persistence scoping. When provided, drag positions are saved to localStorage. */
+  accountId?: string | null;
   onNodeClick?: (node: GraphNode) => void;
   onNodeDoubleClick?: (node: GraphNode) => void;
   onSelectionChange?: (selectedIds: string[]) => void;
@@ -97,6 +102,8 @@ export interface SharedThreeGraphRendererHandle {
   zoomToFitNodes: (nodeIds: string[]) => void;
   resetView: () => void;
   optimizeView: () => void;
+  /** Clear all persisted drag positions and reset to deterministic layout */
+  resetLayout: () => void;
 }
 
 interface RenderNode extends RenderNodePrimitive {
@@ -692,6 +699,8 @@ export const SharedThreeGraphRenderer = forwardRef<
       includeConnectors = false,
       pinnedNodeIds = [],
       interactive = true,
+      accountId,
+      showBenchmark = false,
       onNodeClick,
       onNodeDoubleClick,
       onSelectionChange,
@@ -713,6 +722,33 @@ export const SharedThreeGraphRenderer = forwardRef<
       Map<string, [number, number, number]>
     >(new Map());
     const sceneControllerRef = useRef<SceneController | null>(null);
+    const positionStoreRef = useRef<PositionStore | null>(null);
+
+    // ── Position persistence: initialize store from localStorage ──
+    useEffect(() => {
+      if (!accountId) {
+        positionStoreRef.current = null;
+        return;
+      }
+
+      const store = getPositionStore(accountId);
+      positionStoreRef.current = store;
+
+      // Hydrate drag positions from persisted state
+      const persisted = store.getAll();
+      if (persisted.size > 0) {
+        setDragPositionsById(persisted);
+      }
+
+      // Flush on page unload
+      const handleBeforeUnload = () => store.flush();
+      window.addEventListener('beforeunload', handleBeforeUnload);
+
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        store.flush();
+      };
+    }, [accountId]);
 
     useEffect(() => {
       setWebGlReady(supportsWebGl());
@@ -766,6 +802,7 @@ export const SharedThreeGraphRenderer = forwardRef<
           focusMode: focusModeEnabled,
           pinnedNodeIds,
           includeConnectors,
+          enableClusters: true,
         }),
       [
         normalizedNodes,
@@ -1107,6 +1144,9 @@ export const SharedThreeGraphRenderer = forwardRef<
         next.set(nodeId, position);
         return next;
       });
+
+      // Persist to localStorage
+      positionStoreRef.current?.set(nodeId, position);
     }, []);
 
     const interactionState = useMemo<GraphInteractionState>(
@@ -1146,6 +1186,14 @@ export const SharedThreeGraphRenderer = forwardRef<
         resetView: () => sceneControllerRef.current?.centerView(),
         optimizeView: () =>
           sceneControllerRef.current?.zoomToFitNodes(Array.from(visibleNodeIdSet.values())),
+        resetLayout: () => {
+          // Clear persisted positions
+          positionStoreRef.current?.clear();
+          // Clear in-memory drag positions
+          setDragPositionsById(new Map());
+          // Re-center the camera
+          sceneControllerRef.current?.centerView();
+        },
       }),
       [visibleNodeIdSet]
     );
@@ -1195,6 +1243,7 @@ export const SharedThreeGraphRenderer = forwardRef<
             onDragSessionChange={setDragSession}
             onNodeDrag={onNodeDrag}
           />
+          {showBenchmark && <BenchmarkHarness />}
         </Canvas>
 
         {marqueeRect && (

@@ -5,8 +5,27 @@ import userEvent from '@testing-library/user-event';
 import { ExportDataCard } from './ExportDataCard';
 import { errorCapture } from '@/services/error-capture.service';
 
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: vi.fn(),
+  getToken: vi.fn(() => 'test-token'),
+}));
+
 vi.mock('@/lib/env.config', () => ({
   API_BASE_URL: 'http://localhost:4001',
+}));
+
+// Mock api-client — authenticatedFetch delegates to global.fetch so tests can
+// control responses via global.fetch mocks without JWT decode issues.
+vi.mock('@/lib/api-client', () => ({
+  authenticatedFetch: vi.fn((url: string, init?: RequestInit) =>
+    global.fetch(url, {
+      ...init,
+      headers: {
+        ...(init?.headers as Record<string, string>),
+        Authorization: `Bearer ${localStorage.getItem('keimenon_token') || 'test-token'}`,
+      },
+    })
+  ),
 }));
 
 vi.mock('@/services/error-capture.service', () => ({

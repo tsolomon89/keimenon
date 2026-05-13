@@ -6,6 +6,7 @@ import {
   GraphEdge as APIGraphEdge,
 } from '@/lib/api-client';
 import { getNodeLabel } from '@/lib/node-labels';
+import { computeDeterministicPositions, computeSingleNodePosition } from '@/lib/graph-layout';
 
 const GRAPH_LOAD_RETRY_DELAYS_MS = [300, 900, 2100] as const;
 const SSR_VIEWPORT_FALLBACK = { width: 1280, height: 720 } as const;
@@ -116,8 +117,8 @@ function mapApiNodeToKeimenon(apiNode: APIGraphNode): KeimenonNode {
     kind: apiNode.kind,
     sourceRole: apiNode.properties?.source_role as SourceRole | undefined,
     position: {
-      x: Math.random() * 800,
-      y: Math.random() * 600,
+      x: 0, // Resolved by computeDeterministicPositions after batch mapping
+      y: 0,
     },
     data: {
       label,
@@ -350,6 +351,19 @@ export const useKeimenonStore = create<KeimenonState>()(
             keimenonNodes = allNodes.filter((n) => STRUCTURAL_KINDS.has(n.kind || n.type));
           }
 
+          // Compute deterministic positions from node identity and hierarchy topology.
+          // This replaces the previous Math.random() positioning, ensuring spatial stability.
+          const layoutPositions = computeDeterministicPositions(
+            keimenonNodes.map((n) => ({ id: n.id, kind: n.kind || n.type })),
+            keimenonEdges
+          );
+          for (const node of keimenonNodes) {
+            const pos = layoutPositions.get(node.id);
+            if (pos) {
+              node.position = pos;
+            }
+          }
+
           set({
             nodes: keimenonNodes,
             edges: keimenonEdges,
@@ -387,6 +401,12 @@ export const useKeimenonStore = create<KeimenonState>()(
                 position: existing.position,
               });
             } else {
+              // Assign deterministic position for new nodes without full graph context
+              const pos = computeSingleNodePosition({
+                id: mapped.id,
+                kind: mapped.kind || mapped.type,
+              });
+              mapped.position = pos;
               mergedNodesById.set(mapped.id, mapped);
             }
           }

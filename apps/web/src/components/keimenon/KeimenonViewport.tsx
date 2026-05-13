@@ -71,6 +71,7 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
     const clearSelection = useKeimenonStore((state) => state.clearSelection);
     const loadGraphData = useKeimenonStore((state) => state.loadGraphData);
     const setFilteredNodeIds = useKeimenonStore((state) => state.setFilteredNodeIds);
+    const currentAccountId = useKeimenonStore((state) => state.currentAccountId);
 
     // Auto-refresh graph when import job completes
     const handleImportComplete = useCallback(
@@ -487,6 +488,7 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
               focusModeEnabled={focusModeEnabled}
               includeConnectors={includeConnectors}
               pinnedNodeIds={pinnedNodeIds}
+              accountId={currentAccountId}
               onNodeClick={handleNodeClick}
               onNodeDoubleClick={handleNodeDoubleClick}
               onSelectionChange={handleSelectionChange}
@@ -524,13 +526,22 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
                 <div className="text-slate-500">
                   focus {lodStats.focusMode ? 'on' : 'off'} - pinned {pinnedNodeIds.length}
                 </div>
-                <button
-                  type="button"
-                  className="mt-2 px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 border border-slate-600"
-                  onClick={() => keimenon2DRef.current?.optimizeView()}
-                >
-                  Optimize View
-                </button>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    type="button"
+                    className="px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 border border-slate-600"
+                    onClick={() => keimenon2DRef.current?.optimizeView()}
+                  >
+                    Optimize View
+                  </button>
+                  <button
+                    type="button"
+                    className="px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-amber-700 border border-slate-600"
+                    onClick={() => keimenon2DRef.current?.resetLayout()}
+                  >
+                    Reset Layout
+                  </button>
+                </div>
               </div>
             )}
           </>

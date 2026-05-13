@@ -8,10 +8,25 @@ vi.mock('@/lib/env.config', () => ({
   API_BASE_URL: 'http://localhost:4001',
 }));
 
+// Mock api-client — authenticatedFetch delegates to global.fetch so tests can
+// control responses via global.fetch mocks without JWT decode issues.
+vi.mock('@/lib/api-client', () => ({
+  authenticatedFetch: vi.fn((url: string, init?: RequestInit) =>
+    global.fetch(url, {
+      ...init,
+      headers: {
+        ...(init?.headers as Record<string, string>),
+        Authorization: `Bearer ${localStorage.getItem('keimenon_token') || 'test-token'}`,
+      },
+    })
+  ),
+}));
+
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({
     user: { userId: 'test-user', accountId: 'test-account', permissionLevel: 'admin' },
   }),
+  getToken: vi.fn(() => 'test-token'),
 }));
 
 describe('ApiKeysPanel', () => {
@@ -206,7 +221,7 @@ describe('ApiKeysPanel', () => {
     render(<ApiKeysPanel />);
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load API keys')).toBeInTheDocument();
+      expect(screen.getByText('Server error')).toBeInTheDocument();
     });
   });
 });

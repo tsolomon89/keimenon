@@ -1,4 +1,10 @@
 import type { GraphEdge, GraphNode } from '@keimenon/graph';
+import {
+  buildClusterPlan,
+  clusterToGraphNode,
+  clusterEdgeToGraphEdge,
+  type ClusterPlan,
+} from './cluster-supernodes';
 
 export type LODLevel = 'L0' | 'L1' | 'L2' | 'L3';
 
@@ -12,6 +18,8 @@ export interface BuildLodPlanInput {
   minMass?: number;
   includeConnectors?: boolean;
   optimizeLevel?: number;
+  /** When true, L0 zoom produces cluster supernodes instead of individual nodes. */
+  enableClusters?: boolean;
 }
 
 export interface LodPerformanceGate {
@@ -35,6 +43,13 @@ export interface LodPlanStats {
   focusMode: boolean;
   pinnedNodeCount: number;
   gate: LodPerformanceGate;
+  /** Present when L0 cluster aggregation is active */
+  clusterStats?: {
+    clusterCount: number;
+    passthroughCount: number;
+    interClusterEdgeCount: number;
+    orphanClusterMemberCount: number;
+  };
 }
 
 export interface LodPlan {
@@ -44,6 +59,8 @@ export interface LodPlan {
   visibleNodeIds: Set<string>;
   visibleEdgeIds: Set<string>;
   stats: LodPlanStats;
+  /** Full cluster plan data when L0 cluster aggregation is active */
+  clusterPlan?: ClusterPlan;
 }
 
 const L0_KINDS = new Set([
@@ -410,6 +427,110 @@ export function buildLodPlan(input: BuildLodPlanInput): LodPlan {
   const pinnedNodeIds = new Set((input.pinnedNodeIds || []).filter((value) => value.length > 0));
   const includeConnectors = input.includeConnectors === true;
   const minMass = Number.isFinite(input.minMass) ? Math.max(0, input.minMass as number) : 0;
+  const enableClusters = input.enableClusters === true;
+
+  // ─── L0 Cluster Aggregation Path ───
+  if (level === 'L0' && enableClusters && !focusMode) {
+    const clusterPlan = buildClusterPlan(input.nodes, input.edges);
+
+    // Convert clusters to synthetic GraphNodes
+    const clusterNodes = clusterPlan.clusters.map(clusterToGraphNode);
+    const passthroughNodes = clusterPlan.passthrough;
+    const allVisibleNodes = [...passthroughNodes, ...clusterNodes];
+
+    // Convert inter-cluster edges to GraphEdges
+    const clusterEdges = clusterPlan.clusterEdges.map(clusterEdgeToGraphEdge);
+
+    // Also include direct edges between passthrough nodes
+    const passthroughIds = new Set(passthroughNodes.map((n) => n.id));
+    const passthroughEdges = input.edges.filter((edge) => {
+      const sourceId = edgeEndpointId(edge.source);
+      const targetId = edgeEndpointId(edge.target);
+      return passthroughIds.has(sourceId) && passthroughIds.has(targetId);
+    });
+
+    // Also include edges from passthrough to cluster anchors (now cluster IDs)
+    const anchorToClusterId = new Map<string, string>();
+    for (const cluster of clusterPlan.clusters) {
+      anchorToClusterId.set(cluster.anchorId, cluster.id);
+    }
+
+    const passthroughToClusterEdges: GraphEdge[] = [];
+    for (const edge of input.edges) {
+      const sourceId = edgeEndpointId(edge.source);
+      const targetId = edgeEndpointId(edge.target);
+
+      // passthrough → cluster member
+      const sourceCluster = clusterPlan.nodeToCluster.get(sourceId);
+      const targetCluster = clusterPlan.nodeToCluster.get(targetId);
+
+      if (
+        passthroughIds.has(sourceId) &&
+        targetCluster &&
+        !targetCluster.startsWith('passthrough:')
+      ) {
+        passthroughToClusterEdges.push({
+          ...edge,
+          id: `ptc_${edge.id}`,
+          target: targetCluster,
+        } as unknown as GraphEdge);
+      } else if (
+        passthroughIds.has(targetId) &&
+        sourceCluster &&
+        !sourceCluster.startsWith('passthrough:')
+      ) {
+        passthroughToClusterEdges.push({
+          ...edge,
+          id: `ptc_${edge.id}`,
+          source: sourceCluster,
+        } as unknown as GraphEdge);
+      }
+    }
+
+    // Deduplicate passthrough-to-cluster edges by source|target pair
+    const ptcSeen = new Set<string>();
+    const dedupedPtcEdges = passthroughToClusterEdges.filter((edge) => {
+      const key = `${edgeEndpointId(edge.source)}|${edgeEndpointId(edge.target)}`;
+      if (ptcSeen.has(key)) return false;
+      ptcSeen.add(key);
+      return true;
+    });
+
+    const allVisibleEdges = [...passthroughEdges, ...clusterEdges, ...dedupedPtcEdges];
+
+    const visibleNodeIds = new Set(allVisibleNodes.map((n) => n.id));
+    const visibleEdgeIds = new Set(allVisibleEdges.map((e) => e.id));
+
+    const gate = evaluateLodPerformanceGate({
+      level,
+      totalNodeCount: input.nodes.length,
+      visibleNodeCount: allVisibleNodes.length,
+      visibleEdgeCount: allVisibleEdges.length,
+    });
+
+    return {
+      level,
+      visibleNodes: allVisibleNodes,
+      visibleEdges: allVisibleEdges,
+      visibleNodeIds,
+      visibleEdgeIds,
+      clusterPlan,
+      stats: {
+        level,
+        totalNodeCount: input.nodes.length,
+        totalEdgeCount: input.edges.length,
+        visibleNodeCount: allVisibleNodes.length,
+        visibleEdgeCount: allVisibleEdges.length,
+        hiddenNodeCount: Math.max(0, input.nodes.length - allVisibleNodes.length),
+        hiddenEdgeCount: Math.max(0, input.edges.length - allVisibleEdges.length),
+        focusNodeId,
+        focusMode,
+        pinnedNodeCount: pinnedNodeIds.size,
+        gate,
+        clusterStats: clusterPlan.stats,
+      },
+    };
+  }
   const massThreshold = resolveMassThreshold(level, minMass, optimizeLevel);
   const nodeBudget = resolveNodeBudget(level, optimizeLevel);
   const edgeBudget = resolveEdgeBudget(level, optimizeLevel);

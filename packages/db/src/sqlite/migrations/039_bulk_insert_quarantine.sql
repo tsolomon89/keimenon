@@ -1,7 +1,6 @@
 -- Migration 039: Bulk Insert Quarantine
 -- Added for Epic 3: Bulk Insert Pipeline to support stage-aware retry and quarantine.
-
-BEGIN TRANSACTION;
+-- Note: Transaction wrapping is handled by MigrationRunner.runMigration().
 
 CREATE TABLE IF NOT EXISTS bulk_insert_quarantine (
   id TEXT PRIMARY KEY,
@@ -19,5 +18,3 @@ CREATE TABLE IF NOT EXISTS bulk_insert_quarantine (
 
 CREATE INDEX IF NOT EXISTS idx_quarantine_account ON bulk_insert_quarantine(account_id);
 CREATE INDEX IF NOT EXISTS idx_quarantine_batch ON bulk_insert_quarantine(batch_id);
-
-COMMIT;

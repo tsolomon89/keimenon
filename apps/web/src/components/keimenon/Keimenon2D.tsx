@@ -29,6 +29,8 @@ interface Keimenon2DProps {
   includeConnectors?: boolean;
   pinnedNodeIds?: string[];
   interactive?: boolean;
+  /** Account ID for position persistence scoping */
+  accountId?: string | null;
   onNodeClick?: (node: GraphNode) => void;
   onNodeDoubleClick?: (node: GraphNode) => void;
   onSelectionChange?: (selectedIds: string[]) => void;
@@ -58,6 +60,8 @@ export interface Keimenon2DHandle {
   zoomToFitNodes: (nodeIds: string[]) => void;
   resetView: () => void;
   optimizeView: () => void;
+  /** Clear all persisted drag positions and reset to deterministic layout */
+  resetLayout: () => void;
 }
 
 export const Keimenon2D = memo(
@@ -74,6 +78,7 @@ export const Keimenon2D = memo(
         includeConnectors = false,
         pinnedNodeIds = [],
         interactive = true,
+        accountId,
         onNodeClick,
         onNodeDoubleClick,
         onSelectionChange,
@@ -96,6 +101,7 @@ export const Keimenon2D = memo(
         zoomToFitNodes: (nodeIds: string[]) => rendererRef.current?.zoomToFitNodes(nodeIds),
         resetView: () => rendererRef.current?.resetView(),
         optimizeView: () => rendererRef.current?.optimizeView(),
+        resetLayout: () => rendererRef.current?.resetLayout(),
       }));
 
       return (
@@ -111,6 +117,7 @@ export const Keimenon2D = memo(
           includeConnectors={includeConnectors}
           pinnedNodeIds={pinnedNodeIds}
           interactive={interactive}
+          accountId={accountId}
           onNodeClick={onNodeClick}
           onNodeDoubleClick={onNodeDoubleClick}
           onSelectionChange={onSelectionChange}
