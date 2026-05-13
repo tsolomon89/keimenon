@@ -1,0 +1,56 @@
+version: 1.0.0
+system: Keimenon Agent OS
+
+workflows:
+  - name: sqlite-schema-migration
+    description: Orchestrates safe execution and validation of SQLite schema migrations
+  - name: golden-path-verification
+    description: Coordinates E2E tests, builds, and runtime doctors for full-stack release gates
+  - name: chat-import-pipeline
+    description: Validates chunked ingestions, entity resolution, and similarity edge generation
+  - name: graph-canvas-development
+    description: Coordinates React state synchronization with the Three.js renderer schema
+  - name: n-pass-iteration
+    description: Iteratively refines agent context and specs to reduce ambiguity without destabilizing the corpus
+
+personas:
+  - name: account-isolation-guardian
+  - name: api-contract-engineer
+  - name: architecture-contract-guardian
+  - name: chat-import-pipeline-engineer
+  - name: code-review-enforcer
+  - name: crm-settings-specialist
+  - name: desktop-runtime-engineer
+  - name: documentation-steward
+  - name: e2e-test-generator
+  - name: entity-resolution-specialist
+  - name: graph-rendering-engineer
+  - name: graph-schema-validator
+  - name: mcp-integration-expert
+  - name: meta-text-assembler
+  - name: ops-hygiene-engineer
+  - name: parser-normalization-specialist
+  - name: performance-scale-auditor
+  - name: pipeline-verifier
+  - name: repo-cartographer
+  - name: security-auth-reviewer
+  - name: semantic-grouping-architect
+  - name: source-provenance-auditor
+  - name: sqlite-storage-specialist
+  - name: test-strategy-engineer
+  - name: web-app-engineer
+
+skills:
+  - name: autonomous-test-discoverer
+  - name: autonomous-test-generator
+  - name: autonomous-test-healer
+  - name: autonomous-test-runner
+  - name: code-execution-orchestrator
+  - name: code-review-enforcer
+  - name: e2e-test-generator
+  - name: graph-schema-validator
+  - name: mcp-integration-expert
+  - name: pipeline-verifier
+  - name: research-specialist
+  - name: security-auditor
+  - name: vector-similarity-ops
