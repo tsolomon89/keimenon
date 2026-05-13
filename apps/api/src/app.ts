@@ -201,6 +201,7 @@ export function createApp(): { app: Express; context: AppContext } {
         },
         graph: {
           snapshot: 'GET /api/v1/graph/snapshot',
+          readModel: 'GET /api/v1/graph/read-model',
         },
       },
     });

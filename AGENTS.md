@@ -358,7 +358,5 @@ The following are derived from this file and must stay aligned:
 
 Any drift in derived artifacts is a bug and must be corrected back to this contract.
 
-**Current drift status (2026-05-13):** All four derived files are stale relative to this update.
-They should be synced in a follow-up documentation pass. The gap analysis and traceability matrix
-predate the pre-live posture section, the graph write path section, and the bootstrap/schema contract.
-`GEMINI.md` should be updated to mirror this file.
+**Current drift status (2026-05-13):** `GEMINI.md` is synced to mirror this file.
+`docs/specs/vision-contract-v1.md`, `docs/specs/vision-traceability-matrix.md`, and `agent_context/vision_gap_analysis.md` remain stale relative to this update and should be synced in a follow-up documentation pass.

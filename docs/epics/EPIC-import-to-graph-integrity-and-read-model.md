@@ -53,7 +53,12 @@ The Keimenon vision contract dictates a strict local-first, similarity-first kno
 
 ## Task breakdown
 
-- [x] Correct `AGENTS.md` and `GEMINI.md` to remove references to quarantined shims.
+- [x] Phase 1 Contract/Doc Correction Status:
+  - `AGENTS.md`: complete
+  - `GEMINI.md`: complete after this pass
+  - `vision-contract-v1.md`: pending
+  - `vision-traceability-matrix.md`: pending
+  - `agent_context/vision_gap_analysis.md`: pending
 - [x] Update `semantic-spine-loop.test.ts` to use `phrases` table instead of `json_extract`.
 - [x] Add `graphBirth` diagnostics payload to the job status API.
 - [x] Implement `GET /api/v1/graph/read-model`.

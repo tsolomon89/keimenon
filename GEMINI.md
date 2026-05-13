@@ -213,7 +213,7 @@ Non-test import runs must fail loudly with `IMPORT_DB_WORKER_UNAVAILABLE` if the
 ### 6.2 Dev/Test Bypass: KEIMENON_BULK_INSERTS=0
 
 If `KEIMENON_BULK_INSERTS='0'` is set, the system bypasses the DB worker and writes nodes/edges synchronously via `DatabaseClient`.
-This is strictly a **dev/test/debug-only bypass** and is not a supported production runtime mode.
+This is strictly a **narrow non-import debug path**. Because `DatabaseClient` does not support inserting the graph identity payloads required by the Migration 040 foreign key constraints (such as `SourceSpan`, `Phrase`, `Packet`, and `AtomicUnit`), this bypass **fails loudly** if used during import. It is not a supported production runtime mode, and is not supported for full graph materialization.
 
 ### 6.3 DatabaseWriteQueue
 
@@ -358,7 +358,5 @@ The following are derived from this file and must stay aligned:
 
 Any drift in derived artifacts is a bug and must be corrected back to this contract.
 
-**Current drift status (2026-05-13):** All four derived files are stale relative to this update.
-They should be synced in a follow-up documentation pass. The gap analysis and traceability matrix
-predate the pre-live posture section, the graph write path section, and the bootstrap/schema contract.
-`GEMINI.md` should be updated to mirror this file.
+**Current drift status (2026-05-13):** `GEMINI.md` is synced to mirror this file.
+`docs/specs/vision-contract-v1.md`, `docs/specs/vision-traceability-matrix.md`, and `agent_context/vision_gap_analysis.md` remain stale relative to this update and should be synced in a follow-up documentation pass.
