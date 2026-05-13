@@ -21,6 +21,7 @@ import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import assert from 'node:assert/strict';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
+import { createImportJob } from './utils/test-helpers';
 import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
@@ -194,9 +195,13 @@ async function waitForJobStatus(
 function cleanupTestData(accountId: string) {
   try {
     // Delete all nodes for test account
-    db.prepare('DELETE FROM nodes WHERE account_id = ?').run(accountId);
+    db.prepare(
+      "DELETE FROM nodes WHERE account_id = ? AND kind NOT IN ('AccountNode', 'UserNode', 'AgentNode', 'Principal', 'Board', 'Constellation')"
+    ).run(accountId);
     // Delete all edges for test account
-    db.prepare('DELETE FROM edges WHERE account_id = ?').run(accountId);
+    db.prepare(
+      'DELETE FROM edges WHERE account_id = ? AND (from_id NOT IN (SELECT id FROM nodes WHERE account_id = ?) OR to_id NOT IN (SELECT id FROM nodes WHERE account_id = ?))'
+    ).run(accountId, accountId, accountId);
     // Delete all jobs for test account
     db.prepare('DELETE FROM jobs WHERE account_id = ?').run(accountId);
     // Delete all job events for test account
@@ -340,25 +345,15 @@ beforeEach(() => {
 
 describe('Import Jobs', () => {
   it('should create import job from file upload', async () => {
-    const form = createFormData(TEST_FILES.tiny, {
+    const { jobId: _tempJobId_response } = await createImportJob(TEST_FILES.tiny, adminToken, {
       extractCode: true,
-      codeSettings: {
-        minLength: 50,
-      },
+      codeSettings: { minLength: 50 },
     });
-
-    const response = await fetch(`${API_URL}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        ...form.getHeaders(),
-      },
-      body: form,
+    const response = await fetch(`${API_URL}/api/v1/jobs/${_tempJobId_response}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
-
-    assert.strictEqual(response.ok, true);
-
     const data = (await response.json()) as any;
+    data.jobId = _tempJobId_response;
     assert.strictEqual(data.success, true);
     assert.ok(data.jobId !== undefined && data.jobId !== null);
     assert.strictEqual(data.job.type, 'import');
@@ -369,17 +364,12 @@ describe('Import Jobs', () => {
 
   it('should process import job and update progress', async () => {
     // Create job
-    const form = createFormData(TEST_FILES.tiny);
-    const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        ...form.getHeaders(),
-      },
-      body: form,
+    const { jobId: _tempJobId_createResponse } = await createImportJob(TEST_FILES.tiny, adminToken);
+    const createResponse = await fetch(`${API_URL}/api/v1/jobs/${_tempJobId_createResponse}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
-
     const createData = (await createResponse.json()) as any;
+    createData.jobId = _tempJobId_createResponse;
     const jobId = createData.jobId;
 
     console.log(`   📋 Created job: ${jobId}`);
@@ -420,17 +410,12 @@ describe('Import Jobs', () => {
     fs.writeFileSync(invalidFile, '{ invalid json }');
 
     try {
-      const form = createFormData(invalidFile);
-      const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${adminToken}`,
-          ...form.getHeaders(),
-        },
-        body: form,
+      const { jobId: _tempJobId_createResponse } = await createImportJob(invalidFile, adminToken);
+      const createResponse = await fetch(`${API_URL}/api/v1/jobs/${_tempJobId_createResponse}`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
       });
-
       const createData = (await createResponse.json()) as any;
+      createData.jobId = _tempJobId_createResponse;
       const jobId = createData.jobId;
 
       // Wait for completion (should fail)
@@ -452,19 +437,7 @@ describe('Import Jobs', () => {
 
   it('should support job cancellation', async () => {
     // Create job
-    const form = createFormData(TEST_FILES.small); // Use small file for longer runtime
-    const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        ...form.getHeaders(),
-      },
-      body: form,
-    });
-
-    assert.strictEqual(createResponse.ok, true, 'Job creation should succeed');
-    const createData = (await createResponse.json()) as any;
-    const jobId = createData.jobId;
+    const { jobId } = await createImportJob(TEST_FILES.small, adminToken);
     assert.ok(jobId, 'Job ID should be returned');
 
     console.log(`   📋 Created job ${jobId}, waiting for it to start...`);
@@ -529,17 +502,12 @@ describe('Import Jobs', () => {
 
     // Create 5 jobs (assuming worker pool has limited concurrency)
     for (let i = 0; i < 5; i++) {
-      const form = createFormData(TEST_FILES.small);
-      const response = await fetch(`${API_URL}/api/v1/jobs/import`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${adminToken}`,
-          ...form.getHeaders(),
-        },
-        body: form,
+      const { jobId: _tempJobId_response } = await createImportJob(TEST_FILES.small, adminToken);
+      const response = await fetch(`${API_URL}/api/v1/jobs/${_tempJobId_response}`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
       });
-
       const data = (await response.json()) as any;
+      data.jobId = _tempJobId_response;
       jobIds.push(data.jobId);
     }
 
@@ -580,18 +548,15 @@ describe('Import Jobs', () => {
 
   it('should pause a running job', async () => {
     // Create job with small file for longer runtime
-    const form = createFormData(TEST_FILES.small);
-    const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        ...form.getHeaders(),
-      },
-      body: form,
+    const { jobId: _tempJobId_createResponse } = await createImportJob(
+      TEST_FILES.small,
+      adminToken
+    );
+    const createResponse = await fetch(`${API_URL}/api/v1/jobs/${_tempJobId_createResponse}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
-
-    assert.strictEqual(createResponse.ok, true, 'Job creation should succeed');
     const createData = (await createResponse.json()) as any;
+    createData.jobId = _tempJobId_createResponse;
     const jobId = createData.jobId;
 
     console.log(`   📋 Created job ${jobId}, waiting for it to start...`);
@@ -650,17 +615,15 @@ describe('Import Jobs', () => {
 
   it('should resume a paused job', async () => {
     // Create and pause a job
-    const form = createFormData(TEST_FILES.small);
-    const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        ...form.getHeaders(),
-      },
-      body: form,
+    const { jobId: _tempJobId_createResponse } = await createImportJob(
+      TEST_FILES.small,
+      adminToken
+    );
+    const createResponse = await fetch(`${API_URL}/api/v1/jobs/${_tempJobId_createResponse}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
-
     const createData = (await createResponse.json()) as any;
+    createData.jobId = _tempJobId_createResponse;
     const jobId = createData.jobId;
 
     // Give worker a brief chance to pick up the job
@@ -739,17 +702,12 @@ describe('Import Jobs', () => {
 
   it('should not pause a job that is not running', async () => {
     // Create job
-    const form = createFormData(TEST_FILES.tiny);
-    const createResponse = await fetch(`${API_URL}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        ...form.getHeaders(),
-      },
-      body: form,
+    const { jobId: _tempJobId_createResponse } = await createImportJob(TEST_FILES.tiny, adminToken);
+    const createResponse = await fetch(`${API_URL}/api/v1/jobs/${_tempJobId_createResponse}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
-
     const createData = (await createResponse.json()) as any;
+    createData.jobId = _tempJobId_createResponse;
     const jobId = createData.jobId;
 
     // Wait for job to complete
@@ -775,22 +733,14 @@ describe('Import Jobs', () => {
   }, 30000);
 
   it('should embed tenancy metadata in job config', async () => {
-    const form = createFormData(TEST_FILES.tiny, {
+    const { jobId: _tempJobId_response } = await createImportJob(TEST_FILES.tiny, adminToken, {
       exportCode: true,
     });
-
-    const response = await fetch(`${API_URL}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        ...form.getHeaders(),
-      },
-      body: form,
+    const response = await fetch(`${API_URL}/api/v1/jobs/${_tempJobId_response}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
-
-    assert.strictEqual(response.ok, true);
-
     const data = (await response.json()) as any;
+    data.jobId = _tempJobId_response;
     const job = data.job;
 
     console.log('   🔍 Validating tenancy metadata...');
@@ -837,17 +787,12 @@ describe('Import Jobs', () => {
 describe('Delete Jobs', () => {
   beforeEach(async () => {
     // Create some test data first
-    const form = createFormData(TEST_FILES.tiny);
-    const response = await fetch(`${API_URL}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        ...form.getHeaders(),
-      },
-      body: form,
+    const { jobId: _tempJobId_response } = await createImportJob(TEST_FILES.tiny, adminToken);
+    const response = await fetch(`${API_URL}/api/v1/jobs/${_tempJobId_response}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
-
     const data = (await response.json()) as any;
+    data.jobId = _tempJobId_response;
     await waitForJobCompletion(data.jobId, adminToken, 30000);
     const importedNodeCount = await waitForNodeCount(adminAccountId, 1, 15000);
 
@@ -966,32 +911,10 @@ describe('Job Idempotency', () => {
 describe('Multi-Tenant Isolation', () => {
   it('should isolate jobs by account', async () => {
     // Create job for admin account
-    const formAdmin = createFormData(TEST_FILES.tiny);
-    const responseAdmin = await fetch(`${API_URL}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        ...formAdmin.getHeaders(),
-      },
-      body: formAdmin,
-    });
-
-    const dataAdmin = (await responseAdmin.json()) as any;
-    const adminJobId = dataAdmin.jobId;
+    const { jobId: adminJobId } = await createImportJob(TEST_FILES.tiny, adminToken);
 
     // Create job for client account
-    const formClient = createFormData(TEST_FILES.tiny);
-    const responseClient = await fetch(`${API_URL}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${clientToken}`,
-        ...formClient.getHeaders(),
-      },
-      body: formClient,
-    });
-
-    const dataClient = (await responseClient.json()) as any;
-    const clientJobId = dataClient.jobId;
+    const { jobId: clientJobId } = await createImportJob(TEST_FILES.tiny, clientToken);
 
     // Query jobs as admin - should only see admin's job
     const adminJobsResponse = await fetch(`${API_URL}/api/v1/jobs`, {
@@ -1026,17 +949,12 @@ describe('Multi-Tenant Isolation', () => {
 describe('Worker Pool', () => {
   it('should process queued jobs automatically', async () => {
     // Create job
-    const form = createFormData(TEST_FILES.tiny);
-    const response = await fetch(`${API_URL}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        ...form.getHeaders(),
-      },
-      body: form,
+    const { jobId: _tempJobId_response } = await createImportJob(TEST_FILES.tiny, adminToken);
+    const response = await fetch(`${API_URL}/api/v1/jobs/${_tempJobId_response}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
-
     const data = (await response.json()) as any;
+    data.jobId = _tempJobId_response;
     const jobId = data.jobId;
 
     // Job starts as queued

@@ -680,8 +680,21 @@ export function sleep(ms: number): Promise<void> {
 export function cleanupTestData(db: Database.Database, accountId: string): void {
   try {
     // Delete in correct order (respecting foreign keys)
-    db.prepare('DELETE FROM edges WHERE account_id = ?').run(accountId);
-    db.prepare('DELETE FROM nodes WHERE account_id = ?').run(accountId);
+    db.prepare(
+      `
+      DELETE FROM edges 
+      WHERE account_id = ? 
+      AND from_id NOT IN (SELECT id FROM nodes WHERE kind IN ('AccountNode', 'UserNode', 'AgentNode', 'Principal', 'Board', 'Constellation'))
+      AND to_id NOT IN (SELECT id FROM nodes WHERE kind IN ('AccountNode', 'UserNode', 'AgentNode', 'Principal', 'Board', 'Constellation'))
+    `
+    ).run(accountId);
+    db.prepare(
+      `
+      DELETE FROM nodes 
+      WHERE account_id = ? 
+      AND kind NOT IN ('AccountNode', 'UserNode', 'AgentNode', 'Principal', 'Board', 'Constellation')
+    `
+    ).run(accountId);
     db.prepare(
       'DELETE FROM job_events WHERE job_id IN (SELECT id FROM jobs WHERE account_id = ?)'
     ).run(accountId);

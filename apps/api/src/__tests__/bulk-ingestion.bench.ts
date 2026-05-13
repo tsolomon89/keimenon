@@ -14,11 +14,7 @@ import os from 'os';
 import { DatabaseClient } from '@keimenon/db';
 import { DatabaseWriteQueue } from '../services/DatabaseWriteQueue';
 import { GraphBatchAccumulator } from '../services/GraphBatchAccumulator';
-import {
-  BulkGraphWriteSink,
-  LegacyQueuedGraphWriteSink,
-  GraphWriteSink,
-} from '../services/GraphWriteSink';
+import { BulkGraphWriteSink, GraphWriteSink } from '../services/GraphWriteSink';
 import { DbWorkerClient } from '../workers/DbWorkerClient';
 import { AnyNode, AnyEdge } from '@keimenon/types';
 
@@ -235,35 +231,11 @@ async function runBenchmark() {
     };
   }
 
-  // 1. Test Legacy Queue path
-  console.log('\n[Legacy Queue] Initializing...');
-  const db = createBulkTestDb();
-  const queue = new DatabaseWriteQueue(db as unknown as DatabaseClient);
-  let sink: GraphWriteSink = new LegacyQueuedGraphWriteSink(queue);
-  let accumulator = new GraphBatchAccumulator(sink, 'acc_test', 'user_test', 'bench-legacy');
-
-  let tracker = createDriftTracker();
-  let start = Date.now();
-  for (const node of data.nodes) {
-    await accumulator.addNode(node);
-  }
-  for (const edge of data.edges) {
-    await accumulator.addEdge(edge);
-  }
-  await accumulator.complete();
-
-  let end = Date.now();
-  const legacyDrift = tracker.stop();
-  metrics.legacy = {
-    wallTimeMs: end - start,
-    maxEventLoopDriftMs: legacyDrift.max,
-    avgEventLoopDriftMs: legacyDrift.avg,
-  };
-  console.log(`[Legacy Queue] Completed in ${metrics.legacy.wallTimeMs}ms`);
-  console.log(
-    `[Legacy Queue] Event loop drift: max ${legacyDrift.max.toFixed(2)}ms, avg ${legacyDrift.avg.toFixed(2)}ms`
-  );
-  db.close();
+  let sink: GraphWriteSink;
+  let accumulator: GraphBatchAccumulator;
+  let tracker;
+  let start: number;
+  let end: number;
 
   // 2. Test Bulk Pipeline (off-thread DB worker)
   console.log('\n[Bulk Pipeline] Initializing...');

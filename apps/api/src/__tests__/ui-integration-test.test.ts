@@ -27,6 +27,7 @@ import path from 'path';
 // Load env vars
 dotenv.config({ path: path.join(__dirname, '../../.env'), override: true });
 (process.env as any).NODE_ENV = 'test';
+process.env.KEIMENON_BULK_INSERTS = '0';
 
 import assert from 'node:assert';
 import fs from 'fs';
@@ -308,8 +309,17 @@ function getNodesByAccount(accountId: string) {
  * Helper: Clean up test data
  */
 function cleanupTestData(accountId: string) {
-  const deleteEdges = db.prepare('DELETE FROM edges WHERE account_id = ?');
-  const deleteNodes = db.prepare('DELETE FROM nodes WHERE account_id = ?');
+  const deleteEdges = db.prepare(`
+      DELETE FROM edges 
+      WHERE account_id = ? 
+      AND from_id NOT IN (SELECT id FROM nodes WHERE kind IN ('AccountNode', 'UserNode', 'AgentNode', 'Principal', 'Board', 'Constellation'))
+      AND to_id NOT IN (SELECT id FROM nodes WHERE kind IN ('AccountNode', 'UserNode', 'AgentNode', 'Principal', 'Board', 'Constellation'))
+    `);
+  const deleteNodes = db.prepare(`
+      DELETE FROM nodes 
+      WHERE account_id = ? 
+      AND kind NOT IN ('AccountNode', 'UserNode', 'AgentNode', 'Principal', 'Board', 'Constellation')
+    `);
 
   deleteEdges.run(accountId);
   deleteNodes.run(accountId);

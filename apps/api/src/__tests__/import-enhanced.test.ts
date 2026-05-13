@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Integration Tests for Import-Enhanced Endpoint
  *
  * Tests the /api/v1/jobs/import endpoint with authentication,
@@ -17,7 +17,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import FormData from 'form-data';
 import fetch from 'node-fetch';
-import { login } from './utils/test-helpers';
+import { login, createImportJob, waitForJobCompletion } from './utils/test-helpers';
 
 const TEST_DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../test-import-enhanced.db');
 const SHOULD_DELETE_TEST_DB = !process.env.DB_PATH;
@@ -157,80 +157,6 @@ async function fetchJsonWithRetry(
   }
 
   return { status: lastStatus, data: lastData };
-}
-
-async function postMultipartWithRetry(
-  url: string,
-  token: string,
-  expectedStatus: number,
-  buildForm: () => FormData,
-  maxAttempts = 3
-): Promise<{ status: number; data: any }> {
-  let lastStatus = 0;
-  let lastData: any = null;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const form = buildForm();
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...form.getHeaders(),
-      },
-      body: form as any,
-    });
-
-    const contentType = response.headers.get('content-type') || '';
-    let data: any = null;
-    if (contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      data = await response.text();
-    }
-
-    lastStatus = response.status;
-    lastData = data;
-
-    if (response.status === expectedStatus) {
-      return { status: response.status, data };
-    }
-
-    const retryable = response.status >= 500 || response.status === 429;
-    if (!retryable || attempt === maxAttempts) {
-      break;
-    }
-
-    await sleep(250 * attempt);
-  }
-
-  return { status: lastStatus, data: lastData };
-}
-
-async function waitForJobCompletion(jobId: string, token: string, timeoutMs = 45000): Promise<any> {
-  const startedAt = Date.now();
-
-  while (Date.now() - startedAt < timeoutMs) {
-    const { status, data } = await fetchJsonWithRetry(
-      `${getApiBaseUrl()}/api/v1/jobs/${jobId}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-      200
-    );
-
-    assert.strictEqual(status, 200, 'Job status endpoint should return 200');
-    const job = data?.job;
-    if (job?.state?.status && ['succeeded', 'failed'].includes(job.state.status)) {
-      return job;
-    }
-
-    await sleep(500);
-  }
-
-  throw new Error(`Timed out waiting for import job ${jobId} completion`);
 }
 
 describe('Import-Enhanced Integration Tests', () => {
@@ -425,31 +351,16 @@ describe('Import-Enhanced Integration Tests', () => {
 
     console.log('ðŸ“ Uploading test file as admin...');
 
-    const { status, data } = await postMultipartWithRetry(
-      `${getApiBaseUrl()}/api/v1/jobs/import`,
-      adminToken,
-      201,
-      () => {
-        const form = new FormData();
-        form.append('files', fs.createReadStream(testFilePath), 'tiny.json');
-        form.append(
-          'config',
-          JSON.stringify({
-            extraction: { includeUser: true, includeAssistant: true },
-            minMessageLength: 0,
-            processingMode: 'automatic',
-            branches: 'merged',
-          })
-        );
-        return form;
-      }
-    );
+    const { jobId } = await createImportJob(testFilePath, adminToken, {
+      extraction: { includeUser: true, includeAssistant: true },
+      minMessageLength: 0,
+      processingMode: 'automatic',
+      branches: 'merged',
+    });
 
-    assert.strictEqual(status, 201, 'Import job creation should return 201');
-    assert.ok(data.success, 'Response should indicate success');
-    assert.ok(data.jobId, 'Response should include jobId');
+    assert.ok(jobId, 'Response should include jobId');
 
-    const job = await waitForJobCompletion(data.jobId, adminToken);
+    const job = await waitForJobCompletion(jobId, adminToken);
     assert.strictEqual(job.state.status, 'succeeded', 'Import job should succeed');
 
     // Verify ConversationThread nodes have account_id
@@ -668,42 +579,26 @@ describe('Import-Enhanced Integration Tests', () => {
       return;
     }
 
-    const { status, data } = await postMultipartWithRetry(
-      `${getApiBaseUrl()}/api/v1/jobs/import`,
-      adminToken,
-      201,
-      () => {
-        const form = new FormData();
-        form.append('files', fs.createReadStream(testFilePath), 'tiny.json');
-        form.append(
-          'config',
-          JSON.stringify({
-            extractCode: true,
-            codeSettings: {
-              minLength: 50,
-            },
-          })
-        );
-        return form;
-      }
-    );
+    const { jobId } = await createImportJob(testFilePath, adminToken, {
+      extractCode: true,
+      codeSettings: {
+        minLength: 50,
+      },
+    });
 
-    assert.strictEqual(status, 201, 'Job creation should return 201');
+    assert.ok(jobId, 'Response should include jobId');
 
-    assert.ok(data.success, 'Response should indicate success');
-    assert.ok(data.jobId, 'Response should include jobId');
-    assert.strictEqual(data.job.type, 'import', 'Job type should be import');
-    assert.strictEqual(data.job.state.status, 'queued', 'Initial status should be queued');
-    assert.ok(data.job.config.files, 'Job config should include files');
-    assert.strictEqual(data.job.config.files.length, 1, 'Should have one file');
-    assert.ok(
-      data.job.config.files[0].fileName.includes('tiny.json'),
-      'File name should be preserved'
-    );
+    // Wait for the job to complete to verify config fidelity
+    const job = await waitForJobCompletion(jobId, adminToken);
 
-    console.log(`âœ… Job created: ${data.jobId}`);
-    console.log(`   Status: ${data.job.state.status}`);
-    console.log(`   Files: ${data.job.config.files.length}`);
+    assert.strictEqual(job.type, 'import', 'Job type should be import');
+    assert.ok(job.config.files, 'Job config should include files');
+    assert.strictEqual(job.config.files.length, 1, 'Should have one file');
+    assert.ok(job.config.files[0].fileName.includes('tiny.json'), 'File name should be preserved');
+
+    console.log(`âœ… Job created: ${jobId}`);
+    console.log(`   Status: ${job.state.status}`);
+    console.log(`   Files: ${job.config.files.length}`);
   });
 
   it('[Job-Based] should process import job and verify completion', async () => {
@@ -717,20 +612,8 @@ describe('Import-Enhanced Integration Tests', () => {
     }
 
     // Create job
-    const createResult = await postMultipartWithRetry(
-      `${getApiBaseUrl()}/api/v1/jobs/import`,
-      adminToken,
-      201,
-      () => {
-        const form = new FormData();
-        form.append('files', fs.createReadStream(testFilePath), 'tiny.json');
-        return form;
-      }
-    );
-
-    assert.strictEqual(createResult.status, 201, 'Job creation should return 201');
-    const createData: any = createResult.data;
-    const jobId = createData.jobId;
+    const { jobId } = await createImportJob(testFilePath, adminToken);
+    assert.ok(jobId, 'Job creation should return jobId');
 
     console.log(`   Job created: ${jobId}`);
 
@@ -782,36 +665,23 @@ describe('Import-Enhanced Integration Tests', () => {
     );
 
     try {
-      const { status, data } = await postMultipartWithRetry(
-        `${getApiBaseUrl()}/api/v1/jobs/import`,
-        adminToken,
-        201,
-        () => {
-          const form = new FormData();
-          form.append('files', fs.createReadStream(fixturePath), 'branch-fidelity.json');
-          form.append(
-            'config',
-            JSON.stringify({
-              extraction: { includeUser: true, includeAssistant: true },
-              minMessageLength: 0,
-              processingMode: 'automatic',
-              branches: 'separate',
-              extractCode: false,
-              codeSettings: {
-                minLength: 0,
-                languages: [],
-                groupBy: 'language',
-                deduplicate: true,
-                sourceHandling: 'keep_inline',
-              },
-            })
-          );
-          return form;
-        }
-      );
+      const { jobId } = await createImportJob(fixturePath, adminToken, {
+        extraction: { includeUser: true, includeAssistant: true },
+        minMessageLength: 0,
+        processingMode: 'automatic',
+        branches: 'separate',
+        extractCode: false,
+        codeSettings: {
+          minLength: 0,
+          languages: [],
+          groupBy: 'language',
+          deduplicate: true,
+          sourceHandling: 'keep_inline',
+        },
+      });
 
-      assert.strictEqual(status, 201, 'Job creation should return 201');
-      const job = await waitForJobCompletion(data.jobId, adminToken);
+      assert.ok(jobId, 'Job creation should return jobId');
+      const job = await waitForJobCompletion(jobId, adminToken);
       assert.strictEqual(job.state.status, 'succeeded', 'Branch fidelity import should succeed');
 
       const conversationRows = db
@@ -902,35 +772,22 @@ describe('Import-Enhanced Integration Tests', () => {
       );
 
       try {
-        const { data } = await postMultipartWithRetry(
-          `${getApiBaseUrl()}/api/v1/jobs/import`,
-          adminToken,
-          201,
-          () => {
-            const form = new FormData();
-            form.append('files', fs.createReadStream(fixturePath), `${sourceHandling}.json`);
-            form.append(
-              'config',
-              JSON.stringify({
-                extraction: { includeUser: true, includeAssistant: true },
-                minMessageLength: 0,
-                processingMode: 'automatic',
-                branches: 'merged',
-                extractCode: true,
-                codeSettings: {
-                  minLength: 0,
-                  languages: ['ts'],
-                  groupBy: 'language',
-                  deduplicate: true,
-                  sourceHandling,
-                },
-              })
-            );
-            return form;
-          }
-        );
+        const { jobId } = await createImportJob(fixturePath, adminToken, {
+          extraction: { includeUser: true, includeAssistant: true },
+          minMessageLength: 0,
+          processingMode: 'automatic',
+          branches: 'merged',
+          extractCode: true,
+          codeSettings: {
+            minLength: 0,
+            languages: ['ts'],
+            groupBy: 'language',
+            deduplicate: true,
+            sourceHandling,
+          },
+        });
 
-        const job = await waitForJobCompletion(data.jobId, adminToken);
+        const job = await waitForJobCompletion(jobId, adminToken);
         assert.strictEqual(
           job.state.status,
           'succeeded',

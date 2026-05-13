@@ -642,7 +642,7 @@ export function createJobsRoutes(
         });
       }
 
-      if (workerPool) {
+      if (workerPool && job.status === 'running') {
         const paused = await workerPool.pauseJob(id, targetAccountId, 'User paused job');
         if (!paused) {
           throw ErrorFactory.conflict(
@@ -666,7 +666,8 @@ export function createJobsRoutes(
         });
       }
 
-      // Fallback path for environments without worker orchestration
+      // Fallback path for environments without worker orchestration, or for 'queued' jobs
+
       job.pause();
       appendJobLifecycleTimeline(job as any, 'manual_pause', {
         reason: 'USER_PAUSE',

@@ -1,8 +1,8 @@
 /**
  * Import Jobs Routes
  *
- * Compatibility routes for jobs surfaces that remain mounted under /api/v1/jobs.
- * Multipart import creation has been retired in favor of chunked upload
+ * Provides jobs-related endpoints under /api/v1/jobs.
+ * Note: Multipart import creation has been retired in favor of chunked upload
  * through /api/v1/uploads/*.
  */
 

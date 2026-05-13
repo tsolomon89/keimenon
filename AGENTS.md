@@ -209,15 +209,12 @@ The canonical graph write path for import is:
 2. `GraphBatchAccumulator` serializes nodes/edges into `GraphBatchPayload` batches (including normalized payloads for `SourceSpan`, `Phrase`, `Packet`, `AtomicUnit`).
 3. `BulkGraphWriteSink` dispatches batches to `DbWorkerClient` for off-main-thread bulk insert.
 
-This path is selected when `KEIMENON_BULK_INSERTS !== '0'` and the DB worker is ready.
+Non-test import runs must fail loudly with `IMPORT_DB_WORKER_UNAVAILABLE` if the DB worker is unavailable.
 
-### 6.2 Fallback Write Path: LegacyQueuedGraphWriteSink
+### 6.2 Dev/Test Bypass: KEIMENON_BULK_INSERTS=0
 
-When the DB worker is unavailable (e.g., in test mode), the `LegacyQueuedGraphWriteSink`
-unpacks `GraphBatchPayload` back into `AnyNode`/`AnyEdge` objects and queues them via `DatabaseWriteQueue`.
-
-This path exists as a **runtime fallback**, not as an equally-valid alternative.
-New write-path work should target the bulk insert path.
+If `KEIMENON_BULK_INSERTS='0'` is set, the system bypasses the DB worker and writes nodes/edges synchronously via `DatabaseClient`.
+This is strictly a **dev/test/debug-only bypass** and is not a supported production runtime mode.
 
 ### 6.3 DatabaseWriteQueue
 
@@ -226,11 +223,8 @@ New write-path work should target the bulk insert path.
 - Interval and threshold-triggered flushing
 - Foreign key requeue with escalation to dead-letter
 - Circuit breaker for repeated failures
-- Optional off-thread delegation to the DB worker when attached
 
-It is used directly by `LegacyQueuedGraphWriteSink` and remains operational for
-non-import write paths (e.g., ad-hoc node creation). It is not the preferred
-import-time write path.
+It remains operational for non-import write paths (e.g., ad-hoc node creation). It is not the preferred import-time write path.
 
 ## 7. Agent Behavior Contract
 
@@ -331,8 +325,7 @@ Migration 038 (`normalize_high_volume_kinds.sql`) introduced normalized payload 
 Migration 040 (`payload_graph_identity_fks.sql`) added foreign key constraints from these tables
 to their parent `nodes` rows (via `node_id`).
 
-These tables are part of the canonical schema and are written by both the bulk insert path
-and the legacy queue path.
+These tables are part of the canonical schema and are written by the bulk insert path.
 
 ## 10. Operational and Privacy Guarantees
 

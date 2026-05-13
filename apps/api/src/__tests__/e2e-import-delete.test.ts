@@ -20,6 +20,7 @@ import fetch from 'node-fetch';
 import FormData from 'form-data';
 import bcrypt from 'bcrypt';
 import { unlockAccount } from '../utils/account-lockout';
+import { createImportJob } from './utils/test-helpers';
 
 const getApiUrl = () => process.env.TEST_API_URL || 'http://127.0.0.1:4001';
 const getDbPath = () =>
@@ -237,18 +238,7 @@ test('import job succeeds then delete job clears data', async (_t: TestContext) 
       }
     ).count;
 
-    const form = new FormData();
-    form.append('files', fs.createReadStream(SAMPLE_FILE));
-
-    const importRes = await fetch(`${getApiUrl()}/api/v1/jobs/import`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${adminToken}`, ...form.getHeaders() },
-      body: form,
-    });
-
-    assert.ok(importRes.ok, `Import job creation failed (${importRes.status})`);
-    const importData = (await importRes.json()) as any;
-    const importJobId = importData.jobId || importData.job?.id;
+    const { jobId: importJobId } = await createImportJob(SAMPLE_FILE, adminToken);
     assert.ok(importJobId, 'Import job id missing');
 
     const importJob = await waitForJob(importJobId, adminToken);
