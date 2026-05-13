@@ -139,10 +139,9 @@ The **only** supported import rail is chunked upload:
 
 Implementation: `apps/api/src/routes/uploads.routes.ts`
 
-The old multipart `POST /api/v1/jobs/import` endpoint has been **retired**.
-The 410 compatibility shim has been removed from the route registration
-(commented out and marked `[DEAD CODE QUARANTINE]` in `import-jobs.routes.ts`).
-This file now only serves the `POST /api/v1/jobs/delete` route.
+The old multipart `POST /api/v1/jobs/import` endpoint is retired and removed.
+Chunked upload is the only supported import rail.
+`import-jobs.routes.ts` currently serves only valid remaining jobs routes, namely delete jobs.
 
 Do not re-introduce multipart import. Do not add new compatibility shims for retired rails.
 

@@ -1559,6 +1559,10 @@ export class ImportWorker extends BaseWorker {
             messages: totalMessagesProcessed,
             checkpoint: finalCheckpoint,
             changeTracker: serializeChangeTracker(changeTracker),
+            graphBirth: {
+              ...importGraphBirth,
+              materialization: graphMaterialization,
+            },
             importGraphBirth,
             graphMaterialization,
             importTimeline,
@@ -1581,6 +1585,10 @@ export class ImportWorker extends BaseWorker {
         ? (existingMetadata.importTimeline as unknown[])
         : [];
       job.updateStateMetadata({
+        graphBirth: {
+          ...graphBirthMetadata,
+          materialization: graphMaterialization,
+        },
         importGraphBirth: graphBirthMetadata,
         graphMaterialization,
         importTimeline: [...existingTimeline, ...importTimeline],
@@ -1614,6 +1622,10 @@ export class ImportWorker extends BaseWorker {
           messages: totalMessagesProcessed,
           checkpoint: finalCheckpoint,
           changeTracker: serializeChangeTracker(changeTracker),
+          graphBirth: {
+            ...graphBirthMetadata,
+            materialization: graphMaterialization,
+          },
           importGraphBirth: graphBirthMetadata,
           graphMaterialization,
           importTimeline,

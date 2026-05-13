@@ -34,6 +34,26 @@ function createDb(): Database.Database {
       created_at INTEGER NOT NULL,
       data_tag TEXT DEFAULT 'real'
     );
+
+    CREATE TABLE source_spans (
+      node_id TEXT PRIMARY KEY,
+      text TEXT NOT NULL,
+      normalized_text TEXT NOT NULL,
+      start_char INTEGER NOT NULL,
+      end_char INTEGER NOT NULL,
+      boundary_kind TEXT NOT NULL,
+      span_hash TEXT NOT NULL
+    );
+
+    CREATE TABLE phrases (
+      node_id TEXT PRIMARY KEY,
+      text TEXT NOT NULL,
+      normalized_text TEXT NOT NULL,
+      type TEXT NOT NULL,
+      entity_type TEXT,
+      frequency INTEGER NOT NULL,
+      metadata TEXT
+    );
   `);
   return db;
 }
@@ -52,6 +72,39 @@ function insertNode(
       VALUES (?, ?, ?, ?, ?, ?, ?, 'real')
     `
   ).run(node.id, node.kind, JSON.stringify(node), accountId, userId, now, node.updated_at || now);
+
+  if (node.kind === 'Phrase') {
+    db.prepare(
+      `
+      INSERT OR REPLACE INTO phrases
+        (node_id, text, normalized_text, type, frequency, metadata)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `
+    ).run(
+      node.id,
+      node.text,
+      node.normalized_text,
+      node.type,
+      node.frequency || 0,
+      JSON.stringify(node.metadata || {})
+    );
+  } else if (node.kind === 'SourceSpan') {
+    db.prepare(
+      `
+      INSERT OR REPLACE INTO source_spans
+        (node_id, text, normalized_text, start_char, end_char, boundary_kind, span_hash)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `
+    ).run(
+      node.id,
+      node.text,
+      node.normalized_text,
+      node.start_char || 0,
+      node.end_char || 0,
+      node.boundary_kind || 'sentence',
+      node.span_hash || node.id
+    );
+  }
 }
 
 function insertEdge(
@@ -220,10 +273,11 @@ function phraseByNormalized(db: Database.Database, accountId: string, normalized
   return db
     .prepare(
       `
-        SELECT id, properties
-        FROM nodes
-        WHERE account_id = ? AND kind = 'Phrase'
-          AND json_extract(properties, '$.normalized_text') = ?
+        SELECT n.id, n.properties
+        FROM nodes n
+        JOIN phrases p ON n.id = p.node_id
+        WHERE n.account_id = ? AND n.kind = 'Phrase'
+          AND p.normalized_text = ?
       `
     )
     .get(accountId, normalized) as { id: string; properties: string } | undefined;
@@ -244,10 +298,11 @@ describe('semantic spine traversal and unified document loop', () => {
       const duplicatePhraseRows = db
         .prepare(
           `
-            SELECT id
-            FROM nodes
-            WHERE account_id = ? AND kind = 'Phrase'
-              AND json_extract(properties, '$.normalized_text') = 'symbolic necessity'
+            SELECT n.id
+            FROM nodes n
+            JOIN phrases p ON n.id = p.node_id
+            WHERE n.account_id = ? AND n.kind = 'Phrase'
+              AND p.normalized_text = 'symbolic necessity'
           `
         )
         .all(ACCOUNT_A) as Array<{ id: string }>;

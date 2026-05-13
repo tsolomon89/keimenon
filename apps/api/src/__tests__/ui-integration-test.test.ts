@@ -20,7 +20,7 @@
  * Together: Complete system validation from upload button to rendered UI
  */
 
-import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, test, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import dotenv from 'dotenv';
 import path from 'path';
 

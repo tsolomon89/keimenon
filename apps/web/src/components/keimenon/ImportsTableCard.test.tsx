@@ -67,7 +67,7 @@ vi.mock('@/lib/api-client', () => ({
   pauseJob: vi.fn(),
   resumeJob: vi.fn(),
   authenticatedFetch: vi.fn((url: string, init?: RequestInit) => global.fetch(url, init)),
-  getGraphSnapshot: vi.fn().mockResolvedValue({ nodes: [], edges: [] }),
+  getGraphReadModel: vi.fn().mockResolvedValue({ nodes: [], edges: [] }),
 }));
 
 import { useJobStream } from '../../hooks/useJobStream';

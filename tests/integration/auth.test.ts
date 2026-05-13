@@ -53,7 +53,7 @@ describe('Authentication & Authorization Suite', () => {
     it('should create or login admin account', async () => {
       const account = {
         email: 'admin-test@test.com',
-        password: 'Admin123!',
+        password: 'KeimenonTestAdmin_2026!',
         name: 'Admin Test',
         accountType: 'admin',
         accountClass: 'business',
@@ -66,6 +66,7 @@ describe('Authentication & Authorization Suite', () => {
           password: account.password,
         });
       }
+      if (![200, 201].includes(res.status)) console.error('ADMIN ERROR', res.body);
       expect([200, 201]).toContain(res.status);
       testData.admin = res.body;
       expect(testData.admin.token).toBeDefined();
@@ -74,7 +75,7 @@ describe('Authentication & Authorization Suite', () => {
     it('should create or login client 1', async () => {
       const account = {
         email: 'client1@test.com',
-        password: 'Client123!',
+        password: 'KeimenonTestClient_2026!',
         name: 'Client 1',
         accountType: 'client',
         accountClass: 'professional',
@@ -95,7 +96,7 @@ describe('Authentication & Authorization Suite', () => {
     it('should create or login client 2', async () => {
       const account = {
         email: 'client2@test.com',
-        password: 'Client123!',
+        password: 'KeimenonTestClient_2026!',
         name: 'Client 2',
         accountType: 'client',
         accountClass: 'free',
@@ -118,7 +119,7 @@ describe('Authentication & Authorization Suite', () => {
     it('should register a new user', async () => {
       const res = await request('POST', '/api/v1/auth/register', {
         email: `test-${Date.now()}@test.com`,
-        password: 'Test123!',
+        password: 'KeimenonTestUser_2026!',
         name: 'Test User',
       });
       expect([200, 201]).toContain(res.status);

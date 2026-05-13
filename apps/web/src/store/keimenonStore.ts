@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import {
-  getGraphSnapshot,
+  getGraphReadModel,
   GraphNode as APIGraphNode,
   GraphEdge as APIGraphEdge,
 } from '@/lib/api-client';
@@ -306,11 +306,11 @@ export const useKeimenonStore = create<KeimenonState>()(
         set({ isLoading: true, error: null });
 
         try {
-          let snapshotResult: Awaited<ReturnType<typeof getGraphSnapshot>> | null = null;
+          let snapshotResult: Awaited<ReturnType<typeof getGraphReadModel>> | null = null;
 
           for (let attempt = 0; attempt <= GRAPH_LOAD_RETRY_DELAYS_MS.length; attempt += 1) {
             try {
-              snapshotResult = await getGraphSnapshot();
+              snapshotResult = await getGraphReadModel();
               break;
             } catch (error) {
               const canRetry =

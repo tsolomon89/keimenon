@@ -1498,7 +1498,7 @@ export async function getEdges(params?: {
 /**
  * Get deterministic center-graph snapshot for canonical viewport loading.
  */
-export async function getGraphSnapshot(params?: {
+export async function getGraphReadModel(params?: {
   node_budget?: number;
   edge_budget?: number;
   seed_node_ids?: string[];
@@ -1511,7 +1511,7 @@ export async function getGraphSnapshot(params?: {
       queryParams.append('seed_node_ids', params.seed_node_ids.join(','));
     }
 
-    const url = `${API_BASE_URL}/api/v1/graph/snapshot${
+    const url = `${API_BASE_URL}/api/v1/graph/read-model${
       queryParams.toString() ? `?${queryParams.toString()}` : ''
     }`;
     const response = await authenticatedFetch(url);

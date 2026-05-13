@@ -6,7 +6,7 @@ import { errorCapture } from '@/services/error-capture.service';
 import { API_BASE_URL } from '@/lib/env.config';
 import {
   authenticatedFetch,
-  getGraphSnapshot,
+  getGraphReadModel,
   type GraphNode,
   type GraphEdge,
 } from '@/lib/api-client';
@@ -243,7 +243,7 @@ export async function fetchGroupMembers(
     // for strongest connectors among this scope.
     let snapshot;
     try {
-      snapshot = await getGraphSnapshot({
+      snapshot = await getGraphReadModel({
         seed_node_ids: [groupId, ...basePayload.nodeIds].slice(0, 300),
         node_budget: 3000,
         edge_budget: 10000,
