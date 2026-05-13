@@ -31,6 +31,7 @@ import {
   ensureAccountContainsPrincipal,
   ensureHumanPrincipalHierarchyForUser,
 } from '../services/graph-hierarchy.service';
+import { ConversationContextService } from '../services/conversation-context.service';
 
 // ============================================================================
 // Request Schemas
@@ -652,6 +653,54 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
       return res.status(500).json({
         success: false,
         error: 'Failed to get conversation',
+        message: error.message,
+      });
+    }
+  });
+
+  /**
+   * GET /api/v1/conversations/:id/context-pack
+   * Generate a scoped context pack for the conversation
+   */
+  router.get('/:id/context-pack', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+      const { id } = req.params;
+      const accountId = req.user!.accountId;
+
+      // Ensure conversation exists and is authorized for this account
+      const row = database
+        .prepare(
+          `
+        SELECT properties FROM nodes
+        WHERE id = ? AND kind = 'ConversationThread' AND account_id = ?
+      `
+        )
+        .get(id, accountId) as any;
+
+      if (!row) {
+        return res.status(404).json({
+          success: false,
+          error: 'Conversation not found',
+        });
+      }
+
+      const props = JSON.parse(row.properties);
+      const contextSpec = props.context_spec || {};
+
+      const contextService = new ConversationContextService(database);
+      const contextPack = contextService.buildContextPack(accountId, id, contextSpec);
+
+      return res.json({
+        success: true,
+        context_pack: contextPack,
+      });
+    } catch (error: any) {
+      console.error('[Conversations] Context Pack error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to generate context pack',
         message: error.message,
       });
     }

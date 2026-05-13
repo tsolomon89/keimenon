@@ -12,6 +12,8 @@ import { ProcessingKeimenonView } from './ProcessingKeimenonView';
 import { PortalWrapper } from './PortalWrapper';
 import { SettingsPage } from '../settings/SettingsPage';
 import { ConversationBrowser } from '../conversations/ConversationBrowser';
+import { ConversationSynthesisView } from '../conversations/ConversationSynthesisView';
+import type { ConversationThread } from '@/services/organization-service';
 import { UploadModal } from './UploadModal';
 import { ChatImportModal } from './ChatImportModal';
 import { NodeDetailPanel } from './NodeDetailPanel';
@@ -85,6 +87,7 @@ export function KeimenonLayout({
   const [ndConfig, setNdConfig] = useState<NdProjectionConfig>(DEFAULT_ND_CONFIG);
   const [pendingConversationContext, setPendingConversationContext] =
     useState<ConversationContextSummary | null>(null);
+  const [activeConversation, setActiveConversation] = useState<ConversationThread | null>(null);
 
   const handleStartConversationFromSelection = (nodes: KeimenonNode[]) => {
     const contextSummary = buildConversationContextFromSelection(nodes);
@@ -473,9 +476,16 @@ export function KeimenonLayout({
                         <StorageStatsDashboard />
                       ) : dashboardView === 'workspaces' ? (
                         <WorkspaceBrowser className="h-full" />
+                      ) : activeConversation ? (
+                        <ConversationSynthesisView
+                          conversation={activeConversation}
+                          onBack={() => setActiveConversation(null)}
+                          className="h-full"
+                        />
                       ) : (
                         <ConversationBrowser
                           className="h-full"
+                          onConversationSelect={setActiveConversation}
                           initialContextSpec={pendingConversationContext?.contextSpec}
                           initialContextSummary={
                             pendingConversationContext

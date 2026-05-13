@@ -55,6 +55,26 @@ export interface CreateWorkspaceInput {
 }
 
 // Conversation types
+export interface ConversationContextPack {
+  conversation_id: string;
+  source_ids: string[];
+  group_ids: string[];
+  evidence: Array<{
+    node_id: string;
+    kind: string;
+    source_id?: string;
+    group_id?: string;
+    text?: string;
+    label?: string;
+    provenance?: unknown;
+  }>;
+  limits: {
+    max_sources: number;
+    max_groups: number;
+    max_evidence_items: number;
+  };
+}
+
 export interface ConversationThread {
   id: string;
   kind: 'ConversationThread';
@@ -120,7 +140,11 @@ export const organizationService = {
   /**
    * Create a new board
    */
-  createBoard: async (name: string, description?: string, workspaceId: string = 'default_workspace'): Promise<BoardNode> => {
+  createBoard: async (
+    name: string,
+    description?: string,
+    workspaceId: string = 'default_workspace'
+  ): Promise<BoardNode> => {
     const response = await api.post<{ board: BoardNode }>('/boards', {
       name,
       description,
@@ -138,7 +162,7 @@ export const organizationService = {
     // Based on previous steps, I only added get and post. I should add put and delete to api-client.
     return response.data.board;
   },
-  
+
   /**
    * Delete a board
    */
@@ -255,6 +279,16 @@ export const organizationService = {
       `/conversations/${conversationId}`
     );
     return response.data.conversation;
+  },
+
+  /**
+   * Get context pack for a specific conversation
+   */
+  getConversationContextPack: async (conversationId: string): Promise<ConversationContextPack> => {
+    const response = await api.get<{ context_pack: ConversationContextPack }>(
+      `/conversations/${conversationId}/context-pack`
+    );
+    return response.data.context_pack;
   },
 
   /**

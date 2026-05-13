@@ -65,6 +65,23 @@ function createTestDb(): Database.Database {
       created_by TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );
+
+    CREATE TABLE source_spans (
+      id TEXT PRIMARY KEY,
+      source_id TEXT NOT NULL,
+      message_id TEXT NOT NULL,
+      conversation_id TEXT NOT NULL,
+      text TEXT NOT NULL,
+      normalized_text TEXT NOT NULL,
+      start_char INTEGER NOT NULL,
+      end_char INTEGER NOT NULL,
+      boundary_kind TEXT NOT NULL,
+      node_id TEXT,
+      account_id TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
   `);
 
   const now = Date.now();
@@ -273,5 +290,105 @@ describe('Conversations Routes principal/context contract', () => {
     expect(row).toBeDefined();
     const dbProps = JSON.parse(row.properties);
     expect(dbProps.context_spec).toEqual(payload.context_spec);
+  });
+
+  describe('GET /api/v1/conversations/:id/context-pack', () => {
+    it('returns 404 for missing conversation', async () => {
+      const response = await request(app)
+        .get('/api/v1/conversations/missing_conv/context-pack')
+        .set('Authorization', 'Bearer test-token')
+        .expect(404);
+
+      expect(response.body.error).toBe('Conversation not found');
+    });
+
+    it('returns a scoped context pack based on context_spec', async () => {
+      const now = Date.now();
+
+      // Seed source
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, ?, ?, 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('source_pack_1', 'Source', JSON.stringify({ name: 'Test Source' }), now, now);
+
+      // Seed group
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, ?, ?, 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('group_pack_1', 'Group', JSON.stringify({ name: 'Test Group' }), now, now);
+
+      // Seed another source in the group
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, ?, ?, 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('source_pack_2', 'Source', JSON.stringify({ name: 'Group Source' }), now, now);
+
+      // Seed edge connecting source 2 to group 1
+      activeDb
+        .prepare(
+          `INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at) VALUES (?, ?, ?, ?, '{}', 'acc_1', 'user_1', ?)`
+        )
+        .run('edge_pack_1', 'IN_GROUP', 'source_pack_2', 'group_pack_1', now);
+
+      // Seed source_spans for the sources
+      activeDb
+        .prepare(
+          `INSERT INTO source_spans (id, source_id, message_id, conversation_id, text, normalized_text, start_char, end_char, boundary_kind, account_id, created_by, created_at, updated_at) VALUES (?, ?, 'msg_1', 'conv_1', ?, ?, 0, 10, 'sentence', 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('span_1', 'source_pack_1', 'Hello world', 'hello world', now, now);
+
+      activeDb
+        .prepare(
+          `INSERT INTO source_spans (id, source_id, message_id, conversation_id, text, normalized_text, start_char, end_char, boundary_kind, account_id, created_by, created_at, updated_at) VALUES (?, ?, 'msg_2', 'conv_2', ?, ?, 0, 15, 'sentence', 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('span_2', 'source_pack_2', 'Group message', 'group message', now, now);
+
+      // Seed conversation thread
+      const payload = {
+        title: 'Context pack thread',
+        human_principal_id: 'user_1',
+        purpose: 'general',
+        context_spec: {
+          source_ids: ['source_pack_1'],
+          group_ids: ['group_pack_1'],
+          include_pinned: false,
+          expansion_rule: 'none',
+        },
+      };
+
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, 'ConversationThread', ?, 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('conv_pack_1', JSON.stringify(payload), now, now);
+
+      const response = await request(app)
+        .get('/api/v1/conversations/conv_pack_1/context-pack')
+        .set('Authorization', 'Bearer test-token')
+        .expect(200);
+
+      const pack = response.body.context_pack;
+      expect(pack).toBeDefined();
+      expect(pack.conversation_id).toBe('conv_pack_1');
+
+      // Both source 1 (explicit) and source 2 (via group) should be resolved
+      expect(pack.source_ids).toContain('source_pack_1');
+      expect(pack.source_ids).toContain('source_pack_2');
+      expect(pack.group_ids).toContain('group_pack_1');
+
+      // Evidence should include Group metadata, Source metadata, and SourceSpan texts
+      const kinds = pack.evidence.map((e: any) => e.kind);
+      expect(kinds).toContain('Group');
+      expect(kinds).toContain('Source');
+      expect(kinds).toContain('SourceSpan');
+
+      const spanEvidence = pack.evidence.filter((e: any) => e.kind === 'SourceSpan');
+      expect(spanEvidence.length).toBe(2);
+      expect(spanEvidence.map((s: any) => s.text)).toContain('Hello world');
+      expect(spanEvidence.map((s: any) => s.text)).toContain('Group message');
+    });
   });
 });
