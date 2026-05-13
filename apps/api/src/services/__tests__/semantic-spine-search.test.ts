@@ -720,6 +720,15 @@ describe('Semantic Spine Search', () => {
     expect(metadata.hub_score).toBeGreaterThan(0);
     expect(metadata.score_components).toBeDefined();
     expect(metadata.authority_computed_at).toBeGreaterThan(0);
+
+    // Check that source authority score counts high-value mentions
+    const sourceRow = db
+      .prepare(`SELECT properties FROM nodes WHERE account_id = ? AND id = ?`)
+      .get(ACCOUNT_A, `src_1_${ACCOUNT_A}`) as { properties: string };
+
+    const sourceProps = JSON.parse(sourceRow.properties);
+    expect(sourceProps.metadata.authority_score).toBeGreaterThan(0);
+    expect(sourceProps.metadata.score_components.highValueMentions).toBeGreaterThanOrEqual(1);
   });
 
   // Test 13: Source-to-source connection explanation

@@ -408,9 +408,9 @@ export class AuthorityScoringService {
       .prepare(
         `SELECT COUNT(DISTINCT e.to_id) as cnt
          FROM edges e
-         JOIN nodes n ON n.id = e.to_id AND n.kind = 'Phrase' AND n.account_id = ?
+         JOIN phrases p ON p.id = e.to_id AND p.account_id = ?
          WHERE e.account_id = ? AND e.kind = 'MENTIONS' AND e.from_id = ?
-           AND CAST(json_extract(n.properties, '$.metadata.hub_score') AS REAL) > 2`
+           AND CAST(json_extract(p.metadata, '$.hub_score') AS REAL) > 2`
       )
       .get(accountId, accountId, sourceId) as { cnt: number } | undefined;
 
