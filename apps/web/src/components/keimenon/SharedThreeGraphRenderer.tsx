@@ -345,8 +345,6 @@ function SceneRoot({
     renderNodeMapRef.current = next;
   }, [renderNodes]);
 
-  const hoverCacheMetricsRef = useRef({ hits: 0, misses: 0, lastLogAt: 0 });
-
   const toLocalPoint = useCallback(
     (clientX: number, clientY: number): GraphScreenPoint => {
       const rect = gl.domElement.getBoundingClientRect();
@@ -433,13 +431,9 @@ function SceneRoot({
       const nodesEq = cache && cache.renderNodesVersion === renderNodesVersionRef.current;
       const sizeEq = cache && cache.width === size.width && cache.height === size.height;
 
-      const cacheMetrics = hoverCacheMetricsRef.current;
-
       if (cache && projEq && viewEq && edgesEq && nodesEq && sizeEq) {
         screenEdges = cache.edges;
-        cacheMetrics.hits += 1;
       } else {
-        cacheMetrics.misses += 1;
         for (const entry of renderEdges) {
           const source = renderNodeMapRef.current.get(entry.sourceId);
           const target = renderNodeMapRef.current.get(entry.targetId);
@@ -463,8 +457,6 @@ function SceneRoot({
           height: size.height,
         };
       }
-
-      // Cache metrics reporting removed for cleanliness
 
       const localPick = pickNearestEdge(local, screenEdges, 10);
       const pick: GraphPickResult = {
