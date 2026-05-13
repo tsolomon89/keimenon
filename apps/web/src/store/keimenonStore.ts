@@ -222,6 +222,7 @@ interface KeimenonState {
     structuralNodeCount: number;
     renderedEdgeCount: number;
     smartFilterApplied: boolean;
+    isTruncated: boolean;
     loadedAt: number;
   } | null;
 
@@ -343,13 +344,10 @@ export const useKeimenonStore = create<KeimenonState>()(
             .map(mapApiEdgeToKeimenon)
             .filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
 
-          if (
-            allNodes.length > SMART_FILTER_THRESHOLD &&
-            keimenonNodes.length > SMART_FILTER_THRESHOLD &&
-            keimenonEdges.length === 0
-          ) {
-            keimenonNodes = allNodes.filter((n) => STRUCTURAL_KINDS.has(n.kind || n.type));
-          }
+          // The backend guarantees that structural anchors (Account, Principal, Source, Group)
+          // are selected first during truncation. The frontend no longer invents anchors.
+          const isTruncated =
+            snapshotMetadata.readModel?.truncated ?? snapshotMetadata.truncated ?? false;
 
           // Compute deterministic positions from node identity and hierarchy topology.
           // This replaces the previous Math.random() positioning, ensuring spatial stability.
@@ -374,7 +372,8 @@ export const useKeimenonStore = create<KeimenonState>()(
               apiEdgeCount: snapshotMetadata.total_edges || snapshotResult.edges.length,
               structuralNodeCount: keimenonNodes.length,
               renderedEdgeCount: keimenonEdges.length,
-              smartFilterApplied,
+              smartFilterApplied: false,
+              isTruncated,
               loadedAt: Date.now(),
             },
           });

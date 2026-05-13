@@ -2,7 +2,7 @@ import { ChatImportConfig, DuplicateGroup } from '@/types/chat-import';
 import { handleApiError } from './error-handler';
 import { getToken } from '@/contexts/AuthContext';
 import { API_BASE_URL } from './env.config';
-import type { FeatureManifest } from '@keimenon/types';
+import type { FeatureManifest, GraphReadModelResponse } from '@keimenon/types';
 
 const AUTH_REFRESH_ENDPOINT = `${API_BASE_URL}/api/v1/auth/refresh`;
 let tokenRefreshPromise: Promise<string | null> | null = null;
@@ -1502,7 +1502,7 @@ export async function getGraphReadModel(params?: {
   node_budget?: number;
   edge_budget?: number;
   seed_node_ids?: string[];
-}): Promise<GraphSnapshotResponse> {
+}): Promise<GraphReadModelResponse> {
   try {
     const queryParams = new URLSearchParams();
     if (params?.node_budget) queryParams.append('node_budget', String(params.node_budget));

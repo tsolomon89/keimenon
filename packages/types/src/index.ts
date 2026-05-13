@@ -20,3 +20,4 @@ export * from './import-contract';
 export * from './features';
 export * from './ai';
 export * from './traversal';
+export * from './graph-read-model';
