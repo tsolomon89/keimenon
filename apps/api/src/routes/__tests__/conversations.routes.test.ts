@@ -184,7 +184,7 @@ describe('Conversations Routes principal/context contract', () => {
     expect(response.body.requiredFeature).toBe('agent_runtime');
   });
 
-  it('rejects context ids that are outside scoped account graph kinds', async () => {
+  it('rejects context ids that are completely missing', async () => {
     const response = await request(app)
       .post('/api/v1/conversations')
       .set('Authorization', 'Bearer test-token')
@@ -200,5 +200,78 @@ describe('Conversations Routes principal/context contract', () => {
       .expect(400);
 
     expect(response.body.error).toContain('Invalid source_ids references');
+  });
+
+  it('rejects context ids of unsupported node kinds (e.g. Phrase)', async () => {
+    const now = Date.now();
+    activeDb
+      .prepare(
+        `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, ?, '{}', 'acc_1', 'user_1', ?, ?)`
+      )
+      .run('phrase_1', 'Phrase', now, now);
+
+    const response = await request(app)
+      .post('/api/v1/conversations')
+      .set('Authorization', 'Bearer test-token')
+      .send({
+        title: 'Scoped thread',
+        context_spec: {
+          source_ids: ['phrase_1'],
+          group_ids: [],
+          include_pinned: false,
+          expansion_rule: 'none',
+        },
+      })
+      .expect(400);
+
+    expect(response.body.error).toContain(
+      'Invalid source_ids references for account scope: phrase_1'
+    );
+  });
+
+  it('persists valid context_spec in the database and returns it in response', async () => {
+    const now = Date.now();
+    activeDb
+      .prepare(
+        `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, ?, '{}', 'acc_1', 'user_1', ?, ?)`
+      )
+      .run('source_1', 'Source', now, now);
+
+    activeDb
+      .prepare(
+        `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, ?, '{}', 'acc_1', 'user_1', ?, ?)`
+      )
+      .run('group_1', 'Group', now, now);
+
+    const payload = {
+      title: 'Valid scope thread',
+      context_spec: {
+        source_ids: ['source_1'],
+        group_ids: ['group_1'],
+        include_pinned: false,
+        expansion_rule: 'none',
+      },
+    };
+
+    const response = await request(app)
+      .post('/api/v1/conversations')
+      .set('Authorization', 'Bearer test-token')
+      .send(payload)
+      .expect(201);
+
+    const resContext = response.body.conversation.context_spec;
+    expect(resContext).toBeDefined();
+    expect(resContext.source_ids).toEqual(['source_1']);
+    expect(resContext.group_ids).toEqual(['group_1']);
+
+    // Assert persistence in the database
+    const conversationId = response.body.conversation.id;
+    const row = activeDb
+      .prepare(`SELECT properties FROM nodes WHERE id = ? AND kind = 'ConversationThread'`)
+      .get(conversationId) as { properties: string };
+
+    expect(row).toBeDefined();
+    const dbProps = JSON.parse(row.properties);
+    expect(dbProps.context_spec).toEqual(payload.context_spec);
   });
 });

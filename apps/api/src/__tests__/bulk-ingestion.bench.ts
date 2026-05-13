@@ -231,12 +231,6 @@ async function runBenchmark() {
     };
   }
 
-  let sink: GraphWriteSink;
-  let accumulator: GraphBatchAccumulator;
-  let tracker;
-  let start: number;
-  let end: number;
-
   // 2. Test Bulk Pipeline (off-thread DB worker)
   console.log('\n[Bulk Pipeline] Initializing...');
 
@@ -271,13 +265,13 @@ async function runBenchmark() {
   const dbWorker = new DbWorkerClient(tmpPath);
   await dbWorker.start();
 
-  sink = new BulkGraphWriteSink(dbWorker as any, (prog) => {
+  const sink = new BulkGraphWriteSink(dbWorker as any, (prog) => {
     // Optional progress logging
   });
-  accumulator = new GraphBatchAccumulator(sink, 'acc_test', 'user_test', 'bench-bulk');
+  const accumulator = new GraphBatchAccumulator(sink, 'acc_test', 'user_test', 'bench-bulk');
 
-  tracker = createDriftTracker();
-  start = Date.now();
+  const tracker = createDriftTracker();
+  const start = Date.now();
   for (const node of data.nodes) {
     await accumulator.addNode(node);
   }
@@ -286,7 +280,7 @@ async function runBenchmark() {
   }
   await accumulator.complete();
 
-  end = Date.now();
+  const end = Date.now();
   const bulkDrift = tracker.stop();
   metrics.bulk = {
     wallTimeMs: end - start,

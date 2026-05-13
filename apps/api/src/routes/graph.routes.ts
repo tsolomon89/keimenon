@@ -255,7 +255,7 @@ export function createGraphRoutes(authService: AuthService): Router {
         const structuralAnchorsPreserved = structuralAnchorsReturned === structuralAnchorsRequested;
 
         // Step 4: Payload Hydration
-        let hydratedNodes: GraphReadModelNode[] = [];
+        const hydratedNodes: GraphReadModelNode[] = [];
         if (selectedNodeIds.length > 0) {
           const CHUNK_SIZE = 999;
           for (let i = 0; i < selectedNodeIds.length; i += CHUNK_SIZE) {

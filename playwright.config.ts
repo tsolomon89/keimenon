@@ -176,6 +176,7 @@ export default defineConfig({
       env: {
         PORT: WEB_PORT,
         NEXT_PUBLIC_API_URL: API_BASE_URL,
+        NEXT_PUBLIC_E2E_TEST_HOOKS: '1',
       },
     },
   ],

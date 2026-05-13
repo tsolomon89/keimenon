@@ -606,6 +606,6 @@ export const useKeimenonStore = create<KeimenonState>()(
   )
 );
 
-if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_E2E_TEST_HOOKS === '1') {
   (window as any).__keimenonStore = useKeimenonStore;
 }

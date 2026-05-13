@@ -331,6 +331,7 @@ These tables are part of the canonical schema and are written by the bulk insert
 1. Raw personal content remains local-only in user-controlled storage/runtime.
 2. Server-side entitlement enforcement is required for import/job/agent-critical routes.
 3. Rollout hardening requires required checks, evidence artifacts, and nightly consistency.
+4. Dashboard Access: Client users may access Conversations / Workspaces dashboard surfaces required for normal operations. Admin/account/system surfaces remain strictly backend-gated to admin accounts.
 
 ## 11. Acceptance Baseline
 

@@ -915,7 +915,7 @@ export class EnhancedImportServiceV2 {
       }
     >();
 
-    let skippedCatchAllGroups = 0;
+    const skippedCatchAllGroups = 0;
     for (const group of groups) {
       const labelKey = normalizeGroupLabelKey(group.name || '');
       if (!labelKey) {
