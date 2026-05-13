@@ -801,7 +801,8 @@ export class ImportWorker extends BaseWorker {
         totalNodesCreated = Number(stateData?.stats?.nodesCreated ?? 0);
         totalEdgesCreated = Number(stateData?.stats?.edgesCreated ?? 0);
         totalManualGroups = Number(stateData?.stats?.manualGroups ?? 0);
-        totalAutoGroups = Number(stateData?.stats?.autoGroups ?? 0);
+        totalAutoGroups =
+          Number(stateData?.stats?.autoGroups ?? 0) + (stateData?.stats?.catchAllGroup ? 1 : 0);
         totalSpansCreated = Number(stateData?.stats?.spansCreated ?? 0);
         totalPacketsCreated = Number(stateData?.stats?.packetsCreated ?? 0);
         totalAtomicUnitsCreated = Number(stateData?.stats?.atomicUnitsCreated ?? 0);
@@ -1199,7 +1200,9 @@ export class ImportWorker extends BaseWorker {
                     totalNodesCreated += result.createdNodeIds?.length || 0;
                     totalEdgesCreated += result.createdEdgeIds?.length || 0;
                     totalManualGroups += Number(result.stats?.grouping?.manualGroups ?? 0);
-                    totalAutoGroups += Number(result.stats?.grouping?.autoGroups ?? 0);
+                    totalAutoGroups +=
+                      Number(result.stats?.grouping?.autoGroups ?? 0) +
+                      (result.stats?.grouping?.catchAllGroup ? 1 : 0);
                     totalSpansCreated += Number(result.stats?.proImport?.spans ?? 0);
                     totalPacketsCreated += Number(result.stats?.proImport?.packets ?? 0);
                     totalAtomicUnitsCreated += Number(result.stats?.proImport?.atomicUnits ?? 0);

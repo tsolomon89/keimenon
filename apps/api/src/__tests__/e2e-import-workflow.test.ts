@@ -444,7 +444,7 @@ describe('E2E Import Workflow', () => {
         const persistedJob = await getJob(jobId, adminToken);
         assert.strictEqual(persistedJob.config?.importOptions?.processingMode, 'automatic');
         assert.strictEqual(persistedJob.config?.metadata?.importContractVersion, 'v3');
-        assert.strictEqual(persistedJob.config?.metadata?.processingRail, 'multipart');
+        assert.strictEqual(persistedJob.config?.metadata?.processingRail, 'chunked');
 
         const kinds = getNodesByKind(db, adminAccountId);
         const spanCount = kinds.find((entry) => entry.kind === 'SourceSpan')?.count ?? 0;
@@ -480,7 +480,7 @@ describe('E2E Import Workflow', () => {
         const persistedJob = await getJob(jobId, adminToken);
         assert.strictEqual(persistedJob.config?.importOptions?.processingMode, 'manual');
         assert.strictEqual(persistedJob.config?.metadata?.importContractVersion, 'v3');
-        assert.strictEqual(persistedJob.config?.metadata?.processingRail, 'multipart');
+        assert.strictEqual(persistedJob.config?.metadata?.processingRail, 'chunked');
       } finally {
         await fs.unlink(fixturePath).catch(() => undefined);
       }

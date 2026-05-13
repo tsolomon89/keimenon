@@ -831,7 +831,7 @@ export class EnhancedImportServiceV2 {
       mode,
       automatic: {
         targetGroupCount: 25,
-        createCatchAll: false,
+        createCatchAll: true,
         minGroupSize: 2,
         algorithm: 'tfidf',
       },

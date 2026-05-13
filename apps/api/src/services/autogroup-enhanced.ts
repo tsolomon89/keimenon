@@ -236,6 +236,31 @@ export class EnhancedAutogroupService {
       }
     }
 
+    if (config.automatic?.createCatchAll && unassignedMessages.length > 0) {
+      const assignedToAny = new Set<string>();
+      for (const group of groups) {
+        for (const sourceId of group.sources) {
+          assignedToAny.add(sourceId);
+        }
+      }
+      const leftovers = unassignedMessages.filter((m) => !assignedToAny.has(m.id));
+      if (leftovers.length > 0) {
+        const sourceIds = sortSourcesByInputOrder(
+          leftovers.map((message) => message.id),
+          messageOrder
+        );
+        groups.push({
+          id: toDeterministicGroupId('auto', 'Miscellaneous', sourceIds),
+          name: 'Miscellaneous',
+          keywords: [],
+          sources: sourceIds,
+          isManual: false,
+          isCatchAll: false,
+          confidence: 0.1,
+        });
+      }
+    }
+
     const result = this.buildResult(groups, messages);
     console.log(
       '[AutoGroup] batch summary',

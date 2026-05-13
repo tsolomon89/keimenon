@@ -349,7 +349,7 @@ export async function createImportJob(
       fileSize: fileBuffer.length,
       mimeType: 'application/json',
       chunkSize,
-      importConfig: config || undefined,
+      importConfig: config || { minMessageLength: 0 },
     }),
   });
 
