@@ -22,4 +22,18 @@ Gets a fresh coding agent up to speed on the project architecture.
 ## Step-by-Step Procedure
 
 1. Read `AGENTS.md`.
-2. Run runtime diagnostics to verify Node version and workspace health.
+2. Produce a repository map covering exactly the following domains:
+   - `AGENTS.md`
+   - `README.md`
+   - `apps/api`
+   - `apps/web`
+   - `apps/desktop`
+   - `packages/*`
+   - `scripts`
+   - `tests`
+   - `.agent`
+   - `.mcp`
+   - `.claude`
+   - `docs`
+   - `agent_context`
+3. Run runtime diagnostics to verify Node version and workspace health.

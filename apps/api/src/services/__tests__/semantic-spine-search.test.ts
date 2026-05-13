@@ -80,6 +80,38 @@ function createTestDb(): Database.Database {
       created_at INTEGER NOT NULL,
       data_tag TEXT DEFAULT 'test'
     );
+    CREATE TABLE IF NOT EXISTS source_spans (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      message_id TEXT,
+      conversation_id TEXT,
+      text TEXT NOT NULL,
+      normalized_text TEXT NOT NULL,
+      start_char INTEGER NOT NULL,
+      end_char INTEGER NOT NULL,
+      boundary_kind TEXT NOT NULL DEFAULT 'sentence',
+      span_hash TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      data_tag TEXT DEFAULT 'test',
+      metadata TEXT
+    );
+    CREATE TABLE IF NOT EXISTS phrases (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      text TEXT NOT NULL,
+      normalized_text TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'n-gram',
+      entity_type TEXT,
+      frequency INTEGER NOT NULL DEFAULT 0,
+      created_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      data_tag TEXT DEFAULT 'test',
+      metadata TEXT
+    );
   `);
 
   return db;
@@ -96,6 +128,47 @@ function insertNode(db: Database.Database, accountId: string, node: Record<strin
     accountId,
     node.created_at || Date.now(),
     node.updated_at || Date.now()
+  );
+}
+
+function insertSourceSpan(db: Database.Database, accountId: string, span: Record<string, unknown>) {
+  insertNode(db, accountId, span);
+  db.prepare(
+    `INSERT OR REPLACE INTO source_spans 
+     (id, account_id, source_id, text, normalized_text, start_char, end_char, boundary_kind, span_hash, created_by, created_at, updated_at, data_tag, metadata)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'test', ?, ?, 'test', ?)`
+  ).run(
+    span.id,
+    accountId,
+    span.source_id,
+    span.text,
+    String(span.text).toLowerCase(),
+    span.start_char || 0,
+    span.end_char || 0,
+    span.boundary_kind || 'sentence',
+    'hash',
+    span.created_at || Date.now(),
+    span.updated_at || Date.now(),
+    JSON.stringify(span.metadata || {})
+  );
+}
+
+function insertPhrase(db: Database.Database, accountId: string, phrase: Record<string, unknown>) {
+  insertNode(db, accountId, phrase);
+  db.prepare(
+    `INSERT OR REPLACE INTO phrases 
+     (id, account_id, text, normalized_text, type, frequency, created_by, created_at, updated_at, data_tag, metadata)
+     VALUES (?, ?, ?, ?, ?, ?, 'test', ?, ?, 'test', ?)`
+  ).run(
+    phrase.id,
+    accountId,
+    phrase.text,
+    phrase.normalized_text || String(phrase.text).toLowerCase(),
+    phrase.type || 'n-gram',
+    phrase.frequency || 0,
+    phrase.created_at || Date.now(),
+    phrase.updated_at || Date.now(),
+    JSON.stringify(phrase.metadata || {})
   );
 }
 
@@ -144,7 +217,7 @@ function seedCorpus(db: Database.Database, accountId: string) {
   });
 
   // Spans for Source 1
-  insertNode(db, accountId, {
+  insertSourceSpan(db, accountId, {
     id: `span_1a_${accountId}`,
     kind: 'SourceSpan',
     text: 'Symbolic necessity is a key concept in modal logic and philosophy of language.',
@@ -155,7 +228,7 @@ function seedCorpus(db: Database.Database, accountId: string) {
   });
 
   // Spans for Source 2
-  insertNode(db, accountId, {
+  insertSourceSpan(db, accountId, {
     id: `span_2a_${accountId}`,
     kind: 'SourceSpan',
     text: 'Formal systems rely on symbolic necessity to establish truth conditions and proof obligations.',
@@ -166,7 +239,7 @@ function seedCorpus(db: Database.Database, accountId: string) {
   });
 
   // Spans for Source 3
-  insertNode(db, accountId, {
+  insertSourceSpan(db, accountId, {
     id: `span_3a_${accountId}`,
     kind: 'SourceSpan',
     text: 'The best pasta recipes require fresh ingredients and careful timing.',
@@ -198,7 +271,7 @@ function seedCorpus(db: Database.Database, accountId: string) {
 
   // Shared phrase: "symbolic necessity"
   const phraseId = `phrase_symbolic_necessity_${accountId}`;
-  insertNode(db, accountId, {
+  insertPhrase(db, accountId, {
     id: phraseId,
     kind: 'Phrase',
     text: 'symbolic necessity',
@@ -236,7 +309,7 @@ function seedCorpus(db: Database.Database, accountId: string) {
 
   // Another phrase: "modal logic" — only in source 1
   const phraseModalLogic = `phrase_modal_logic_${accountId}`;
-  insertNode(db, accountId, {
+  insertPhrase(db, accountId, {
     id: phraseModalLogic,
     kind: 'Phrase',
     text: 'modal logic',
@@ -638,15 +711,15 @@ describe('Semantic Spine Search', () => {
     expect(result.phraseScores).toBeGreaterThan(0);
     expect(result.sourceScores).toBeGreaterThan(0);
 
-    // Check that scores are stored in node metadata
+    // Check that scores are stored in phrase metadata
     const phraseRow = db
-      .prepare(`SELECT properties FROM nodes WHERE account_id = ? AND id = ?`)
-      .get(ACCOUNT_A, `phrase_symbolic_necessity_${ACCOUNT_A}`) as { properties: string };
+      .prepare(`SELECT metadata FROM phrases WHERE account_id = ? AND id = ?`)
+      .get(ACCOUNT_A, `phrase_symbolic_necessity_${ACCOUNT_A}`) as { metadata: string };
 
-    const props = JSON.parse(phraseRow.properties);
-    expect(props.metadata.hub_score).toBeGreaterThan(0);
-    expect(props.metadata.score_components).toBeDefined();
-    expect(props.metadata.authority_computed_at).toBeGreaterThan(0);
+    const metadata = JSON.parse(phraseRow.metadata || '{}');
+    expect(metadata.hub_score).toBeGreaterThan(0);
+    expect(metadata.score_components).toBeDefined();
+    expect(metadata.authority_computed_at).toBeGreaterThan(0);
   });
 
   // Test 13: Source-to-source connection explanation

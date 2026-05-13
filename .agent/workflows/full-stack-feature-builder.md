@@ -23,11 +23,20 @@ Safely introduces new features or refactors existing capabilities across the Kei
 
 ## Step-by-Step Procedure
 
-1. Define the schema changes within `packages/db` and execute the `sqlite-schema-migration` workflow if needed.
-2. Update the API contracts in `apps/api`.
-3. Modify the shared types in `packages/types`.
-4. Implement the front-end logic in `apps/web`.
-5. Check for any required Electron IPC bridging in `apps/desktop`.
-6. Write integration tests and E2E tests for the new functionality.
-7. Run `npm run type-check` and `npm run test` globally.
-8. Run `npm run e2e:smoke` to ensure no critical path is broken.
+1. Produce an impact map covering the following layers. Only touch layers that the impact map justifies:
+   - database/schema
+   - API
+   - shared types
+   - web UI
+   - desktop runtime
+   - tests
+   - docs
+   - security/privacy
+2. Define the schema changes within `packages/db` and execute the `sqlite-schema-migration` workflow if needed.
+3. Update the API contracts in `apps/api`.
+4. Modify the shared types in `packages/types`.
+5. Implement the front-end logic in `apps/web`.
+6. Check for any required Electron IPC bridging in `apps/desktop`.
+7. Write integration tests and E2E tests for the new functionality.
+8. Run `npm run type-check` and `npm run test` globally.
+9. Run `npm run e2e:smoke` to ensure no critical path is broken.

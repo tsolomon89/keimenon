@@ -55,7 +55,7 @@ workflows:
       may_edit_docs: false
       may_run_commands: true
       may_delete_files: false
-    required_gates: 'Tests'
+    required_gates: 'npm run test:data:split'
   - name: graph-canvas-development
     purpose: 'Coordinates React state synchronization with the Three.js renderer schema'
     owning_persona: graph-rendering-engineer
@@ -73,7 +73,7 @@ workflows:
       may_edit_docs: false
       may_run_commands: true
       may_delete_files: false
-    required_gates: 'Lint'
+    required_gates: 'npm run lint'
   - name: n-pass-iteration
     purpose: 'Iteratively refines agent context and specs to reduce ambiguity without destabilizing the corpus'
     owning_persona: documentation-steward
@@ -91,7 +91,7 @@ workflows:
       may_edit_docs: true
       may_run_commands: false
       may_delete_files: false
-    required_gates: 'Review'
+    required_gates: 'Manual Review'
   - name: project-orientation
     purpose: 'Gets a fresh coding agent up to speed on the project architecture.'
     owning_persona: repo-cartographer
@@ -145,7 +145,7 @@ workflows:
       may_edit_docs: true
       may_run_commands: true
       may_delete_files: false
-    required_gates: 'Security review'
+    required_gates: 'Manual Security Review'
   - name: web-ui-development
     purpose: 'Next.js/React changes ensuring data fetching, state, accessibility, and E2E impact.'
     owning_persona: web-app-engineer
@@ -155,7 +155,7 @@ workflows:
     inputs_expected: 'Design/Spec'
     outputs_required: 'React components'
     files_directories_inspected: 'apps/web'
-    commands_usually_run: 'npm run build'
+    commands_usually_run: 'npm run lint, npm run type-check, npm run build (conditional: npm run e2e:smoke)'
     evidence_required: 'Visual check, E2E tests'
     risk_level: 'Medium'
     permissions:
@@ -163,7 +163,7 @@ workflows:
       may_edit_docs: false
       may_run_commands: true
       may_delete_files: false
-    required_gates: 'Lint, Typecheck'
+    required_gates: 'npm run lint, npm run type-check'
   - name: desktop-runtime
     purpose: 'Electron/local runtime work checking ABI, packaged dist sync, and local paths.'
     owning_persona: desktop-runtime-engineer
@@ -181,7 +181,7 @@ workflows:
       may_edit_docs: false
       may_run_commands: true
       may_delete_files: false
-    required_gates: 'Build success'
+    required_gates: 'npm run desktop:web-dist:verify'
   - name: graph-data-model
     purpose: 'Node/edge/schema changes ensuring provenance, immutability, and dedupe semantics.'
     owning_persona: graph-schema-validator
@@ -199,7 +199,7 @@ workflows:
       may_edit_docs: true
       may_run_commands: true
       may_delete_files: false
-    required_gates: 'Schema review'
+    required_gates: 'Manual Schema Review'
   - name: security-privacy-review
     purpose: 'Review auth, account isolation, local data, MCP exposure, and data exfiltration risk.'
     owning_persona: security-auth-reviewer
@@ -235,7 +235,7 @@ workflows:
       may_edit_docs: true
       may_run_commands: false
       may_delete_files: false
-    required_gates: 'Review'
+    required_gates: 'Manual Review'
   - name: dependency-runtime-maintenance
     purpose: 'Node/npm/dependency/native runtime work enforcing Node 24 and npm strictness.'
     owning_persona: ops-hygiene-engineer
@@ -252,8 +252,8 @@ workflows:
       may_edit_code: true
       may_edit_docs: false
       may_run_commands: true
-      may_delete_files: true
-    required_gates: 'All tests pass'
+      may_delete_files: false unless deletion is routed through dead-code-cleanup
+    required_gates: 'npm run doctor:runtime'
   - name: master-dev-team-orchestrator
     purpose: 'Coordinates all other workflows and routes to specialized workflows based on task classification.'
     owning_persona: repo-cartographer
@@ -289,7 +289,7 @@ workflows:
       may_edit_docs: true
       may_run_commands: true
       may_delete_files: false
-    required_gates: 'architecture/security review'
+    required_gates: 'Manual Architecture/Security Review'
   - name: dead-code-cleanup
     purpose: 'Safe, reversible code deletion with required multi-evidence checking and post-deletion test runs.'
     owning_persona: ops-hygiene-engineer
