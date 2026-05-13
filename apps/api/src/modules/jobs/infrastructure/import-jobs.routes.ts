@@ -34,7 +34,9 @@ export function createImportJobsRoutes(
   /**
    * POST /api/v1/jobs/import
    * Compatibility shim for retired multipart import rail.
+   * [DEAD CODE QUARANTINE] - 410 endpoint removed as part of hygiene pass.
    */
+  /*
   router.post('/import', requireAuth(authService), async (req: Request, res: Response) => {
     const userId = (req as any).user?.userId;
     const userAccountId = (req as any).user?.accountId;
@@ -59,6 +61,7 @@ export function createImportJobsRoutes(
       },
     });
   });
+  */
 
   /**
    * POST /api/v1/jobs/delete

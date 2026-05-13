@@ -296,6 +296,7 @@ describe('semantic spine traversal and unified document loop', () => {
         rootNodeIds: [phrase.id],
         maxHops: 3,
         expansionStrategy: 'mixed',
+        includeSuggestedTopics: true,
       });
       const phraseNodeIds = phraseTraversal.nodes.map((node) => node.id);
       expect(phraseNodeIds).toContain('source_a_symbolic');
@@ -307,6 +308,7 @@ describe('semantic spine traversal and unified document loop', () => {
         rootNodeIds: ['source_a_symbolic'],
         maxHops: 3,
         expansionStrategy: 'mixed',
+        includeSuggestedTopics: true,
       });
       expect(sourceTraversal.nodes.some((node) => node.kind === 'Phrase')).toBe(true);
       expect(sourceTraversal.nodes.some((node) => node.kind === 'Topic')).toBe(true);
@@ -326,12 +328,14 @@ describe('semantic spine traversal and unified document loop', () => {
         maxHops: 3,
         expansionStrategy: 'mixed',
         maxChars: 5000,
+        includeSuggestedTopics: true,
       });
       const packB = traversal.buildContextPack(ACCOUNT_A, {
         rootNodeIds: [phrase.id],
         maxHops: 3,
         expansionStrategy: 'mixed',
         maxChars: 5000,
+        includeSuggestedTopics: true,
       });
 
       expect(packA.id).toBe(packB.id);
@@ -361,6 +365,7 @@ describe('semantic spine traversal and unified document loop', () => {
           maxHops: 3,
           expansionStrategy: 'mixed',
           maxChars: 8000,
+          includeSuggestedTopics: true,
         },
         { title: 'Symbolic Necessity Synthesis' }
       );

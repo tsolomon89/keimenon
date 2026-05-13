@@ -6,6 +6,7 @@
  * import pipeline integration, and idempotency.
  */
 
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { createHash } from 'crypto';
 import { InvertedIndexService } from '../inverted-index.service';

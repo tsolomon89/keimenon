@@ -296,7 +296,11 @@ export class EnhancedImportServiceV2 {
   private async flushWrites(): Promise<void> {
     if (this.batchAccumulator) {
       await this.batchAccumulator.flush();
-    } else if (this.writeQueue) {
+    }
+
+    // Always force flush the write queue if available, as the batch accumulator
+    // may have delegated to a LegacyQueuedGraphWriteSink which uses this queue.
+    if (this.writeQueue) {
       await this.writeQueue.forceFlush();
     }
   }
@@ -914,8 +918,7 @@ export class EnhancedImportServiceV2 {
     let skippedCatchAllGroups = 0;
     for (const group of groups) {
       const labelKey = normalizeGroupLabelKey(group.name || '');
-      if (!labelKey || this.isCatchAllGroupLabelKey(labelKey) || group.isCatchAll) {
-        skippedCatchAllGroups += 1;
+      if (!labelKey) {
         continue;
       }
 

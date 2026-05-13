@@ -735,7 +735,7 @@ export class ImportWorker extends BaseWorker {
 
       let batchAccumulator: any;
       if (process.env.KEIMENON_BULK_INSERTS !== '0') {
-        if (dbWorker?.isReady()) {
+        if (!isTestMode && dbWorker?.isReady()) {
           const sink = new BulkGraphWriteSink(dbWorker as any, (progress) => {
             void this.reportProgress(
               job,

@@ -73,18 +73,15 @@ describe('Jobs/API Cutover Contract', () => {
     db.close();
   });
 
-  it('keeps explicit import compatibility endpoint and rejects unauthenticated access', async () => {
-    await request(app).post('/api/v1/jobs/import').expect(401);
+  it('returns 404 for removed explicit import compatibility endpoint even without authentication', async () => {
+    await request(app).post('/api/v1/jobs/import').expect(404);
   });
 
-  it('returns 410 for authenticated multipart import calls', async () => {
+  it('returns 404 for removed authenticated multipart import calls', async () => {
     const response = await request(app)
       .post('/api/v1/jobs/import')
       .set('Authorization', 'Bearer valid-token')
-      .expect(410);
-
-    expect(response.body.success).toBe(false);
-    expect(response.body.code).toBe('IMPORT_MULTIPART_REMOVED');
+      .expect(404);
   });
 
   it('returns 404 for removed generic POST /api/v1/jobs enqueue surface', async () => {

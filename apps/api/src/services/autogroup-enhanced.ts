@@ -255,7 +255,7 @@ export class EnhancedAutogroupService {
           keywords: [],
           sources: sourceIds,
           isManual: false,
-          isCatchAll: false,
+          isCatchAll: true,
           confidence: 0.1,
         });
       }

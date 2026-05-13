@@ -35,6 +35,7 @@ export class LegacyQueuedGraphWriteSink implements GraphWriteSink {
 
     let nodesAdded = 0;
     let edgesAdded = 0;
+    let payloadsWritten = 0;
 
     const nodesToQueue: AnyNode[] = [];
 
@@ -69,9 +70,97 @@ export class LegacyQueuedGraphWriteSink implements GraphWriteSink {
       }
     }
 
-    // In legacy, normalized payloads don't exist as separate objects to insert via the queue,
-    // they are part of the 'nodes' JSON that gets created/updated.
-    // So we don't need to explicitly push them if skinnyNodes covers the node creation.
+    // ── Normalized payload persistence ────────────────────────────────
+    // Convert normalized payload rows back into AnyNode objects that
+    // SQLiteClient.createNode already knows how to persist into their
+    // respective tables (source_spans, phrases, packets, atomic_units).
+    const payloads = batch.normalizedPayloads;
+    if (payloads) {
+      for (const span of payloads.sourceSpans ?? []) {
+        nodesToQueue.push({
+          id: span.node_id,
+          kind: 'SourceSpan',
+          account_id: batch.accountId,
+          created_by: batch.createdBy,
+          created_at: Date.now(),
+          updated_at: Date.now(),
+          source_id: span.source_id,
+          message_id: span.message_id || null,
+          conversation_id: span.conversation_id || null,
+          text: span.text,
+          normalized_text: span.normalized_text,
+          start_char: span.start_char,
+          end_char: span.end_char,
+          boundary_kind: span.boundary_kind || 'sentence',
+          span_hash: span.span_hash,
+          metadata: span.metadata || null,
+        } as any);
+        payloadsWritten++;
+      }
+
+      for (const phrase of payloads.phrases ?? []) {
+        nodesToQueue.push({
+          id: phrase.node_id,
+          kind: 'Phrase',
+          account_id: batch.accountId,
+          created_by: batch.createdBy,
+          created_at: Date.now(),
+          updated_at: Date.now(),
+          text: phrase.text,
+          normalized_text: phrase.normalized_text,
+          type: phrase.type || 'phrase',
+          entity_type: phrase.entity_type || null,
+          frequency: phrase.frequency || 1,
+          metadata: phrase.metadata || null,
+        } as any);
+        payloadsWritten++;
+      }
+
+      for (const packet of payloads.packets ?? []) {
+        nodesToQueue.push({
+          id: packet.node_id,
+          kind: 'Packet',
+          account_id: batch.accountId,
+          created_by: batch.createdBy,
+          created_at: Date.now(),
+          updated_at: Date.now(),
+          text: packet.text,
+          normalized_text: packet.normalized_text,
+          occurrences: packet.occurrences || 0,
+          mass: packet.mass || 0,
+          coverage: packet.coverage || 0,
+          idf: packet.idf || 0,
+          entropy_factor: packet.entropy_factor || 0,
+          packet_hash: packet.packet_hash,
+          metadata: packet.metadata || null,
+        } as any);
+        payloadsWritten++;
+      }
+
+      for (const au of payloads.atomicUnits ?? []) {
+        nodesToQueue.push({
+          id: au.node_id,
+          kind: 'AtomicUnit',
+          account_id: batch.accountId,
+          created_by: batch.createdBy,
+          created_at: Date.now(),
+          updated_at: Date.now(),
+          unit_type: au.unit_type,
+          value: au.value,
+          normalized_value: au.normalized_value,
+          unit_hash: au.unit_hash,
+          metadata: au.metadata || null,
+        } as any);
+        payloadsWritten++;
+      }
+
+      if (payloadsWritten > 0) {
+        console.log(
+          `[LegacyQueuedGraphWriteSink] Converted ${payloadsWritten} normalized payload(s) ` +
+            `to AnyNode objects for legacy queue persistence`
+        );
+      }
+    }
 
     const edgesToQueue: AnyEdge[] = [];
     for (const e of batch.edges) {
@@ -95,7 +184,7 @@ export class LegacyQueuedGraphWriteSink implements GraphWriteSink {
       success: true,
       nodesWritten: nodesAdded,
       edgesWritten: edgesAdded,
-      payloadsWritten: 0,
+      payloadsWritten,
       quarantinedRows: 0,
     };
   }
