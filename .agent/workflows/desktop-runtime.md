@@ -12,18 +12,15 @@ Electron/local runtime work checking ABI, packaged dist sync, and local paths.
 ## Operational Details
 
 - **Owning Persona**: desktop-runtime-engineer
-- **Supporting Personas**: architecture-contract-guardian
-- **Skills Used**: mcp-integration-expert
-- **When to Use**: Desktop app changes
-- **When NOT to Use**: When out of scope of Electron/local runtime work checking ABI, packaged dist sync, and local paths..
-- **Required Inputs**: Spec
-- **Commands / Checks**: npm run build:desktop
-- **Evidence Output**: App launch success
-- **Stop Conditions / Acceptance Criteria**: Build success
+- **When to Use**: Updating IPC channels or native Node dependencies
+- **When NOT to Use**: Web-only cosmetic changes
+- **Required Inputs**: Electron `apps/desktop` paths
+- **Commands / Checks**: `npm run desktop:web-dist:verify, npm run desktop:rebuild-native`
+- **Evidence Output**: Electron packaged binary success
+- **Stop Conditions / Acceptance Criteria**: Native build passes and IPC messages resolve.
 
-## Required Steps
+## Step-by-Step Procedure
 
-1. Review required inputs.
-2. Formulate plan based on purpose.
-3. Execute necessary commands.
-4. Verify evidence against acceptance criteria.
+1. Audit main/preload IPC channels.
+2. Ensure web-dist is synchronized.
+3. Rebuild native modules if dependencies changed.

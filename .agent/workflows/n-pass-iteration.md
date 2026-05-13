@@ -12,21 +12,15 @@ Iteratively refines agent context and specs to reduce ambiguity without destabil
 ## Operational Details
 
 - **Owning Persona**: documentation-steward
-- **Supporting Personas**: meta-text-assembler
-- **Skills Used**: research-specialist
-- **When to Use**: Ambiguous spec
-- **When NOT to Use**: When out of scope of Iteratively refines agent context and specs to reduce ambiguity without destabilizing the corpus.
-- **Required Inputs**: Draft spec
-- **Commands / Checks**: None
-- **Evidence Output**: Diff
-- **Stop Conditions / Acceptance Criteria**: Review
+- **When to Use**: Refining complex markdown files iteratively
+- **When NOT to Use**: Deploying code changes
+- **Required Inputs**: Target markdown document
+- **Commands / Checks**: `manual/none`
+- **Evidence Output**: Unified and unambiguous markdown file
+- **Stop Conditions / Acceptance Criteria**: Zero conflicting statements remain in the spec.
 
-This workflow coordinates iterative passes over the `agent_context_refactored/` directory to refine Keimenon specs, reduce ambiguity, and improve agent retrieval without destabilizing the corpus. Trigger via `/n-pass-iteration`.
+## Step-by-Step Procedure
 
-## Steps
-
-1. **Context Load:** Read current `agent_context_refactored/` as the baseline truth. Review any new/updated source documents.
-2. **Analysis Pass:** Use `research-specialist` to identify contradictions, terminology drift, or missing canonical contracts. Do not rewrite wholesale; think in deltas.
-3. **Quarantine Uncertainties:** If something is uncertain, don't smear uncertainty across the corpus. Quarantine it in `60_open_questions/` or an ADR.
-4. **Promote Certainties:** If new sources clarify an older open decision, promote it into canonical contracts (using MUST/SHOULD/MAY) and close the decision.
-5. **Update Provenance:** Update `manifest.yaml` (load plans + last_updated) and record meaningful changes in `90_provenance/change_log.md`.
+1. Read the target document.
+2. Identify contradictions or undefined invariants.
+3. Clarify and rewrite sections specifically.

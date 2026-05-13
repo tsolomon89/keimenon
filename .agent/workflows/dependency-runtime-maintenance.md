@@ -12,18 +12,15 @@ Node/npm/dependency/native runtime work enforcing Node 24 and npm strictness.
 ## Operational Details
 
 - **Owning Persona**: ops-hygiene-engineer
-- **Supporting Personas**: desktop-runtime-engineer
-- **Skills Used**: code-execution-orchestrator
-- **When to Use**: Dependency updates
-- **When NOT to Use**: When out of scope of Node/npm/dependency/native runtime work enforcing Node 24 and npm strictness..
-- **Required Inputs**: npm outdated
-- **Commands / Checks**: npm install
-- **Evidence Output**: Build success
-- **Stop Conditions / Acceptance Criteria**: All tests pass
+- **When to Use**: Updating `package.json` dependencies
+- **When NOT to Use**: Writing business logic
+- **Required Inputs**: `npm outdated` output
+- **Commands / Checks**: `npm install, npm run doctor:runtime`
+- **Evidence Output**: Updated lockfile and success log
+- **Stop Conditions / Acceptance Criteria**: `doctor:runtime` reports clean environment.
 
-## Required Steps
+## Step-by-Step Procedure
 
-1. Review required inputs.
-2. Formulate plan based on purpose.
-3. Execute necessary commands.
-4. Verify evidence against acceptance criteria.
+1. Update `package.json` versions.
+2. Run install.
+3. Verify runtime health.

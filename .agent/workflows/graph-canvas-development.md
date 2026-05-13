@@ -12,19 +12,15 @@ Coordinates React state synchronization with the Three.js renderer schema
 ## Operational Details
 
 - **Owning Persona**: graph-rendering-engineer
-- **Supporting Personas**: web-app-engineer
-- **Skills Used**: e2e-test-generator
-- **When to Use**: UI changes
-- **When NOT to Use**: When out of scope of Coordinates React state synchronization with the Three.js renderer schema.
-- **Required Inputs**: Feature request
-- **Commands / Checks**: npm run dev
-- **Evidence Output**: Visual regression
-- **Stop Conditions / Acceptance Criteria**: Lint
+- **When to Use**: Adjusting the 3D canvas, zoom, or instanced meshes
+- **When NOT to Use**: Backend or database-only logic
+- **Required Inputs**: React components under `apps/web/src`
+- **Commands / Checks**: `npm run lint, npm run type-check`
+- **Evidence Output**: Canvas rendering visual checks
+- **Stop Conditions / Acceptance Criteria**: No React dependency warnings and 0 type errors in canvas code.
 
-Coordinates React state with the Three.js renderer schema. Trigger via `/graph-canvas-development`.
+## Step-by-Step Procedure
 
-## Steps
-
-1. **State Audit:** Ensure any React state changes correctly propagate to the InstancedMesh without causing React-Three-Fiber re-renders on the main thread.
-2. **LOD Verification:** Confirm L0 to L3 projection rules are maintained for large graphs.
-3. **UI Integration:** Ensure toolbar interactions (2D/3D/ND) map correctly to camera properties.
+1. Audit Three.js instance arrays.
+2. Ensure WebGL limits are respected.
+3. Validate React hook dependency arrays.

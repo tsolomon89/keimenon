@@ -12,18 +12,14 @@ Aligning docs with code, identifying stale docs, preserving provenance without h
 ## Operational Details
 
 - **Owning Persona**: documentation-steward
-- **Supporting Personas**: repo-cartographer
-- **Skills Used**: research-specialist
-- **When to Use**: Feature completion
-- **When NOT to Use**: When out of scope of Aligning docs with code, identifying stale docs, preserving provenance without hallucinating..
+- **When to Use**: Code changes render existing `docs/` outdated
+- **When NOT to Use**: Active coding phases
 - **Required Inputs**: Code diffs
-- **Commands / Checks**: None
-- **Evidence Output**: Doc diffs
-- **Stop Conditions / Acceptance Criteria**: Review
+- **Commands / Checks**: `manual/none`
+- **Evidence Output**: Updated markdown docs
+- **Stop Conditions / Acceptance Criteria**: Documentation accurately reflects the codebase.
 
-## Required Steps
+## Step-by-Step Procedure
 
-1. Review required inputs.
-2. Formulate plan based on purpose.
-3. Execute necessary commands.
-4. Verify evidence against acceptance criteria.
+1. Read `AGENTS.md` and `docs/`.
+2. Append clarifications based on recent code commits.

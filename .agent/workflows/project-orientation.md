@@ -12,18 +12,14 @@ Gets a fresh coding agent up to speed on the project architecture.
 ## Operational Details
 
 - **Owning Persona**: repo-cartographer
-- **Supporting Personas**: documentation-steward
-- **Skills Used**: research-specialist
-- **When to Use**: New agent startup
-- **When NOT to Use**: When out of scope of Gets a fresh coding agent up to speed on the project architecture..
+- **When to Use**: Initial repository clone or agent boot
+- **When NOT to Use**: Subsequent active development
 - **Required Inputs**: None
-- **Commands / Checks**: npm run type-check
-- **Evidence Output**: Summary report
-- **Stop Conditions / Acceptance Criteria**: None
+- **Commands / Checks**: `npm run doctor:runtime`
+- **Evidence Output**: Summary of system health and constraints
+- **Stop Conditions / Acceptance Criteria**: Agent correctly enumerates the local-first constraints.
 
-## Required Steps
+## Step-by-Step Procedure
 
-1. Review required inputs.
-2. Formulate plan based on purpose.
-3. Execute necessary commands.
-4. Verify evidence against acceptance criteria.
+1. Read `AGENTS.md`.
+2. Run runtime diagnostics to verify Node version and workspace health.

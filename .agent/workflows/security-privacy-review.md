@@ -12,18 +12,15 @@ Review auth, account isolation, local data, MCP exposure, and data exfiltration 
 ## Operational Details
 
 - **Owning Persona**: security-auth-reviewer
-- **Supporting Personas**: account-isolation-guardian
-- **Skills Used**: security-auditor
-- **When to Use**: Security audit request
-- **When NOT to Use**: When out of scope of Review auth, account isolation, local data, MCP exposure, and data exfiltration risk..
-- **Required Inputs**: PR or codebase
-- **Commands / Checks**: npm run lint
-- **Evidence Output**: Audit log
-- **Stop Conditions / Acceptance Criteria**: None
+- **When to Use**: A Mandatory Security Review is triggered by Orchestrator
+- **When NOT to Use**: Harmless cosmetic updates
+- **Required Inputs**: Code diffs
+- **Commands / Checks**: `npm run ci:hygiene:check`
+- **Evidence Output**: Security pass/fail verdict
+- **Stop Conditions / Acceptance Criteria**: No data exfiltration vectors identified.
 
-## Required Steps
+## Step-by-Step Procedure
 
-1. Review required inputs.
-2. Formulate plan based on purpose.
-3. Execute necessary commands.
-4. Verify evidence against acceptance criteria.
+1. Audit PR for any external HTTP requests bypassing local-first rules.
+2. Verify `account_id` is passed securely.
+3. Check repository hygiene scripts.

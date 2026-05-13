@@ -12,18 +12,15 @@ Fix broken/flaky tests and improve test structure while preserving assertion str
 ## Operational Details
 
 - **Owning Persona**: test-strategy-engineer
-- **Supporting Personas**: pipeline-verifier
-- **Skills Used**: autonomous-test-healer, autonomous-test-runner
-- **When to Use**: Flaky test reports
-- **When NOT to Use**: When out of scope of Fix broken/flaky tests and improve test structure while preserving assertion strength..
-- **Required Inputs**: Test logs
-- **Commands / Checks**: npx playwright test
+- **When to Use**: Tests are flaking or failing in CI
+- **When NOT to Use**: Writing brand new feature tests
+- **Required Inputs**: The failing test log
+- **Commands / Checks**: `npm run e2e:smoke`
 - **Evidence Output**: Consistent test passes
-- **Stop Conditions / Acceptance Criteria**: Coverage preserved
+- **Stop Conditions / Acceptance Criteria**: Test passes consecutively without flaking.
 
-## Required Steps
+## Step-by-Step Procedure
 
-1. Review required inputs.
-2. Formulate plan based on purpose.
-3. Execute necessary commands.
-4. Verify evidence against acceptance criteria.
+1. Identify the flaky assertion.
+2. Refactor the locator or await mechanism.
+3. Run the specific E2E smoke suite to validate.

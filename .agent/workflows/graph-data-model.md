@@ -12,18 +12,14 @@ Node/edge/schema changes ensuring provenance, immutability, and dedupe semantics
 ## Operational Details
 
 - **Owning Persona**: graph-schema-validator
-- **Supporting Personas**: source-provenance-auditor, semantic-grouping-architect
-- **Skills Used**: graph-schema-validator, vector-similarity-ops
-- **When to Use**: Schema changes
-- **When NOT to Use**: When out of scope of Node/edge/schema changes ensuring provenance, immutability, and dedupe semantics..
-- **Required Inputs**: Schema spec
-- **Commands / Checks**: npm run test
-- **Evidence Output**: Validation success
-- **Stop Conditions / Acceptance Criteria**: Schema review
+- **When to Use**: Modifying similarity logic or database schema nodes
+- **When NOT to Use**: CSS styling
+- **Required Inputs**: Schema models
+- **Commands / Checks**: `npm run sqlite:check`
+- **Evidence Output**: Validation log
+- **Stop Conditions / Acceptance Criteria**: SQLite check confirms schema integrity.
 
-## Required Steps
+## Step-by-Step Procedure
 
-1. Review required inputs.
-2. Formulate plan based on purpose.
-3. Execute necessary commands.
-4. Verify evidence against acceptance criteria.
+1. Update types in `agent_context/schemas` and `packages/db`.
+2. Validate against existing SQLite constraints.

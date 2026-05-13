@@ -12,18 +12,15 @@ API/database/service-layer work while checking auth and account_id scope.
 ## Operational Details
 
 - **Owning Persona**: api-contract-engineer
-- **Supporting Personas**: security-auth-reviewer, account-isolation-guardian
-- **Skills Used**: mcp-integration-expert, security-auditor
-- **When to Use**: Backend API changes
-- **When NOT to Use**: When out of scope of API/database/service-layer work while checking auth and account_id scope..
-- **Required Inputs**: API spec
-- **Commands / Checks**: npm run test
-- **Evidence Output**: API tests passing
-- **Stop Conditions / Acceptance Criteria**: Security review
+- **When to Use**: Adding or mutating Express/Fastify routes
+- **When NOT to Use**: Frontend-only changes
+- **Required Inputs**: Route specifications
+- **Commands / Checks**: `npm run test:auth`
+- **Evidence Output**: API endpoint logic passing auth guards
+- **Stop Conditions / Acceptance Criteria**: 0 bypassed account_id constraints in queries.
 
-## Required Steps
+## Step-by-Step Procedure
 
-1. Review required inputs.
-2. Formulate plan based on purpose.
-3. Execute necessary commands.
-4. Verify evidence against acceptance criteria.
+1. Ensure all queries filter by `account_id`.
+2. Update route controllers in `apps/api`.
+3. Run authentication test suite.

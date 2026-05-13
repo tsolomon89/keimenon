@@ -12,20 +12,16 @@ Coordinates E2E tests, builds, and runtime doctors for full-stack release gates
 ## Operational Details
 
 - **Owning Persona**: pipeline-verifier
-- **Supporting Personas**: e2e-test-generator
-- **Skills Used**: autonomous-test-runner
-- **When to Use**: Pre-release or major PR
-- **When NOT to Use**: When out of scope of Coordinates E2E tests, builds, and runtime doctors for full-stack release gates.
-- **Required Inputs**: None
-- **Commands / Checks**: npm run test
-- **Evidence Output**: Test results
-- **Stop Conditions / Acceptance Criteria**: None
+- **When to Use**: Final validation before pushing PR or release
+- **When NOT to Use**: In-progress feature development
+- **Required Inputs**: Source code branch
+- **Commands / Checks**: `npm run doctor:runtime, npm run lint, npm run type-check, npm run test, npm run build, npm run test:auth, npm run migrate:to-local:dry-run, npm run sqlite:check, npm run e2e:smoke`
+- **Evidence Output**: Complete CI/CD pass report
+- **Stop Conditions / Acceptance Criteria**: Zero failures across all 9 quality gate scripts.
 
-This workflow runs the full-stack release verifications. Trigger this workflow via `/golden-path-verification`.
+## Step-by-Step Procedure
 
-## Steps
-
-1. **Lint & Types:** Run `npm run lint` and `npm run type-check` across all workspace packages.
-2. **Unit Tests:** Trigger the root test suite.
-3. **E2E Smoke Tests:** Use `autonomous-test-runner` to execute the Playwright golden path suite.
-4. **Review Results:** The pipeline-verifier ensures no authoritative gates were bypassed.
+1. Audit system health using doctor scripts.
+2. Ensure all types and linters pass.
+3. Run integration tests for auth and sqlite.
+4. Run full UI/E2E smoke test suite.
