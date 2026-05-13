@@ -32,38 +32,6 @@ export function createImportJobsRoutes(
   const enqueueJob = new EnqueueJob(jobRepository, broadcaster);
 
   /**
-   * POST /api/v1/jobs/import
-   * Compatibility shim for retired multipart import rail.
-   * [DEAD CODE QUARANTINE] - 410 endpoint removed as part of hygiene pass.
-   */
-  /*
-  router.post('/import', requireAuth(authService), async (req: Request, res: Response) => {
-    const userId = (req as any).user?.userId;
-    const userAccountId = (req as any).user?.accountId;
-    const operating = (req as any).operating;
-    const targetAccountId = operating?.accountId || userAccountId;
-
-    appLogger.info('jobs.import.multipart_retired', {
-      userId,
-      accountId: targetAccountId,
-      contentType: req.headers['content-type'],
-    });
-
-    return res.status(410).json({
-      success: false,
-      code: 'IMPORT_MULTIPART_REMOVED',
-      error:
-        'Multipart import endpoint has been retired. Use chunked upload via /api/v1/uploads/initiate and /api/v1/uploads/:sessionId/chunks/:chunkIndex.',
-      migration: {
-        initiate: 'POST /api/v1/uploads/initiate',
-        chunk: 'POST /api/v1/uploads/:sessionId/chunks/:chunkIndex',
-        sessionStatus: 'GET /api/v1/uploads/:sessionId',
-      },
-    });
-  });
-  */
-
-  /**
    * POST /api/v1/jobs/delete
    * Create delete job
    */

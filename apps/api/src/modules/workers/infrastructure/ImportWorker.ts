@@ -729,35 +729,44 @@ export class ImportWorker extends BaseWorker {
 
       const { getDbWorker } = await import('../../../workers/db-worker-singleton');
       const dbWorker = getDbWorker();
-      const { BulkGraphWriteSink, LegacyQueuedGraphWriteSink } =
-        await import('../../../services/GraphWriteSink');
+      const { BulkGraphWriteSink } = await import('../../../services/GraphWriteSink');
       const { GraphBatchAccumulator } = await import('../../../services/GraphBatchAccumulator');
 
       let batchAccumulator: any;
       if (process.env.KEIMENON_BULK_INSERTS !== '0') {
-        if (!isTestMode && dbWorker?.isReady()) {
-          const sink = new BulkGraphWriteSink(dbWorker as any, (progress) => {
-            void this.reportProgress(
-              job,
-              progress.nodesWritten + progress.edgesWritten,
-              -1, // total is handled by the overall ImportPipeline logic
-              `Writing graph batch ${progress.batchIndex}...`,
-              context,
-              ImportJobStage.MATERIALIZE,
-              {
-                elapsedMsInBatch: progress.elapsedMs,
-                nodesWritten: progress.nodesWritten,
-                edgesWritten: progress.edgesWritten,
-                payloadsWritten: progress.payloadsWritten,
-                quarantinedRows: progress.quarantinedRows,
-                batchPhase: progress.phase,
-              }
+        if (!isTestMode) {
+          if (dbWorker?.isReady()) {
+            const sink = new BulkGraphWriteSink(dbWorker as any, (progress) => {
+              void this.reportProgress(
+                job,
+                progress.nodesWritten + progress.edgesWritten,
+                -1, // total is handled by the overall ImportPipeline logic
+                `Writing graph batch ${progress.batchIndex}...`,
+                context,
+                ImportJobStage.MATERIALIZE,
+                {
+                  elapsedMsInBatch: progress.elapsedMs,
+                  nodesWritten: progress.nodesWritten,
+                  edgesWritten: progress.edgesWritten,
+                  payloadsWritten: progress.payloadsWritten,
+                  quarantinedRows: progress.quarantinedRows,
+                  batchPhase: progress.phase,
+                }
+              );
+            });
+            batchAccumulator = new GraphBatchAccumulator(
+              sink,
+              job.accountId,
+              job.createdBy,
+              job.id
             );
-          });
-          batchAccumulator = new GraphBatchAccumulator(sink, job.accountId, job.createdBy, job.id);
-        } else if (writeQueue) {
-          const sink = new LegacyQueuedGraphWriteSink(writeQueue);
-          batchAccumulator = new GraphBatchAccumulator(sink, job.accountId, job.createdBy, job.id);
+          } else {
+            const error = new Error('Database worker is unavailable for bulk inserts.') as Error & {
+              code: string;
+            };
+            error.code = 'IMPORT_DB_WORKER_UNAVAILABLE';
+            throw error;
+          }
         }
       }
 
