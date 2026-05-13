@@ -1,16 +1,27 @@
 ---
 name: n-pass-iteration
-description: Iteratively refines agent context and specs to reduce ambiguity without destabilizing the corpus
+description: 'Iteratively refines agent context and specs to reduce ambiguity without destabilizing the corpus'
 ---
 
 # n-pass-iteration
 
+## Purpose
+
+Iteratively refines agent context and specs to reduce ambiguity without destabilizing the corpus
+
+## Operational Details
+
+- **Owning Persona**: documentation-steward
+- **Supporting Personas**: meta-text-assembler
+- **Skills Used**: research-specialist
+- **When to Use**: Ambiguous spec
+- **When NOT to Use**: When out of scope of Iteratively refines agent context and specs to reduce ambiguity without destabilizing the corpus.
+- **Required Inputs**: Draft spec
+- **Commands / Checks**: None
+- **Evidence Output**: Diff
+- **Stop Conditions / Acceptance Criteria**: Review
+
 This workflow coordinates iterative passes over the `agent_context_refactored/` directory to refine Keimenon specs, reduce ambiguity, and improve agent retrieval without destabilizing the corpus. Trigger via `/n-pass-iteration`.
-
-## Participants
-
-- **Deciders:** `documentation-steward` (Persona), `architecture-contract-guardian` (Persona)
-- **Capabilities:** `research-specialist` (Skill)
 
 ## Steps
 

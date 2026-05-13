@@ -1,16 +1,27 @@
 ---
 name: chat-import-pipeline
-description: Validates chunked ingestions, entity resolution, and similarity edge generation
+description: 'Validates chunked ingestions, entity resolution, and similarity edge generation'
 ---
 
 # chat-import-pipeline
 
+## Purpose
+
+Validates chunked ingestions, entity resolution, and similarity edge generation
+
+## Operational Details
+
+- **Owning Persona**: chat-import-pipeline-engineer
+- **Supporting Personas**: entity-resolution-specialist, semantic-grouping-architect
+- **Skills Used**: vector-similarity-ops, mcp-integration-expert
+- **When to Use**: Import changes
+- **When NOT to Use**: When out of scope of Validates chunked ingestions, entity resolution, and similarity edge generation.
+- **Required Inputs**: Test data
+- **Commands / Checks**: npm run test:import
+- **Evidence Output**: Database snapshot
+- **Stop Conditions / Acceptance Criteria**: Tests
+
 Workflow for validating chunked ingestions and similarity edge generation. Trigger via `/chat-import-pipeline`.
-
-## Participants
-
-- **Decider:** `chat-import-pipeline-engineer` (Persona), `entity-resolution-specialist` (Persona)
-- **Capabilities:** `vector-similarity-ops` (Skill)
 
 ## Steps
 

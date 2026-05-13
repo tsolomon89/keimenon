@@ -1,16 +1,27 @@
 ---
 name: sqlite-schema-migration
-description: Orchestrates safe execution and validation of SQLite schema migrations
+description: 'Orchestrates safe execution and validation of SQLite schema migrations'
 ---
 
 # sqlite-schema-migration
 
+## Purpose
+
+Orchestrates safe execution and validation of SQLite schema migrations
+
+## Operational Details
+
+- **Owning Persona**: sqlite-storage-specialist
+- **Supporting Personas**: architecture-contract-guardian
+- **Skills Used**: mcp-integration-expert, graph-schema-validator
+- **When to Use**: Manual invocation or migration needed
+- **When NOT to Use**: When out of scope of Orchestrates safe execution and validation of SQLite schema migrations.
+- **Required Inputs**: Migration script
+- **Commands / Checks**: npm run migrate
+- **Evidence Output**: SQLite schema dump
+- **Stop Conditions / Acceptance Criteria**: Test suite
+
 This workflow orchestrates the safe execution of SQLite schema migrations. Trigger this workflow via `/sqlite-schema-migration`.
-
-## Participants
-
-- **Decider:** `sqlite-storage-specialist` (Persona)
-- **Capability:** `code-execution-orchestrator` (Skill)
 
 ## Steps
 

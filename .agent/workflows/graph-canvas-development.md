@@ -1,16 +1,27 @@
 ---
 name: graph-canvas-development
-description: Coordinates React state synchronization with the Three.js renderer schema
+description: 'Coordinates React state synchronization with the Three.js renderer schema'
 ---
 
 # graph-canvas-development
 
+## Purpose
+
+Coordinates React state synchronization with the Three.js renderer schema
+
+## Operational Details
+
+- **Owning Persona**: graph-rendering-engineer
+- **Supporting Personas**: web-app-engineer
+- **Skills Used**: e2e-test-generator
+- **When to Use**: UI changes
+- **When NOT to Use**: When out of scope of Coordinates React state synchronization with the Three.js renderer schema.
+- **Required Inputs**: Feature request
+- **Commands / Checks**: npm run dev
+- **Evidence Output**: Visual regression
+- **Stop Conditions / Acceptance Criteria**: Lint
+
 Coordinates React state with the Three.js renderer schema. Trigger via `/graph-canvas-development`.
-
-## Participants
-
-- **Deciders:** `graph-rendering-engineer` (Persona), `web-app-engineer` (Persona)
-- **Capabilities:** `code-review-enforcer` (Skill)
 
 ## Steps
 

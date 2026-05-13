@@ -3,15 +3,328 @@ system: Keimenon Agent OS
 
 workflows:
   - name: sqlite-schema-migration
-    description: Orchestrates safe execution and validation of SQLite schema migrations
+    purpose: 'Orchestrates safe execution and validation of SQLite schema migrations'
+    owning_persona: sqlite-storage-specialist
+    supporting_personas: [architecture-contract-guardian]
+    skills_used: [mcp-integration-expert, graph-schema-validator]
+    activation_triggers: 'Manual invocation or migration needed'
+    inputs_expected: 'Migration script'
+    outputs_required: 'Validated schema'
+    files_directories_inspected: 'packages/database/src/schema'
+    commands_usually_run: 'npm run migrate'
+    evidence_required: 'SQLite schema dump'
+    risk_level: 'High'
+    permissions:
+      may_edit_code: true
+      may_edit_docs: false
+      may_run_commands: true
+      may_delete_files: false
+    required_gates: 'Test suite'
+    related_workflows: []
   - name: golden-path-verification
-    description: Coordinates E2E tests, builds, and runtime doctors for full-stack release gates
+    purpose: 'Coordinates E2E tests, builds, and runtime doctors for full-stack release gates'
+    owning_persona: pipeline-verifier
+    supporting_personas: [e2e-test-generator]
+    skills_used: [autonomous-test-runner]
+    activation_triggers: 'Pre-release or major PR'
+    inputs_expected: 'None'
+    outputs_required: 'Test report'
+    files_directories_inspected: 'tests/e2e'
+    commands_usually_run: 'npm run test'
+    evidence_required: 'Test results'
+    risk_level: 'Low'
+    permissions:
+      may_edit_code: false
+      may_edit_docs: false
+      may_run_commands: true
+      may_delete_files: false
+    required_gates: 'None'
+    related_workflows: []
   - name: chat-import-pipeline
-    description: Validates chunked ingestions, entity resolution, and similarity edge generation
+    purpose: 'Validates chunked ingestions, entity resolution, and similarity edge generation'
+    owning_persona: chat-import-pipeline-engineer
+    supporting_personas: [entity-resolution-specialist, semantic-grouping-architect]
+    skills_used: [vector-similarity-ops, mcp-integration-expert]
+    activation_triggers: 'Import changes'
+    inputs_expected: 'Test data'
+    outputs_required: 'Graph validation'
+    files_directories_inspected: 'apps/api/src/import'
+    commands_usually_run: 'npm run test:import'
+    evidence_required: 'Database snapshot'
+    risk_level: 'Medium'
+    permissions:
+      may_edit_code: true
+      may_edit_docs: false
+      may_run_commands: true
+      may_delete_files: false
+    required_gates: 'Tests'
+    related_workflows: []
   - name: graph-canvas-development
-    description: Coordinates React state synchronization with the Three.js renderer schema
+    purpose: 'Coordinates React state synchronization with the Three.js renderer schema'
+    owning_persona: graph-rendering-engineer
+    supporting_personas: [web-app-engineer]
+    skills_used: [e2e-test-generator]
+    activation_triggers: 'UI changes'
+    inputs_expected: 'Feature request'
+    outputs_required: 'React components'
+    files_directories_inspected: 'apps/web/src/components/graph'
+    commands_usually_run: 'npm run dev'
+    evidence_required: 'Visual regression'
+    risk_level: 'Medium'
+    permissions:
+      may_edit_code: true
+      may_edit_docs: false
+      may_run_commands: true
+      may_delete_files: false
+    required_gates: 'Lint'
+    related_workflows: []
   - name: n-pass-iteration
-    description: Iteratively refines agent context and specs to reduce ambiguity without destabilizing the corpus
+    purpose: 'Iteratively refines agent context and specs to reduce ambiguity without destabilizing the corpus'
+    owning_persona: documentation-steward
+    supporting_personas: [meta-text-assembler]
+    skills_used: [research-specialist]
+    activation_triggers: 'Ambiguous spec'
+    inputs_expected: 'Draft spec'
+    outputs_required: 'Refined spec'
+    files_directories_inspected: 'docs/'
+    commands_usually_run: 'None'
+    evidence_required: 'Diff'
+    risk_level: 'Low'
+    permissions:
+      may_edit_code: false
+      may_edit_docs: true
+      may_run_commands: false
+      may_delete_files: false
+    required_gates: 'Review'
+    related_workflows: []
+  - name: master-dev-team-orchestrator
+    purpose: 'Coordinates all other workflows and routes to specialized workflows based on task classification.'
+    owning_persona: repo-cartographer
+    supporting_personas: []
+    skills_used: [code-execution-orchestrator]
+    activation_triggers: 'New user task'
+    inputs_expected: 'User request'
+    outputs_required: 'Delegated workflow'
+    files_directories_inspected: '.agent/workflows'
+    commands_usually_run: 'None'
+    evidence_required: 'Routing logs'
+    risk_level: 'Low'
+    permissions:
+      may_edit_code: false
+      may_edit_docs: false
+      may_run_commands: false
+      may_delete_files: false
+    required_gates: 'None'
+    related_workflows: []
+  - name: project-orientation
+    purpose: 'Gets a fresh coding agent up to speed on the project architecture.'
+    owning_persona: repo-cartographer
+    supporting_personas: [documentation-steward]
+    skills_used: [research-specialist]
+    activation_triggers: 'New agent startup'
+    inputs_expected: 'None'
+    outputs_required: 'Project map, runtime contract, quality gates'
+    files_directories_inspected: 'README.md, apps/, packages/, docs/'
+    commands_usually_run: 'npm run type-check'
+    evidence_required: 'Summary report'
+    risk_level: 'Low'
+    permissions:
+      may_edit_code: false
+      may_edit_docs: false
+      may_run_commands: true
+      may_delete_files: false
+    required_gates: 'None'
+    related_workflows: []
+  - name: full-stack-feature-builder
+    purpose: 'Implements a feature across the full stack with tests and architectural review.'
+    owning_persona: web-app-engineer
+    supporting_personas: [api-contract-engineer, architecture-contract-guardian]
+    skills_used: [code-review-enforcer, e2e-test-generator]
+    activation_triggers: 'Feature implementation request'
+    inputs_expected: 'Feature spec'
+    outputs_required: 'Code, tests, evidence summary'
+    files_directories_inspected: 'apps/, packages/'
+    commands_usually_run: 'npm run test, npm run lint'
+    evidence_required: 'Verification report'
+    risk_level: 'High'
+    permissions:
+      may_edit_code: true
+      may_edit_docs: true
+      may_run_commands: true
+      may_delete_files: false
+    required_gates: 'architecture/security review'
+    related_workflows: []
+  - name: dead-code-cleanup
+    purpose: 'Safe, reversible code deletion with required multi-evidence checking and post-deletion test runs.'
+    owning_persona: ops-hygiene-engineer
+    supporting_personas: [repo-cartographer]
+    skills_used: [code-review-enforcer]
+    activation_triggers: 'Cleanup request'
+    inputs_expected: 'Target paths'
+    outputs_required: 'File-by-file deletion rationale'
+    files_directories_inspected: '**/*'
+    commands_usually_run: 'npm run test'
+    evidence_required: 'Reversible evidence, tests passed'
+    risk_level: 'High'
+    permissions:
+      may_edit_code: true
+      may_edit_docs: true
+      may_run_commands: true
+      may_delete_files: true
+    required_gates: 'Requires 2 forms of evidence'
+    related_workflows: []
+  - name: test-stabilization
+    purpose: 'Fix broken/flaky tests and improve test structure while preserving assertion strength.'
+    owning_persona: test-strategy-engineer
+    supporting_personas: [pipeline-verifier]
+    skills_used: [autonomous-test-healer, autonomous-test-runner]
+    activation_triggers: 'Flaky test reports'
+    inputs_expected: 'Test logs'
+    outputs_required: 'Stabilized tests'
+    files_directories_inspected: 'tests/'
+    commands_usually_run: 'npx playwright test'
+    evidence_required: 'Consistent test passes'
+    risk_level: 'Medium'
+    permissions:
+      may_edit_code: true
+      may_edit_docs: false
+      may_run_commands: true
+      may_delete_files: false
+    required_gates: 'Coverage preserved'
+    related_workflows: []
+  - name: api-backend-contract
+    purpose: 'API/database/service-layer work while checking auth and account_id scope.'
+    owning_persona: api-contract-engineer
+    supporting_personas: [security-auth-reviewer, account-isolation-guardian]
+    skills_used: [mcp-integration-expert, security-auditor]
+    activation_triggers: 'Backend API changes'
+    inputs_expected: 'API spec'
+    outputs_required: 'Endpoints, tests'
+    files_directories_inspected: 'apps/api'
+    commands_usually_run: 'npm run test'
+    evidence_required: 'API tests passing'
+    risk_level: 'High'
+    permissions:
+      may_edit_code: true
+      may_edit_docs: true
+      may_run_commands: true
+      may_delete_files: false
+    required_gates: 'Security review'
+    related_workflows: []
+  - name: web-ui-development
+    purpose: 'Next.js/React changes ensuring data fetching, state, accessibility, and E2E impact.'
+    owning_persona: web-app-engineer
+    supporting_personas: [graph-rendering-engineer]
+    skills_used: [e2e-test-generator]
+    activation_triggers: 'Frontend UI changes'
+    inputs_expected: 'Design/Spec'
+    outputs_required: 'React components'
+    files_directories_inspected: 'apps/web'
+    commands_usually_run: 'npm run dev'
+    evidence_required: 'Visual check, E2E tests'
+    risk_level: 'Medium'
+    permissions:
+      may_edit_code: true
+      may_edit_docs: false
+      may_run_commands: true
+      may_delete_files: false
+    required_gates: 'Lint, Typecheck'
+    related_workflows: []
+  - name: desktop-runtime
+    purpose: 'Electron/local runtime work checking ABI, packaged dist sync, and local paths.'
+    owning_persona: desktop-runtime-engineer
+    supporting_personas: [architecture-contract-guardian]
+    skills_used: [mcp-integration-expert]
+    activation_triggers: 'Desktop app changes'
+    inputs_expected: 'Spec'
+    outputs_required: 'Electron main/preload changes'
+    files_directories_inspected: 'apps/desktop'
+    commands_usually_run: 'npm run build:desktop'
+    evidence_required: 'App launch success'
+    risk_level: 'High'
+    permissions:
+      may_edit_code: true
+      may_edit_docs: false
+      may_run_commands: true
+      may_delete_files: false
+    required_gates: 'Build success'
+    related_workflows: []
+  - name: graph-data-model
+    purpose: 'Node/edge/schema changes ensuring provenance, immutability, and dedupe semantics.'
+    owning_persona: graph-schema-validator
+    supporting_personas: [source-provenance-auditor, semantic-grouping-architect]
+    skills_used: [graph-schema-validator, vector-similarity-ops]
+    activation_triggers: 'Schema changes'
+    inputs_expected: 'Schema spec'
+    outputs_required: 'Updated validators'
+    files_directories_inspected: 'packages/database, ai_context/schemas'
+    commands_usually_run: 'npm run test'
+    evidence_required: 'Validation success'
+    risk_level: 'High'
+    permissions:
+      may_edit_code: true
+      may_edit_docs: true
+      may_run_commands: true
+      may_delete_files: false
+    required_gates: 'Schema review'
+    related_workflows: []
+  - name: security-privacy-review
+    purpose: 'Review auth, account isolation, local data, MCP exposure, and data exfiltration risk.'
+    owning_persona: security-auth-reviewer
+    supporting_personas: [account-isolation-guardian]
+    skills_used: [security-auditor]
+    activation_triggers: 'Security audit request'
+    inputs_expected: 'PR or codebase'
+    outputs_required: 'Security report'
+    files_directories_inspected: '**/*'
+    commands_usually_run: 'npm run lint'
+    evidence_required: 'Audit log'
+    risk_level: 'High'
+    permissions:
+      may_edit_code: false
+      may_edit_docs: true
+      may_run_commands: true
+      may_delete_files: false
+    required_gates: 'None'
+    related_workflows: []
+  - name: documentation-sync
+    purpose: 'Aligning docs with code, identifying stale docs, preserving provenance without hallucinating.'
+    owning_persona: documentation-steward
+    supporting_personas: [repo-cartographer]
+    skills_used: [research-specialist]
+    activation_triggers: 'Feature completion'
+    inputs_expected: 'Code diffs'
+    outputs_required: 'Updated docs'
+    files_directories_inspected: 'docs/'
+    commands_usually_run: 'None'
+    evidence_required: 'Doc diffs'
+    risk_level: 'Low'
+    permissions:
+      may_edit_code: false
+      may_edit_docs: true
+      may_run_commands: false
+      may_delete_files: false
+    required_gates: 'Review'
+    related_workflows: []
+  - name: dependency-runtime-maintenance
+    purpose: 'Node/npm/dependency/native runtime work enforcing Node 24 and npm strictness.'
+    owning_persona: ops-hygiene-engineer
+    supporting_personas: [desktop-runtime-engineer]
+    skills_used: [code-execution-orchestrator]
+    activation_triggers: 'Dependency updates'
+    inputs_expected: 'npm outdated'
+    outputs_required: 'package.json updates'
+    files_directories_inspected: 'package.json, package-lock.json'
+    commands_usually_run: 'npm install'
+    evidence_required: 'Build success'
+    risk_level: 'Medium'
+    permissions:
+      may_edit_code: true
+      may_edit_docs: false
+      may_run_commands: true
+      may_delete_files: true
+    required_gates: 'All tests pass'
+    related_workflows: []
 
 personas:
   - name: account-isolation-guardian
