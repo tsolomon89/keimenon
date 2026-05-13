@@ -171,14 +171,12 @@ export function createGraphRoutes(authService: AuthService): Router {
           });
         }
 
-        const nodeBudget = Math.min(
-          parseIntegerParam(req.query.node_budget, DEFAULT_NODE_BUDGET),
-          HARD_NODE_BUDGET_MAX
-        );
-        const edgeBudget = Math.min(
-          parseIntegerParam(req.query.edge_budget, DEFAULT_EDGE_BUDGET),
-          HARD_EDGE_BUDGET_MAX
-        );
+        const requestedNodeBudget = parseIntegerParam(req.query.node_budget, DEFAULT_NODE_BUDGET);
+        const clampedNodeBudget = Math.min(requestedNodeBudget, HARD_NODE_BUDGET_MAX);
+
+        const requestedEdgeBudget = parseIntegerParam(req.query.edge_budget, DEFAULT_EDGE_BUDGET);
+        const effectiveEdgeBudget = Math.min(requestedEdgeBudget, HARD_EDGE_BUDGET_MAX);
+
         const seedNodeIds = parseSeedNodeIds(req.query);
 
         // Step 1: Count totals
@@ -230,19 +228,27 @@ export function createGraphRoutes(authService: AuthService): Router {
           return String(a.id).localeCompare(String(b.id));
         });
 
-        const selectedNodes = candidateRows.slice(0, nodeBudget);
-        const selectedNodeIds = selectedNodes.map((r: any) => String(r.id));
-        const selectedNodeSet = new Set(selectedNodeIds);
-
         let structuralAnchorsRequested = 0;
-        let structuralAnchorsReturned = 0;
-
         for (const r of candidateRows) {
           if (structuralKinds.has(r.kind)) {
             structuralAnchorsRequested++;
-            if (selectedNodeSet.has(String(r.id))) {
-              structuralAnchorsReturned++;
-            }
+          }
+        }
+
+        // Structural anchors count against the budget, but we will expand the budget up to the hard limit if needed.
+        const effectiveNodeBudget = Math.max(
+          clampedNodeBudget,
+          Math.min(structuralAnchorsRequested, HARD_NODE_BUDGET_MAX)
+        );
+
+        const selectedNodes = candidateRows.slice(0, effectiveNodeBudget);
+        const selectedNodeIds = selectedNodes.map((r: any) => String(r.id));
+        const selectedNodeSet = new Set(selectedNodeIds);
+
+        let structuralAnchorsReturned = 0;
+        for (const r of selectedNodes) {
+          if (structuralKinds.has(r.kind)) {
+            structuralAnchorsReturned++;
           }
         }
 
@@ -322,29 +328,40 @@ export function createGraphRoutes(authService: AuthService): Router {
           }
         }
 
+        const orderMap = new Map<string, number>();
+        selectedNodeIds.forEach((id: string, idx: number) => orderMap.set(id, idx));
+
         // Preserve sort order
         hydratedNodes.sort((a, b) => {
-          const aIdx = selectedNodeIds.indexOf(a.id);
-          const bIdx = selectedNodeIds.indexOf(b.id);
+          const aIdx = orderMap.get(a.id) ?? Infinity;
+          const bIdx = orderMap.get(b.id) ?? Infinity;
           return aIdx - bIdx;
         });
 
         // Step 5: Edge Extraction
         let fetchedEdges: GraphReadModelEdge[] = [];
         if (selectedNodeIds.length > 0) {
-          // Edges are small enough to fetch and filter in memory, but we'll still only fetch within account bounds
-          const edgeResult = await db.execute(
-            `SELECT id, kind, from_id, to_id, properties, created_at
-             FROM edges
-             WHERE account_id = ?`,
-            [accountId]
-          );
+          const CHUNK_SIZE = 999;
+          const edgeCandidateRows: any[] = [];
 
-          const edgeCandidates = (edgeResult.records || [])
-            .filter(
-              (row: any) =>
-                selectedNodeSet.has(String(row.from_id)) && selectedNodeSet.has(String(row.to_id))
-            )
+          // Only fetch edges where both endpoints are in the selected node set.
+          // By querying from_id IN (selectedNodes), we guarantee we find any edge whose
+          // from_id and to_id are both in the selected set.
+          for (let i = 0; i < selectedNodeIds.length; i += CHUNK_SIZE) {
+            const chunk = selectedNodeIds.slice(i, i + CHUNK_SIZE);
+            const placeholders = chunk.map(() => '?').join(',');
+
+            const edgeResult = await db.execute(
+              `SELECT id, kind, from_id, to_id, properties, created_at
+               FROM edges
+               WHERE account_id = ? AND from_id IN (${placeholders})`,
+              [accountId, ...chunk]
+            );
+            edgeCandidateRows.push(...(edgeResult.records || []));
+          }
+
+          const edgeCandidates = edgeCandidateRows
+            .filter((row: any) => selectedNodeSet.has(String(row.to_id)))
             .map((row: any) => {
               const edgeProps = parseProperties(row.properties);
               return {
@@ -402,10 +419,11 @@ export function createGraphRoutes(authService: AuthService): Router {
             return a.id.localeCompare(b.id);
           });
 
-          fetchedEdges = filteredEdgeCandidates.slice(0, edgeBudget);
+          fetchedEdges = filteredEdgeCandidates.slice(0, effectiveEdgeBudget);
         }
 
-        const isTruncated = candidateRows.length > nodeBudget || fetchedEdges.length < totalEdges;
+        const isTruncated =
+          candidateRows.length > effectiveNodeBudget || fetchedEdges.length < totalEdges;
 
         const response: GraphReadModelResponse = {
           nodes: hydratedNodes,
@@ -417,10 +435,10 @@ export function createGraphRoutes(authService: AuthService): Router {
             selected_edge_count: fetchedEdges.length,
             truncated: isTruncated,
             readModel: {
-              requestedNodeBudget: nodeBudget,
-              effectiveNodeBudget: hydratedNodes.length,
-              requestedEdgeBudget: edgeBudget,
-              effectiveEdgeBudget: fetchedEdges.length,
+              requestedNodeBudget,
+              effectiveNodeBudget,
+              requestedEdgeBudget,
+              effectiveEdgeBudget,
               totalNodes,
               returnedNodes: hydratedNodes.length,
               totalEdges,

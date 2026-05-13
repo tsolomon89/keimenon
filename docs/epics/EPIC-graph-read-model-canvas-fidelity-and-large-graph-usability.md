@@ -14,6 +14,7 @@ The goal of this epic is to turn the current hydrated graph read model into a re
 The `/api/v1/graph/read-model` route must use a two-stage hydration to avoid unbounded `LEFT JOIN`s on massive payload tables (e.g., 100k+ `phrases`):
 
 1. **Candidate Selection**: Select candidate node IDs under the requested budget.
+   _Limitation Note_: Currently, candidate selection fetches metadata (ID, kind, created*at) for \_all* account nodes and performs in-memory deterministic sorting/slicing. This is not a true SQL-level `ORDER BY ... LIMIT` budget selection. While this eliminates heavy payload-table joins and significantly improves performance, it still loads one metadata row per node into memory and may require further SQL optimization (e.g., indexed priority sorts) for massive accounts.
 2. **Hydration**: Hydrate payload tables only for those selected node IDs.
 
 ### 2. Structural Anchor Preservation

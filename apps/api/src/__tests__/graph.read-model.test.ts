@@ -71,6 +71,7 @@ describe('Graph Read Model (Two-Stage Hydration)', () => {
 
     expect(data.metadata.readModel).toBeDefined();
     expect(data.metadata.readModel.requestedNodeBudget).toBe(8);
+    expect(data.metadata.readModel.effectiveNodeBudget).toBe(8);
     expect(data.metadata.readModel.returnedNodes).toBe(8);
     expect(data.nodes.length).toBe(8);
     expect(data.metadata.readModel.structuralAnchorsPreserved).toBe(true);
@@ -88,6 +89,23 @@ describe('Graph Read Model (Two-Stage Hydration)', () => {
     }
     expect(phrases.length).toBeGreaterThan(0);
     expect(phrases[0].properties.text).toMatch(/^text \d+$/);
+  });
+
+  it('overrides node budget if structural anchors exceed it', async () => {
+    // node_budget=2, but there are 5 anchors total (2 from register, 3 manually added)
+    const res = await fetch(`${API_URL}/api/v1/graph/read-model?node_budget=2`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+
+    expect(data.metadata.readModel.requestedNodeBudget).toBe(2);
+    // Overrides up to 5 because of structural anchors
+    expect(data.metadata.readModel.effectiveNodeBudget).toBe(5);
+    expect(data.nodes.length).toBe(5);
+    expect(data.metadata.truncated).toBe(true);
+    expect(data.metadata.readModel.truncated).toBe(true);
   });
 
   it('isolates seeds to the operating account', async () => {
