@@ -605,3 +605,7 @@ export const useKeimenonStore = create<KeimenonState>()(
     { name: 'KeimenonStore' }
   )
 );
+
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  (window as any).__keimenonStore = useKeimenonStore;
+}

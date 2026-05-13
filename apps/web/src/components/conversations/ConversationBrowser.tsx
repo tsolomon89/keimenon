@@ -480,7 +480,11 @@ function CreateConversationModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-900 border border-slate-700 rounded-lg w-full max-w-md p-6 shadow-xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="bg-slate-900 border border-slate-700 rounded-lg w-full max-w-md p-6 shadow-xl"
+      >
         <h2 className="text-lg font-semibold text-slate-200 mb-4">Start New Conversation</h2>
 
         <form onSubmit={handleSubmit}>

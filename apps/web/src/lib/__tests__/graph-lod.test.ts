@@ -125,6 +125,7 @@ describe('graph-lod', () => {
     expect(plan.level).toBe('L0');
     expect(plan.stats.gate.datasetTier).toBe('10k');
     expect(plan.stats.gate.pass).toBe(false); // Fails because 5,000 structural anchors are forced to survive the 276 budget limit
+    expect(plan.stats.gate.overflowReason).toBe('intentional_anchors');
     expect(plan.visibleNodes.length).toBeGreaterThanOrEqual(5000);
     expect(durationMs).toBeLessThan(3000);
   });
@@ -142,6 +143,7 @@ describe('graph-lod', () => {
     expect(plan.level).toBe('L0');
     expect(plan.stats.gate.datasetTier).toBe('50k');
     expect(plan.stats.gate.pass).toBe(false); // Fails because 25,000 structural anchors are forced to survive the 324 budget limit
+    expect(plan.stats.gate.overflowReason).toBe('intentional_anchors');
     expect(plan.visibleNodes.length).toBeGreaterThanOrEqual(25000);
     expect(durationMs).toBeLessThan(10000);
   });
@@ -159,6 +161,18 @@ describe('graph-lod', () => {
     expect(gate.pass).toBe(true);
     expect(gate.nodeBudget).toBeGreaterThan(0);
     expect(gate.edgeBudget).toBeGreaterThan(0);
+    expect(gate.overflowReason).toBeNull();
+
+    const failedGate = evaluateLodPerformanceGate({
+      level: 'L1',
+      totalNodeCount: 10_000,
+      visibleNodeCount: 12_500,
+      visibleEdgeCount: 8_000,
+      mustKeepNodeCount: 0,
+    });
+
+    expect(failedGate.pass).toBe(false);
+    expect(failedGate.overflowReason).toBe('lod_failure');
   });
 
   it('preserves focused and pinned nodes through LOD culling', () => {

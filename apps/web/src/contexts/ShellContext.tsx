@@ -91,9 +91,7 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (user.accountType !== 'admin' && keimenonMode === 'dashboard') {
-      setKeimenonModeState('keimenon');
-    }
+    // Allowed: client users can access dashboard for conversations and workspaces
   }, [user, keimenonMode]);
 
   /**
@@ -142,14 +140,8 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
    */
   const setKeimenonMode = useCallback(
     (mode: KeimenonMode) => {
-      const nextMode = mode === 'dashboard' && user?.accountType !== 'admin' ? 'keimenon' : mode;
-      if (mode === 'dashboard' && user?.accountType !== 'admin') {
-        console.warn(
-          'Dashboard mode is restricted to admin accounts. Falling back to keimenon mode.'
-        );
-      }
-      setKeimenonModeState(nextMode);
-      console.log('Keimenon mode changed:', nextMode);
+      setKeimenonModeState(mode);
+      console.log('Keimenon mode changed:', mode);
     },
     [user?.accountType]
   );

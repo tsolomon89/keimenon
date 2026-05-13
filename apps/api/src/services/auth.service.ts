@@ -349,9 +349,10 @@ export class AuthServiceV2 {
     email: string,
     password: string,
     ipAddress: string = 'unknown',
-    userAgent?: string
+    userAgent?: string,
+    databaseInstance?: any // Database.Database
   ): Promise<LoginResult> {
-    const database = this.db.getDatabase();
+    const database = databaseInstance || this.db.getDatabase();
 
     // Check account lockout status BEFORE attempting login
     const lockoutStatus = checkAccountLockout(database, email, ipAddress);
@@ -428,7 +429,14 @@ export class AuthServiceV2 {
 
     if (accounts.length === 1) {
       // Single account - auto-select and return full login
-      return this.selectAccount(user.id, accounts[0].accountId, undefined, ipAddress, userAgent);
+      return this.selectAccount(
+        user.id,
+        accounts[0].accountId,
+        undefined,
+        ipAddress,
+        userAgent,
+        database
+      );
     }
 
     // Multiple accounts - return for selection
@@ -572,9 +580,10 @@ export class AuthServiceV2 {
     accountPassword?: string,
     fromAccountId?: string,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
+    databaseInstance?: any // Database.Database
   ): Promise<LoginResult> {
-    const database = this.db.getDatabase();
+    const database = databaseInstance || this.db.getDatabase();
 
     // Log account switch
     if (fromAccountId) {
@@ -582,7 +591,14 @@ export class AuthServiceV2 {
     }
 
     // Reuse selectAccount logic
-    return this.selectAccount(userId, newAccountId, accountPassword, ipAddress, userAgent);
+    return this.selectAccount(
+      userId,
+      newAccountId,
+      accountPassword,
+      ipAddress,
+      userAgent,
+      database
+    );
   }
 
   /**

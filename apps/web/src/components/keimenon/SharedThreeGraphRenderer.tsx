@@ -466,9 +466,7 @@ function SceneRoot({
 
       if (now - cacheMetrics.lastLogAt > 5000) {
         if (cacheMetrics.hits > 0 || cacheMetrics.misses > 0) {
-          console.debug(
-            `[SharedThreeGraphRenderer] Hover Cache: ${cacheMetrics.hits} hits, ${cacheMetrics.misses} misses`
-          );
+          // console.debug(`[SharedThreeGraphRenderer] Hover Cache: ${cacheMetrics.hits} hits, ${cacheMetrics.misses} misses`);
           cacheMetrics.hits = 0;
           cacheMetrics.misses = 0;
           cacheMetrics.lastLogAt = now;

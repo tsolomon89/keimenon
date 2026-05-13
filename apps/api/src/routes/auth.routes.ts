@@ -109,7 +109,14 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
       const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
       const userAgent = req.headers['user-agent'];
 
-      const result = await authService.login(email, password, ipAddress, userAgent);
+      // Get request-scoped database instance for consistent test isolation
+      const dbClient = await getDbClient(req);
+      const database =
+        typeof (dbClient as any).getDatabase === 'function'
+          ? (dbClient as any).getDatabase()
+          : (dbClient as any).db;
+
+      const result = await authService.login(email, password, ipAddress, userAgent, database);
 
       if (!result) {
         return res.status(401).json({ error: 'Invalid credentials' });
@@ -395,11 +402,21 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         return res.status(401).json({ error: 'Invalid or expired token' });
       }
 
+      // Get request-scoped database instance for consistent test isolation
+      const dbClient = await getDbClient(req);
+      const database =
+        typeof (dbClient as any).getDatabase === 'function'
+          ? (dbClient as any).getDatabase()
+          : (dbClient as any).db;
+
       // Select the account
       const result = await authService.selectAccount(
         tempPayload.userId,
         accountId,
-        accountPassword
+        accountPassword,
+        req.ip || req.socket.remoteAddress,
+        req.headers['user-agent'],
+        database
       );
 
       return res.json({
@@ -443,6 +460,13 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         return res.status(403).json({ error: 'Forbidden: Account not accessible' });
       }
 
+      // Get request-scoped database instance for consistent test isolation
+      const dbClient = await getDbClient(req);
+      const database =
+        typeof (dbClient as any).getDatabase === 'function'
+          ? (dbClient as any).getDatabase()
+          : (dbClient as any).db;
+
       // Switch to the account
       const result = await authService.switchAccount(
         req.user.userId,
@@ -450,7 +474,8 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         accountPassword,
         req.user.accountId, // fromAccountId for audit logging
         req.ip || req.socket.remoteAddress, // ipAddress
-        req.headers['user-agent'] // userAgent
+        req.headers['user-agent'], // userAgent
+        database
       );
 
       return res.json({
