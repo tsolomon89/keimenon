@@ -7,7 +7,7 @@
  * This index is a derived, disposable artifact.
  */
 
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import type Database from 'better-sqlite3';
 
 // BM25 parameters
@@ -291,10 +291,7 @@ export class InvertedIndexService {
     const durationMs = Date.now() - startTime;
 
     // Record the index run
-    const runId = `idx_run_${createHash('sha256')
-      .update(`${accountId}:${Date.now()}:${spanRows.length}`)
-      .digest('hex')
-      .slice(0, 24)}`;
+    const runId = `idx_run_${randomUUID().replace(/-/g, '')}`;
 
     this.db
       .prepare(
