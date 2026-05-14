@@ -112,6 +112,28 @@ export interface CreateConversationInput {
   context_spec?: ConversationThread['context_spec'];
 }
 
+export interface AgentRunProvenanceEvidence {
+  id: string;
+  kind: string;
+  text: string;
+  source_id?: string;
+  frequency?: number;
+  start_char?: number;
+  end_char?: number;
+  metadata?: Record<string, any>;
+}
+
+export interface AgentRunProvenance {
+  runId: string;
+  evidence: AgentRunProvenanceEvidence[];
+  stats: {
+    total_items: number;
+    spans: number;
+    phrases: number;
+    topics: number;
+  };
+}
+
 export interface BoardGraphResponse {
   board_id: string;
   nodes: KeimenonNode[];
@@ -373,6 +395,19 @@ export const organizationService = {
       skill,
       provider,
     });
+    return response.data;
+  },
+
+  /**
+   * Get the provenance subgraph for an AgentRun
+   */
+  getAgentRunProvenance: async (runId: string): Promise<AgentRunProvenance> => {
+    const response = await api.get<{
+      success: boolean;
+      runId: string;
+      evidence: AgentRunProvenanceEvidence[];
+      stats: AgentRunProvenance['stats'];
+    }>(`/conversations/runs/${runId}/provenance`);
     return response.data;
   },
 

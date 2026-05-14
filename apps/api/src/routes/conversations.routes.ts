@@ -956,5 +956,109 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
     }
   });
 
+  /**
+   * GET /api/v1/conversations/runs/:runId/provenance
+   * Return the USED_EVIDENCE subgraph for an AgentRun
+   */
+  router.get(
+    '/runs/:runId/provenance',
+    requireAuth(authService),
+    async (req: Request, res: Response) => {
+      try {
+        const dbClient = await getDbClient(req);
+        const database = dbClient.getDatabase();
+        const { runId } = req.params;
+        const accountId = req.user!.accountId;
+
+        // 1. Fetch the AgentRun node to verify it exists and belongs to the account
+        const runRow = database
+          .prepare(
+            `
+        SELECT id, properties
+        FROM nodes
+        WHERE id = ? AND kind = 'AgentRun' AND account_id = ?
+      `
+          )
+          .get(runId, accountId) as any;
+
+        if (!runRow) {
+          return res.status(404).json({
+            success: false,
+            error: 'AgentRun not found',
+          });
+        }
+
+        // 2. Fetch all USED_EVIDENCE edges originating from this run
+        const edges = database
+          .prepare(
+            `
+        SELECT to_id
+        FROM edges
+        WHERE from_id = ? AND kind = 'USED_EVIDENCE' AND account_id = ?
+      `
+          )
+          .all(runId, accountId) as Array<{ to_id: string }>;
+
+        const evidenceIds = edges.map((e) => e.to_id);
+
+        // 3. Batch-fetch the target evidence nodes
+        const evidenceNodes: any[] = [];
+        if (evidenceIds.length > 0) {
+          // SQLite has variable limit, chunking by 500
+          for (let i = 0; i < evidenceIds.length; i += 500) {
+            const batch = evidenceIds.slice(i, i + 500);
+            const placeholders = batch.map(() => '?').join(', ');
+            const rows = database
+              .prepare(
+                `
+            SELECT id, kind, properties
+            FROM nodes
+            WHERE id IN (${placeholders}) AND account_id = ?
+          `
+              )
+              .all(...batch, accountId) as Array<{ id: string; kind: string; properties: string }>;
+
+            for (const row of rows) {
+              let props: any = {};
+              try {
+                props = JSON.parse(row.properties);
+              } catch {}
+
+              evidenceNodes.push({
+                id: row.id,
+                kind: row.kind,
+                text: props.text || props.normalized_text || props.name || props.lemma || '',
+                source_id: props.source_id,
+                frequency: props.frequency || props.metadata?.total_frequency || 0,
+                start_char: props.start_char,
+                end_char: props.end_char,
+                metadata: props.metadata,
+              });
+            }
+          }
+        }
+
+        return res.json({
+          success: true,
+          runId,
+          evidence: evidenceNodes,
+          stats: {
+            total_items: evidenceNodes.length,
+            spans: evidenceNodes.filter((n) => n.kind === 'SourceSpan').length,
+            phrases: evidenceNodes.filter((n) => n.kind === 'Phrase').length,
+            topics: evidenceNodes.filter((n) => n.kind === 'Topic').length,
+          },
+        });
+      } catch (error: any) {
+        console.error('[Conversations] Fetch provenance error:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to fetch provenance',
+          message: error.message,
+        });
+      }
+    }
+  );
+
   return router;
 }

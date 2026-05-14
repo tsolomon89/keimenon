@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Loader2, ArrowLeft, Sparkles, Send, AlertCircle, User, Bot, Cpu } from 'lucide-react';
 import { organizationService, ConversationThread } from '../../services/organization-service';
 import { getGemmaStatusLabel } from '../../utils/gemma-status-helper';
+import { ProvenanceViewerModal } from './ProvenanceViewerModal';
 import type { MessageNode, ConversationContextPack } from '@keimenon/types';
 
 interface ConversationMessageRuntimeProps {
@@ -23,6 +24,7 @@ export function ConversationMessageRuntime({
   const [isContextExpanded, setIsContextExpanded] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [gemmaStatus, setGemmaStatus] = useState<any>(null);
+  const [selectedProvenanceRunId, setSelectedProvenanceRunId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -346,58 +348,16 @@ export function ConversationMessageRuntime({
 
                             <button
                               className="ml-auto flex items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors"
-                              onClick={(e) => {
-                                const target = e.currentTarget.nextElementSibling as HTMLElement;
-                                if (target) {
-                                  target.classList.toggle('hidden');
+                              onClick={() => {
+                                if ((msg as any)._agentRunDetails.agent_run_id) {
+                                  setSelectedProvenanceRunId(
+                                    (msg as any)._agentRunDetails.agent_run_id
+                                  );
                                 }
                               }}
                             >
                               View Provenance
                             </button>
-                          </div>
-
-                          {/* Expandable Detail View */}
-                          <div className="hidden mt-2 p-3 bg-slate-900/80 rounded border border-slate-700/50 text-xs">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <div className="font-semibold text-slate-300 mb-1">
-                                  Execution Details
-                                </div>
-                                <div className="text-slate-500">
-                                  Run ID:{' '}
-                                  <span className="text-slate-400 font-mono">
-                                    {(msg as any)._agentRunDetails.agent_run_id || 'Unknown'}
-                                  </span>
-                                </div>
-                                <div className="text-slate-500">
-                                  Status: <span className="text-emerald-400">Success</span>
-                                </div>
-                              </div>
-                              <div>
-                                <div className="font-semibold text-slate-300 mb-1">
-                                  Context Integrity
-                                </div>
-                                <div className="text-slate-500">
-                                  Evidence Count:{' '}
-                                  <span className="text-slate-400">
-                                    {contextPack?.evidence?.length || 0}
-                                  </span>
-                                </div>
-                                <div className="text-slate-500">
-                                  Truncated:{' '}
-                                  <span
-                                    className={
-                                      contextPack?.truncation?.evidence_truncated
-                                        ? 'text-yellow-400'
-                                        : 'text-emerald-400'
-                                    }
-                                  >
-                                    {contextPack?.truncation?.evidence_truncated ? 'Yes' : 'No'}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
                           </div>
                         </div>
                       )}
@@ -461,6 +421,14 @@ export function ConversationMessageRuntime({
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      {selectedProvenanceRunId && (
+        <ProvenanceViewerModal
+          runId={selectedProvenanceRunId}
+          onClose={() => setSelectedProvenanceRunId(null)}
+        />
+      )}
     </div>
   );
 }
