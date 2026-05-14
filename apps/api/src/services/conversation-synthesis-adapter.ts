@@ -18,8 +18,8 @@ export class MockSynthesisProvider implements SynthesisProvider {
 
     // Simple mock logic: Just echo back the user message with some context stats
     const messageCount = input.messages.length + 1; // historical + current
-    const evidenceCount = input.context.evidence?.length || 0;
-    const truncatedNote = input.context.truncation?.evidence_truncated
+    const evidenceCount = input.context.evidenceItems?.length || 0;
+    const truncatedNote = input.context.truncation?.evidenceTruncated
       ? ' (Note: Evidence was truncated due to limits)'
       : '';
 
@@ -28,7 +28,7 @@ export class MockSynthesisProvider implements SynthesisProvider {
       `I am aware of ${evidenceCount} pieces of evidence${truncatedNote}. ` +
       `This thread now has ${messageCount} messages.`;
 
-    const evidenceUsed = (input.context.evidence || [])
+    const evidenceUsed = (input.context.evidenceItems || [])
       .slice(0, 2)
       .map((item: any) => item.node_id);
 

@@ -58,12 +58,12 @@ export class GemmaSerializer {
     // 3. Add capped historical messages
     for (const msg of input.messages) {
       if (msg.role === 'user' || msg.role === 'assistant') {
-        messages.push({ role: msg.role, content: msg.content });
+        messages.push({ role: msg.role, content: msg.content || '' });
       }
     }
 
     // 4. Add current user message
-    messages.push({ role: 'user', content: input.userMessage.content });
+    messages.push({ role: 'user', content: input.userMessage.content || '' });
 
     return {
       model: modelName,
