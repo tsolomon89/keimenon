@@ -375,4 +375,36 @@ export const organizationService = {
     });
     return response.data;
   },
+
+  /**
+   * Get the status of the local Gemma runtime
+   */
+  getGemmaStatus: async (): Promise<{
+    configured: boolean;
+    status: 'online' | 'offline' | 'unavailable';
+    error?: string;
+    runtimeKind?: string;
+    modelName?: string;
+    timeoutMs?: number;
+    thinkingEnabled?: boolean;
+  }> => {
+    try {
+      const response = await api.get<{
+        configured: boolean;
+        status: 'online' | 'offline' | 'unavailable';
+        error?: string;
+        runtimeKind?: string;
+        modelName?: string;
+        timeoutMs?: number;
+        thinkingEnabled?: boolean;
+      }>('/runtime/gemma/status');
+      return response.data;
+    } catch (err: any) {
+      return {
+        configured: false,
+        status: 'unavailable',
+        error: err.message || 'Failed to fetch Gemma status',
+      };
+    }
+  },
 };

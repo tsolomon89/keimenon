@@ -48,6 +48,7 @@ import { createPrincipalsRoutes } from './routes/principals.routes';
 import { createWorkspaceRoutes } from './routes/workspace.routes';
 import { createConversationsRoutes } from './routes/conversations.routes';
 import { createGraphRoutes } from './routes/graph.routes';
+import { createRuntimeRoutes } from './routes/runtime.routes';
 import { SSEBroadcaster } from './modules/jobs/infrastructure/SSEBroadcaster';
 import { WorkerPool } from './modules/workers/domain/WorkerPool';
 import { DatabaseWriteQueue } from './services/DatabaseWriteQueue';
@@ -251,6 +252,7 @@ export function createApp(): { app: Express; context: AppContext } {
   let systemRoutes: any = null;
   let meRoutes: any = null;
   let importRoutes: any = null;
+  let runtimeRoutes: any = null;
 
   const initializeRoutes: InitializeRoutes = (
     authService: AuthService,
@@ -296,6 +298,7 @@ export function createApp(): { app: Express; context: AppContext } {
     systemRoutes = createSystemRoutes(authService as any);
     meRoutes = createMeRoutes(authService as any);
     importRoutes = createImportRoutes(authService as any);
+    runtimeRoutes = createRuntimeRoutes(authService as any);
 
     if (process.env.NODE_ENV === 'development' || process.env.ENABLE_DEV_AUTH === 'true') {
       devAuthRoutes = createDevAuthRoutes(authService as any);
@@ -516,6 +519,11 @@ export function createApp(): { app: Express; context: AppContext } {
   app.use('/api/v1/agent', (req, res, next) => {
     if (agentRoutes) return agentRoutes(req, res, next);
     return res.status(503).json({ error: 'Agent service not initialized' });
+  });
+
+  app.use('/api/v1/runtime', (req, res, next) => {
+    if (runtimeRoutes) return runtimeRoutes(req, res, next);
+    return res.status(503).json({ error: 'Runtime service not initialized' });
   });
 
   app.use('/api/v1/test', (req, res, next) => {

@@ -3,11 +3,82 @@ import { ConversationSynthesisInput } from '../conversation-synthesis-input';
 import { GemmaSerializer } from './gemma-serializer';
 import { skillRegistry } from './runtime-skill-loader';
 
+export interface GemmaLocalStatus {
+  configured: boolean;
+  status: 'online' | 'offline' | 'unavailable';
+  error?: string;
+  runtimeKind?: string;
+  modelName?: string;
+  timeoutMs?: number;
+  thinkingEnabled?: boolean;
+}
+
 export class GemmaLocalProvider implements SynthesisProvider {
   public id = 'gemma-local';
   public family: 'gemma' | 'mock' = 'gemma';
   public mode: 'local' | 'mock' = 'local';
   private serializer = new GemmaSerializer();
+
+  public async checkStatus(): Promise<GemmaLocalStatus> {
+    const baseUrl = process.env.GEMMA_LOCAL_BASE_URL;
+    const runtimeKind = process.env.GEMMA_LOCAL_RUNTIME_KIND || 'openai-compatible';
+    const modelName = process.env.GEMMA_LOCAL_MODEL || 'gemma-4-e4b-it';
+    const timeoutMs = parseInt(process.env.GEMMA_LOCAL_TIMEOUT_MS || '60000', 10);
+    const thinkingEnabled = process.env.GEMMA_LOCAL_THINKING === 'on';
+
+    if (!baseUrl) {
+      return {
+        configured: false,
+        status: 'unavailable',
+        error: 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED',
+      };
+    }
+
+    const endpoint = baseUrl.endsWith('/') ? `${baseUrl}models` : `${baseUrl}/models`;
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout for status
+
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return {
+          configured: true,
+          status: 'offline',
+          error: `GEMMA_STATUS_CHECK_FAILED: HTTP ${response.status}`,
+          runtimeKind,
+          modelName,
+          timeoutMs,
+          thinkingEnabled,
+        };
+      }
+
+      return {
+        configured: true,
+        status: 'online',
+        runtimeKind,
+        modelName,
+        timeoutMs,
+        thinkingEnabled,
+      };
+    } catch (err: any) {
+      return {
+        configured: true,
+        status: 'offline',
+        error: `GEMMA_LOCAL_RUNTIME_UNAVAILABLE: ${err.message}`,
+        runtimeKind,
+        modelName,
+        timeoutMs,
+        thinkingEnabled,
+      };
+    }
+  }
 
   public async synthesize(
     input: ConversationSynthesisInput,

@@ -21,6 +21,7 @@ export function ConversationMessageRuntime({
   const [contextPack, setContextPack] = useState<ConversationContextPack | null>(null);
   const [isContextExpanded, setIsContextExpanded] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [gemmaStatus, setGemmaStatus] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,13 +31,15 @@ export function ConversationMessageRuntime({
       try {
         setLoading(true);
         setError(null);
-        const [fetchedMessages, fetchedContext] = await Promise.all([
+        const [fetchedMessages, fetchedContext, fetchedGemmaStatus] = await Promise.all([
           organizationService.getConversationMessages(conversation.id),
           organizationService.getConversationContextPack(conversation.id),
+          organizationService.getGemmaStatus(),
         ]);
         if (isMounted) {
           setMessages(fetchedMessages);
           setContextPack(fetchedContext);
+          setGemmaStatus(fetchedGemmaStatus);
         }
       } catch (err: any) {
         if (isMounted) {
@@ -135,6 +138,20 @@ export function ConversationMessageRuntime({
             <span className="truncate opacity-75 text-slate-500 font-mono">
               ID: {conversation.id}
             </span>
+            {gemmaStatus && (
+              <>
+                <span>&bull;</span>
+                <span
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${gemmaStatus.status === 'online' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}
+                  title={gemmaStatus.error || 'Local Runtime Status'}
+                >
+                  <div
+                    className={`w-1.5 h-1.5 rounded-full ${gemmaStatus.status === 'online' ? 'bg-emerald-400' : 'bg-slate-500'}`}
+                  ></div>
+                  {gemmaStatus.status === 'online' ? 'Gemma Online' : 'Gemma Offline'}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -14,7 +14,9 @@
     "test": "node ../../scripts/run-with-project-node.js \"vitest run\"",
     "test:watch": "node ../../scripts/run-with-project-node.js \"vitest\"",
     "test:coverage": "node ../../scripts/run-with-project-node.js \"vitest run --coverage\"",
-    "diagnostics:import": "tsx src/scripts/import-diagnostics.ts"
+    "diagnostics:import": "tsx src/scripts/import-diagnostics.ts",
+    "gemma:smoke": "tsx src/scripts/gemma-smoke.ts",
+    "gemma:status": "tsx src/scripts/gemma-status.ts"
   },
   "dependencies": {
     "@keimenon/agent-core": "*",
