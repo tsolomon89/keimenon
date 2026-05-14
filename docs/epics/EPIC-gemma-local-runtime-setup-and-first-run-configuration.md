@@ -52,6 +52,10 @@ For reliable debugging without running the full client:
 1. ✅ Unit tests / API checks pass for `app.ts` module mounting.
 2. ✅ Environment variable contracts strictly parsed and enforced in `gemma-local-provider.ts`.
 3. ✅ CLI smoke scripts added to `package.json` for rapid local diagnostics.
+4. ⏳ **Manual Trial (Pending)**:
+   - Tried to ping `http://localhost:1234/v1/models` and `http://localhost:11434/v1/models`.
+   - Result: Endpoints unreachable (no local runtime active).
+   - To complete verification: Start LM Studio or Ollama, set `GEMMA_LOCAL_BASE_URL`, and run `npm run gemma:status` and `npm run gemma:smoke`.
 
 ## 5. Next Steps
 

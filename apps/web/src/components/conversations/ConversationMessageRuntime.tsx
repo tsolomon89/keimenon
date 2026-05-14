@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Loader2, ArrowLeft, Sparkles, Send, AlertCircle, User, Bot, Cpu } from 'lucide-react';
 import { organizationService, ConversationThread } from '../../services/organization-service';
+import { getGemmaStatusLabel } from '../../utils/gemma-status-helper';
 import type { MessageNode, ConversationContextPack } from '@keimenon/types';
 
 interface ConversationMessageRuntimeProps {
@@ -141,45 +142,41 @@ export function ConversationMessageRuntime({
             {gemmaStatus && (
               <>
                 <span>&bull;</span>
-                <span
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${
-                    gemmaStatus.status === 'online' && gemmaStatus.modelAvailable !== false
-                      ? 'bg-emerald-900/50 text-emerald-400'
-                      : !gemmaStatus.configured
-                        ? 'bg-slate-800 text-slate-500'
-                        : gemmaStatus.error_code === 'GEMMA_MODEL_NOT_FOUND'
-                          ? 'bg-yellow-900/50 text-yellow-400'
-                          : gemmaStatus.error_code === 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE'
-                            ? 'bg-red-900/50 text-red-400'
-                            : 'bg-slate-800 text-slate-400'
-                  }`}
-                  title={gemmaStatus.error || 'Local Runtime Status'}
-                >
-                  <div
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      gemmaStatus.status === 'online' && gemmaStatus.modelAvailable !== false
-                        ? 'bg-emerald-400'
-                        : !gemmaStatus.configured
-                          ? 'bg-slate-500'
-                          : gemmaStatus.error_code === 'GEMMA_MODEL_NOT_FOUND'
-                            ? 'bg-yellow-400'
-                            : gemmaStatus.error_code === 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE'
-                              ? 'bg-red-400'
-                              : 'bg-slate-500'
-                    }`}
-                  ></div>
-                  {!gemmaStatus.configured
-                    ? 'Gemma Not Configured'
-                    : gemmaStatus.error_code === 'GEMMA_MODEL_NOT_FOUND'
-                      ? 'Gemma Model Missing'
-                      : gemmaStatus.error_code === 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE'
-                        ? 'Gemma Runtime Offline'
-                        : gemmaStatus.status === 'offline'
-                          ? 'Gemma Offline'
-                          : gemmaStatus.status === 'online' && gemmaStatus.modelAvailable !== false
-                            ? 'Gemma Online'
-                            : 'Gemma Unavailable'}
-                </span>
+                {(() => {
+                  const statusInfo = getGemmaStatusLabel(gemmaStatus);
+                  let bgClass = 'bg-slate-800 text-slate-400';
+                  let dotClass = 'bg-slate-500';
+
+                  switch (statusInfo.tone) {
+                    case 'online':
+                      bgClass = 'bg-emerald-900/50 text-emerald-400';
+                      dotClass = 'bg-emerald-400';
+                      break;
+                    case 'warning':
+                      bgClass = 'bg-yellow-900/50 text-yellow-400';
+                      dotClass = 'bg-yellow-400';
+                      break;
+                    case 'error':
+                      bgClass = 'bg-red-900/50 text-red-400';
+                      dotClass = 'bg-red-400';
+                      break;
+                    case 'neutral':
+                    default:
+                      bgClass = 'bg-slate-800 text-slate-500';
+                      dotClass = 'bg-slate-500';
+                      break;
+                  }
+
+                  return (
+                    <span
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${bgClass}`}
+                      title={gemmaStatus.error || 'Local Runtime Status'}
+                    >
+                      <div className={`w-1.5 h-1.5 rounded-full ${dotClass}`}></div>
+                      {statusInfo.label}
+                    </span>
+                  );
+                })()}
               </>
             )}
           </div>
