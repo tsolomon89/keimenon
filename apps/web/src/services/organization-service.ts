@@ -347,6 +347,7 @@ export const organizationService = {
     assistantMessage?: MessageNode;
     synthesisError?: string;
     agentRunDetails?: {
+      agent_run_id?: string;
       provider: string;
       model?: string;
       skill_used: string;
@@ -359,6 +360,7 @@ export const organizationService = {
       assistantMessage?: MessageNode;
       synthesisError?: string;
       agentRunDetails?: {
+        agent_run_id?: string;
         provider: string;
         model?: string;
         skill_used: string;

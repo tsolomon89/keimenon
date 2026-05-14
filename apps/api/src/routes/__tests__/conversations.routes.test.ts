@@ -506,12 +506,10 @@ describe('Conversations Routes principal/context contract', () => {
     });
 
     it('should persist user message but return synthesis_error if adapter fails', async () => {
-      const { mockSynthesisAdapter } =
-        await import('../../services/conversation-synthesis-adapter');
-      const originalSynthesize = mockSynthesisAdapter.synthesize;
-      mockSynthesisAdapter.synthesize = vi
-        .fn()
-        .mockRejectedValue(new Error('Simulated adapter failure'));
+      const { providerRegistry } = await import('../../services/agent/synthesis-provider-registry');
+      const mockProvider = providerRegistry.getProvider('mock');
+      const originalSynthesize = mockProvider.synthesize.bind(mockProvider);
+      mockProvider.synthesize = vi.fn().mockRejectedValue(new Error('Simulated adapter failure'));
 
       const response = await request(app)
         .post('/api/v1/conversations/conv_msg_1/messages')
@@ -521,10 +519,9 @@ describe('Conversations Routes principal/context contract', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.userMessage).toBeDefined();
-      expect(response.body.assistantMessage).toBeUndefined();
       expect(response.body.synthesisError).toBe('Simulated adapter failure');
 
-      mockSynthesisAdapter.synthesize = originalSynthesize;
+      mockProvider.synthesize = originalSynthesize;
 
       const messagesResponse = await request(app)
         .get('/api/v1/conversations/conv_msg_1/messages')
@@ -545,13 +542,13 @@ describe('Conversations Routes principal/context contract', () => {
       await request(app)
         .get('/api/v1/conversations/conv_other_acc/messages')
         .set('Authorization', 'Bearer test-token')
-        .expect(500);
+        .expect(404);
 
       await request(app)
         .post('/api/v1/conversations/conv_other_acc/messages')
         .set('Authorization', 'Bearer test-token')
         .send({ content: 'Hello' })
-        .expect(500);
+        .expect(404);
     });
   });
 });

@@ -109,6 +109,31 @@ describe('Synthesis Runtime & Agent Skills', () => {
       expect(skill.output_schema?.type).toBe('object');
     });
 
+    it('should load exactly the 7 app-runtime skills and exclude repository coding skills', () => {
+      const allSkills = skillRegistry.getAllSkills();
+      expect(allSkills.length).toBe(7);
+
+      const expectedSkillIds = [
+        'bounded-answer',
+        'bounded-synthesis',
+        'citation-audit',
+        'claim-extraction',
+        'gap-analysis',
+        'objective-claim-proposal',
+        'source-discovery-plan',
+      ];
+
+      const loadedSkillIds = allSkills.map((s) => s.id);
+      expectedSkillIds.forEach((id) => {
+        expect(loadedSkillIds).toContain(id);
+      });
+
+      // Negative assertion to ensure repo/coding-agent skills are NOT loaded
+      // Example of a repo skill that should not be here: code-review, documentation-sync, etc.
+      expect(loadedSkillIds).not.toContain('code-review');
+      expect(loadedSkillIds).not.toContain('api-backend-contract');
+    });
+
     it('should serialize standard input into OpenAI compatible format', () => {
       const serializer = new GemmaSerializer();
       const skill = skillRegistry.selectRuntimeSkill('bounded-answer');
@@ -197,6 +222,53 @@ describe('Synthesis Runtime & Agent Skills', () => {
       const runByEdge = db
         .prepare(`SELECT * FROM edges WHERE from_id = ? AND to_id = ? AND kind = 'RUN_BY'`)
         .all(result.agentRunDetails!.agent_run_id, mockAgentId);
+      expect(runByEdge.length).toBe(1);
+    });
+
+    it('should explicitly enforce actor separation between human and agent principals', async () => {
+      const service = new ConversationMessageService(db);
+
+      // The human is principal_human_1, the agent is principal_agent_1
+      const principal_human_1 = mockHumanId;
+      const principal_agent_1 = mockAgentId;
+
+      // Assign the agent to the conversation
+      const conv = db
+        .prepare(`SELECT properties FROM nodes WHERE id = ?`)
+        .get(mockConversationId) as any;
+      const props = JSON.parse(conv.properties);
+      props.agent_principal_id = principal_agent_1;
+      db.prepare(`UPDATE nodes SET properties = ? WHERE id = ?`).run(
+        JSON.stringify(props),
+        mockConversationId
+      );
+
+      const result = await service.postMessage(
+        mockAccountId,
+        principal_human_1, // Action triggered by human
+        mockConversationId,
+        'Who authored this?',
+        true,
+        'bounded-answer',
+        'mock'
+      );
+
+      // Assert User Message -> AUTHORED_BY -> principal_human_1
+      const userAuthEdge = db
+        .prepare(`SELECT * FROM edges WHERE from_id = ? AND to_id = ? AND kind = 'AUTHORED_BY'`)
+        .all(result.userMessage.id, principal_human_1);
+      expect(userAuthEdge.length).toBe(1);
+
+      // Assert Assistant Message -> AUTHORED_BY -> principal_agent_1
+      const asstAuthEdge = db
+        .prepare(`SELECT * FROM edges WHERE from_id = ? AND to_id = ? AND kind = 'AUTHORED_BY'`)
+        .all(result.assistantMessage!.id, principal_agent_1);
+      expect(asstAuthEdge.length).toBe(1);
+
+      // Assert AgentRun -> RUN_BY -> principal_agent_1
+      const runByEdge = db
+        .prepare(`SELECT * FROM edges WHERE from_id = ? AND to_id = ? AND kind = 'RUN_BY'`)
+        .all(result.agentRunDetails!.agent_run_id, principal_agent_1);
       expect(runByEdge.length).toBe(1);
     });
 
