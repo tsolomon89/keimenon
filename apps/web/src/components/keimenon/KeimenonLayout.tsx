@@ -13,6 +13,7 @@ import { PortalWrapper } from './PortalWrapper';
 import { SettingsPage } from '../settings/SettingsPage';
 import { ConversationBrowser } from '../conversations/ConversationBrowser';
 import { ConversationSynthesisView } from '../conversations/ConversationSynthesisView';
+import { ConversationMessageRuntime } from '../conversations/ConversationMessageRuntime';
 import type { ConversationThread } from '@/services/organization-service';
 import { UploadModal } from './UploadModal';
 import { ChatImportModal } from './ChatImportModal';
@@ -88,6 +89,9 @@ export function KeimenonLayout({
   const [pendingConversationContext, setPendingConversationContext] =
     useState<ConversationContextSummary | null>(null);
   const [activeConversation, setActiveConversation] = useState<ConversationThread | null>(null);
+  const [activeConversationView, setActiveConversationView] = useState<'synthesis' | 'runtime'>(
+    'synthesis'
+  );
 
   const handleStartConversationFromSelection = (nodes: KeimenonNode[]) => {
     const contextSummary = buildConversationContextFromSelection(nodes);
@@ -100,6 +104,8 @@ export function KeimenonLayout({
       setPendingConversationContext(contextSummary);
       setKeimenonMode('dashboard');
       setDashboardView('conversations');
+      setActiveConversation(null);
+      setActiveConversationView('synthesis');
     }
   };
 
@@ -477,11 +483,26 @@ export function KeimenonLayout({
                       ) : dashboardView === 'workspaces' ? (
                         <WorkspaceBrowser className="h-full" />
                       ) : activeConversation ? (
-                        <ConversationSynthesisView
-                          conversation={activeConversation}
-                          onBack={() => setActiveConversation(null)}
-                          className="h-full"
-                        />
+                        activeConversationView === 'synthesis' ? (
+                          <ConversationSynthesisView
+                            conversation={activeConversation}
+                            onBack={() => {
+                              setActiveConversation(null);
+                              setActiveConversationView('synthesis');
+                            }}
+                            onLaunchRuntime={() => setActiveConversationView('runtime')}
+                            className="h-full"
+                          />
+                        ) : (
+                          <ConversationMessageRuntime
+                            conversation={activeConversation}
+                            onBack={() => {
+                              setActiveConversation(null);
+                              setActiveConversationView('synthesis');
+                            }}
+                            className="h-full"
+                          />
+                        )
                       ) : (
                         <ConversationBrowser
                           className="h-full"

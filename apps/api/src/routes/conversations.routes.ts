@@ -32,6 +32,7 @@ import {
   ensureHumanPrincipalHierarchyForUser,
 } from '../services/graph-hierarchy.service';
 import { ConversationContextService } from '../services/conversation-context.service';
+import { ConversationMessageService } from '../services/conversation-message.service';
 
 // ============================================================================
 // Request Schemas
@@ -66,6 +67,11 @@ const CreateConversationSchema = z.object({
 
 const UpdateContextSchema = z.object({
   context_spec: ContextSpecSchema,
+});
+
+const PostMessageSchema = z.object({
+  content: z.string().min(1, 'Message content required'),
+  run_synthesis: z.boolean().optional().default(true),
 });
 
 type ContextSpec = z.infer<typeof ContextSpecSchema>;
@@ -660,7 +666,7 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
 
   /**
    * GET /api/v1/conversations/:id/context-pack
-   * Generate a scoped context pack for the conversation
+   * Bounded context-pack retrieval (evidence and boundaries), not full synthesis
    */
   router.get('/:id/context-pack', requireAuth(authService), async (req: Request, res: Response) => {
     try {
@@ -701,6 +707,80 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
       return res.status(500).json({
         success: false,
         error: 'Failed to generate context pack',
+        message: error.message,
+      });
+    }
+  });
+
+  /**
+   * GET /api/v1/conversations/:id/messages
+   * Get ordered message history for a conversation
+   */
+  router.get('/:id/messages', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+      const { id } = req.params;
+      const accountId = req.user!.accountId;
+
+      const messageService = new ConversationMessageService(database);
+      const messages = messageService.getMessages(accountId, id);
+
+      return res.json({
+        success: true,
+        messages,
+      });
+    } catch (error: any) {
+      console.error('[Conversations] Get messages error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to get conversation messages',
+        message: error.message,
+      });
+    }
+  });
+
+  /**
+   * POST /api/v1/conversations/:id/messages
+   * Post a new message and optionally run synthesis
+   */
+  router.post('/:id/messages', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+      const { id } = req.params;
+      const accountId = req.user!.accountId;
+      const userId = req.user!.userId;
+
+      const body = PostMessageSchema.parse(req.body);
+
+      const messageService = new ConversationMessageService(database);
+      const result = await messageService.postMessage(
+        accountId,
+        userId,
+        id,
+        body.content,
+        body.run_synthesis
+      );
+
+      return res.json({
+        success: true,
+        ...result,
+      });
+    } catch (error: any) {
+      console.error('[Conversations] Post message error:', error);
+
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation failed',
+          details: error.errors,
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to post message',
         message: error.message,
       });
     }

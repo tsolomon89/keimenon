@@ -17,12 +17,14 @@ import {
 interface ConversationSynthesisViewProps {
   conversation: ConversationThread;
   onBack: () => void;
+  onLaunchRuntime?: () => void;
   className?: string;
 }
 
 export function ConversationSynthesisView({
   conversation,
   onBack,
+  onLaunchRuntime,
   className = '',
 }: ConversationSynthesisViewProps) {
   const [contextPack, setContextPack] = useState<ConversationContextPack | null>(null);
@@ -84,6 +86,15 @@ export function ConversationSynthesisView({
             </span>
           </div>
         </div>
+        {onLaunchRuntime && (
+          <button
+            onClick={onLaunchRuntime}
+            className="ml-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+          >
+            <Sparkles className="w-4 h-4" />
+            Launch Runtime
+          </button>
+        )}
       </div>
 
       {/* Content Area */}
@@ -117,6 +128,21 @@ export function ConversationSynthesisView({
             </div>
           ) : contextPack ? (
             <div className="space-y-6">
+              {/* Truncation Warning */}
+              {contextPack.truncation.evidence_truncated && (
+                <div className="bg-amber-900/20 border border-amber-900/50 rounded-lg p-4 text-amber-400 text-sm flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 shrink-0" />
+                  <div>
+                    <span className="font-medium">Evidence Truncated</span>
+                    <p className="mt-1 opacity-90">
+                      The resolved context exceeds the runtime safety bounds (
+                      {contextPack.limits.max_evidence_items} items). Some evidence has been omitted
+                      to preserve synthesis stability.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Bounds Summary Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">

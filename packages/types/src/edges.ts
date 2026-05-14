@@ -249,6 +249,22 @@ export const ProducedByEdgeSchema = BaseEdgeSchema.extend({
 
 export type ProducedByEdge = z.infer<typeof ProducedByEdgeSchema>;
 
+// HAS_MESSAGE edge (ConversationThread → Message)
+export const HasMessageEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('HAS_MESSAGE'),
+  // from: ConversationThread, to: Message
+});
+
+export type HasMessageEdge = z.infer<typeof HasMessageEdgeSchema>;
+
+// AUTHORED_BY edge (Message → Principal)
+export const AuthoredByEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('AUTHORED_BY'),
+  // from: Message, to: Principal
+});
+
+export type AuthoredByEdge = z.infer<typeof AuthoredByEdgeSchema>;
+
 // Union type for all edges
 export type AnyEdge =
   | ContainsEdge
@@ -277,4 +293,6 @@ export type AnyEdge =
   | PinsContextEdge
   | InitiatedByEdge
   | ParticipatedInEdge
-  | ProducedByEdge;
+  | ProducedByEdge
+  | HasMessageEdge
+  | AuthoredByEdge;

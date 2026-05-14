@@ -326,12 +326,33 @@ describe('Conversations Routes principal/context contract', () => {
         )
         .run('source_pack_2', 'Source', JSON.stringify({ name: 'Group Source' }), now, now);
 
+      // Seed an unsupported Phrase in the group
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, ?, ?, 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('phrase_pack_1', 'Phrase', JSON.stringify({ name: 'Unsupported Phrase' }), now, now);
+
       // Seed edge connecting source 2 to group 1
       activeDb
         .prepare(
           `INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at) VALUES (?, ?, ?, ?, '{}', 'acc_1', 'user_1', ?)`
         )
         .run('edge_pack_1', 'IN_GROUP', 'source_pack_2', 'group_pack_1', now);
+
+      // Seed edge connecting phrase 1 to group 1
+      activeDb
+        .prepare(
+          `INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at) VALUES (?, ?, ?, ?, '{}', 'acc_1', 'user_1', ?)`
+        )
+        .run('edge_pack_2', 'IN_GROUP', 'phrase_pack_1', 'group_pack_1', now);
+
+      // Seed edge connecting a missing node to group 1
+      activeDb
+        .prepare(
+          `INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at) VALUES (?, ?, ?, ?, '{}', 'acc_1', 'user_1', ?)`
+        )
+        .run('edge_pack_3', 'IN_GROUP', 'missing_pack_1', 'group_pack_1', now);
 
       // Seed source_spans for the sources
       activeDb
@@ -379,6 +400,16 @@ describe('Conversations Routes principal/context contract', () => {
       expect(pack.source_ids).toContain('source_pack_2');
       expect(pack.group_ids).toContain('group_pack_1');
 
+      // Unsupported Phrase and missing nodes should NOT be in source_ids
+      expect(pack.source_ids).not.toContain('phrase_pack_1');
+      expect(pack.source_ids).not.toContain('missing_pack_1');
+
+      // Truncation metadata should be populated
+      expect(pack.truncation).toBeDefined();
+      expect(pack.truncation.evidence_truncated).toBe(false);
+      expect(pack.truncation.sources_truncated).toBe(false);
+      expect(pack.truncation.groups_truncated).toBe(false);
+
       // Evidence should include Group metadata, Source metadata, and SourceSpan texts
       const kinds = pack.evidence.map((e: any) => e.kind);
       expect(kinds).toContain('Group');
@@ -389,6 +420,138 @@ describe('Conversations Routes principal/context contract', () => {
       expect(spanEvidence.length).toBe(2);
       expect(spanEvidence.map((s: any) => s.text)).toContain('Hello world');
       expect(spanEvidence.map((s: any) => s.text)).toContain('Group message');
+    });
+  });
+
+  describe('Message Runtime', () => {
+    beforeEach(() => {
+      const now = Date.now();
+      const convPayload = {
+        title: 'Message Runtime Test',
+        human_principal_id: 'prin_msg_user',
+        agent_principal_id: 'prin_msg_agent',
+        purpose: 'general',
+      };
+
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, 'Principal', '{}', 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('prin_msg_user', now, now);
+
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, 'Principal', '{}', 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('prin_msg_agent', now, now);
+
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, 'ConversationThread', ?, 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('conv_msg_1', JSON.stringify(convPayload), now, now);
+    });
+
+    it('should persist user message and return mocked assistant synthesis', async () => {
+      const response = await request(app)
+        .post('/api/v1/conversations/conv_msg_1/messages')
+        .set('Authorization', 'Bearer test-token')
+        .send({ content: 'Hello agent!', run_synthesis: true })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.userMessage).toBeDefined();
+      expect(response.body.userMessage.content).toBe('Hello agent!');
+      expect(response.body.assistantMessage).toBeDefined();
+      expect(response.body.assistantMessage.content).toContain('Mocked Assistant Response');
+
+      const edges = activeDb
+        .prepare(
+          `SELECT kind, to_id FROM edges WHERE from_id = 'conv_msg_1' AND kind = 'HAS_MESSAGE'`
+        )
+        .all() as any[];
+      expect(edges.length).toBe(2);
+
+      const userMsgId = response.body.userMessage.id;
+      const asstMsgId = response.body.assistantMessage.id;
+
+      const userAuthoredEdge = activeDb
+        .prepare(`SELECT * FROM edges WHERE from_id = ? AND to_id = ? AND kind = 'AUTHORED_BY'`)
+        .get(userMsgId, 'prin_msg_user');
+      expect(userAuthoredEdge).toBeDefined();
+
+      const asstAuthoredEdge = activeDb
+        .prepare(`SELECT * FROM edges WHERE from_id = ? AND to_id = ? AND kind = 'AUTHORED_BY'`)
+        .get(asstMsgId, 'prin_msg_agent');
+      expect(asstAuthoredEdge).toBeDefined();
+    });
+
+    it('should retrieve ordered message history', async () => {
+      // Post a message first
+      await request(app)
+        .post('/api/v1/conversations/conv_msg_1/messages')
+        .set('Authorization', 'Bearer test-token')
+        .send({ content: 'Hello', run_synthesis: true })
+        .expect(200);
+
+      const response = await request(app)
+        .get('/api/v1/conversations/conv_msg_1/messages')
+        .set('Authorization', 'Bearer test-token')
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.messages.length).toBe(2);
+      expect(response.body.messages[0].role).toBe('user');
+      expect(response.body.messages[1].role).toBe('assistant');
+    });
+
+    it('should persist user message but return synthesis_error if adapter fails', async () => {
+      const { mockSynthesisAdapter } =
+        await import('../../services/conversation-synthesis-adapter');
+      const originalSynthesize = mockSynthesisAdapter.synthesize;
+      mockSynthesisAdapter.synthesize = vi
+        .fn()
+        .mockRejectedValue(new Error('Simulated adapter failure'));
+
+      const response = await request(app)
+        .post('/api/v1/conversations/conv_msg_1/messages')
+        .set('Authorization', 'Bearer test-token')
+        .send({ content: 'Break the adapter!', run_synthesis: true })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.userMessage).toBeDefined();
+      expect(response.body.assistantMessage).toBeUndefined();
+      expect(response.body.synthesisError).toBe('Simulated adapter failure');
+
+      mockSynthesisAdapter.synthesize = originalSynthesize;
+
+      const messagesResponse = await request(app)
+        .get('/api/v1/conversations/conv_msg_1/messages')
+        .set('Authorization', 'Bearer test-token')
+        .expect(200);
+
+      expect(messagesResponse.body.messages.length).toBe(1); // Only the user message
+    });
+
+    it('should reject access to cross-account conversation', async () => {
+      const now = Date.now();
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, 'ConversationThread', '{}', 'other_acc', 'other_user', ?, ?)`
+        )
+        .run('conv_other_acc', now, now);
+
+      await request(app)
+        .get('/api/v1/conversations/conv_other_acc/messages')
+        .set('Authorization', 'Bearer test-token')
+        .expect(500);
+
+      await request(app)
+        .post('/api/v1/conversations/conv_other_acc/messages')
+        .set('Authorization', 'Bearer test-token')
+        .send({ content: 'Hello' })
+        .expect(500);
     });
   });
 });

@@ -1,5 +1,5 @@
 import { api } from '@/lib/api-client';
-import { BoardNode, GroupNode, AnyNode as KeimenonNode } from '@keimenon/types';
+import { BoardNode, GroupNode, MessageNode, AnyNode as KeimenonNode } from '@keimenon/types';
 
 // Principal types
 export interface Principal {
@@ -72,6 +72,16 @@ export interface ConversationContextPack {
     max_sources: number;
     max_groups: number;
     max_evidence_items: number;
+  };
+  truncation: {
+    sources_truncated: boolean;
+    groups_truncated: boolean;
+    evidence_truncated: boolean;
+    requested_sources: number;
+    returned_sources: number;
+    requested_groups: number;
+    returned_groups: number;
+    returned_evidence_items: number;
   };
 }
 
@@ -311,5 +321,34 @@ export const organizationService = {
       { context_spec: contextSpec }
     );
     return response.data.conversation;
+  },
+
+  /**
+   * Get all messages for a conversation
+   */
+  getConversationMessages: async (conversationId: string): Promise<MessageNode[]> => {
+    const response = await api.get<{ messages: MessageNode[] }>(
+      `/conversations/${conversationId}/messages`
+    );
+    return response.data.messages;
+  },
+
+  /**
+   * Post a message and trigger synthesis
+   */
+  postConversationMessage: async (
+    conversationId: string,
+    content: string,
+    runSynthesis: boolean = true
+  ): Promise<{
+    userMessage: MessageNode;
+    assistantMessage?: MessageNode;
+    synthesisError?: string;
+  }> => {
+    const response = await api.post(`/conversations/${conversationId}/messages`, {
+      content,
+      run_synthesis: runSynthesis,
+    });
+    return response.data;
   },
 };

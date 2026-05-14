@@ -20,6 +20,16 @@ export interface ConversationContextPack {
     max_groups: number;
     max_evidence_items: number;
   };
+  truncation: {
+    sources_truncated: boolean;
+    groups_truncated: boolean;
+    evidence_truncated: boolean;
+    requested_sources: number;
+    returned_sources: number;
+    requested_groups: number;
+    returned_groups: number;
+    returned_evidence_items: number;
+  };
 }
 
 const ContextSpecSchema = z.object({
@@ -104,6 +114,7 @@ export class ConversationContextService {
 
     // 2. Resolve authorized sources and collect text payload evidence
     const finalSourceIds = Array.from(resolvedSourceIds).slice(0, limits.max_sources);
+    const validatedSourceIds = new Set<string>();
 
     if (finalSourceIds.length > 0) {
       const sourcePlaceholders = finalSourceIds.map(() => '?').join(',');
@@ -112,8 +123,6 @@ export class ConversationContextService {
           `SELECT id, properties FROM nodes WHERE account_id = ? AND kind IN ('Source', 'SourceDoc', 'VerifiedSource', 'UnifiedDoc') AND id IN (${sourcePlaceholders})`
         )
         .all(accountId, ...finalSourceIds) as any[];
-
-      const validatedSourceIds = new Set<string>();
 
       for (const row of sourceNodes) {
         validatedSourceIds.add(row.id);
@@ -150,12 +159,26 @@ export class ConversationContextService {
       }
     }
 
+    const finalEvidence = evidence.slice(0, limits.max_evidence_items);
+
     return {
       conversation_id: conversationId,
-      source_ids: Array.from(resolvedSourceIds),
+      source_ids: Array.from(validatedSourceIds),
       group_ids: Array.from(resolvedGroupIds),
-      evidence: evidence.slice(0, limits.max_evidence_items),
+      evidence: finalEvidence,
       limits,
+      truncation: {
+        sources_truncated:
+          contextSpec.source_ids.length > limits.max_sources ||
+          resolvedSourceIds.size > limits.max_sources,
+        groups_truncated: contextSpec.group_ids.length > limits.max_groups,
+        evidence_truncated: evidence.length > limits.max_evidence_items,
+        requested_sources: resolvedSourceIds.size,
+        returned_sources: validatedSourceIds.size,
+        requested_groups: contextSpec.group_ids.length,
+        returned_groups: resolvedGroupIds.size,
+        returned_evidence_items: finalEvidence.length,
+      },
     };
   }
 
