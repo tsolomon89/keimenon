@@ -142,13 +142,43 @@ export function ConversationMessageRuntime({
               <>
                 <span>&bull;</span>
                 <span
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${gemmaStatus.status === 'online' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${
+                    gemmaStatus.status === 'online' && gemmaStatus.modelAvailable !== false
+                      ? 'bg-emerald-900/50 text-emerald-400'
+                      : !gemmaStatus.configured
+                        ? 'bg-slate-800 text-slate-500'
+                        : gemmaStatus.error_code === 'GEMMA_MODEL_NOT_FOUND'
+                          ? 'bg-yellow-900/50 text-yellow-400'
+                          : gemmaStatus.error_code === 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE'
+                            ? 'bg-red-900/50 text-red-400'
+                            : 'bg-slate-800 text-slate-400'
+                  }`}
                   title={gemmaStatus.error || 'Local Runtime Status'}
                 >
                   <div
-                    className={`w-1.5 h-1.5 rounded-full ${gemmaStatus.status === 'online' ? 'bg-emerald-400' : 'bg-slate-500'}`}
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      gemmaStatus.status === 'online' && gemmaStatus.modelAvailable !== false
+                        ? 'bg-emerald-400'
+                        : !gemmaStatus.configured
+                          ? 'bg-slate-500'
+                          : gemmaStatus.error_code === 'GEMMA_MODEL_NOT_FOUND'
+                            ? 'bg-yellow-400'
+                            : gemmaStatus.error_code === 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE'
+                              ? 'bg-red-400'
+                              : 'bg-slate-500'
+                    }`}
                   ></div>
-                  {gemmaStatus.status === 'online' ? 'Gemma Online' : 'Gemma Offline'}
+                  {!gemmaStatus.configured
+                    ? 'Gemma Not Configured'
+                    : gemmaStatus.error_code === 'GEMMA_MODEL_NOT_FOUND'
+                      ? 'Gemma Model Missing'
+                      : gemmaStatus.error_code === 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE'
+                        ? 'Gemma Runtime Offline'
+                        : gemmaStatus.status === 'offline'
+                          ? 'Gemma Offline'
+                          : gemmaStatus.status === 'online' && gemmaStatus.modelAvailable !== false
+                            ? 'Gemma Online'
+                            : 'Gemma Unavailable'}
                 </span>
               </>
             )}

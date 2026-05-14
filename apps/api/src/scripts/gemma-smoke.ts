@@ -1,5 +1,6 @@
 import { gemmaProvider } from '../services/agent/gemma-local-provider';
-import type { ConversationSynthesisInput } from '../services/conversation-synthesis-input';
+import { buildConversationSynthesisInput } from '../services/conversation-synthesis-input';
+import { skillRegistry } from '../services/agent/runtime-skill-loader';
 
 async function main() {
   console.log('--- Keimenon Gemma Local Smoke Test ---');
@@ -12,18 +13,43 @@ async function main() {
 
   console.log('Provider is online. Running synthesis test...');
 
-  const testInput: ConversationSynthesisInput = {
+  const skillId = 'bounded-answer';
+  try {
+    skillRegistry.selectRuntimeSkill(skillId);
+  } catch (err: any) {
+    console.error(`Skill '${skillId}' could not be selected:`, err.message);
+    process.exit(1);
+  }
+
+  const testInput = buildConversationSynthesisInput({
     conversation: {
       id: 'smoke-test-conversation',
+      kind: 'ConversationThread',
+      human_principal_id: 'test-user',
       title: 'Smoke Test',
       purpose: 'general',
+      created_at: Date.now(),
+      updated_at: Date.now(),
     },
-    context: {
-      evidenceItems: [],
+    contextPack: {
+      conversation_id: 'smoke-test-conversation',
+      source_ids: [],
+      group_ids: [],
+      evidence: [],
+      limits: {
+        max_sources: 5,
+        max_groups: 5,
+        max_evidence_items: 20,
+      },
       truncation: {
-        evidenceTruncated: false,
-        sourcesTruncated: false,
-        groupsTruncated: false,
+        sources_truncated: false,
+        groups_truncated: false,
+        evidence_truncated: false,
+        requested_sources: 0,
+        returned_sources: 0,
+        requested_groups: 0,
+        returned_groups: 0,
+        returned_evidence_items: 0,
       },
     },
     messages: [],
@@ -37,14 +63,12 @@ async function main() {
       created_at: Date.now(),
       updated_at: Date.now(),
     },
-    provenanceIds: [],
-  };
+  });
 
   try {
     const startTime = Date.now();
 
-    // Use the basic chat skill. We expect this to be available in runtime-skills
-    const result = await gemmaProvider.synthesize(testInput, 'default-chat');
+    const result = await gemmaProvider.synthesize(testInput, skillId);
 
     const duration = Date.now() - startTime;
     console.log(`\nSynthesis succeeded in ${duration}ms!`);

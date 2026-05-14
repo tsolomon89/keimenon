@@ -6,9 +6,15 @@ import { skillRegistry } from './runtime-skill-loader';
 export interface GemmaLocalStatus {
   configured: boolean;
   status: 'online' | 'offline' | 'unavailable';
+  error_code?:
+    | 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED'
+    | 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE'
+    | 'GEMMA_MODEL_NOT_FOUND'
+    | 'GEMMA_STATUS_CHECK_FAILED';
   error?: string;
   runtimeKind?: string;
   modelName?: string;
+  modelAvailable?: boolean;
   timeoutMs?: number;
   thinkingEnabled?: boolean;
 }
@@ -30,7 +36,8 @@ export class GemmaLocalProvider implements SynthesisProvider {
       return {
         configured: false,
         status: 'unavailable',
-        error: 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED',
+        error_code: 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED',
+        error: 'Gemma local base URL is not configured.',
       };
     }
 
@@ -51,9 +58,37 @@ export class GemmaLocalProvider implements SynthesisProvider {
         return {
           configured: true,
           status: 'offline',
-          error: `GEMMA_STATUS_CHECK_FAILED: HTTP ${response.status}`,
+          error_code: 'GEMMA_STATUS_CHECK_FAILED',
+          error: `HTTP ${response.status}`,
           runtimeKind,
           modelName,
+          modelAvailable: false,
+          timeoutMs,
+          thinkingEnabled,
+        };
+      }
+
+      const data = await response.json();
+      let availableModelIds: string[] = [];
+
+      // Support OpenAI-compatible model list shape: { data: [{ id }] }
+      if (data && Array.isArray(data.data)) {
+        availableModelIds = data.data.map((m: any) => m.id);
+      }
+      // Optionally support Ollama native shape: { models: [{ name }] }
+      else if (data && Array.isArray(data.models)) {
+        availableModelIds = data.models.map((m: any) => m.name || m.id || m.model);
+      }
+
+      if (!availableModelIds.includes(modelName)) {
+        return {
+          configured: true,
+          status: 'offline',
+          error_code: 'GEMMA_MODEL_NOT_FOUND',
+          error: `Model '${modelName}' not found in runtime.`,
+          runtimeKind,
+          modelName,
+          modelAvailable: false,
           timeoutMs,
           thinkingEnabled,
         };
@@ -64,16 +99,19 @@ export class GemmaLocalProvider implements SynthesisProvider {
         status: 'online',
         runtimeKind,
         modelName,
+        modelAvailable: true,
         timeoutMs,
         thinkingEnabled,
       };
     } catch (err: any) {
       return {
         configured: true,
-        status: 'offline',
-        error: `GEMMA_LOCAL_RUNTIME_UNAVAILABLE: ${err.message}`,
+        status: 'unavailable',
+        error_code: 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE',
+        error: err.message,
         runtimeKind,
         modelName,
+        modelAvailable: false,
         timeoutMs,
         thinkingEnabled,
       };
