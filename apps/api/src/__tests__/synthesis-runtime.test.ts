@@ -11,12 +11,12 @@ import { gemmaProvider } from '../services/agent/gemma-local-provider';
 describe('Synthesis Runtime & Agent Skills', () => {
   beforeAll(() => {
     skillRegistry.loadRuntimeSkills();
-    providerRegistry.registerProvider(new MockSynthesisProvider());
   });
   let dbClient: SQLiteClient;
   let db: any;
   const mockAccountId = randomUUID();
-  const mockUserId = randomUUID();
+  const mockHumanId = randomUUID();
+  const mockAgentId = randomUUID();
   const mockConversationId = `conv_${randomUUID()}`;
 
   beforeEach(async () => {
@@ -37,26 +37,41 @@ describe('Synthesis Runtime & Agent Skills', () => {
       INSERT INTO users (id, email, name, permission_level, user_class, is_active, created_at, updated_at, email_verified) 
       VALUES (?, 'test@test.com', 'Test User', 'admin', 'person', 1, ?, ?, 1)
     `
-    ).run(mockUserId, Date.now(), Date.now());
+    ).run(mockHumanId, Date.now(), Date.now());
 
     db.prepare(
       `
       INSERT INTO user_accounts (id, user_id, account_id, permission_level, role_rank, status, joined_at, created_at, updated_at) 
       VALUES (?, ?, ?, 'admin', 1, 'active', ?, ?, ?)
     `
-    ).run(`ua_${randomUUID()}`, mockUserId, mockAccountId, Date.now(), Date.now(), Date.now());
+    ).run(`ua_${randomUUID()}`, mockHumanId, mockAccountId, Date.now(), Date.now(), Date.now());
 
-    // Setup conversation
+    // Setup human principal
     db.prepare(
       `
       INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
       VALUES (?, 'Principal', ?, ?, ?, ?, ?)
     `
     ).run(
-      mockUserId,
+      mockHumanId,
       JSON.stringify({ type: 'human' }),
       mockAccountId,
-      mockUserId,
+      mockHumanId,
+      Date.now(),
+      Date.now()
+    );
+
+    // Setup agent principal
+    db.prepare(
+      `
+      INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
+      VALUES (?, 'Principal', ?, ?, ?, ?, ?)
+    `
+    ).run(
+      mockAgentId,
+      JSON.stringify({ type: 'agent' }),
+      mockAccountId,
+      mockHumanId,
       Date.now(),
       Date.now()
     );
@@ -70,11 +85,11 @@ describe('Synthesis Runtime & Agent Skills', () => {
       mockConversationId,
       JSON.stringify({
         title: 'Test Conversation',
-        human_principal_id: mockUserId,
+        human_principal_id: mockHumanId,
         purpose: 'general',
       }),
       mockAccountId,
-      mockUserId,
+      mockHumanId,
       Date.now(),
       Date.now()
     );
@@ -146,7 +161,7 @@ describe('Synthesis Runtime & Agent Skills', () => {
         .prepare(`SELECT properties FROM nodes WHERE id = ?`)
         .get(mockConversationId) as any;
       const props = JSON.parse(conv.properties);
-      props.agent_principal_id = mockUserId;
+      props.agent_principal_id = mockAgentId;
       db.prepare(`UPDATE nodes SET properties = ? WHERE id = ?`).run(
         JSON.stringify(props),
         mockConversationId
@@ -154,7 +169,7 @@ describe('Synthesis Runtime & Agent Skills', () => {
 
       const result = await service.postMessage(
         mockAccountId,
-        mockUserId,
+        mockHumanId,
         mockConversationId,
         'Hello from the user',
         true,
@@ -162,10 +177,27 @@ describe('Synthesis Runtime & Agent Skills', () => {
         undefined // No provider requested
       );
 
-      expect(result.userMessage.content).toBe('Hello from the user');
+      expect(result.synthesisError).toBeUndefined();
       expect(result.assistantMessage).toBeDefined();
       expect(result.agentRunDetails?.provider).toBe('mock');
-      expect(result.agentRunDetails?.actor_principal_id).toBe(mockUserId);
+      expect(result.agentRunDetails?.actor_principal_id).toBe(mockAgentId);
+
+      // Verify AUTHORED_BY edges for user vs assistant messages
+      const userAuthEdge = db
+        .prepare(`SELECT * FROM edges WHERE from_id = ? AND to_id = ? AND kind = 'AUTHORED_BY'`)
+        .all(result.userMessage.id, mockHumanId);
+      expect(userAuthEdge.length).toBe(1);
+
+      const asstAuthEdge = db
+        .prepare(`SELECT * FROM edges WHERE from_id = ? AND to_id = ? AND kind = 'AUTHORED_BY'`)
+        .all(result.assistantMessage!.id, mockAgentId);
+      expect(asstAuthEdge.length).toBe(1);
+
+      // Verify RUN_BY edge
+      const runByEdge = db
+        .prepare(`SELECT * FROM edges WHERE from_id = ? AND to_id = ? AND kind = 'RUN_BY'`)
+        .all(result.agentRunDetails!.agent_run_id, mockAgentId);
+      expect(runByEdge.length).toBe(1);
     });
 
     it('should throw if explicitly requested provider is missing', async () => {
@@ -176,7 +208,7 @@ describe('Synthesis Runtime & Agent Skills', () => {
         .prepare(`SELECT properties FROM nodes WHERE id = ?`)
         .get(mockConversationId) as any;
       const props = JSON.parse(conv.properties);
-      props.agent_principal_id = mockUserId;
+      props.agent_principal_id = mockAgentId;
       db.prepare(`UPDATE nodes SET properties = ? WHERE id = ?`).run(
         JSON.stringify(props),
         mockConversationId
@@ -184,7 +216,7 @@ describe('Synthesis Runtime & Agent Skills', () => {
 
       const result = await service.postMessage(
         mockAccountId,
-        mockUserId,
+        mockHumanId,
         mockConversationId,
         'Hello from the user',
         true,
@@ -194,6 +226,13 @@ describe('Synthesis Runtime & Agent Skills', () => {
 
       expect(result.synthesisError).toContain('PROVIDER_NOT_CONFIGURED');
       expect(result.agentRunDetails?.status).toBe('error');
+      expect(result.agentRunDetails?.actor_principal_id).toBe(mockAgentId);
+
+      // Verify RUN_BY edge on failure
+      const runByEdge = db
+        .prepare(`SELECT * FROM edges WHERE from_id = ? AND to_id = ? AND kind = 'RUN_BY'`)
+        .all(result.agentRunDetails!.agent_run_id, mockAgentId);
+      expect(runByEdge.length).toBe(1);
     });
 
     it('should require agent_principal_id for synthesis (run_synthesis=true)', async () => {
@@ -212,7 +251,7 @@ describe('Synthesis Runtime & Agent Skills', () => {
 
       const result = await service.postMessage(
         mockAccountId,
-        mockUserId,
+        mockHumanId,
         mockConversationId,
         'Hello from the user',
         true
@@ -226,7 +265,7 @@ describe('Synthesis Runtime & Agent Skills', () => {
       // Check user message is authored by the human
       const edges = db
         .prepare(`SELECT * FROM edges WHERE from_id = ? AND to_id = ? AND kind = 'AUTHORED_BY'`)
-        .all(result.userMessage.id, mockUserId);
+        .all(result.userMessage.id, mockHumanId);
       expect(edges.length).toBe(1);
     });
 
@@ -246,7 +285,7 @@ describe('Synthesis Runtime & Agent Skills', () => {
 
       const result = await service.postMessage(
         mockAccountId,
-        mockUserId,
+        mockHumanId,
         mockConversationId,
         'Hello from the user',
         false
@@ -267,57 +306,59 @@ describe('Synthesis Runtime & Agent Skills', () => {
         .prepare(`SELECT properties FROM nodes WHERE id = ?`)
         .get(mockConversationId) as any;
       const props = JSON.parse(conv.properties);
-      props.agent_principal_id = mockUserId;
+      props.agent_principal_id = mockAgentId;
       db.prepare(`UPDATE nodes SET properties = ? WHERE id = ?`).run(
         JSON.stringify(props),
         mockConversationId
       );
 
-      // We'll mock the synthesize method on gemmaProvider
-      const originalSynthesize = gemmaProvider.synthesize;
-      gemmaProvider.synthesize = async (input, skillId) => {
-        return {
-          content: 'Simulated gemma response',
-          provider: 'gemma-local',
-          model: 'gemma-4-e4b-it',
-          skill_used: skillId,
-          evidence_used: [],
-          proposed_outputs: [],
-        };
-      };
+      // Register a test-specific gemma provider
+      const testGemmaProvider = {
+        id: 'gemma-local-test',
+        family: 'gemma',
+        mode: 'local',
+        synthesize: async (input: any, skillId: string) => {
+          return {
+            content: 'Simulated gemma response',
+            provider: 'gemma-local-test',
+            model: 'gemma-4-e4b-it',
+            skill_used: skillId,
+            evidence_used: [],
+            proposed_outputs: [],
+          };
+        },
+      } as any;
 
-      providerRegistry.registerProvider(gemmaProvider);
+      providerRegistry.registerProvider(testGemmaProvider);
 
       const service = new ConversationMessageService(db);
 
       const result = await service.postMessage(
         mockAccountId,
-        mockUserId,
+        mockHumanId,
         mockConversationId,
         'Hello from the user',
         true,
         'bounded-answer',
-        'gemma-local'
+        'gemma-local-test'
       );
 
-      // Restore original
-      gemmaProvider.synthesize = originalSynthesize;
-
+      expect(result.synthesisError).toBeUndefined();
       expect(result.assistantMessage?.content).toBe('Simulated gemma response');
-      expect(result.agentRunDetails?.provider).toBe('gemma-local');
-      expect(result.agentRunDetails?.actor_principal_id).toBe(mockUserId);
+      expect(result.agentRunDetails?.provider).toBe('gemma-local-test');
+      expect(result.agentRunDetails?.actor_principal_id).toBe(mockAgentId);
 
       // Verify AgentRun node
       const runNodes = db.prepare(`SELECT * FROM nodes WHERE kind = 'AgentRun'`).all() as any[];
       expect(runNodes.length).toBe(1);
       const runProps = JSON.parse(runNodes[0].properties);
-      expect(runProps.provider).toBe('gemma-local');
+      expect(runProps.provider).toBe('gemma-local-test');
       expect(runProps.model).toBe('gemma-4-e4b-it');
 
       // Verify RUN_BY edge
       const edges = db
         .prepare(`SELECT * FROM edges WHERE from_id = ? AND to_id = ? AND kind = 'RUN_BY'`)
-        .all(runNodes[0].id, mockUserId);
+        .all(runNodes[0].id, mockAgentId);
       expect(edges.length).toBe(1);
     });
   });

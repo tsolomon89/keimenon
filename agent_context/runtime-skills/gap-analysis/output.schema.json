@@ -1,0 +1,32 @@
+{
+  "type": "object",
+  "properties": {
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "The concept or topic that is missing or underspecified."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Explanation of why this gap prevents fully answering the user's inquiry or understanding the domain."
+          },
+          "suggested_questions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Questions the user could answer to fill this knowledge gap."
+          }
+        },
+        "required": ["topic", "reason", "suggested_questions"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["gaps"],
+  "additionalProperties": false
+}

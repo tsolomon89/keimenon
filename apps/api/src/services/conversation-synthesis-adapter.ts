@@ -2,7 +2,6 @@ import { ConversationSynthesisInput } from './conversation-synthesis-input';
 import {
   SynthesisProvider,
   ConversationSynthesisResult,
-  providerRegistry,
 } from './agent/synthesis-provider-registry';
 
 export class MockSynthesisProvider implements SynthesisProvider {
@@ -19,8 +18,8 @@ export class MockSynthesisProvider implements SynthesisProvider {
 
     // Simple mock logic: Just echo back the user message with some context stats
     const messageCount = input.messages.length + 1; // historical + current
-    const evidenceCount = input.context.evidenceItems.length;
-    const truncatedNote = input.context.truncation.evidenceTruncated
+    const evidenceCount = input.context.evidence?.length || 0;
+    const truncatedNote = input.context.truncation?.evidence_truncated
       ? ' (Note: Evidence was truncated due to limits)'
       : '';
 
@@ -29,7 +28,9 @@ export class MockSynthesisProvider implements SynthesisProvider {
       `I am aware of ${evidenceCount} pieces of evidence${truncatedNote}. ` +
       `This thread now has ${messageCount} messages.`;
 
-    const evidenceUsed = input.context.evidenceItems.slice(0, 2).map((item: any) => item.node_id);
+    const evidenceUsed = (input.context.evidence || [])
+      .slice(0, 2)
+      .map((item: any) => item.node_id);
 
     return {
       content,
@@ -43,4 +44,3 @@ export class MockSynthesisProvider implements SynthesisProvider {
 
 // A singleton instance for use in the app
 export const mockSynthesisProvider = new MockSynthesisProvider();
-providerRegistry.registerProvider(mockSynthesisProvider);

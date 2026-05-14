@@ -221,6 +221,8 @@ export class ConversationMessageService {
           ...asstMsgProps,
         } as MessageNode;
 
+        let successRunId: string | undefined;
+
         const persistAssistantMessageTx = this.database.transaction(() => {
           this.database
             .prepare(
@@ -260,6 +262,7 @@ export class ConversationMessageService {
 
           // Record AgentRun
           const runId = `run_${nanoid()}`;
+          successRunId = runId;
           const duration = Date.now() - startTime;
           const runProps = {
             actor_principal_id: agentPrincipalId,
@@ -332,11 +335,13 @@ export class ConversationMessageService {
         persistAssistantMessageTx();
 
         const agentRunDetails = {
+          agent_run_id: successRunId,
           actor_principal_id: agentPrincipalId,
           provider: usedProvider,
           model: synthesisResult?.model,
           skill_used: targetSkill,
           duration_ms: Date.now() - startTime,
+          status: 'success',
         };
 
         return {
@@ -347,12 +352,15 @@ export class ConversationMessageService {
       } catch (error: any) {
         synthesisError = error.message;
 
-        // Log failed AgentRun
+        let failedRunId: string | undefined = undefined;
         try {
           const runId = `run_${nanoid()}`;
+          failedRunId = runId;
           const duration = Date.now() - startTime;
           const runProps = {
+            actor_principal_id: agentPrincipalId,
             provider: usedProvider,
+            model: synthesisResult?.model,
             skill_used: targetSkill,
             duration_ms: duration,
             status: 'error',
@@ -367,6 +375,17 @@ export class ConversationMessageService {
             )
             .run(runId, JSON.stringify(runProps), accountId, userId, startTime, startTime);
 
+          if (agentPrincipalId) {
+            this.database
+              .prepare(
+                `
+              INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
+              VALUES (?, 'RUN_BY', ?, ?, '{}', ?, ?, ?)
+            `
+              )
+              .run(`edge_runby_${nanoid()}`, runId, agentPrincipalId, accountId, userId, startTime);
+          }
+
           this.database
             .prepare(
               `
@@ -375,6 +394,15 @@ export class ConversationMessageService {
           `
             )
             .run(`edge_runfor_${nanoid()}`, runId, conversationId, accountId, userId, startTime);
+
+          this.database
+            .prepare(
+              `
+            INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
+            VALUES (?, 'INPUT_MESSAGE', ?, ?, '{}', ?, ?, ?)
+          `
+            )
+            .run(`edge_runin_${nanoid()}`, runId, userMsgId, accountId, userId, startTime);
         } catch (runErr) {
           console.error('[ConversationMessageService] Failed to record error AgentRun', runErr);
         }
@@ -383,8 +411,10 @@ export class ConversationMessageService {
           userMessage,
           synthesisError,
           agentRunDetails: {
+            agent_run_id: failedRunId,
             actor_principal_id: agentPrincipalId,
             provider: usedProvider,
+            model: synthesisResult?.model,
             skill_used: targetSkill,
             duration_ms: Date.now() - startTime,
             status: 'error',

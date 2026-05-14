@@ -434,6 +434,15 @@ async function runApiServer(startPort: number) {
     // Inject Dev Auth flag if in dev mode
     if (!app.isPackaged) {
       process.env.ENABLE_DEV_AUTH = 'true';
+      process.env.KEIMENON_RUNTIME_SKILLS_DIR = path.join(
+        __dirname,
+        '../../../agent_context/runtime-skills'
+      );
+    } else {
+      process.env.KEIMENON_RUNTIME_SKILLS_DIR = path.join(
+        process.resourcesPath,
+        'app.asar/agent_context/runtime-skills'
+      );
     }
 
     await startApiServer({

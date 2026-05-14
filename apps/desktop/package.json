@@ -67,7 +67,11 @@
     },
     "files": [
       "dist/**/*",
-      "resources/**/*"
+      "resources/**/*",
+      "../../agent_context/runtime-skills/**/*",
+      "!../../.agent/**/*",
+      "!../../AGENTS.md",
+      "!../../GEMINI.md"
     ]
   }
 }

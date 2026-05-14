@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "content": {
+      "type": "string",
+      "description": "The assistant's response to the user."
+    },
+    "proposed_outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": { "type": "string", "const": "ProposedSource" },
+          "url": { "type": "string" },
+          "description": { "type": "string" },
+          "confidence": { "type": "number" },
+          "reasoning": { "type": "string" }
+        },
+        "required": ["kind", "url"]
+      }
+    }
+  },
+  "required": ["content", "proposed_outputs"]
+}

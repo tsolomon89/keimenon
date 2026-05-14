@@ -20,6 +20,30 @@ Take Keimenon out of mock-only territory by completing the scoped conversation r
 12. **Test plan**: Thorough coverage of API semantics, AgentRun creation, provider boundary, and transaction atomicity.
 13. **Risks**: Local Gemma installation complexity. Token limits when formatting context packs.
 
+## Actor and Documentation Doctrine
+
+### Actor/User Doctrine
+
+- AI is a user-like actor.
+- `Principal` is the current graph implementation of actor identity.
+- Gemma is not the actor.
+- Provider/model is infrastructure.
+- `AgentRun` records who acted and how they acted.
+
+### Documentation Scope Separation
+
+There are two different documentation layers that must not be conflated:
+
+1. **Repository / coding-agent doctrine**
+   - Files: `AGENTS.md`, `GEMINI.md`, `.agent/skills/*`, `.agent/workflows/*`
+   - Purpose: Instruct coding agents working on the Keimenon repository.
+   - Content: Architecture doctrine, coding standards. No app-runtime skill definitions.
+
+2. **Packaged runtime agent skills**
+   - Files: `agent_context/runtime-skills/*`
+   - Purpose: Product-runtime skills used by Keimenon's local model-backed agents.
+   - Content: Runtime behavior, skill instructions, output schemas, examples, guardrails.
+
 ## Audit & Action Plan
 
 Refer to `EPIC-scoped-conversation-synthesis-runtime.md` for the full contract audit table.

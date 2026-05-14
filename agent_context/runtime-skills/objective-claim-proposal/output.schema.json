@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "content": {
+      "type": "string",
+      "description": "The assistant's response to the user."
+    },
+    "proposed_outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": { "type": "string", "const": "ProposedClaim" },
+          "claim_text": { "type": "string" },
+          "source_ids": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "confidence": { "type": "number" },
+          "reasoning": { "type": "string" }
+        },
+        "required": ["kind", "claim_text"]
+      }
+    }
+  },
+  "required": ["content", "proposed_outputs"]
+}

@@ -235,7 +235,20 @@ It remains operational for non-import write paths (e.g., ad-hoc node creation). 
 4. Provider/model is infrastructure.
 5. `AgentRun` records who acted and how they acted.
 
-### 7.2 Entitlement and Context
+### 7.2 Agent Scope and Skill Documentation Doctrine
+
+There are two distinct classes of agents in the Keimenon ecosystem. Do not conflate them:
+
+1. **Repository Coding Agents (You):**
+   - Instructed by `AGENTS.md`, `GEMINI.md`, and workflows in `.agent/workflows/*`.
+   - Used for developing the Keimenon repository.
+
+2. **Packaged App-Runtime Agents (Product Feature):**
+   - These are the local Gemma-backed agents that run _inside_ the Keimenon application.
+   - Their behaviors, prompts, schemas, and guardrails are located strictly in `agent_context/runtime-skills/*`.
+   - Do not put app-runtime skill definitions in `AGENTS.md` or `GEMINI.md`.
+
+### 7.3 Entitlement and Context
 
 1. Agent runtime is entitlement-gated.
 2. Import-time agent participation is manual-by-default.

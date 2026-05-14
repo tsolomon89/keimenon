@@ -65,4 +65,7 @@ export class SynthesisProviderRegistry {
 export const providerRegistry = new SynthesisProviderRegistry();
 
 import { gemmaProvider } from './gemma-local-provider';
+import { MockSynthesisProvider } from '../conversation-synthesis-adapter';
+
 providerRegistry.registerProvider(gemmaProvider);
+providerRegistry.registerProvider(new MockSynthesisProvider());

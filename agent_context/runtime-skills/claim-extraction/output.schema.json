@@ -1,0 +1,32 @@
+{
+  "type": "object",
+  "properties": {
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "claim_text": {
+            "type": "string",
+            "description": "The atomic, declarative claim extracted from the context."
+          },
+          "evidence_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The exact node_ids from the context pack that support this claim."
+          },
+          "confidence": {
+            "type": "number",
+            "description": "Confidence score from 0.0 to 1.0 that this claim is supported by the evidence."
+          }
+        },
+        "required": ["claim_text", "evidence_node_ids", "confidence"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["claims"],
+  "additionalProperties": false
+}

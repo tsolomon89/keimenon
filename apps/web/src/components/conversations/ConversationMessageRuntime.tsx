@@ -290,9 +290,12 @@ export function ConversationMessageRuntime({
                               <Bot className="w-3 h-3 text-blue-400" />
                               Skill: {(msg as any)._agentRunDetails.skill_used}
                             </span>
-                            <span className="bg-slate-900/50 px-2 py-0.5 rounded font-mono">
-                              Run: {(msg as any)._agentRunDetails.agent_run_id?.substring(0, 8)}...
-                            </span>
+                            {(msg as any)._agentRunDetails.agent_run_id && (
+                              <span className="bg-slate-900/50 px-2 py-0.5 rounded font-mono">
+                                Run: {(msg as any)._agentRunDetails.agent_run_id?.substring(0, 8)}
+                                ...
+                              </span>
+                            )}
                             <span className="bg-slate-900/50 px-2 py-0.5 rounded">
                               {(msg as any)._agentRunDetails.duration_ms}ms
                             </span>
@@ -320,7 +323,7 @@ export function ConversationMessageRuntime({
                                 <div className="text-slate-500">
                                   Run ID:{' '}
                                   <span className="text-slate-400 font-mono">
-                                    {(msg as any)._agentRunDetails.agent_run_id}
+                                    {(msg as any)._agentRunDetails.agent_run_id || 'Unknown'}
                                   </span>
                                 </div>
                                 <div className="text-slate-500">
@@ -334,19 +337,19 @@ export function ConversationMessageRuntime({
                                 <div className="text-slate-500">
                                   Evidence Count:{' '}
                                   <span className="text-slate-400">
-                                    {contextPack?.evidenceItems?.length || 0}
+                                    {contextPack?.evidence?.length || 0}
                                   </span>
                                 </div>
                                 <div className="text-slate-500">
                                   Truncated:{' '}
                                   <span
                                     className={
-                                      contextPack?.truncation?.evidenceTruncated
+                                      contextPack?.truncation?.evidence_truncated
                                         ? 'text-yellow-400'
                                         : 'text-emerald-400'
                                     }
                                   >
-                                    {contextPack?.truncation?.evidenceTruncated ? 'Yes' : 'No'}
+                                    {contextPack?.truncation?.evidence_truncated ? 'Yes' : 'No'}
                                   </span>
                                 </div>
                               </div>

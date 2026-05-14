@@ -179,4 +179,5 @@ docs/PROJECT_STATUS.md
 docs/OVERVIEW.md
 
 # Agent artifacts
-agent_context/
+agent_context/*
+!agent_context/runtime-skills/
