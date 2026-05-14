@@ -80,6 +80,7 @@ export const VERIFIED_NODE_KINDS = ['VerifiedSource', 'VerifiedClaim'] as const;
  */
 export const AGENT_NODE_KINDS = [
   'AgentNode',
+  'AgentRun',
   'CanonicalDoc',
   'DuplicateCluster',
   'Evidence',

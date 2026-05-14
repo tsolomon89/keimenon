@@ -404,7 +404,7 @@ CREATE TABLE IF NOT EXISTS nodes (
     'ChatThread', 'Message', 'ObjectiveClaim', 'UnifiedDoc', 'Constellation', 'UserNode', 'AccountNode', 'Board',
     'SourceDoc', 'Lexeme', 'Phrase', 'Topic', 'VerifiedSource', 'VerifiedClaim', 'AgentNode',
     'CanonicalDoc', 'DuplicateCluster', 'Evidence', 'Principal', 'ConversationThread',
-    'SourceSpan', 'Packet', 'AtomicUnit'
+    'SourceSpan', 'Packet', 'AtomicUnit', 'AgentRun'
   )),
   properties TEXT NOT NULL,
   account_id TEXT NOT NULL,
@@ -432,7 +432,8 @@ CREATE TABLE IF NOT EXISTS edges (
     'CO_OCCURS_WITH', 'BELONGS_TO_TOPIC', 'SOURCED_FROM', 'DERIVED_FROM', 'CANDIDATE_DUP',
     'CREATED_BY_AGENT', 'EVIDENCE_FOR', 'CREATED_BY', 'ATTACHED_TO', 'PINS_CONTEXT',
     'INITIATED_BY', 'PARTICIPATED_IN', 'PRODUCED_BY',
-    'HAS_SPAN', 'OCCURS_IN_SPAN', 'COMPOSED_OF_ATOMIC'
+    'HAS_SPAN', 'OCCURS_IN_SPAN', 'COMPOSED_OF_ATOMIC',
+    'RUN_FOR', 'INPUT_MESSAGE', 'PRODUCED_MESSAGE', 'USED_EVIDENCE', 'AUTHORED_BY'
   )),
   from_id TEXT NOT NULL,
   to_id TEXT NOT NULL,

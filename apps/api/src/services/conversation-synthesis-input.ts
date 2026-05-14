@@ -1,5 +1,4 @@
-import { AnyNode, MessageNode, ConversationThread } from '@keimenon/types';
-import { ConversationContextPack } from './conversation-context.service';
+import { AnyNode, MessageNode, ConversationThread, ConversationContextPack } from '@keimenon/types';
 
 export interface ConversationSynthesisInput {
   conversation: {
@@ -53,7 +52,7 @@ export function buildConversationSynthesisInput({
     conversation: {
       id: conversation.id,
       title: conversation.title || null,
-      purpose: conversation.properties?.purpose as string | undefined,
+      purpose: conversation.purpose,
     },
     context: {
       evidenceItems,

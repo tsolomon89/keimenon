@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Loader2, ArrowLeft, Sparkles, Send, AlertCircle, User, Bot } from 'lucide-react';
 import { organizationService, ConversationThread } from '../../services/organization-service';
-import type { MessageNode } from '@keimenon/types';
+import type { MessageNode, ConversationContextPack } from '@keimenon/types';
 
 interface ConversationMessageRuntimeProps {
   conversation: ConversationThread;
@@ -18,6 +18,8 @@ export function ConversationMessageRuntime({
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contextPack, setContextPack] = useState<ConversationContextPack | null>(null);
+  const [isContextExpanded, setIsContextExpanded] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -28,9 +30,13 @@ export function ConversationMessageRuntime({
       try {
         setLoading(true);
         setError(null);
-        const fetchedMessages = await organizationService.getConversationMessages(conversation.id);
+        const [fetchedMessages, fetchedContext] = await Promise.all([
+          organizationService.getConversationMessages(conversation.id),
+          organizationService.getConversationContextPack(conversation.id),
+        ]);
         if (isMounted) {
           setMessages(fetchedMessages);
+          setContextPack(fetchedContext);
         }
       } catch (err: any) {
         if (isMounted) {
@@ -77,7 +83,11 @@ export function ConversationMessageRuntime({
       setMessages((prev) => {
         const newMessages = [...prev, response.userMessage];
         if (response.assistantMessage) {
-          newMessages.push(response.assistantMessage);
+          const assistantMsg = { ...response.assistantMessage };
+          if (response.agentRunDetails) {
+            (assistantMsg as any)._agentRunDetails = response.agentRunDetails;
+          }
+          newMessages.push(assistantMsg);
         }
         return newMessages;
       });
@@ -131,6 +141,81 @@ export function ConversationMessageRuntime({
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+        {/* Context Bounds Summary */}
+        {contextPack && (
+          <div className="max-w-3xl mx-auto mb-6 bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
+            <div
+              className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-800 transition-colors"
+              onClick={() => setIsContextExpanded(!isContextExpanded)}
+            >
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm font-medium text-slate-200">Context Bounds</span>
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <span className="bg-slate-900 px-2 py-0.5 rounded-full">
+                    {contextPack.truncation.returned_sources} sources
+                  </span>
+                  <span className="bg-slate-900 px-2 py-0.5 rounded-full">
+                    {contextPack.truncation.returned_groups} groups
+                  </span>
+                  <span className="bg-slate-900 px-2 py-0.5 rounded-full">
+                    {contextPack.truncation.returned_evidence_items} evidence items
+                  </span>
+                </div>
+              </div>
+              <div className="text-xs text-slate-500">{isContextExpanded ? 'Hide' : 'View'}</div>
+            </div>
+
+            {isContextExpanded && (
+              <div className="px-4 py-3 border-t border-slate-700/50 text-sm text-slate-300">
+                {contextPack.truncation.evidence_truncated && (
+                  <div className="mb-3 p-2 bg-yellow-900/20 border border-yellow-700/30 text-yellow-300 rounded flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>
+                      Evidence truncated to maximum limit ({contextPack.limits.max_evidence_items}{' '}
+                      items).
+                    </span>
+                  </div>
+                )}
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                      Sources
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {contextPack.source_ids.map((srcId: string) => (
+                        <span
+                          key={srcId}
+                          className="bg-slate-900/80 px-2 py-1 rounded text-xs border border-slate-700 truncate max-w-[200px]"
+                        >
+                          {srcId}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  {contextPack.group_ids.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                        Groups
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {contextPack.group_ids.map((grpId: string) => (
+                          <span
+                            key={grpId}
+                            className="bg-slate-900/80 px-2 py-1 rounded text-xs border border-slate-700 truncate max-w-[200px]"
+                          >
+                            {grpId}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">
             <Loader2 className="w-8 h-8 animate-spin mb-4" />
@@ -182,6 +267,84 @@ export function ConversationMessageRuntime({
                         <div className="mt-3 text-xs bg-red-900/50 border border-red-500/50 text-red-200 p-2 rounded flex items-start gap-2">
                           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                           <span>Synthesis failed: {synthesisError}</span>
+                        </div>
+                      )}
+                      {(msg as any)._agentRunDetails && (
+                        <div className="mt-3 pt-3 border-t border-slate-700/50 flex flex-col gap-2">
+                          <div className="flex flex-wrap gap-2 text-xs text-slate-400">
+                            <span className="flex items-center gap-1 bg-slate-900/50 px-2 py-0.5 rounded">
+                              <Sparkles className="w-3 h-3 text-emerald-400" />
+                              {(msg as any)._agentRunDetails.provider}{' '}
+                              {(msg as any)._agentRunDetails.model
+                                ? `(${(msg as any)._agentRunDetails.model})`
+                                : ''}
+                            </span>
+                            <span className="flex items-center gap-1 bg-slate-900/50 px-2 py-0.5 rounded">
+                              <Bot className="w-3 h-3 text-blue-400" />
+                              Skill: {(msg as any)._agentRunDetails.skill_used}
+                            </span>
+                            <span className="bg-slate-900/50 px-2 py-0.5 rounded font-mono">
+                              Run: {(msg as any)._agentRunDetails.agent_run_id?.substring(0, 8)}...
+                            </span>
+                            <span className="bg-slate-900/50 px-2 py-0.5 rounded">
+                              {(msg as any)._agentRunDetails.duration_ms}ms
+                            </span>
+
+                            <button
+                              className="ml-auto flex items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors"
+                              onClick={(e) => {
+                                const target = e.currentTarget.nextElementSibling as HTMLElement;
+                                if (target) {
+                                  target.classList.toggle('hidden');
+                                }
+                              }}
+                            >
+                              View Provenance
+                            </button>
+                          </div>
+
+                          {/* Expandable Detail View */}
+                          <div className="hidden mt-2 p-3 bg-slate-900/80 rounded border border-slate-700/50 text-xs">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <div className="font-semibold text-slate-300 mb-1">
+                                  Execution Details
+                                </div>
+                                <div className="text-slate-500">
+                                  Run ID:{' '}
+                                  <span className="text-slate-400 font-mono">
+                                    {(msg as any)._agentRunDetails.agent_run_id}
+                                  </span>
+                                </div>
+                                <div className="text-slate-500">
+                                  Status: <span className="text-emerald-400">Success</span>
+                                </div>
+                              </div>
+                              <div>
+                                <div className="font-semibold text-slate-300 mb-1">
+                                  Context Integrity
+                                </div>
+                                <div className="text-slate-500">
+                                  Evidence Count:{' '}
+                                  <span className="text-slate-400">
+                                    {contextPack?.evidenceItems?.length || 0}
+                                  </span>
+                                </div>
+                                <div className="text-slate-500">
+                                  Truncated:{' '}
+                                  <span
+                                    className={
+                                      contextPack?.truncation?.evidenceTruncated
+                                        ? 'text-yellow-400'
+                                        : 'text-emerald-400'
+                                    }
+                                  >
+                                    {contextPack?.truncation?.evidenceTruncated ? 'Yes' : 'No'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

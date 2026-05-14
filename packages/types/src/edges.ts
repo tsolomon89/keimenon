@@ -265,6 +265,38 @@ export const AuthoredByEdgeSchema = BaseEdgeSchema.extend({
 
 export type AuthoredByEdge = z.infer<typeof AuthoredByEdgeSchema>;
 
+// RUN_FOR edge (AgentRun → ConversationThread)
+export const RunForEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('RUN_FOR'),
+  // from: AgentRun, to: ConversationThread
+});
+
+export type RunForEdge = z.infer<typeof RunForEdgeSchema>;
+
+// INPUT_MESSAGE edge (AgentRun → Message)
+export const InputMessageEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('INPUT_MESSAGE'),
+  // from: AgentRun, to: Message (User Message)
+});
+
+export type InputMessageEdge = z.infer<typeof InputMessageEdgeSchema>;
+
+// PRODUCED_MESSAGE edge (AgentRun → Message)
+export const ProducedMessageEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('PRODUCED_MESSAGE'),
+  // from: AgentRun, to: Message (Assistant Message)
+});
+
+export type ProducedMessageEdge = z.infer<typeof ProducedMessageEdgeSchema>;
+
+// USED_EVIDENCE edge (AgentRun → SourceSpan/Phrase/Topic)
+export const UsedEvidenceEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('USED_EVIDENCE'),
+  // from: AgentRun, to: Any Node (Evidence)
+});
+
+export type UsedEvidenceEdge = z.infer<typeof UsedEvidenceEdgeSchema>;
+
 // Union type for all edges
 export type AnyEdge =
   | ContainsEdge
@@ -295,4 +327,8 @@ export type AnyEdge =
   | ParticipatedInEdge
   | ProducedByEdge
   | HasMessageEdge
-  | AuthoredByEdge;
+  | AuthoredByEdge
+  | RunForEdge
+  | InputMessageEdge
+  | ProducedMessageEdge
+  | UsedEvidenceEdge;

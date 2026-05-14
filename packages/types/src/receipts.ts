@@ -22,13 +22,17 @@ export const ReceiptSchema = z.object({
   policy: z.object({
     exclude_sequestered: z.boolean(),
   }),
-  lens: z.object({
-    metric: z.string(), // e.g., "provenance", "semantic", "verification"
-    seed: z.number().optional(),
-  }).optional(),
-  ranker: z.object({
-    order: z.array(z.string()), // e.g., ["policy", "citation", "freshness", "authority", "embedding"]
-  }).optional(),
+  lens: z
+    .object({
+      metric: z.string(), // e.g., "provenance", "semantic", "verification"
+      seed: z.number().optional(),
+    })
+    .optional(),
+  ranker: z
+    .object({
+      order: z.array(z.string()), // e.g., ["policy", "citation", "freshness", "authority", "embedding"]
+    })
+    .optional(),
   model: z.string().optional(),
   timestamp: z.number(),
   metadata: z.record(z.any()).optional(),
@@ -36,8 +40,8 @@ export const ReceiptSchema = z.object({
 
 export type Receipt = z.infer<typeof ReceiptSchema>;
 
-// AgentRun (execution record)
-export const AgentRunSchema = z.object({
+// LegacyAgentRun (execution record)
+export const LegacyAgentRunSchema = z.object({
   run_id: z.string(),
   agent_id: z.string(),
   scope_id: z.string(),
@@ -48,27 +52,39 @@ export const AgentRunSchema = z.object({
     timeout_s: z.number(),
   }),
   plan: z.array(z.string()), // steps
-  artifacts: z.array(z.object({
-    kind: z.string(),
-    ref: z.string(),
-  })),
-  events: z.array(z.object({
-    ts: z.number(),
-    level: z.enum(['info', 'warn', 'error']),
-    msg: z.string(),
-  })),
+  artifacts: z.array(
+    z.object({
+      kind: z.string(),
+      ref: z.string(),
+    })
+  ),
+  events: z.array(
+    z.object({
+      ts: z.number(),
+      level: z.enum(['info', 'warn', 'error']),
+      msg: z.string(),
+    })
+  ),
   status: z.enum(['success', 'error', 'partial']),
   error: z.string().optional(),
   started_at: z.number(),
   completed_at: z.number().optional(),
 });
 
-export type AgentRun = z.infer<typeof AgentRunSchema>;
+export type LegacyAgentRun = z.infer<typeof LegacyAgentRunSchema>;
 
 // VerifierRun
 export const VerifierRunSchema = z.object({
   run_id: z.string(),
-  kind: z.enum(['HTTP_CHECK', 'SCHEMA_MATCH', 'EXAMPLE_CALL', 'COMPUTATION', 'UNIT_TEST', 'REPRO_NOTEBOOK', 'PROOF_ASSISTANT']),
+  kind: z.enum([
+    'HTTP_CHECK',
+    'SCHEMA_MATCH',
+    'EXAMPLE_CALL',
+    'COMPUTATION',
+    'UNIT_TEST',
+    'REPRO_NOTEBOOK',
+    'PROOF_ASSISTANT',
+  ]),
   claim_ids: z.array(z.string()),
   inputs: z.record(z.any()),
   outputs: z.record(z.any()).optional(),

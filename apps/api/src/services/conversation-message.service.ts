@@ -1,21 +1,17 @@
 import { nanoid } from 'nanoid';
-import { ConversationThread, MessageNode } from '@keimenon/types';
+import { ConversationThread, MessageNode, AgentRun } from '@keimenon/types';
 import { ConversationContextService } from './conversation-context.service';
 import { buildConversationSynthesisInput } from './conversation-synthesis-input';
-import {
-  mockSynthesisAdapter,
-  ConversationSynthesisAdapter,
-} from './conversation-synthesis-adapter';
+import { providerRegistry } from './agent/synthesis-provider-registry';
+import { skillRegistry } from './agent/runtime-skill-loader';
 
 export class ConversationMessageService {
   private database: any;
   private contextService: ConversationContextService;
-  private synthesisAdapter: ConversationSynthesisAdapter;
 
   constructor(database: any) {
     this.database = database;
     this.contextService = new ConversationContextService(database);
-    this.synthesisAdapter = mockSynthesisAdapter;
   }
 
   // Helper to parse properties
@@ -64,16 +60,21 @@ export class ConversationMessageService {
       } as MessageNode;
     });
 
-    return messages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    return messages.sort((a, b) => {
+      const timeDiff = (a.timestamp || 0) - (b.timestamp || 0);
+      if (timeDiff !== 0) return timeDiff;
+      return a.id.localeCompare(b.id);
+    });
   }
 
-  // Post message and orchestrate synthesis
   public async postMessage(
     accountId: string,
     userId: string,
     conversationId: string,
     content: string,
-    runSynthesis: boolean = true
+    runSynthesis: boolean = true,
+    skillId?: string,
+    providerId?: string
   ) {
     const now = Date.now();
 
@@ -104,7 +105,7 @@ export class ConversationMessageService {
     const humanPrincipalId = convProps.human_principal_id;
     const agentPrincipalId = convProps.agent_principal_id;
 
-    // 2. Insert user message
+    // 2. Insert user message in a transaction
     const userMsgId = `msg_${nanoid()}`;
     const userMsgProps = {
       role: 'user',
@@ -112,36 +113,6 @@ export class ConversationMessageService {
       thread_id: conversationId,
       timestamp: now,
     };
-
-    this.database
-      .prepare(
-        `
-      INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
-      VALUES (?, 'Message', ?, ?, ?, ?, ?)
-    `
-      )
-      .run(userMsgId, JSON.stringify(userMsgProps), accountId, userId, now, now);
-
-    // 3. Add edges for user message
-    this.database
-      .prepare(
-        `
-      INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
-      VALUES (?, 'HAS_MESSAGE', ?, ?, '{}', ?, ?, ?)
-    `
-      )
-      .run(`edge_hasmsg_${nanoid()}`, conversationId, userMsgId, accountId, userId, now);
-
-    if (humanPrincipalId) {
-      this.database
-        .prepare(
-          `
-        INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
-        VALUES (?, 'AUTHORED_BY', ?, ?, '{}', ?, ?, ?)
-      `
-        )
-        .run(`edge_auth_${nanoid()}`, userMsgId, humanPrincipalId, accountId, userId, now);
-    }
 
     const userMessage: MessageNode = {
       id: userMsgId,
@@ -151,12 +122,58 @@ export class ConversationMessageService {
       ...userMsgProps,
     } as MessageNode;
 
+    const persistUserMessageTx = this.database.transaction(() => {
+      this.database
+        .prepare(
+          `
+        INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
+        VALUES (?, 'Message', ?, ?, ?, ?, ?)
+      `
+        )
+        .run(userMsgId, JSON.stringify(userMsgProps), accountId, userId, now, now);
+
+      this.database
+        .prepare(
+          `
+        INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
+        VALUES (?, 'HAS_MESSAGE', ?, ?, '{}', ?, ?, ?)
+      `
+        )
+        .run(`edge_hasmsg_${nanoid()}`, conversationId, userMsgId, accountId, userId, now);
+
+      if (humanPrincipalId) {
+        this.database
+          .prepare(
+            `
+          INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
+          VALUES (?, 'CREATED_BY', ?, ?, '{}', ?, ?, ?)
+        `
+          )
+          .run(`edge_auth_${nanoid()}`, userMsgId, humanPrincipalId, accountId, userId, now);
+      }
+    });
+
+    persistUserMessageTx();
+
     let assistantMessage: MessageNode | undefined = undefined;
     let synthesisError: string | undefined = undefined;
 
     // 4. Run synthesis if requested
     if (runSynthesis !== false) {
+      const startTime = Date.now();
+      const targetSkill = skillId || 'bounded-answer';
+      let synthesisResult: any;
+      let usedProvider = providerId || 'mock';
+
       try {
+        // Ensure skills are loaded (in a real app this is done at startup)
+        if (skillRegistry.getAllSkills().length === 0) {
+          skillRegistry.loadRuntimeSkills();
+        }
+
+        const provider = providerRegistry.getProvider(providerId);
+        usedProvider = provider.id;
+
         // Build context pack
         const contextPack = this.contextService.buildContextPack(
           accountId,
@@ -177,47 +194,17 @@ export class ConversationMessageService {
         });
 
         // Call adapter
-        const result = await this.synthesisAdapter.synthesize(synthesisInput);
+        synthesisResult = await provider.synthesize(synthesisInput, targetSkill);
 
-        // Success: persist assistant message
+        // Success: persist assistant message in a transaction
         const asstTime = Date.now();
         const asstMsgId = `msg_${nanoid()}`;
         const asstMsgProps = {
           role: 'assistant',
-          content: result.content,
+          content: synthesisResult.content,
           thread_id: conversationId,
           timestamp: asstTime,
         };
-
-        this.database
-          .prepare(
-            `
-          INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
-          VALUES (?, 'Message', ?, ?, ?, ?, ?)
-        `
-          )
-          .run(asstMsgId, JSON.stringify(asstMsgProps), accountId, userId, asstTime, asstTime);
-
-        // Edges for assistant message
-        this.database
-          .prepare(
-            `
-          INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
-          VALUES (?, 'HAS_MESSAGE', ?, ?, '{}', ?, ?, ?)
-        `
-          )
-          .run(`edge_hasmsg_${nanoid()}`, conversationId, asstMsgId, accountId, userId, asstTime);
-
-        if (agentPrincipalId) {
-          this.database
-            .prepare(
-              `
-            INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
-            VALUES (?, 'AUTHORED_BY', ?, ?, '{}', ?, ?, ?)
-          `
-            )
-            .run(`edge_auth_${nanoid()}`, asstMsgId, agentPrincipalId, accountId, userId, asstTime);
-        }
 
         assistantMessage = {
           id: asstMsgId,
@@ -226,15 +213,168 @@ export class ConversationMessageService {
           updated_at: asstTime,
           ...asstMsgProps,
         } as MessageNode;
+
+        const persistAssistantMessageTx = this.database.transaction(() => {
+          this.database
+            .prepare(
+              `
+            INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
+            VALUES (?, 'Message', ?, ?, ?, ?, ?)
+          `
+            )
+            .run(asstMsgId, JSON.stringify(asstMsgProps), accountId, userId, asstTime, asstTime);
+
+          this.database
+            .prepare(
+              `
+            INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
+            VALUES (?, 'HAS_MESSAGE', ?, ?, '{}', ?, ?, ?)
+          `
+            )
+            .run(`edge_hasmsg_${nanoid()}`, conversationId, asstMsgId, accountId, userId, asstTime);
+
+          if (agentPrincipalId) {
+            this.database
+              .prepare(
+                `
+              INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
+              VALUES (?, 'CREATED_BY', ?, ?, '{}', ?, ?, ?)
+            `
+              )
+              .run(
+                `edge_auth_${nanoid()}`,
+                asstMsgId,
+                agentPrincipalId,
+                accountId,
+                userId,
+                asstTime
+              );
+          }
+
+          // Record AgentRun
+          const runId = `run_${nanoid()}`;
+          const duration = Date.now() - startTime;
+          const runProps = {
+            provider: usedProvider,
+            model: synthesisResult.model,
+            skill_used: targetSkill,
+            duration_ms: duration,
+            status: 'success',
+          };
+
+          this.database
+            .prepare(
+              `
+            INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
+            VALUES (?, 'AgentRun', ?, ?, ?, ?, ?)
+          `
+            )
+            .run(runId, JSON.stringify(runProps), accountId, userId, asstTime, asstTime);
+
+          this.database
+            .prepare(
+              `
+            INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
+            VALUES (?, 'RUN_FOR', ?, ?, '{}', ?, ?, ?)
+          `
+            )
+            .run(`edge_runfor_${nanoid()}`, runId, conversationId, accountId, userId, asstTime);
+
+          this.database
+            .prepare(
+              `
+            INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
+            VALUES (?, 'INPUT_MESSAGE', ?, ?, '{}', ?, ?, ?)
+          `
+            )
+            .run(`edge_runin_${nanoid()}`, runId, userMsgId, accountId, userId, asstTime);
+
+          this.database
+            .prepare(
+              `
+            INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
+            VALUES (?, 'PRODUCED_MESSAGE', ?, ?, '{}', ?, ?, ?)
+          `
+            )
+            .run(`edge_runout_${nanoid()}`, runId, asstMsgId, accountId, userId, asstTime);
+
+          // Record USED_EVIDENCE edges
+          if (synthesisResult.evidence_used && synthesisResult.evidence_used.length > 0) {
+            const insertEdge = this.database.prepare(`
+              INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
+              VALUES (?, 'USED_EVIDENCE', ?, ?, '{}', ?, ?, ?)
+            `);
+            for (const evId of synthesisResult.evidence_used) {
+              insertEdge.run(`edge_runev_${nanoid()}`, runId, evId, accountId, userId, asstTime);
+            }
+          }
+        });
+
+        persistAssistantMessageTx();
+
+        const agentRunDetails = {
+          provider: usedProvider,
+          model: synthesisResult?.model,
+          skill_used: targetSkill,
+          duration_ms: Date.now() - startTime,
+        };
+
+        return {
+          userMessage,
+          assistantMessage,
+          agentRunDetails,
+        };
       } catch (err: any) {
+        console.error('Synthesis error:', err);
         synthesisError = err.message || 'Unknown synthesis error';
+
+        // Log failed AgentRun
+        try {
+          const runId = `run_${nanoid()}`;
+          const duration = Date.now() - startTime;
+          const runProps = {
+            provider: usedProvider,
+            skill_used: targetSkill,
+            duration_ms: duration,
+            status: 'error',
+            error_message: synthesisError,
+          };
+          this.database
+            .prepare(
+              `
+            INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
+            VALUES (?, 'AgentRun', ?, ?, ?, ?, ?)
+          `
+            )
+            .run(runId, JSON.stringify(runProps), accountId, userId, startTime, startTime);
+
+          this.database
+            .prepare(
+              `
+            INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
+            VALUES (?, 'RUN_FOR', ?, ?, '{}', ?, ?, ?)
+          `
+            )
+            .run(`edge_runfor_${nanoid()}`, runId, conversationId, accountId, userId, startTime);
+        } catch (runErr) {
+          console.error('[ConversationMessageService] Failed to record error AgentRun', runErr);
+        }
+
+        return {
+          userMessage,
+          synthesisError,
+          agentRunDetails: {
+            provider: usedProvider,
+            skill_used: targetSkill,
+            duration_ms: Date.now() - startTime,
+            status: 'error',
+          },
+        };
       }
     }
 
     return {
       userMessage,
-      assistantMessage,
-      synthesisError,
     };
   }
 }

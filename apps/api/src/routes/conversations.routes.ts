@@ -70,8 +70,10 @@ const UpdateContextSchema = z.object({
 });
 
 const PostMessageSchema = z.object({
-  content: z.string().min(1, 'Message content required'),
+  content: z.string().min(1, 'Message content required').max(8000, 'Message content too long'),
   run_synthesis: z.boolean().optional().default(true),
+  skill: z.string().optional(),
+  provider: z.enum(['mock', 'gemma-local']).optional(),
 });
 
 type ContextSpec = z.infer<typeof ContextSpecSchema>;
@@ -732,6 +734,12 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
       });
     } catch (error: any) {
       console.error('[Conversations] Get messages error:', error);
+      if (error.message === 'Conversation not found or access denied') {
+        return res.status(404).json({
+          success: false,
+          error: error.message,
+        });
+      }
       return res.status(500).json({
         success: false,
         error: 'Failed to get conversation messages',
@@ -760,7 +768,9 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
         userId,
         id,
         body.content,
-        body.run_synthesis
+        body.run_synthesis,
+        body.skill,
+        body.provider
       );
 
       return res.json({
@@ -775,6 +785,13 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
           success: false,
           error: 'Validation failed',
           details: error.errors,
+        });
+      }
+
+      if (error.message === 'Conversation not found or access denied') {
+        return res.status(404).json({
+          success: false,
+          error: error.message,
         });
       }
 

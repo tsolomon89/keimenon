@@ -1,16 +1,19 @@
 import { ConversationSynthesisInput } from './conversation-synthesis-input';
+import {
+  SynthesisProvider,
+  ConversationSynthesisResult,
+  providerRegistry,
+} from './agent/synthesis-provider-registry';
 
-export interface ConversationSynthesisResult {
-  content: string;
-  synthesis_error?: string;
-}
+export class MockSynthesisProvider implements SynthesisProvider {
+  public id = 'mock';
+  public family: 'mock' | 'gemma' = 'mock';
+  public mode: 'mock' | 'local' = 'mock';
 
-export interface ConversationSynthesisAdapter {
-  synthesize(input: ConversationSynthesisInput): Promise<ConversationSynthesisResult>;
-}
-
-export class MockConversationSynthesisAdapter implements ConversationSynthesisAdapter {
-  async synthesize(input: ConversationSynthesisInput): Promise<ConversationSynthesisResult> {
+  async synthesize(
+    input: ConversationSynthesisInput,
+    skillId: string
+  ): Promise<ConversationSynthesisResult> {
     // Simulate network delay
     await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -22,15 +25,22 @@ export class MockConversationSynthesisAdapter implements ConversationSynthesisAd
       : '';
 
     const content =
-      `Mocked Assistant Response: I received your message "${input.userMessage.content}". ` +
+      `Mocked Assistant Response [Skill: ${skillId}]: I received your message "${input.userMessage.content}". ` +
       `I am aware of ${evidenceCount} pieces of evidence${truncatedNote}. ` +
       `This thread now has ${messageCount} messages.`;
 
+    const evidenceUsed = input.context.evidenceItems.slice(0, 2).map((item: any) => item.node_id);
+
     return {
       content,
+      provider: this.id,
+      skill_used: skillId,
+      evidence_used: evidenceUsed,
+      proposed_outputs: [],
     };
   }
 }
 
 // A singleton instance for use in the app
-export const mockSynthesisAdapter = new MockConversationSynthesisAdapter();
+export const mockSynthesisProvider = new MockSynthesisProvider();
+providerRegistry.registerProvider(mockSynthesisProvider);

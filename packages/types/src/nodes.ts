@@ -589,4 +589,31 @@ export type AnyNode =
   | VerifiedClaimNode
   // World Model V5 Additions
   | PrincipalNode
-  | ConversationThread;
+  | ConversationThread
+  | AgentRun;
+
+// AgentRun node
+export const AgentRunSchema = BaseNodeSchema.extend({
+  kind: z.literal('AgentRun'),
+  provider: z.string(),
+  model: z.string().optional(),
+  skill_used: z.string(),
+  duration_ms: z.number().optional(),
+  status: z.enum(['success', 'error']),
+  error_message: z.string().optional(),
+});
+
+export type AgentRun = z.infer<typeof AgentRunSchema>;
+
+// ProposedGraphOutput
+export const ProposedGraphOutputSchema = z.object({
+  action: z.enum(['create_node', 'update_node', 'create_edge']),
+  node_kind: z.string().optional(),
+  properties: z.record(z.any()).optional(),
+  target_id: z.string().optional(),
+  source_id: z.string().optional(),
+  confidence: z.number().optional(),
+  reasoning: z.string().optional(),
+});
+
+export type ProposedGraphOutput = z.infer<typeof ProposedGraphOutputSchema>;

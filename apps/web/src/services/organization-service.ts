@@ -339,15 +339,37 @@ export const organizationService = {
   postConversationMessage: async (
     conversationId: string,
     content: string,
-    runSynthesis: boolean = true
+    runSynthesis: boolean = true,
+    skill?: string,
+    provider?: string
   ): Promise<{
     userMessage: MessageNode;
     assistantMessage?: MessageNode;
     synthesisError?: string;
+    agentRunDetails?: {
+      provider: string;
+      model?: string;
+      skill_used: string;
+      duration_ms: number;
+      status?: string;
+    };
   }> => {
-    const response = await api.post(`/conversations/${conversationId}/messages`, {
+    const response = await api.post<{
+      userMessage: MessageNode;
+      assistantMessage?: MessageNode;
+      synthesisError?: string;
+      agentRunDetails?: {
+        provider: string;
+        model?: string;
+        skill_used: string;
+        duration_ms: number;
+        status?: string;
+      };
+    }>(`/conversations/${conversationId}/messages`, {
       content,
       run_synthesis: runSynthesis,
+      skill,
+      provider,
     });
     return response.data;
   },
