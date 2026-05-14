@@ -227,6 +227,16 @@ It remains operational for non-import write paths (e.g., ad-hoc node creation). 
 
 ## 7. Agent Behavior Contract
 
+### 7.1 Actor Doctrine
+
+1. AI is a user-like actor.
+2. `Principal` is the current graph implementation of actor identity.
+3. Gemma is not the actor.
+4. Provider/model is infrastructure.
+5. `AgentRun` records who acted and how they acted.
+
+### 7.2 Entitlement and Context
+
 1. Agent runtime is entitlement-gated.
 2. Import-time agent participation is manual-by-default.
 3. Agent principal creation and execution must be blocked when runtime entitlement is absent.

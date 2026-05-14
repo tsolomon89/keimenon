@@ -146,7 +146,7 @@ export class ConversationMessageService {
           .prepare(
             `
           INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
-          VALUES (?, 'CREATED_BY', ?, ?, '{}', ?, ?, ?)
+          VALUES (?, 'AUTHORED_BY', ?, ?, '{}', ?, ?, ?)
         `
           )
           .run(`edge_auth_${nanoid()}`, userMsgId, humanPrincipalId, accountId, userId, now);
@@ -160,6 +160,13 @@ export class ConversationMessageService {
 
     // 4. Run synthesis if requested
     if (runSynthesis !== false) {
+      if (!agentPrincipalId) {
+        return {
+          userMessage,
+          synthesisError: 'AGENT_PRINCIPAL_REQUIRED',
+        };
+      }
+
       const startTime = Date.now();
       const targetSkill = skillId || 'bounded-answer';
       let synthesisResult: any;
@@ -238,7 +245,7 @@ export class ConversationMessageService {
               .prepare(
                 `
               INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
-              VALUES (?, 'CREATED_BY', ?, ?, '{}', ?, ?, ?)
+              VALUES (?, 'AUTHORED_BY', ?, ?, '{}', ?, ?, ?)
             `
               )
               .run(
@@ -255,6 +262,7 @@ export class ConversationMessageService {
           const runId = `run_${nanoid()}`;
           const duration = Date.now() - startTime;
           const runProps = {
+            actor_principal_id: agentPrincipalId,
             provider: usedProvider,
             model: synthesisResult.model,
             skill_used: targetSkill,
@@ -270,6 +278,17 @@ export class ConversationMessageService {
           `
             )
             .run(runId, JSON.stringify(runProps), accountId, userId, asstTime, asstTime);
+
+          if (agentPrincipalId) {
+            this.database
+              .prepare(
+                `
+              INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
+              VALUES (?, 'RUN_BY', ?, ?, '{}', ?, ?, ?)
+            `
+              )
+              .run(`edge_runby_${nanoid()}`, runId, agentPrincipalId, accountId, userId, asstTime);
+          }
 
           this.database
             .prepare(
@@ -313,6 +332,7 @@ export class ConversationMessageService {
         persistAssistantMessageTx();
 
         const agentRunDetails = {
+          actor_principal_id: agentPrincipalId,
           provider: usedProvider,
           model: synthesisResult?.model,
           skill_used: targetSkill,
@@ -324,9 +344,8 @@ export class ConversationMessageService {
           assistantMessage,
           agentRunDetails,
         };
-      } catch (err: any) {
-        console.error('Synthesis error:', err);
-        synthesisError = err.message || 'Unknown synthesis error';
+      } catch (error: any) {
+        synthesisError = error.message;
 
         // Log failed AgentRun
         try {
@@ -364,6 +383,7 @@ export class ConversationMessageService {
           userMessage,
           synthesisError,
           agentRunDetails: {
+            actor_principal_id: agentPrincipalId,
             provider: usedProvider,
             skill_used: targetSkill,
             duration_ms: Date.now() - startTime,

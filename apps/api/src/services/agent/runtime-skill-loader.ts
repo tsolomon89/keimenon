@@ -22,7 +22,10 @@ export class RuntimeSkillRegistry {
   private baseDir: string;
 
   constructor(baseDir?: string) {
-    this.baseDir = baseDir || path.resolve(process.cwd(), '../../agent_context/runtime-skills');
+    this.baseDir =
+      baseDir ||
+      process.env.KEIMENON_RUNTIME_SKILLS_DIR ||
+      path.resolve(__dirname, '../../../../../agent_context/runtime-skills');
   }
 
   public loadRuntimeSkills(): void {

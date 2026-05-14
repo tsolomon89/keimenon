@@ -595,6 +595,7 @@ export type AnyNode =
 // AgentRun node
 export const AgentRunSchema = BaseNodeSchema.extend({
   kind: z.literal('AgentRun'),
+  actor_principal_id: z.string(),
   provider: z.string(),
   model: z.string().optional(),
   skill_used: z.string(),
@@ -606,14 +607,36 @@ export const AgentRunSchema = BaseNodeSchema.extend({
 export type AgentRun = z.infer<typeof AgentRunSchema>;
 
 // ProposedGraphOutput
-export const ProposedGraphOutputSchema = z.object({
-  action: z.enum(['create_node', 'update_node', 'create_edge']),
-  node_kind: z.string().optional(),
-  properties: z.record(z.any()).optional(),
-  target_id: z.string().optional(),
-  source_id: z.string().optional(),
-  confidence: z.number().optional(),
-  reasoning: z.string().optional(),
-});
+export const ProposedGraphOutputSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('ProposedClaim'),
+    claim_text: z.string(),
+    source_ids: z.array(z.string()).optional(),
+    confidence: z.number().optional(),
+    reasoning: z.string().optional(),
+  }),
+  z.object({
+    kind: z.literal('ProposedSource'),
+    url: z.string(),
+    description: z.string().optional(),
+    confidence: z.number().optional(),
+    reasoning: z.string().optional(),
+  }),
+  z.object({
+    kind: z.literal('Gap'),
+    description: z.string(),
+    suggested_action: z.string().optional(),
+    confidence: z.number().optional(),
+    reasoning: z.string().optional(),
+  }),
+  z.object({
+    kind: z.literal('CitationIssue'),
+    claim_id: z.string().optional(),
+    issue: z.string(),
+    severity: z.enum(['low', 'medium', 'high']).optional(),
+    confidence: z.number().optional(),
+    reasoning: z.string().optional(),
+  }),
+]);
 
 export type ProposedGraphOutput = z.infer<typeof ProposedGraphOutputSchema>;

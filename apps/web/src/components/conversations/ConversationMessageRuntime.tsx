@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Loader2, ArrowLeft, Sparkles, Send, AlertCircle, User, Bot } from 'lucide-react';
+import { Loader2, ArrowLeft, Sparkles, Send, AlertCircle, User, Bot, Cpu } from 'lucide-react';
 import { organizationService, ConversationThread } from '../../services/organization-service';
 import type { MessageNode, ConversationContextPack } from '@keimenon/types';
 
@@ -273,12 +273,19 @@ export function ConversationMessageRuntime({
                         <div className="mt-3 pt-3 border-t border-slate-700/50 flex flex-col gap-2">
                           <div className="flex flex-wrap gap-2 text-xs text-slate-400">
                             <span className="flex items-center gap-1 bg-slate-900/50 px-2 py-0.5 rounded">
-                              <Sparkles className="w-3 h-3 text-emerald-400" />
-                              {(msg as any)._agentRunDetails.provider}{' '}
-                              {(msg as any)._agentRunDetails.model
-                                ? `(${(msg as any)._agentRunDetails.model})`
-                                : ''}
+                              <User className="w-3 h-3 text-emerald-400" />
+                              Agent: Research Assistant
                             </span>
+                            <span className="flex items-center gap-1 bg-slate-900/50 px-2 py-0.5 rounded">
+                              <Sparkles className="w-3 h-3 text-emerald-400" />
+                              Provider: {(msg as any)._agentRunDetails.provider}
+                            </span>
+                            {(msg as any)._agentRunDetails.model && (
+                              <span className="flex items-center gap-1 bg-slate-900/50 px-2 py-0.5 rounded">
+                                <Cpu className="w-3 h-3 text-purple-400" />
+                                Model: {(msg as any)._agentRunDetails.model}
+                              </span>
+                            )}
                             <span className="flex items-center gap-1 bg-slate-900/50 px-2 py-0.5 rounded">
                               <Bot className="w-3 h-3 text-blue-400" />
                               Skill: {(msg as any)._agentRunDetails.skill_used}

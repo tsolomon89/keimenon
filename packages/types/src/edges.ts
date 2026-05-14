@@ -265,6 +265,14 @@ export const AuthoredByEdgeSchema = BaseEdgeSchema.extend({
 
 export type AuthoredByEdge = z.infer<typeof AuthoredByEdgeSchema>;
 
+// RUN_BY edge (AgentRun → Principal)
+export const RunByEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('RUN_BY'),
+  // from: AgentRun, to: Principal (agent)
+});
+
+export type RunByEdge = z.infer<typeof RunByEdgeSchema>;
+
 // RUN_FOR edge (AgentRun → ConversationThread)
 export const RunForEdgeSchema = BaseEdgeSchema.extend({
   kind: z.literal('RUN_FOR'),
@@ -328,6 +336,7 @@ export type AnyEdge =
   | ProducedByEdge
   | HasMessageEdge
   | AuthoredByEdge
+  | RunByEdge
   | RunForEdge
   | InputMessageEdge
   | ProducedMessageEdge
