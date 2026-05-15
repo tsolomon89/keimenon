@@ -7,7 +7,35 @@
 
 This epic completes the first-run configuration and structural hardening of the **local Gemma runtime**. It moves the Keimenon backend from an unverified proxy boundary to a hardened integration that supports status checking, graceful failure recovery, and manual runtime smoke-testing.
 
-By design, this does _not_ introduce BYOK (Bring Your Own Key) or cloud-provider endpoints. It explicitly honors the Keimenon local-first requirement, supporting Open-AI compatible local servers like LM Studio and Ollama.
+By design, this does _not_ introduce BYOK (Bring Your Own Key) or cloud-provider endpoints. It explicitly honors the Keimenon local-first requirement, supporting Open-AI compatible local runtime hosts like LM Studio and Ollama.
+
+## Terminology: Gemma vs Runtime Host
+
+Keimenon supports Gemma as the local model family.
+
+A local runtime host such as LM Studio or Ollama may be used only to serve a Gemma model through a local API.
+
+The runtime host is not the model.
+
+The model family remains Gemma.
+
+The provider contract is:
+
+```txt
+Principal(agent)
+→ uses GemmaLocalProvider
+→ calls a local runtime host
+→ which serves an exact Gemma model ID
+```
+
+The local runtime trial may check common host URLs:
+
+- LM Studio-compatible host: `http://localhost:1234/v1`
+- Ollama OpenAI-compatible host: `http://localhost:11434/v1`
+
+These checks do not imply support for non-Gemma model families.
+
+If a host is reachable but exposes only non-Gemma model IDs, Keimenon should report `GEMMA_MODEL_NOT_FOUND` and should not run synthesis against those models.
 
 ## 2. Configuration Contract
 
@@ -59,12 +87,25 @@ For reliable debugging without running the full client:
    - Tests assert that an `AgentRun` with no `USED_EVIDENCE` safely returns an empty array with zero stats.
 6. ⏳ **Manual Trial (Pending)**:
    - Tried to ping `http://localhost:1234/v1/models` and `http://localhost:11434/v1/models`.
-   - Result: Endpoints unreachable (no local runtime active).
-   - To complete verification: Start LM Studio or Ollama, set `GEMMA_LOCAL_BASE_URL`, and run `npm run gemma:status` and `npm run gemma:smoke`.
+   - Result: Endpoints unreachable (no local runtime host active).
+   - To complete verification: Start a local host serving a Gemma model, set `GEMMA_LOCAL_BASE_URL`, and run `npm run gemma:status` and `npm run gemma:smoke`.
 
-## 5. Next Steps
+## 5. Manual Local Gemma Trial
+
+- Date: 2026-05-15
+- Runtime used: N/A
+- Base URL: N/A
+- Model ID exposed by runtime: N/A
+- `gemma:status` result: Skipped (runtime not available)
+- `gemma:smoke` result: Skipped (runtime not available)
+- Output excerpt: N/A
+- Issues encountered: The Gemma runtime trial was skipped because no local Gemma-serving host was reachable. The checked local host endpoints were LM Studio-compatible `localhost:1234/v1` and Ollama-compatible `localhost:11434/v1`; both refused the connection. No non-Gemma model path was tested or enabled.
+- Resolution: Manual trial pending — runtime not available.
+- Remaining risks: Exact exposed model ID may differ from default configuration.
+
+## 6. Next Steps
 
 With the Gemma local infrastructure bound and verifiable, the next epic should execute the **Real Local Gemma Manual Trial**.
 
-- **Execute Smoke Tests**: Download LM Studio/Ollama, load the Gemma model, configure the `.env` file, and run `npm run gemma:smoke`.
+- **Execute Smoke Tests**: Start a local host serving a Gemma model, configure the `.env` file, and run `npm run gemma:smoke`.
 - **Full Browser Product Loop E2E**: Prove the product path `canvas → selection → conversation → message → AgentRun → provenance UI`.

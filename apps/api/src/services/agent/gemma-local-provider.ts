@@ -3,6 +3,10 @@ import { ConversationSynthesisInput } from '../conversation-synthesis-input';
 import { GemmaSerializer } from './gemma-serializer';
 import { skillRegistry } from './runtime-skill-loader';
 
+export function isGemmaModelId(modelId: string): boolean {
+  return modelId.toLowerCase().includes('gemma');
+}
+
 export interface GemmaLocalStatus {
   configured: boolean;
   status: 'online' | 'offline' | 'unavailable';
@@ -80,12 +84,26 @@ export class GemmaLocalProvider implements SynthesisProvider {
         availableModelIds = data.models.map((m: any) => m.name || m.id || m.model);
       }
 
+      if (!isGemmaModelId(modelName)) {
+        return {
+          configured: true,
+          status: 'offline',
+          error_code: 'GEMMA_MODEL_NOT_FOUND',
+          error: `Configured model '${modelName}' is not a Gemma model family.`,
+          runtimeKind,
+          modelName,
+          modelAvailable: false,
+          timeoutMs,
+          thinkingEnabled,
+        };
+      }
+
       if (!availableModelIds.includes(modelName)) {
         return {
           configured: true,
           status: 'offline',
           error_code: 'GEMMA_MODEL_NOT_FOUND',
-          error: `Model '${modelName}' not found in runtime.`,
+          error: `Gemma model '${modelName}' not found in local runtime host.`,
           runtimeKind,
           modelName,
           modelAvailable: false,
@@ -138,6 +156,12 @@ export class GemmaLocalProvider implements SynthesisProvider {
       runtimeKind !== 'openai-compatible'
     ) {
       throw new Error(`Unsupported runtime kind: ${runtimeKind}`);
+    }
+
+    if (!isGemmaModelId(modelName)) {
+      throw new Error(
+        `GEMMA_MODEL_NOT_FOUND: Configured model '${modelName}' is not a Gemma model family.`
+      );
     }
 
     // Load skill

@@ -258,6 +258,13 @@ There are two distinct classes of agents in the Keimenon ecosystem. Do not confl
 6. Conversation `context_spec` references must be account-scoped and kind-valid (`source_ids`, `group_ids`, optional `workspace_id`).
 7. Conversation context_spec references must be account-scoped and kind-valid for all create/update operations.
 
+### 7.4 Local Runtime Host Contract
+
+1. **Gemma** is the only supported local model family.
+2. **LM Studio** and **Ollama** are local runtime hosts, not model alternatives.
+3. The runtime host serves an exact Gemma model ID through an OpenAI-compatible API protocol.
+4. If a reachable local host does not serve an exact configured Gemma model ID, the system must refuse synthesis and report `GEMMA_MODEL_NOT_FOUND`. Support for non-Gemma model families is explicitly excluded.
+
 ## 8. Canvas Fidelity Contract
 
 1. Backend node-kind fidelity must be preserved to client stores and render layers.

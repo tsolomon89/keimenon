@@ -3,7 +3,7 @@ import { buildConversationSynthesisInput } from '../services/conversation-synthe
 import { skillRegistry } from '../services/agent/runtime-skill-loader';
 
 async function main() {
-  console.log('--- Keimenon Gemma Local Smoke Test ---');
+  console.log('--- Keimenon Gemma Local Runtime Smoke Test ---');
 
   const status = await gemmaProvider.checkStatus();
   if (status.status !== 'online') {

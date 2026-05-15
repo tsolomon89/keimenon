@@ -61,6 +61,25 @@ describe('GemmaLocalProvider Status Check', () => {
     expect(status.modelAvailable).toBe(false);
   });
 
+  it('returns model missing when configured model is not a Gemma model family', async () => {
+    process.env.GEMMA_LOCAL_BASE_URL = 'http://localhost:11434/v1';
+    process.env.GEMMA_LOCAL_MODEL = 'llama3';
+
+    globalFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [{ id: 'llama3' }],
+      }),
+    });
+
+    const status = await provider.checkStatus();
+    expect(status.configured).toBe(true);
+    expect(status.status).toBe('offline');
+    expect(status.error_code).toBe('GEMMA_MODEL_NOT_FOUND');
+    expect(status.error).toContain('is not a Gemma model family');
+    expect(status.modelAvailable).toBe(false);
+  });
+
   it('returns online when configured model is present (OpenAI shape)', async () => {
     process.env.GEMMA_LOCAL_BASE_URL = 'http://localhost:11434/v1';
     process.env.GEMMA_LOCAL_MODEL = 'gemma-4-e4b-it';

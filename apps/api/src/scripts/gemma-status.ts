@@ -1,7 +1,7 @@
 import { gemmaProvider } from '../services/agent/gemma-local-provider';
 
 async function main() {
-  console.log('--- Keimenon Gemma Local Status ---');
+  console.log('--- Keimenon Gemma Local Runtime Status ---');
   console.log(`GEMMA_LOCAL_BASE_URL: ${process.env.GEMMA_LOCAL_BASE_URL || 'Not set'}`);
   console.log(
     `GEMMA_LOCAL_RUNTIME_KIND: ${process.env.GEMMA_LOCAL_RUNTIME_KIND || 'openai-compatible (default)'}`
