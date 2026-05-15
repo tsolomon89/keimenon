@@ -551,4 +551,93 @@ describe('Conversations Routes principal/context contract', () => {
         .expect(404);
     });
   });
+
+  describe('GET /runs/:runId/provenance', () => {
+    it('should return USED_EVIDENCE for an account-scoped AgentRun', async () => {
+      const now = Date.now();
+
+      // Insert AgentRun
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, 'AgentRun', '{}', 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('run_1', now, now);
+
+      // Insert target evidence nodes
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, 'SourceSpan', ?, 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('span_1', JSON.stringify({ text: 'Evidence 1' }), now, now);
+
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, 'Phrase', ?, 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('phrase_1', JSON.stringify({ normalized_text: 'Evidence 2', frequency: 5 }), now, now);
+
+      // Insert USED_EVIDENCE edges
+      activeDb
+        .prepare(
+          `INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at) VALUES (?, 'USED_EVIDENCE', ?, ?, '{}', 'acc_1', 'user_1', ?)`
+        )
+        .run('edge_1', 'run_1', 'span_1', now);
+      activeDb
+        .prepare(
+          `INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at) VALUES (?, 'USED_EVIDENCE', ?, ?, '{}', 'acc_1', 'user_1', ?)`
+        )
+        .run('edge_2', 'run_1', 'phrase_1', now);
+
+      const response = await request(app)
+        .get('/api/v1/conversations/runs/run_1/provenance')
+        .set('Authorization', 'Bearer test-token')
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.runId).toBe('run_1');
+      expect(response.body.evidence).toHaveLength(2);
+      expect(response.body.stats.spans).toBe(1);
+      expect(response.body.stats.phrases).toBe(1);
+    });
+
+    it('should return a valid empty evidence array for an AgentRun with no USED_EVIDENCE', async () => {
+      const now = Date.now();
+
+      // Insert AgentRun
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, 'AgentRun', '{}', 'acc_1', 'user_1', ?, ?)`
+        )
+        .run('run_empty', now, now);
+
+      const response = await request(app)
+        .get('/api/v1/conversations/runs/run_empty/provenance')
+        .set('Authorization', 'Bearer test-token')
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.runId).toBe('run_empty');
+      expect(response.body.evidence).toEqual([]);
+      expect(response.body.stats.total_items).toBe(0);
+    });
+
+    it('should reject access to cross-account AgentRun returning 404', async () => {
+      const now = Date.now();
+
+      // Insert AgentRun under another account
+      activeDb
+        .prepare(
+          `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at) VALUES (?, 'AgentRun', '{}', 'other_acc', 'other_user', ?, ?)`
+        )
+        .run('run_cross_acc', now, now);
+
+      const response = await request(app)
+        .get('/api/v1/conversations/runs/run_cross_acc/provenance')
+        .set('Authorization', 'Bearer test-token')
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('AgentRun not found');
+    });
+  });
 });

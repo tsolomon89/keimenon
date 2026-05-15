@@ -124,6 +124,7 @@ export interface AgentRunProvenanceEvidence {
 }
 
 export interface AgentRunProvenance {
+  success?: boolean;
   runId: string;
   evidence: AgentRunProvenanceEvidence[];
   stats: {
@@ -418,8 +419,14 @@ export const organizationService = {
     configured: boolean;
     status: 'online' | 'offline' | 'unavailable';
     error?: string;
+    error_code?:
+      | 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED'
+      | 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE'
+      | 'GEMMA_MODEL_NOT_FOUND'
+      | 'GEMMA_STATUS_CHECK_FAILED';
     runtimeKind?: string;
     modelName?: string;
+    modelAvailable?: boolean;
     timeoutMs?: number;
     thinkingEnabled?: boolean;
   }> => {
@@ -428,8 +435,14 @@ export const organizationService = {
         configured: boolean;
         status: 'online' | 'offline' | 'unavailable';
         error?: string;
+        error_code?:
+          | 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED'
+          | 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE'
+          | 'GEMMA_MODEL_NOT_FOUND'
+          | 'GEMMA_STATUS_CHECK_FAILED';
         runtimeKind?: string;
         modelName?: string;
+        modelAvailable?: boolean;
         timeoutMs?: number;
         thinkingEnabled?: boolean;
       }>('/runtime/gemma/status');

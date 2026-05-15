@@ -52,14 +52,19 @@ For reliable debugging without running the full client:
 1. ✅ Unit tests / API checks pass for `app.ts` module mounting.
 2. ✅ Environment variable contracts strictly parsed and enforced in `gemma-local-provider.ts`.
 3. ✅ CLI smoke scripts added to `package.json` for rapid local diagnostics.
-4. ⏳ **Manual Trial (Pending)**:
+4. ✅ **Status Helper Behavior**: The `getGemmaStatus` helper now includes explicit `error_code` enums and `modelAvailable` checks.
+5. ✅ **Provenance Endpoint**: `GET /api/v1/conversations/runs/:runId/provenance` is implemented and verified.
+   - Tests assert that it returns `USED_EVIDENCE` for an account-scoped `AgentRun`.
+   - Tests assert that cross-account access returns exactly a `404` status.
+   - Tests assert that an `AgentRun` with no `USED_EVIDENCE` safely returns an empty array with zero stats.
+6. ⏳ **Manual Trial (Pending)**:
    - Tried to ping `http://localhost:1234/v1/models` and `http://localhost:11434/v1/models`.
    - Result: Endpoints unreachable (no local runtime active).
    - To complete verification: Start LM Studio or Ollama, set `GEMMA_LOCAL_BASE_URL`, and run `npm run gemma:status` and `npm run gemma:smoke`.
 
 ## 5. Next Steps
 
-With the Gemma local infrastructure bound and verifiable:
+With the Gemma local infrastructure bound and verifiable, the next epic should execute the **Real Local Gemma Manual Trial**.
 
 - **Execute Smoke Tests**: Download LM Studio/Ollama, load the Gemma model, configure the `.env` file, and run `npm run gemma:smoke`.
-- **E2E Evaluation**: Conduct large-scale context synthesis from the UI to benchmark token throughput.
+- **Full Browser Product Loop E2E**: Prove the product path `canvas → selection → conversation → message → AgentRun → provenance UI`.

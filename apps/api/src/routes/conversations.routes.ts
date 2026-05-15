@@ -1022,7 +1022,9 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
               let props: any = {};
               try {
                 props = JSON.parse(row.properties);
-              } catch {}
+              } catch {
+                // Ignore parse errors, fallback to empty object
+              }
 
               evidenceNodes.push({
                 id: row.id,
