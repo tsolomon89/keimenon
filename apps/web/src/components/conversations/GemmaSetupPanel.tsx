@@ -76,7 +76,7 @@ export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: Gemm
               Gemma-Family Model ID
             </div>
             <div className="font-mono text-xs bg-slate-950 p-2 rounded text-blue-400 border border-slate-800">
-              {status.modelName || 'gemma-4-e4b-it'}
+              {status.modelName || '<Unverified: Check /models>'}
             </div>
           </div>
         </div>

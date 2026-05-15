@@ -40,18 +40,6 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
           expected_runtime_endpoint,
           model_requirement: 'gemma-family',
           exact_match_required: true,
-          advanced_examples: [
-            {
-              label: 'LM Studio',
-              base_url: 'http://localhost:1234/v1',
-              note: 'Host software is infrastructure, not the model. Keimenon only supports Gemma-family models.',
-            },
-            {
-              label: 'Ollama',
-              base_url: 'http://localhost:11434/v1',
-              note: 'Host software is infrastructure, not the model. Keimenon only supports Gemma-family models.',
-            },
-          ],
         };
       } else if (status.error_code === 'GEMMA_MODEL_NOT_FOUND') {
         guidance = {

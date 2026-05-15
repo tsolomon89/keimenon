@@ -11,7 +11,7 @@ By design, this does _not_ introduce BYOK (Bring Your Own Key) or cloud-provider
 
 ## Terminology: Gemma vs Runtime Host
 
-Keimenon supports Gemma as the local model family. The default target is the **Gemma 4 E4B instruction model** (e.g., `gemma-4-e4b-it`) unless the local runtime exposes a different exact Gemma-family ID. Older aliases like `gemma:2b` or `gemma:7b` are fallback/low-resource examples, not the primary project target.
+Keimenon supports Gemma as the local model family. The default target is the **Gemma 4 E4B instruction model** unless the local runtime exposes a different exact Gemma-family ID. Older aliases like `gemma:2b` or `gemma:7b` are fallback/low-resource examples, not the primary project target.
 
 A local runtime host such as LM Studio or Ollama may be used only to serve a Gemma model through a local API. Runtime host examples are not model-family alternatives.
 
@@ -41,13 +41,13 @@ If a host is reachable but exposes only non-Gemma model IDs, Keimenon should rep
 
 The runtime uses the following environment variables (defined in `.env`):
 
-| Variable                   | Default             | Purpose                                                                |
-| :------------------------- | :------------------ | :--------------------------------------------------------------------- |
-| `GEMMA_LOCAL_BASE_URL`     | _(required)_        | Base URI for the local provider (e.g., `http://127.0.0.1:1234/v1`)     |
-| `GEMMA_LOCAL_RUNTIME_KIND` | `openai-compatible` | Specifies provider format (`openai-compatible`, `ollama`, `lm-studio`) |
-| `GEMMA_LOCAL_MODEL`        | `gemma-4-e4b-it`    | The exact model identifier required by the local server                |
-| `GEMMA_LOCAL_TIMEOUT_MS`   | `60000`             | Synthesis request timeout limit in milliseconds                        |
-| `GEMMA_LOCAL_THINKING`     | `off`               | Toggles processing of specific `<think>` output tags                   |
+| Variable                   | Default             | Purpose                                                                        |
+| :------------------------- | :------------------ | :----------------------------------------------------------------------------- |
+| `GEMMA_LOCAL_BASE_URL`     | _(required)_        | Base URI for the local provider (e.g., `http://127.0.0.1:1234/v1`)             |
+| `GEMMA_LOCAL_RUNTIME_KIND` | `openai-compatible` | Specifies provider format (`openai-compatible`, `ollama`, `lm-studio`)         |
+| `GEMMA_LOCAL_MODEL`        | _(must set)_        | The exact model identifier required by the local server (verified via /models) |
+| `GEMMA_LOCAL_TIMEOUT_MS`   | `60000`             | Synthesis request timeout limit in milliseconds                                |
+| `GEMMA_LOCAL_THINKING`     | `off`               | Toggles processing of specific `<think>` output tags                           |
 
 If `GEMMA_LOCAL_BASE_URL` is missing, the API correctly surfaces `GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED` without crashing the core app.
 

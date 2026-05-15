@@ -1,0 +1,20 @@
+Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+Locator: locator('.message-bubble:not(.user-message)').last()
+Expected: visible
+Timeout: 15000ms
+Error: element(s) not found
+
+Call log:
+[2m  - Expect "toBeVisible" with timeout 15000ms[22m
+[2m  - waiting for locator('.message-bubble:not(.user-message)').last()[22m
+
+
+  140 |     // The mock provider typically says something like "Synthesis complete" or responds with markdown.
+  141 |     // Let's just wait for a message not from the user
+> 142 |     await expect(page.locator('.message-bubble:not(.user-message)').last()).toBeVisible({ timeout: 15000 });
+      |                                                                             ^
+  143 |
+  144 |     // 16. Assert AgentRun metadata appears
+  145 |     // The "View Provenance" button should appear
+    at C:\Development\Projects\keimenon\tests\e2e\full-product-loop.spec.ts:142:77

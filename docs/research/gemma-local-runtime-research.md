@@ -5,9 +5,9 @@
 Based on official Google/Gemma sources (Gemma 4 model card):
 
 1. **Gemma 4 Model Variants:** Supports E2B, E4B, 26B, A4B, and 31B variants.
-2. **Default Local Model:** `google/gemma-4-E4B-it`
-3. **Low-resource Fallback Model:** `google/gemma-4-E2B-it`
-4. **Power-user Local Model:** `google/gemma-4-26B-A4B-it`
+2. **Default Local Model:** Gemma 4 E4B instruction model (exact ID verified via /models)
+3. **Low-resource Fallback Model:** Gemma 4 E2B instruction model
+4. **Power-user Local Model:** Gemma 4 26B instruction model
 5. **Context Length Limits:** Supports 128K and 256K context windows depending on the specific model size.
 6. **License and Distribution Constraints:** Gemma 4 is Apache 2.0 licensed.
 7. **Bundling:** Model weights MUST NOT be bundled or auto-downloaded by the application. They must be user-installed.
@@ -31,7 +31,7 @@ Based on official Google/Gemma sources (Gemma 4 model card):
 3. **Model Support:** Both runtimes support Gemma 4 E4B-it.
 4. **Thinking Mode:** Supported, though reasoning tokens may be returned as part of the stream or a separate field depending on the wrapper.
 5. **Function Calling:** Supported natively in the chat completions API.
-6. **Installation:** User must install the runtime and pull the model explicitly (e.g., `ollama run gemma-4-e4b-it`).
+6. **Installation:** User must install the runtime and pull the model explicitly.
 7. **Keimenon's Role:** Keimenon MUST connect to an already-running local runtime. It will NOT bundle, download, or start the runtime automatically.
 
 ## D. Agent / Skill / Workflow Structure

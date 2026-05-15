@@ -16,7 +16,7 @@ The current implementation relies on a "detect and advise" strategy:
 1. **Host Detection:**
    Keimenon attempts to connect to a local API (e.g., `http://localhost:11434/v1` for Ollama or `http://localhost:1234/v1` for LM Studio).
 2. **Model Verification:**
-   Keimenon queries the `/v1/models` endpoint of the reachable host and parses the response to find an exact configured Gemma model ID. The default target is the **Gemma 4 E4B instruction model** (e.g., `gemma4:e4b` on Ollama, or `google/gemma-4-E4B-it` on Hugging Face), unless the local runtime exposes a different exact Gemma-family ID. Older aliases like `gemma:2b` or `gemma:7b` are fallback/low-resource examples, not the primary project target.
+   Keimenon queries the `/v1/models` endpoint of the reachable host and parses the response to find an exact configured Gemma model ID.
 
 3. **Status Reporting:**
    If the host is unreachable, the UI reports **Gemma Runtime Offline**.
@@ -24,27 +24,41 @@ The current implementation relies on a "detect and advise" strategy:
    If both exist, the UI reports **Gemma Online**.
 
 4. **Installation Guidance:**
-   If the Gemma model is missing, Keimenon provides clear, copy-pasteable instructions for the user to pull the model into their respective host.
+   If the Gemma model is missing, Keimenon provides clear instructions for the user to pull the model into their respective host.
 
-## Host-Specific Examples
+## Configuring GEMMA_LOCAL_MODEL
 
-### Ollama-compatible host
+Do not guess the model ID.
 
-If the detected host operates via Ollama (`http://localhost:11434/v1`), provide the following instruction:
+First query:
 
-> "Install a Gemma model into the Ollama runtime host by running the following command in your terminal:"
->
-> ```bash
-> ollama run gemma4:e4b
-> ```
->
-> _(Or use `ollama run gemma:2b` for a low-resource fallback)._
+```bash
+curl <GEMMA_LOCAL_BASE_URL>/models
+```
 
-### LM Studio-compatible host
+Then set:
 
-If the detected host operates via LM Studio (`http://localhost:1234/v1`), provide the following instruction:
+```bash
+GEMMA_LOCAL_MODEL=<exact Gemma-family model id returned by /models>
+```
 
-> "Install a Gemma model into the LM Studio runtime host by opening the LM Studio application, searching for 'Gemma', and downloading the `google/gemma-4-E4B-it` or equivalent Gemma-family model."
+Example:
+
+If `/models` returns:
+
+```json
+{
+  "data": [{ "id": "google/gemma-4-e4b-it" }]
+}
+```
+
+then set:
+
+```bash
+GEMMA_LOCAL_MODEL=google/gemma-4-e4b-it
+```
+
+If no Gemma-family model appears in `/models`, Keimenon reports `GEMMA_MODEL_NOT_FOUND`.
 
 ## Re-Verification and Smoke Test
 
