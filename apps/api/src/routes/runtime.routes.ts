@@ -27,7 +27,71 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
       }
 
       const status = await gemmaProvider.checkStatus();
-      res.json(status);
+
+      const expected_runtime_endpoint =
+        process.env.GEMMA_LOCAL_BASE_URL || 'http://localhost:1234/v1';
+      let guidance: any = null;
+
+      if (!status.configured || status.error_code === 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED') {
+        guidance = {
+          title: 'Gemma Not Configured',
+          explanation: 'Keimenon needs a configured local runtime endpoint serving a Gemma model.',
+          next_steps: ['Set GEMMA_LOCAL_BASE_URL and GEMMA_LOCAL_MODEL, then re-check status.'],
+          expected_runtime_endpoint,
+          model_requirement: 'gemma-family',
+          exact_match_required: true,
+          advanced_examples: [
+            {
+              label: 'LM Studio',
+              base_url: 'http://localhost:1234/v1',
+              note: 'Host software is infrastructure, not the model. Keimenon only supports Gemma-family models.',
+            },
+            {
+              label: 'Ollama',
+              base_url: 'http://localhost:11434/v1',
+              note: 'Host software is infrastructure, not the model. Keimenon only supports Gemma-family models.',
+            },
+          ],
+        };
+      } else if (status.error_code === 'GEMMA_MODEL_NOT_FOUND') {
+        guidance = {
+          title: 'Gemma Model Missing',
+          explanation:
+            'A local runtime endpoint was reachable, but it did not expose the configured Gemma-family model ID.',
+          next_steps: [
+            'Install or load the required Gemma model in your local runtime host, then re-check status.',
+          ],
+          expected_runtime_endpoint,
+          model_requirement: 'gemma-family',
+          exact_match_required: true,
+        };
+      } else if (
+        status.status === 'offline' ||
+        status.status === 'unavailable' ||
+        status.error_code === 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE' ||
+        status.error_code === 'GEMMA_STATUS_CHECK_FAILED'
+      ) {
+        guidance = {
+          title: 'Gemma Runtime Offline',
+          explanation: 'Keimenon has a configured runtime endpoint, but it is not reachable.',
+          next_steps: ['Start your local Gemma-serving runtime host, then re-check status.'],
+          expected_runtime_endpoint,
+          model_requirement: 'gemma-family',
+          exact_match_required: true,
+        };
+      } else if (status.status === 'online') {
+        guidance = {
+          title: 'Gemma Online',
+          explanation:
+            'Keimenon found the configured Gemma model and can use it for local synthesis.',
+          next_steps: [],
+          expected_runtime_endpoint,
+          model_requirement: 'gemma-family',
+          exact_match_required: true,
+        };
+      }
+
+      res.json({ ...status, guidance });
     } catch (error) {
       next(error);
     }

@@ -3,6 +3,7 @@ import { Loader2, ArrowLeft, Sparkles, Send, AlertCircle, User, Bot, Cpu } from 
 import { organizationService, ConversationThread } from '../../services/organization-service';
 import { getGemmaStatusLabel } from '../../utils/gemma-status-helper';
 import { ProvenanceViewerModal } from './ProvenanceViewerModal';
+import { GemmaSetupPanel } from './GemmaSetupPanel';
 import type { MessageNode, ConversationContextPack } from '@keimenon/types';
 
 interface ConversationMessageRuntimeProps {
@@ -24,6 +25,8 @@ export function ConversationMessageRuntime({
   const [isContextExpanded, setIsContextExpanded] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [gemmaStatus, setGemmaStatus] = useState<any>(null);
+  const [isCheckingGemma, setIsCheckingGemma] = useState(false);
+  const [showSetupPanel, setShowSetupPanel] = useState(false);
   const [selectedProvenanceRunId, setSelectedProvenanceRunId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -67,6 +70,18 @@ export function ConversationMessageRuntime({
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  const refreshGemmaStatus = async () => {
+    try {
+      setIsCheckingGemma(true);
+      const fetchedGemmaStatus = await organizationService.getGemmaStatus();
+      setGemmaStatus(fetchedGemmaStatus);
+    } catch (err) {
+      console.error('Failed to refresh Gemma status', err);
+    } finally {
+      setIsCheckingGemma(false);
+    }
+  };
 
   const handleSend = async () => {
     if (!inputValue.trim() || sending) return;
@@ -170,19 +185,28 @@ export function ConversationMessageRuntime({
                   }
 
                   return (
-                    <span
-                      className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${bgClass}`}
+                    <button
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer ${bgClass}`}
                       title={gemmaStatus.error || 'Local Runtime Status'}
+                      onClick={() => setShowSetupPanel(!showSetupPanel)}
                     >
                       <div className={`w-1.5 h-1.5 rounded-full ${dotClass}`}></div>
                       {statusInfo.label}
-                    </span>
+                    </button>
                   );
                 })()}
               </>
             )}
           </div>
         </div>
+        {showSetupPanel && (
+          <GemmaSetupPanel
+            status={gemmaStatus}
+            onClose={() => setShowSetupPanel(false)}
+            onRefresh={refreshGemmaStatus}
+            isChecking={isCheckingGemma}
+          />
+        )}
       </div>
 
       {/* Messages Area */}

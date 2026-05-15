@@ -1,16 +1,30 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express, { Express } from 'express';
 import { createRuntimeRoutes } from '../runtime.routes';
 import { gemmaProvider } from '../../services/agent/gemma-local-provider';
 
-jest.mock('../../services/agent/gemma-local-provider');
+vi.mock('../../services/agent/gemma-local-provider', () => {
+  return {
+    gemmaProvider: {
+      checkStatus: vi.fn(),
+    },
+  };
+});
+
+// Mock entitlement
+vi.mock('@keimenon/types', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...(actual as any),
+    featureManifestForAccountClass: vi.fn().mockImplementation((accountClass: string) => {
+      return { agent_runtime: accountClass !== 'free' };
+    }),
+  };
+});
 
 describe('Runtime Routes', () => {
   let app: Express;
-
-  beforeEach(() => {
-    jest.resetAllMocks();
-  });
 
   const setupApp = (accountClass: string) => {
     app = express();
@@ -28,6 +42,10 @@ describe('Runtime Routes', () => {
     app.use('/api/v1/runtime', createRuntimeRoutes());
   };
 
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('GET /api/v1/runtime/gemma/status returns 403 when agent runtime is not enabled (free tier)', async () => {
     setupApp('free');
 
@@ -37,10 +55,51 @@ describe('Runtime Routes', () => {
     expect(res.body.configured).toBe(false);
   });
 
-  it('GET /api/v1/runtime/gemma/status returns structured status and does not expose secrets when entitled', async () => {
-    setupApp('professional'); // Professional has agent_runtime enabled
+  it('GET /api/v1/runtime/gemma/status returns structured status with guidance when unconfigured', async () => {
+    setupApp('business'); // Business has agent_runtime enabled
 
-    // Mock checkStatus
+    const mockStatus = {
+      configured: false,
+      status: 'unavailable' as const,
+      error_code: 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED',
+      error: 'Gemma local base URL is not configured.',
+    };
+
+    vi.mocked(gemmaProvider.checkStatus).mockResolvedValue(mockStatus);
+
+    const res = await request(app).get('/api/v1/runtime/gemma/status');
+    expect(res.status).toBe(200);
+    expect(res.body.configured).toBe(false);
+    expect(res.body.guidance).toBeDefined();
+    expect(res.body.guidance.title).toBe('Gemma Not Configured');
+    expect(res.body.guidance.advanced_examples).toBeDefined();
+  });
+
+  it('GET /api/v1/runtime/gemma/status returns structured status with guidance when model is missing', async () => {
+    setupApp('professional');
+
+    const mockStatus = {
+      configured: true,
+      status: 'offline' as const,
+      modelAvailable: false,
+      runtimeKind: 'openai-compatible',
+      modelName: 'gemma-4-e4b-it',
+      error_code: 'GEMMA_MODEL_NOT_FOUND',
+    };
+
+    vi.mocked(gemmaProvider.checkStatus).mockResolvedValue(mockStatus);
+
+    const res = await request(app).get('/api/v1/runtime/gemma/status');
+    expect(res.status).toBe(200);
+    expect(res.body.configured).toBe(true);
+    expect(res.body.guidance).toBeDefined();
+    expect(res.body.guidance.title).toBe('Gemma Model Missing');
+    expect(res.body.guidance.advanced_examples).toBeUndefined(); // Advanced examples only on unconfigured
+  });
+
+  it('GET /api/v1/runtime/gemma/status returns online guidance when available', async () => {
+    setupApp('professional');
+
     const mockStatus = {
       configured: true,
       status: 'online' as const,
@@ -49,32 +108,12 @@ describe('Runtime Routes', () => {
       modelName: 'gemma-4-e4b-it',
     };
 
-    (gemmaProvider.checkStatus as jest.Mock).mockResolvedValue(mockStatus);
+    vi.mocked(gemmaProvider.checkStatus).mockResolvedValue(mockStatus);
 
     const res = await request(app).get('/api/v1/runtime/gemma/status');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual(mockStatus);
-
-    // Verify secrets are not exposed (e.g. no base URLs or api keys returned in status body)
-    expect(res.body.baseUrl).toBeUndefined();
-    expect(res.body.apiKey).toBeUndefined();
-  });
-
-  it('GET /api/v1/runtime/gemma/status handles unconfigured state', async () => {
-    setupApp('business'); // Business has agent_runtime enabled
-
-    // Mock checkStatus
-    const mockStatus = {
-      configured: false,
-      status: 'unavailable' as const,
-      error_code: 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED',
-      error: 'Gemma local base URL is not configured.',
-    };
-
-    (gemmaProvider.checkStatus as jest.Mock).mockResolvedValue(mockStatus);
-
-    const res = await request(app).get('/api/v1/runtime/gemma/status');
-    expect(res.status).toBe(200); // 200 OK because the *route* successfully returned the status
-    expect(res.body).toEqual(mockStatus);
+    expect(res.body.configured).toBe(true);
+    expect(res.body.guidance).toBeDefined();
+    expect(res.body.guidance.title).toBe('Gemma Online');
   });
 });

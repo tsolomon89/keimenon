@@ -6,6 +6,23 @@ export interface GemmaLocalStatus {
   error_code?: string;
   error?: string;
   modelAvailable?: boolean;
+  runtimeKind?: string;
+  modelName?: string;
+  timeoutMs?: number;
+  thinkingEnabled?: boolean;
+  guidance?: {
+    title: string;
+    explanation: string;
+    next_steps: string[];
+    expected_runtime_endpoint: string;
+    model_requirement: string;
+    exact_match_required: boolean;
+    advanced_examples?: Array<{
+      label: string;
+      base_url: string;
+      note: string;
+    }>;
+  };
 }
 
 export function getGemmaStatusLabel(status: GemmaLocalStatus | null | undefined): {
