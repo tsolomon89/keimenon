@@ -90,8 +90,8 @@ Please download and install a local runtime host such as Ollama (https://ollama.
 Gemma 4 local install blocked.
 
 1. preflight result: Passed all checks (`better-sqlite3` rebuilt, `type-check` ok, `build` ok, `sqlite:check` ok).
-2. model source used: N/A (Checked Google Deepmind/Hugging Face requirements)
-3. exact Gemma 4 model ID: N/A
+2. model source used: N/A (Checked Google Deepmind/Hugging Face requirements. Verified `google/gemma-4-E4B-it` and `gemma4:e4b` are official exact IDs)
+3. exact Gemma 4 model ID: `gemma4:e4b` (Ollama) / `google/gemma-4-E4B-it` (Hugging Face)
 4. model variant: N/A
 5. local runtime endpoint: N/A (none reachable)
 6. `/models` result: connection refused

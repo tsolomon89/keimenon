@@ -16,7 +16,7 @@ The current implementation relies on a "detect and advise" strategy:
 1. **Host Detection:**
    Keimenon attempts to connect to a local API (e.g., `http://localhost:11434/v1` for Ollama or `http://localhost:1234/v1` for LM Studio).
 2. **Model Verification:**
-   Keimenon queries the `/v1/models` endpoint of the reachable host and parses the response to find an exact configured Gemma model ID. The default target is the **Gemma 4 E4B instruction model** (e.g., `gemma-4-e4b-it`), unless the local runtime exposes a different exact Gemma-family ID. Older aliases like `gemma:2b` or `gemma:7b` are fallback/low-resource examples, not the primary project target.
+   Keimenon queries the `/v1/models` endpoint of the reachable host and parses the response to find an exact configured Gemma model ID. The default target is the **Gemma 4 E4B instruction model** (e.g., `gemma4:e4b` on Ollama, or `google/gemma-4-E4B-it` on Hugging Face), unless the local runtime exposes a different exact Gemma-family ID. Older aliases like `gemma:2b` or `gemma:7b` are fallback/low-resource examples, not the primary project target.
 
 3. **Status Reporting:**
    If the host is unreachable, the UI reports **Gemma Runtime Offline**.
@@ -35,7 +35,7 @@ If the detected host operates via Ollama (`http://localhost:11434/v1`), provide 
 > "Install a Gemma model into the Ollama runtime host by running the following command in your terminal:"
 >
 > ```bash
-> ollama run gemma-4-e4b-it
+> ollama run gemma4:e4b
 > ```
 >
 > _(Or use `ollama run gemma:2b` for a low-resource fallback)._
@@ -44,7 +44,7 @@ If the detected host operates via Ollama (`http://localhost:11434/v1`), provide 
 
 If the detected host operates via LM Studio (`http://localhost:1234/v1`), provide the following instruction:
 
-> "Install a Gemma model into the LM Studio runtime host by opening the LM Studio application, searching for 'Gemma', and downloading the 'gemma-4-e4b-it' or equivalent Gemma-family model."
+> "Install a Gemma model into the LM Studio runtime host by opening the LM Studio application, searching for 'Gemma', and downloading the `google/gemma-4-E4B-it` or equivalent Gemma-family model."
 
 ## Re-Verification and Smoke Test
 
