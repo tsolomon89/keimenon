@@ -11,9 +11,9 @@ By design, this does _not_ introduce BYOK (Bring Your Own Key) or cloud-provider
 
 ## Terminology: Gemma vs Runtime Host
 
-Keimenon supports Gemma as the local model family.
+Keimenon supports Gemma as the local model family. The default target is the **Gemma 4 E4B instruction model** (e.g., `gemma-4-e4b-it`) unless the local runtime exposes a different exact Gemma-family ID. Older aliases like `gemma:2b` or `gemma:7b` are fallback/low-resource examples, not the primary project target.
 
-A local runtime host such as LM Studio or Ollama may be used only to serve a Gemma model through a local API.
+A local runtime host such as LM Studio or Ollama may be used only to serve a Gemma model through a local API. Runtime host examples are not model-family alternatives.
 
 The runtime host is not the model.
 

@@ -456,9 +456,11 @@ async function runApiServer(startPort: number) {
 
     // Phase 3 Desktop Runtime Diagnostic
     let runtimeSkillsCount = 0;
+    let runtimeSkillsList: string[] = [];
     try {
       if (fs.existsSync(process.env.KEIMENON_RUNTIME_SKILLS_DIR!)) {
-        runtimeSkillsCount = fs.readdirSync(process.env.KEIMENON_RUNTIME_SKILLS_DIR!).length;
+        runtimeSkillsList = fs.readdirSync(process.env.KEIMENON_RUNTIME_SKILLS_DIR!);
+        runtimeSkillsCount = runtimeSkillsList.length;
       }
     } catch (e) {
       console.warn('Failed to read runtime skills dir:', e);
@@ -471,12 +473,15 @@ async function runApiServer(startPort: number) {
 
     console.log(`
 [Desktop Runtime]
+process.resourcesPath: ${process.resourcesPath}
 userData path: ${userDataPath}
 sqlite path: ${dbPath}
 storage path: ${storagePath}
 api port: ${apiPort}
 runtime skills dir: ${process.env.KEIMENON_RUNTIME_SKILLS_DIR}
+runtime skills dir exists: ${fs.existsSync(process.env.KEIMENON_RUNTIME_SKILLS_DIR!)}
 runtime skills found: ${runtimeSkillsCount}
+runtime skill IDs: ${runtimeSkillsList.join(', ')}
 web-dist path: ${webDistPath}
 `);
 
