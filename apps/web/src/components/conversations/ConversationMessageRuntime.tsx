@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Loader2, ArrowLeft, Sparkles, Send, AlertCircle, User, Bot, Cpu } from 'lucide-react';
 import { organizationService, ConversationThread } from '../../services/organization-service';
-import { getGemmaStatusLabel } from '../../utils/gemma-status-helper';
+import { getGemmaStatusLabel, type GemmaLocalStatus } from '../../utils/gemma-status-helper';
 import { ProvenanceViewerModal } from './ProvenanceViewerModal';
 import { GemmaSetupPanel } from './GemmaSetupPanel';
 import type { MessageNode, ConversationContextPack } from '@keimenon/types';
@@ -24,7 +24,7 @@ export function ConversationMessageRuntime({
   const [contextPack, setContextPack] = useState<ConversationContextPack | null>(null);
   const [isContextExpanded, setIsContextExpanded] = useState(false);
   const [inputValue, setInputValue] = useState('');
-  const [gemmaStatus, setGemmaStatus] = useState<any>(null);
+  const [gemmaStatus, setGemmaStatus] = useState<GemmaLocalStatus | null>(null);
   const [isCheckingGemma, setIsCheckingGemma] = useState(false);
   const [showSetupPanel, setShowSetupPanel] = useState(false);
   const [selectedProvenanceRunId, setSelectedProvenanceRunId] = useState<string | null>(null);

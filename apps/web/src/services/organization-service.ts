@@ -1,5 +1,6 @@
 import { api } from '@/lib/api-client';
 import { BoardNode, GroupNode, MessageNode, AnyNode as KeimenonNode } from '@keimenon/types';
+import type { GemmaLocalStatus } from '../utils/gemma-status-helper';
 
 // Principal types
 export interface Principal {
@@ -412,46 +413,24 @@ export const organizationService = {
     return response.data;
   },
 
-  /**
-   * Get the status of the local Gemma runtime
-   */
-  getGemmaStatus: async (): Promise<{
-    configured: boolean;
-    status: 'online' | 'offline' | 'unavailable';
-    error?: string;
-    error_code?:
-      | 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED'
-      | 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE'
-      | 'GEMMA_MODEL_NOT_FOUND'
-      | 'GEMMA_STATUS_CHECK_FAILED';
-    runtimeKind?: string;
-    modelName?: string;
-    modelAvailable?: boolean;
-    timeoutMs?: number;
-    thinkingEnabled?: boolean;
-  }> => {
+  getGemmaStatus: async (): Promise<GemmaLocalStatus> => {
     try {
-      const response = await api.get<{
-        configured: boolean;
-        status: 'online' | 'offline' | 'unavailable';
-        error?: string;
-        error_code?:
-          | 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED'
-          | 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE'
-          | 'GEMMA_MODEL_NOT_FOUND'
-          | 'GEMMA_STATUS_CHECK_FAILED';
-        runtimeKind?: string;
-        modelName?: string;
-        modelAvailable?: boolean;
-        timeoutMs?: number;
-        thinkingEnabled?: boolean;
-      }>('/runtime/gemma/status');
+      const response = await api.get<GemmaLocalStatus>('/runtime/gemma/status');
       return response.data;
     } catch (err: any) {
       return {
         configured: false,
         status: 'unavailable',
         error: err.message || 'Failed to fetch Gemma status',
+        guidance: {
+          title: 'Gemma Unavailable',
+          explanation:
+            'Keimenon could not reach the backend API to check the local runtime status.',
+          next_steps: ['Check if your account tier supports agent features.'],
+          expected_runtime_endpoint: 'Unknown',
+          model_requirement: 'gemma-family',
+          exact_match_required: true,
+        },
       };
     }
   },
