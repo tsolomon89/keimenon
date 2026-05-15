@@ -729,8 +729,7 @@ async function triggerImportJobFromAssembledFile(
 
   const importOptions = normalizeImportOptions(freshSession.metadata?.importConfig);
 
-  const testDbPath =
-    (req as any).testDbPath || (req.headers['x-test-db-path'] as string | undefined);
+  const testDbPath = (req as any).testDbPath;
   const testContext = testDbPath ? { dbPath: testDbPath, testId: (req as any).testId } : undefined;
   const userType = (req as any).user?.user_type || 'user';
   const accountMembership = (req as any).user?.account_membership || 'member';

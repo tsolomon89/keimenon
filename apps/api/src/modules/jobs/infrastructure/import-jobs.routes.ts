@@ -54,13 +54,12 @@ export function createImportJobsRoutes(
 
       // Determine target account based on operating context
       const targetAccountId = operating?.accountId || userAccountId;
-      const testContext =
-        (req as any).testDbPath || req.headers['x-test-db-path']
-          ? {
-              dbPath: (req as any).testDbPath || (req.headers['x-test-db-path'] as string),
-              testId: (req as any).testId,
-            }
-          : undefined;
+      const testContext = (req as any).testDbPath
+        ? {
+            dbPath: (req as any).testDbPath,
+            testId: (req as any).testId,
+          }
+        : undefined;
 
       // Generate stable actor_id for audit
       const actorId = ulid();
