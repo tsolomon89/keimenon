@@ -49,3 +49,13 @@ If the detected host operates via LM Studio (`http://localhost:1234/v1`), provid
 ## Re-Verification and Smoke Test
 
 Once the user confirms they have installed the model into the runtime host, Keimenon re-checks the `/v1/models` endpoint. Upon successful detection, Keimenon executes the standard `npm run gemma:smoke` routine to verify inference capability before marking the runtime as "Ready".
+
+## Current Trial Status (2026-05-15)
+
+Manual Gemma trial pending — no local runtime host serving Gemma is reachable.
+
+- Tried: `http://localhost:1234/v1/models` (LM Studio)
+- Tried: `http://localhost:11434/v1/models` (Ollama)
+- Result: Connection refused.
+
+Do not proceed with non-Gemma models. The system will report `GEMMA_MODEL_NOT_FOUND` if a host is reachable but exposes only non-Gemma model IDs.

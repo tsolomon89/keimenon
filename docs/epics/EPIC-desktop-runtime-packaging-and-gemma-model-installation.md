@@ -59,7 +59,11 @@ Pending execution...
 
 ## Phase 8 — Manual Gemma model trial, if host available
 
-Pending execution...
+Manual Gemma trial pending — no local runtime host serving Gemma is reachable.
+
+- Tried: `http://localhost:1234/v1/models` (LM Studio)
+- Tried: `http://localhost:11434/v1/models` (Ollama)
+- Result: Connection refused.
 
 ## Phase 9 — Tests
 
