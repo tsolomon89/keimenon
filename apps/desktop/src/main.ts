@@ -441,7 +441,7 @@ async function runApiServer(startPort: number) {
     } else {
       process.env.KEIMENON_RUNTIME_SKILLS_DIR = path.join(
         process.resourcesPath,
-        'app.asar/agent_context/runtime-skills'
+        'agent_context/runtime-skills'
       );
     }
 
@@ -453,6 +453,32 @@ async function runApiServer(startPort: number) {
     });
 
     console.log(`[Main] Embedded API Server started successfully on port ${apiPort}`);
+
+    // Phase 3 Desktop Runtime Diagnostic
+    let runtimeSkillsCount = 0;
+    try {
+      if (fs.existsSync(process.env.KEIMENON_RUNTIME_SKILLS_DIR!)) {
+        runtimeSkillsCount = fs.readdirSync(process.env.KEIMENON_RUNTIME_SKILLS_DIR!).length;
+      }
+    } catch (e) {
+      console.warn('Failed to read runtime skills dir:', e);
+    }
+
+    let webDistPath = path.join(process.resourcesPath, 'web-dist');
+    if (!fs.existsSync(path.join(webDistPath, 'index.html'))) {
+      webDistPath = path.join(__dirname, '../resources/web-dist');
+    }
+
+    console.log(`
+[Desktop Runtime]
+userData path: ${userDataPath}
+sqlite path: ${dbPath}
+storage path: ${storagePath}
+api port: ${apiPort}
+runtime skills dir: ${process.env.KEIMENON_RUNTIME_SKILLS_DIR}
+runtime skills found: ${runtimeSkillsCount}
+web-dist path: ${webDistPath}
+`);
 
     return apiPort;
   } catch (err: any) {
