@@ -28,6 +28,15 @@ Move Keimenon from browser-level proof to desktop executable readiness. The targ
 [x] `dist/main.js` and `dist/preload.js` are present.
 [x] native dependency `better-sqlite3` is rebuilt/included correctly.
 
+## Phase 2.6 — Native Module ABI Recovery (Important Finding)
+
+Because Keimenon uses a monorepo structure with hoisted dependencies, running `npm run make` in `apps/desktop` causes `electron-builder` to rebuild the `better-sqlite3` binary for the Electron ABI (e.g., `NODE_MODULE_VERSION 119`).
+
+If you subsequently attempt to run a backend Node.js script (like `npm run sqlite:check` or `npm run dev`) using the system Node version (e.g., ABI `137`), it will crash with an `ERR_DLOPEN_FAILED` ABI mismatch.
+
+**To recover the Node ABI for local backend development after packaging the desktop app:**
+You must run `npm rebuild better-sqlite3` at the project root. This restores the binary to the system Node's ABI, allowing backend scripts to function normally. Do not leave this as tribal knowledge—if `sqlite` scripts fail directly after a desktop build, a native rebuild is required.
+
 ## Phase 3 — Verify runtime skill packaging
 
 [x] Added desktop startup diagnostic log output in `apps/desktop/src/main.ts`.
