@@ -75,7 +75,7 @@ function handleTokenExpiration(reason: string = 'Token expired'): void {
  * If token is expired, it triggers logout and throws an error
  */
 function getAuthHeaders(): HeadersInit {
-  const headers: HeadersInit = {};
+  const headers: Record<string, string> = {};
 
   // Add auth token. Expiry is handled by refresh flow in fetch interceptor.
   const token = getToken();
@@ -93,6 +93,11 @@ function getAuthHeaders(): HeadersInit {
     if (operatingAccount && operatingMode && operatingMode !== 'native') {
       headers['X-Operating-Account'] = operatingAccount;
       headers['X-Operating-Mode'] = operatingMode;
+    }
+
+    // Support E2E test isolation
+    if ((window as any).__TEST_DB_PATH__) {
+      headers['X-Test-DB-Path'] = (window as any).__TEST_DB_PATH__;
     }
   }
 
@@ -225,7 +230,11 @@ function withAuthorizationToken(init: RequestInit | undefined, token: string): R
 
 export const api = {
   get: async <T>(endpoint: string): Promise<{ data: T }> => {
-    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1${endpoint}`);
+    const response = await fetchWithAuthInterceptor(`${API_BASE_URL}/api/v1${endpoint}`, {
+      headers: {
+        ...getAuthHeaders(),
+      },
+    });
     if (!response.ok) throw new Error(response.statusText);
     const data = await response.json();
     return { data };

@@ -153,7 +153,12 @@ export class ConversationMessageService {
       }
     });
 
-    persistUserMessageTx();
+    try {
+      persistUserMessageTx();
+    } catch (err: any) {
+      console.error('[persistUserMessageTx Error]', err.message, err);
+      throw err;
+    }
 
     let assistantMessage: MessageNode | undefined = undefined;
     let synthesisError: string | undefined = undefined;

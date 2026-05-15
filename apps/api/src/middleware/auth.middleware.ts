@@ -5,6 +5,7 @@ import {
   PrincipalCapabilities,
 } from '../services/auth.service';
 import { PrincipalService } from '../services/principal-service';
+import { getDbClient } from '../utils/get-db-client';
 
 function shouldLogCapabilityLookupWarnings(): boolean {
   if (process.env.AUTH_CAPABILITY_LOOKUP_LOG_ERRORS === '1') {
@@ -65,15 +66,26 @@ export function requireAuth(authService: AuthServiceV2) {
       const authHeader = req.headers.authorization;
 
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.error('[AUTH MW ERROR] 401 No token provided');
         return res.status(401).json({ error: 'No token provided' });
       }
 
       const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
+      // Get request-scoped database instance for consistent test isolation
+      const dbClientRaw = await getDbClient(req);
+      const database =
+        typeof (dbClientRaw as any).getDatabase === 'function'
+          ? (dbClientRaw as any).getDatabase()
+          : (dbClientRaw as any).db;
+
       // Verify token
-      const payload = await authService.verifyToken(token);
+      const payload = await authService.verifyToken(token, database);
 
       if (!payload) {
+        console.error(
+          `[AUTH MW ERROR] 401 Invalid Token on ${req.method} ${req.originalUrl || req.url}. Worker DB: ${(req as any).testDbPath || 'none'}`
+        );
         return res.status(401).json({ error: 'Invalid or expired token' });
       }
 
@@ -94,14 +106,15 @@ export function requireAuth(authService: AuthServiceV2) {
       // World Model V5: Fetch principal capabilities for unified authorization
       // This enables capability-based checks (F1: Principal Equivalence)
       try {
-        // AuthServiceV2 has a private 'db' property of type SQLiteClient
-        const dbClient = (authService as any).db;
-        if (dbClient) {
-          const capabilityService = new CapabilityAuthorizationService(dbClient);
+        if (dbClientRaw) {
+          // Use the request-scoped database instance!
+          // We wrap the database in an object that looks like the SQLiteClient that the services expect
+          const mockDbClient = { getDatabase: () => database, db: database };
+          const capabilityService = new CapabilityAuthorizationService(mockDbClient as any);
           let capabilityPrincipalId = payload.userId;
 
           try {
-            const principalService = new PrincipalService(dbClient);
+            const principalService = new PrincipalService(mockDbClient as any);
             const principal = await principalService.resolveHumanPrincipal(
               payload.accountId,
               payload.userId,
@@ -142,7 +155,6 @@ export function requireAuth(authService: AuthServiceV2) {
       if (operatingAccountHeader && operatingAccountHeader !== payload.accountId) {
         // User is trying to operate in a different account context
         // First check if user has direct membership in target account (M:N relationship)
-        const database = authService['db'].getDatabase();
 
         const membership = database
           .prepare(
@@ -464,7 +476,15 @@ export function optionalAuth(authService: AuthServiceV2) {
       }
 
       const token = authHeader.substring(7);
-      const payload = await authService.verifyToken(token);
+
+      // Get request-scoped database instance for consistent test isolation
+      const dbClientRaw = await getDbClient(req);
+      const database =
+        typeof (dbClientRaw as any).getDatabase === 'function'
+          ? (dbClientRaw as any).getDatabase()
+          : (dbClientRaw as any).db;
+
+      const payload = await authService.verifyToken(token, database);
 
       if (payload) {
         req.user = {

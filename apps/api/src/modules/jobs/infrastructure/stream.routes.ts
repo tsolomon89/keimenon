@@ -18,6 +18,7 @@ import { Router, Request, Response } from 'express';
 import { AuthService } from '../../../services/auth.service';
 import { SSEBroadcaster } from './SSEBroadcaster';
 import { appLogger } from '../../../utils/logger';
+import { getDbClient } from '../../../utils/get-db-client';
 
 /**
  * Factory function to create stream routes
@@ -54,7 +55,14 @@ export function createStreamRoutes(authService: AuthService, broadcaster: SSEBro
 
     // Validate token
     try {
-      const payload = await authService.verifyToken(token);
+      // Get request-scoped database instance for consistent test isolation
+      const dbClientRaw = await getDbClient(req);
+      const database =
+        typeof (dbClientRaw as any).getDatabase === 'function'
+          ? (dbClientRaw as any).getDatabase()
+          : (dbClientRaw as any).db;
+
+      const payload = await authService.verifyToken(token, database);
       if (!payload) {
         res.status(401).json({
           success: false,

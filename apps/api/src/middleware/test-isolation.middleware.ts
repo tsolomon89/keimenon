@@ -38,13 +38,15 @@ export function testIsolationMiddleware(req: Request, res: Response, next: NextF
         ? 'Webkit'
         : 'Unknown';
 
-  // Check for test DB path header (sent by E2E tests)
-  const testDbPath = req.headers['x-test-db-path'] as string;
+  // Check for test DB path header (sent by E2E tests) or query parameter (EventSource)
+  const testDbPathHeader = req.headers['x-test-db-path'] as string;
+  const testDbPathQuery = req.query['x-test-db-path'] as string;
+  const testDbPath = testDbPathHeader || testDbPathQuery;
 
   console.log(`[Test Isolation MW] Request received:`);
   console.log(`  - URL: ${req.method} ${req.url}`);
   console.log(`  - Browser: ${browser}`);
-  console.log(`  - X-Test-DB-Path header: ${testDbPath || '(not present)'}`);
+  console.log(`  - X-Test-DB-Path: ${testDbPath || '(not present)'}`);
 
   if (testDbPath) {
     // Find project root - either current dir or up two levels from apps/api

@@ -190,6 +190,12 @@ export function useJobStream(options?: UseJobStreamOptions): UseJobStreamResult 
         // Note: EventSource doesn't support custom headers, so we pass token as query param
         const url = new URL(`${API_BASE_URL}/api/v1/stream/jobs`);
         url.searchParams.set('token', token);
+
+        // Pass the test DB path as a query param if it exists (for E2E tests)
+        if (typeof window !== 'undefined' && (window as any).__TEST_DB_PATH__) {
+          url.searchParams.set('x-test-db-path', (window as any).__TEST_DB_PATH__);
+        }
+
         const connectionId = ++activeConnectionIdRef.current;
 
         // PERFORMANCE FIX: Removed blocking health check that delayed SSE connection by up to 15 seconds

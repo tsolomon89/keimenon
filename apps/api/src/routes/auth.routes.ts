@@ -551,7 +551,20 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
       const authHeader = req.headers.authorization;
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
-        await authService.logout(token);
+
+        // Get request-scoped database instance for consistent test isolation
+        const dbClient = await getDbClient(req);
+        const database =
+          typeof (dbClient as any).getDatabase === 'function'
+            ? (dbClient as any).getDatabase()
+            : (dbClient as any).db;
+
+        await authService.logout(
+          token,
+          req.ip || req.socket.remoteAddress,
+          req.headers['user-agent'],
+          database
+        );
       }
 
       return res.json({ message: 'Logged out successfully' });
@@ -688,7 +701,14 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         return res.status(400).json({ error: 'Token required' });
       }
 
-      const payload = await authService.verifyToken(token);
+      // Get request-scoped database instance for consistent test isolation
+      const dbClient = await getDbClient(req);
+      const database =
+        typeof (dbClient as any).getDatabase === 'function'
+          ? (dbClient as any).getDatabase()
+          : (dbClient as any).db;
+
+      const payload = await authService.verifyToken(token, database);
 
       if (!payload) {
         return res.status(401).json({ error: 'Invalid or expired token' });
@@ -719,10 +739,18 @@ export function createAuthRoutes(authService: AuthServiceV2): Router {
         return res.status(400).json({ error: 'Token required' });
       }
 
+      // Get request-scoped database instance for consistent test isolation
+      const dbClient = await getDbClient(req);
+      const database =
+        typeof (dbClient as any).getDatabase === 'function'
+          ? (dbClient as any).getDatabase()
+          : (dbClient as any).db;
+
       const refreshed = await authService.refreshToken(
         token,
         req.ip || req.socket.remoteAddress,
-        req.headers['user-agent']
+        req.headers['user-agent'],
+        database
       );
 
       if (!refreshed || !refreshed.token) {

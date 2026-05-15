@@ -964,11 +964,11 @@ export class AuthServiceV2 {
    *   - Race conditions in session creation
    *   - Database routing issues in multi-worker tests
    */
-  async verifyToken(token: string): Promise<JWTPayload | null> {
+  async verifyToken(token: string, databaseInstance?: any): Promise<JWTPayload | null> {
     try {
       // Step 1: Verify JWT signature - this is the source of truth
       const payload = jwt.verify(token, JWT_SECRET) as JWTPayload;
-      const database = this.db.getDatabase();
+      const database = databaseInstance || this.db.getDatabase();
       const now = Date.now();
 
       // Step 1.5: Invalidate tokens issued before factory-reset/auth epoch
@@ -979,6 +979,7 @@ export class AuthServiceV2 {
         const tokenIssuedAtMs = tokenIssuedAtSeconds * 1000;
 
         if (tokenIssuedAtMs <= 0 || tokenIssuedAtMs < tokenEpochMs) {
+          console.error('[AuthService] verifyToken failing at tokenEpoch check');
           return null;
         }
       }
@@ -996,6 +997,9 @@ export class AuthServiceV2 {
       }
 
       if (session.expires_at <= now || session.revoked_at) {
+        console.error(
+          `[AuthService] verifyToken failing at session.expires_at (${session.expires_at} <= ${now}) or revoked_at (${session.revoked_at})`
+        );
         return null;
       }
 
@@ -1005,6 +1009,9 @@ export class AuthServiceV2 {
         session.operating_account_id === payload.accountId;
 
       if (!sessionMatchesPayload && !this.shouldRelaxSessionBindingInThisProcess()) {
+        console.error(
+          `[AuthService] verifyToken failing at sessionMatchesPayload (${session.id} !== ${payload.sessionId} or ${session.user_id} !== ${payload.userId})`
+        );
         return null;
       }
 
@@ -1013,6 +1020,10 @@ export class AuthServiceV2 {
 
       return payload;
     } catch (error) {
+      console.error(
+        '[AuthService] verifyToken failing at jwt.verify: ',
+        error instanceof Error ? error.message : String(error)
+      );
       // JWT verification failed (invalid signature, expired, etc.)
       return null;
     }
@@ -1025,14 +1036,15 @@ export class AuthServiceV2 {
   async refreshToken(
     token: string,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
+    databaseInstance?: any
   ): Promise<LoginResult | null> {
-    const payload = await this.verifyToken(token);
+    const payload = await this.verifyToken(token, databaseInstance);
     if (!payload) {
       return null;
     }
 
-    const database = this.db.getDatabase();
+    const database = databaseInstance || this.db.getDatabase();
     const currentSession = this.getSessionByAccessToken(database, token);
 
     if (!currentSession || currentSession.revoked_at || currentSession.expires_at <= Date.now()) {
@@ -1135,8 +1147,13 @@ export class AuthServiceV2 {
   /**
    * Logout - delete session
    */
-  async logout(token: string, ipAddress?: string, userAgent?: string): Promise<void> {
-    const database = this.db.getDatabase();
+  async logout(
+    token: string,
+    ipAddress?: string,
+    userAgent?: string,
+    databaseInstance?: any
+  ): Promise<void> {
+    const database = databaseInstance || this.db.getDatabase();
     const now = Date.now();
 
     // Get session info before revoking

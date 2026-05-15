@@ -54,7 +54,9 @@ async function globalSetup(_config: FullConfig) {
     // Check module health
     const modulesResponse = await page.request.get(`${API_BASE_URL}/health/modules`);
     if (!modulesResponse.ok()) {
-      logDebug('❌ API modules health check failed status: ' + modulesResponse.status());
+      const status = modulesResponse.status();
+      const body = await modulesResponse.text();
+      logDebug(`❌ API modules health check failed status: ${status}. Body: ${body}`);
       throw new Error('API modules check failed');
     }
     const modulesData = await modulesResponse.json();

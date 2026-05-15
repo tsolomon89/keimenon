@@ -44,7 +44,12 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="provenance-modal-title"
+    >
       <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl w-full max-w-4xl flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-800">
@@ -53,7 +58,9 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
               <Network className="w-5 h-5 text-indigo-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-100">Evidence Provenance</h2>
+              <h2 id="provenance-modal-title" className="text-lg font-semibold text-slate-100">
+                Evidence Provenance
+              </h2>
               <p className="text-sm text-slate-400">Run ID: {runId.split('-')[0]}...</p>
             </div>
           </div>
