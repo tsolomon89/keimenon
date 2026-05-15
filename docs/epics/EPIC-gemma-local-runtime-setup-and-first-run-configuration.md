@@ -99,8 +99,8 @@ For reliable debugging without running the full client:
 - `gemma:status` result: Skipped (runtime not available)
 - `gemma:smoke` result: Skipped (runtime not available)
 - Output excerpt: N/A
-- Issues encountered: The Gemma runtime trial was skipped because no local Gemma-serving host was reachable. The checked local host endpoints were LM Studio-compatible `localhost:1234/v1` and Ollama-compatible `localhost:11434/v1`; both refused the connection. No non-Gemma model path was tested or enabled.
-- Resolution: Manual trial pending — runtime not available.
+- Issues encountered: Manual Gemma trial pending — no local Gemma-serving host reachable. Checked endpoints `http://localhost:1234/v1` and `http://localhost:11434/v1` and both were unreachable.
+- Resolution: Manual trial pending — no local Gemma-serving host reachable.
 - Remaining risks: Exact exposed model ID may differ from default configuration.
 
 ## 6. Next Steps
