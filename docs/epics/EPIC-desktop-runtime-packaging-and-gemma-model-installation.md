@@ -59,16 +59,49 @@ Pending execution...
 
 ## Phase 8 — Manual Gemma model trial, if host available
 
-Manual Gemma trial pending — no local runtime host serving Gemma is reachable.
+Gemma 4 local install blocked.
 
-- Tried: `http://localhost:1234/v1/models` (LM Studio)
-- Tried: `http://localhost:11434/v1/models` (Ollama)
-- Result: Connection refused.
+- Date: 2026-05-15
+- Model source: Checked https://huggingface.co/google/gemma-4-e4b-it / Google Deepmind
+- Exact model ID: N/A
+- Model variant: N/A
+- Local runtime endpoint: N/A
+- `/models` result: N/A
+- `gemma:status` result: N/A
+- `gemma:smoke` result: N/A
+- Desktop status result: N/A
+- Desktop real-Gemma conversation result: N/A
+- AgentRun provider/model verification: N/A
+- Issues encountered:
+  - `ollama` and `lms` CLI tools are not installed or recognized.
+  - Ports 11434 (Ollama) and 1234 (LM Studio) refused connection.
+- Remaining risks: We cannot test end-to-end integration without a valid live host.
+
+### Required Manual Action
+
+Please download and install a local runtime host such as Ollama (https://ollama.com/) or LM Studio (https://lmstudio.ai/), then download the Gemma 4 (or equivalent Gemma-family) model.
 
 ## Phase 9 — Tests
 
-Pending execution...
+[x] Verified `type-check`, `build`, `sqlite:check`, and `gemma-runtime-status.test.ts`, `synthesis-runtime.test.ts`.
 
 ## Final report
 
-Pending execution...
+Gemma 4 local install blocked.
+
+1. preflight result: Passed all checks (`better-sqlite3` rebuilt, `type-check` ok, `build` ok, `sqlite:check` ok).
+2. model source used: N/A (Checked Google Deepmind/Hugging Face requirements)
+3. exact Gemma 4 model ID: N/A
+4. model variant: N/A
+5. local runtime endpoint: N/A (none reachable)
+6. `/models` result: connection refused
+7. `gemma:status` result: N/A
+8. `gemma:smoke` result: N/A
+9. desktop Gemma status result: N/A
+10. desktop real-Gemma conversation result: N/A
+11. AgentRun provider/model verified: no
+12. docs updated: yes
+13. commands run: `npm rebuild`, `npm run type-check`, `npm run build`, tests, etc., `Invoke-RestMethod` against ports 11434 and 1234, `ollama --version`, `lms --version`.
+14. command results: CLI tools not found; connection refused on ports 11434/1234.
+15. remaining risks: Cannot verify end-to-end real synthesis.
+16. recommended next sprint: Complete manual download and installation of Ollama or LM Studio and run Gemma 4, then retry this sprint.

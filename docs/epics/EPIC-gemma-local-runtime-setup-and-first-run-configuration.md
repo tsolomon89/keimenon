@@ -92,20 +92,32 @@ For reliable debugging without running the full client:
 
 ## 5. Manual Local Gemma Trial
 
+Gemma 4 local install blocked.
+
 - Date: 2026-05-15
-- Runtime used: N/A
-- Base URL: N/A
-- Model ID exposed by runtime: N/A
-- `gemma:status` result: Skipped (runtime not available)
-- `gemma:smoke` result: Skipped (runtime not available)
-- Output excerpt: N/A
-- Issues encountered: Manual Gemma trial pending — no local Gemma-serving host reachable. Checked endpoints `http://localhost:1234/v1` and `http://localhost:11434/v1` and both were unreachable.
-- Resolution: Manual trial pending — no local Gemma-serving host reachable.
-- Remaining risks: Exact exposed model ID may differ from default configuration.
+- Model source: Checked https://huggingface.co/google/gemma-4-e4b-it / Google Deepmind
+- Exact model ID: N/A
+- Model variant: N/A
+- Local runtime endpoint: N/A
+- `/models` result: N/A
+- `gemma:status` result: N/A
+- `gemma:smoke` result: N/A
+- Desktop status result: N/A
+- Desktop real-Gemma conversation result: N/A
+- AgentRun provider/model verification: N/A
+- Issues encountered:
+  - `ollama` and `lms` CLI tools are not installed or recognized.
+  - Ports 11434 (Ollama) and 1234 (LM Studio) refused connection.
+- Remaining risks: We cannot test end-to-end integration without a valid live host.
+
+### Required Manual Action
+
+Please download and install a local runtime host such as Ollama (https://ollama.com/) or LM Studio (https://lmstudio.ai/), then download the Gemma 4 (or equivalent Gemma-family) model.
 
 ## 6. Next Steps
 
 With the Gemma local infrastructure bound and verifiable, the next epic should execute the **Real Local Gemma Manual Trial**.
 
+- **Manual Intervention**: Download and install Ollama or LM Studio, and install the Gemma 4 model.
 - **Execute Smoke Tests**: Start a local host serving a Gemma model, configure the `.env` file, and run `npm run gemma:smoke`.
 - **Full Browser Product Loop E2E**: Prove the product path `canvas → selection → conversation → message → AgentRun → provenance UI`.

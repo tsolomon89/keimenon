@@ -52,10 +52,24 @@ Once the user confirms they have installed the model into the runtime host, Keim
 
 ## Current Trial Status (2026-05-15)
 
-Manual Gemma trial pending — no local runtime host serving Gemma is reachable.
+Gemma 4 local install blocked.
 
-- Tried: `http://localhost:1234/v1/models` (LM Studio)
-- Tried: `http://localhost:11434/v1/models` (Ollama)
-- Result: Connection refused.
+- Date: 2026-05-15
+- Model source: Checked https://huggingface.co/google/gemma-4-e4b-it / Google Deepmind
+- Exact model ID: N/A
+- Model variant: N/A
+- Local runtime endpoint: N/A
+- `/models` result: N/A
+- `gemma:status` result: N/A
+- `gemma:smoke` result: N/A
+- Desktop status result: N/A
+- Desktop real-Gemma conversation result: N/A
+- AgentRun provider/model verification: N/A
+- Issues encountered:
+  - `ollama` and `lms` CLI tools are not installed or recognized.
+  - Ports 11434 (Ollama) and 1234 (LM Studio) refused connection.
+- Remaining risks: We cannot test end-to-end integration without a valid live host.
 
-Do not proceed with non-Gemma models. The system will report `GEMMA_MODEL_NOT_FOUND` if a host is reachable but exposes only non-Gemma model IDs.
+### Required Manual Action
+
+Please download and install a local runtime host such as Ollama (https://ollama.com/) or LM Studio (https://lmstudio.ai/), then download the Gemma 4 (or equivalent Gemma-family) model.
