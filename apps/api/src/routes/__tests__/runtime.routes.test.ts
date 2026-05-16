@@ -3,6 +3,26 @@ import request from 'supertest';
 import express, { Express } from 'express';
 import { createRuntimeRoutes } from '../runtime.routes';
 import { gemmaProvider } from '../../services/agent/gemma-local-provider';
+import { localInferenceManager } from '../../services/agent/local-inference-manager';
+import { modelManager } from '../../services/agent/model-manager';
+
+vi.mock('../../services/agent/local-inference-manager', () => ({
+  localInferenceManager: {
+    getCombinedStatus: vi.fn(),
+  },
+}));
+
+vi.mock('../../services/agent/model-manager', () => ({
+  modelManager: {
+    getModelDownloadPlan: vi.fn(),
+    prepareModelDownload: vi.fn(),
+    recordLicenseAcceptance: vi.fn(),
+    recordDownloadStarted: vi.fn(),
+    verifyModelFile: vi.fn(),
+    recordDownloadComplete: vi.fn(),
+    recordDownloadFailed: vi.fn(),
+  },
+}));
 
 vi.mock('../../services/agent/gemma-local-provider', () => {
   return {
@@ -113,5 +133,55 @@ describe('Runtime Routes', () => {
     expect(res.body.configured).toBe(true);
     expect(res.body.guidance).toBeDefined();
     expect(res.body.guidance.title).toBe('Gemma Online');
+  });
+  it('POST /api/v1/runtime/local-inference/models/license-acceptance rejects non-Gemma models', async () => {
+    setupApp('professional');
+    const res = await request(app)
+      .post('/api/v1/runtime/local-inference/models/license-acceptance')
+      .send({
+        model_family: 'llama',
+        candidate_id: 'some-llama',
+        accepted: true,
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Only Gemma models are supported');
+  });
+
+  it('GET /api/v1/runtime/local-inference/models/download-plan/:id returns 404 for unknown candidate', async () => {
+    setupApp('professional');
+    vi.mocked(modelManager.getModelDownloadPlan).mockRejectedValueOnce(
+      new Error('Candidate not found')
+    );
+    const res = await request(app).get(
+      '/api/v1/runtime/local-inference/models/download-plan/unknown-id'
+    );
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('Candidate not found');
+  });
+
+  it('POST /api/v1/runtime/local-inference/models/pending returns 404 for unknown candidate', async () => {
+    setupApp('professional');
+    vi.mocked(modelManager.prepareModelDownload).mockRejectedValueOnce(
+      new Error('Candidate not found')
+    );
+    const res = await request(app)
+      .post('/api/v1/runtime/local-inference/models/pending')
+      .send({ candidateId: 'unknown-id' });
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('Candidate not found');
+  });
+
+  it('POST /api/v1/runtime/local-inference/models/pending returns 400 when missing candidateId', async () => {
+    setupApp('professional');
+    const res = await request(app).post('/api/v1/runtime/local-inference/models/pending').send({}); // No candidateId
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('candidateId is required');
+  });
+
+  it('GET /api/v1/runtime/local-inference/status returns 403 when agent runtime is not enabled (free tier)', async () => {
+    setupApp('free');
+    const res = await request(app).get('/api/v1/runtime/local-inference/status');
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('Agent runtime is not enabled for this account tier');
   });
 });

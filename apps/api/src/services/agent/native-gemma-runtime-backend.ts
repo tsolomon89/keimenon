@@ -1,11 +1,18 @@
 import { LocalInferenceStatus } from '@keimenon/types';
-import { spawn } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import { modelManager } from './model-manager';
 
 export class NativeGemmaRuntimeBackend {
+  private helper: ChildProcess | null = null;
+  private pendingRequests: Map<
+    number,
+    { resolve: (res: any) => void; reject: (err: any) => void }
+  > = new Map();
+  private nextId = 1;
+
   private resolveHelperPath(): string | null {
-    // 1. Explicit env var (could be set by user or by Electron main process for packaged resource)
     if (
       process.env.KEIMENON_INFERENCE_HELPER_PATH &&
       fs.existsSync(process.env.KEIMENON_INFERENCE_HELPER_PATH)
@@ -13,7 +20,6 @@ export class NativeGemmaRuntimeBackend {
       return process.env.KEIMENON_INFERENCE_HELPER_PATH;
     }
 
-    // 2. Dev workspace dist path fallback
     const devPath = path.resolve(__dirname, '../../../../inference-helper/dist/index.js');
     if (fs.existsSync(devPath)) {
       return devPath;
@@ -22,115 +28,134 @@ export class NativeGemmaRuntimeBackend {
     return null;
   }
 
-  public async checkStatus(): Promise<LocalInferenceStatus> {
-    return new Promise((resolve) => {
-      try {
-        const helperPath = this.resolveHelperPath();
+  private async getOrStartHelper(): Promise<ChildProcess> {
+    if (this.helper) return this.helper;
 
-        if (!helperPath) {
-          resolve(this.getMissingStatus());
-          return;
-        }
+    const helperPath = this.resolveHelperPath();
+    if (!helperPath) {
+      throw new Error('Helper path not found');
+    }
 
-        const isJs = helperPath.endsWith('.js');
-        const command = isJs ? process.execPath : helperPath;
-        const args = isJs ? [helperPath] : [];
+    const isJs = helperPath.endsWith('.js');
+    const command = isJs ? process.execPath : helperPath;
+    const args = isJs ? [helperPath] : [];
 
-        const helper = spawn(command, args, {
-          stdio: ['pipe', 'pipe', 'pipe'],
-          windowsHide: true,
-          shell: false,
-        });
+    this.helper = spawn(command, args, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+      shell: false,
+    });
 
-        let resolved = false;
-        let stderrData = '';
+    this.helper.stderr?.on('data', (data) => {
+      console.error(`[NativeHelper] STDERR: ${data}`);
+    });
 
-        helper.stderr.on('data', (data) => {
-          stderrData += data.toString();
-        });
-
-        helper.stdout.on('data', (data) => {
-          if (resolved) return;
-          try {
-            const lines = data
-              .toString()
-              .split('\n')
-              .filter((l: string) => l.trim().length > 0);
-            for (const line of lines) {
-              const res = JSON.parse(line);
-              if (res.id === 1 && res.result) {
-                resolved = true;
-                resolve({
-                  model_family: 'gemma',
-                  preferred_backend: 'native-gemma',
-                  state: res.result.state || 'runtime_unimplemented',
-                  can_run_offline: true,
-                  requires_admin: false,
-                  model_id: null,
-                  message:
-                    res.result.message || 'Keimenon native local Gemma runtime check failed.',
-                  next_actions: [],
-                });
-                helper.stdin.write(
-                  JSON.stringify({ jsonrpc: '2.0', method: 'shutdown', id: 2 }) + '\n'
-                );
-                return;
-              } else if (res.id === 1 && res.error) {
-                resolved = true;
-                resolve({
-                  model_family: 'gemma',
-                  preferred_backend: 'native-gemma',
-                  state:
-                    res.error.code === 'RUNTIME_UNIMPLEMENTED' ? 'runtime_unimplemented' : 'error',
-                  can_run_offline: true,
-                  requires_admin: false,
-                  model_id: null,
-                  message: res.error.message || 'Helper returned an error',
-                  next_actions: [],
-                });
-                helper.stdin.write(
-                  JSON.stringify({ jsonrpc: '2.0', method: 'shutdown', id: 2 }) + '\n'
-                );
-                return;
-              }
+    this.helper.stdout?.on('data', (data) => {
+      const lines = data
+        .toString()
+        .split('\n')
+        .filter((l: string) => l.trim().length > 0);
+      for (const line of lines) {
+        try {
+          const res = JSON.parse(line);
+          if (res.id !== undefined && this.pendingRequests.has(res.id)) {
+            const { resolve, reject } = this.pendingRequests.get(res.id)!;
+            this.pendingRequests.delete(res.id);
+            if (res.error) {
+              reject(res.error);
+            } else {
+              resolve(res.result);
             }
-          } catch (e) {
-            // ignore parse errors for now
           }
-        });
-
-        helper.on('error', (err) => {
-          if (!resolved) {
-            resolved = true;
-            resolve(this.getErrorStatus(`Failed to launch native helper: ${err.message}`));
-          }
-        });
-
-        helper.on('exit', (code) => {
-          if (!resolved) {
-            resolved = true;
-            resolve(
-              this.getErrorStatus(`Helper exited unexpectedly with code ${code}. ${stderrData}`)
-            );
-          }
-        });
-
-        // Send status request
-        helper.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'status', id: 1 }) + '\n');
-
-        const timeoutMs = parseInt(process.env.KEIMENON_INFERENCE_HELPER_TIMEOUT_MS || '2000', 10);
-
-        setTimeout(() => {
-          if (!resolved) {
-            resolved = true;
-            helper.kill();
-            resolve(this.getErrorStatus('Helper process timed out.'));
-          }
-        }, timeoutMs);
-      } catch (err: any) {
-        resolve(this.getErrorStatus(`Exception in checkStatus: ${err.message}`));
+        } catch (e) {
+          // ignore
+        }
       }
     });
+
+    this.helper.on('exit', () => {
+      this.helper = null;
+      for (const req of this.pendingRequests.values()) {
+        req.reject(new Error('Helper process exited'));
+      }
+      this.pendingRequests.clear();
+    });
+
+    return this.helper;
+  }
+
+  private async sendRequest(method: string, params?: any): Promise<any> {
+    try {
+      const helper = await this.getOrStartHelper();
+      const id = this.nextId++;
+      return new Promise((resolve, reject) => {
+        this.pendingRequests.set(id, { resolve, reject });
+        helper.stdin?.write(JSON.stringify({ jsonrpc: '2.0', method, params, id }) + '\n');
+
+        // Timeout
+        setTimeout(
+          () => {
+            if (this.pendingRequests.has(id)) {
+              this.pendingRequests.delete(id);
+              reject(new Error(`Helper request ${method} timed out`));
+            }
+          },
+          parseInt(process.env.KEIMENON_INFERENCE_HELPER_TIMEOUT_MS || '5000', 10)
+        );
+      });
+    } catch (e: any) {
+      throw new Error(`Failed to send request to helper: ${e.message}`);
+    }
+  }
+
+  private async getAbsolutePathForCandidate(candidateId: string): Promise<string> {
+    const manifest = await modelManager.getManifestByCandidateId(candidateId);
+    if (!manifest) throw new Error('Candidate not found');
+    if (!manifest.local_path) throw new Error('Candidate has no local path');
+
+    // Safety check reusing verifyModelFile logic
+    const verification = await modelManager.verifyModelFile({ candidate_id: candidateId });
+    if (!verification.verified && verification.verification_status !== 'presence_verified') {
+      throw new Error('Candidate file is not verified or present');
+    }
+
+    const baseDir = process.env.KEIMENON_MODELS_DIR || path.resolve(process.cwd(), '.data/models');
+    return path.resolve(baseDir, manifest.local_path);
+  }
+
+  public async validateModel(candidateId: string): Promise<any> {
+    const absPath = await this.getAbsolutePathForCandidate(candidateId);
+    return this.sendRequest('validate_model', { model_path: absPath });
+  }
+
+  public async loadModel(candidateId: string): Promise<any> {
+    const absPath = await this.getAbsolutePathForCandidate(candidateId);
+    return this.sendRequest('load_model', { model_path: absPath });
+  }
+
+  public async getHelperStatus(): Promise<any> {
+    return this.sendRequest('status');
+  }
+
+  public async checkStatus(): Promise<LocalInferenceStatus> {
+    try {
+      const res = await this.getHelperStatus();
+      return {
+        model_family: 'gemma',
+        preferred_backend: 'native-gemma',
+        state: res.state || 'runtime_unimplemented',
+        can_run_offline: true,
+        requires_admin: false,
+        model_id: null,
+        message: res.message || 'Keimenon native local Gemma runtime check failed.',
+        next_actions: [],
+      };
+    } catch (err: any) {
+      if (err.message.includes('Helper path not found')) {
+        return this.getMissingStatus();
+      }
+      return this.getErrorStatus(`Exception in checkStatus: ${err.message}`);
+    }
   }
 
   private getMissingStatus(): LocalInferenceStatus {

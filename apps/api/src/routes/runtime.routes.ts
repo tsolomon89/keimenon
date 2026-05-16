@@ -264,6 +264,73 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     }
   );
 
+  router.post(
+    '/local-inference/helper/validate-model',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!requireAgentRuntime(req, res)) return;
+        const { nativeGemmaBackend } =
+          await import('../services/agent/native-gemma-runtime-backend');
+        const { candidateId } = req.body;
+
+        if (!candidateId) {
+          res.status(400).json({ error: 'candidateId is required' });
+          return;
+        }
+
+        const result = await nativeGemmaBackend.validateModel(candidateId);
+        res.json(result);
+      } catch (error: any) {
+        if (error.message === 'Candidate not found') {
+          res.status(404).json({ error: 'Candidate not found' });
+          return;
+        }
+        res.status(500).json({ error: error.message });
+      }
+    }
+  );
+
+  router.post(
+    '/local-inference/helper/load-model',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!requireAgentRuntime(req, res)) return;
+        const { nativeGemmaBackend } =
+          await import('../services/agent/native-gemma-runtime-backend');
+        const { candidateId } = req.body;
+
+        if (!candidateId) {
+          res.status(400).json({ error: 'candidateId is required' });
+          return;
+        }
+
+        const result = await nativeGemmaBackend.loadModel(candidateId);
+        res.json(result);
+      } catch (error: any) {
+        if (error.message === 'Candidate not found') {
+          res.status(404).json({ error: 'Candidate not found' });
+          return;
+        }
+        res.status(500).json({ error: error.message });
+      }
+    }
+  );
+
+  router.get(
+    '/local-inference/helper/status',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!requireAgentRuntime(req, res)) return;
+        const { nativeGemmaBackend } =
+          await import('../services/agent/native-gemma-runtime-backend');
+        const result = await nativeGemmaBackend.getHelperStatus();
+        res.json(result);
+      } catch (error: any) {
+        res.status(500).json({ error: error.message });
+      }
+    }
+  );
+
   router.get('/gemma/status', async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Validate entitlement

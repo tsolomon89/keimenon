@@ -26,18 +26,22 @@ export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: Gemm
   const [directoryInfo, setDirectoryInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [helperStatus, setHelperStatus] = useState<any>(null);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [fetchedSources, fetchedActiveModel, fetchedDirInfo] = await Promise.all([
-        organizationService.getLocalInferenceSources(),
-        organizationService.getActiveLocalInferenceModel(),
-        organizationService.getLocalInferenceDirectory(),
-      ]);
+      const [fetchedSources, fetchedActiveModel, fetchedDirInfo, fetchedHelperStatus] =
+        await Promise.all([
+          organizationService.getLocalInferenceSources(),
+          organizationService.getActiveLocalInferenceModel(),
+          organizationService.getLocalInferenceDirectory(),
+          organizationService.getHelperStatus().catch(() => null),
+        ]);
       setSources(fetchedSources);
       setActiveModel(fetchedActiveModel);
       setDirectoryInfo(fetchedDirInfo);
+      setHelperStatus(fetchedHelperStatus);
       setError(null);
     } catch (err: any) {
       console.error(err);
@@ -85,6 +89,32 @@ export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: Gemm
       onRefresh();
     } catch (err: any) {
       setError(err.message || 'Failed to verify file');
+    }
+  };
+
+  const handleValidateModel = async (candidateId: string) => {
+    try {
+      const res = await organizationService.validateHelperModel(candidateId);
+      if (res && res.error) {
+        setError(`Validation error: ${res.error.message}`);
+      }
+      await fetchData();
+      onRefresh();
+    } catch (err: any) {
+      setError(err.message || 'Failed to validate model');
+    }
+  };
+
+  const handleLoadModel = async (candidateId: string) => {
+    try {
+      const res = await organizationService.loadHelperModel(candidateId);
+      if (res && res.error) {
+        setError(`Load error: ${res.error.message}`);
+      }
+      await fetchData();
+      onRefresh();
+    } catch (err: any) {
+      setError(err.message || 'Failed to load model');
     }
   };
 
@@ -257,6 +287,46 @@ export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: Gemm
                       >
                         Verify Local File
                       </button>
+                    )}
+
+                    {isActive && activeModel?.verification_status === 'presence_verified' && (
+                      <>
+                        <button
+                          onClick={() => handleValidateModel(candidate.id)}
+                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded transition-colors"
+                        >
+                          Validate Model
+                        </button>
+                        <button
+                          onClick={() => handleLoadModel(candidate.id)}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded transition-colors"
+                        >
+                          Load Model
+                        </button>
+                      </>
+                    )}
+
+                    {isActive && helperStatus && (
+                      <div className="w-full mt-2 p-2 rounded bg-slate-900 border border-slate-700 text-xs">
+                        <span className="text-slate-400">Helper Status: </span>
+                        <span
+                          className={
+                            helperStatus.state === 'ready' || helperStatus.state === 'model_loaded'
+                              ? 'text-emerald-400'
+                              : helperStatus.state === 'runtime_dependency_missing'
+                                ? 'text-amber-500'
+                                : helperStatus.state === 'error' ||
+                                    helperStatus.state === 'model_load_failed'
+                                  ? 'text-red-400'
+                                  : 'text-slate-300'
+                          }
+                        >
+                          {helperStatus.state}
+                        </span>
+                        {helperStatus.message && (
+                          <div className="mt-1 text-slate-500">{helperStatus.message}</div>
+                        )}
+                      </div>
                     )}
 
                     <button

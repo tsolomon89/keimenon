@@ -25,12 +25,37 @@ describe('GemmaModelSourceRegistry', () => {
     expect(variants).toContain('31b');
   });
 
-  it('should explicitly mark artifact verification as false and have a null download url', () => {
-    GEMMA_MODEL_SOURCES.forEach((candidate) => {
+  it('should explicitly mark artifact verification as false for pending variants', () => {
+    const pendingCandidates = GEMMA_MODEL_SOURCES.filter((c) => c.id.includes('pending'));
+    pendingCandidates.forEach((candidate) => {
       expect(candidate.source_verified).toBe(true);
       expect(candidate.artifact_verified).toBe(false);
       expect(candidate.runtime_compatibility_verified).toBe(false);
       expect(candidate.download_url).toBeNull();
+    });
+  });
+
+  it('should not contain any older active artifacts', () => {
+    const gemma2Candidates = GEMMA_MODEL_SOURCES.filter((c) => {
+      const lowerId = c.id.toLowerCase();
+      const lowerName = c.display_name.toLowerCase();
+      return (
+        lowerId.includes('gemma' + '-2') ||
+        lowerName.includes('gemma' + ' 2') ||
+        lowerName.includes('2b it')
+      );
+    });
+    expect(gemma2Candidates).toHaveLength(0);
+  });
+
+  it('should not mark runtime compatibility as verified without source proof', () => {
+    GEMMA_MODEL_SOURCES.forEach((c) => {
+      if (c.runtime_compatibility_verified) {
+        expect(c.source_verified).toBe(true);
+        expect(c.artifact_verified).toBe(true);
+        expect(c.local_runtime_supported).toBe(true);
+        expect(c.verification_notes).not.toContain('Pending official');
+      }
     });
   });
 });

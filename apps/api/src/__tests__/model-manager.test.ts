@@ -123,6 +123,23 @@ describe('ModelManager', () => {
     expect(result.message).toContain('Path traversal detected');
   });
 
+  it('should prevent sibling-prefix path escape in verifyModelFile', async () => {
+    await manager.writeInstalledModels([
+      {
+        candidate_id: 'gemma-4-e2b',
+        model_family: 'gemma',
+        model_id: null,
+        local_path: '../gemma-malicious/model.bin',
+        license_required: true,
+        license_accepted: true,
+        installed: true,
+      },
+    ]);
+    const result = await manager.verifyModelFile({ candidate_id: 'gemma-4-e2b' });
+    expect(result.verified).toBe(false);
+    expect(result.message).toContain('Path traversal detected');
+  });
+
   it('should return presence_verified for verifyModelFile without expected size', async () => {
     await manager.ensureModelDirectory();
     fs.writeFileSync(path.join(testDir, 'dummy.bin'), 'dummy data');

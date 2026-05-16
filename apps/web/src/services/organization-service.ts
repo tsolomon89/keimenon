@@ -525,4 +525,23 @@ export const organizationService = {
     const response = await api.post<any>('/runtime/local-inference/models/verify', { candidateId });
     return response.data;
   },
+
+  validateHelperModel: async (candidateId: string) => {
+    const response = await api.post<any>('/runtime/local-inference/helper/validate-model', {
+      candidateId,
+    });
+    return response.data;
+  },
+
+  loadHelperModel: async (candidateId: string) => {
+    const response = await api.post<any>('/runtime/local-inference/helper/load-model', {
+      candidateId,
+    });
+    return response.data;
+  },
+
+  getHelperStatus: async () => {
+    const response = await api.get<any>('/runtime/local-inference/helper/status');
+    return response.data;
+  },
 };

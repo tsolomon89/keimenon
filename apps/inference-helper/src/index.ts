@@ -1,4 +1,5 @@
 import * as readline from 'readline';
+import { LiteRTGemmaRuntimeAdapter } from './litert-adapter';
 
 // Simple JSON-RPC 2.0 over stdio prototype shell
 const rl = readline.createInterface({
@@ -17,7 +18,10 @@ function sendError(id: number | string | null, code: number | string, message: s
   );
 }
 
-rl.on('line', (line) => {
+// Instantiate the actual adapter
+const adapter = new LiteRTGemmaRuntimeAdapter();
+
+rl.on('line', async (line) => {
   if (!line.trim()) return;
 
   try {
@@ -30,31 +34,48 @@ rl.on('line', (line) => {
 
     switch (req.method) {
       case 'status':
-        sendResponse(req.id, {
-          ok: true,
-          runtime: 'native-gemma',
-          state: 'runtime_unimplemented',
-          message:
-            'Helper process prototype shell is running, but real LiteRT inference is unimplemented.',
-        });
+        const statusRes = await adapter.status();
+        sendResponse(req.id, statusRes);
+        break;
+
+      case 'validate_model':
+        if (!req.params || typeof req.params.model_path !== 'string') {
+          sendError(req.id, 'INVALID_PARAMS', 'Missing or invalid model_path parameter');
+          return;
+        }
+        const valRes = await adapter.validateModelFile(req.params.model_path);
+        sendResponse(req.id, valRes);
         break;
 
       case 'load_model':
-        sendResponse(req.id, {
-          success: false,
-          error: 'Not implemented in prototype shell',
-        });
+        if (!req.params || typeof req.params.model_path !== 'string') {
+          sendError(req.id, 'INVALID_PARAMS', 'Missing or invalid model_path parameter');
+          return;
+        }
+        const loadRes = await adapter.loadModel(req.params.model_path);
+        sendResponse(req.id, loadRes);
         break;
 
       case 'generate':
-        sendError(
-          req.id,
-          'RUNTIME_UNIMPLEMENTED',
-          'Native Gemma generation is not implemented yet.'
-        );
+        if (!req.params || typeof req.params.prompt !== 'string') {
+          sendError(req.id, 'INVALID_PARAMS', 'Missing or invalid prompt parameter');
+          return;
+        }
+        const genRes = await adapter.generate(req.params);
+        if (!genRes.success) {
+          sendError(req.id, 'RUNTIME_UNIMPLEMENTED', genRes.error || 'Generation failed');
+        } else {
+          sendResponse(req.id, genRes);
+        }
+        break;
+
+      case 'unload_model':
+        await adapter.unloadModel();
+        sendResponse(req.id, { success: true });
         break;
 
       case 'shutdown':
+        await adapter.unloadModel();
         sendResponse(req.id, { success: true });
         process.exit(0);
         break;
