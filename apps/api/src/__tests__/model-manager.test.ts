@@ -163,7 +163,7 @@ describe('ModelManager', () => {
     });
 
     const manifest = await manager.getManifestByCandidateId('gemma-4-e2b');
-    expect(manifest?.installed).toBe(true);
+    expect(manifest?.installed).toBe(false);
     expect(manifest?.local_path).toBe('my-model.bin');
     expect(manifest?.size_bytes).toBe(1234);
     // Should NOT be verified yet

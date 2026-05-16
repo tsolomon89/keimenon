@@ -118,7 +118,11 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
         const { modelManager } = await import('../services/agent/model-manager');
         const plan = await modelManager.getModelDownloadPlan(req.params.candidateId);
         res.json({ plan });
-      } catch (error) {
+      } catch (error: any) {
+        if (error.message === 'Candidate not found') {
+          res.status(404).json({ error: 'Candidate not found' });
+          return;
+        }
         next(error);
       }
     }
@@ -139,7 +143,11 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
 
         const manifest = await modelManager.prepareModelDownload(candidateId);
         res.json({ manifest });
-      } catch (error) {
+      } catch (error: any) {
+        if (error.message === 'Candidate not found') {
+          res.status(404).json({ error: 'Candidate not found' });
+          return;
+        }
         next(error);
       }
     }

@@ -201,10 +201,11 @@ export class ModelManager {
     let models = await this.getInstalledModels();
     let model = models.find((m) => m.candidate_id === input.candidate_id);
     if (model) {
-      model.installed = true;
+      model.installed = false;
       model.local_path = input.local_path;
       model.size_bytes = input.size_bytes;
       model.download_status = 'complete';
+      model.verification_status = 'unchecked';
       await this.writeInstalledModels(models);
     }
   }
@@ -232,7 +233,8 @@ export class ModelManager {
 
     // Path traversal block
     const absolutePath = path.resolve(modelDir, model.local_path);
-    if (!absolutePath.startsWith(path.resolve(modelDir))) {
+    const rel = path.relative(modelDir, absolutePath);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) {
       return { verified: false, verification_status: 'failed', message: 'Path traversal detected' };
     }
 
@@ -275,6 +277,7 @@ export class ModelManager {
 
     // Checksum check would go here, if available it would be 'verified'. For now we only verify presence.
     model.verification_status = 'presence_verified';
+    model.installed = true;
     await this.writeInstalledModels(models);
     return {
       verified: true,
