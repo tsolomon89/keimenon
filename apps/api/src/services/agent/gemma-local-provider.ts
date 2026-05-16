@@ -32,7 +32,7 @@ export class GemmaLocalProvider implements SynthesisProvider {
   public async checkStatus(): Promise<GemmaLocalStatus> {
     const baseUrl = process.env.GEMMA_LOCAL_BASE_URL;
     const runtimeKind = process.env.GEMMA_LOCAL_RUNTIME_KIND || 'openai-compatible';
-    const modelName = process.env.GEMMA_LOCAL_MODEL || 'gemma-2-2b-it';
+    const modelName = process.env.GEMMA_LOCAL_MODEL || 'gemma-4-e2b';
     const timeoutMs = parseInt(process.env.GEMMA_LOCAL_TIMEOUT_MS || '60000', 10);
     const thinkingEnabled = process.env.GEMMA_LOCAL_THINKING === 'on';
 
@@ -142,7 +142,7 @@ export class GemmaLocalProvider implements SynthesisProvider {
   ): Promise<ConversationSynthesisResult> {
     const baseUrl = process.env.GEMMA_LOCAL_BASE_URL;
     const runtimeKind = process.env.GEMMA_LOCAL_RUNTIME_KIND || 'openai-compatible';
-    const modelName = process.env.GEMMA_LOCAL_MODEL || 'gemma-2-2b-it';
+    const modelName = process.env.GEMMA_LOCAL_MODEL || 'gemma-4-e2b';
     const timeoutMs = parseInt(process.env.GEMMA_LOCAL_TIMEOUT_MS || '60000', 10);
     const thinkingEnabled = process.env.GEMMA_LOCAL_THINKING === 'on';
 

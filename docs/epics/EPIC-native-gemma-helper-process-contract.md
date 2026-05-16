@@ -36,7 +36,7 @@ Returns the current health and loaded state of the engine.
   "result": {
     "status": "ready", // or "error", "loading", "unsupported_hardware"
     "model_loaded": true,
-    "model_id": "gemma-2-2b-it-cpu"
+    "model_id": "gemma-4-e2b-cpu"
   },
   "id": 1
 }
@@ -53,7 +53,7 @@ Instructs the engine to load a model weight file into memory.
   "jsonrpc": "2.0",
   "method": "load_model",
   "params": {
-    "model_path": "C:/Users/name/AppData/Roaming/keimenon/models/gemma/gemma-2-2b-it-cpu.task"
+    "model_path": "C:/Users/name/AppData/Roaming/keimenon/models/gemma/gemma-4-e2b-cpu.task"
   },
   "id": 2
 }

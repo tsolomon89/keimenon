@@ -57,14 +57,14 @@ Pending execution...
 
 Pending execution...
 
-## Phase 8 — Manual Gemma model trial, if host available
+## Phase 8 — Manual Gemma 4 model trial, if host available
 
-Gemma local install pending native runtime implementation.
+Gemma 4 local install pending native runtime implementation.
 
 - Date: 2026-05-16
-- Official LiteRT/Gemma artifact source reviewed: yes
+- Official LiteRT/Gemma 4 artifact source reviewed: yes (pending file verification)
 - Exact model ID: N/A
-- Model variant: N/A
+- Model variant: N/A (E2B, E4B, 26B, 31B target)
 - Local runtime endpoint: Native Helper Process
 - `/models` result: N/A
 - `gemma:status` result: N/A
@@ -85,20 +85,20 @@ Pending official native runtime implementation.
 
 ## Final report
 
-Gemma local install pending.
+Gemma 4 local install pending.
 
 1. preflight result: Passed all checks (`better-sqlite3` rebuilt, `type-check` ok, `build` ok, `sqlite:check` ok).
-2. exact Gemma model ID: N/A
-3. model variant: N/A
+2. exact Gemma 4 model ID: N/A
+3. model variant: N/A (E2B, E4B, 26B, 31B target)
 4. local runtime endpoint: N/A (native helper pending)
 5. `/models` result: N/A
 6. `gemma:status` result: N/A
 7. `gemma:smoke` result: N/A
-8. desktop Gemma status result: N/A
+8. desktop Gemma 4 status result: N/A
 9. desktop real-Gemma conversation result: N/A
 10. AgentRun provider/model verified: no
 11. docs updated: yes
 12. commands run: none
 13. command results: N/A
 14. remaining risks: Cannot verify end-to-end real synthesis.
-15. recommended next sprint: Verify official LiteRT/Gemma local model artifact and implement native helper model loading.
+15. recommended next sprint: Verify official LiteRT/Gemma 4 local model artifact and implement native helper model loading.

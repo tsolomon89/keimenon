@@ -59,7 +59,7 @@ describe('ModelManager', () => {
     await manager.writeInstalledModels([
       {
         model_family: 'gemma',
-        model_id: 'gemma-2-2b-it-cpu',
+        model_id: 'gemma-4-e2b-cpu',
         license_required: true,
         license_accepted: true,
         installed: true,

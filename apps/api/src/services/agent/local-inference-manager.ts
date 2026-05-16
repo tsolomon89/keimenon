@@ -34,7 +34,8 @@ export class LocalInferenceManager {
         state: 'model_missing',
         can_run_offline: true,
         requires_admin: false,
-        message: 'No official model source selected or verified.',
+        message:
+          'Gemma 4 source pending: Keimenon targets Gemma 4, but the exact official native/LiteRT artifact has not yet been verified.',
         next_actions: [...baseActions],
       };
     }
@@ -74,17 +75,17 @@ export class LocalInferenceManager {
         message:
           modelStatus === 'downloading'
             ? 'Model is currently downloading...'
-            : 'Gemma model weights need to be downloaded.',
+            : 'Gemma 4 LiteRT artifact verified. Due to Hugging Face authentication requirements, please download the model manually and place it in the models directory.',
         next_actions: [
           {
             id: 'download-model',
             action_type: 'download',
             label: 'Download Model',
-            description: 'Download the official Gemma model weights.',
+            description: 'Download the official Gemma 4 model weights.',
             requires_user_confirmation: true,
             disabled: true,
             disabled_reason:
-              'Manual model acquisition bridge: Automated download is blocked pending exact official file verification and terms bypass.',
+              'Manual model acquisition bridge: Please download from Hugging Face and place in the Keimenon models folder.',
           },
           ...baseActions,
         ],

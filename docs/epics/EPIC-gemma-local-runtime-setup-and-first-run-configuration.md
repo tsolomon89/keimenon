@@ -89,14 +89,14 @@ For reliable debugging without running the full client:
    - Result: Endpoints unreachable (no local runtime host active).
    - To complete verification: Start a local host serving a Gemma model, set `GEMMA_LOCAL_BASE_URL`, and run `npm run gemma:status` and `npm run gemma:smoke`.
 
-## 5. Manual Local Gemma Trial
+## 5. Manual Local Gemma 4 Trial
 
-Gemma local install pending native runtime implementation.
+Gemma 4 local install pending native runtime implementation.
 
 - Date: 2026-05-16
-- Official LiteRT/Gemma artifact source reviewed: yes
+- Official LiteRT/Gemma 4 artifact source reviewed: yes
 - Exact model ID: N/A
-- Model variant: N/A
+- Model variant: N/A (E2B, E4B, 26B, 31B target)
 - Local runtime endpoint: Native Helper Process
 - `/models` result: N/A
 - `gemma:status` result: N/A

@@ -82,7 +82,7 @@ describe('Runtime Routes', () => {
       status: 'offline' as const,
       modelAvailable: false,
       runtimeKind: 'openai-compatible',
-      modelName: 'gemma-2-2b-it',
+      modelName: 'gemma-4-e2b',
       error_code: 'GEMMA_MODEL_NOT_FOUND',
     };
 
@@ -103,7 +103,7 @@ describe('Runtime Routes', () => {
       status: 'online' as const,
       modelAvailable: true,
       runtimeKind: 'openai-compatible',
-      modelName: 'gemma-2-2b-it',
+      modelName: 'gemma-4-e2b',
     };
 
     vi.mocked(gemmaProvider.checkStatus).mockResolvedValue(mockStatus);

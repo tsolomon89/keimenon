@@ -6,7 +6,7 @@ async function main() {
   console.log(
     `GEMMA_LOCAL_RUNTIME_KIND: ${process.env.GEMMA_LOCAL_RUNTIME_KIND || 'openai-compatible (default)'}`
   );
-  console.log(`GEMMA_LOCAL_MODEL: ${process.env.GEMMA_LOCAL_MODEL || 'gemma-2-2b-it (default)'}`);
+  console.log(`GEMMA_LOCAL_MODEL: ${process.env.GEMMA_LOCAL_MODEL || 'gemma-4-e2b (default)'}`);
   console.log(`GEMMA_LOCAL_THINKING: ${process.env.GEMMA_LOCAL_THINKING || 'off (default)'}`);
   console.log('');
   console.log('Checking status...');
