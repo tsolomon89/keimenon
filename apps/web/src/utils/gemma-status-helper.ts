@@ -1,4 +1,4 @@
-import type { LocalInferenceStatus } from '../services/organization-service';
+import type { LocalInferenceStatus } from '@keimenon/types';
 
 export interface GemmaLocalStatus {
   configured: boolean;

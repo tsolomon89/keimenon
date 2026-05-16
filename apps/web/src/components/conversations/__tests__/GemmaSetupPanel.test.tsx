@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { GemmaSetupPanel } from '../GemmaSetupPanel';
-import type { LocalInferenceStatus } from '../../../services/organization-service';
+import type { LocalInferenceStatus } from '@keimenon/types';
 
 describe('GemmaSetupPanel', () => {
   const mockOnClose = vi.fn();

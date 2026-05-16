@@ -8,7 +8,7 @@ import {
   Download,
   TerminalSquare,
 } from 'lucide-react';
-import type { LocalInferenceStatus } from '../../services/organization-service';
+import type { LocalInferenceStatus } from '@keimenon/types';
 
 interface GemmaSetupPanelProps {
   status: LocalInferenceStatus | null;

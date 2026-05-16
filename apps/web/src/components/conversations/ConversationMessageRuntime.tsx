@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Loader2, ArrowLeft, Sparkles, Send, AlertCircle, User, Bot, Cpu } from 'lucide-react';
 import { organizationService, ConversationThread } from '../../services/organization-service';
 import { getLocalInferenceStatusLabel } from '../../utils/gemma-status-helper';
-import type { LocalInferenceStatus } from '../../services/organization-service';
+import type { LocalInferenceStatus } from '@keimenon/types';
 import { ProvenanceViewerModal } from './ProvenanceViewerModal';
 import { GemmaSetupPanel } from './GemmaSetupPanel';
 import type { MessageNode, ConversationContextPack } from '@keimenon/types';
