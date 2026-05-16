@@ -7,13 +7,13 @@
 
 This epic completes the first-run configuration and structural hardening of the **local Gemma runtime**. It moves the Keimenon backend from an unverified proxy boundary to a hardened integration that supports status checking, graceful failure recovery, and manual runtime smoke-testing.
 
-By design, this does _not_ introduce BYOK (Bring Your Own Key) or cloud-provider endpoints. It explicitly honors the Keimenon local-first requirement, supporting Open-AI compatible local runtime hosts like LM Studio and Ollama.
+By design, this does _not_ introduce BYOK (Bring Your Own Key) or cloud-provider endpoints. It explicitly honors the Keimenon local-first requirement. The intended product architecture is a Keimenon-managed native Gemma runtime. Docker, LM Studio, and Ollama are supported merely as developer fallbacks or compatibility paths.
 
 ## Terminology: Gemma vs Runtime Host
 
-Keimenon supports Gemma as the local model family. The default target is the **Gemma 4 E4B instruction model** unless the local runtime exposes a different exact Gemma-family ID. Older aliases like `gemma:2b` or `gemma:7b` are fallback/low-resource examples, not the primary project target.
+Keimenon supports Gemma as the local model family. The default target is pending official runtime verification.
 
-A local runtime host such as LM Studio or Ollama may be used only to serve a Gemma model through a local API. Runtime host examples are not model-family alternatives.
+A local runtime host may be used only to serve a Gemma model through a local API. The intended end-user product architecture is a Keimenon-managed native local Gemma runtime. Third-party local runtime hosts such as Docker (ai/gemma4 via Docker Desktop), LM Studio, or Ollama are supported merely as developer proof/fallback compatibility paths. Docker was evaluated as a developer proof path, but is not the end-user product architecture.
 
 The runtime host is not the model.
 
@@ -24,11 +24,11 @@ The provider contract is:
 ```txt
 Principal(agent)
 → uses GemmaLocalProvider
-→ calls a local runtime host
+→ calls a local runtime host (e.g. Docker-hosted Gemma 4)
 → which serves an exact Gemma model ID
 ```
 
-The local runtime trial may check common host URLs:
+The local runtime trial checks the configured base URL. Third party fallbacks include:
 
 - LM Studio-compatible host: `http://localhost:1234/v1`
 - Ollama OpenAI-compatible host: `http://localhost:11434/v1`
@@ -94,8 +94,10 @@ For reliable debugging without running the full client:
 
 Gemma 4 local install blocked.
 
-- Date: 2026-05-15
-- Model source: Checked https://huggingface.co/google/gemma-4-e4b-it / Google Deepmind
+- Date: 2026-05-16
+- Google AI Edge source reviewed: yes
+- Docker `ai/gemma4` verified: yes (Official Google image found via Docker Hub and AI Edge references)
+- official/sufficient source status: Official Docker integration exists (`docker model pull ai/gemma4`).
 - Exact model ID: N/A
 - Model variant: N/A
 - Local runtime endpoint: N/A
@@ -106,18 +108,18 @@ Gemma 4 local install blocked.
 - Desktop real-Gemma conversation result: N/A
 - AgentRun provider/model verification: N/A
 - Issues encountered:
-  - `ollama` and `lms` CLI tools are not installed or recognized.
-  - Ports 11434 (Ollama) and 1234 (LM Studio) refused connection.
+  - Docker Desktop is not running or not installed on this system.
+  - The `docker ps` command failed with connection errors.
 - Remaining risks: We cannot test end-to-end integration without a valid live host.
 
 ### Required Manual Action
 
-Please download and install a local runtime host such as Ollama (https://ollama.com/) or LM Studio (https://lmstudio.ai/), then download the Gemma 4 (or equivalent Gemma-family) model.
+Please install and run Docker Desktop, and use the Google AI Edge official instructions to pull and run the `ai/gemma4` image, exposing an OpenAI-compatible endpoint for Keimenon to connect to.
 
 ## 6. Next Steps
 
 With the Gemma local infrastructure bound and verifiable, the next epic should execute the **Real Local Gemma Manual Trial**.
 
-- **Manual Intervention**: Download and install Ollama or LM Studio, and install the Gemma 4 model.
+- **Manual Intervention**: Download and install Docker Desktop, and install the Gemma 4 model using `docker model pull ai/gemma4`.
 - **Execute Smoke Tests**: Start a local host serving a Gemma model, configure the `.env` file, and run `npm run gemma:smoke`.
 - **Full Browser Product Loop E2E**: Prove the product path `canvas → selection → conversation → message → AgentRun → provenance UI`.

@@ -72,7 +72,6 @@ describe('Runtime Routes', () => {
     expect(res.body.configured).toBe(false);
     expect(res.body.guidance).toBeDefined();
     expect(res.body.guidance.title).toBe('Gemma Not Configured');
-    expect(res.body.guidance.advanced_examples).toBeDefined();
   });
 
   it('GET /api/v1/runtime/gemma/status returns structured status with guidance when model is missing', async () => {
@@ -83,7 +82,7 @@ describe('Runtime Routes', () => {
       status: 'offline' as const,
       modelAvailable: false,
       runtimeKind: 'openai-compatible',
-      modelName: 'gemma-4-e4b-it',
+      modelName: 'gemma-2-2b-it',
       error_code: 'GEMMA_MODEL_NOT_FOUND',
     };
 
@@ -94,7 +93,6 @@ describe('Runtime Routes', () => {
     expect(res.body.configured).toBe(true);
     expect(res.body.guidance).toBeDefined();
     expect(res.body.guidance.title).toBe('Gemma Model Missing');
-    expect(res.body.guidance.advanced_examples).toBeUndefined(); // Advanced examples only on unconfigured
   });
 
   it('GET /api/v1/runtime/gemma/status returns online guidance when available', async () => {
@@ -105,7 +103,7 @@ describe('Runtime Routes', () => {
       status: 'online' as const,
       modelAvailable: true,
       runtimeKind: 'openai-compatible',
-      modelName: 'gemma-4-e4b-it',
+      modelName: 'gemma-2-2b-it',
     };
 
     vi.mocked(gemmaProvider.checkStatus).mockResolvedValue(mockStatus);

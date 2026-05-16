@@ -2,6 +2,39 @@ import { api } from '@/lib/api-client';
 import { BoardNode, GroupNode, MessageNode, AnyNode as KeimenonNode } from '@keimenon/types';
 import type { GemmaLocalStatus } from '../utils/gemma-status-helper';
 
+export type LocalInferenceBackend = 'native-gemma' | 'openai-compatible';
+
+export type LocalInferenceState =
+  | 'runtime_unimplemented'
+  | 'runtime_missing'
+  | 'model_missing'
+  | 'license_required'
+  | 'ready'
+  | 'unsupported_hardware'
+  | 'error';
+
+export interface LocalInferenceNextAction {
+  id: string;
+  label: string;
+  description: string;
+  requires_user_confirmation: boolean;
+  action_type: 'download' | 'install' | 'accept_terms' | 'run_check' | 'open_external';
+}
+
+export interface LocalInferenceStatus {
+  model_family: 'gemma';
+  preferred_backend: LocalInferenceBackend;
+  active_backend?: LocalInferenceBackend;
+  state: LocalInferenceState;
+  can_run_offline: boolean;
+  requires_admin: boolean;
+  model_id?: string | null;
+  model_path?: string;
+  error_code?: string;
+  message?: string;
+  next_actions: LocalInferenceNextAction[];
+}
+
 // Principal types
 export interface Principal {
   id: string;
@@ -431,6 +464,23 @@ export const organizationService = {
           model_requirement: 'gemma-family',
           exact_match_required: true,
         },
+      };
+    }
+  },
+
+  getLocalInferenceStatus: async (): Promise<LocalInferenceStatus> => {
+    try {
+      const response = await api.get<LocalInferenceStatus>('/runtime/local-inference/status');
+      return response.data;
+    } catch (err: any) {
+      return {
+        model_family: 'gemma',
+        preferred_backend: 'native-gemma',
+        state: 'error',
+        can_run_offline: false,
+        requires_admin: false,
+        message: err.message || 'Failed to fetch local inference status',
+        next_actions: [],
       };
     }
   },

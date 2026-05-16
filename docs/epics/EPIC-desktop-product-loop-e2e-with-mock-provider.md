@@ -43,6 +43,6 @@ Because Playwright is currently optimized for browser-based E2E testing (`full-p
 
 ## 5. Recommended Next Sprint
 
-**Real Gemma Host Setup + Desktop Smoke Trial**
+**Native Gemma Runtime Setup + Desktop Smoke Trial**
 
-Now that the desktop mock loop is validated, the only remaining barrier to full desktop product completion is configuring a real local host (e.g., LM Studio or Ollama) with `gemma-4-e4b-it` and proving that Keimenon can connect, extract exact model IDs, stream the response, and hydrate the provenance UI with live inference results.
+Now that the desktop mock loop is validated, the only remaining barrier to full desktop product completion is implementing the Keimenon-managed native local Gemma runtime and proving that Keimenon can run inference, stream the response, and hydrate the provenance UI with live inference results.

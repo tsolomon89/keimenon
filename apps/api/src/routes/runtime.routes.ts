@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import type { AuthServiceV2 } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { gemmaProvider } from '../services/agent/gemma-local-provider';
+import { localInferenceManager } from '../services/agent/local-inference-manager';
 import { featureManifestForAccountClass, type AccountClass } from '@keimenon/types';
 
 export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
@@ -10,6 +11,26 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
   if (authService) {
     router.use(requireAuth(authService));
   }
+
+  router.get('/local-inference/status', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const accountClass = getAccountClass(req);
+      const features = featureManifestForAccountClass(accountClass);
+
+      if (!features.agent_runtime) {
+        res.status(403).json({
+          error: 'Agent runtime is not enabled for this account tier',
+          state: 'error',
+        });
+        return;
+      }
+
+      const status = await localInferenceManager.getCombinedStatus();
+      res.json(status);
+    } catch (error) {
+      next(error);
+    }
+  });
 
   router.get('/gemma/status', async (req: Request, res: Response, next: NextFunction) => {
     try {

@@ -163,10 +163,10 @@ describe('Synthesis Runtime & Agent Skills', () => {
           },
         } as any,
         skill,
-        'gemma-4-e4b-it'
+        'gemma-2-2b-it'
       );
 
-      expect(payload.model).toBe('gemma-4-e4b-it');
+      expect(payload.model).toBe('gemma-2-2b-it');
       expect(payload.messages.length).toBe(3);
       expect(payload.messages[0].role).toBe('system');
       expect(payload.messages[0].content).toContain(skill.instructions);
@@ -393,7 +393,7 @@ describe('Synthesis Runtime & Agent Skills', () => {
           return {
             content: 'Simulated gemma response',
             provider: 'gemma-local-test',
-            model: 'gemma-4-e4b-it',
+            model: 'gemma-2-2b-it',
             skill_used: skillId,
             evidence_used: [],
             proposed_outputs: [],
@@ -425,7 +425,7 @@ describe('Synthesis Runtime & Agent Skills', () => {
       expect(runNodes.length).toBe(1);
       const runProps = JSON.parse(runNodes[0].properties);
       expect(runProps.provider).toBe('gemma-local-test');
-      expect(runProps.model).toBe('gemma-4-e4b-it');
+      expect(runProps.model).toBe('gemma-2-2b-it');
 
       // Verify RUN_BY edge
       const edges = db

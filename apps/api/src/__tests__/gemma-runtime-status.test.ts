@@ -45,7 +45,7 @@ describe('GemmaLocalProvider Status Check', () => {
 
   it('returns model missing when /models responds but configured model is absent', async () => {
     process.env.GEMMA_LOCAL_BASE_URL = 'http://localhost:11434/v1';
-    process.env.GEMMA_LOCAL_MODEL = 'gemma-4-e4b-it';
+    process.env.GEMMA_LOCAL_MODEL = 'gemma-2-2b-it';
 
     globalFetch.mockResolvedValue({
       ok: true,
@@ -82,12 +82,12 @@ describe('GemmaLocalProvider Status Check', () => {
 
   it('returns online when configured model is present (OpenAI shape)', async () => {
     process.env.GEMMA_LOCAL_BASE_URL = 'http://localhost:11434/v1';
-    process.env.GEMMA_LOCAL_MODEL = 'gemma-4-e4b-it';
+    process.env.GEMMA_LOCAL_MODEL = 'gemma-2-2b-it';
 
     globalFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
-        data: [{ id: 'other-model-1' }, { id: 'gemma-4-e4b-it' }],
+        data: [{ id: 'other-model-1' }, { id: 'gemma-2-2b-it' }],
       }),
     });
 
@@ -100,12 +100,12 @@ describe('GemmaLocalProvider Status Check', () => {
 
   it('returns online when configured model is present (Ollama native shape)', async () => {
     process.env.GEMMA_LOCAL_BASE_URL = 'http://localhost:11434/api';
-    process.env.GEMMA_LOCAL_MODEL = 'gemma-4-e4b-it';
+    process.env.GEMMA_LOCAL_MODEL = 'gemma-2-2b-it';
 
     globalFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
-        models: [{ name: 'other-model' }, { name: 'gemma-4-e4b-it' }],
+        models: [{ name: 'other-model' }, { name: 'gemma-2-2b-it' }],
       }),
     });
 

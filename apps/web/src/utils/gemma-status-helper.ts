@@ -1,4 +1,4 @@
-// apps/web/src/utils/gemma-status-helper.ts
+import type { LocalInferenceStatus } from '../services/organization-service';
 
 export interface GemmaLocalStatus {
   configured: boolean;
@@ -58,4 +58,31 @@ export function getGemmaStatusLabel(status: GemmaLocalStatus | null | undefined)
   }
 
   return { label: 'Gemma Runtime Offline', tone: 'error' };
+}
+
+export function getLocalInferenceStatusLabel(status: LocalInferenceStatus | null | undefined): {
+  label: string;
+  tone: 'online' | 'warning' | 'error' | 'neutral';
+} {
+  if (!status) {
+    return { label: 'Checking...', tone: 'neutral' };
+  }
+
+  switch (status.state) {
+    case 'ready':
+      return { label: 'Local Runtime Ready', tone: 'online' };
+    case 'runtime_unimplemented':
+      return { label: 'Native Runtime Pending', tone: 'neutral' };
+    case 'runtime_missing':
+      return { label: 'Native Runtime Missing', tone: 'error' };
+    case 'model_missing':
+      return { label: 'Model Missing', tone: 'warning' };
+    case 'license_required':
+      return { label: 'License Acceptance Required', tone: 'warning' };
+    case 'unsupported_hardware':
+      return { label: 'Unsupported Hardware', tone: 'error' };
+    case 'error':
+    default:
+      return { label: 'Runtime Error', tone: 'error' };
+  }
 }

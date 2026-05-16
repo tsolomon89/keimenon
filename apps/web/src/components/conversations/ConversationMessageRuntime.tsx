@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Loader2, ArrowLeft, Sparkles, Send, AlertCircle, User, Bot, Cpu } from 'lucide-react';
 import { organizationService, ConversationThread } from '../../services/organization-service';
-import { getGemmaStatusLabel, type GemmaLocalStatus } from '../../utils/gemma-status-helper';
+import { getLocalInferenceStatusLabel } from '../../utils/gemma-status-helper';
+import type { LocalInferenceStatus } from '../../services/organization-service';
 import { ProvenanceViewerModal } from './ProvenanceViewerModal';
 import { GemmaSetupPanel } from './GemmaSetupPanel';
 import type { MessageNode, ConversationContextPack } from '@keimenon/types';
@@ -24,7 +25,7 @@ export function ConversationMessageRuntime({
   const [contextPack, setContextPack] = useState<ConversationContextPack | null>(null);
   const [isContextExpanded, setIsContextExpanded] = useState(false);
   const [inputValue, setInputValue] = useState('');
-  const [gemmaStatus, setGemmaStatus] = useState<GemmaLocalStatus | null>(null);
+  const [gemmaStatus, setGemmaStatus] = useState<LocalInferenceStatus | null>(null);
   const [isCheckingGemma, setIsCheckingGemma] = useState(false);
   const [showSetupPanel, setShowSetupPanel] = useState(false);
   const [selectedProvenanceRunId, setSelectedProvenanceRunId] = useState<string | null>(null);
@@ -40,7 +41,7 @@ export function ConversationMessageRuntime({
         const [fetchedMessages, fetchedContext, fetchedGemmaStatus] = await Promise.all([
           organizationService.getConversationMessages(conversation.id),
           organizationService.getConversationContextPack(conversation.id),
-          organizationService.getGemmaStatus(),
+          organizationService.getLocalInferenceStatus(),
         ]);
         if (isMounted) {
           setMessages(fetchedMessages);
@@ -74,7 +75,7 @@ export function ConversationMessageRuntime({
   const refreshGemmaStatus = async () => {
     try {
       setIsCheckingGemma(true);
-      const fetchedGemmaStatus = await organizationService.getGemmaStatus();
+      const fetchedGemmaStatus = await organizationService.getLocalInferenceStatus();
       setGemmaStatus(fetchedGemmaStatus);
     } catch (err) {
       console.error('Failed to refresh Gemma status', err);
@@ -160,7 +161,7 @@ export function ConversationMessageRuntime({
               <>
                 <span>&bull;</span>
                 {(() => {
-                  const statusInfo = getGemmaStatusLabel(gemmaStatus);
+                  const statusInfo = getLocalInferenceStatusLabel(gemmaStatus);
                   let bgClass = 'bg-slate-800 text-slate-400';
                   let dotClass = 'bg-slate-500';
 
@@ -187,7 +188,7 @@ export function ConversationMessageRuntime({
                   return (
                     <button
                       className={`flex items-center gap-1 px-2 py-0.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer ${bgClass}`}
-                      title={gemmaStatus.error || 'Local Runtime Status'}
+                      title={gemmaStatus.message || 'Local Runtime Status'}
                       onClick={() => setShowSetupPanel(!showSetupPanel)}
                     >
                       <div className={`w-1.5 h-1.5 rounded-full ${dotClass}`}></div>

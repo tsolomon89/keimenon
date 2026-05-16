@@ -1,100 +1,47 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { GemmaSetupPanel } from '../GemmaSetupPanel';
-import type { GemmaLocalStatus } from '../../../utils/gemma-status-helper';
+import type { LocalInferenceStatus } from '../../../services/organization-service';
 
 describe('GemmaSetupPanel', () => {
   const mockOnClose = vi.fn();
   const mockOnRefresh = vi.fn();
 
-  const mockNotConfiguredStatus: GemmaLocalStatus = {
-    configured: false,
-    status: 'unavailable',
-    guidance: {
-      title: 'Gemma Not Configured',
-      explanation: 'Keimenon needs a configured local runtime endpoint serving a Gemma model.',
-      next_steps: ['Set GEMMA_LOCAL_BASE_URL and GEMMA_LOCAL_MODEL, then re-check status.'],
-      expected_runtime_endpoint: 'http://localhost:1234/v1',
-      model_requirement: 'gemma-family',
-      exact_match_required: true,
-      advanced_examples: [
-        {
-          label: 'LM Studio',
-          base_url: 'http://localhost:1234/v1',
-          note: 'Host software is infrastructure, not the model. Keimenon only supports Gemma-family models.',
-        },
-        {
-          label: 'Ollama',
-          base_url: 'http://localhost:11434/v1',
-          note: 'Host software is infrastructure, not the model. Keimenon only supports Gemma-family models.',
-        },
-      ],
-    },
+  const mockNativeMissingStatus: LocalInferenceStatus = {
+    model_family: 'gemma',
+    preferred_backend: 'native-gemma',
+    state: 'runtime_unimplemented',
+    can_run_offline: true,
+    requires_admin: false,
+    message: 'Keimenon native local Gemma runtime is not yet implemented.',
+    next_actions: [
+      {
+        id: 'download_runtime',
+        label: 'Download Native Runtime',
+        description: 'Download the Keimenon-managed local inference engine.',
+        action_type: 'download',
+        requires_user_confirmation: true,
+      },
+    ],
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders not-configured guidance', () => {
+  it('renders unimplemented guidance', () => {
     render(
       <GemmaSetupPanel
-        status={mockNotConfiguredStatus}
+        status={mockNativeMissingStatus}
         onClose={mockOnClose}
         onRefresh={mockOnRefresh}
       />
     );
-    expect(screen.getByText('Gemma Not Configured')).toBeInTheDocument();
+    expect(screen.getByText('Local Inference Status')).toBeInTheDocument();
     expect(
-      screen.getByText('Keimenon needs a configured local runtime endpoint serving a Gemma model.')
+      screen.getByText('Keimenon native local Gemma runtime is not yet implemented.')
     ).toBeInTheDocument();
-  });
-
-  it('keeps advanced host examples collapsed by default', () => {
-    render(
-      <GemmaSetupPanel
-        status={mockNotConfiguredStatus}
-        onClose={mockOnClose}
-        onRefresh={mockOnRefresh}
-      />
-    );
-    // "LM Studio" and "Ollama" should not be visible initially
-    expect(screen.queryByText('LM Studio')).not.toBeInTheDocument();
-    expect(screen.queryByText('Ollama')).not.toBeInTheDocument();
-  });
-
-  it('advanced examples contain the host-software warning when expanded', () => {
-    render(
-      <GemmaSetupPanel
-        status={mockNotConfiguredStatus}
-        onClose={mockOnClose}
-        onRefresh={mockOnRefresh}
-      />
-    );
-    const expandButton = screen.getByText('Advanced Host Examples');
-    fireEvent.click(expandButton);
-
-    const warnings = screen.getAllByText(
-      'Host software is infrastructure, not the model. Keimenon only supports Gemma-family models.'
-    );
-    expect(warnings.length).toBe(2);
-    expect(screen.getByText('LM Studio')).toBeInTheDocument();
-    expect(screen.getByText('Ollama')).toBeInTheDocument();
-  });
-
-  it('primary panel text does not include named host software', () => {
-    const { container } = render(
-      <GemmaSetupPanel
-        status={mockNotConfiguredStatus}
-        onClose={mockOnClose}
-        onRefresh={mockOnRefresh}
-      />
-    );
-
-    // Ensure LM Studio and Ollama are not in the primary text (container text content before expanding)
-    const content = container.textContent || '';
-    expect(content.includes('LM Studio')).toBe(false);
-    expect(content.includes('Ollama')).toBe(false);
+    expect(screen.getByRole('button', { name: 'Download Native Runtime' })).toBeInTheDocument();
   });
 });
