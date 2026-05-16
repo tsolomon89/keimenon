@@ -59,29 +59,25 @@ Pending execution...
 
 ## Phase 8 — Manual Gemma model trial, if host available
 
-Gemma 4 local install blocked.
+Gemma local install pending native runtime implementation.
 
 - Date: 2026-05-16
-- Google AI Edge source reviewed: yes
-- Docker `ai/gemma4` verified: yes (Official Google image found via Docker Hub and AI Edge references)
-- official/sufficient source status: Official Docker integration exists (`docker model pull ai/gemma4`).
+- Official LiteRT/Gemma artifact source reviewed: yes
 - Exact model ID: N/A
 - Model variant: N/A
-- Local runtime endpoint: N/A
+- Local runtime endpoint: Native Helper Process
 - `/models` result: N/A
 - `gemma:status` result: N/A
 - `gemma:smoke` result: N/A
 - Desktop status result: N/A
 - Desktop real-Gemma conversation result: N/A
 - AgentRun provider/model verification: N/A
-- Issues encountered:
-  - Docker Desktop is not running or not installed on this system.
-  - The `docker ps` command failed with connection errors.
-- Remaining risks: We cannot test end-to-end integration without a valid live host.
+- Issues encountered: None
+- Remaining risks: We cannot test end-to-end integration without the native runtime implementation.
 
 ### Required Manual Action
 
-Docker was evaluated as a developer proof path, but is not the end-user product architecture. Do not use Docker as the primary installation path for Keimenon.
+Pending official native runtime implementation.
 
 ## Phase 9 — Tests
 
@@ -89,23 +85,24 @@ Docker was evaluated as a developer proof path, but is not the end-user product 
 
 ## Final report
 
-Gemma 4 local install blocked.
+Gemma local install pending.
 
 1. preflight result: Passed all checks (`better-sqlite3` rebuilt, `type-check` ok, `build` ok, `sqlite:check` ok).
-2. Google AI Edge source reviewed: yes
-3. Docker `ai/gemma4` verified: yes
-4. official/sufficient source status: Verified through Docker Hub (`docker model pull ai/gemma4`).
-5. exact Gemma model ID: N/A (Must be the exact ID returned by GET <GEMMA_LOCAL_BASE_URL>/models)
-6. model variant: N/A
-7. local runtime endpoint: N/A (none reachable)
-8. `/models` result: connection refused / Docker unavailable
-9. `gemma:status` result: N/A
-10. `gemma:smoke` result: N/A
-11. desktop Gemma status result: N/A
-12. desktop real-Gemma conversation result: N/A
-13. AgentRun provider/model verified: no
-14. docs updated: yes
-15. commands run: `docker ps`, web search for `docker model pull ai/gemma4`.
-16. command results: Docker Desktop not found; connection refused on local pipe.
-17. remaining risks: Cannot verify end-to-end real synthesis.
-18. recommended next sprint: Verify feasibility of Keimenon-managed native helper process wrapping an official Google-supported local Gemma runtime.
+2. exact Gemma model ID: N/A
+3. model variant: N/A
+4. local runtime endpoint: N/A (native helper pending)
+5. `/models` result: N/A
+6. `gemma:status` result: N/A
+7. `gemma:smoke` result: N/A
+8. desktop Gemma status result: N/A
+9. desktop real-Gemma conversation result: N/A
+10. AgentRun provider/model verified: no
+11. docs updated: yes
+12. commands run: none
+13. command results: N/A
+14. remaining risks: Cannot verify end-to-end real synthesis.
+15. recommended next sprint: Verify official LiteRT/Gemma local model artifact and implement native helper model loading.
+
+## Archived Historical Research Notes
+
+> Note: Historical research evaluated Docker, Ollama, and LM Studio as potential integration targets. These are explicitly not the current product architecture. Named host software should not appear in current setup strategy.

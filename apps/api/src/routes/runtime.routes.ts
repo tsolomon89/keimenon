@@ -159,7 +159,7 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
           explanation:
             'A local runtime endpoint was reachable, but it did not expose the configured Gemma-family model ID.',
           next_steps: [
-            'Install or load the required Gemma model in your local runtime host, then re-check status.',
+            'Install or load the required Gemma model in your native runtime, then re-check status.',
           ],
           expected_runtime_endpoint,
           model_requirement: 'gemma-family',
@@ -174,7 +174,7 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
         guidance = {
           title: 'Gemma Runtime Offline',
           explanation: 'Keimenon has a configured runtime endpoint, but it is not reachable.',
-          next_steps: ['Start your local Gemma-serving runtime host, then re-check status.'],
+          next_steps: ['Start your native runtime, then re-check status.'],
           expected_runtime_endpoint,
           model_requirement: 'gemma-family',
           exact_match_required: true,

@@ -13,7 +13,7 @@
 
 ## 1. Mission
 
-Shift Keimenon's local LLM runtime architecture away from third-party host software (Docker, Ollama, LM Studio) to a native, self-managed local Gemma runtime bundled with the desktop application.
+Shift Keimenon's local LLM runtime architecture to a native, self-managed local Gemma runtime bundled with the desktop application.
 
 This document records the **Feasibility Hypotheses** that must be verified before locking in this architecture.
 
@@ -44,8 +44,11 @@ The sprint will validate the above claims to formally select the architecture.
 
 - **A. Native direct Node integration:** High risk of application crashes and event-loop blocking.
 - **B. Keimenon-managed native helper process (LiteRT):** **Candidate Target.** Safest isolation, aligns with official edge paths.
-- **C. Docker-hosted Gemma runtime:** Demoted to developer fallback. Violates non-technical user constraints.
-- **D. Generic OpenAI-compatible local endpoint:** Demoted to compatibility fallback. Not the target product architecture.
+- **C. Endpoint-compatible developer fallback:** Demoted to compatibility fallback. Not the target product architecture.
+
+## Archived Historical Research Notes
+
+> Note: Historical research evaluated Docker, Ollama, and LM Studio as potential integration targets. These are explicitly not the current product architecture. Named host software should not appear in current setup strategy.
 
 ## 4. Next Steps
 

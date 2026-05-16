@@ -449,10 +449,18 @@ async function runApiServer(startPort: number) {
         __dirname,
         '../../../agent_context/runtime-skills'
       );
+      process.env.KEIMENON_INFERENCE_HELPER_PATH = path.join(
+        __dirname,
+        '../../../../inference-helper/dist/index.js'
+      );
     } else {
       process.env.KEIMENON_RUNTIME_SKILLS_DIR = path.join(
         process.resourcesPath,
         'agent_context/runtime-skills'
+      );
+      process.env.KEIMENON_INFERENCE_HELPER_PATH = path.join(
+        process.resourcesPath,
+        'inference-helper/index.js'
       );
     }
 
@@ -495,6 +503,8 @@ runtime skills dir: ${process.env.KEIMENON_RUNTIME_SKILLS_DIR}
 runtime skills dir exists: ${fs.existsSync(process.env.KEIMENON_RUNTIME_SKILLS_DIR!)}
 runtime skills found: ${runtimeSkillsCount}
 runtime skill IDs: ${runtimeSkillsList.join(', ')}
+helper path: ${process.env.KEIMENON_INFERENCE_HELPER_PATH}
+helper path exists: ${fs.existsSync(process.env.KEIMENON_INFERENCE_HELPER_PATH!)}
 web-dist path: ${webDistPath}
 `);
 

@@ -76,6 +76,13 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "../inference-helper/dist",
+        "to": "inference-helper",
+        "filter": [
+          "**/*"
+        ]
       }
     ]
   }

@@ -69,17 +69,18 @@ export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: Gemm
                         });
                         onRefresh();
                       } else if (action.action_type === 'open_external') {
-                        if (
-                          action.id === 'open-model-folder' &&
-                          (window as any).electronAPI?.openModelFolder
-                        ) {
-                          await (window as any).electronAPI.openModelFolder();
-                        } else if ((window as any).electronAPI?.openDataFolder) {
-                          await (window as any).electronAPI.openDataFolder();
-                        } else if ((window as any).electron?.ipcRenderer) {
-                          (window as any).electron.ipcRenderer.invoke('app:open-data-folder');
+                        if (action.id === 'open-model-folder') {
+                          if ((window as any).electronAPI?.openModelFolder) {
+                            await (window as any).electronAPI.openModelFolder();
+                          } else {
+                            alert('Folder opens are only supported in the desktop app.');
+                          }
                         } else {
-                          alert('Folder opens are only supported in the desktop app.');
+                          if ((window as any).electronAPI?.openDataFolder) {
+                            await (window as any).electronAPI.openDataFolder();
+                          } else {
+                            alert('Folder opens are only supported in the desktop app.');
+                          }
                         }
                       } else if (action.action_type === 'run_check') {
                         onRefresh();

@@ -11,8 +11,10 @@ function sendResponse(id: number | string | null, result: any) {
   process.stdout.write(JSON.stringify({ jsonrpc: '2.0', result, id }) + '\n');
 }
 
-function sendError(id: number | string | null, code: number, message: string) {
-  process.stdout.write(JSON.stringify({ jsonrpc: '2.0', error: { code, message }, id }) + '\n');
+function sendError(id: number | string | null, code: number | string, message: string) {
+  process.stdout.write(
+    JSON.stringify({ jsonrpc: '2.0', ok: false, error: { code, message }, id }) + '\n'
+  );
 }
 
 rl.on('line', (line) => {
@@ -22,7 +24,7 @@ rl.on('line', (line) => {
     const req = JSON.parse(line);
 
     if (req.jsonrpc !== '2.0' || !req.method) {
-      sendError(req.id || null, -32600, 'Invalid Request');
+      sendError(req.id || null, 'INVALID_REQUEST', 'Invalid Request');
       return;
     }
 
@@ -45,11 +47,11 @@ rl.on('line', (line) => {
         break;
 
       case 'generate':
-        sendResponse(req.id, {
-          text: 'This is a mocked response from the prototype shell.',
-          completion_tokens: 10,
-          prompt_tokens: 0,
-        });
+        sendError(
+          req.id,
+          'RUNTIME_UNIMPLEMENTED',
+          'Native Gemma generation is not implemented yet.'
+        );
         break;
 
       case 'shutdown':
@@ -58,10 +60,10 @@ rl.on('line', (line) => {
         break;
 
       default:
-        sendError(req.id, -32601, 'Method not found');
+        sendError(req.id, 'METHOD_NOT_FOUND', 'Method not found');
         break;
     }
   } catch (err) {
-    sendError(null, -32700, 'Parse error');
+    sendError(null, 'PARSE_ERROR', 'Parse error');
   }
 });

@@ -9,8 +9,8 @@ Take Keimenon out of mock-only territory by completing the scoped conversation r
 1. **Current mocked runtime state**: Validates `context_spec`, bounded context pack retrieval works natively, but message persistence and synthesis are mocked.
 2. **Current scoped conversation state**: Canvas selection creates thread.
 3. **Target Gemma-backed runtime state**: `ContextPack` -> `RuntimeSkill` -> `AgentRun` -> `GemmaLocalProvider` -> `ProposedGraphOutputs`
-4. **Selected Gemma model**: Gemma 4 (exact model ID must be verified via /models)
-5. **Selected local runtime target**: Local HTTP runtime like Ollama or LM Studio.
+4. **Selected Gemma model**: exact model ID must be verified via native runtime
+5. **Selected local runtime target**: Keimenon-managed native Gemma runtime
 6. **Provider architecture**: `SynthesisProviderRegistry` with `mock` and `gemma-local`.
 7. **Runtime skill file structure**: `agent_context/runtime-skills/<skill-id>/` defining natural language programs.
 8. **AgentRun provenance model**: Every synthesis creates an `AgentRun` tracking evidence counts, inputs, and outputs.
