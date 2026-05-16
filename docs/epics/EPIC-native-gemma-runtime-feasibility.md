@@ -46,10 +46,6 @@ The sprint will validate the above claims to formally select the architecture.
 - **B. Keimenon-managed native helper process (LiteRT):** **Candidate Target.** Safest isolation, aligns with official edge paths.
 - **C. Endpoint-compatible developer fallback:** Demoted to compatibility fallback. Not the target product architecture.
 
-## Archived Historical Research Notes
-
-> Note: Historical research evaluated Docker, Ollama, and LM Studio as potential integration targets. These are explicitly not the current product architecture. Named host software should not appear in current setup strategy.
-
 ## 4. Next Steps
 
 1.  Review and verify the official LiteRT documentation for Windows desktop integration.

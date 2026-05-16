@@ -101,11 +101,6 @@ export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: Gemm
                       {action.disabled_reason}
                     </div>
                   )}
-                  {action.action_type === 'download' && !action.disabled_reason && (
-                    <div className="text-xs text-amber-500 mt-2 text-center">
-                      Pending official model source implementation.
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

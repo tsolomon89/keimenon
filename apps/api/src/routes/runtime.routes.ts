@@ -98,25 +98,87 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     }
   );
 
+  router.get(
+    '/local-inference/models/download-plan/:candidateId',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { modelManager } = await import('../services/agent/model-manager');
+        const plan = await modelManager.getModelDownloadPlan(req.params.candidateId);
+        res.json({ plan });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
   router.post(
     '/local-inference/models/pending',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const { modelManager } = await import('../services/agent/model-manager');
-        const { candidate } = req.body;
+        const { candidateId } = req.body;
 
-        if (!candidate || candidate.model_family !== 'gemma') {
-          res.status(400).json({ error: 'Invalid or non-Gemma model family' });
+        if (!candidateId) {
+          res.status(400).json({ error: 'candidateId is required' });
           return;
         }
 
-        if (!candidate.verified && candidate.source_kind !== 'manual') {
-          res.status(400).json({ error: 'Source must be verified or marked as manual' });
-          return;
-        }
-
-        const manifest = await modelManager.createPendingModelManifest(candidate);
+        const manifest = await modelManager.prepareModelDownload(candidateId);
         res.json({ manifest });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  router.post(
+    '/local-inference/models/download-started',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { modelManager } = await import('../services/agent/model-manager');
+        const { model_id } = req.body;
+
+        await modelManager.recordDownloadStarted(model_id || null);
+        res.json({ success: true });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  router.post(
+    '/local-inference/models/download-failed',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { modelManager } = await import('../services/agent/model-manager');
+        const { model_id, reason } = req.body;
+
+        await modelManager.recordDownloadFailed(model_id || null, reason || 'Unknown error');
+        res.json({ success: true });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  router.post(
+    '/local-inference/models/download-complete',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { modelManager } = await import('../services/agent/model-manager');
+        const { model_id, local_path, size_bytes } = req.body;
+
+        if (!local_path) {
+          res.status(400).json({ error: 'local_path is required' });
+          return;
+        }
+
+        await modelManager.recordDownloadComplete({
+          model_id: model_id || null,
+          local_path,
+          size_bytes,
+        });
+        res.json({ success: true });
       } catch (error) {
         next(error);
       }

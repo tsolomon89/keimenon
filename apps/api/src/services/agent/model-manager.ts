@@ -1,4 +1,4 @@
-import { LocalModelManifest, LocalModelAcquisitionState } from '@keimenon/types';
+import { LocalModelManifest, LocalModelAcquisitionState, ModelDownloadPlan } from '@keimenon/types';
 import path from 'path';
 import fs from 'fs';
 import { gemmaModelSourceRegistry, GemmaModelSourceCandidate } from './gemma-model-source-registry';
@@ -225,6 +225,72 @@ export class ModelManager {
     }
 
     return 'downloaded';
+  }
+  public async getModelDownloadPlan(candidateId: string): Promise<ModelDownloadPlan> {
+    const candidates = await this.getSourceCandidates();
+    const candidate = candidates.find((c) => c.id === candidateId);
+
+    if (!candidate) {
+      throw new Error('Candidate not found');
+    }
+
+    if (candidate.requires_auth) {
+      return {
+        model_id: candidate.model_id,
+        source_kind: candidate.source_kind,
+        can_download: false,
+        blocked_reason: 'Manual model acquisition bridge: source requires authentication.',
+        terms_url: candidate.terms_url,
+        download_instructions: `Please visit ${candidate.source_url} to accept the terms of use and download the LiteRT compatible model manually. Place the downloaded file in your models directory.`,
+      };
+    }
+
+    return {
+      model_id: candidate.model_id,
+      source_kind: candidate.source_kind,
+      can_download: !!candidate.download_url,
+      expected_size_bytes: candidate.expected_size_bytes,
+      terms_url: candidate.terms_url,
+    };
+  }
+
+  public async prepareModelDownload(candidateId: string): Promise<LocalModelManifest> {
+    const candidates = await this.getSourceCandidates();
+    const candidate = candidates.find((c) => c.id === candidateId);
+
+    if (!candidate) {
+      throw new Error('Candidate not found');
+    }
+
+    return this.createPendingModelManifest(candidate);
+  }
+
+  public async recordDownloadStarted(model_id: string | null): Promise<void> {
+    let models = await this.getInstalledModels();
+    let model = models.find((m) => m.model_family === 'gemma' && m.model_id === model_id);
+    if (model) {
+      model.download_status = 'downloading';
+      await this.writeInstalledModels(models);
+    }
+  }
+
+  public async recordDownloadFailed(model_id: string | null, reason: string): Promise<void> {
+    let models = await this.getInstalledModels();
+    let model = models.find((m) => m.model_family === 'gemma' && m.model_id === model_id);
+    if (model) {
+      model.download_status = 'failed';
+      model.verification_status = 'failed';
+      console.error(`[ModelManager] Download failed for ${model_id}: ${reason}`);
+      await this.writeInstalledModels(models);
+    }
+  }
+
+  public async recordDownloadComplete(input: {
+    model_id: string | null;
+    local_path: string;
+    size_bytes?: number;
+  }): Promise<void> {
+    await this.markModelInstalled(input);
   }
 }
 

@@ -115,9 +115,5 @@ Pending official native runtime implementation.
 
 With the Gemma local infrastructure bound and verifiable, the next epic should execute the **Real Local Gemma Manual Trial**.
 
-- **Execute Smoke Tests**: Once native helper is verified, configure the environment and run `npm run gemma:smoke`.
+- **Execute Smoke Tests**: Once native helper is verified, configure the environment and run `npm run inference:smoke`.
 - **Full Browser Product Loop E2E**: Prove the product path `canvas → selection → conversation → message → AgentRun → provenance UI`.
-
-## Archived Historical Research Notes
-
-> Note: Historical research evaluated Docker, Ollama, and LM Studio as potential integration targets. These are explicitly not the current product architecture. Named host software should not appear in current setup strategy. Docker was initially considered for a developer proof path (e.g., pulling `ai/gemma4` via Docker Desktop), but it was excluded in favor of the packaged native executable.

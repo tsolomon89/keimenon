@@ -27,15 +27,13 @@ The current implementation relies on a "detect and advise" strategy:
    **Primary path:** Keimenon-managed native Gemma runtime.
    **Fallback compatibility:** Local endpoints exposing an exact Gemma-family model ID remain as an endpoint-compatible developer fallback.
 
-## Configuring GEMMA_LOCAL_MODEL
+## Model Identity
 
-At runtime, set GEMMA_LOCAL_MODEL to the exact Gemma-family model ID returned by the models registry.
-
-If no Gemma-family model is found, Keimenon reports `GEMMA_MODEL_NOT_FOUND`.
+The active local model is the verified manifest entry under `userData/models/gemma`.
 
 ## Re-Verification and Smoke Test
 
-Once the user confirms they have installed the model, Keimenon re-checks the runtime status. Upon successful detection, Keimenon executes the standard `npm run gemma:smoke` routine to verify inference capability before marking the runtime as "Ready".
+Once the user confirms they have installed the model, Keimenon re-checks the runtime status. Upon successful detection, Keimenon executes the standard `npm run inference:smoke` routine to verify inference capability before marking the runtime as "Ready".
 
 ## Current Trial Status (2026-05-16)
 
@@ -47,8 +45,8 @@ Gemma local install pending native runtime implementation.
 - Model variant: Pending
 - Local runtime endpoint: Native Helper Process
 - `/models` result: N/A
-- `gemma:status` result: N/A
-- `gemma:smoke` result: N/A
+- `inference:status` result: N/A
+- `inference:smoke` result: N/A
 - Desktop status result: N/A
 - Desktop real-Gemma conversation result: N/A
 - AgentRun provider/model verification: N/A
@@ -59,7 +57,3 @@ Gemma local install pending native runtime implementation.
 - implement native helper model loading
 - implement explicit user-consented model download
 - keep model files under Electron userData/models/gemma
-
-## Archived Historical Research Notes
-
-> Note: Historical research evaluated Docker, Ollama, and LM Studio as potential integration targets. These are explicitly not the current product architecture. Named host software should not appear in current setup strategy.

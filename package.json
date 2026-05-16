@@ -22,6 +22,8 @@
     "clean:legacy-artifacts": "node scripts/ops/clean-legacy-artifacts.js",
     "clean:repo-local": "node scripts/ops/clean-repo-local.js",
     "dev:desktop": "node scripts/run-with-project-node.js \"node scripts/dev-desktop.js\"",
+    "inference:smoke": "node scripts/run-with-project-node.js \"node scripts/ops/inference-smoke.js\"",
+    "inference:status": "node scripts/run-with-project-node.js \"node scripts/ops/inference-status.js\"",
     "test": "node scripts/run-with-project-node.js \"turbo run test --no-daemon --concurrency=1\"",
     "test:auth": "node scripts/run-with-project-node.js \"node tests/auth-suite.js\"",
     "test:data:split": "node scripts/run-with-project-node.js \"node scripts/ops/split-chat-export.js\"",

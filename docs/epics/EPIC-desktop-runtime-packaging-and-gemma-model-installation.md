@@ -102,7 +102,3 @@ Gemma local install pending.
 13. command results: N/A
 14. remaining risks: Cannot verify end-to-end real synthesis.
 15. recommended next sprint: Verify official LiteRT/Gemma local model artifact and implement native helper model loading.
-
-## Archived Historical Research Notes
-
-> Note: Historical research evaluated Docker, Ollama, and LM Studio as potential integration targets. These are explicitly not the current product architecture. Named host software should not appear in current setup strategy.

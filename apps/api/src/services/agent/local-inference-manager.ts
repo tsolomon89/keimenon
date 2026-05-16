@@ -83,7 +83,8 @@ export class LocalInferenceManager {
             description: 'Download the official Gemma model weights.',
             requires_user_confirmation: true,
             disabled: true,
-            disabled_reason: 'Automated download is pending official source artifact verification.',
+            disabled_reason:
+              'Manual model acquisition bridge: Automated download is blocked pending exact official file verification and terms bypass.',
           },
           ...baseActions,
         ],

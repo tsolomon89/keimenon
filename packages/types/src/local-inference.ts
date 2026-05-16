@@ -60,3 +60,13 @@ export interface LocalInferenceStatus {
   message?: string;
   next_actions: LocalInferenceNextAction[];
 }
+
+export interface ModelDownloadPlan {
+  model_id: string | null;
+  source_kind: 'official_google' | 'official_huggingface' | 'official_kaggle' | 'manual';
+  can_download: boolean;
+  blocked_reason?: string;
+  expected_size_bytes?: number;
+  terms_url?: string;
+  download_instructions?: string;
+}
