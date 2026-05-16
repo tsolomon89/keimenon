@@ -32,6 +32,30 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     }
   });
 
+  router.get('/local-inference/models', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { modelManager } = await import('../services/agent/model-manager');
+      const models = await modelManager.getInstalledModels();
+      res.json({ models });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post(
+    '/local-inference/models/license-acceptance',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { modelManager } = await import('../services/agent/model-manager');
+        await modelManager.acceptLicense('gemma');
+        const status = await localInferenceManager.getCombinedStatus();
+        res.json(status);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
   router.get('/gemma/status', async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Validate entitlement

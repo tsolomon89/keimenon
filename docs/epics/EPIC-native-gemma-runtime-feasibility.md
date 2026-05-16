@@ -1,7 +1,15 @@
 # EPIC: Native Gemma Runtime Feasibility
 
-**Status:** HYPOTHESIS GENERATION / FEASIBILITY VERIFICATION PENDING
+**Status:** NATIVE RUNTIME SCAFFOLD IMPLEMENTED
 **Date:** 2026-05-16
+
+## Current Status (Contract Hardening)
+
+- Native runtime scaffold exists (`NativeGemmaRuntimeBackend`).
+- Model manifest foundation exists (`ModelManager`).
+- License gate scaffold exists.
+- Real native helper process is pending (C++ implementation).
+- Real model download pending official source implementation.
 
 ## 1. Mission
 

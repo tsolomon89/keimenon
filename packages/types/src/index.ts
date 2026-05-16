@@ -22,3 +22,4 @@ export * from './ai';
 export * from './traversal';
 export * from './graph-read-model';
 export * from './conversation-context';
+export * from './local-inference';

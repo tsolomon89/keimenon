@@ -421,10 +421,13 @@ async function runApiServer(startPort: number) {
     const userDataPath = app.getPath('userData');
     const dbPath = path.join(userDataPath, 'keimenon.db');
     const storagePath = path.join(userDataPath, 'storage');
+    const modelsDir = path.join(userDataPath, 'models', 'gemma');
+    process.env.KEIMENON_MODELS_DIR = modelsDir;
 
     // Ensure directories exist
     if (!fs.existsSync(userDataPath)) fs.mkdirSync(userDataPath, { recursive: true });
     if (!fs.existsSync(storagePath)) fs.mkdirSync(storagePath, { recursive: true });
+    if (!fs.existsSync(modelsDir)) fs.mkdirSync(modelsDir, { recursive: true });
 
     // Dynamic port selection
     const apiPort = await getAvailablePort(startPort);
@@ -477,6 +480,8 @@ process.resourcesPath: ${process.resourcesPath}
 userData path: ${userDataPath}
 sqlite path: ${dbPath}
 storage path: ${storagePath}
+models dir: ${process.env.KEIMENON_MODELS_DIR}
+models dir exists: ${fs.existsSync(process.env.KEIMENON_MODELS_DIR!)}
 api port: ${apiPort}
 runtime skills dir: ${process.env.KEIMENON_RUNTIME_SKILLS_DIR}
 runtime skills dir exists: ${fs.existsSync(process.env.KEIMENON_RUNTIME_SKILLS_DIR!)}

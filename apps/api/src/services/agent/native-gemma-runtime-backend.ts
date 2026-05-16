@@ -1,4 +1,4 @@
-import { LocalInferenceStatus } from './local-inference-types';
+import { LocalInferenceStatus } from '@keimenon/types';
 
 export class NativeGemmaRuntimeBackend {
   public async checkStatus(): Promise<LocalInferenceStatus> {
