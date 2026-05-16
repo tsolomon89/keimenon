@@ -9,7 +9,7 @@ const rl = readline.createInterface({
 });
 
 function sendResponse(id: number | string | null, result: any) {
-  process.stdout.write(JSON.stringify({ jsonrpc: '2.0', result, id }) + '\n');
+  process.stdout.write(JSON.stringify({ jsonrpc: '2.0', ok: true, result, id }) + '\n');
 }
 
 function sendError(id: number | string | null, code: number | string, message: string) {

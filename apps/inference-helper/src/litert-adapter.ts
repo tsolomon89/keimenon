@@ -103,8 +103,15 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
     }
 
     try {
-      // Hypothetical binding load call
-      // await this.bindings.loadModel(modelPath);
+      if (typeof this.bindings.loadModel !== 'function') {
+        return {
+          success: false,
+          state: 'runtime_binding_incomplete',
+          message: 'The node binding exists but does not export a loadModel method.',
+        };
+      }
+
+      await this.bindings.loadModel(modelPath);
       this.isLoaded = true;
       return {
         success: true,
@@ -138,11 +145,17 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
     }
 
     try {
-      // Hypothetical binding generate call
-      // const text = await this.bindings.generate(input.prompt, input.max_tokens);
+      if (typeof this.bindings.generate !== 'function') {
+        return {
+          success: false,
+          error: 'The node binding exists but does not export a generate method.',
+        };
+      }
+
+      const text = await this.bindings.generate(input.prompt, input.max_tokens);
       return {
-        success: false,
-        error: 'LiteRT-LM generation logic is mocked and not yet fully wired to C++.',
+        success: true,
+        text,
       };
     } catch (e: any) {
       return {

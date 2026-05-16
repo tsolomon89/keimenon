@@ -1,6 +1,7 @@
 export type HelperStatusState =
   | 'runtime_unimplemented'
   | 'runtime_dependency_missing'
+  | 'runtime_binding_incomplete'
   | 'model_missing'
   | 'model_invalid'
   | 'model_load_failed'

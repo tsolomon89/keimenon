@@ -61,14 +61,17 @@ export class NativeGemmaRuntimeBackend {
           if (res.id !== undefined && this.pendingRequests.has(res.id)) {
             const { resolve, reject } = this.pendingRequests.get(res.id)!;
             this.pendingRequests.delete(res.id);
-            if (res.error) {
+            if (!res.ok && res.error) {
+              reject(new Error(`[Helper Error] ${res.error.code}: ${res.error.message}`));
+            } else if (res.error) {
+              // fallback for old format
               reject(res.error);
             } else {
               resolve(res.result);
             }
           }
-        } catch (e) {
-          // ignore
+        } catch (e: any) {
+          console.error(`[NativeHelper] JSON Parse Error on stdout: ${e.message}`, line);
         }
       }
     });
@@ -97,6 +100,11 @@ export class NativeGemmaRuntimeBackend {
           () => {
             if (this.pendingRequests.has(id)) {
               this.pendingRequests.delete(id);
+              if (this.helper) {
+                console.error(`[NativeHelper] Request timeout. Killing helper process.`);
+                this.helper.kill();
+                this.helper = null;
+              }
               reject(new Error(`Helper request ${method} timed out`));
             }
           },
@@ -119,7 +127,7 @@ export class NativeGemmaRuntimeBackend {
       throw new Error('Candidate file is not verified or present');
     }
 
-    const baseDir = process.env.KEIMENON_MODELS_DIR || path.resolve(process.cwd(), '.data/models');
+    const baseDir = modelManager.getModelDirectory();
     return path.resolve(baseDir, manifest.local_path);
   }
 

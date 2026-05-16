@@ -3,7 +3,12 @@ export type LocalInferenceBackend = 'native-gemma' | 'openai-compatible';
 export type LocalInferenceState =
   | 'runtime_unimplemented'
   | 'runtime_missing'
+  | 'runtime_dependency_missing'
+  | 'runtime_binding_incomplete'
   | 'model_missing'
+  | 'model_invalid'
+  | 'model_load_failed'
+  | 'model_loaded'
   | 'license_required'
   | 'ready'
   | 'unsupported_hardware'

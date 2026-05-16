@@ -51,4 +51,31 @@ describe('LiteRTGemmaRuntimeAdapter', () => {
     const result = await adapter.status();
     expect(result.state).toBe('runtime_dependency_missing');
   });
+
+  describe('with mocked incomplete bindings', () => {
+    beforeEach(() => {
+      adapter = new LiteRTGemmaRuntimeAdapter();
+      (adapter as any).bindings = { dummy: true };
+      (adapter as any).loadAttempted = true;
+    });
+
+    it('loadModel reports runtime_binding_incomplete if loadModel is missing', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      const result = await adapter.loadModel('fake/path.litertlm');
+      expect(result.success).toBe(false);
+      expect(result.state).toBe('runtime_binding_incomplete');
+    });
+
+    it('generate reports error if generate is missing', async () => {
+      (adapter as any).bindings = {
+        loadModel: vi.fn().mockResolvedValue(true),
+      };
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      await adapter.loadModel('fake/path.litertlm');
+
+      const result = await adapter.generate({ prompt: 'test' });
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('does not export a generate method');
+    });
+  });
 });
