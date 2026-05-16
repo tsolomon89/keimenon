@@ -42,14 +42,81 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     }
   });
 
+  router.get(
+    '/local-inference/models/directory',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { modelManager } = await import('../services/agent/model-manager');
+        const info = await modelManager.getModelDirectoryInfo();
+        res.json(info);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  router.get(
+    '/local-inference/models/sources',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { modelManager } = await import('../services/agent/model-manager');
+        const sources = await modelManager.getSourceCandidates();
+        res.json({ sources });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
   router.post(
     '/local-inference/models/license-acceptance',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const { modelManager } = await import('../services/agent/model-manager');
-        await modelManager.acceptLicense('gemma');
+        const { model_family, model_id, accepted, terms_source } = req.body;
+
+        if (!accepted) {
+          res.status(400).json({ error: 'License must be accepted' });
+          return;
+        }
+
+        await modelManager.recordLicenseAcceptance({
+          model_family: model_family || 'gemma',
+          model_id,
+          terms_source,
+        });
+
         const status = await localInferenceManager.getCombinedStatus();
-        res.json(status);
+        res.json({
+          ...status,
+          message:
+            'This local acknowledgement does not replace any external account/terms flow required by the official model host.',
+        });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  router.post(
+    '/local-inference/models/pending',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { modelManager } = await import('../services/agent/model-manager');
+        const { candidate } = req.body;
+
+        if (!candidate || candidate.model_family !== 'gemma') {
+          res.status(400).json({ error: 'Invalid or non-Gemma model family' });
+          return;
+        }
+
+        if (!candidate.verified && candidate.source_kind !== 'manual') {
+          res.status(400).json({ error: 'Source must be verified or marked as manual' });
+          return;
+        }
+
+        const manifest = await modelManager.createPendingModelManifest(candidate);
+        res.json({ manifest });
       } catch (error) {
         next(error);
       }

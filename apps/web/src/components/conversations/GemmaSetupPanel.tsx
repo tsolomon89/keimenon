@@ -60,10 +60,23 @@ export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: Gemm
                       if (action.action_type === 'accept_terms') {
                         await fetch('/api/v1/runtime/local-inference/models/license-acceptance', {
                           method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            model_family: 'gemma',
+                            accepted: true,
+                            terms_source: 'ui_panel',
+                          }),
                         });
                         onRefresh();
                       } else if (action.action_type === 'open_external') {
-                        if ((window as any).electron?.ipcRenderer) {
+                        if (
+                          action.id === 'open-model-folder' &&
+                          (window as any).electronAPI?.openModelFolder
+                        ) {
+                          await (window as any).electronAPI.openModelFolder();
+                        } else if ((window as any).electronAPI?.openDataFolder) {
+                          await (window as any).electronAPI.openDataFolder();
+                        } else if ((window as any).electron?.ipcRenderer) {
                           (window as any).electron.ipcRenderer.invoke('app:open-data-folder');
                         } else {
                           alert('Folder opens are only supported in the desktop app.');
@@ -72,8 +85,8 @@ export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: Gemm
                         onRefresh();
                       }
                     }}
-                    disabled={action.action_type === 'download'}
-                    className={`mt-2 px-3 py-1.5 text-white text-xs rounded transition-colors w-full flex items-center justify-center gap-2 ${action.action_type === 'download' ? 'bg-slate-700 cursor-not-allowed opacity-50' : 'bg-blue-600 hover:bg-blue-500'}`}
+                    disabled={action.action_type === 'download' || action.disabled}
+                    className={`mt-2 px-3 py-1.5 text-white text-xs rounded transition-colors w-full flex items-center justify-center gap-2 ${action.action_type === 'download' || action.disabled ? 'bg-slate-700 cursor-not-allowed opacity-50' : 'bg-blue-600 hover:bg-blue-500'}`}
                   >
                     {action.action_type === 'download' ? (
                       <Download className="w-3 h-3" />
@@ -82,7 +95,12 @@ export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: Gemm
                     )}
                     {action.label}
                   </button>
-                  {action.action_type === 'download' && (
+                  {action.disabled_reason && (
+                    <div className="text-xs text-amber-500 mt-2 text-center">
+                      {action.disabled_reason}
+                    </div>
+                  )}
+                  {action.action_type === 'download' && !action.disabled_reason && (
                     <div className="text-xs text-amber-500 mt-2 text-center">
                       Pending official model source implementation.
                     </div>

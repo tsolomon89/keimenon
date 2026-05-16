@@ -1,42 +1,45 @@
-import { LocalInferenceStatus } from '@keimenon/types';
+import {
+  LocalInferenceStatus,
+  LocalModelAcquisitionState,
+  LocalInferenceNextAction,
+} from '@keimenon/types';
 import { nativeGemmaBackend } from './native-gemma-runtime-backend';
 import { gemmaProvider } from './gemma-local-provider';
-
 import { modelManager } from './model-manager';
 
 export class LocalInferenceManager {
   public async getCombinedStatus(): Promise<LocalInferenceStatus> {
-    // 1. Check Model Manager States
-    const modelStatus = await modelManager.getModelStatus();
+    const modelStatus: LocalModelAcquisitionState = await modelManager.getModelStatus();
+    const baseActions: LocalInferenceNextAction[] = [
+      {
+        id: 'open-model-folder',
+        action_type: 'open_external',
+        label: 'Open Models Folder',
+        description: 'Open the directory where models are stored.',
+        requires_user_confirmation: false,
+      },
+      {
+        id: 'run-check',
+        action_type: 'run_check',
+        label: 'Refresh Status',
+        description: 'Re-check model files and runtime readiness.',
+        requires_user_confirmation: false,
+      },
+    ];
 
-    if (modelStatus === 'model_missing') {
+    if (modelStatus === 'source_pending') {
       return {
         model_family: 'gemma',
         preferred_backend: 'native-gemma',
         state: 'model_missing',
         can_run_offline: true,
         requires_admin: false,
-        message: 'Gemma model weights are not installed.',
-        next_actions: [
-          {
-            id: 'download-model',
-            action_type: 'download',
-            label: 'Download Model',
-            description: 'Download the official Gemma LiteRT model weights.',
-            requires_user_confirmation: true,
-          },
-          {
-            id: 'open-model-folder',
-            action_type: 'open_external',
-            label: 'Open Models Folder',
-            description: 'Open the directory where models are stored.',
-            requires_user_confirmation: false,
-          },
-        ],
+        message: 'No official model source selected or verified.',
+        next_actions: [...baseActions],
       };
     }
 
-    if (modelStatus === 'license_required') {
+    if (modelStatus === 'terms_required') {
       return {
         model_family: 'gemma',
         preferred_backend: 'native-gemma',
@@ -52,37 +55,83 @@ export class LocalInferenceManager {
             description: 'Acknowledge the Gemma license to continue.',
             requires_user_confirmation: true,
           },
+          ...baseActions,
         ],
       };
     }
 
-    // 2. Check Native Runtime (Product Target)
-    const nativeStatus = await nativeGemmaBackend.checkStatus();
-    if (nativeStatus.state === 'ready') {
-      return nativeStatus;
+    if (
+      modelStatus === 'ready_to_download' ||
+      modelStatus === 'downloading' ||
+      modelStatus === 'failed'
+    ) {
+      return {
+        model_family: 'gemma',
+        preferred_backend: 'native-gemma',
+        state: 'model_missing',
+        can_run_offline: true,
+        requires_admin: false,
+        message:
+          modelStatus === 'downloading'
+            ? 'Model is currently downloading...'
+            : 'Gemma model weights need to be downloaded.',
+        next_actions: [
+          {
+            id: 'download-model',
+            action_type: 'download',
+            label: 'Download Model',
+            description: 'Download the official Gemma model weights.',
+            requires_user_confirmation: true,
+            disabled: true,
+            disabled_reason: 'Automated download is pending official source artifact verification.',
+          },
+          ...baseActions,
+        ],
+      };
     }
 
-    // 3. Check OpenAI-Compatible Fallback (Developer Trial)
-    if (process.env.GEMMA_LOCAL_BASE_URL) {
-      const fallbackStatus = await gemmaProvider.checkStatus();
-      if (fallbackStatus.status === 'online') {
-        return {
-          model_family: 'gemma',
-          preferred_backend: 'native-gemma',
-          active_backend: 'openai-compatible',
-          state: 'ready',
-          can_run_offline: true,
-          requires_admin: false,
-          model_id: fallbackStatus.modelName,
-          message: 'Using developer fallback OpenAI-compatible endpoint.',
-          next_actions: [],
-        };
+    if (modelStatus === 'downloaded' || modelStatus === 'verified') {
+      // 2. Check Native Runtime (Product Target)
+      const nativeStatus = await nativeGemmaBackend.checkStatus();
+      if (nativeStatus.state === 'ready') {
+        return nativeStatus;
       }
+
+      // 3. Check OpenAI-Compatible Fallback (Developer Trial)
+      if (process.env.GEMMA_LOCAL_BASE_URL) {
+        const fallbackStatus = await gemmaProvider.checkStatus();
+        if (fallbackStatus.status === 'online') {
+          return {
+            model_family: 'gemma',
+            preferred_backend: 'native-gemma',
+            active_backend: 'openai-compatible',
+            state: 'ready',
+            can_run_offline: true,
+            requires_admin: false,
+            model_id: fallbackStatus.modelName,
+            message: 'Using developer fallback OpenAI-compatible endpoint.',
+            next_actions: baseActions,
+          };
+        }
+      }
+
+      // Merge actions into nativeStatus
+      return {
+        ...nativeStatus,
+        next_actions: [...(nativeStatus.next_actions || []), ...baseActions],
+      };
     }
 
-    // Default to the native status (even if unimplemented/missing)
-    // as it is the primary product target.
-    return nativeStatus;
+    // Default catch-all
+    return {
+      model_family: 'gemma',
+      preferred_backend: 'native-gemma',
+      state: 'error',
+      can_run_offline: false,
+      requires_admin: false,
+      message: 'Unknown model acquisition state.',
+      next_actions: baseActions,
+    };
   }
 }
 

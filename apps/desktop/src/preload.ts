@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // App info
   getVersion: () => ipcRenderer.invoke('app:get-version'),
   openDataFolder: () => ipcRenderer.invoke('app:open-data-folder'),
+  openModelFolder: () => ipcRenderer.invoke('app:open-model-folder'),
 
   // ==========================================================================
   // ACCOUNT MANAGEMENT
@@ -103,6 +104,7 @@ declare global {
     electronAPI: {
       getVersion: () => Promise<string>;
       openDataFolder: () => Promise<string>;
+      openModelFolder: () => Promise<string>;
       accounts: {
         getAll: () => Promise<string[]>;
         getActive: () => Promise<string | null>;

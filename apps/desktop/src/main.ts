@@ -374,6 +374,14 @@ ipcMain.handle('app:open-data-folder', async () => {
   return userDataPath;
 });
 
+ipcMain.handle('app:open-model-folder', async () => {
+  const modelsDir =
+    process.env.KEIMENON_MODELS_DIR ||
+    require('path').join(app.getPath('userData'), 'models', 'gemma');
+  await shell.openPath(modelsDir);
+  return modelsDir;
+});
+
 // Ingestion IPC
 ipcMain.handle('ingest:start', async (_, filePath) => {
   if (!mainWindow) {
