@@ -124,21 +124,31 @@ export class ModelManager {
     let model = models.find((m) => m.model_family === 'gemma');
 
     if (model) {
+      model.candidate_id = candidate.id;
       model.model_id = candidate.model_id;
+      model.model_generation = candidate.model_generation;
       model.variant = candidate.variant;
       model.source_url = candidate.source_url;
       model.terms_source = candidate.terms_url;
       model.source_kind = candidate.source_kind;
+      model.source_verified = candidate.source_verified;
+      model.artifact_verified = candidate.artifact_verified;
+      model.runtime_compatibility_verified = candidate.runtime_compatibility_verified;
       model.download_status = 'not_started';
       model.verification_status = 'unchecked';
     } else {
       model = {
+        candidate_id: candidate.id,
         model_family: 'gemma',
+        model_generation: candidate.model_generation,
         model_id: candidate.model_id,
         variant: candidate.variant,
         source_url: candidate.source_url,
         terms_source: candidate.terms_url,
         source_kind: candidate.source_kind,
+        source_verified: candidate.source_verified,
+        artifact_verified: candidate.artifact_verified,
+        runtime_compatibility_verified: candidate.runtime_compatibility_verified,
         license_required: true,
         license_accepted: false,
         installed: false,
@@ -234,8 +244,43 @@ export class ModelManager {
       throw new Error('Candidate not found');
     }
 
+    if (candidate.model_family !== 'gemma') {
+      throw new Error('Only Gemma family models are supported');
+    }
+
+    if (candidate.id.toLowerCase().includes('legacy-generation')) {
+      throw new Error('Legacy generations are no longer supported in the active acquisition flow');
+    }
+
+    if (!candidate.artifact_verified) {
+      return {
+        candidate_id: candidate.id,
+        display_name: candidate.display_name,
+        model_generation: candidate.model_generation,
+        variant: candidate.variant,
+        source_url: candidate.source_url,
+        source_verified: candidate.source_verified,
+        artifact_verified: candidate.artifact_verified,
+        runtime_compatibility_verified: candidate.runtime_compatibility_verified,
+        model_id: candidate.model_id,
+        source_kind: candidate.source_kind,
+        can_download: false,
+        blocked_reason: 'Exact Gemma 4 native/LiteRT artifact pending verification.',
+        terms_url: candidate.terms_url,
+        download_instructions: `Please visit ${candidate.source_url} to accept the terms of use and acquire the LiteRT compatible model manually once verified.`,
+      };
+    }
+
     if (candidate.requires_auth) {
       return {
+        candidate_id: candidate.id,
+        display_name: candidate.display_name,
+        model_generation: candidate.model_generation,
+        variant: candidate.variant,
+        source_url: candidate.source_url,
+        source_verified: candidate.source_verified,
+        artifact_verified: candidate.artifact_verified,
+        runtime_compatibility_verified: candidate.runtime_compatibility_verified,
         model_id: candidate.model_id,
         source_kind: candidate.source_kind,
         can_download: false,
@@ -246,6 +291,14 @@ export class ModelManager {
     }
 
     return {
+      candidate_id: candidate.id,
+      display_name: candidate.display_name,
+      model_generation: candidate.model_generation,
+      variant: candidate.variant,
+      source_url: candidate.source_url,
+      source_verified: candidate.source_verified,
+      artifact_verified: candidate.artifact_verified,
+      runtime_compatibility_verified: candidate.runtime_compatibility_verified,
       model_id: candidate.model_id,
       source_kind: candidate.source_kind,
       can_download: !!candidate.download_url,

@@ -44,6 +44,13 @@ export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: Gemm
 
       <div className="p-4 flex-1 overflow-y-auto max-h-[70vh]">
         <div className="mb-6">
+          <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700/50 mb-4">
+            <h4 className="text-sm font-semibold text-slate-200 mb-1">Gemma 4 Acquisition Flow</h4>
+            <p className="text-xs text-slate-400">
+              Keimenon exclusively targets the <strong>Gemma 4</strong> generation for local
+              inference.
+            </p>
+          </div>
           <p className="text-sm text-slate-300 leading-relaxed mb-4">{status.message}</p>
 
           {status.next_actions && status.next_actions.length > 0 && (
@@ -119,10 +126,10 @@ export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: Gemm
           </div>
           <div>
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-              Gemma-Family Model ID
+              Gemma 4 Candidate Status
             </div>
             <div className="font-mono text-xs bg-slate-950 p-2 rounded text-blue-400 border border-slate-800">
-              {status.model_id || '<Unverified / Not Loaded>'}
+              {status.model_id || '<Pending Exact LiteRT Artifact Verification>'}
             </div>
           </div>
         </div>

@@ -18,10 +18,15 @@ export type LocalModelAcquisitionState =
   | 'verified'
   | 'failed';
 
+export type GemmaModelGeneration = 'gemma-4';
+export type Gemma4Variant = 'e2b' | 'e4b' | '26b' | '31b';
+
 export interface LocalModelManifest {
+  candidate_id?: string;
   model_family: 'gemma';
+  model_generation?: GemmaModelGeneration;
   model_id: string | null;
-  variant?: string;
+  variant?: Gemma4Variant | string;
   version?: string;
   source_url?: string;
   local_path?: string;
@@ -30,11 +35,16 @@ export interface LocalModelManifest {
   license_accepted: boolean;
   license_accepted_at?: number;
   terms_source?: string;
+  requires_auth?: boolean | 'unknown';
+  requires_terms_acceptance?: boolean | 'unknown';
   installed: boolean;
   size_bytes?: number;
   source_kind?: 'official_google' | 'official_huggingface' | 'official_kaggle' | 'manual';
   download_status?: 'not_started' | 'pending' | 'downloading' | 'complete' | 'failed';
   verification_status?: 'unchecked' | 'verified' | 'failed';
+  source_verified?: boolean;
+  artifact_verified?: boolean;
+  runtime_compatibility_verified?: boolean;
 }
 
 export interface LocalInferenceNextAction {
@@ -62,6 +72,14 @@ export interface LocalInferenceStatus {
 }
 
 export interface ModelDownloadPlan {
+  candidate_id: string;
+  display_name?: string;
+  model_generation?: GemmaModelGeneration;
+  variant?: Gemma4Variant | string;
+  source_url?: string;
+  source_verified?: boolean;
+  artifact_verified?: boolean;
+  runtime_compatibility_verified?: boolean;
   model_id: string | null;
   source_kind: 'official_google' | 'official_huggingface' | 'official_kaggle' | 'manual';
   can_download: boolean;

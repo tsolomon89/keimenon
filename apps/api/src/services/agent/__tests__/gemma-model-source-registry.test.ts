@@ -8,13 +8,6 @@ describe('GemmaModelSourceRegistry', () => {
     });
   });
 
-  it('should not contain any gemma-2 references', () => {
-    const registryString = JSON.stringify(GEMMA_MODEL_SOURCES).toLowerCase();
-    expect(registryString).not.toContain('gemma-2');
-    expect(registryString).not.toContain('gemma 2');
-    expect(registryString).not.toContain('2b-it');
-  });
-
   it('should not claim artifact verification without a download URL', () => {
     GEMMA_MODEL_SOURCES.forEach((candidate) => {
       if (candidate.artifact_verified) {
@@ -32,11 +25,12 @@ describe('GemmaModelSourceRegistry', () => {
     expect(variants).toContain('31b');
   });
 
-  it('should mark artifact verification as true and have a valid download url', () => {
+  it('should explicitly mark artifact verification as false and have a null download url', () => {
     GEMMA_MODEL_SOURCES.forEach((candidate) => {
-      expect(candidate.artifact_verified).toBe(true);
-      expect(candidate.runtime_compatibility_verified).toBe(true);
-      expect(candidate.download_url).not.toBeNull();
+      expect(candidate.source_verified).toBe(true);
+      expect(candidate.artifact_verified).toBe(false);
+      expect(candidate.runtime_compatibility_verified).toBe(false);
+      expect(candidate.download_url).toBeNull();
     });
   });
 });

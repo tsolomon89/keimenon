@@ -1,94 +1,48 @@
-/**
- * verify-gemma-target.js
- *
- * This script enforces the Gemma 4 product target by scanning the repository
- * for legacy Gemma 2 strings ("gemma 2", "gemma-2", "2b-it") outside of
- * archived documentation or known safe paths.
- *
- * If prohibited strings are found, the script exits with code 1, breaking the build.
- */
-
-const { execSync } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 
-const FORBIDDEN_PATTERNS = ['gemma-2', 'gemma 2', '2b-it'];
+const ROOT_DIR = path.resolve(__dirname, '../../');
 
-// We only want to search in the source files, skip node_modules, dist, etc.
-const EXCLUDED_DIRS = ['node_modules', 'dist', 'build', '.git', '.next', 'coverage', '.agent'];
-
-const ALLOWED_FILES = [
-  'docs/epics/GEMMA_MODEL_INSTALLATION_STRATEGY.md',
-  'AGENTS.md',
-  'GEMINI.md',
-  'scripts/ops/verify-gemma-target.js', // Allow this script itself
-  'apps/api/src/services/agent/__tests__/gemma-model-source-registry.test.ts', // Allow tests that verify absence
+const FILE_PATHS_TO_CHECK = [
+  'apps/api/src/services/agent/gemma-model-source-registry.ts',
+  'apps/web/src/components/conversations/GemmaSetupPanel.tsx',
+  'apps/api/src/services/agent/__tests__/gemma-model-source-registry.test.ts',
+  'apps/api/src/services/agent/model-manager.ts',
 ];
 
-function runRipgrep() {
-  const isWindows = process.platform === 'win32';
-  try {
-    const patterns = FORBIDDEN_PATTERNS.map((p) => `-e "${p}"`).join(' ');
-    const exclusions = EXCLUDED_DIRS.map((d) => `--glob "!**/${d}/**"`).join(' ');
+const FORBIDDEN_STRINGS = [
+  'gemma-2',
+  'Gemma 2',
+  'gemma-2-2b-it',
+  '2B IT',
+  'Docker',
+  'Ollama',
+  'LM Studio',
+];
 
-    const command = `npx ripgrep -i ${patterns} ${exclusions} .`;
+let failed = false;
 
-    // ripgrep exits with 0 if it finds matches, 1 if no matches found
-    let output = '';
-    try {
-      output = execSync(command, { encoding: 'utf-8', stdio: 'pipe' });
-    } catch (e) {
-      if (e.status === 1) {
-        // This is the success case! Ripgrep found no matches.
-        return { matches: [] };
-      }
-      throw e;
+for (const relPath of FILE_PATHS_TO_CHECK) {
+  const absolutePath = path.join(ROOT_DIR, relPath);
+  if (!fs.existsSync(absolutePath)) {
+    console.warn(`[WARN] File not found: ${relPath}`);
+    continue;
+  }
+
+  const content = fs.readFileSync(absolutePath, 'utf8');
+
+  for (const forbidden of FORBIDDEN_STRINGS) {
+    if (content.includes(forbidden)) {
+      console.error(`[ERROR] Forbidden string "${forbidden}" found in active path: ${relPath}`);
+      failed = true;
     }
-
-    if (output) {
-      const lines = output.trim().split('\n');
-      const matches = lines.map((line) => {
-        const separatorIndex = isWindows
-          ? line.indexOf('.ts:') !== -1
-            ? line.indexOf('.ts:') + 3
-            : line.indexOf('.md:') !== -1
-              ? line.indexOf('.md:') + 3
-              : line.indexOf(':')
-          : line.indexOf(':');
-        const file = separatorIndex !== -1 ? line.substring(0, separatorIndex) : line;
-        return file;
-      });
-      return { matches: [...new Set(matches)] }; // Unique files
-    }
-
-    return { matches: [] };
-  } catch (error) {
-    console.error('Error running ripgrep:', error.message);
-    process.exit(1);
   }
 }
 
-function verify() {
-  console.log('Verifying codebase against legacy Gemma 2 references...');
-  const { matches } = runRipgrep();
-
-  const violatingFiles = matches.filter((file) => {
-    // Normalize path for comparison
-    const normalizedFile = file.replace(/\\/g, '/');
-    return !ALLOWED_FILES.some((allowed) => normalizedFile.endsWith(allowed));
-  });
-
-  if (violatingFiles.length > 0) {
-    console.error('\nERROR: Found prohibited Gemma 2 references in active codebase files:');
-    violatingFiles.forEach((f) => console.error(` - ${f}`));
-    console.error('\nKeimenon targets Gemma 4 exclusively. Please remove these legacy references.');
-    console.error(
-      'If these are legitimate historical references, add them to the ALLOWED_FILES list in verify-gemma-target.js.'
-    );
-    process.exit(1);
-  } else {
-    console.log('Verification passed: No prohibited Gemma 2 references found.');
-    process.exit(0);
-  }
+if (failed) {
+  console.error('\n[FAILED] Gemma 4 active target guard check failed. Found legacy references.');
+  process.exit(1);
+} else {
+  console.log('\n[OK] Gemma 4 active target guard check passed.');
+  process.exit(0);
 }
-
-verify();

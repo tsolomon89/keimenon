@@ -24,13 +24,12 @@ describe('ModelManager', () => {
     }
   });
 
-  it('should return license_required initially', async () => {
+  it('should return terms_required initially', async () => {
     const status = await manager.getModelStatus();
-    expect(status).toBe('license_required');
+    expect(status).toBe('terms_required');
   });
 
-  it('should return model_missing after accepting license but model not installed', async () => {
-    // Write a stub
+  it('should return source_pending after accepting license but no source selected', async () => {
     await manager.writeInstalledModels([
       {
         model_family: 'gemma',
@@ -41,31 +40,69 @@ describe('ModelManager', () => {
       },
     ]);
     const status = await manager.getModelStatus();
-    expect(status).toBe('model_missing');
+    expect(status).toBe('source_pending');
   });
 
-  it('should return model_missing if license is accepted but not installed', async () => {
-    await manager.acceptLicense('gemma');
-    const status = await manager.getModelStatus();
-    expect(status).toBe('model_missing');
-
-    // Read the file to verify
-    const models = await manager.getInstalledModels();
-    expect(models[0].license_accepted).toBe(true);
-    expect(models[0].installed).toBe(false);
-  });
-
-  it('should return ready if license accepted and installed', async () => {
+  it('should return ready_to_download if source is selected but not installed', async () => {
     await manager.writeInstalledModels([
       {
         model_family: 'gemma',
-        model_id: 'gemma-4-e2b-cpu',
+        model_id: null,
+        source_kind: 'official_google',
         license_required: true,
         license_accepted: true,
-        installed: true,
+        installed: false,
       },
     ]);
     const status = await manager.getModelStatus();
-    expect(status).toBe('ready');
+    expect(status).toBe('ready_to_download');
+  });
+
+  it('should throw when getting download plan for non-existent candidate', async () => {
+    await expect(manager.getModelDownloadPlan('invalid-id')).rejects.toThrow('Candidate not found');
+  });
+
+  it('should block download plan for legacy candidates', async () => {
+    // This assumes we mock getSourceCandidates or there is one. We will mock it here.
+    vi.spyOn(manager, 'getSourceCandidates').mockResolvedValueOnce([
+      {
+        id: 'legacy-generation-something',
+        model_family: 'gemma',
+        model_id: 'legacy-id',
+        display_name: 'Legacy Model',
+        source_kind: 'manual',
+        source_url: '',
+        source_verified: false,
+        artifact_verified: false,
+        runtime_compatibility_verified: false,
+        verification_notes: '',
+        local_runtime_supported: false,
+      },
+    ]);
+    await expect(manager.getModelDownloadPlan('legacy-generation-something')).rejects.toThrow(
+      'Legacy generations are no longer supported'
+    );
+  });
+
+  it('should block download plan if artifact is unverified', async () => {
+    vi.spyOn(manager, 'getSourceCandidates').mockResolvedValueOnce([
+      {
+        id: 'gemma-4-test',
+        model_family: 'gemma',
+        model_generation: 'gemma-4',
+        model_id: 'gemma-4-test',
+        display_name: 'Gemma 4 Test',
+        source_kind: 'manual',
+        source_url: 'test.url',
+        source_verified: true,
+        artifact_verified: false,
+        runtime_compatibility_verified: false,
+        verification_notes: '',
+        local_runtime_supported: false,
+      },
+    ]);
+    const plan = await manager.getModelDownloadPlan('gemma-4-test');
+    expect(plan.can_download).toBe(false);
+    expect(plan.blocked_reason).toContain('pending verification');
   });
 });
