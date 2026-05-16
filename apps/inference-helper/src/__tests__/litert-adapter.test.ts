@@ -30,7 +30,7 @@ describe('LiteRTGemmaRuntimeAdapter', () => {
   it('validateModelFile reports dependency missing when valid file but no bindings', async () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
     const result = await adapter.validateModelFile('fake/path.litertlm');
-    expect(result.valid).toBe(true);
+    expect(result.valid).toBe(false);
     expect(result.state).toBe('runtime_dependency_missing');
   });
 

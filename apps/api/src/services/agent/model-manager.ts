@@ -2,6 +2,7 @@ import { LocalModelManifest, LocalModelAcquisitionState, ModelDownloadPlan } fro
 import path from 'path';
 import fs from 'fs';
 import { gemmaModelSourceRegistry, GemmaModelSourceCandidate } from './gemma-model-source-registry';
+import { CandidateNotFoundError } from './errors';
 
 export class ModelManager {
   public getModelDirectory(): string {
@@ -317,7 +318,7 @@ export class ModelManager {
     const candidate = candidates.find((c) => c.id === candidateId);
 
     if (!candidate) {
-      throw new Error('Candidate not found');
+      throw new CandidateNotFoundError(candidateId);
     }
 
     if (candidate.model_family !== 'gemma') {
@@ -388,7 +389,7 @@ export class ModelManager {
     const candidate = candidates.find((c) => c.id === candidateId);
 
     if (!candidate) {
-      throw new Error('Candidate not found');
+      throw new CandidateNotFoundError(candidateId);
     }
 
     return this.createPendingModelManifest(candidate);

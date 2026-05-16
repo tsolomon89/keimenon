@@ -7,33 +7,29 @@ import {
   ModelValidationResult,
   NativeGemmaRuntimeAdapter,
 } from './adapter';
+import { tryLoadBindings } from './binding-loader';
 
 export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
   private bindings: any = null;
-  private loadAttempted: boolean = false;
+  private loadState: string = 'ready';
   private isLoaded: boolean = false;
 
-  private tryLoadBindings() {
-    if (this.loadAttempted) return;
-    this.loadAttempted = true;
-    try {
-      // Hypothetical future node binding package
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      this.bindings = require('@keimenon/litert-node-bindings');
-    } catch (e: any) {
-      this.bindings = null;
-    }
+  private ensureBindingsLoaded() {
+    if (this.bindings) return;
+    const result = tryLoadBindings('@keimenon/litert-node-bindings');
+    this.bindings = result.bindings;
+    this.loadState = result.state;
   }
 
   async status(): Promise<HelperStatusResult> {
-    this.tryLoadBindings();
+    this.ensureBindingsLoaded();
 
     if (!this.bindings) {
       return {
         ok: true,
         runtime: 'native-gemma',
-        state: 'runtime_dependency_missing',
-        message: 'The LiteRT-LM node binding (@keimenon/litert-node-bindings) is not installed.',
+        state: this.loadState as any,
+        message: 'The LiteRT-LM node binding is not installed or incomplete.',
       };
     }
 
@@ -48,7 +44,7 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
   }
 
   async validateModelFile(modelPath: string): Promise<ModelValidationResult> {
-    this.tryLoadBindings();
+    this.ensureBindingsLoaded();
 
     if (!modelPath) {
       return { valid: false, state: 'model_invalid', message: 'No model path provided' };
@@ -68,10 +64,9 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
 
     if (!this.bindings) {
       return {
-        valid: true, // The file itself looks valid, but runtime is missing
-        state: 'runtime_dependency_missing',
-        message:
-          'The LiteRT-LM node binding is missing, so we cannot verify the model contents deeply.',
+        valid: false,
+        state: this.loadState as any,
+        message: 'The LiteRT-LM node binding is not installed or incomplete.',
       };
     }
 
@@ -83,13 +78,13 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
   }
 
   async loadModel(modelPath: string): Promise<LoadModelResult> {
-    this.tryLoadBindings();
+    this.ensureBindingsLoaded();
 
     if (!this.bindings) {
       return {
         success: false,
-        state: 'runtime_dependency_missing',
-        message: 'Cannot load model: The LiteRT-LM node binding is not installed.',
+        state: this.loadState as any,
+        message: 'Cannot load model: The LiteRT-LM node binding is not installed or incomplete.',
       };
     }
 
@@ -128,12 +123,12 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
   }
 
   async generate(input: GenerateInput): Promise<GenerateResult> {
-    this.tryLoadBindings();
+    this.ensureBindingsLoaded();
 
     if (!this.bindings) {
       return {
         success: false,
-        error: 'Cannot generate: The LiteRT-LM node binding is not installed.',
+        error: 'Cannot generate: The LiteRT-LM node binding is not installed or incomplete.',
       };
     }
 
@@ -166,9 +161,11 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
   }
 
   async unloadModel(): Promise<void> {
-    this.tryLoadBindings();
+    this.ensureBindingsLoaded();
     if (this.bindings && this.isLoaded) {
-      // await this.bindings.unloadModel();
+      if (typeof this.bindings.unloadModel === 'function') {
+        await this.bindings.unloadModel();
+      }
       this.isLoaded = false;
     }
   }

@@ -2,7 +2,9 @@ import { LocalInferenceStatus } from '@keimenon/types';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 import { modelManager } from './model-manager';
+import { CandidateNotFoundError } from './errors';
 
 export class NativeGemmaRuntimeBackend {
   private helper: ChildProcess | null = null;
@@ -118,7 +120,7 @@ export class NativeGemmaRuntimeBackend {
 
   private async getAbsolutePathForCandidate(candidateId: string): Promise<string> {
     const manifest = await modelManager.getManifestByCandidateId(candidateId);
-    if (!manifest) throw new Error('Candidate not found');
+    if (!manifest) throw new CandidateNotFoundError(candidateId);
     if (!manifest.local_path) throw new Error('Candidate has no local path');
 
     // Safety check reusing verifyModelFile logic
@@ -142,7 +144,13 @@ export class NativeGemmaRuntimeBackend {
   }
 
   public async getHelperStatus(): Promise<any> {
-    return this.sendRequest('status');
+    const res = await this.sendRequest('status');
+    return {
+      ...res,
+      platform: os.platform(),
+      arch: os.arch(),
+      helper_path: this.resolveHelperPath(),
+    };
   }
 
   public async checkStatus(): Promise<LocalInferenceStatus> {

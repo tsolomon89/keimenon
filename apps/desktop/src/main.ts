@@ -490,6 +490,11 @@ async function runApiServer(startPort: number) {
       webDistPath = path.join(__dirname, '../resources/web-dist');
     }
 
+    let nativeDistPath = path.join(process.resourcesPath, 'native');
+    if (!fs.existsSync(nativeDistPath)) {
+      nativeDistPath = path.join(__dirname, '../resources/native');
+    }
+
     console.log(`
 [Desktop Runtime]
 process.resourcesPath: ${process.resourcesPath}
@@ -506,6 +511,10 @@ runtime skill IDs: ${runtimeSkillsList.join(', ')}
 helper path: ${process.env.KEIMENON_INFERENCE_HELPER_PATH}
 helper path exists: ${fs.existsSync(process.env.KEIMENON_INFERENCE_HELPER_PATH!)}
 web-dist path: ${webDistPath}
+native dist path: ${nativeDistPath}
+native dist exists: ${fs.existsSync(nativeDistPath)}
+platform: ${process.platform}
+arch: ${process.arch}
 `);
 
     return apiPort;

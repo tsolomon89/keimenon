@@ -5,6 +5,7 @@ import { createRuntimeRoutes } from '../runtime.routes';
 import { gemmaProvider } from '../../services/agent/gemma-local-provider';
 import { localInferenceManager } from '../../services/agent/local-inference-manager';
 import { modelManager } from '../../services/agent/model-manager';
+import { CandidateNotFoundError } from '../../services/agent/errors';
 
 vi.mock('../../services/agent/local-inference-manager', () => ({
   localInferenceManager: {
@@ -150,7 +151,7 @@ describe('Runtime Routes', () => {
   it('GET /api/v1/runtime/local-inference/models/download-plan/:id returns 404 for unknown candidate', async () => {
     setupApp('professional');
     vi.mocked(modelManager.getModelDownloadPlan).mockRejectedValueOnce(
-      new Error('Candidate not found')
+      new CandidateNotFoundError('unknown-id')
     );
     const res = await request(app).get(
       '/api/v1/runtime/local-inference/models/download-plan/unknown-id'
@@ -162,7 +163,7 @@ describe('Runtime Routes', () => {
   it('POST /api/v1/runtime/local-inference/models/pending returns 404 for unknown candidate', async () => {
     setupApp('professional');
     vi.mocked(modelManager.prepareModelDownload).mockRejectedValueOnce(
-      new Error('Candidate not found')
+      new CandidateNotFoundError('unknown-id')
     );
     const res = await request(app)
       .post('/api/v1/runtime/local-inference/models/pending')

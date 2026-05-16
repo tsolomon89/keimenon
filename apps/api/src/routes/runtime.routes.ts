@@ -3,6 +3,7 @@ import type { AuthServiceV2 } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { gemmaProvider } from '../services/agent/gemma-local-provider';
 import { localInferenceManager } from '../services/agent/local-inference-manager';
+import { CandidateNotFoundError } from '../services/agent/errors';
 import { featureManifestForAccountClass, type AccountClass } from '@keimenon/types';
 
 export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
@@ -119,7 +120,7 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
         const plan = await modelManager.getModelDownloadPlan(req.params.candidateId);
         res.json({ plan });
       } catch (error: any) {
-        if (error.message === 'Candidate not found') {
+        if (error instanceof CandidateNotFoundError) {
           res.status(404).json({ error: 'Candidate not found' });
           return;
         }
@@ -144,7 +145,7 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
         const manifest = await modelManager.prepareModelDownload(candidateId);
         res.json({ manifest });
       } catch (error: any) {
-        if (error.message === 'Candidate not found') {
+        if (error instanceof CandidateNotFoundError) {
           res.status(404).json({ error: 'Candidate not found' });
           return;
         }
@@ -281,7 +282,7 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
         const result = await nativeGemmaBackend.validateModel(candidateId);
         res.json(result);
       } catch (error: any) {
-        if (error.message === 'Candidate not found') {
+        if (error instanceof CandidateNotFoundError) {
           res.status(404).json({ error: 'Candidate not found' });
           return;
         }
@@ -307,7 +308,7 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
         const result = await nativeGemmaBackend.loadModel(candidateId);
         res.json(result);
       } catch (error: any) {
-        if (error.message === 'Candidate not found') {
+        if (error instanceof CandidateNotFoundError) {
           res.status(404).json({ error: 'Candidate not found' });
           return;
         }

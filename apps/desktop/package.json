@@ -83,6 +83,13 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "resources/native",
+        "to": "native",
+        "filter": [
+          "**/*"
+        ]
       }
     ]
   }
