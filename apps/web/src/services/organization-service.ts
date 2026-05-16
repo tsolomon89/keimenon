@@ -460,4 +460,69 @@ export const organizationService = {
       };
     }
   },
+
+  getLocalInferenceSources: async () => {
+    const response = await api.get<{ sources: any[] }>('/runtime/local-inference/models/sources');
+    return response.data.sources;
+  },
+
+  getLocalInferenceDirectory: async () => {
+    const response = await api.get<any>('/runtime/local-inference/models/directory');
+    return response.data;
+  },
+
+  getActiveLocalInferenceModel: async () => {
+    try {
+      const response = await api.get<{ active_model: any }>(
+        '/runtime/local-inference/models/active'
+      );
+      return response.data.active_model;
+    } catch (err) {
+      return null;
+    }
+  },
+
+  getModelDownloadPlan: async (candidateId: string) => {
+    const response = await api.get<{ plan: any }>(
+      `/runtime/local-inference/models/download-plan/${candidateId}`
+    );
+    return response.data.plan;
+  },
+
+  createPendingLocalInferenceModel: async (candidateId: string) => {
+    const response = await api.post<{ manifest: any }>('/runtime/local-inference/models/pending', {
+      candidateId,
+    });
+    return response.data.manifest;
+  },
+
+  acceptGemmaTerms: async (input: {
+    model_family?: string;
+    candidate_id?: string;
+    accepted: boolean;
+    terms_source?: string;
+  }) => {
+    const response = await api.post<any>(
+      '/runtime/local-inference/models/license-acceptance',
+      input
+    );
+    return response.data;
+  },
+
+  recordModelDownloadComplete: async (input: {
+    candidateId: string;
+    local_path: string;
+    size_bytes?: number;
+  }) => {
+    const response = await api.post<{ success: boolean }>(
+      '/runtime/local-inference/models/download-complete',
+      input
+    );
+    return response.data.success;
+  },
+
+  verifyLocalModel: async (candidateId: string) => {
+    const response = await api.post<any>('/runtime/local-inference/models/verify', { candidateId });
+    return response.data;
+  },
 };

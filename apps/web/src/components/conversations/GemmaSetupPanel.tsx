@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   ShieldAlert,
   CheckCircle2,
   RefreshCw,
-  Cpu,
   Download,
-  TerminalSquare,
+  ExternalLink,
+  FolderOpen,
+  Check,
+  AlertCircle,
 } from 'lucide-react';
-import type { LocalInferenceStatus } from '@keimenon/types';
+import type { LocalInferenceStatus, LocalModelManifest } from '@keimenon/types';
+import { organizationService } from '../../services/organization-service';
 
 interface GemmaSetupPanelProps {
   status: LocalInferenceStatus | null;
@@ -18,12 +21,85 @@ interface GemmaSetupPanelProps {
 }
 
 export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: GemmaSetupPanelProps) {
+  const [sources, setSources] = useState<any[]>([]);
+  const [activeModel, setActiveModel] = useState<LocalModelManifest | null>(null);
+  const [directoryInfo, setDirectoryInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [fetchedSources, fetchedActiveModel, fetchedDirInfo] = await Promise.all([
+        organizationService.getLocalInferenceSources(),
+        organizationService.getActiveLocalInferenceModel(),
+        organizationService.getLocalInferenceDirectory(),
+      ]);
+      setSources(fetchedSources);
+      setActiveModel(fetchedActiveModel);
+      setDirectoryInfo(fetchedDirInfo);
+      setError(null);
+    } catch (err: any) {
+      console.error(err);
+      setError('Failed to load Gemma 4 candidates.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   if (!status) return null;
+
+  const handleSelectCandidate = async (candidateId: string) => {
+    try {
+      await organizationService.createPendingLocalInferenceModel(candidateId);
+      await fetchData();
+      onRefresh();
+    } catch (err: any) {
+      setError(err.message || 'Failed to select candidate');
+    }
+  };
+
+  const handleAcceptTerms = async (candidateId: string) => {
+    try {
+      await organizationService.acceptGemmaTerms({
+        model_family: 'gemma',
+        candidate_id: candidateId,
+        accepted: true,
+        terms_source: 'ui_panel',
+      });
+      await fetchData();
+      onRefresh();
+    } catch (err: any) {
+      setError(err.message || 'Failed to accept terms');
+    }
+  };
+
+  const handleVerifyFile = async (candidateId: string) => {
+    try {
+      await organizationService.verifyLocalModel(candidateId);
+      await fetchData();
+      onRefresh();
+    } catch (err: any) {
+      setError(err.message || 'Failed to verify file');
+    }
+  };
+
+  const openModelFolder = async () => {
+    if ((window as any).electronAPI?.openModelFolder) {
+      await (window as any).electronAPI.openModelFolder();
+    } else {
+      alert('Folder opens are only supported in the desktop app.');
+    }
+  };
 
   const isReady = status.state === 'ready';
 
   return (
-    <div className="absolute top-12 right-0 w-96 bg-slate-900 border border-slate-800 rounded-lg shadow-xl overflow-hidden z-50 flex flex-col">
+    <div className="absolute top-12 right-0 w-[500px] bg-slate-900 border border-slate-800 rounded-lg shadow-xl overflow-hidden z-50 flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-900/50">
         <div className="flex items-center gap-2">
           {isReady ? (
@@ -31,7 +107,7 @@ export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: Gemm
           ) : (
             <ShieldAlert className="w-5 h-5 text-amber-500" />
           )}
-          <h3 className="text-sm font-medium text-slate-100">Local Inference Status</h3>
+          <h3 className="text-sm font-medium text-slate-100">Local Inference Setup</h3>
         </div>
         <button
           onClick={onClose}
@@ -42,107 +118,186 @@ export function GemmaSetupPanel({ status, onClose, onRefresh, isChecking }: Gemm
         </button>
       </div>
 
-      <div className="p-4 flex-1 overflow-y-auto max-h-[70vh]">
-        <div className="mb-6">
-          <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700/50 mb-4">
-            <h4 className="text-sm font-semibold text-slate-200 mb-1">Gemma 4 Acquisition Flow</h4>
-            <p className="text-xs text-slate-400">
-              Keimenon exclusively targets the <strong>Gemma 4</strong> generation for local
-              inference.
-            </p>
-          </div>
-          <p className="text-sm text-slate-300 leading-relaxed mb-4">{status.message}</p>
-
-          {status.next_actions && status.next_actions.length > 0 && (
-            <div className="space-y-2 mt-4">
-              {status.next_actions.map((action) => (
-                <div
-                  key={action.id}
-                  className="bg-slate-800/50 p-3 rounded border border-slate-700/50"
-                >
-                  <div className="text-sm font-medium text-slate-200">{action.label}</div>
-                  <div className="text-xs text-slate-400 mt-1">{action.description}</div>
-                  <button
-                    onClick={async () => {
-                      if (action.action_type === 'accept_terms') {
-                        await fetch('/api/v1/runtime/local-inference/models/license-acceptance', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            model_family: 'gemma',
-                            accepted: true,
-                            terms_source: 'ui_panel',
-                          }),
-                        });
-                        onRefresh();
-                      } else if (action.action_type === 'open_external') {
-                        if (action.id === 'open-model-folder') {
-                          if ((window as any).electronAPI?.openModelFolder) {
-                            await (window as any).electronAPI.openModelFolder();
-                          } else {
-                            alert('Folder opens are only supported in the desktop app.');
-                          }
-                        } else {
-                          if ((window as any).electronAPI?.openDataFolder) {
-                            await (window as any).electronAPI.openDataFolder();
-                          } else {
-                            alert('Folder opens are only supported in the desktop app.');
-                          }
-                        }
-                      } else if (action.action_type === 'run_check') {
-                        onRefresh();
-                      }
-                    }}
-                    disabled={action.action_type === 'download' || action.disabled}
-                    className={`mt-2 px-3 py-1.5 text-white text-xs rounded transition-colors w-full flex items-center justify-center gap-2 ${action.action_type === 'download' || action.disabled ? 'bg-slate-700 cursor-not-allowed opacity-50' : 'bg-blue-600 hover:bg-blue-500'}`}
-                  >
-                    {action.action_type === 'download' ? (
-                      <Download className="w-3 h-3" />
-                    ) : (
-                      <TerminalSquare className="w-3 h-3" />
-                    )}
-                    {action.label}
-                  </button>
-                  {action.disabled_reason && (
-                    <div className="text-xs text-amber-500 mt-2 text-center">
-                      {action.disabled_reason}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+      <div className="p-4 flex-1 overflow-y-auto max-h-[75vh]">
+        <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700/50 mb-4">
+          <h4 className="text-sm font-semibold text-slate-200 mb-1">Gemma 4 Acquisition Flow</h4>
+          <p className="text-xs text-slate-400">
+            Keimenon targets <strong>Gemma 4</strong> for local inference.
+          </p>
         </div>
 
-        <div className="space-y-4 mb-6">
-          <div>
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-              Active Backend
-            </div>
-            <div className="font-mono text-xs bg-slate-950 p-2 rounded text-emerald-400 border border-slate-800 flex items-center gap-2">
-              <Cpu className="w-4 h-4" />
-              {status.active_backend || status.preferred_backend}
-            </div>
+        {error && (
+          <div className="bg-red-900/20 text-red-400 p-3 rounded border border-red-900/50 text-xs mb-4">
+            {error}
           </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-              Gemma 4 Candidate Status
-            </div>
-            <div className="font-mono text-xs bg-slate-950 p-2 rounded text-blue-400 border border-slate-800">
-              {status.model_id || '<Pending Exact LiteRT Artifact Verification>'}
-            </div>
-          </div>
+        )}
+
+        <div className="space-y-4">
+          {loading ? (
+            <div className="text-center py-4 text-xs text-slate-500">Loading candidates...</div>
+          ) : sources.length === 0 ? (
+            <div className="text-center py-4 text-xs text-slate-500">No candidates available</div>
+          ) : (
+            sources.map((candidate) => {
+              const isActive = activeModel?.candidate_id === candidate.id;
+
+              return (
+                <div
+                  key={candidate.id}
+                  className={`p-4 rounded-lg border ${isActive ? 'bg-slate-800/80 border-blue-500/50' : 'bg-slate-800/40 border-slate-700/50'}`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-200">
+                        {candidate.display_name}
+                      </h4>
+                      <div className="text-xs text-slate-500 mt-0.5">ID: {candidate.id}</div>
+                    </div>
+                    {isActive && (
+                      <span className="bg-blue-500/20 text-blue-400 text-[10px] uppercase px-2 py-0.5 rounded font-semibold tracking-wider">
+                        Active Selection
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 mt-3 mb-4">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-400">Source:</span>
+                      {candidate.source_verified ? (
+                        <span className="text-emerald-400 flex items-center gap-1">
+                          <Check className="w-3 h-3" /> verified
+                        </span>
+                      ) : (
+                        <span className="text-slate-500">unverified</span>
+                      )}
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-400">Artifact:</span>
+                      {candidate.artifact_verified ? (
+                        <span className="text-emerald-400 flex items-center gap-1">
+                          <Check className="w-3 h-3" /> verified
+                        </span>
+                      ) : (
+                        <span className="text-amber-500 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" /> pending exact native/LiteRT
+                          verification
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-400">Runtime compatibility:</span>
+                      {candidate.runtime_compatibility_verified ? (
+                        <span className="text-emerald-400 flex items-center gap-1">
+                          <Check className="w-3 h-3" /> verified
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 flex items-center gap-1">pending</span>
+                      )}
+                    </div>
+
+                    {isActive && activeModel?.verification_status && (
+                      <div className="flex justify-between items-center text-xs mt-2 pt-2 border-t border-slate-700/50">
+                        <span className="text-slate-400">Local Status:</span>
+                        <span
+                          className={
+                            activeModel.verification_status === 'presence_verified'
+                              ? 'text-blue-400'
+                              : activeModel.verification_status === 'verified'
+                                ? 'text-emerald-400'
+                                : 'text-slate-500'
+                          }
+                        >
+                          {activeModel.verification_status}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {!isActive && (
+                      <button
+                        onClick={() => handleSelectCandidate(candidate.id)}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded transition-colors"
+                      >
+                        Select Candidate
+                      </button>
+                    )}
+
+                    {isActive && activeModel?.license_required && !activeModel.license_accepted && (
+                      <button
+                        onClick={() => handleAcceptTerms(candidate.id)}
+                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs rounded transition-colors"
+                      >
+                        Accept Terms
+                      </button>
+                    )}
+
+                    <a
+                      href={candidate.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded transition-colors flex items-center gap-1.5"
+                    >
+                      <ExternalLink className="w-3 h-3" /> View Official Source
+                    </a>
+
+                    {isActive && (
+                      <button
+                        onClick={openModelFolder}
+                        className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded transition-colors flex items-center gap-1.5"
+                      >
+                        <FolderOpen className="w-3 h-3" /> Open Model Folder
+                      </button>
+                    )}
+
+                    {isActive && (
+                      <button
+                        onClick={() => handleVerifyFile(candidate.id)}
+                        className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded transition-colors"
+                      >
+                        Verify Local File
+                      </button>
+                    )}
+
+                    <button
+                      disabled={!candidate.artifact_verified}
+                      className={`px-3 py-1.5 text-xs rounded transition-colors flex items-center gap-1.5 w-full justify-center mt-2 ${
+                        candidate.artifact_verified
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                          : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                      }`}
+                      title={
+                        !candidate.artifact_verified
+                          ? 'Download blocked pending artifact verification'
+                          : ''
+                      }
+                    >
+                      <Download className="w-3 h-3" /> Download Model
+                    </button>
+                    {!candidate.artifact_verified && (
+                      <div className="w-full text-center text-[10px] text-amber-500/70 mt-1">
+                        disabled_reason: exact LiteRT artifact verification pending
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
       <div className="p-4 border-t border-slate-800 bg-slate-900/80">
         <button
-          onClick={onRefresh}
-          disabled={isChecking}
+          onClick={() => {
+            fetchData();
+            onRefresh();
+          }}
+          disabled={isChecking || loading}
           className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium text-slate-200 rounded transition-colors"
         >
-          <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
-          {isChecking ? 'Checking...' : 'Re-check Status'}
+          <RefreshCw className={`w-4 h-4 ${isChecking || loading ? 'animate-spin' : ''}`} />
+          {isChecking || loading ? 'Checking...' : 'Re-check Status'}
         </button>
       </div>
     </div>

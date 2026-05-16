@@ -105,4 +105,68 @@ describe('ModelManager', () => {
     expect(plan.can_download).toBe(false);
     expect(plan.blocked_reason).toContain('pending verification');
   });
+
+  it('should prevent path traversal in verifyModelFile', async () => {
+    await manager.writeInstalledModels([
+      {
+        candidate_id: 'gemma-4-e2b',
+        model_family: 'gemma',
+        model_id: null,
+        local_path: '../../../../etc/passwd',
+        license_required: true,
+        license_accepted: true,
+        installed: true,
+      },
+    ]);
+    const result = await manager.verifyModelFile({ candidate_id: 'gemma-4-e2b' });
+    expect(result.verified).toBe(false);
+    expect(result.message).toContain('Path traversal detected');
+  });
+
+  it('should return presence_verified for verifyModelFile without expected size', async () => {
+    await manager.ensureModelDirectory();
+    fs.writeFileSync(path.join(testDir, 'dummy.bin'), 'dummy data');
+
+    await manager.writeInstalledModels([
+      {
+        candidate_id: 'gemma-4-e2b',
+        model_family: 'gemma',
+        model_id: null,
+        local_path: 'dummy.bin',
+        license_required: true,
+        license_accepted: true,
+        installed: true,
+      },
+    ]);
+    const result = await manager.verifyModelFile({ candidate_id: 'gemma-4-e2b' });
+    expect(result.verified).toBe(true);
+    expect(result.verification_status).toBe('presence_verified');
+  });
+
+  it('should update state properly in candidate-first recordDownloadComplete', async () => {
+    await manager.writeInstalledModels([
+      {
+        candidate_id: 'gemma-4-e2b',
+        model_family: 'gemma',
+        model_id: null,
+        license_required: true,
+        license_accepted: true,
+        installed: false,
+        verification_status: 'unchecked',
+      },
+    ]);
+
+    await manager.recordDownloadComplete({
+      candidate_id: 'gemma-4-e2b',
+      local_path: 'my-model.bin',
+      size_bytes: 1234,
+    });
+
+    const manifest = await manager.getManifestByCandidateId('gemma-4-e2b');
+    expect(manifest?.installed).toBe(true);
+    expect(manifest?.local_path).toBe('my-model.bin');
+    expect(manifest?.size_bytes).toBe(1234);
+    // Should NOT be verified yet
+    expect(manifest?.verification_status).toBe('unchecked');
+  });
 });

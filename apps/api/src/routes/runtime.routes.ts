@@ -12,19 +12,21 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     router.use(requireAuth(authService));
   }
 
+  const requireAgentRuntime = (req: Request, res: Response): boolean => {
+    const accountClass = getAccountClass(req);
+    const features = featureManifestForAccountClass(accountClass);
+    if (!features.agent_runtime) {
+      res
+        .status(403)
+        .json({ error: 'Agent runtime is not enabled for this account tier', state: 'error' });
+      return false;
+    }
+    return true;
+  };
+
   router.get('/local-inference/status', async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const accountClass = getAccountClass(req);
-      const features = featureManifestForAccountClass(accountClass);
-
-      if (!features.agent_runtime) {
-        res.status(403).json({
-          error: 'Agent runtime is not enabled for this account tier',
-          state: 'error',
-        });
-        return;
-      }
-
+      if (!requireAgentRuntime(req, res)) return;
       const status = await localInferenceManager.getCombinedStatus();
       res.json(status);
     } catch (error) {
@@ -34,12 +36,7 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
 
   router.get('/local-inference/models', async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const accountClass = getAccountClass(req);
-      const features = featureManifestForAccountClass(accountClass);
-      if (!features.agent_runtime) {
-        res.status(403).json({ error: 'Agent runtime is not enabled for this account tier' });
-        return;
-      }
+      if (!requireAgentRuntime(req, res)) return;
       const { modelManager } = await import('../services/agent/model-manager');
       const models = await modelManager.getInstalledModels();
       res.json({ models });
@@ -52,12 +49,7 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     '/local-inference/models/directory',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const accountClass = getAccountClass(req);
-        const features = featureManifestForAccountClass(accountClass);
-        if (!features.agent_runtime) {
-          res.status(403).json({ error: 'Agent runtime is not enabled for this account tier' });
-          return;
-        }
+        if (!requireAgentRuntime(req, res)) return;
         const { modelManager } = await import('../services/agent/model-manager');
         const info = await modelManager.getModelDirectoryInfo();
         res.json(info);
@@ -71,12 +63,7 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     '/local-inference/models/sources',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const accountClass = getAccountClass(req);
-        const features = featureManifestForAccountClass(accountClass);
-        if (!features.agent_runtime) {
-          res.status(403).json({ error: 'Agent runtime is not enabled for this account tier' });
-          return;
-        }
+        if (!requireAgentRuntime(req, res)) return;
         const { modelManager } = await import('../services/agent/model-manager');
         const sources = await modelManager.getSourceCandidates();
         res.json({ sources });
@@ -90,17 +77,24 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     '/local-inference/models/license-acceptance',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
+        if (!requireAgentRuntime(req, res)) return;
         const { modelManager } = await import('../services/agent/model-manager');
-        const { model_family, model_id, accepted, terms_source } = req.body;
+        const { model_family, model_id, candidate_id, accepted, terms_source } = req.body;
 
         if (!accepted) {
           res.status(400).json({ error: 'License must be accepted' });
           return;
         }
 
+        if (model_family !== 'gemma') {
+          res.status(400).json({ error: 'Only Gemma models are supported' });
+          return;
+        }
+
         await modelManager.recordLicenseAcceptance({
-          model_family: model_family || 'gemma',
+          model_family: 'gemma',
           model_id,
+          candidate_id,
           terms_source,
         });
 
@@ -120,12 +114,7 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     '/local-inference/models/download-plan/:candidateId',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const accountClass = getAccountClass(req);
-        const features = featureManifestForAccountClass(accountClass);
-        if (!features.agent_runtime) {
-          res.status(403).json({ error: 'Agent runtime is not enabled for this account tier' });
-          return;
-        }
+        if (!requireAgentRuntime(req, res)) return;
         const { modelManager } = await import('../services/agent/model-manager');
         const plan = await modelManager.getModelDownloadPlan(req.params.candidateId);
         res.json({ plan });
@@ -139,12 +128,7 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     '/local-inference/models/pending',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const accountClass = getAccountClass(req);
-        const features = featureManifestForAccountClass(accountClass);
-        if (!features.agent_runtime) {
-          res.status(403).json({ error: 'Agent runtime is not enabled for this account tier' });
-          return;
-        }
+        if (!requireAgentRuntime(req, res)) return;
         const { modelManager } = await import('../services/agent/model-manager');
         const { candidateId } = req.body;
 
@@ -165,16 +149,16 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     '/local-inference/models/download-started',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const accountClass = getAccountClass(req);
-        const features = featureManifestForAccountClass(accountClass);
-        if (!features.agent_runtime) {
-          res.status(403).json({ error: 'Agent runtime is not enabled for this account tier' });
-          return;
-        }
+        if (!requireAgentRuntime(req, res)) return;
         const { modelManager } = await import('../services/agent/model-manager');
         const { candidateId } = req.body;
 
-        await modelManager.recordDownloadStarted(candidateId || null);
+        if (!candidateId) {
+          res.status(400).json({ error: 'candidateId is required' });
+          return;
+        }
+
+        await modelManager.recordDownloadStarted(candidateId);
         res.json({ success: true });
       } catch (error) {
         next(error);
@@ -186,16 +170,16 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     '/local-inference/models/download-failed',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const accountClass = getAccountClass(req);
-        const features = featureManifestForAccountClass(accountClass);
-        if (!features.agent_runtime) {
-          res.status(403).json({ error: 'Agent runtime is not enabled for this account tier' });
-          return;
-        }
+        if (!requireAgentRuntime(req, res)) return;
         const { modelManager } = await import('../services/agent/model-manager');
         const { candidateId, reason } = req.body;
 
-        await modelManager.recordDownloadFailed(candidateId || null, reason || 'Unknown error');
+        if (!candidateId) {
+          res.status(400).json({ error: 'candidateId is required' });
+          return;
+        }
+
+        await modelManager.recordDownloadFailed(candidateId, reason || 'Unknown error');
         res.json({ success: true });
       } catch (error) {
         next(error);
@@ -207,14 +191,14 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     '/local-inference/models/download-complete',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const accountClass = getAccountClass(req);
-        const features = featureManifestForAccountClass(accountClass);
-        if (!features.agent_runtime) {
-          res.status(403).json({ error: 'Agent runtime is not enabled for this account tier' });
-          return;
-        }
+        if (!requireAgentRuntime(req, res)) return;
         const { modelManager } = await import('../services/agent/model-manager');
         const { candidateId, local_path, size_bytes } = req.body;
+
+        if (!candidateId) {
+          res.status(400).json({ error: 'candidateId is required' });
+          return;
+        }
 
         if (!local_path) {
           res.status(400).json({ error: 'local_path is required' });
@@ -222,7 +206,7 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
         }
 
         await modelManager.recordDownloadComplete({
-          model_id: candidateId || null,
+          candidate_id: candidateId,
           local_path,
           size_bytes,
         });
@@ -237,14 +221,13 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     '/local-inference/models/active',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const accountClass = getAccountClass(req);
-        const features = featureManifestForAccountClass(accountClass);
-        if (!features.agent_runtime) {
-          res.status(403).json({ error: 'Agent runtime is not enabled for this account tier' });
+        if (!requireAgentRuntime(req, res)) return;
+        const { modelManager } = await import('../services/agent/model-manager');
+        const model = await modelManager.getActiveGemmaManifest();
+        if (!model) {
+          res.status(404).json({ error: 'No active Gemma model manifest found' });
           return;
         }
-        const { modelManager } = await import('../services/agent/model-manager');
-        const model = await modelManager.getRequiredGemmaModel();
         res.json({ active_model: model });
       } catch (error) {
         next(error);
@@ -256,15 +239,16 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     '/local-inference/models/verify',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const accountClass = getAccountClass(req);
-        const features = featureManifestForAccountClass(accountClass);
-        if (!features.agent_runtime) {
-          res.status(403).json({ error: 'Agent runtime is not enabled for this account tier' });
-          return;
-        }
+        if (!requireAgentRuntime(req, res)) return;
         const { modelManager } = await import('../services/agent/model-manager');
         const { candidateId } = req.body;
-        const verification = await modelManager.verifyModelFile({ model_id: candidateId });
+
+        if (!candidateId) {
+          res.status(400).json({ error: 'candidateId is required' });
+          return;
+        }
+
+        const verification = await modelManager.verifyModelFile({ candidate_id: candidateId });
         res.json(verification);
       } catch (error) {
         next(error);

@@ -68,6 +68,18 @@ export class ModelManager {
     await fs.promises.writeFile(manifestPath, JSON.stringify(models, null, 2), 'utf-8');
   }
 
+  public async getActiveGemmaManifest(): Promise<LocalModelManifest | null> {
+    const models = await this.getInstalledModels();
+    const active = models.find((m) => m.model_family === 'gemma' && m.candidate_id);
+    return active || null;
+  }
+
+  public async getManifestByCandidateId(candidateId: string): Promise<LocalModelManifest | null> {
+    const models = await this.getInstalledModels();
+    const manifest = models.find((m) => m.candidate_id === candidateId);
+    return manifest || null;
+  }
+
   public async getRequiredGemmaModel(): Promise<LocalModelManifest> {
     const models = await this.getInstalledModels();
     const existing = models.find((m) => m.model_family === 'gemma');
@@ -89,13 +101,20 @@ export class ModelManager {
   public async recordLicenseAcceptance(input: {
     model_family: 'gemma';
     model_id?: string | null;
+    candidate_id?: string;
     terms_source?: string;
   }): Promise<LocalModelManifest> {
     let models = await this.getInstalledModels();
-    let model = models.find((m) => m.model_family === input.model_family);
+    let model = models.find((m) => {
+      if (input.candidate_id) {
+        return m.model_family === input.model_family && m.candidate_id === input.candidate_id;
+      }
+      return m.model_family === input.model_family;
+    });
 
     if (!model) {
       model = {
+        candidate_id: input.candidate_id,
         model_family: 'gemma',
         model_id: input.model_id || null,
         license_required: true,
@@ -110,6 +129,9 @@ export class ModelManager {
       model.license_accepted_at = Date.now();
       if (input.terms_source) {
         model.terms_source = input.terms_source;
+      }
+      if (input.candidate_id) {
+        model.candidate_id = input.candidate_id;
       }
     }
 
@@ -162,9 +184,9 @@ export class ModelManager {
     return model;
   }
 
-  public async markModelDownloadPending(model_id: string | null): Promise<void> {
+  public async markModelDownloadPending(candidate_id: string): Promise<void> {
     let models = await this.getInstalledModels();
-    let model = models.find((m) => m.model_family === 'gemma' && m.model_id === model_id);
+    let model = models.find((m) => m.candidate_id === candidate_id);
     if (model) {
       model.download_status = 'pending';
       await this.writeInstalledModels(models);
@@ -172,12 +194,12 @@ export class ModelManager {
   }
 
   public async markModelInstalled(input: {
-    model_id: string | null;
+    candidate_id: string;
     local_path: string;
     size_bytes?: number;
   }): Promise<void> {
     let models = await this.getInstalledModels();
-    let model = models.find((m) => m.model_family === 'gemma' && m.model_id === input.model_id);
+    let model = models.find((m) => m.candidate_id === input.candidate_id);
     if (model) {
       model.installed = true;
       model.local_path = input.local_path;
@@ -187,30 +209,78 @@ export class ModelManager {
     }
   }
 
-  public async verifyModelFile(input: {
-    model_id: string | null;
-  }): Promise<{ verified: boolean; message: string }> {
+  public async verifyModelFile(input: { candidate_id: string }): Promise<{
+    verified: boolean;
+    verification_status: 'unchecked' | 'presence_verified' | 'verified' | 'failed';
+    message: string;
+  }> {
     let models = await this.getInstalledModels();
-    let model = models.find((m) => m.model_family === 'gemma' && m.model_id === input.model_id);
+    let model = models.find((m) => m.candidate_id === input.candidate_id);
 
     if (!model) {
-      return { verified: false, message: 'Manifest not found' };
+      return { verified: false, verification_status: 'failed', message: 'Manifest not found' };
     }
     if (!model.local_path) {
-      return { verified: false, message: 'No local path in manifest' };
+      return {
+        verified: false,
+        verification_status: 'failed',
+        message: 'No local path in manifest',
+      };
     }
 
-    const absolutePath = path.resolve(this.getModelDirectory(), model.local_path);
+    const modelDir = this.getModelDirectory();
+
+    // Path traversal block
+    const absolutePath = path.resolve(modelDir, model.local_path);
+    if (!absolutePath.startsWith(path.resolve(modelDir))) {
+      return { verified: false, verification_status: 'failed', message: 'Path traversal detected' };
+    }
+
     if (!fs.existsSync(absolutePath)) {
       model.verification_status = 'failed';
       model.installed = false;
       await this.writeInstalledModels(models);
-      return { verified: false, message: 'Model file missing from disk' };
+      return {
+        verified: false,
+        verification_status: 'failed',
+        message: 'Model file missing from disk',
+      };
     }
 
-    model.verification_status = 'verified';
+    const candidates = await this.getSourceCandidates();
+    const candidate = candidates.find((c) => c.id === input.candidate_id);
+
+    // Check size if expected
+    if (candidate && candidate.expected_size_bytes) {
+      try {
+        const stats = await fs.promises.stat(absolutePath);
+        if (stats.size !== candidate.expected_size_bytes) {
+          model.verification_status = 'failed';
+          model.installed = false;
+          await this.writeInstalledModels(models);
+          return {
+            verified: false,
+            verification_status: 'failed',
+            message: 'Model file size mismatch',
+          };
+        }
+      } catch (err) {
+        return {
+          verified: false,
+          verification_status: 'failed',
+          message: 'Failed to read file size',
+        };
+      }
+    }
+
+    // Checksum check would go here, if available it would be 'verified'. For now we only verify presence.
+    model.verification_status = 'presence_verified';
     await this.writeInstalledModels(models);
-    return { verified: true, message: 'Model file verified' };
+    return {
+      verified: true,
+      verification_status: 'presence_verified',
+      message: 'Model file presence verified',
+    };
   }
 
   public async getModelStatus(): Promise<LocalModelAcquisitionState> {
@@ -229,6 +299,9 @@ export class ModelManager {
     }
     if (model.verification_status === 'verified') {
       return 'verified';
+    }
+    if (model.verification_status === 'presence_verified') {
+      return 'presence_verified';
     }
     if (model.verification_status === 'failed') {
       return 'failed';
@@ -318,28 +391,28 @@ export class ModelManager {
     return this.createPendingModelManifest(candidate);
   }
 
-  public async recordDownloadStarted(model_id: string | null): Promise<void> {
+  public async recordDownloadStarted(candidate_id: string): Promise<void> {
     let models = await this.getInstalledModels();
-    let model = models.find((m) => m.model_family === 'gemma' && m.model_id === model_id);
+    let model = models.find((m) => m.candidate_id === candidate_id);
     if (model) {
       model.download_status = 'downloading';
       await this.writeInstalledModels(models);
     }
   }
 
-  public async recordDownloadFailed(model_id: string | null, reason: string): Promise<void> {
+  public async recordDownloadFailed(candidate_id: string, reason: string): Promise<void> {
     let models = await this.getInstalledModels();
-    let model = models.find((m) => m.model_family === 'gemma' && m.model_id === model_id);
+    let model = models.find((m) => m.candidate_id === candidate_id);
     if (model) {
       model.download_status = 'failed';
       model.verification_status = 'failed';
-      console.error(`[ModelManager] Download failed for ${model_id}: ${reason}`);
+      console.error(`[ModelManager] Download failed for ${candidate_id}: ${reason}`);
       await this.writeInstalledModels(models);
     }
   }
 
   public async recordDownloadComplete(input: {
-    model_id: string | null;
+    candidate_id: string;
     local_path: string;
     size_bytes?: number;
   }): Promise<void> {

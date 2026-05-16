@@ -15,6 +15,7 @@ export type LocalModelAcquisitionState =
   | 'ready_to_download'
   | 'downloading'
   | 'downloaded'
+  | 'presence_verified'
   | 'verified'
   | 'failed';
 
@@ -41,7 +42,7 @@ export interface LocalModelManifest {
   size_bytes?: number;
   source_kind?: 'official_google' | 'official_huggingface' | 'official_kaggle' | 'manual';
   download_status?: 'not_started' | 'pending' | 'downloading' | 'complete' | 'failed';
-  verification_status?: 'unchecked' | 'verified' | 'failed';
+  verification_status?: 'unchecked' | 'presence_verified' | 'verified' | 'failed';
   source_verified?: boolean;
   artifact_verified?: boolean;
   runtime_compatibility_verified?: boolean;
