@@ -40,4 +40,15 @@ ASSIGN_OR_RETURN(auto conversation, Conversation::Create(*engine, conversation_c
 
 ## Integration Strategy
 
-To verify dependency layout before compiling the C++ integration, we will probe for `libLiteRt.dll` dynamically in our Node-API `binding.cc` via `LoadLibraryA`. If absent, we report `RUNTIME_DEPENDENCY_MISSING`. If present, we return `RUNTIME_BINDING_INCOMPLETE` until the actual CMake-built API logic is wired up.
+We are using a **dependency manifest** (`packages/litert-node-bindings/native/dependency-manifest.json`) to define the required and optional binaries:
+
+- **Required**: `libLiteRt.dll`
+- **Optional**: `libLiteRtWebGpuAccelerator.dll`
+
+To verify dependency layout before compiling the C++ integration, we probe for these DLLs dynamically in our Node-API `binding.cc` via `LoadLibraryA`.
+
+- If required dependencies are absent, we report `RUNTIME_DEPENDENCY_MISSING`.
+- If some optional dependencies are absent but required ones are present, we report `RUNTIME_DEPENDENCY_PARTIAL` (which will be treated as `RUNTIME_BINDING_INCOMPLETE` until the API is linked).
+- If present, we return `RUNTIME_BINDING_INCOMPLETE` until the actual CMake-built API logic is wired up.
+
+Our next phase involves migrating the build from `node-gyp` to `cmake-js`, at which point `EngineFactory::CreateDefault()` will be successfully compiled against the LiteRT-LM C++ source headers.

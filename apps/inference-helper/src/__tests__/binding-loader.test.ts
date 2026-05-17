@@ -37,4 +37,22 @@ describe('binding-loader', () => {
     expect(result.state).toBe('ready');
     expect(result.bindings).not.toBeNull();
   });
+
+  it('returns runtime_dependency_partial if status indicates it', () => {
+    const mockDeps = [
+      { filename: 'libLiteRt.dll', present: true, required: true },
+      { filename: 'libLiteRtWebGpuAccelerator.dll', present: false, required: false },
+    ];
+    const mockBindings = {
+      status: vi
+        .fn()
+        .mockReturnValue({ state: 'runtime_dependency_partial', dependencies: mockDeps }),
+      loadModel: vi.fn(),
+      generate: vi.fn(),
+    };
+    const result = tryLoadBindings('@keimenon/litert-node-bindings', mockBindings);
+    expect(result.state).toBe('runtime_dependency_partial');
+    expect(result.bindings).toBeNull();
+    expect(result.dependencies).toEqual(mockDeps);
+  });
 });

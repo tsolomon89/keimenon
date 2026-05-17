@@ -1,6 +1,8 @@
 export type HelperStatusState =
   | 'runtime_unimplemented'
   | 'runtime_dependency_missing'
+  | 'runtime_dependency_partial'
+  | 'runtime_dependency_found'
   | 'runtime_binding_incomplete'
   | 'model_missing'
   | 'model_invalid'
@@ -18,6 +20,7 @@ export interface HelperStatusResult {
     code: string;
     message: string;
   };
+  dependencies?: { filename: string; present: boolean; required: boolean }[];
 }
 
 export interface ModelValidationResult {

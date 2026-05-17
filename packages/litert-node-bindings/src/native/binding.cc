@@ -11,22 +11,48 @@
 // A dummy flag to track if a model is loaded (will stay false until real implementation)
 static bool isModelLoaded = false;
 
-bool CheckLiteRTDependency() {
+struct DependencyDef {
+  std::string filename;
+  bool required;
+};
+
 #ifdef _WIN32
-  HMODULE handle = LoadLibraryA("libLiteRt.dll");
-  if (handle) {
-    FreeLibrary(handle);
-    return true;
-  }
-  return false;
+static const std::vector<DependencyDef> kDependencies = {
+  {"libLiteRt.dll", true},
+  {"libLiteRtWebGpuAccelerator.dll", false}
+};
 #else
-  void* handle = dlopen("libLiteRt.so", RTLD_LAZY);
-  if (handle) {
-    dlclose(handle);
-    return true;
-  }
-  return false;
+static const std::vector<DependencyDef> kDependencies = {
+  {"libLiteRt.so", true}
+};
 #endif
+
+struct DependencyStatus {
+  std::string filename;
+  bool required;
+  bool present;
+};
+
+std::vector<DependencyStatus> CheckDependencies() {
+  std::vector<DependencyStatus> results;
+  for (const auto& dep : kDependencies) {
+    bool present = false;
+#ifdef _WIN32
+    HMODULE handle = LoadLibraryA(dep.filename.c_str());
+    if (handle) {
+      FreeLibrary(handle);
+      present = true;
+    }
+#else
+    void* handle = dlopen(dep.filename.c_str(), RTLD_LAZY);
+    if (handle) {
+      dlclose(handle);
+      present = true;
+    }
+#endif
+    results.push_back({dep.filename, dep.required, present});
+  }
+  return results;
 }
 
 Napi::Value Status(const Napi::CallbackInfo& info) {
@@ -39,15 +65,41 @@ Napi::Value Status(const Napi::CallbackInfo& info) {
 #else
   result.Set("platform", Napi::String::New(env, "unix"));
 #endif
-  // To keep it simple, assume x64 for the bindings (which is standard for the project target)
   result.Set("arch", Napi::String::New(env, "x64"));
 
-  if (CheckLiteRTDependency()) {
-    result.Set("state", Napi::String::New(env, "runtime_binding_incomplete"));
-    result.Set("details", Napi::String::New(env, "LiteRT-LM DLL found, but C++ API is not fully linked."));
-  } else {
+  auto deps = CheckDependencies();
+  Napi::Array depsArray = Napi::Array::New(env, deps.size());
+  
+  bool allRequiredPresent = true;
+  bool allOptionalPresent = true;
+  
+  for (size_t i = 0; i < deps.size(); i++) {
+    Napi::Object depObj = Napi::Object::New(env);
+    depObj.Set("filename", Napi::String::New(env, deps[i].filename));
+    depObj.Set("required", Napi::Boolean::New(env, deps[i].required));
+    depObj.Set("present", Napi::Boolean::New(env, deps[i].present));
+    depsArray.Set(i, depObj);
+    
+    if (deps[i].required && !deps[i].present) {
+      allRequiredPresent = false;
+    }
+    if (!deps[i].required && !deps[i].present) {
+      allOptionalPresent = false;
+    }
+  }
+  
+  result.Set("dependencies", depsArray);
+
+  if (!allRequiredPresent) {
     result.Set("state", Napi::String::New(env, "runtime_dependency_missing"));
-    result.Set("details", Napi::String::New(env, "libLiteRt.dll missing from native directories."));
+    result.Set("details", Napi::String::New(env, "Required dependencies are missing."));
+  } else if (!allOptionalPresent) {
+    result.Set("state", Napi::String::New(env, "runtime_dependency_partial"));
+    result.Set("details", Napi::String::New(env, "Required dependencies found, but optional dependencies are missing."));
+  } else {
+    // Both required and optional present, but C++ API isn't linked yet
+    result.Set("state", Napi::String::New(env, "runtime_binding_incomplete"));
+    result.Set("details", Napi::String::New(env, "All dependencies found, but C++ API is not fully linked."));
   }
   
   return result;
@@ -63,25 +115,25 @@ void LoadModel(const Napi::CallbackInfo& info) {
   
   std::string modelPath = info[0].As<Napi::String>().Utf8Value();
   
-  // Extension check
   if (modelPath.length() < 9 || modelPath.substr(modelPath.length() - 9) != ".litertlm") {
     Napi::Error::New(env, "MODEL_INVALID: File extension must be .litertlm")
         .ThrowAsJavaScriptException();
     return;
   }
   
-  // File exists check
   if (!std::filesystem::exists(modelPath)) {
     Napi::Error::New(env, "MODEL_MISSING: Model file does not exist at path")
         .ThrowAsJavaScriptException();
     return;
   }
   
-  // Dependency check
-  if (!CheckLiteRTDependency()) {
-    Napi::Error::New(env, "RUNTIME_DEPENDENCY_MISSING: libLiteRt.dll is not available.")
-        .ThrowAsJavaScriptException();
-    return;
+  auto deps = CheckDependencies();
+  for (const auto& dep : deps) {
+    if (dep.required && !dep.present) {
+      Napi::Error::New(env, ("RUNTIME_DEPENDENCY_MISSING: " + dep.filename + " is not available.").c_str())
+          .ThrowAsJavaScriptException();
+      return;
+    }
   }
   
   Napi::Error::New(env, "RUNTIME_BINDING_INCOMPLETE: LiteRT-LM C++ model loading is not linked yet.")
@@ -97,10 +149,13 @@ void Generate(const Napi::CallbackInfo& info) {
     return;
   }
   
-  if (!CheckLiteRTDependency()) {
-    Napi::Error::New(env, "RUNTIME_DEPENDENCY_MISSING: libLiteRt.dll is not available.")
-        .ThrowAsJavaScriptException();
-    return;
+  auto deps = CheckDependencies();
+  for (const auto& dep : deps) {
+    if (dep.required && !dep.present) {
+      Napi::Error::New(env, ("RUNTIME_DEPENDENCY_MISSING: " + dep.filename + " is not available.").c_str())
+          .ThrowAsJavaScriptException();
+      return;
+    }
   }
 
   Napi::Error::New(env, "RUNTIME_BINDING_INCOMPLETE: LiteRT-LM C++ generation is not linked yet.")

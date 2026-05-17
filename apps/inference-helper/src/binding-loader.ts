@@ -4,6 +4,7 @@ import { HelperStatusState } from './adapter';
 export interface BindingResolution {
   state: HelperStatusState;
   bindings: LiteRTNodeBindings | null;
+  dependencies?: { filename: string; present: boolean; required: boolean }[];
 }
 
 export function tryLoadBindings(
@@ -54,21 +55,26 @@ export function tryLoadBindings(
     };
   }
 
+  let dependencyInfo: any = undefined;
+
   // Probe status
   try {
     const status = bindings.status();
-    if (status && status.state) {
-      if (status.state === 'runtime_dependency_missing') {
-        return {
-          state: 'runtime_dependency_missing',
-          bindings: null,
-        };
-      }
-      if (status.state === 'runtime_binding_incomplete') {
-        return {
-          state: 'runtime_binding_incomplete',
-          bindings: null,
-        };
+    if (status) {
+      dependencyInfo = status.dependencies;
+      if (status.state) {
+        if (
+          status.state === 'runtime_dependency_missing' ||
+          status.state === 'runtime_dependency_partial' ||
+          status.state === 'runtime_dependency_found' ||
+          status.state === 'runtime_binding_incomplete'
+        ) {
+          return {
+            state: status.state as HelperStatusState,
+            bindings: null,
+            dependencies: dependencyInfo,
+          };
+        }
       }
     }
   } catch (err: any) {
@@ -82,5 +88,6 @@ export function tryLoadBindings(
   return {
     state: 'ready',
     bindings: bindings as LiteRTNodeBindings,
+    dependencies: dependencyInfo,
   };
 }

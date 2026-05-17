@@ -495,6 +495,34 @@ async function runApiServer(startPort: number) {
       nativeDistPath = path.join(__dirname, '../resources/native');
     }
 
+    let dependencyStatusStr = 'unknown';
+    try {
+      const manifestPath = path.join(nativeDistPath, 'dependency-manifest.json');
+      if (fs.existsSync(manifestPath)) {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        const winConfig = manifest.platforms?.['win32-x64'];
+        if (winConfig) {
+          const checkDeps = (deps: any[]) => {
+            return deps
+              .map((d) => {
+                const present = fs.existsSync(
+                  path.join(nativeDistPath, 'win32-x64', 'bin', d.filename)
+                );
+                return `${d.filename}: ${present ? 'PRESENT' : 'MISSING'}`;
+              })
+              .join(', ');
+          };
+          const requiredStr = winConfig.required ? checkDeps(winConfig.required) : 'none';
+          const optionalStr = winConfig.optional ? checkDeps(winConfig.optional) : 'none';
+          dependencyStatusStr = `Required: [${requiredStr}] | Optional: [${optionalStr}]`;
+        }
+      } else {
+        dependencyStatusStr = 'manifest not found';
+      }
+    } catch (e) {
+      dependencyStatusStr = `error parsing manifest: ${e}`;
+    }
+
     console.log(`
 [Desktop Runtime]
 process.resourcesPath: ${process.resourcesPath}
@@ -513,6 +541,7 @@ helper path exists: ${fs.existsSync(process.env.KEIMENON_INFERENCE_HELPER_PATH!)
 web-dist path: ${webDistPath}
 native dist path: ${nativeDistPath}
 native dist exists: ${fs.existsSync(nativeDistPath)}
+dependency check: ${dependencyStatusStr}
 platform: ${process.platform}
 arch: ${process.arch}
 `);

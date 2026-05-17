@@ -1,23 +1,6 @@
 import bindings from 'bindings';
-
-export interface NativeStatus {
-  runtime: string;
-  platform: string;
-  arch: string;
-  state:
-    | 'runtime_dependency_missing'
-    | 'runtime_binding_incomplete'
-    | 'runtime_dependency_found'
-    | 'ready';
-  details: string;
-}
-
-export interface LiteRTNodeBindings {
-  status(): NativeStatus;
-  loadModel(modelPath: string): Promise<void> | void;
-  generate(prompt: string, maxTokens?: number): Promise<string> | string;
-  unloadModel?(): Promise<void> | void;
-}
+export type * from './types';
+import type { LiteRTNodeBindings } from './types';
 
 export function getLiteRTBindings(): LiteRTNodeBindings {
   let nativeBinding;

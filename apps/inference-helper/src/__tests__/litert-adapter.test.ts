@@ -79,3 +79,22 @@ describe('LiteRTGemmaRuntimeAdapter', () => {
     });
   });
 });
+
+import * as bindingLoader from '../binding-loader';
+
+describe('LiteRTGemmaRuntimeAdapter with mocked binding-loader', () => {
+  it('status bubbles partial state and dependencies', async () => {
+    const adapter = new LiteRTGemmaRuntimeAdapter();
+    const spy = vi.spyOn(bindingLoader, 'tryLoadBindings').mockReturnValueOnce({
+      state: 'runtime_dependency_partial',
+      bindings: null,
+      dependencies: [{ filename: 'test.dll', present: true, required: true }],
+    });
+
+    const result = await adapter.status();
+    expect(result.state).toBe('runtime_dependency_partial');
+    expect(result.dependencies).toEqual([{ filename: 'test.dll', present: true, required: true }]);
+
+    spy.mockRestore();
+  });
+});

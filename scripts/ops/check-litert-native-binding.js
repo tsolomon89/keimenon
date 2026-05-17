@@ -17,14 +17,34 @@ if (!fs.existsSync(nodeArtifactPath)) {
   );
   process.exit(1);
 }
-
 try {
+  const manifestPath = path.join(
+    __dirname,
+    '../../packages/litert-node-bindings/native/dependency-manifest.json'
+  );
+  if (fs.existsSync(manifestPath)) {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    console.log(`Verified manifest exists for runtime: ${manifest.runtime}`);
+  } else {
+    console.warn('WARNING: dependency-manifest.json not found in native directory.');
+  }
+
   const { getLiteRTBindings } = require('../../packages/litert-node-bindings');
   const bindings = getLiteRTBindings();
 
   const status = bindings.status();
+
+  if (status.dependencies) {
+    status.dependencies.forEach((dep) => {
+      console.log(
+        `Dependency check: ${dep.filename} (Required: ${dep.required}) - Present: ${dep.present}`
+      );
+    });
+  }
+
   if (
     status.state !== 'runtime_dependency_missing' &&
+    status.state !== 'runtime_dependency_partial' &&
     status.state !== 'runtime_binding_incomplete'
   ) {
     console.error('FAILED: status() returned unexpected state:', status.state);
