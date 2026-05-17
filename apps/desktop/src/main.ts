@@ -502,7 +502,16 @@ async function runApiServer(startPort: number) {
 
     let dependencyStatusStr = 'unknown';
     try {
-      const manifestPath = path.join(nativeDistPath, 'dependency-manifest.json');
+      // Find the manifest
+      let manifestPath = path.join(nativeDistPath, 'dependency-manifest.json');
+      if (!fs.existsSync(manifestPath)) {
+        // Fallback to dev location if not copied to resources
+        manifestPath = path.join(
+          __dirname,
+          '../../../../packages/litert-node-bindings/native/dependency-manifest.json'
+        );
+      }
+
       if (fs.existsSync(manifestPath)) {
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
         const winConfig = manifest.platforms?.['win32-x64'];
@@ -511,7 +520,7 @@ async function runApiServer(startPort: number) {
             return deps
               .map((d) => {
                 const present = fs.existsSync(
-                  path.join(nativeDistPath, 'win32-x64', 'bin', d.filename)
+                  path.join(process.env.KEIMENON_NATIVE_DEPS_DIR!, d.filename)
                 );
                 return `${d.filename}: ${present ? 'PRESENT' : 'MISSING'}`;
               })
@@ -527,6 +536,11 @@ async function runApiServer(startPort: number) {
     } catch (e) {
       dependencyStatusStr = `error parsing manifest: ${e}`;
     }
+
+    const bindingNodePath = path.join(
+      process.env.KEIMENON_NATIVE_DEPS_DIR!,
+      'litert-node-bindings.node'
+    );
 
     console.log(`
 [Desktop Runtime]
@@ -548,6 +562,8 @@ native dist path: ${nativeDistPath}
 native dist exists: ${fs.existsSync(nativeDistPath)}
 native deps dir: ${process.env.KEIMENON_NATIVE_DEPS_DIR}
 native deps dir exists: ${fs.existsSync(process.env.KEIMENON_NATIVE_DEPS_DIR!)}
+binding .node path: ${bindingNodePath}
+binding .node path exists: ${fs.existsSync(bindingNodePath)}
 dependency check: ${dependencyStatusStr}
 platform: ${process.platform}
 arch: ${process.arch}

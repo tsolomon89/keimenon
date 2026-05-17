@@ -17,7 +17,8 @@
     "clean": "node-gyp clean && rimraf dist",
     "pretype-check": "node ../../scripts/check-node-version.js",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "bindings": "^1.5.0",
@@ -26,11 +27,12 @@
   "devDependencies": {
     "@types/bindings": "^1.5.5",
     "@types/node": "^20.11.0",
-    "node-gyp": "^10.1.0",
-    "typescript": "^5.3.3",
-    "rimraf": "^5.0.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "^8.0.0"
+    "eslint": "^8.0.0",
+    "node-gyp": "^10.1.0",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.1"
   }
 }

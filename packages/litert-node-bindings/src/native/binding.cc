@@ -1,6 +1,8 @@
 #include <napi.h>
 #include <filesystem>
 #include <string>
+#include <vector>
+#include <cstdlib>
 
 #ifdef _WIN32
 #include <windows.h>
