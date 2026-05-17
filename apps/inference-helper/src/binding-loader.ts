@@ -54,6 +54,31 @@ export function tryLoadBindings(
     };
   }
 
+  // Probe status
+  try {
+    const status = bindings.status();
+    if (status && status.state) {
+      if (status.state === 'runtime_dependency_missing') {
+        return {
+          state: 'runtime_dependency_missing',
+          bindings: null,
+        };
+      }
+      if (status.state === 'runtime_binding_incomplete') {
+        return {
+          state: 'runtime_binding_incomplete',
+          bindings: null,
+        };
+      }
+    }
+  } catch (err: any) {
+    // If status() throws, assume bindings are broken
+    return {
+      state: 'runtime_binding_incomplete',
+      bindings: null,
+    };
+  }
+
   return {
     state: 'ready',
     bindings: bindings as LiteRTNodeBindings,

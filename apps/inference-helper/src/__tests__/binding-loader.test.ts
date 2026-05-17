@@ -29,6 +29,7 @@ describe('binding-loader', () => {
 
   it('returns ready if all methods are present', () => {
     const mockBindings = {
+      status: vi.fn().mockReturnValue({ state: 'ready' }),
       loadModel: vi.fn(),
       generate: vi.fn(),
     };

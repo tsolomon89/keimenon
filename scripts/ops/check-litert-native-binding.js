@@ -23,7 +23,10 @@ try {
   const bindings = getLiteRTBindings();
 
   const status = bindings.status();
-  if (status.state !== 'runtime_binding_incomplete') {
+  if (
+    status.state !== 'runtime_dependency_missing' &&
+    status.state !== 'runtime_binding_incomplete'
+  ) {
     console.error('FAILED: status() returned unexpected state:', status.state);
     process.exit(1);
   }
@@ -32,12 +35,12 @@ try {
   try {
     bindings.loadModel('fake-path');
   } catch (e) {
-    if (e.message.includes('RUNTIME_BINDING_INCOMPLETE')) {
+    if (e.message.includes('MODEL_INVALID') || e.message.includes('MODEL_MISSING')) {
       loadThrew = true;
     }
   }
   if (!loadThrew) {
-    console.error('FAILED: loadModel did not throw RUNTIME_BINDING_INCOMPLETE.');
+    console.error('FAILED: loadModel did not throw MODEL_INVALID or MODEL_MISSING on bad path.');
     process.exit(1);
   }
 
@@ -45,12 +48,12 @@ try {
   try {
     bindings.generate('hello');
   } catch (e) {
-    if (e.message.includes('RUNTIME_BINDING_INCOMPLETE')) {
+    if (e.message.includes('MODEL_NOT_LOADED')) {
       generateThrew = true;
     }
   }
   if (!generateThrew) {
-    console.error('FAILED: generate did not throw RUNTIME_BINDING_INCOMPLETE.');
+    console.error('FAILED: generate did not throw MODEL_NOT_LOADED.');
     process.exit(1);
   }
 

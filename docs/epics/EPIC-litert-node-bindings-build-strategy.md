@@ -6,7 +6,7 @@ For the initial native binding integration, `@keimenon/litert-node-bindings` use
 
 ## Future Path: `cmake-js`
 
-When the actual Google LiteRT and LiteRT-LM C++ libraries are integrated into the project, it is highly likely they will require imported CMake targets. At that point, the build system will pivot to `cmake-js` (or a CMake-driven native build) to natively resolve and link those dependencies. The scaffold we build now is designed to be build-system agnostic from the perspective of the consuming TypeScript code.
+Based on the latest integration research, the LiteRT-LM C++ API is distributed strictly as source code (via Bazel/CMake `CMakeLists.txt`), not as a prebuilt `litert_lm.dll`. Therefore, to link the actual C++ implementation, the bindings package must eventually pull down the LiteRT-LM source and link against `LiteRTLM::Runtime::Engine` natively. `cmake-js` is confirmed as the future build system since it integrates natively with `CMakeLists.txt`, allowing us to use `FetchContent` to download and build LiteRT-LM safely.
 
 ## Desktop Packaging Target
 
