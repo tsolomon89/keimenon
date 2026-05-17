@@ -15,10 +15,15 @@ export function tryLoadBindings(
     bindings = bindingsOverride;
   } else {
     try {
-      // Dynamically require the package
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      bindings = require(moduleName);
-    } catch (err) {
+      const litertMod = require('@keimenon/litert-node-bindings');
+      bindings = litertMod.getLiteRTBindings();
+    } catch (err: any) {
+      if (err.message && err.message.includes('RUNTIME_BINDING_INCOMPLETE')) {
+        return {
+          state: 'runtime_binding_incomplete',
+          bindings: null,
+        };
+      }
       return {
         state: 'runtime_dependency_missing',
         bindings: null,

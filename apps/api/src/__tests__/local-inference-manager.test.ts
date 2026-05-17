@@ -15,22 +15,22 @@ describe('LocalInferenceManager', () => {
     process.env.GEMMA_LOCAL_BASE_URL = originalEnv;
   });
 
-  it('should return model_missing if modelManager says model_missing', async () => {
-    vi.spyOn(modelManager, 'getModelStatus').mockResolvedValueOnce('model_missing');
+  it('should return model_missing if modelManager says source_pending', async () => {
+    vi.spyOn(modelManager, 'getModelStatus').mockResolvedValueOnce('source_pending' as any);
     const status = await localInferenceManager.getCombinedStatus();
     expect(status.state).toBe('model_missing');
-    expect(status.next_actions.map((a) => a.id)).toContain('download-model');
+    expect(status.next_actions.map((a) => a.id)).toContain('open-model-folder');
   });
 
-  it('should return license_required if modelManager says license_required', async () => {
-    vi.spyOn(modelManager, 'getModelStatus').mockResolvedValueOnce('license_required');
+  it('should return license_required if modelManager says terms_required', async () => {
+    vi.spyOn(modelManager, 'getModelStatus').mockResolvedValueOnce('terms_required' as any);
     const status = await localInferenceManager.getCombinedStatus();
     expect(status.state).toBe('license_required');
     expect(status.next_actions.map((a) => a.id)).toContain('accept-terms');
   });
 
-  it('should check native backend if modelManager says ready', async () => {
-    vi.spyOn(modelManager, 'getModelStatus').mockResolvedValueOnce('ready');
+  it('should check native backend if modelManager says presence_verified', async () => {
+    vi.spyOn(modelManager, 'getModelStatus').mockResolvedValueOnce('presence_verified' as any);
 
     vi.spyOn(nativeGemmaBackend, 'checkStatus').mockResolvedValueOnce({
       model_family: 'gemma',
@@ -48,10 +48,10 @@ describe('LocalInferenceManager', () => {
     expect(status.active_backend).toBeUndefined();
   });
 
-  it('should fall back to openai-compatible when configured and native is unimplemented (and model ready)', async () => {
+  it('should fall back to openai-compatible when configured and native is unimplemented (and model presence_verified)', async () => {
     process.env.GEMMA_LOCAL_BASE_URL = 'http://localhost:11434/v1';
 
-    vi.spyOn(modelManager, 'getModelStatus').mockResolvedValueOnce('ready');
+    vi.spyOn(modelManager, 'getModelStatus').mockResolvedValueOnce('presence_verified' as any);
 
     vi.spyOn(nativeGemmaBackend, 'checkStatus').mockResolvedValueOnce({
       model_family: 'gemma',
@@ -75,10 +75,10 @@ describe('LocalInferenceManager', () => {
     expect(status.model_id).toBe('gemma:2b');
   });
 
-  it('should return native status (unimplemented) if fallback is not configured (and model ready)', async () => {
+  it('should return native status (unimplemented) if fallback is not configured (and model presence_verified)', async () => {
     delete process.env.GEMMA_LOCAL_BASE_URL;
 
-    vi.spyOn(modelManager, 'getModelStatus').mockResolvedValueOnce('ready');
+    vi.spyOn(modelManager, 'getModelStatus').mockResolvedValueOnce('presence_verified' as any);
 
     vi.spyOn(nativeGemmaBackend, 'checkStatus').mockResolvedValueOnce({
       model_family: 'gemma',

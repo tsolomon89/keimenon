@@ -92,7 +92,11 @@ export class LocalInferenceManager {
       };
     }
 
-    if (modelStatus === 'downloaded' || modelStatus === 'verified') {
+    if (
+      modelStatus === 'downloaded' ||
+      modelStatus === 'verified' ||
+      modelStatus === 'presence_verified'
+    ) {
       // 2. Check Native Runtime (Product Target)
       const nativeStatus = await nativeGemmaBackend.checkStatus();
       if (nativeStatus.state === 'ready') {
