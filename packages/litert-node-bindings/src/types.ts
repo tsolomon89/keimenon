@@ -7,6 +7,7 @@ export type NativeBindingState =
 
 export interface NativeDependency {
   filename: string;
+  path?: string;
   present: boolean;
   required: boolean;
 }
@@ -16,12 +17,13 @@ export interface NativeStatus {
   state: NativeBindingState;
   platform: string;
   arch: string;
+  native_deps_dir?: string;
   dependencies: NativeDependency[];
   details?: string;
 }
 
 export interface LiteRTNodeBindings {
-  status(): NativeStatus;
-  loadModel(modelPath: string): boolean;
-  generate(prompt: string): string;
+  status(nativeDepsDir?: string): NativeStatus;
+  loadModel(modelPath: string, nativeDepsDir?: string): boolean;
+  generate(prompt: string, nativeDepsDir?: string): string;
 }

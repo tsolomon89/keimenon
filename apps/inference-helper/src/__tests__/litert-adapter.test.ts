@@ -88,12 +88,14 @@ describe('LiteRTGemmaRuntimeAdapter with mocked binding-loader', () => {
     const spy = vi.spyOn(bindingLoader, 'tryLoadBindings').mockReturnValueOnce({
       state: 'runtime_dependency_partial',
       bindings: null,
+      native_deps_dir: '/fake/path/native/win32-x64/bin',
       dependencies: [{ filename: 'test.dll', present: true, required: true }],
     });
 
     const result = await adapter.status();
     expect(result.state).toBe('runtime_dependency_partial');
     expect(result.dependencies).toEqual([{ filename: 'test.dll', present: true, required: true }]);
+    expect(result.native_deps_dir).toBe('/fake/path/native/win32-x64/bin');
 
     spy.mockRestore();
   });

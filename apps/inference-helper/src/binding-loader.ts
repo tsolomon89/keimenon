@@ -4,7 +4,8 @@ import { HelperStatusState } from './adapter';
 export interface BindingResolution {
   state: HelperStatusState;
   bindings: LiteRTNodeBindings | null;
-  dependencies?: { filename: string; present: boolean; required: boolean }[];
+  native_deps_dir?: string;
+  dependencies?: { filename: string; path?: string; present: boolean; required: boolean }[];
 }
 
 export function tryLoadBindings(
@@ -56,12 +57,14 @@ export function tryLoadBindings(
   }
 
   let dependencyInfo: any = undefined;
+  let nativeDepsDir: string | undefined = undefined;
 
   // Probe status
   try {
     const status = bindings.status();
     if (status) {
       dependencyInfo = status.dependencies;
+      nativeDepsDir = status.native_deps_dir;
       if (status.state) {
         if (
           status.state === 'runtime_dependency_missing' ||
@@ -72,6 +75,7 @@ export function tryLoadBindings(
           return {
             state: status.state as HelperStatusState,
             bindings: null,
+            native_deps_dir: nativeDepsDir,
             dependencies: dependencyInfo,
           };
         }
@@ -88,6 +92,7 @@ export function tryLoadBindings(
   return {
     state: 'ready',
     bindings: bindings as LiteRTNodeBindings,
+    native_deps_dir: nativeDepsDir,
     dependencies: dependencyInfo,
   };
 }

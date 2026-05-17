@@ -23,6 +23,15 @@ Based on the latest integration research, the LiteRT-LM C++ API is distributed s
    - LiteRT-LM C++ Headers (`engine.h`, `engine_factory.h`) available in the include path
    - The underlying `libLiteRt.dll` (which we dynamically probe at runtime)
 
+### Package scripts preparation
+
+As of the current phase, `package.json` contains:
+
+- `build:native:node-gyp`
+- `build:native:cmake`
+
+This allows us to verify `cmake-js` capability locally without breaking the CI pipelines until the full `CMakeLists.txt` is introduced.
+
 ## Desktop Packaging Target
 
 For the desktop product, the preferred linking strategy is **dynamic DLL loading**. The intended layout is:

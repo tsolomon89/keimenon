@@ -44,9 +44,11 @@ describe('binding-loader', () => {
       { filename: 'libLiteRtWebGpuAccelerator.dll', present: false, required: false },
     ];
     const mockBindings = {
-      status: vi
-        .fn()
-        .mockReturnValue({ state: 'runtime_dependency_partial', dependencies: mockDeps }),
+      status: vi.fn().mockReturnValue({
+        state: 'runtime_dependency_partial',
+        native_deps_dir: '/fake/path/native/win32-x64/bin',
+        dependencies: mockDeps,
+      }),
       loadModel: vi.fn(),
       generate: vi.fn(),
     };
@@ -54,5 +56,6 @@ describe('binding-loader', () => {
     expect(result.state).toBe('runtime_dependency_partial');
     expect(result.bindings).toBeNull();
     expect(result.dependencies).toEqual(mockDeps);
+    expect(result.native_deps_dir).toBe('/fake/path/native/win32-x64/bin');
   });
 });

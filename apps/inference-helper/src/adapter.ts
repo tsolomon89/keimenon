@@ -20,7 +20,8 @@ export interface HelperStatusResult {
     code: string;
     message: string;
   };
-  dependencies?: { filename: string; present: boolean; required: boolean }[];
+  native_deps_dir?: string;
+  dependencies?: { filename: string; path?: string; present: boolean; required: boolean }[];
 }
 
 export interface ModelValidationResult {

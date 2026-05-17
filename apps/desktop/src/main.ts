@@ -453,6 +453,10 @@ async function runApiServer(startPort: number) {
         __dirname,
         '../../../../inference-helper/dist/index.js'
       );
+      process.env.KEIMENON_NATIVE_DEPS_DIR = path.join(
+        __dirname,
+        '../../../../packages/litert-node-bindings/native/win32-x64/bin'
+      );
     } else {
       process.env.KEIMENON_RUNTIME_SKILLS_DIR = path.join(
         process.resourcesPath,
@@ -462,6 +466,7 @@ async function runApiServer(startPort: number) {
         process.resourcesPath,
         'inference-helper/index.js'
       );
+      process.env.KEIMENON_NATIVE_DEPS_DIR = path.join(process.resourcesPath, 'native/win32-x64');
     }
 
     await startApiServer({
@@ -541,6 +546,8 @@ helper path exists: ${fs.existsSync(process.env.KEIMENON_INFERENCE_HELPER_PATH!)
 web-dist path: ${webDistPath}
 native dist path: ${nativeDistPath}
 native dist exists: ${fs.existsSync(nativeDistPath)}
+native deps dir: ${process.env.KEIMENON_NATIVE_DEPS_DIR}
+native deps dir exists: ${fs.existsSync(process.env.KEIMENON_NATIVE_DEPS_DIR!)}
 dependency check: ${dependencyStatusStr}
 platform: ${process.platform}
 arch: ${process.arch}

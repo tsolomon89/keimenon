@@ -15,6 +15,7 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
   private isLoaded: boolean = false;
 
   private dependencies: any = undefined;
+  private nativeDepsDir: string | undefined = undefined;
 
   private ensureBindingsLoaded() {
     if (this.bindings) return;
@@ -22,6 +23,7 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
     this.bindings = result.bindings;
     this.loadState = result.state;
     this.dependencies = result.dependencies;
+    this.nativeDepsDir = result.native_deps_dir;
   }
 
   async status(): Promise<HelperStatusResult> {
@@ -33,6 +35,7 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
         runtime: 'native-gemma',
         state: this.loadState as any,
         message: 'The LiteRT-LM node binding is not installed or incomplete.',
+        native_deps_dir: this.nativeDepsDir,
         dependencies: this.dependencies,
       };
     }
@@ -44,6 +47,7 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
       message: this.isLoaded
         ? 'LiteRT-LM model loaded and ready.'
         : 'LiteRT-LM bindings loaded. Awaiting model.',
+      native_deps_dir: this.nativeDepsDir,
       dependencies: this.dependencies,
     };
   }

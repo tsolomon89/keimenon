@@ -1,4 +1,5 @@
 {
+  "#": "NOTE: This node-gyp build file is temporary and will be replaced by CMakeLists.txt and cmake-js during the LiteRT-LM source integration phase.",
   "targets": [
     {
       "target_name": "litert-node-bindings",

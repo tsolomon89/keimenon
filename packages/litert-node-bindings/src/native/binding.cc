@@ -29,28 +29,42 @@ static const std::vector<DependencyDef> kDependencies = {
 
 struct DependencyStatus {
   std::string filename;
+  std::string path;
   bool required;
   bool present;
 };
 
-std::vector<DependencyStatus> CheckDependencies() {
+std::vector<DependencyStatus> CheckDependencies(const std::string& nativeDepsDir) {
   std::vector<DependencyStatus> results;
+  
+  if (nativeDepsDir.empty()) {
+    for (const auto& dep : kDependencies) {
+      results.push_back({dep.filename, "", dep.required, false});
+    }
+    return results;
+  }
+
+  std::filesystem::path depsDirPath(nativeDepsDir);
+
   for (const auto& dep : kDependencies) {
     bool present = false;
+    std::filesystem::path absPath = depsDirPath / dep.filename;
+    std::string pathStr = absPath.string();
+
 #ifdef _WIN32
-    HMODULE handle = LoadLibraryA(dep.filename.c_str());
+    HMODULE handle = LoadLibraryA(pathStr.c_str());
     if (handle) {
       FreeLibrary(handle);
       present = true;
     }
 #else
-    void* handle = dlopen(dep.filename.c_str(), RTLD_LAZY);
+    void* handle = dlopen(pathStr.c_str(), RTLD_LAZY);
     if (handle) {
       dlclose(handle);
       present = true;
     }
 #endif
-    results.push_back({dep.filename, dep.required, present});
+    results.push_back({dep.filename, pathStr, dep.required, present});
   }
   return results;
 }
@@ -60,6 +74,13 @@ Napi::Value Status(const Napi::CallbackInfo& info) {
   Napi::Object result = Napi::Object::New(env);
   result.Set("runtime", Napi::String::New(env, "litert-lm"));
   
+  std::string nativeDepsDir = "";
+  if (info.Length() > 0 && info[0].IsString()) {
+    nativeDepsDir = info[0].As<Napi::String>().Utf8Value();
+  }
+  
+  result.Set("native_deps_dir", Napi::String::New(env, nativeDepsDir));
+  
 #ifdef _WIN32
   result.Set("platform", Napi::String::New(env, "win32"));
 #else
@@ -67,7 +88,7 @@ Napi::Value Status(const Napi::CallbackInfo& info) {
 #endif
   result.Set("arch", Napi::String::New(env, "x64"));
 
-  auto deps = CheckDependencies();
+  auto deps = CheckDependencies(nativeDepsDir);
   Napi::Array depsArray = Napi::Array::New(env, deps.size());
   
   bool allRequiredPresent = true;
@@ -76,6 +97,9 @@ Napi::Value Status(const Napi::CallbackInfo& info) {
   for (size_t i = 0; i < deps.size(); i++) {
     Napi::Object depObj = Napi::Object::New(env);
     depObj.Set("filename", Napi::String::New(env, deps[i].filename));
+    if (!deps[i].path.empty()) {
+      depObj.Set("path", Napi::String::New(env, deps[i].path));
+    }
     depObj.Set("required", Napi::Boolean::New(env, deps[i].required));
     depObj.Set("present", Napi::Boolean::New(env, deps[i].present));
     depsArray.Set(i, depObj);
@@ -90,7 +114,10 @@ Napi::Value Status(const Napi::CallbackInfo& info) {
   
   result.Set("dependencies", depsArray);
 
-  if (!allRequiredPresent) {
+  if (nativeDepsDir.empty()) {
+    result.Set("state", Napi::String::New(env, "runtime_dependency_missing"));
+    result.Set("details", Napi::String::New(env, "KEIMENON_NATIVE_DEPS_DIR is not configured."));
+  } else if (!allRequiredPresent) {
     result.Set("state", Napi::String::New(env, "runtime_dependency_missing"));
     result.Set("details", Napi::String::New(env, "Required dependencies are missing."));
   } else if (!allOptionalPresent) {
@@ -114,6 +141,10 @@ void LoadModel(const Napi::CallbackInfo& info) {
   }
   
   std::string modelPath = info[0].As<Napi::String>().Utf8Value();
+  std::string nativeDepsDir = "";
+  if (info.Length() > 1 && info[1].IsString()) {
+    nativeDepsDir = info[1].As<Napi::String>().Utf8Value();
+  }
   
   if (modelPath.length() < 9 || modelPath.substr(modelPath.length() - 9) != ".litertlm") {
     Napi::Error::New(env, "MODEL_INVALID: File extension must be .litertlm")
@@ -127,7 +158,7 @@ void LoadModel(const Napi::CallbackInfo& info) {
     return;
   }
   
-  auto deps = CheckDependencies();
+  auto deps = CheckDependencies(nativeDepsDir);
   for (const auto& dep : deps) {
     if (dep.required && !dep.present) {
       Napi::Error::New(env, ("RUNTIME_DEPENDENCY_MISSING: " + dep.filename + " is not available.").c_str())
@@ -149,7 +180,12 @@ void Generate(const Napi::CallbackInfo& info) {
     return;
   }
   
-  auto deps = CheckDependencies();
+  std::string nativeDepsDir = "";
+  if (info.Length() > 1 && info[1].IsString()) {
+    nativeDepsDir = info[1].As<Napi::String>().Utf8Value();
+  }
+  
+  auto deps = CheckDependencies(nativeDepsDir);
   for (const auto& dep : deps) {
     if (dep.required && !dep.present) {
       Napi::Error::New(env, ("RUNTIME_DEPENDENCY_MISSING: " + dep.filename + " is not available.").c_str())
