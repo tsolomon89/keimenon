@@ -8,7 +8,7 @@
   "scripts": {
     "build": "npm run build:ts && npm run build:native && npm run copy:native",
     "build:ts": "tsc",
-    "build:native": "npm run build:native:node-gyp",
+    "build:native": "node scripts/check-and-build.js",
     "build:native:node-gyp": "node-gyp rebuild",
     "build:native:cmake": "cmake-js compile",
     "check:native-deps": "node ../../scripts/ops/check-litert-dependency-manifest.js",

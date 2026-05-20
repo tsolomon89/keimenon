@@ -65,5 +65,6 @@ export function getLiteRTBindings(): LiteRTNodeBindings {
     loadModel: (modelPath: string) => nativeBinding.loadModel(modelPath, nativeDepsDir),
     generate: (prompt: string, maxTokens?: number) =>
       nativeBinding.generate(prompt, maxTokens ?? 512, nativeDepsDir),
+    unloadModel: () => nativeBinding.unloadModel(),
   };
 }
