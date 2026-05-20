@@ -72,6 +72,11 @@ function main() {
     console.log(
       `[Fetch] Applying Windows-specific MSVC and Python compatibility patches to WORKSPACE...`
     );
+    try {
+      execSync('git checkout WORKSPACE', { cwd: VENDOR_DIR, stdio: 'ignore' });
+    } catch (e) {
+      // Ignore if not a git repository or workspace file doesn't exist in git yet
+    }
     let wContent = fs.readFileSync(workspacePath, 'utf8').replace(/\r\n/g, '\n');
 
     // Replace touch/sed with Python for sentencepiece
@@ -95,7 +100,7 @@ function main() {
     ],`;
     const newLiteRT = `    patch_cmds = [
         "python -c \\"import glob, os; [open(f, 'w', encoding='utf-8', errors='ignore').write(c) for f in glob.glob('third_party/*/*') if os.path.isfile(f) for c in [open(f, 'r', encoding='utf-8', errors='ignore').read().replace('@//third_party/', '@litert//third_party/')]]\\"",
-        "python -c \"f = 'litert/cc/litert_macros.h'; c = open(f, 'r', encoding='utf-8', errors='ignore').read(); p = '#if defined(_MSC_VER) && !defined(__clang__)\\\\n#pragma optimize(\\\\\\\"\\\\\\\", off)\\\\n#endif\\\\n'; c = p + c; m = '\\\\n#if defined(_MSC_VER) && !defined(__clang__)\\\\n#undef LITERT_RETURN_IF_ERROR_2\\\\n#define LITERT_RETURN_IF_ERROR_2(EXPR, RETURN_VALUE) if (auto status = (EXPR); ::litert::ErrorStatusBuilder::IsError(status)) for (int _i = 0; _i < 1; ) if (::litert::ErrorStatusBuilder _(std::move(status)); false) {} else return (RETURN_VALUE)\\\\n#undef LITERT_RETURN_IF_ERROR_1\\\\n#define LITERT_RETURN_IF_ERROR_1(EXPR) LITERT_RETURN_IF_ERROR_2(EXPR, _)\\\\n#undef LITERT_ASSIGN_OR_RETURN_HELPER_2\\\\n#define LITERT_ASSIGN_OR_RETURN_HELPER_2(TMP_VAR, DECL, EXPR) auto&& TMP_VAR = (EXPR); if (::litert::ErrorStatusBuilder::IsError(TMP_VAR)) { return ::litert::ErrorStatusBuilder(std::move(TMP_VAR)); } _LITERT_STRIP_PARENS(DECL) = ::litert::ErrorStatusBuilder::ForwardWrappedValue(TMP_VAR)\\\\n#undef LITERT_ASSIGN_OR_RETURN_HELPER_3\\\\n#define LITERT_ASSIGN_OR_RETURN_HELPER_3(TMP_VAR, DECL, EXPR, RETURN_VALUE) auto&& TMP_VAR = (EXPR); if (::litert::ErrorStatusBuilder::IsError(TMP_VAR)) { [[maybe_unused]] ::litert::ErrorStatusBuilder _(std::move(TMP_VAR)); return (RETURN_VALUE); } _LITERT_STRIP_PARENS(DECL) = ::litert::ErrorStatusBuilder::ForwardWrappedValue(TMP_VAR)\\\\n#endif\\\\n'; c = c.replace('#endif  // ODML_LITERT_LITERT_CC_LITERT_MACROS_H_', m + '\\\\n#endif  // ODML_LITERT_LITERT_CC_LITERT_MACROS_H_'); open(f, 'w', encoding='utf-8').write(c)\\\"",
+        "python -c \\"f = 'litert/cc/litert_macros.h'; c = open(f, 'r', encoding='utf-8', errors='ignore').read(); p = '#if defined(_MSC_VER) && !defined(__clang__)\\\\n#pragma optimize(\\\\\\\"\\\\\\\", off)\\\\n#endif\\\\n'; c = p + c; m = '\\\\n#if defined(_MSC_VER) && !defined(__clang__)\\\\n#undef LITERT_RETURN_IF_ERROR_2\\\\n#define LITERT_RETURN_IF_ERROR_2(EXPR, RETURN_VALUE) do { if (auto status = (EXPR); ::litert::ErrorStatusBuilder::IsError(status)) { return (RETURN_VALUE); } } while (0)\\\\nnamespace litert { template <class T> struct ErrorStatusChecker { std::decay_t<T> status; explicit ErrorStatusChecker(T&& val) : status(std::forward<T>(val)) {} explicit operator bool() const { return ::litert::ErrorStatusBuilder::IsError(status); } }; }\\\\n#undef LITERT_RETURN_IF_ERROR_1\\\\n#define LITERT_RETURN_IF_ERROR_1(EXPR) if (auto checker = ::litert::ErrorStatusChecker<decltype(EXPR)>(EXPR)) return ::litert::ErrorStatusBuilder(std::move(checker.status))\\\\n#endif\\\\n'; c = c.replace('#endif  // ODML_LITERT_LITERT_CC_LITERT_MACROS_H_', m + '\\\\n#endif  // ODML_LITERT_LITERT_CC_LITERT_MACROS_H_'); open(f, 'w', encoding='utf-8').write(c)\\\"",
     ],`;
 
     wContent = wContent.replace(oldSentencePiece, newSentencePiece);

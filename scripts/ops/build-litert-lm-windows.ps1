@@ -129,8 +129,13 @@ try {
     } else {
         & $BazelCmd build -c opt //c:engine --config=windows --copt=/Zc:nrvo- --shell_executable="$GitBashFound"
     }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "[Error] Bazel build failed with exit code $LASTEXITCODE."
+        Pop-Location
+        exit 1
+    }
 } catch {
-    Write-Error "[Error] Bazel build failed."
+    Write-Error "[Error] Bazel build failed with an exception."
     Pop-Location
     exit 1
 }
@@ -205,6 +210,11 @@ foreach ($P in @("$VendorDir\bazel-bin", "$VendorDir\bazel-out")) {
 }
 
 Write-Host "[Stage] Searching under resolved physical paths: $SearchPaths"
+
+if ($SearchPaths.Count -eq 0) {
+    Write-Error "[Error] No resolved Bazel search paths found under bazel-bin or bazel-out. Ensure Bazel build completes successfully first."
+    exit 1
+}
 
 $LibFiles = Get-ChildItem -Path $SearchPaths -Recurse -Include *.lib,*.a,*.lo.lib -ErrorAction SilentlyContinue | Where-Object {
     $_.FullName -notlike "*prebuilt*" -and 
