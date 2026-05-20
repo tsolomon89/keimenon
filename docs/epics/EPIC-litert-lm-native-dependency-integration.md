@@ -52,3 +52,16 @@ To verify dependency layout before compiling the C++ integration, we probe for t
 - If present, we return `RUNTIME_BINDING_INCOMPLETE` until the actual CMake-built API logic is wired up.
 
 Our next phase involves migrating the build from `node-gyp` to `cmake-js`, at which point `EngineFactory::CreateDefault()` will be successfully compiled against the LiteRT-LM C++ source headers.
+
+## Upstream Verification (Phase 1)
+
+1. **Exact repository URL:** `https://github.com/google-ai-edge/LiteRT-LM`
+2. **Version strategy:** Pin to a specific commit or tag in `vendor/litert-lm/VERSION.json` to ensure deterministic builds.
+3. **Windows build command:** `bazel build -c opt //runtime/... --config=windows` (if using Bazel) or via CMake.
+4. **Bazel version requirements:** Bazelisk is recommended, usually Bazel 7.x.
+5. **CMake availability:** `CMakeLists.txt` is provided, enabling CMake usage.
+6. **Visual Studio Build Tools:** Requires MSVC (Desktop development with C++ workload) and Windows 10/11 SDK.
+7. **Expected build outputs:** C++ static/shared libraries for orchestration (`liblitert_lm_engine.a` / `.lib`).
+8. **Where DLLs are produced:** `libLiteRt.dll` and GPU delegates are distributed via `prebuilt/windows_x86_64/` or Bazel cache `bazel-bin/`.
+9. **C++ API headers:** Available directly from source checkout under `runtime/engine/` and `runtime/conversation/`.
+10. **Linkability:** `EngineFactory::CreateDefault()` is linkable by consuming the built libraries or building source directly.

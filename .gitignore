@@ -181,3 +181,11 @@ docs/OVERVIEW.md
 # Agent artifacts
 agent_context/*
 !agent_context/runtime-skills/apps/desktop/resources/web-dist
+
+# Vendor dependencies
+vendor/litert-lm/
+
+# Native libraries and binaries
+packages/litert-node-bindings/native/win32-x64/lib/
+packages/litert-node-bindings/native/win32-x64/bin/
+apps/desktop/resources/native/win32-x64/*.dll

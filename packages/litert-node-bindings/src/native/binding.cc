@@ -10,7 +10,11 @@
 #include <dlfcn.h>
 #endif
 
-// A dummy flag to track if a model is loaded (will stay false until real implementation)
+#include <c/engine.h>
+
+// Persistent global handles for the LiteRT-LM C++ model and session
+static LiteRtLmEngine* g_engine = nullptr;
+static LiteRtLmSession* g_session = nullptr;
 static bool isModelLoaded = false;
 
 struct DependencyDef {
@@ -126,9 +130,9 @@ Napi::Value Status(const Napi::CallbackInfo& info) {
     result.Set("state", Napi::String::New(env, "runtime_dependency_partial"));
     result.Set("details", Napi::String::New(env, "Required dependencies found, but optional dependencies are missing."));
   } else {
-    // Both required and optional present, but C++ API isn't linked yet
-    result.Set("state", Napi::String::New(env, "runtime_binding_incomplete"));
-    result.Set("details", Napi::String::New(env, "All dependencies found, but C++ API is not fully linked."));
+    // Both required and optional present, and C++ API is fully functional!
+    result.Set("state", Napi::String::New(env, "ready"));
+    result.Set("details", Napi::String::New(env, "Native LiteRT-LM runtime is ready."));
   }
   
   return result;
@@ -168,23 +172,81 @@ void LoadModel(const Napi::CallbackInfo& info) {
       return;
     }
   }
-  
-  Napi::Error::New(env, "RUNTIME_BINDING_INCOMPLETE: LiteRT-LM C++ model loading is not linked yet.")
-      .ThrowAsJavaScriptException();
-}
 
-void Generate(const Napi::CallbackInfo& info) {
-  Napi::Env env = info.Env();
-  
-  if (!isModelLoaded) {
-    Napi::Error::New(env, "MODEL_NOT_LOADED: No model is currently loaded.")
+  // Safely unload any previously loaded model first
+  if (g_session) {
+    litert_lm_session_delete(g_session);
+    g_session = nullptr;
+  }
+  if (g_engine) {
+    litert_lm_engine_delete(g_engine);
+    g_engine = nullptr;
+  }
+  isModelLoaded = false;
+
+  // Create engine settings using CPU backend
+  LiteRtLmEngineSettings* settings = litert_lm_engine_settings_create(
+      modelPath.c_str(), 
+      "cpu", 
+      nullptr, 
+      nullptr
+  );
+  if (!settings) {
+    Napi::Error::New(env, "MODEL_LOAD_FAILED: Failed to create LiteRT-LM engine settings.")
         .ThrowAsJavaScriptException();
     return;
   }
+
+  // Limit maximum number of tokens in engine
+  litert_lm_engine_settings_set_max_num_tokens(settings, 2048);
+
+  // Instantiate engine
+  g_engine = litert_lm_engine_create(settings);
+  litert_lm_engine_settings_delete(settings);
+
+  if (!g_engine) {
+    Napi::Error::New(env, "MODEL_LOAD_FAILED: Failed to create LiteRT-LM native engine instance.")
+        .ThrowAsJavaScriptException();
+    return;
+  }
+
+  // Create inference session
+  g_session = litert_lm_engine_create_session(g_engine, nullptr);
+  if (!g_session) {
+    litert_lm_engine_delete(g_engine);
+    g_engine = nullptr;
+    Napi::Error::New(env, "MODEL_LOAD_FAILED: Failed to create LiteRT-LM native session instance.")
+        .ThrowAsJavaScriptException();
+    return;
+  }
+
+  isModelLoaded = true;
+}
+
+Napi::Value Generate(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
   
+  if (!isModelLoaded || !g_session) {
+    Napi::Error::New(env, "MODEL_NOT_LOADED: No model is currently loaded.")
+        .ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  if (info.Length() < 1 || !info[0].IsString()) {
+    Napi::TypeError::New(env, "String expected for prompt").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+  
+  std::string prompt = info[0].As<Napi::String>().Utf8Value();
+
+  int maxTokens = 512;
+  if (info.Length() > 1 && info[1].IsNumber()) {
+    maxTokens = info[1].As<Napi::Number>().Int32Value();
+  }
+
   std::string nativeDepsDir = "";
-  if (info.Length() > 1 && info[1].IsString()) {
-    nativeDepsDir = info[1].As<Napi::String>().Utf8Value();
+  if (info.Length() > 2 && info[2].IsString()) {
+    nativeDepsDir = info[2].As<Napi::String>().Utf8Value();
   }
   
   auto deps = CheckDependencies(nativeDepsDir);
@@ -192,15 +254,46 @@ void Generate(const Napi::CallbackInfo& info) {
     if (dep.required && !dep.present) {
       Napi::Error::New(env, ("RUNTIME_DEPENDENCY_MISSING: " + dep.filename + " is not available.").c_str())
           .ThrowAsJavaScriptException();
-      return;
+      return env.Null();
     }
   }
 
-  Napi::Error::New(env, "RUNTIME_BINDING_INCOMPLETE: LiteRT-LM C++ generation is not linked yet.")
-      .ThrowAsJavaScriptException();
+  // Execute native inference via C API
+  LiteRtLmInputData input;
+  input.type = kLiteRtLmInputDataTypeText;
+  input.data = prompt.c_str();
+  input.size = prompt.size();
+
+  LiteRtLmResponses* responses = litert_lm_session_generate_content(g_session, &input, 1);
+  if (!responses) {
+    Napi::Error::New(env, "INFERENCE_FAILED: LiteRT-LM failed to generate content.")
+        .ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  int numCandidates = litert_lm_responses_get_num_candidates(responses);
+  std::string responseText = "";
+  if (numCandidates > 0) {
+    const char* textPtr = litert_lm_responses_get_response_text_at(responses, 0);
+    if (textPtr) {
+      responseText = textPtr;
+    }
+  }
+
+  litert_lm_responses_delete(responses);
+
+  return Napi::String::New(env, responseText);
 }
 
 void UnloadModel(const Napi::CallbackInfo& info) {
+  if (g_session) {
+    litert_lm_session_delete(g_session);
+    g_session = nullptr;
+  }
+  if (g_engine) {
+    litert_lm_engine_delete(g_engine);
+    g_engine = nullptr;
+  }
   isModelLoaded = false;
 }
 

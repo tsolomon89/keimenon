@@ -16,7 +16,14 @@ export function resolveNativeDepsDir(): string {
     }
   }
 
-  const devPath = path.resolve(__dirname, '../native/win32-x64/bin');
+  let baseDir = '';
+  if (typeof __dirname !== 'undefined') {
+    baseDir = __dirname;
+  } else if (typeof process !== 'undefined') {
+    baseDir = process.cwd();
+  }
+
+  const devPath = path.resolve(baseDir, '../native/win32-x64/bin');
   if (fs.existsSync(devPath)) {
     return devPath;
   }
@@ -25,6 +32,15 @@ export function resolveNativeDepsDir(): string {
 }
 
 export function getLiteRTBindings(): LiteRTNodeBindings {
+  const nativeDepsDir = resolveNativeDepsDir();
+
+  if (nativeDepsDir && process.platform === 'win32') {
+    const originalPath = process.env.PATH || '';
+    if (!originalPath.toLowerCase().includes(nativeDepsDir.toLowerCase())) {
+      process.env.PATH = `${nativeDepsDir};${originalPath}`;
+    }
+  }
+
   let nativeBinding: any;
   try {
     nativeBinding = bindings('litert-node-bindings.node');
@@ -44,11 +60,10 @@ export function getLiteRTBindings(): LiteRTNodeBindings {
     );
   }
 
-  const nativeDepsDir = resolveNativeDepsDir();
-
   return {
     status: () => nativeBinding.status(nativeDepsDir),
     loadModel: (modelPath: string) => nativeBinding.loadModel(modelPath, nativeDepsDir),
-    generate: (prompt: string) => nativeBinding.generate(prompt, nativeDepsDir),
+    generate: (prompt: string, maxTokens?: number) =>
+      nativeBinding.generate(prompt, maxTokens ?? 512, nativeDepsDir),
   };
 }

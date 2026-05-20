@@ -7,7 +7,11 @@
         "src/native/binding.cc"
       ],
       "include_dirs": [
-        "<!@(node -p \"require('node-addon-api').include\")"
+        "<!@(node -p \"require('node-addon-api').include\")",
+        "native/win32-x64/include"
+      ],
+      "libraries": [
+        "<(module_root_dir)/native/win32-x64/lib/litert_lm_engine.lib"
       ],
       "dependencies": [
         "<!(node -p \"require('node-addon-api').gyp\")"

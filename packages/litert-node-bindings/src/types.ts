@@ -25,5 +25,5 @@ export interface NativeStatus {
 export interface LiteRTNodeBindings {
   status(nativeDepsDir?: string): NativeStatus;
   loadModel(modelPath: string, nativeDepsDir?: string): boolean;
-  generate(prompt: string, nativeDepsDir?: string): string;
+  generate(prompt: string, maxTokens?: number, nativeDepsDir?: string): string;
 }

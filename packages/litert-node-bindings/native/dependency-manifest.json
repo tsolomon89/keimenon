@@ -6,8 +6,8 @@
         {
           "name": "LiteRT core DLL",
           "filename": "libLiteRt.dll",
-          "required_for": "core runtime probe",
-          "status": "unknown"
+          "required_for": "core runtime probe and execution",
+          "status": "expected_from_prebuilt"
         }
       ],
       "optional": [
@@ -15,13 +15,27 @@
           "name": "LiteRT WebGPU Accelerator",
           "filename": "libLiteRtWebGpuAccelerator.dll",
           "required_for": "gpu backend",
-          "status": "unknown"
+          "status": "expected_from_prebuilt"
         }
       ],
-      "source": "official LiteRT-LM prebuilt/windows_x86_64 or build output"
+      "source_path": "vendor/litert-lm",
+      "build_command": "bazel build -c opt //runtime/... --config=windows",
+      "expected_output_paths": {
+        "dll": "prebuilt/windows_x86_64/",
+        "lib": "bazel-bin/runtime/",
+        "include": "runtime/"
+      },
+      "unknowns": [
+        "exact .lib/.a output name for orchestration engine",
+        "whether DLLs need to be manually loaded by us or if Windows handles it seamlessly when in PATH"
+      ]
     }
   },
-  "headers": ["runtime/engine/engine.h", "runtime/engine/engine_factory.h"],
+  "headers": [
+    "runtime/engine/engine.h",
+    "runtime/engine/engine_factory.h",
+    "runtime/conversation/conversation.h"
+  ],
   "build_system": "cmake-js-target-evaluation",
   "notes": [
     "The build system will transition to cmake-js to link against the LiteRT-LM C++ source.",

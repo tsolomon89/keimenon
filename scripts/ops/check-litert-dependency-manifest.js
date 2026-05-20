@@ -64,4 +64,12 @@ if (!allGood) {
   process.exit(1);
 }
 
+const versionPath = path.join(__dirname, '../../vendor/litert-lm/VERSION.json');
+if (fs.existsSync(versionPath)) {
+  const v = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
+  console.log(`LiteRT-LM Source Version: ${v.target} (${v.commit.substring(0, 7)})`);
+} else {
+  console.warn('WARNING: LiteRT-LM source not fetched yet. Run npm run litert:fetch.');
+}
+
 console.log('SUCCESS: Dependency manifest matches binding.cc');

@@ -16,7 +16,10 @@ if (!fs.existsSync(nodeArtifactPath)) {
     'FAILED: litert-node-bindings.node artifact missing from apps/desktop/resources/native/win32-x64.'
   );
   process.exit(1);
+} else {
+  console.log('SUCCESS: binding .node present: yes');
 }
+
 try {
   const manifestPath = path.join(
     __dirname,
@@ -45,7 +48,8 @@ try {
   if (
     status.state !== 'runtime_dependency_missing' &&
     status.state !== 'runtime_dependency_partial' &&
-    status.state !== 'runtime_binding_incomplete'
+    status.state !== 'runtime_binding_incomplete' &&
+    status.state !== 'ready'
   ) {
     console.error('FAILED: status() returned unexpected state:', status.state);
     process.exit(1);
@@ -66,7 +70,7 @@ try {
 
   let generateThrew = false;
   try {
-    bindings.generate('hello');
+    bindings.generate('hello', 512);
   } catch (e) {
     if (e.message.includes('MODEL_NOT_LOADED')) {
       generateThrew = true;
@@ -76,6 +80,27 @@ try {
     console.error('FAILED: generate did not throw MODEL_NOT_LOADED.');
     process.exit(1);
   }
+
+  // Check source and build outputs
+  const vendorDir = path.join(__dirname, '../../vendor/litert-lm');
+  console.log(`source fetched: ${fs.existsSync(vendorDir) ? 'yes' : 'no'}`);
+
+  const includeDir = path.join(
+    __dirname,
+    '../../packages/litert-node-bindings/native/win32-x64/include'
+  );
+  const libDir = path.join(__dirname, '../../packages/litert-node-bindings/native/win32-x64/lib');
+  const binDir = path.join(__dirname, '../../packages/litert-node-bindings/native/win32-x64/bin');
+
+  console.log(
+    `headers present: ${fs.existsSync(includeDir) && fs.readdirSync(includeDir).length > 0 ? 'yes' : 'no'}`
+  );
+  console.log(
+    `libs present: ${fs.existsSync(libDir) && fs.readdirSync(libDir).length > 0 ? 'yes' : 'no'}`
+  );
+  console.log(
+    `DLLs present: ${fs.existsSync(binDir) && fs.readdirSync(binDir).length > 0 ? 'yes' : 'no'}`
+  );
 
   console.log('SUCCESS: litert-node-bindings packaged and behaves correctly.');
 } catch (err) {
