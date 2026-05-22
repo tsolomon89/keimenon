@@ -50,7 +50,15 @@ export interface PlatformDetection {
 }
 
 export interface UploadProgress {
-  stage: 'uploading' | 'detecting' | 'parsing' | 'analyzing' | 'ready' | 'error';
+  stage:
+    | 'hashing'
+    | 'initiating'
+    | 'uploading'
+    | 'detecting'
+    | 'parsing'
+    | 'analyzing'
+    | 'ready'
+    | 'error';
   percent: number;
   message: string;
 }

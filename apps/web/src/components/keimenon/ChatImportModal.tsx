@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { X, Upload, FileText, Save, CheckCircle2 } from 'lucide-react';
+import { X, Upload, FileText, Save, CheckCircle2, AlertCircle } from 'lucide-react';
 import {
   ChatImportConfig,
   DEFAULT_IMPORT_CONFIG,
@@ -35,6 +35,7 @@ import { useChunkedUpload } from '@/hooks/useChunkedUpload';
 import { logApiEvent, logJobEvent } from '@/lib/error-handler';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOperating } from '@/contexts/OperatingContext';
+import { useShell } from '@/contexts/ShellContext';
 import { DEBUG_IMPORT_SELECTOR } from '@/lib/env.config';
 import { useKeimenonStore } from '@/store/keimenonStore';
 import { emitImportGraphRefresh } from '@/lib/import-refresh-events';
@@ -48,7 +49,7 @@ interface ChatImportModalProps {
   onDismiss: () => void;
 }
 
-type Stage = 'select' | 'processing' | 'config' | 'review' | 'complete';
+type Stage = 'select' | 'processing' | 'config' | 'review' | 'duplicate' | 'complete';
 
 interface MultiFileImportProgress {
   fileName: string;
@@ -60,9 +61,10 @@ interface MultiFileImportProgress {
 }
 
 export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
-  // Auth and operating context
+  // Auth, operating, and shell context
   const { user } = useAuth();
   const { operating } = useOperating();
+  const { setKeimenonMode } = useShell();
 
   // Chunked upload hook
   const chunkedUpload = useChunkedUpload();
@@ -82,6 +84,11 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [postImportResolvedJobId, setPostImportResolvedJobId] = useState<string | null>(null);
+  const [duplicateJobInfo, setDuplicateJobInfo] = useState<{
+    activeJobId: string;
+    activeJobStatus: string;
+  } | null>(null);
+  const [completedJobStats, setCompletedJobStats] = useState<any | null>(null);
   const [multiFileImports, setMultiFileImports] = useState<MultiFileImportProgress[]>([]);
   const [importPresets, setImportPresets] = useState<ImportPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState('');
@@ -347,6 +354,10 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       setIsImporting(false);
       console.log('[ChatImportModal] Import job completed successfully');
 
+      if (jobUpdate.stats) {
+        setCompletedJobStats(jobUpdate.stats);
+      }
+
       const resolvedJobId = currentJobId;
       triggerGraphRefresh(resolvedJobId, 'import_modal_complete');
       void (async () => {
@@ -456,7 +467,19 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
   useEffect(() => {
     const uploadProgress = chunkedUpload.progress;
 
-    if (uploadProgress.status === 'uploading') {
+    if (uploadProgress.status === 'hashing') {
+      setProgress({
+        stage: 'hashing',
+        percent: uploadProgress.percentage,
+        message: 'Calculating file signature (SHA-256) for duplicate checking...',
+      });
+    } else if (uploadProgress.status === 'initiating') {
+      setProgress({
+        stage: 'initiating',
+        percent: uploadProgress.percentage,
+        message: 'Initiating upload session and checking for duplicate jobs...',
+      });
+    } else if (uploadProgress.status === 'uploading') {
       setProgress({
         stage: 'uploading',
         percent: uploadProgress.percentage,
@@ -720,9 +743,17 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       // Upload with chunked upload hook
       const uploadResult = await chunkedUpload.upload(file, chunkedImportConfig);
 
-      if (!uploadResult.success || !uploadResult.jobId) {
-        console.error('[ChatImportModal] Chunked upload failed:', uploadResult.error);
+      if (!uploadResult.success) {
         setIsImporting(false);
+        if (uploadResult.code === 'DUPLICATE_IMPORT') {
+          setDuplicateJobInfo({
+            activeJobId: uploadResult.details?.activeJobId || '',
+            activeJobStatus: uploadResult.details?.activeJobStatus || 'unknown',
+          });
+          setStage('duplicate');
+          return;
+        }
+        console.error('[ChatImportModal] Chunked upload failed:', uploadResult.error);
         alert(`Failed to upload file: ${uploadResult.error || 'Unknown error'}`);
         return;
       }
@@ -732,25 +763,30 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         uploadResult.jobId
       );
 
+      const jobId = uploadResult.jobId;
+      if (!jobId) {
+        throw new Error(
+          'Upload completed successfully but no Job ID was returned from the server.'
+        );
+      }
+
       // Store job ID to track progress via SSE
-      setCurrentJobId(uploadResult.jobId);
+      setCurrentJobId(jobId);
       setPostImportResolvedJobId(null);
 
       // Log event for keimenon console
       logJobEvent(`Import job created via chunked upload: ${file.name}`, 'import.jobCreated', {
-        jobId: uploadResult.jobId,
+        jobId,
         fileName: file.name,
         fileSize: file.size,
         uploadMethod: 'chunked',
       });
 
-      console.log(
-        `[ChatImportModal] Import job ${uploadResult.jobId} created. Tracking progress via SSE...`
-      );
+      console.log(`[ChatImportModal] Import job ${jobId} created. Tracking progress via SSE...`);
       setProgress({
         stage: 'analyzing',
         percent: 10,
-        message: `Chunked upload complete. Import processing started... (Job ID: ${uploadResult.jobId.substring(0, 8)}...)`,
+        message: `Chunked upload complete. Import processing started... (Job ID: ${jobId.substring(0, 8)}...)`,
       });
 
       // SSE will handle progress updates via useEffect
@@ -864,6 +900,8 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         return 'Configure import settings';
       case 'review':
         return 'Review potential duplicates';
+      case 'duplicate':
+        return 'Duplicate import blocked';
       case 'complete':
         return 'Import completed successfully!';
       default:
@@ -1061,38 +1099,197 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
               </div>
             )}
 
-            {stage === 'complete' && (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-16 h-16 bg-green-600/20 rounded-full flex items-center justify-center mb-4">
-                  <CheckCircle2 className="w-10 h-10 text-green-400" />
+            {stage === 'duplicate' && duplicateJobInfo && (
+              <div className="flex flex-col items-center justify-center py-12 text-center max-w-xl mx-auto w-full">
+                <div className="h-16 w-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shadow-inner mb-6">
+                  <AlertCircle className="w-8 h-8 animate-pulse" />
                 </div>
-                <h3 className="text-xl font-semibold text-slate-200 mb-2">
-                  Import Job Created Successfully!
-                </h3>
-                <p className="text-slate-400 mb-4 max-w-md">
-                  Your import is now processing in the background. You can track its progress in the
-                  <span className="text-purple-400 font-medium"> Background Operations</span> table
-                  on the dashboard.
-                </p>
-                {currentJobId && (
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-6">
-                    <p className="text-xs text-slate-500 mb-1">Job ID</p>
-                    <code className="text-sm text-purple-400 font-mono">{currentJobId}</code>
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    Duplicate Import Job Blocked
+                  </h3>
+                  <p className="text-sm text-slate-400 max-w-md">
+                    An identical export file has already been uploaded and registered.
+                  </p>
+                  <div className="mt-6 p-4 bg-slate-950/60 rounded-xl border border-slate-800/80 text-left w-full max-w-md">
+                    <div className="flex justify-between text-xs py-1.5 font-mono">
+                      <span className="text-slate-500">Job ID:</span>
+                      <span className="text-slate-300 font-semibold">
+                        {duplicateJobInfo.activeJobId}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs py-1.5 border-t border-slate-900 font-mono">
+                      <span className="text-slate-500">Current Status:</span>
+                      <span className="text-amber-400 font-bold uppercase">
+                        {duplicateJobInfo.activeJobStatus}
+                      </span>
+                    </div>
                   </div>
-                )}
-                <button
-                  onClick={onDismiss}
-                  className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors"
+                </div>
+                <div className="flex flex-col gap-3 w-full mt-6 max-w-md">
+                  {['queued', 'running'].includes(duplicateJobInfo.activeJobStatus) ? (
+                    <button
+                      onClick={() => {
+                        setCurrentJobId(duplicateJobInfo.activeJobId);
+                        setIsImporting(true);
+                        setStage('processing');
+                      }}
+                      className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-slate-900 text-xs font-semibold rounded-lg shadow-lg hover:shadow-purple-500/30 transition-all uppercase tracking-wider"
+                    >
+                      Monitor In-Progress Job
+                    </button>
+                  ) : duplicateJobInfo.activeJobStatus === 'succeeded' ? (
+                    <button
+                      onClick={() => {
+                        triggerGraphRefresh(duplicateJobInfo.activeJobId);
+                        setStage('complete');
+                      }}
+                      className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-xs font-semibold rounded-lg shadow-lg hover:shadow-green-500/30 transition-all uppercase tracking-wider"
+                    >
+                      View Ingested Graph
+                    </button>
+                  ) : null}
+                  <button
+                    onClick={() => {
+                      setStage('select');
+                      setFiles([]);
+                      setDuplicateJobInfo(null);
+                    }}
+                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-all"
+                  >
+                    Cancel and Go Back
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {stage === 'complete' && (
+              <div className="flex flex-col items-center justify-center py-8 text-center max-w-4xl mx-auto gap-6">
+                <div
+                  className="h-16 w-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 glow-accent animate-bounce"
+                  style={{ borderColor: 'rgba(34, 197, 94, 0.4)' }}
                 >
-                  Close & View Progress
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Graph Birth Complete</h3>
+                  <p className="text-sm text-slate-400 mt-2 max-w-md mx-auto">
+                    Your conversations have been fully transformed and materialized into the
+                    similarity-weighted knowledge graph.
+                  </p>
+                </div>
+
+                {/* Premium success metrics grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-2xl mt-4">
+                  <div className="bg-slate-950/40 backdrop-blur-xl border border-slate-800 p-4 rounded-xl text-center hover:scale-[1.02] transition-transform duration-300">
+                    <span className="text-xs text-slate-500 uppercase tracking-wider block font-semibold">
+                      Nodes Created
+                    </span>
+                    <span className="text-2xl font-bold font-mono text-purple-400 mt-2 block">
+                      {completedJobStats?.nodesCreated ?? 0}
+                    </span>
+                  </div>
+                  <div className="bg-slate-950/40 backdrop-blur-xl border border-slate-800 p-4 rounded-xl text-center hover:scale-[1.02] transition-transform duration-300">
+                    <span className="text-xs text-slate-500 uppercase tracking-wider block font-semibold">
+                      Edges Created
+                    </span>
+                    <span className="text-2xl font-bold font-mono text-purple-400 mt-2 block">
+                      {completedJobStats?.edgesCreated ?? 0}
+                    </span>
+                  </div>
+                  <div className="bg-slate-950/40 backdrop-blur-xl border border-slate-800 p-4 rounded-xl text-center hover:scale-[1.02] transition-transform duration-300">
+                    <span className="text-xs text-slate-500 uppercase tracking-wider block font-semibold">
+                      Sources Created
+                    </span>
+                    <span className="text-2xl font-bold font-mono text-purple-400 mt-2 block">
+                      {completedJobStats?.sourcesCreated ?? 0}
+                    </span>
+                  </div>
+                  <div className="bg-slate-950/40 backdrop-blur-xl border border-slate-800 p-4 rounded-xl text-center hover:scale-[1.02] transition-transform duration-300">
+                    <span className="text-xs text-slate-500 uppercase tracking-wider block font-semibold">
+                      Spans Created
+                    </span>
+                    <span className="text-2xl font-bold font-mono text-purple-400 mt-2 block">
+                      {completedJobStats?.spansCreated ?? 0}
+                    </span>
+                  </div>
+                  <div className="bg-slate-950/40 backdrop-blur-xl border border-slate-800 p-4 rounded-xl text-center hover:scale-[1.02] transition-transform duration-300">
+                    <span className="text-xs text-slate-500 uppercase tracking-wider block font-semibold">
+                      Packets Created
+                    </span>
+                    <span className="text-2xl font-bold font-mono text-purple-400 mt-2 block">
+                      {completedJobStats?.packetsCreated ?? 0}
+                    </span>
+                  </div>
+                  <div className="bg-slate-950/40 backdrop-blur-xl border border-slate-800 p-4 rounded-xl text-center hover:scale-[1.02] transition-transform duration-300">
+                    <span className="text-xs text-slate-500 uppercase tracking-wider block font-semibold">
+                      Atomic Units
+                    </span>
+                    <span className="text-2xl font-bold font-mono text-purple-400 mt-2 block">
+                      {completedJobStats?.atomicUnitsCreated ?? 0}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Post-Ingestion Quick Actions */}
+                <div className="flex flex-col sm:flex-row gap-3 mt-6 w-full max-w-xl">
+                  <button
+                    onClick={() => {
+                      setKeimenonMode('keimenon');
+                      onDismiss();
+                    }}
+                    className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-slate-900 text-xs font-bold rounded-lg shadow-lg hover:shadow-purple-500/30 transition-all uppercase tracking-wider font-semibold"
+                  >
+                    Open Canvas
+                  </button>
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(
+                        new CustomEvent('navigate-to-dashboard-view', {
+                          detail: { view: 'workspaces' },
+                        })
+                      );
+                      onDismiss();
+                    }}
+                    className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 transition-all uppercase tracking-wider font-semibold"
+                  >
+                    View Ingested Groups
+                  </button>
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(
+                        new CustomEvent('navigate-to-dashboard-view', {
+                          detail: { view: 'conversations' },
+                        })
+                      );
+                      onDismiss();
+                    }}
+                    className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 transition-all uppercase tracking-wider font-semibold"
+                  >
+                    Start Conversation
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setStage('select');
+                    setFiles([]);
+                    setPlatformDetection(null);
+                    setAnalysis(null);
+                    setCurrentJobId(null);
+                    setCompletedJobStats(null);
+                  }}
+                  className="text-xs text-slate-500 hover:text-slate-300 mt-4 transition-colors font-medium"
+                >
+                  Start Another Import
                 </button>
               </div>
             )}
           </div>
         )}
 
-        {/* Footer - hide for review and complete stages */}
-        {stage !== 'review' && stage !== 'complete' && (
+        {/* Footer - hide for review, duplicate and complete stages */}
+        {stage !== 'review' && stage !== 'complete' && stage !== 'duplicate' && (
           <div className="sticky bottom-0 bg-slate-900 border-t border-slate-800 p-6">
             {/* Tenancy Debug Badge - Only visible when DEBUG_IMPORT_SELECTOR=1 */}
             {DEBUG_IMPORT_SELECTOR && (

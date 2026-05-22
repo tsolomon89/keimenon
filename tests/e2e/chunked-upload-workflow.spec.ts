@@ -83,6 +83,17 @@ async function loginWithRetry(
   throw new Error(`Login failed after ${maxAttempts} attempts`);
 }
 
+/**
+ * Helper: Parse JSON and lift standard envelope data to root level for compatibility
+ */
+async function parseJson(response: any): Promise<any> {
+  const result = await response.json();
+  if (result && typeof result === 'object' && result.success && result.data) {
+    Object.assign(result, result.data);
+  }
+  return result;
+}
+
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
 const SMALL_FILE_SIZE = 25 * 1024 * 1024; // 25MB test file (3 chunks)
 const DB_PATH = 'c:/Users/Audna/.keimenon/keimenon.db';
@@ -171,7 +182,7 @@ async function getUploadSessionViaAPI(
     throw new Error(`Failed to get upload session: ${response.status()} ${await response.text()}`);
   }
 
-  const result = await response.json();
+  const result = await parseJson(response);
   return result.session; // Return session object from API response
 }
 
@@ -261,7 +272,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
     });
 
     expect(response.ok()).toBeTruthy();
-    const result = await response.json();
+    const result = await parseJson(response);
 
     console.log('[Test 1] Response:', JSON.stringify(result, null, 2));
 
@@ -310,7 +321,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const result = await response.json();
+    const result = await parseJson(response);
     const sessionId = result.session.id;
     createdSessionIds.push(sessionId);
 
@@ -349,7 +360,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 
@@ -374,7 +385,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       });
 
       expect(chunkResponse.ok()).toBeTruthy();
-      const chunkResult = await chunkResponse.json();
+      const chunkResult = await parseJson(chunkResponse);
 
       // Verify chunk upload response
       expect(chunkResult.success).toBe(true);
@@ -400,7 +411,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       headers: { Authorization: `Bearer ${authToken}` },
     });
 
-    const statusResult = await statusResponse.json();
+    const statusResult = await parseJson(statusResponse);
     expect(statusResult.session.progress).toBe(100);
     expect(statusResult.session.chunksUploaded.length).toBe(3);
     expect(statusResult.session.missingChunks).toEqual([]);
@@ -426,7 +437,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 
@@ -477,7 +488,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 
@@ -543,7 +554,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 
@@ -569,7 +580,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       headers: { Authorization: `Bearer ${authToken}` },
     });
 
-    const statusResult = await statusResponse.json();
+    const statusResult = await parseJson(statusResponse);
     console.log('[Test 6] Session status after all chunks:', statusResult.session.status);
 
     // Status should be 'assembling' or 'completed' (if assembly finished quickly)
@@ -632,7 +643,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 
@@ -666,7 +677,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
         headers: { Authorization: `Bearer ${authToken}` },
       });
 
-      const statusResult = await statusResponse.json();
+      const statusResult = await parseJson(statusResponse);
 
       // Log status every 10 attempts (5 seconds)
       if (attempts % 10 === 0) {
@@ -729,7 +740,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 
@@ -758,7 +769,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       headers: { Authorization: `Bearer ${authToken}` },
     });
 
-    const statusResult = await statusResponse.json();
+    const statusResult = await parseJson(statusResponse);
 
     // Verify missing chunks detected
     expect(statusResult.session.chunksUploaded).toEqual([0, 2]);
@@ -788,7 +799,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 
@@ -819,7 +830,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       headers: { Authorization: `Bearer ${authToken}` },
     });
 
-    let statusResult = await statusResponse.json();
+    let statusResult = await parseJson(statusResponse);
     expect(statusResult.session.chunksUploaded).toEqual([0, 1]);
     expect(statusResult.session.missingChunks).toEqual([2]);
 
@@ -850,7 +861,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       headers: { Authorization: `Bearer ${authToken}` },
     });
 
-    statusResult = await statusResponse.json();
+    statusResult = await parseJson(statusResponse);
     expect(statusResult.session.progress).toBe(100);
     expect(statusResult.session.chunksUploaded.length).toBe(3);
     expect(statusResult.session.missingChunks).toEqual([]);
@@ -879,7 +890,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 
@@ -925,7 +936,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     // NOTE: Don't add to createdSessionIds - we're testing deletion in this test
 
@@ -957,7 +968,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
     });
 
     expect(deleteResponse.ok()).toBe(true);
-    const deleteResult = await deleteResponse.json();
+    const deleteResult = await parseJson(deleteResponse);
     expect(deleteResult.success).toBe(true);
     expect(deleteResult.message).toBe('Upload session cancelled');
 
@@ -994,7 +1005,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 
@@ -1064,7 +1075,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 
@@ -1085,7 +1096,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
     expect(response.ok()).toBe(false);
     expect(response.status()).toBe(400);
 
-    const error = await response.json();
+    const error = await parseJson(response);
     expect(error.error).toBeDefined();
 
     console.log('[Test 13] ✅ Invalid chunk index rejected correctly');
@@ -1109,7 +1120,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 
@@ -1142,7 +1153,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 
@@ -1220,7 +1231,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
     });
 
     expect(deleteResponse.status()).toBe(404);
-    const result = await deleteResponse.json();
+    const result = await parseJson(deleteResponse);
     expect(result.success).toBe(false);
     expect(result.error).toContain('not found');
 
@@ -1245,7 +1256,7 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 
@@ -1310,7 +1321,7 @@ test.describe('Upload Session Deletion via Data Management', () => {
       },
     });
 
-    const initResult = await initResponse.json();
+    const initResult = await parseJson(initResponse);
     const sessionId = initResult.session.id;
     createdSessionIds.push(sessionId);
 

@@ -161,6 +161,23 @@ export function KeimenonLayout({
     };
   }, []);
 
+  useEffect(() => {
+    const handleNavigate = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        view: 'analytics' | 'storage' | 'workspaces' | 'conversations';
+      }>;
+      if (customEvent.detail && customEvent.detail.view) {
+        setKeimenonMode('dashboard');
+        setDashboardView(customEvent.detail.view);
+      }
+    };
+
+    window.addEventListener('navigate-to-dashboard-view' as any, handleNavigate);
+    return () => {
+      window.removeEventListener('navigate-to-dashboard-view' as any, handleNavigate);
+    };
+  }, [setKeimenonMode]);
+
   // Refresh active operation when background context updates
   useEffect(() => {
     if (activeOperation) {

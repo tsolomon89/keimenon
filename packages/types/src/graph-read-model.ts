@@ -40,6 +40,12 @@ export interface GraphReadModelMetadata {
 
   // Read-model specific bounds metadata
   readModel: GraphReadModelMetadataDetail;
+
+  pagination?: {
+    page: number;
+    limit: number;
+    offset: number;
+  };
 }
 
 export interface GraphReadModelResponse {

@@ -39,7 +39,15 @@ export interface UploadProgress {
   chunkIndex: number;
   totalChunks: number;
   chunksUploaded: number;
-  status: 'idle' | 'uploading' | 'paused' | 'completed' | 'failed' | 'canceled';
+  status:
+    | 'idle'
+    | 'uploading'
+    | 'paused'
+    | 'completed'
+    | 'failed'
+    | 'canceled'
+    | 'hashing'
+    | 'initiating';
   error?: string;
   estimatedTimeRemaining?: number; // seconds
   uploadSpeed?: number; // bytes per second
@@ -403,7 +411,13 @@ export function useChunkedUpload() {
     async (
       file: File,
       importConfig?: any
-    ): Promise<{ success: boolean; jobId?: string; error?: string }> => {
+    ): Promise<{
+      success: boolean;
+      jobId?: string;
+      error?: string;
+      code?: string;
+      details?: any;
+    }> => {
       try {
         const effectiveImportConfig = normalizeImportOptions(importConfig);
 
@@ -411,7 +425,18 @@ export function useChunkedUpload() {
           `📤 Starting chunked upload: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`
         );
 
-        // Reset state and refs
+        // Size ceiling guard: 200MB
+        const SIZE_CEILING_MB = 200;
+        const SIZE_CEILING_BYTES = SIZE_CEILING_MB * 1024 * 1024;
+        if (file.size > SIZE_CEILING_BYTES) {
+          const error = new Error(
+            `File is too large (${(file.size / 1024 / 1024).toFixed(2)} MB). Maximum allowed size is ${SIZE_CEILING_MB} MB.`
+          );
+          (error as any).code = 'FILE_TOO_LARGE';
+          throw error;
+        }
+
+        // Reset state and refs with 'hashing' status
         isPausedRef.current = false;
         isCanceledRef.current = false;
         setState({
@@ -424,7 +449,7 @@ export function useChunkedUpload() {
             chunkIndex: 0,
             totalChunks: Math.ceil(file.size / CHUNK_SIZE),
             chunksUploaded: 0,
-            status: 'uploading',
+            status: 'hashing',
           },
           isPaused: false,
           isCanceled: false,
@@ -433,6 +458,21 @@ export function useChunkedUpload() {
           bytesUploadedAtStart: 0,
         });
 
+        // Pre-compute SHA-256 hash using native Web Crypto API
+        const buffer = await file.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const uploadHash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+
+        // Transition state to 'initiating'
+        setState((prev) => ({
+          ...prev,
+          progress: {
+            ...prev.progress,
+            status: 'initiating',
+          },
+        }));
+
         // Step 1: Initiate upload session
         const initResponse = await apiClient.post('/api/v1/uploads/initiate', {
           fileName: file.name,
@@ -440,6 +480,7 @@ export function useChunkedUpload() {
           mimeType: file.type || 'application/json',
           chunkSize: CHUNK_SIZE,
           importConfig: effectiveImportConfig,
+          uploadHash,
         });
 
         if (!initResponse.data.success) {
@@ -510,7 +551,12 @@ export function useChunkedUpload() {
           },
         }));
 
-        return { success: false, error: error.message };
+        return {
+          success: false,
+          error: error.message,
+          code: error.code,
+          details: error.details,
+        };
       }
     },
     [uploadChunksInParallel, clearSessionStorage, resolveJobIdFromSession]

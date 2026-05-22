@@ -10,6 +10,10 @@ interface ProgressBarProps {
 export function ProgressBar({ progress }: ProgressBarProps) {
   const getStageLabel = (stage: UploadProgress['stage']) => {
     switch (stage) {
+      case 'hashing':
+        return 'Hashing export file...';
+      case 'initiating':
+        return 'Initiating secure upload...';
       case 'uploading':
         return 'Uploading files...';
       case 'detecting':
@@ -46,17 +50,15 @@ export function ProgressBar({ progress }: ProgressBarProps) {
             progress.stage === 'error'
               ? 'bg-red-500'
               : progress.stage === 'ready'
-              ? 'bg-green-500'
-              : 'bg-purple-600'
+                ? 'bg-green-500'
+                : 'bg-purple-600'
           }`}
           style={{ width: `${progress.percent}%` }}
         />
       </div>
 
       {/* Message */}
-      {progress.message && (
-        <p className="text-xs text-slate-400">{progress.message}</p>
-      )}
+      {progress.message && <p className="text-xs text-slate-400">{progress.message}</p>}
     </div>
   );
 }

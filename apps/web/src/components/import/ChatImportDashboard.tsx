@@ -53,6 +53,7 @@ import { logApiEvent, logJobEvent } from '@/lib/error-handler';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOperating } from '@/contexts/OperatingContext';
 import { useKeimenonStore } from '@/store/keimenonStore';
+import { useShell } from '@/contexts/ShellContext';
 import { emitImportGraphRefresh } from '@/lib/import-refresh-events';
 import {
   deriveImportProgress,
@@ -63,7 +64,7 @@ import {
 import { ImportPipelineProgress } from './ImportPipelineProgress';
 import { ImportMiniGraph } from './ImportMiniGraph';
 
-type Stage = 'select' | 'processing' | 'config' | 'review' | 'complete';
+type Stage = 'select' | 'processing' | 'config' | 'review' | 'duplicate' | 'complete';
 
 interface MultiFileImportProgress {
   fileName: string;
@@ -77,6 +78,7 @@ interface MultiFileImportProgress {
 export function ChatImportDashboard() {
   const { user } = useAuth();
   const { operating } = useOperating();
+  const { setKeimenonMode } = useShell();
   const chunkedUpload = useChunkedUpload();
 
   // Component stages and selections
@@ -86,6 +88,13 @@ export function ChatImportDashboard() {
   const [isImporting, setIsImporting] = useState(false);
   const [platformDetection, setPlatformDetection] = useState<PlatformDetection | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+
+  // Duplicate / stats upgrades
+  const [duplicateJobInfo, setDuplicateJobInfo] = useState<{
+    activeJobId: string;
+    activeJobStatus: string;
+  } | null>(null);
+  const [completedJobStats, setCompletedJobStats] = useState<any | null>(null);
 
   // Real-time progress and tracking
   const [progress, setProgress] = useState<UploadProgress>({
@@ -332,6 +341,10 @@ export function ChatImportDashboard() {
       setIsImporting(false);
       console.log('[ChatImportDashboard] Import job completed successfully');
 
+      if (jobUpdate.stats) {
+        setCompletedJobStats(jobUpdate.stats);
+      }
+
       const resolvedJobId = currentJobId;
       triggerGraphRefresh(resolvedJobId, 'import_modal_complete');
       void (async () => {
@@ -403,7 +416,19 @@ export function ChatImportDashboard() {
   useEffect(() => {
     const uploadProgress = chunkedUpload.progress;
 
-    if (uploadProgress.status === 'uploading') {
+    if (uploadProgress.status === 'hashing') {
+      setProgress({
+        stage: 'hashing',
+        percent: uploadProgress.percentage,
+        message: 'Calculating file signature (SHA-256) for duplicate checking...',
+      });
+    } else if (uploadProgress.status === 'initiating') {
+      setProgress({
+        stage: 'initiating',
+        percent: uploadProgress.percentage,
+        message: 'Initiating upload session and checking for duplicate jobs...',
+      });
+    } else if (uploadProgress.status === 'uploading') {
       setProgress({
         stage: 'uploading',
         percent: uploadProgress.percentage,
@@ -626,17 +651,32 @@ export function ChatImportDashboard() {
       };
 
       const uploadResult = await chunkedUpload.upload(file, chunkedImportConfig);
-      if (!uploadResult.success || !uploadResult.jobId) {
+      if (!uploadResult.success) {
         setIsImporting(false);
+        if (uploadResult.code === 'DUPLICATE_IMPORT') {
+          setDuplicateJobInfo({
+            activeJobId: uploadResult.details?.activeJobId || '',
+            activeJobStatus: uploadResult.details?.activeJobStatus || 'unknown',
+          });
+          setStage('duplicate');
+          return;
+        }
         alert(`Failed to upload file: ${uploadResult.error || 'Unknown error'}`);
         return;
       }
 
-      setCurrentJobId(uploadResult.jobId);
+      const jobId = uploadResult.jobId;
+      if (!jobId) {
+        throw new Error(
+          'Upload completed successfully but no Job ID was returned from the server.'
+        );
+      }
+
+      setCurrentJobId(jobId);
       setPostImportResolvedJobId(null);
 
       logJobEvent(`Import job created via chunked upload: ${file.name}`, 'import.jobCreated', {
-        jobId: uploadResult.jobId,
+        jobId,
         fileName: file.name,
         fileSize: file.size,
         uploadMethod: 'chunked',
@@ -645,7 +685,7 @@ export function ChatImportDashboard() {
       setProgress({
         stage: 'analyzing',
         percent: 10,
-        message: `Chunked upload complete. Import processing started... (Job ID: ${uploadResult.jobId.substring(0, 8)}...)`,
+        message: `Chunked upload complete. Import processing started... (Job ID: ${jobId.substring(0, 8)}...)`,
       });
     } catch (error) {
       console.error('[ChatImportDashboard] Import error:', error);
@@ -1124,21 +1164,172 @@ export function ChatImportDashboard() {
           </div>
         )}
 
+        {stage === 'duplicate' && duplicateJobInfo && (
+          <div className="flex-1 flex flex-col justify-center max-w-xl mx-auto w-full py-12">
+            <div className="glass-card p-8 text-center flex flex-col items-center gap-6 border border-amber-500/30">
+              <div className="h-16 w-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shadow-inner">
+                <AlertCircle className="w-8 h-8 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Duplicate Import Job Blocked</h3>
+                <p className="text-sm text-slate-400 mt-2">
+                  An identical export file has already been uploaded and registered.
+                </p>
+                <div className="mt-4 p-4 bg-slate-950/60 rounded-xl border border-slate-800/80 text-left w-full max-w-md">
+                  <div className="flex justify-between text-xs py-1.5 font-mono">
+                    <span className="text-slate-500">Job ID:</span>
+                    <span className="text-slate-300 font-semibold">
+                      {duplicateJobInfo.activeJobId}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs py-1.5 border-t border-slate-900 font-mono">
+                    <span className="text-slate-500">Current Status:</span>
+                    <span className="text-amber-400 font-bold uppercase">
+                      {duplicateJobInfo.activeJobStatus}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 w-full mt-2 max-w-md">
+                {['queued', 'running'].includes(duplicateJobInfo.activeJobStatus) ? (
+                  <button
+                    onClick={() => {
+                      setCurrentJobId(duplicateJobInfo.activeJobId);
+                      setIsImporting(true);
+                      setStage('processing');
+                    }}
+                    className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-slate-900 text-xs font-semibold rounded-lg shadow-lg hover:shadow-purple-500/30 transition-all uppercase tracking-wider"
+                  >
+                    Monitor In-Progress Job
+                  </button>
+                ) : duplicateJobInfo.activeJobStatus === 'succeeded' ? (
+                  <button
+                    onClick={() => {
+                      triggerGraphRefresh(duplicateJobInfo.activeJobId);
+                      setStage('complete');
+                    }}
+                    className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-xs font-semibold rounded-lg shadow-lg hover:shadow-green-500/30 transition-all uppercase tracking-wider"
+                  >
+                    View Ingested Graph
+                  </button>
+                ) : null}
+                <button
+                  onClick={() => {
+                    setStage('select');
+                    setFiles([]);
+                    setDuplicateJobInfo(null);
+                  }}
+                  className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-all"
+                >
+                  Cancel and Go Back
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {stage === 'complete' && (
-          <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto py-12 text-center gap-6">
+          <div className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto py-8 text-center gap-6">
             <div
-              className="h-16 w-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 glow-accent"
+              className="h-16 w-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 glow-accent animate-bounce"
               style={{ borderColor: 'rgba(34, 197, 94, 0.4)' }}
             >
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Graph Birth Complete</h3>
-              <p className="text-sm text-slate-400 mt-2">
+              <h3 className="text-xl font-bold text-white">Graph Birth Complete</h3>
+              <p className="text-sm text-slate-400 mt-2 max-w-md mx-auto">
                 Your conversations have been fully transformed and materialized into the
                 similarity-weighted knowledge graph.
               </p>
             </div>
+
+            {/* Premium success metrics grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-2xl mt-4">
+              <div className="glass-card p-4 bg-slate-900 border border-slate-800 rounded-xl text-center hover:scale-[1.02] transition-transform duration-300">
+                <span className="text-xs text-slate-500 uppercase tracking-wider block font-semibold">
+                  Nodes Created
+                </span>
+                <span className="text-2xl font-bold font-mono text-purple-400 mt-2 block">
+                  {completedJobStats?.nodesCreated ?? 0}
+                </span>
+              </div>
+              <div className="glass-card p-4 bg-slate-900 border border-slate-800 rounded-xl text-center hover:scale-[1.02] transition-transform duration-300">
+                <span className="text-xs text-slate-500 uppercase tracking-wider block font-semibold">
+                  Edges Created
+                </span>
+                <span className="text-2xl font-bold font-mono text-purple-400 mt-2 block">
+                  {completedJobStats?.edgesCreated ?? 0}
+                </span>
+              </div>
+              <div className="glass-card p-4 bg-slate-900 border border-slate-800 rounded-xl text-center hover:scale-[1.02] transition-transform duration-300">
+                <span className="text-xs text-slate-500 uppercase tracking-wider block font-semibold">
+                  Sources Created
+                </span>
+                <span className="text-2xl font-bold font-mono text-purple-400 mt-2 block">
+                  {completedJobStats?.sourcesCreated ?? 0}
+                </span>
+              </div>
+              <div className="glass-card p-4 bg-slate-900 border border-slate-800 rounded-xl text-center hover:scale-[1.02] transition-transform duration-300">
+                <span className="text-xs text-slate-500 uppercase tracking-wider block font-semibold">
+                  Spans Created
+                </span>
+                <span className="text-2xl font-bold font-mono text-purple-400 mt-2 block">
+                  {completedJobStats?.spansCreated ?? 0}
+                </span>
+              </div>
+              <div className="glass-card p-4 bg-slate-900 border border-slate-800 rounded-xl text-center hover:scale-[1.02] transition-transform duration-300">
+                <span className="text-xs text-slate-500 uppercase tracking-wider block font-semibold">
+                  Packets Created
+                </span>
+                <span className="text-2xl font-bold font-mono text-purple-400 mt-2 block">
+                  {completedJobStats?.packetsCreated ?? 0}
+                </span>
+              </div>
+              <div className="glass-card p-4 bg-slate-900 border border-slate-800 rounded-xl text-center hover:scale-[1.02] transition-transform duration-300">
+                <span className="text-xs text-slate-500 uppercase tracking-wider block font-semibold">
+                  Atomic Units
+                </span>
+                <span className="text-2xl font-bold font-mono text-purple-400 mt-2 block">
+                  {completedJobStats?.atomicUnitsCreated ?? 0}
+                </span>
+              </div>
+            </div>
+
+            {/* Post-Ingestion Quick Actions */}
+            <div className="flex flex-col sm:flex-row gap-3 mt-6 w-full max-w-xl">
+              <button
+                onClick={() => setKeimenonMode('keimenon')}
+                className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-slate-900 text-xs font-bold rounded-lg shadow-lg hover:shadow-purple-500/30 transition-all uppercase tracking-wider"
+              >
+                Open Canvas
+              </button>
+              <button
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent('navigate-to-dashboard-view', {
+                      detail: { view: 'workspaces' },
+                    })
+                  );
+                }}
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 transition-all uppercase tracking-wider"
+              >
+                View Ingested Groups
+              </button>
+              <button
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent('navigate-to-dashboard-view', {
+                      detail: { view: 'conversations' },
+                    })
+                  );
+                }}
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 transition-all uppercase tracking-wider"
+              >
+                Start Conversation
+              </button>
+            </div>
+
             <button
               onClick={() => {
                 setStage('select');
@@ -1146,8 +1337,9 @@ export function ChatImportDashboard() {
                 setPlatformDetection(null);
                 setAnalysis(null);
                 setCurrentJobId(null);
+                setCompletedJobStats(null);
               }}
-              className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-slate-900 text-xs font-semibold rounded-lg shadow-lg hover:shadow-purple-500/30 transition-all"
+              className="text-xs text-slate-500 hover:text-slate-300 mt-4 transition-colors font-medium"
             >
               Start Another Import
             </button>

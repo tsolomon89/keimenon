@@ -76,8 +76,11 @@ export async function handleApiError(error: any): Promise<never> {
     const data = await error.response.json().catch(() => ({}));
 
     // Extract backend error structure (from error-handler.middleware.ts)
-    const backendError = data.error || {};
-    const errorMessage = backendError.message || data.message || 'An error occurred';
+    const backendError = typeof data.error === 'object' && data.error !== null ? data.error : {};
+    const errorMessage =
+      typeof data.error === 'string'
+        ? data.error
+        : backendError.message || data.message || 'An error occurred';
     const errorDomain = backendError.domain || 'api';
     const errorOperation = backendError.operation || `api.${error.response.url || 'unknown'}`;
 
@@ -92,6 +95,13 @@ export async function handleApiError(error: any): Promise<never> {
           return new AuthError(errorMessage);
         case 404:
           return new AppError(errorMessage, 'NOT_FOUND', 404);
+        case 409:
+          return new AppError(
+            errorMessage,
+            'DUPLICATE_IMPORT',
+            409,
+            data.details || data.error?.details || backendError.details
+          );
         case 413:
           return new FileError(errorMessage, { maxSize: '10MB' });
         case 422:
