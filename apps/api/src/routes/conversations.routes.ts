@@ -150,30 +150,93 @@ function validateContextSpec(
   accountId: string,
   contextSpec: ContextSpec
 ): ContextSpec {
-  assertNodeIdsInAccountByKinds(
-    database,
-    accountId,
-    contextSpec.source_ids,
-    ['Source', 'SourceDoc', 'UnifiedDoc', 'VerifiedSource'],
-    'source_ids'
-  );
-  assertNodeIdsInAccountByKinds(
-    database,
-    accountId,
-    contextSpec.group_ids,
-    ['Group', 'Folder'],
-    'group_ids'
-  );
-  if (contextSpec.workspace_id) {
-    assertNodeIdsInAccountByKinds(
-      database,
-      accountId,
-      [contextSpec.workspace_id],
-      ['Source'],
-      'workspace_id'
-    );
+  const sourceIds = contextSpec.source_ids || [];
+  const groupIds = contextSpec.group_ids || [];
+
+  const validSourceKinds = ['Source', 'SourceDoc', 'UnifiedDoc', 'VerifiedSource'];
+  const validGroupKinds = ['Group', 'Folder'];
+
+  // Filter source_ids
+  const filteredSourceIds: string[] = [];
+  if (sourceIds.length > 0) {
+    const placeholders = sourceIds.map(() => '?').join(', ');
+    const rows = database
+      .prepare(
+        `
+        SELECT id, kind
+        FROM nodes
+        WHERE account_id = ? AND id IN (${placeholders})
+        `
+      )
+      .all(accountId, ...sourceIds) as Array<{ id: string; kind: string }>;
+
+    const sourceRowsMap = new Map(rows.map((row) => [row.id, row.kind]));
+    for (const id of sourceIds) {
+      const kind = sourceRowsMap.get(id);
+      if (kind && validSourceKinds.includes(kind)) {
+        filteredSourceIds.push(id);
+      } else {
+        console.warn(
+          `[ContextSpec Validation] Filtering out non-Source node kind '${kind || 'unknown'}' with ID '${id}' from source_ids`
+        );
+      }
+    }
   }
-  return contextSpec;
+
+  // Filter group_ids
+  const filteredGroupIds: string[] = [];
+  if (groupIds.length > 0) {
+    const placeholders = groupIds.map(() => '?').join(', ');
+    const rows = database
+      .prepare(
+        `
+        SELECT id, kind
+        FROM nodes
+        WHERE account_id = ? AND id IN (${placeholders})
+        `
+      )
+      .all(accountId, ...groupIds) as Array<{ id: string; kind: string }>;
+
+    const groupRowsMap = new Map(rows.map((row) => [row.id, row.kind]));
+    for (const id of groupIds) {
+      const kind = groupRowsMap.get(id);
+      if (kind && validGroupKinds.includes(kind)) {
+        filteredGroupIds.push(id);
+      } else {
+        console.warn(
+          `[ContextSpec Validation] Filtering out non-Group node kind '${kind || 'unknown'}' with ID '${id}' from group_ids`
+        );
+      }
+    }
+  }
+
+  // Check workspace_id
+  let filteredWorkspaceId = contextSpec.workspace_id;
+  if (filteredWorkspaceId) {
+    const row = database
+      .prepare(
+        `
+        SELECT id, kind
+        FROM nodes
+        WHERE account_id = ? AND id = ?
+        `
+      )
+      .get(accountId, filteredWorkspaceId) as { id: string; kind: string } | undefined;
+
+    if (!row || !validSourceKinds.includes(row.kind)) {
+      console.warn(
+        `[ContextSpec Validation] Filtering out invalid workspace_id '${filteredWorkspaceId}'`
+      );
+      filteredWorkspaceId = undefined;
+    }
+  }
+
+  return {
+    ...contextSpec,
+    source_ids: filteredSourceIds,
+    group_ids: filteredGroupIds,
+    workspace_id: filteredWorkspaceId,
+  };
 }
 
 function contextIndicators(contextSpecInput: unknown): Record<string, unknown> {

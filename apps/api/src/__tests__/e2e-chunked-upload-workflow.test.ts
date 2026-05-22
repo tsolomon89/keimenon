@@ -74,7 +74,7 @@ describe('E2E Chunked Upload Workflow', () => {
 
     assert.ok(initiateResponse.ok, `initiate failed: ${initiateResponse.status}`);
     const initiateData = (await initiateResponse.json()) as any;
-    const sessionId: string = initiateData?.session?.id;
+    const sessionId: string = initiateData?.data?.session?.id;
     assert.ok(sessionId, 'sessionId should be returned from initiate');
 
     const chunkResponse = await fetch(`${API_URL}/api/v1/uploads/${sessionId}/chunks/0`, {
@@ -89,7 +89,7 @@ describe('E2E Chunked Upload Workflow', () => {
     assert.ok(chunkResponse.ok, `chunk upload failed: ${chunkResponse.status}`);
     const chunkData = (await chunkResponse.json()) as any;
     assert.strictEqual(chunkData.success, true);
-    assert.strictEqual(chunkData.isComplete, true);
+    assert.strictEqual(chunkData.data?.isComplete, true);
 
     const { jobId, job } = await waitForChunkedImportCompletion(sessionId, adminToken, 90000);
     assert.ok(jobId, 'chunked upload should produce a real import job id');
@@ -178,7 +178,7 @@ describe('E2E Chunked Upload Workflow', () => {
       persistedMultipart.config?.metadata?.importContractVersion,
       IMPORT_CONTRACT_VERSION
     );
-    assert.strictEqual(persistedMultipart.config?.metadata?.processingRail, 'multipart');
+    assert.strictEqual(persistedMultipart.config?.metadata?.processingRail, 'chunked');
     assert.strictEqual(persistedMultipart.config?.importOptions?.processingMode, 'automatic');
     const multipartSnapshot = getInvariantSnapshot();
 
@@ -200,7 +200,7 @@ describe('E2E Chunked Upload Workflow', () => {
     });
     assert.ok(initiateResponse.ok, `initiate failed: ${initiateResponse.status}`);
     const initiateData = (await initiateResponse.json()) as any;
-    const sessionId: string = initiateData?.session?.id;
+    const sessionId: string = initiateData?.data?.session?.id;
     assert.ok(sessionId);
 
     const chunkResponse = await fetch(`${API_URL}/api/v1/uploads/${sessionId}/chunks/0`, {
@@ -285,7 +285,7 @@ describe('E2E Chunked Upload Workflow', () => {
       persistedMultipart.config?.metadata?.importContractVersion,
       IMPORT_CONTRACT_VERSION
     );
-    assert.strictEqual(persistedMultipart.config?.metadata?.processingRail, 'multipart');
+    assert.strictEqual(persistedMultipart.config?.metadata?.processingRail, 'chunked');
     const multipartSnapshot = getInvariantSnapshot();
 
     // Chunked comparison path (force true multi-chunk upload)
@@ -312,7 +312,7 @@ describe('E2E Chunked Upload Workflow', () => {
 
     assert.ok(initiateResponse.ok, `initiate failed: ${initiateResponse.status}`);
     const initiateData = (await initiateResponse.json()) as any;
-    const sessionId: string = initiateData?.session?.id;
+    const sessionId: string = initiateData?.data?.session?.id;
     assert.ok(sessionId);
 
     for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {

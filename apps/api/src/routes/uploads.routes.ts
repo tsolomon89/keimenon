@@ -58,6 +58,7 @@ const InitiateUploadSchema = z.object({
   chunkSize: z.number().int().positive().optional(), // Optional, defaults to 10MB
   jobId: z.string().optional(), // Optional: Associate with existing job
   importConfig: ImportConfigSchema, // Required + schema-validated for rail parity
+  uploadHash: z.string().optional(),
 });
 
 type InitiateUploadRequest = z.infer<typeof InitiateUploadSchema>;
@@ -67,16 +68,18 @@ type InitiateUploadRequest = z.infer<typeof InitiateUploadSchema>;
  */
 interface InitiateUploadResponse {
   success: true;
-  session: {
-    id: string;
-    fileName: string;
-    fileSize: number;
-    chunkSize: number;
-    totalChunks: number;
-    expiresAt: number;
-    status: string;
+  data: {
+    session: {
+      id: string;
+      fileName: string;
+      fileSize: number;
+      chunkSize: number;
+      totalChunks: number;
+      expiresAt: number;
+      status: string;
+    };
+    jobId: string | null; // Job ID (set after assembly completes)
   };
-  jobId: string | null; // Job ID (set after assembly completes)
 }
 
 /**
@@ -84,18 +87,20 @@ interface InitiateUploadResponse {
  */
 interface SessionStatusResponse {
   success: true;
-  session: {
-    id: string;
-    fileName: string;
-    fileSize: number;
-    chunkSize: number;
-    totalChunks: number;
-    chunksReceived: number;
-    missingChunks: number[];
-    progress: number; // 0-100 percentage
-    status: string;
-    expiresAt: number;
-    errorMessage: string | null;
+  data: {
+    session: {
+      id: string;
+      fileName: string;
+      fileSize: number;
+      chunkSize: number;
+      totalChunks: number;
+      chunksReceived: number;
+      missingChunks: number[];
+      progress: number; // 0-100 percentage
+      status: string;
+      expiresAt: number;
+      errorMessage: string | null;
+    };
   };
 }
 
@@ -104,13 +109,15 @@ interface SessionStatusResponse {
  */
 interface ChunkUploadResponse {
   success: true;
-  chunkIndex: number;
-  chunksReceived: number;
-  totalChunks: number;
-  progress: number; // 0-100 percentage
-  status: string;
-  isComplete: boolean;
-  jobId?: string; // Set when isComplete=true and job is created
+  data: {
+    chunkIndex: number;
+    chunksReceived: number;
+    totalChunks: number;
+    progress: number; // 0-100 percentage
+    status: string;
+    isComplete: boolean;
+    jobId?: string; // Set when isComplete=true and job is created
+  };
 }
 
 // ============================================================================
@@ -191,6 +198,42 @@ export function createUploadRoutes(authService: AuthService): Router {
       const db = await getDbClient(req);
       const sqliteDb = (db as any).db as Database.Database; // Access underlying SQLite database
 
+      // CONCURRENT DELETION / DUPLICATE IMPORT DETECT GATE
+      if (body.uploadHash) {
+        const duplicateJob = sqliteDb
+          .prepare(
+            `
+          SELECT id, status FROM jobs 
+          WHERE account_id = ? 
+            AND type = 'import' 
+            AND status IN ('queued', 'running', 'succeeded') 
+            AND json_extract(config, '$.metadata.uploadHash') = ?
+          LIMIT 1
+        `
+          )
+          .get(accountId, body.uploadHash) as { id: string; status: string } | undefined;
+
+        if (duplicateJob) {
+          appLogger.warn('upload.initiate.duplicate_prevented', {
+            accountId,
+            uploadHash: body.uploadHash,
+            existingJobId: duplicateJob.id,
+            existingJobStatus: duplicateJob.status,
+          });
+
+          return res.status(409).json({
+            success: false,
+            error:
+              'A duplicate import job is already queued, running, or has succeeded for this file.',
+            code: 'DUPLICATE_IMPORT',
+            details: {
+              activeJobId: duplicateJob.id,
+              activeJobStatus: duplicateJob.status,
+            },
+          });
+        }
+      }
+
       // Create repository
       const uploadRepo: UploadSessionRepository = new SQLiteUploadSessionRepository(sqliteDb);
 
@@ -208,6 +251,7 @@ export function createUploadRoutes(authService: AuthService): Router {
           accountClass,
           features,
           originalFileName: sanitized.original || undefined,
+          uploadHash: body.uploadHash, // Store the hash in session metadata if provided at initiate
         },
       };
 
@@ -229,8 +273,10 @@ export function createUploadRoutes(authService: AuthService): Router {
       // Return session details (use toJSON() to include computed fields)
       const response: InitiateUploadResponse = {
         success: true,
-        session: session.toJSON(), // Use toJSON() to include progress, chunksPath, chunksUploaded, missingChunks
-        jobId: session.jobId, // Will be null initially, set after assembly
+        data: {
+          session: session.toJSON(), // Use toJSON() to include progress, chunksPath, chunksUploaded, missingChunks
+          jobId: session.jobId, // Will be null initially, set after assembly
+        },
       };
 
       return res.status(201).json(response);
@@ -502,16 +548,18 @@ export function createUploadRoutes(authService: AuthService): Router {
         // Return progress (including jobId when assembly is complete)
         const response: ChunkUploadResponse = {
           success: true,
-          chunkIndex: chunkIdx,
-          chunksReceived: session.toJSON().chunksReceived
-            ? Object.keys(session.toJSON().chunksReceived).length
-            : 0,
-          totalChunks: session.totalChunks,
-          progress: session.getProgress(),
-          status: session.status,
-          isComplete,
-          // ✅ FIX: Include jobId when assembly is complete
-          ...(isComplete && session.jobId ? { jobId: session.jobId } : {}),
+          data: {
+            chunkIndex: chunkIdx,
+            chunksReceived: session.toJSON().chunksReceived
+              ? Object.keys(session.toJSON().chunksReceived).length
+              : 0,
+            totalChunks: session.totalChunks,
+            progress: session.getProgress(),
+            status: session.status,
+            isComplete,
+            // ✅ FIX: Include jobId when assembly is complete
+            ...(isComplete && session.jobId ? { jobId: session.jobId } : {}),
+          },
         };
 
         return res.status(200).json(response);
@@ -583,11 +631,13 @@ export function createUploadRoutes(authService: AuthService): Router {
       // Return session status (use toJSON() to include all computed fields)
       const response: SessionStatusResponse = {
         success: true,
-        session: {
-          ...sessionData,
-          chunksReceived: Object.keys(sessionData.chunksReceived).length,
-          progress: sessionData.progress || 0,
-          missingChunks: sessionData.missingChunks || [],
+        data: {
+          session: {
+            ...sessionData,
+            chunksReceived: Object.keys(sessionData.chunksReceived).length,
+            progress: sessionData.progress || 0,
+            missingChunks: sessionData.missingChunks || [],
+          },
         },
       };
 
@@ -665,7 +715,9 @@ export function createUploadRoutes(authService: AuthService): Router {
 
       return res.status(200).json({
         success: true,
-        message: 'Upload session cancelled',
+        data: {
+          message: 'Upload session cancelled',
+        },
       });
     } catch (error: any) {
       appLogger.error('upload.cancel.error', {
@@ -773,6 +825,7 @@ async function triggerImportJobFromAssembledFile(
       uploadSessionId: freshSession.id,
       chunkCount: freshSession.totalChunks,
       uploadedAt: new Date().toISOString(),
+      uploadHash: freshSession.metadata?.uploadHash,
     },
   });
 

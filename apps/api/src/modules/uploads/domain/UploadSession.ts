@@ -263,6 +263,17 @@ export class UploadSession {
   }
 
   /**
+   * Set metadata value atomically
+   */
+  setMetadataValue(key: string, value: any): void {
+    if (!this._metadata) {
+      this._metadata = {};
+    }
+    this._metadata[key] = value;
+    this._updatedAt = Date.now();
+  }
+
+  /**
    * Set job ID after job creation (called after assembly completes)
    */
   setJobId(jobId: string): void {

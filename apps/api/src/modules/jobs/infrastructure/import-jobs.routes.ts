@@ -93,9 +93,11 @@ export function createImportJobsRoutes(
         return res.status(409).json({
           success: false,
           error: 'A delete operation is already in progress for this account',
-          activeJobId: activeJob.id,
-          activeJobStatus: activeJob.status,
-          message: 'Please wait for the current deletion to complete before starting a new one',
+          details: {
+            activeJobId: activeJob.id,
+            activeJobStatus: activeJob.status,
+            message: 'Please wait for the current deletion to complete before starting a new one',
+          },
         });
       }
 
@@ -136,9 +138,11 @@ export function createImportJobsRoutes(
 
       return res.status(201).json({
         success: true,
-        jobId: result.jobId,
-        message: 'Delete job created. Monitor progress via SSE at /api/v1/stream/jobs',
-        job: result.job.toJSON(),
+        data: {
+          jobId: result.jobId,
+          message: 'Delete job created. Monitor progress via SSE at /api/v1/stream/jobs',
+          job: result.job.toJSON(),
+        },
       });
     } catch (error: any) {
       appLogger.error('jobs.delete.failed', {

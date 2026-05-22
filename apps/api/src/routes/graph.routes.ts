@@ -87,13 +87,17 @@ export function createGraphRoutes(authService: AuthService): Router {
           });
         }
 
+        const page = parseIntegerParam(req.query.page, 1);
+        const limit = Math.min(parseIntegerParam(req.query.limit, 100), 1000);
+        const offset = (page - 1) * limit;
+
         const nodeBudget = Math.min(
           parseIntegerParam(req.query.node_budget, DEFAULT_NODE_BUDGET),
-          HARD_NODE_BUDGET_MAX
+          limit
         );
         const edgeBudget = Math.min(
           parseIntegerParam(req.query.edge_budget, DEFAULT_EDGE_BUDGET),
-          HARD_EDGE_BUDGET_MAX
+          limit
         );
         const seedNodeIds = parseSeedNodeIds(req.query);
 
@@ -104,14 +108,16 @@ export function createGraphRoutes(authService: AuthService): Router {
             db.execute(
               `SELECT id, kind, properties, created_at, updated_at
                FROM nodes
-               WHERE account_id = ?`,
-              [accountId]
+               WHERE account_id = ?
+               LIMIT ? OFFSET ?`,
+              [accountId, limit, offset]
             ),
             db.execute(
               `SELECT id, kind, from_id, to_id, properties, created_at
                FROM edges
-               WHERE account_id = ?`,
-              [accountId]
+               WHERE account_id = ?
+               LIMIT ? OFFSET ?`,
+              [accountId, limit, offset]
             ),
           ]);
 
@@ -145,6 +151,11 @@ export function createGraphRoutes(authService: AuthService): Router {
           seedNodeIds,
         });
 
+        // Inject pagination details into metadata
+        (snapshot.metadata as any).page = page;
+        (snapshot.metadata as any).limit = limit;
+        (snapshot.metadata as any).offset = offset;
+
         return res.json(snapshot);
       } catch (error: any) {
         return res.status(500).json({
@@ -171,11 +182,15 @@ export function createGraphRoutes(authService: AuthService): Router {
           });
         }
 
+        const page = parseIntegerParam(req.query.page, 1);
+        const limit = Math.min(parseIntegerParam(req.query.limit, 100), 1000);
+        const offset = (page - 1) * limit;
+
         const requestedNodeBudget = parseIntegerParam(req.query.node_budget, DEFAULT_NODE_BUDGET);
-        const clampedNodeBudget = Math.min(requestedNodeBudget, HARD_NODE_BUDGET_MAX);
+        const clampedNodeBudget = Math.min(requestedNodeBudget, limit);
 
         const requestedEdgeBudget = parseIntegerParam(req.query.edge_budget, DEFAULT_EDGE_BUDGET);
-        const effectiveEdgeBudget = Math.min(requestedEdgeBudget, HARD_EDGE_BUDGET_MAX);
+        const effectiveEdgeBudget = Math.min(requestedEdgeBudget, limit);
 
         const seedNodeIds = parseSeedNodeIds(req.query);
 
@@ -203,8 +218,8 @@ export function createGraphRoutes(authService: AuthService): Router {
 
         // Step 3: Candidate Selection (fetch metadata only, under budget)
         const allCandidatesResult = await db.execute(
-          `SELECT id, kind, created_at FROM nodes WHERE account_id = ?`,
-          [accountId]
+          `SELECT id, kind, created_at FROM nodes WHERE account_id = ? LIMIT ? OFFSET ?`,
+          [accountId, limit, offset]
         );
 
         const candidateRows = allCandidatesResult.records || [];
@@ -238,7 +253,7 @@ export function createGraphRoutes(authService: AuthService): Router {
         // Structural anchors count against the budget, but we will expand the budget up to the hard limit if needed.
         const effectiveNodeBudget = Math.max(
           clampedNodeBudget,
-          Math.min(structuralAnchorsRequested, HARD_NODE_BUDGET_MAX)
+          Math.min(structuralAnchorsRequested, limit)
         );
 
         const selectedNodes = candidateRows.slice(0, effectiveNodeBudget);
@@ -434,6 +449,11 @@ export function createGraphRoutes(authService: AuthService): Router {
             selected_node_count: hydratedNodes.length,
             selected_edge_count: fetchedEdges.length,
             truncated: isTruncated,
+            pagination: {
+              page,
+              limit,
+              offset,
+            },
             readModel: {
               requestedNodeBudget,
               effectiveNodeBudget,

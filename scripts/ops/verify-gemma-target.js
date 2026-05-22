@@ -5,7 +5,6 @@ const ROOT_DIR = path.resolve(__dirname, '../../');
 
 const FILE_PATHS_TO_CHECK = [
   'apps/api/src/services/agent/gemma-model-source-registry.ts',
-  'apps/web/src/components/conversations/GemmaSetupPanel.tsx',
   'apps/api/src/services/agent/__tests__/gemma-model-source-registry.test.ts',
   'apps/api/src/services/agent/model-manager.ts',
 ];

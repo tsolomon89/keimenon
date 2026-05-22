@@ -198,12 +198,12 @@ describe('Upload Routes (Integration)', () => {
         .expect(201);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.session).toBeDefined();
-      expect(response.body.session.id).toMatch(/^upl_/);
-      expect(response.body.session.fileName).toBe('test-file.json');
-      expect(response.body.session.fileSize).toBe(50 * 1024 * 1024);
-      expect(response.body.session.totalChunks).toBe(5);
-      expect(response.body.jobId).toBeDefined();
+      expect(response.body.data.session).toBeDefined();
+      expect(response.body.data.session.id).toMatch(/^upl_/);
+      expect(response.body.data.session.fileName).toBe('test-file.json');
+      expect(response.body.data.session.fileSize).toBe(50 * 1024 * 1024);
+      expect(response.body.data.session.totalChunks).toBe(5);
+      expect(response.body.data.jobId).toBeDefined();
     });
 
     it('should use default chunk size if not specified', async () => {
@@ -217,7 +217,7 @@ describe('Upload Routes (Integration)', () => {
         })
         .expect(201);
 
-      expect(response.body.session.chunkSize).toBe(10 * 1024 * 1024); // Default 10MB
+      expect(response.body.data.session.chunkSize).toBe(10 * 1024 * 1024); // Default 10MB
     });
 
     it('should save session to database', async () => {
@@ -231,7 +231,7 @@ describe('Upload Routes (Integration)', () => {
         })
         .expect(201);
 
-      const sessionId = response.body.session.id;
+      const sessionId = response.body.data.session.id;
 
       // Verify in database
       const row = db.prepare('SELECT * FROM upload_sessions WHERE id = ?').get(sessionId);
@@ -315,7 +315,7 @@ describe('Upload Routes (Integration)', () => {
         })
         .expect(201);
 
-      expect(response.body.jobId).toBe(customJobId);
+      expect(response.body.data.jobId).toBe(customJobId);
     });
 
     it('should isolate sessions by account_id', async () => {
@@ -332,7 +332,7 @@ describe('Upload Routes (Integration)', () => {
       // Verify session has correct account_id
       const row = db
         .prepare('SELECT * FROM upload_sessions WHERE id = ?')
-        .get(response.body.session.id);
+        .get(response.body.data.session.id);
 
       expect((row as any).account_id).toBe(accountId);
     });
@@ -357,7 +357,7 @@ describe('Upload Routes (Integration)', () => {
           chunkSize: 1024, // 1KB chunks
         });
 
-      sessionId = response.body.session.id;
+      sessionId = response.body.data.session.id;
 
       // Create chunks directory
       const session = db.prepare('SELECT * FROM upload_sessions WHERE id = ?').get(sessionId);
@@ -375,11 +375,11 @@ describe('Upload Routes (Integration)', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.chunkIndex).toBe(0);
-      expect(response.body.chunksReceived).toBe(1);
-      expect(response.body.totalChunks).toBe(5);
-      expect(response.body.progress).toBe(20); // 1/5 = 20%
-      expect(response.body.isComplete).toBe(false);
+      expect(response.body.data.chunkIndex).toBe(0);
+      expect(response.body.data.chunksReceived).toBe(1);
+      expect(response.body.data.totalChunks).toBe(5);
+      expect(response.body.data.progress).toBe(20); // 1/5 = 20%
+      expect(response.body.data.isComplete).toBe(false);
     });
 
     it('should save chunk to disk', async () => {
@@ -439,7 +439,7 @@ describe('Upload Routes (Integration)', () => {
         .send(chunkData)
         .expect(200);
 
-      expect(response.body.chunksReceived).toBe(2);
+      expect(response.body.data.chunksReceived).toBe(2);
     });
 
     it('should mark session as "assembling" when all chunks received', async () => {
@@ -462,8 +462,8 @@ describe('Upload Routes (Integration)', () => {
         .send(chunkData)
         .expect(200);
 
-      expect(response.body.isComplete).toBe(true);
-      expect(response.body.progress).toBe(100);
+      expect(response.body.data.isComplete).toBe(true);
+      expect(response.body.data.progress).toBe(100);
 
       // Check database
       await new Promise((resolve) => setTimeout(resolve, 100)); // Wait for async update
@@ -578,7 +578,7 @@ describe('Upload Routes (Integration)', () => {
         .expect(200);
 
       // Should still show 1 chunk received
-      expect(response.body.chunksReceived).toBe(1);
+      expect(response.body.data.chunksReceived).toBe(1);
     });
   });
 
@@ -599,7 +599,7 @@ describe('Upload Routes (Integration)', () => {
           chunkSize: 1024,
         });
 
-      sessionId = response.body.session.id;
+      sessionId = response.body.data.session.id;
     });
 
     it('should return session status', async () => {
@@ -609,13 +609,13 @@ describe('Upload Routes (Integration)', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.session).toBeDefined();
-      expect(response.body.session.id).toBe(sessionId);
-      expect(response.body.session.fileName).toBe('test-file.json');
-      expect(response.body.session.totalChunks).toBe(5);
-      expect(response.body.session.chunksReceived).toBe(0);
-      expect(response.body.session.missingChunks).toEqual([0, 1, 2, 3, 4]);
-      expect(response.body.session.progress).toBe(0);
+      expect(response.body.data.session).toBeDefined();
+      expect(response.body.data.session.id).toBe(sessionId);
+      expect(response.body.data.session.fileName).toBe('test-file.json');
+      expect(response.body.data.session.totalChunks).toBe(5);
+      expect(response.body.data.session.chunksReceived).toBe(0);
+      expect(response.body.data.session.missingChunks).toEqual([0, 1, 2, 3, 4]);
+      expect(response.body.data.session.progress).toBe(0);
     });
 
     it('should return updated progress after chunk uploads', async () => {
@@ -639,9 +639,9 @@ describe('Upload Routes (Integration)', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
-      expect(response.body.session.chunksReceived).toBe(2);
-      expect(response.body.session.missingChunks).toEqual([1, 3, 4]);
-      expect(response.body.session.progress).toBe(40); // 2/5 = 40%
+      expect(response.body.data.session.chunksReceived).toBe(2);
+      expect(response.body.data.session.missingChunks).toEqual([1, 3, 4]);
+      expect(response.body.data.session.progress).toBe(40); // 2/5 = 40%
     });
 
     it('should require authentication', async () => {
@@ -714,7 +714,7 @@ describe('Upload Routes (Integration)', () => {
           chunkSize: 1024,
         });
 
-      sessionId = response.body.session.id;
+      sessionId = response.body.data.session.id;
 
       // Get chunks path
       const session = db.prepare('SELECT * FROM upload_sessions WHERE id = ?').get(sessionId);
@@ -739,7 +739,7 @@ describe('Upload Routes (Integration)', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.message).toContain('cancelled');
+      expect(response.body.data.message).toContain('cancelled');
     });
 
     it('should delete session from database', async () => {

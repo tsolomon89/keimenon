@@ -4,7 +4,6 @@ import { organizationService, ConversationThread } from '../../services/organiza
 import { getLocalInferenceStatusLabel } from '../../utils/gemma-status-helper';
 import type { LocalInferenceStatus } from '@keimenon/types';
 import { ProvenanceViewerModal } from './ProvenanceViewerModal';
-import { GemmaSetupPanel } from './GemmaSetupPanel';
 import type { MessageNode, ConversationContextPack } from '@keimenon/types';
 
 interface ConversationMessageRuntimeProps {
@@ -27,7 +26,6 @@ export function ConversationMessageRuntime({
   const [inputValue, setInputValue] = useState('');
   const [gemmaStatus, setGemmaStatus] = useState<LocalInferenceStatus | null>(null);
   const [isCheckingGemma, setIsCheckingGemma] = useState(false);
-  const [showSetupPanel, setShowSetupPanel] = useState(false);
   const [selectedProvenanceRunId, setSelectedProvenanceRunId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -186,28 +184,19 @@ export function ConversationMessageRuntime({
                   }
 
                   return (
-                    <button
-                      className={`flex items-center gap-1 px-2 py-0.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer ${bgClass}`}
+                    <div
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${bgClass}`}
                       title={gemmaStatus.message || 'Local Runtime Status'}
-                      onClick={() => setShowSetupPanel(!showSetupPanel)}
                     >
                       <div className={`w-1.5 h-1.5 rounded-full ${dotClass}`}></div>
                       {statusInfo.label}
-                    </button>
+                    </div>
                   );
                 })()}
               </>
             )}
           </div>
         </div>
-        {showSetupPanel && (
-          <GemmaSetupPanel
-            status={gemmaStatus}
-            onClose={() => setShowSetupPanel(false)}
-            onRefresh={refreshGemmaStatus}
-            isChecking={isCheckingGemma}
-          />
-        )}
       </div>
 
       {/* Messages Area */}

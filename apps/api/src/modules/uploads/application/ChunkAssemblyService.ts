@@ -14,11 +14,14 @@ import { tmpdir } from 'os';
 import { pipeline } from 'stream/promises';
 import { sanitizeUploadFilename } from '../../../utils/upload-filename';
 import { appLogger } from '../../../utils/logger';
+import { createHash } from 'crypto';
+import { PassThrough } from 'stream';
 
 export interface AssemblyResult {
   success: boolean;
   filePath?: string;
   fileSize?: number;
+  uploadHash?: string;
   errorMessage?: string;
 }
 
@@ -60,6 +63,7 @@ export class ChunkAssemblyService {
         totalChunks: session.totalChunks,
       });
 
+      const hash = createHash('sha256');
       const writeStream = createWriteStream(outputPath, { flags: 'w' });
 
       for (let i = 0; i < session.totalChunks; i++) {
@@ -71,7 +75,11 @@ export class ChunkAssemblyService {
         }
 
         const readStream = createReadStream(chunkPath);
-        await pipeline(readStream, writeStream, { end: false });
+        const passThrough = new PassThrough();
+        passThrough.on('data', (chunk) => {
+          hash.update(chunk);
+        });
+        await pipeline(readStream, passThrough, writeStream, { end: false });
       }
 
       writeStream.end();
@@ -88,18 +96,22 @@ export class ChunkAssemblyService {
         );
       }
 
+      const uploadHash = hash.digest('hex');
+
       await this.cleanupChunks(session);
 
       appLogger.info('upload.assembly.succeeded', {
         sessionId: session.id,
         filePath: outputPath,
         fileSize: actualSize,
+        uploadHash,
       });
 
       return {
         success: true,
         filePath: outputPath,
         fileSize: actualSize,
+        uploadHash,
       };
     } catch (error: any) {
       appLogger.error('upload.assembly.failed', {
@@ -156,6 +168,9 @@ export class ChunkAssemblyService {
 
     const result = await this.assembleChunks(session);
     if (result.success) {
+      if (result.uploadHash) {
+        session.setMetadataValue('uploadHash', result.uploadHash);
+      }
       session.markCompleted();
       await this.uploadRepo.save(session);
       appLogger.info('upload.session.completed', { sessionId, accountId });

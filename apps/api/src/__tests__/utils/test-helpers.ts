@@ -297,7 +297,7 @@ export async function waitForUploadSessionJobId(
 
     if (response.ok) {
       const data = (await response.json()) as any;
-      const jobId = data?.session?.jobId;
+      const jobId = data?.data?.session?.jobId;
       if (typeof jobId === 'string' && jobId.length > 0) {
         return jobId;
       }
@@ -360,16 +360,19 @@ export async function createImportJob(
 
   const initiateData = (await initiateResponse.json()) as {
     success: boolean;
-    session?: { id?: string; totalChunks?: number; jobId?: string | null };
+    data?: {
+      session?: { id?: string; totalChunks?: number; jobId?: string | null };
+    };
   };
-  const sessionId = initiateData.session?.id;
+  const sessionId = initiateData.data?.session?.id;
   const totalChunks =
-    initiateData.session?.totalChunks || Math.max(1, Math.ceil(fileBuffer.length / chunkSize));
+    initiateData.data?.session?.totalChunks ||
+    Math.max(1, Math.ceil(fileBuffer.length / chunkSize));
   if (!sessionId) {
     throw new Error('Upload initiate response missing session ID');
   }
 
-  let jobId = initiateData.session?.jobId || undefined;
+  let jobId = initiateData.data?.session?.jobId || undefined;
   for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
     const start = chunkIndex * chunkSize;
     const end = Math.min(start + chunkSize, fileBuffer.length);
@@ -390,14 +393,16 @@ export async function createImportJob(
       success?: boolean;
       error?: string;
       message?: string;
-      jobId?: string;
+      data?: {
+        jobId?: string;
+      };
     };
     if (!chunkResponse.ok || chunkData.success !== true) {
       const error = chunkData.message || chunkData.error || `HTTP ${chunkResponse.status}`;
       throw new Error(`Chunk upload failed (${chunkResponse.status}): ${error}`);
     }
-    if (chunkData.jobId) {
-      jobId = chunkData.jobId;
+    if (chunkData.data?.jobId) {
+      jobId = chunkData.data.jobId;
     }
   }
 
@@ -406,9 +411,11 @@ export async function createImportJob(
       headers: { Authorization: `Bearer ${token}` },
     });
     const statusData = (await statusResponse.json().catch(() => ({}))) as {
-      session?: { jobId?: string };
+      data?: {
+        session?: { jobId?: string };
+      };
     };
-    jobId = statusData.session?.jobId;
+    jobId = statusData.data?.session?.jobId;
   }
 
   if (!jobId) {

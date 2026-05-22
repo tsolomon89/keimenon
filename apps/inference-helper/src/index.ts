@@ -1,5 +1,5 @@
 import * as readline from 'readline';
-import { LiteRTGemmaRuntimeAdapter } from './litert-adapter';
+import { UnimplementedGemmaRuntimeAdapter } from './unimplemented-adapter';
 
 // Simple JSON-RPC 2.0 over stdio prototype shell
 const rl = readline.createInterface({
@@ -19,7 +19,7 @@ function sendError(id: number | string | null, code: number | string, message: s
 }
 
 // Instantiate the actual adapter
-const adapter = new LiteRTGemmaRuntimeAdapter();
+const adapter = new UnimplementedGemmaRuntimeAdapter();
 
 rl.on('line', async (line) => {
   if (!line.trim()) return;
