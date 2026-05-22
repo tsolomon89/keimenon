@@ -749,36 +749,32 @@ export function createJobsRoutes(
   );
 
   /**
-   * GET /api/v1/jobs/:id/duplicate-review/groups
-   * Fetch duplicate candidate groups for manual review.
+   * Fetch duplicate/similarity candidate groups for manual review.
    */
-  router.get(
-    '/:id/duplicate-review/groups',
-    requireAuth(authService),
-    asyncHandler(async (req: Request, res: Response) => {
-      const userId = (req as any).user?.userId;
-      const userAccountId = (req as any).user?.accountId;
-      const operating = (req as any).operating;
-      const { id: jobId } = req.params;
+  const getReviewGroupsHandler = asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user?.userId;
+    const userAccountId = (req as any).user?.accountId;
+    const operating = (req as any).operating;
+    const { id: jobId } = req.params;
 
-      if (!userAccountId || !userId) {
-        throw ErrorFactory.unauthorized('jobs.duplicateReviewGroups');
-      }
+    if (!userAccountId || !userId) {
+      throw ErrorFactory.unauthorized('jobs.duplicateReviewGroups');
+    }
 
-      const targetAccountId = operating?.accountId || userAccountId;
-      const job = await jobRepository.findById(jobId, targetAccountId, req);
-      if (!job) {
-        throw ErrorFactory.notFound('Job', 'jobs.duplicateReviewGroups');
-      }
+    const targetAccountId = operating?.accountId || userAccountId;
+    const job = await jobRepository.findById(jobId, targetAccountId, req);
+    if (!job) {
+      throw ErrorFactory.notFound('Job', 'jobs.duplicateReviewGroups');
+    }
 
-      const { getDbClient } = await import('../../../utils/get-db-client');
-      const dbClient = await getDbClient(req);
-      const database = dbClient.getDatabase();
-      ensureDuplicateReviewTable(database);
+    const { getDbClient } = await import('../../../utils/get-db-client');
+    const dbClient = await getDbClient(req);
+    const database = dbClient.getDatabase();
+    ensureDuplicateReviewTable(database);
 
-      const rows = database
-        .prepare(
-          `
+    const rows = database
+      .prepare(
+        `
           SELECT
             group_id,
             candidate_id,
@@ -791,530 +787,532 @@ export function createJobsRoutes(
           WHERE job_id = ? AND account_id = ?
           ORDER BY group_id ASC, similarity DESC, candidate_id ASC
         `
-        )
-        .all(jobId, targetAccountId) as Array<{
-        group_id: string;
-        candidate_id: string;
-        primary_json: string;
-        duplicate_json: string;
-        similarity: number;
-        metrics_json: string;
-        decision: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge' | 'sequester' | null;
-      }>;
+      )
+      .all(jobId, targetAccountId) as Array<{
+      group_id: string;
+      candidate_id: string;
+      primary_json: string;
+      duplicate_json: string;
+      similarity: number;
+      metrics_json: string;
+      decision: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge' | 'sequester' | null;
+    }>;
 
-      const groupsById = new Map<
-        string,
-        {
+    const groupsById = new Map<
+      string,
+      {
+        id: string;
+        candidates: Array<{
           id: string;
-          candidates: Array<{
-            id: string;
-            primary: Record<string, unknown>;
-            duplicate: Record<string, unknown>;
-            similarity: number;
-            metrics: Record<string, unknown>;
-            decision?: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge' | 'sequester';
-          }>;
-        }
-      >();
+          primary: Record<string, unknown>;
+          duplicate: Record<string, unknown>;
+          similarity: number;
+          metrics: Record<string, unknown>;
+          decision?: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge' | 'sequester';
+        }>;
+      }
+    >();
 
-      for (const row of rows) {
-        if (!groupsById.has(row.group_id)) {
-          groupsById.set(row.group_id, { id: row.group_id, candidates: [] });
-        }
-
-        groupsById.get(row.group_id)!.candidates.push({
-          id: row.candidate_id,
-          primary: parseJsonObject(row.primary_json),
-          duplicate: parseJsonObject(row.duplicate_json),
-          similarity: Number(row.similarity || 0),
-          metrics: parseJsonObject(row.metrics_json),
-          ...(row.decision ? { decision: row.decision } : {}),
-        });
+    for (const row of rows) {
+      if (!groupsById.has(row.group_id)) {
+        groupsById.set(row.group_id, { id: row.group_id, candidates: [] });
       }
 
-      const groups = Array.from(groupsById.values()).map((group) => {
-        const autoResolved = group.candidates.filter((candidate) => !!candidate.decision).length;
-        return {
-          id: group.id,
-          candidates: group.candidates,
-          totalDuplicates: group.candidates.length,
-          reviewed: autoResolved,
-          autoResolved,
-        };
+      groupsById.get(row.group_id)!.candidates.push({
+        id: row.candidate_id,
+        primary: parseJsonObject(row.primary_json),
+        duplicate: parseJsonObject(row.duplicate_json),
+        similarity: Number(row.similarity || 0),
+        metrics: parseJsonObject(row.metrics_json),
+        ...(row.decision ? { decision: row.decision } : {}),
       });
+    }
 
-      return res.json({
-        success: true,
-        groups,
-        total_groups: groups.length,
-        total_candidates: rows.length,
-      });
-    })
-  );
+    const groups = Array.from(groupsById.values()).map((group) => {
+      const autoResolved = group.candidates.filter((candidate) => !!candidate.decision).length;
+      return {
+        id: group.id,
+        candidates: group.candidates,
+        totalDuplicates: group.candidates.length,
+        reviewed: autoResolved,
+        autoResolved,
+      };
+    });
+
+    return res.json({
+      success: true,
+      groups,
+      total_groups: groups.length,
+      total_candidates: rows.length,
+    });
+  });
+
+  router.get('/:id/duplicate-review/groups', requireAuth(authService), getReviewGroupsHandler);
+
+  router.get('/:id/similarity-review/groups', requireAuth(authService), getReviewGroupsHandler);
 
   /**
-   * POST /api/v1/jobs/:id/duplicate-review/apply
-   * Apply duplicate review decisions for a job.
+   * Apply duplicate/similarity review decisions for a job.
    */
-  router.post(
-    '/:id/duplicate-review/apply',
-    requireAuth(authService),
-    asyncHandler(async (req: Request, res: Response) => {
-      const userId = (req as any).user?.userId;
-      const userAccountId = (req as any).user?.accountId;
-      const operating = (req as any).operating;
-      const { id: jobId } = req.params;
+  const applyReviewDecisionsHandler = asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user?.userId;
+    const userAccountId = (req as any).user?.accountId;
+    const operating = (req as any).operating;
+    const { id: jobId } = req.params;
 
-      if (!userAccountId || !userId) {
-        throw ErrorFactory.unauthorized('jobs.duplicateReviewApply');
-      }
+    if (!userAccountId || !userId) {
+      throw ErrorFactory.unauthorized('jobs.duplicateReviewApply');
+    }
 
-      const targetAccountId = operating?.accountId || userAccountId;
-      const job = await jobRepository.findById(jobId, targetAccountId, req);
+    const targetAccountId = operating?.accountId || userAccountId;
+    const job = await jobRepository.findById(jobId, targetAccountId, req);
 
-      if (!job) {
-        throw ErrorFactory.notFound('Job', 'jobs.duplicateReviewApply');
-      }
+    if (!job) {
+      throw ErrorFactory.notFound('Job', 'jobs.duplicateReviewApply');
+    }
 
-      const { getDbClient } = await import('../../../utils/get-db-client');
-      const dbClient = await getDbClient(req);
-      const database = dbClient.getDatabase();
-      ensureDuplicateReviewTable(database);
+    const { getDbClient } = await import('../../../utils/get-db-client');
+    const dbClient = await getDbClient(req);
+    const database = dbClient.getDatabase();
+    ensureDuplicateReviewTable(database);
 
-      const lockKey = `${targetAccountId}:${jobId}`;
-      const currentReviewState = readDuplicateReviewState(job);
-      if (currentReviewState.applyState.phase === 'completed') {
-        const completedSummary = currentReviewState.applySummary;
-        return res.json({
-          success: true,
-          idempotent: true,
-          apply_state: currentReviewState.applyState,
-          result: completedSummary
-            ? {
-                jobId,
-                applied_decisions: completedSummary.appliedDecisions,
-                action_counts: completedSummary.actionCounts,
-                nodes_sequestered: completedSummary.nodesSequestered,
-                nodes_merged: completedSummary.nodesMerged,
-                edges_created: completedSummary.edgesCreated,
-                pending_candidates: completedSummary.pendingCandidates,
-                message: 'Duplicate review already completed for this job.',
-              }
-            : {
-                jobId,
-                applied_decisions: 0,
-                action_counts: {
-                  'keep-primary': 0,
-                  'keep-duplicate': 0,
-                  'keep-both': 0,
-                  merge: 0,
-                  sequester: 0,
-                },
-                nodes_sequestered: 0,
-                nodes_merged: 0,
-                edges_created: 0,
-                pending_candidates: 0,
-                message: 'Duplicate review already completed for this job.',
+    const lockKey = `${targetAccountId}:${jobId}`;
+    const currentReviewState = readDuplicateReviewState(job);
+    if (currentReviewState.applyState.phase === 'completed') {
+      const completedSummary = currentReviewState.applySummary;
+      return res.json({
+        success: true,
+        idempotent: true,
+        apply_state: currentReviewState.applyState,
+        result: completedSummary
+          ? {
+              jobId,
+              applied_decisions: completedSummary.appliedDecisions,
+              action_counts: completedSummary.actionCounts,
+              nodes_sequestered: completedSummary.nodesSequestered,
+              nodes_merged: completedSummary.nodesMerged,
+              edges_created: completedSummary.edgesCreated,
+              pending_candidates: completedSummary.pendingCandidates,
+              message: 'Duplicate review already completed for this job.',
+            }
+          : {
+              jobId,
+              applied_decisions: 0,
+              action_counts: {
+                'keep-primary': 0,
+                'keep-duplicate': 0,
+                'keep-both': 0,
+                merge: 0,
+                sequester: 0,
               },
-        });
+              nodes_sequestered: 0,
+              nodes_merged: 0,
+              edges_created: 0,
+              pending_candidates: 0,
+              message: 'Duplicate review already completed for this job.',
+            },
+      });
+    }
+
+    if (
+      duplicateReviewApplyLocks.has(lockKey) ||
+      currentReviewState.applyState.phase === 'applying'
+    ) {
+      const conflictState: SimilarityReviewApplyState = {
+        phase: 'failed',
+        failedAt: Date.now(),
+        reasonCode: 'REVIEW_APPLY_CONFLICT',
+      };
+      writeDuplicateReviewState(job, {
+        status: 'failed',
+        applyState: conflictState,
+        reasonCode: 'REVIEW_APPLY_CONFLICT',
+      });
+      await jobRepository.save(job);
+      if (sseBroadcaster) {
+        sseBroadcaster.broadcastJobUpdate(job);
       }
+      return res.status(409).json({
+        success: false,
+        error: 'review_apply_conflict',
+        reason_code: 'REVIEW_APPLY_CONFLICT',
+        message: 'Duplicate review apply is already in progress for this job.',
+      });
+    }
 
-      if (
-        duplicateReviewApplyLocks.has(lockKey) ||
-        currentReviewState.applyState.phase === 'applying'
-      ) {
-        const conflictState: SimilarityReviewApplyState = {
-          phase: 'failed',
-          failedAt: Date.now(),
-          reasonCode: 'REVIEW_APPLY_CONFLICT',
-        };
-        writeDuplicateReviewState(job, {
-          status: 'failed',
-          applyState: conflictState,
-          reasonCode: 'REVIEW_APPLY_CONFLICT',
-        });
-        await jobRepository.save(job);
-        if (sseBroadcaster) {
-          sseBroadcaster.broadcastJobUpdate(job);
-        }
-        return res.status(409).json({
-          success: false,
-          error: 'review_apply_conflict',
-          reason_code: 'REVIEW_APPLY_CONFLICT',
-          message: 'Duplicate review apply is already in progress for this job.',
-        });
-      }
+    const { decisions } = ApplyDuplicateReviewRequestSchema.parse(req.body);
+    duplicateReviewApplyLocks.add(lockKey);
 
-      const { decisions } = ApplyDuplicateReviewRequestSchema.parse(req.body);
-      duplicateReviewApplyLocks.add(lockKey);
-
-      try {
-        const pendingRows = database
-          .prepare(
-            `
+    try {
+      const pendingRows = database
+        .prepare(
+          `
             SELECT candidate_id
             FROM job_duplicate_candidates
             WHERE job_id = ? AND account_id = ? AND decision IS NULL
             ORDER BY candidate_id ASC
           `
-          )
-          .all(jobId, targetAccountId) as Array<{ candidate_id: string }>;
-        const pendingCandidateIds = pendingRows.map((row) => row.candidate_id);
-        const pendingCandidateSet = new Set(pendingCandidateIds);
+        )
+        .all(jobId, targetAccountId) as Array<{ candidate_id: string }>;
+      const pendingCandidateIds = pendingRows.map((row) => row.candidate_id);
+      const pendingCandidateSet = new Set(pendingCandidateIds);
 
-        const submittedDecisionsById = new Map<string, (typeof decisions)[number]>();
-        for (const decision of decisions) {
-          if (submittedDecisionsById.has(decision.duplicateId)) {
-            throw ErrorFactory.badRequest(
-              `Duplicate decision submission for candidate "${decision.duplicateId}"`,
-              'jobs.duplicateReviewApply'
-            );
-          }
-          submittedDecisionsById.set(decision.duplicateId, decision);
+      const submittedDecisionsById = new Map<string, (typeof decisions)[number]>();
+      for (const decision of decisions) {
+        if (submittedDecisionsById.has(decision.duplicateId)) {
+          throw ErrorFactory.badRequest(
+            `Duplicate decision submission for candidate "${decision.duplicateId}"`,
+            'jobs.duplicateReviewApply'
+          );
         }
+        submittedDecisionsById.set(decision.duplicateId, decision);
+      }
 
-        const missingCandidateIds = pendingCandidateIds.filter(
-          (candidateId) => !submittedDecisionsById.has(candidateId)
-        );
-        const unexpectedCandidateIds = Array.from(submittedDecisionsById.keys()).filter(
-          (candidateId) => !pendingCandidateSet.has(candidateId)
-        );
+      const missingCandidateIds = pendingCandidateIds.filter(
+        (candidateId) => !submittedDecisionsById.has(candidateId)
+      );
+      const unexpectedCandidateIds = Array.from(submittedDecisionsById.keys()).filter(
+        (candidateId) => !pendingCandidateSet.has(candidateId)
+      );
 
-        if (missingCandidateIds.length > 0 || unexpectedCandidateIds.length > 0) {
-          writeDuplicateReviewState(job, {
-            status: 'pending',
-            pendingCandidates: pendingCandidateIds.length,
-            decisionsApplied: 0,
-            applyState: { phase: 'pending' },
-          });
-          await jobRepository.save(job);
-          if (sseBroadcaster) {
-            sseBroadcaster.broadcastJobUpdate(job);
-          }
-          return res.status(400).json({
-            success: false,
-            error: 'incomplete_duplicate_review_decisions',
-            message:
-              'Duplicate review completion requires one explicit decision for each pending candidate in this job.',
-            pending_candidates: pendingCandidateIds.length,
-            submitted_candidates: submittedDecisionsById.size,
-            missing_candidate_ids: missingCandidateIds,
-            unexpected_candidate_ids: unexpectedCandidateIds,
-          });
+      if (missingCandidateIds.length > 0 || unexpectedCandidateIds.length > 0) {
+        writeDuplicateReviewState(job, {
+          status: 'pending',
+          pendingCandidates: pendingCandidateIds.length,
+          decisionsApplied: 0,
+          applyState: { phase: 'pending' },
+        });
+        await jobRepository.save(job);
+        if (sseBroadcaster) {
+          sseBroadcaster.broadcastJobUpdate(job);
         }
+        return res.status(400).json({
+          success: false,
+          error: 'incomplete_duplicate_review_decisions',
+          message:
+            'Duplicate review completion requires one explicit decision for each pending candidate in this job.',
+          pending_candidates: pendingCandidateIds.length,
+          submitted_candidates: submittedDecisionsById.size,
+          missing_candidate_ids: missingCandidateIds,
+          unexpected_candidate_ids: unexpectedCandidateIds,
+        });
+      }
 
-        const orderedDecisions = pendingCandidateIds
-          .map((candidateId) => submittedDecisionsById.get(candidateId))
-          .filter((decision): decision is (typeof decisions)[number] => Boolean(decision));
+      const orderedDecisions = pendingCandidateIds
+        .map((candidateId) => submittedDecisionsById.get(candidateId))
+        .filter((decision): decision is (typeof decisions)[number] => Boolean(decision));
 
-        const actionCounts: Record<DuplicateReviewAction, number> = {
-          'keep-primary': 0,
-          'keep-duplicate': 0,
-          'keep-both': 0,
-          merge: 0,
-          sequester: 0,
-        };
+      const actionCounts: Record<DuplicateReviewAction, number> = {
+        'keep-primary': 0,
+        'keep-duplicate': 0,
+        'keep-both': 0,
+        merge: 0,
+        sequester: 0,
+      };
 
-        const lookupCandidateStmt = database.prepare(
-          `
+      const lookupCandidateStmt = database.prepare(
+        `
           SELECT primary_node_id, duplicate_node_id
           FROM job_duplicate_candidates
           WHERE job_id = ? AND account_id = ? AND candidate_id = ?
         `
-        );
-        const updateDecisionStmt = database.prepare(
-          `
+      );
+      const updateDecisionStmt = database.prepare(
+        `
           UPDATE job_duplicate_candidates
           SET decision = ?, decision_meta = ?, updated_at = ?
           WHERE job_id = ? AND account_id = ? AND candidate_id = ?
         `
+      );
+
+      let nodesSequestered = 0;
+      let mergesRegistered = 0;
+      let edgesCreated = 0;
+      let decisionsApplied = 0;
+
+      writeDuplicateReviewState(job, {
+        status: 'in_progress',
+        pendingCandidates: pendingCandidateIds.length,
+        decisionsApplied: 0,
+        applyState: { phase: 'ready' },
+      });
+      await jobRepository.save(job);
+      if (sseBroadcaster) {
+        sseBroadcaster.broadcastJobUpdate(job);
+      }
+
+      const applyStartedAt = Date.now();
+      writeDuplicateReviewState(job, {
+        status: 'in_progress',
+        pendingCandidates: pendingCandidateIds.length,
+        decisionsApplied: 0,
+        applyState: {
+          phase: 'applying',
+          startedAt: applyStartedAt,
+        },
+      });
+      await jobRepository.save(job);
+      if (sseBroadcaster) {
+        sseBroadcaster.broadcastJobUpdate(job);
+      }
+
+      try {
+        const transaction = database.transaction(
+          (submittedDecisions: Array<(typeof decisions)[number]>) => {
+            for (const decision of submittedDecisions) {
+              if (Date.now() - applyStartedAt > REVIEW_APPLY_TIMEOUT_MS) {
+                const timeoutError = new Error(
+                  `Duplicate review apply exceeded ${REVIEW_APPLY_TIMEOUT_MS}ms timeout`
+                ) as Error & { code?: string };
+                timeoutError.code = 'REVIEW_APPLY_TIMEOUT';
+                throw timeoutError;
+              }
+
+              actionCounts[decision.action] += 1;
+
+              const persistedCandidate = lookupCandidateStmt.get(
+                jobId,
+                targetAccountId,
+                decision.duplicateId
+              ) as { primary_node_id?: string; duplicate_node_id?: string } | undefined;
+
+              const primaryNodeId = decision.primaryNodeId || persistedCandidate?.primary_node_id;
+              const duplicateNodeId =
+                decision.duplicateNodeId || persistedCandidate?.duplicate_node_id;
+
+              if (!primaryNodeId || !duplicateNodeId) {
+                continue;
+              }
+
+              const now = Date.now();
+              switch (decision.action) {
+                case 'keep-primary':
+                  nodesSequestered += setModelScopeExcluded(database, {
+                    nodeId: duplicateNodeId,
+                    accountId: targetAccountId,
+                    reason: 'keep-primary',
+                    actorUserId: userId,
+                    relatedNodeId: primaryNodeId,
+                  });
+                  edgesCreated += ensureEdge(database, {
+                    accountId: targetAccountId,
+                    createdBy: userId,
+                    kind: 'DUP_OF',
+                    fromId: duplicateNodeId,
+                    toId: primaryNodeId,
+                    properties: { source: 'duplicate_review' },
+                  })
+                    ? 1
+                    : 0;
+                  break;
+                case 'keep-duplicate':
+                  nodesSequestered += setModelScopeExcluded(database, {
+                    nodeId: primaryNodeId,
+                    accountId: targetAccountId,
+                    reason: 'keep-duplicate',
+                    actorUserId: userId,
+                    relatedNodeId: duplicateNodeId,
+                  });
+                  edgesCreated += ensureEdge(database, {
+                    accountId: targetAccountId,
+                    createdBy: userId,
+                    kind: 'DUP_OF',
+                    fromId: primaryNodeId,
+                    toId: duplicateNodeId,
+                    properties: { source: 'duplicate_review' },
+                  })
+                    ? 1
+                    : 0;
+                  break;
+                case 'keep-both':
+                  break;
+                case 'merge':
+                  nodesSequestered += setModelScopeExcluded(database, {
+                    nodeId: duplicateNodeId,
+                    accountId: targetAccountId,
+                    reason: 'merge',
+                    actorUserId: userId,
+                    relatedNodeId: primaryNodeId,
+                  });
+                  edgesCreated += ensureEdge(database, {
+                    accountId: targetAccountId,
+                    createdBy: userId,
+                    kind: 'EQUIVALENT_TO',
+                    fromId: duplicateNodeId,
+                    toId: primaryNodeId,
+                    properties: { source: 'duplicate_review', merged: true },
+                  })
+                    ? 1
+                    : 0;
+                  mergesRegistered += 1;
+                  break;
+                case 'sequester':
+                  nodesSequestered += setModelScopeExcluded(database, {
+                    nodeId: duplicateNodeId,
+                    accountId: targetAccountId,
+                    reason: 'sequester',
+                    actorUserId: userId,
+                    relatedNodeId: primaryNodeId,
+                  });
+                  break;
+              }
+
+              const decisionMeta = JSON.stringify({
+                appliedBy: userId,
+                appliedAt: now,
+                action: decision.action,
+                primaryNodeId,
+                duplicateNodeId,
+              });
+
+              updateDecisionStmt.run(
+                decision.action,
+                decisionMeta,
+                now,
+                jobId,
+                targetAccountId,
+                decision.duplicateId
+              );
+              decisionsApplied += 1;
+            }
+          }
         );
 
-        let nodesSequestered = 0;
-        let mergesRegistered = 0;
-        let edgesCreated = 0;
-        let decisionsApplied = 0;
-
+        transaction(orderedDecisions);
+      } catch (error: any) {
+        const reasonCode: SimilarityReviewApplyReasonCode =
+          error?.code === 'REVIEW_APPLY_TIMEOUT' ? 'REVIEW_APPLY_TIMEOUT' : 'REVIEW_APPLY_FAILED';
         writeDuplicateReviewState(job, {
-          status: 'in_progress',
+          status: 'failed',
           pendingCandidates: pendingCandidateIds.length,
-          decisionsApplied: 0,
-          applyState: { phase: 'ready' },
-        });
-        await jobRepository.save(job);
-        if (sseBroadcaster) {
-          sseBroadcaster.broadcastJobUpdate(job);
-        }
-
-        const applyStartedAt = Date.now();
-        writeDuplicateReviewState(job, {
-          status: 'in_progress',
-          pendingCandidates: pendingCandidateIds.length,
-          decisionsApplied: 0,
           applyState: {
-            phase: 'applying',
-            startedAt: applyStartedAt,
+            phase: 'failed',
+            failedAt: Date.now(),
+            reasonCode,
           },
+          reasonCode,
         });
         await jobRepository.save(job);
         if (sseBroadcaster) {
           sseBroadcaster.broadcastJobUpdate(job);
         }
-
-        try {
-          const transaction = database.transaction(
-            (submittedDecisions: Array<(typeof decisions)[number]>) => {
-              for (const decision of submittedDecisions) {
-                if (Date.now() - applyStartedAt > REVIEW_APPLY_TIMEOUT_MS) {
-                  const timeoutError = new Error(
-                    `Duplicate review apply exceeded ${REVIEW_APPLY_TIMEOUT_MS}ms timeout`
-                  ) as Error & { code?: string };
-                  timeoutError.code = 'REVIEW_APPLY_TIMEOUT';
-                  throw timeoutError;
-                }
-
-                actionCounts[decision.action] += 1;
-
-                const persistedCandidate = lookupCandidateStmt.get(
-                  jobId,
-                  targetAccountId,
-                  decision.duplicateId
-                ) as { primary_node_id?: string; duplicate_node_id?: string } | undefined;
-
-                const primaryNodeId = decision.primaryNodeId || persistedCandidate?.primary_node_id;
-                const duplicateNodeId =
-                  decision.duplicateNodeId || persistedCandidate?.duplicate_node_id;
-
-                if (!primaryNodeId || !duplicateNodeId) {
-                  continue;
-                }
-
-                const now = Date.now();
-                switch (decision.action) {
-                  case 'keep-primary':
-                    nodesSequestered += setModelScopeExcluded(database, {
-                      nodeId: duplicateNodeId,
-                      accountId: targetAccountId,
-                      reason: 'keep-primary',
-                      actorUserId: userId,
-                      relatedNodeId: primaryNodeId,
-                    });
-                    edgesCreated += ensureEdge(database, {
-                      accountId: targetAccountId,
-                      createdBy: userId,
-                      kind: 'DUP_OF',
-                      fromId: duplicateNodeId,
-                      toId: primaryNodeId,
-                      properties: { source: 'duplicate_review' },
-                    })
-                      ? 1
-                      : 0;
-                    break;
-                  case 'keep-duplicate':
-                    nodesSequestered += setModelScopeExcluded(database, {
-                      nodeId: primaryNodeId,
-                      accountId: targetAccountId,
-                      reason: 'keep-duplicate',
-                      actorUserId: userId,
-                      relatedNodeId: duplicateNodeId,
-                    });
-                    edgesCreated += ensureEdge(database, {
-                      accountId: targetAccountId,
-                      createdBy: userId,
-                      kind: 'DUP_OF',
-                      fromId: primaryNodeId,
-                      toId: duplicateNodeId,
-                      properties: { source: 'duplicate_review' },
-                    })
-                      ? 1
-                      : 0;
-                    break;
-                  case 'keep-both':
-                    break;
-                  case 'merge':
-                    nodesSequestered += setModelScopeExcluded(database, {
-                      nodeId: duplicateNodeId,
-                      accountId: targetAccountId,
-                      reason: 'merge',
-                      actorUserId: userId,
-                      relatedNodeId: primaryNodeId,
-                    });
-                    edgesCreated += ensureEdge(database, {
-                      accountId: targetAccountId,
-                      createdBy: userId,
-                      kind: 'EQUIVALENT_TO',
-                      fromId: duplicateNodeId,
-                      toId: primaryNodeId,
-                      properties: { source: 'duplicate_review', merged: true },
-                    })
-                      ? 1
-                      : 0;
-                    mergesRegistered += 1;
-                    break;
-                  case 'sequester':
-                    nodesSequestered += setModelScopeExcluded(database, {
-                      nodeId: duplicateNodeId,
-                      accountId: targetAccountId,
-                      reason: 'sequester',
-                      actorUserId: userId,
-                      relatedNodeId: primaryNodeId,
-                    });
-                    break;
-                }
-
-                const decisionMeta = JSON.stringify({
-                  appliedBy: userId,
-                  appliedAt: now,
-                  action: decision.action,
-                  primaryNodeId,
-                  duplicateNodeId,
-                });
-
-                updateDecisionStmt.run(
-                  decision.action,
-                  decisionMeta,
-                  now,
-                  jobId,
-                  targetAccountId,
-                  decision.duplicateId
-                );
-                decisionsApplied += 1;
-              }
-            }
-          );
-
-          transaction(orderedDecisions);
-        } catch (error: any) {
-          const reasonCode: SimilarityReviewApplyReasonCode =
-            error?.code === 'REVIEW_APPLY_TIMEOUT' ? 'REVIEW_APPLY_TIMEOUT' : 'REVIEW_APPLY_FAILED';
-          writeDuplicateReviewState(job, {
-            status: 'failed',
-            pendingCandidates: pendingCandidateIds.length,
-            applyState: {
-              phase: 'failed',
-              failedAt: Date.now(),
-              reasonCode,
-            },
-            reasonCode,
+        if (reasonCode === 'REVIEW_APPLY_TIMEOUT') {
+          return res.status(408).json({
+            success: false,
+            error: 'review_apply_timeout',
+            reason_code: 'REVIEW_APPLY_TIMEOUT',
+            message: `Duplicate review apply exceeded timeout of ${REVIEW_APPLY_TIMEOUT_MS}ms and was rolled back.`,
           });
-          await jobRepository.save(job);
-          if (sseBroadcaster) {
-            sseBroadcaster.broadcastJobUpdate(job);
-          }
-          if (reasonCode === 'REVIEW_APPLY_TIMEOUT') {
-            return res.status(408).json({
-              success: false,
-              error: 'review_apply_timeout',
-              reason_code: 'REVIEW_APPLY_TIMEOUT',
-              message: `Duplicate review apply exceeded timeout of ${REVIEW_APPLY_TIMEOUT_MS}ms and was rolled back.`,
-            });
-          }
-          throw ErrorFactory.database(
-            `Failed to apply duplicate review decisions: ${error.message}`,
-            'jobs.duplicateReviewApply',
-            { jobId, accountId: targetAccountId }
-          );
         }
+        throw ErrorFactory.database(
+          `Failed to apply duplicate review decisions: ${error.message}`,
+          'jobs.duplicateReviewApply',
+          { jobId, accountId: targetAccountId }
+        );
+      }
 
-        const pendingCandidatesRow = database
-          .prepare(
-            `
+      const pendingCandidatesRow = database
+        .prepare(
+          `
             SELECT COUNT(*) as count
             FROM job_duplicate_candidates
             WHERE job_id = ? AND account_id = ? AND decision IS NULL
           `
-          )
-          .get(jobId, targetAccountId) as { count?: number } | undefined;
-        const pendingCandidates = Number(pendingCandidatesRow?.count ?? 0);
+        )
+        .get(jobId, targetAccountId) as { count?: number } | undefined;
+      const pendingCandidates = Number(pendingCandidatesRow?.count ?? 0);
 
-        const applySummary: SimilarityReviewApplySummary = {
-          appliedDecisions: decisionsApplied,
-          actionCounts,
-          nodesSequestered,
-          nodesMerged: mergesRegistered,
-          edgesCreated,
-          pendingCandidates,
-        };
+      const applySummary: SimilarityReviewApplySummary = {
+        appliedDecisions: decisionsApplied,
+        actionCounts,
+        nodesSequestered,
+        nodesMerged: mergesRegistered,
+        edgesCreated,
+        pendingCandidates,
+      };
 
-        writeDuplicateReviewState(job, {
-          status: pendingCandidates === 0 ? 'completed' : 'in_progress',
-          decisionsApplied,
-          pendingCandidates,
-          applyState:
-            pendingCandidates === 0
-              ? {
-                  phase: 'completed',
-                  startedAt: applyStartedAt,
-                  completedAt: Date.now(),
-                }
-              : {
-                  phase: 'applying',
-                  startedAt: applyStartedAt,
-                },
-          applySummary,
-        });
-        await jobRepository.save(job);
-        if (sseBroadcaster) {
-          sseBroadcaster.broadcastJobUpdate(job);
-        }
-
-        return res.json({
-          success: true,
-          apply_state:
-            pendingCandidates === 0
-              ? { phase: 'completed', startedAt: applyStartedAt, completedAt: Date.now() }
-              : { phase: 'applying', startedAt: applyStartedAt },
-          result: {
-            jobId,
-            applied_decisions: decisionsApplied,
-            action_counts: actionCounts,
-            nodes_sequestered: nodesSequestered,
-            nodes_merged: mergesRegistered,
-            edges_created: edgesCreated,
-            pending_candidates: pendingCandidates,
-            message:
-              pendingCandidates === 0
-                ? `Applied ${decisionsApplied} decisions and completed duplicate review`
-                : `Applied ${decisionsApplied} decisions; duplicate review still has pending candidates`,
-          },
-        });
-      } finally {
-        duplicateReviewApplyLocks.delete(lockKey);
+      writeDuplicateReviewState(job, {
+        status: pendingCandidates === 0 ? 'completed' : 'in_progress',
+        decisionsApplied,
+        pendingCandidates,
+        applyState:
+          pendingCandidates === 0
+            ? {
+                phase: 'completed',
+                startedAt: applyStartedAt,
+                completedAt: Date.now(),
+              }
+            : {
+                phase: 'applying',
+                startedAt: applyStartedAt,
+              },
+        applySummary,
+      });
+      await jobRepository.save(job);
+      if (sseBroadcaster) {
+        sseBroadcaster.broadcastJobUpdate(job);
       }
-    })
+
+      return res.json({
+        success: true,
+        apply_state:
+          pendingCandidates === 0
+            ? { phase: 'completed', startedAt: applyStartedAt, completedAt: Date.now() }
+            : { phase: 'applying', startedAt: applyStartedAt },
+        result: {
+          jobId,
+          applied_decisions: decisionsApplied,
+          action_counts: actionCounts,
+          nodes_sequestered: nodesSequestered,
+          nodes_merged: mergesRegistered,
+          edges_created: edgesCreated,
+          pending_candidates: pendingCandidates,
+          message:
+            pendingCandidates === 0
+              ? `Applied ${decisionsApplied} decisions and completed duplicate review`
+              : `Applied ${decisionsApplied} decisions; duplicate review still has pending candidates`,
+        },
+      });
+    } finally {
+      duplicateReviewApplyLocks.delete(lockKey);
+    }
+  });
+
+  router.post('/:id/duplicate-review/apply', requireAuth(authService), applyReviewDecisionsHandler);
+
+  router.post(
+    '/:id/similarity-review/apply',
+    requireAuth(authService),
+    applyReviewDecisionsHandler
   );
 
   /**
-   * GET /api/v1/jobs/:id/duplicate-review/status
-   * Get duplicate review status for a job.
+   * Get duplicate/similarity review status for a job.
    */
-  router.get(
-    '/:id/duplicate-review/status',
-    requireAuth(authService),
-    asyncHandler(async (req: Request, res: Response) => {
-      const userId = (req as any).user?.userId;
-      const userAccountId = (req as any).user?.accountId;
-      const operating = (req as any).operating;
-      const { id: jobId } = req.params;
+  const getReviewStatusHandler = asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user?.userId;
+    const userAccountId = (req as any).user?.accountId;
+    const operating = (req as any).operating;
+    const { id: jobId } = req.params;
 
-      if (!userAccountId || !userId) {
-        throw ErrorFactory.unauthorized('jobs.duplicateReviewStatus');
-      }
+    if (!userAccountId || !userId) {
+      throw ErrorFactory.unauthorized('jobs.duplicateReviewStatus');
+    }
 
-      const targetAccountId = operating?.accountId || userAccountId;
-      const job = await jobRepository.findById(jobId, targetAccountId, req);
-      if (!job) {
-        throw ErrorFactory.notFound('Job', 'jobs.duplicateReviewStatus');
-      }
+    const targetAccountId = operating?.accountId || userAccountId;
+    const job = await jobRepository.findById(jobId, targetAccountId, req);
+    if (!job) {
+      throw ErrorFactory.notFound('Job', 'jobs.duplicateReviewStatus');
+    }
 
-      const { getDbClient } = await import('../../../utils/get-db-client');
-      const dbClient = await getDbClient(req);
-      const database = dbClient.getDatabase();
-      ensureDuplicateReviewTable(database);
+    const { getDbClient } = await import('../../../utils/get-db-client');
+    const dbClient = await getDbClient(req);
+    const database = dbClient.getDatabase();
+    ensureDuplicateReviewTable(database);
 
-      const reviewCounts = database
-        .prepare(
-          `
+    const reviewCounts = database
+      .prepare(
+        `
           SELECT
             COUNT(*) as total_candidates,
             COUNT(DISTINCT group_id) as total_groups,
@@ -1323,68 +1321,69 @@ export function createJobsRoutes(
           FROM job_duplicate_candidates
           WHERE job_id = ? AND account_id = ?
         `
-        )
-        .get(jobId, targetAccountId) as
-        | {
-            total_candidates?: number;
-            total_groups?: number;
-            pending_candidates?: number;
-            decided_candidates?: number;
-          }
-        | undefined;
-
-      const importOptions = parseRecord(job.config?.importOptions || {});
-      const duplicateDetection = parseRecord(importOptions.duplicateDetection);
-      const duplicatesEnabled = parseBooleanFlag(duplicateDetection.enabled, true);
-      const requireReviewConfigured = duplicatesEnabled
-        ? parseBooleanFlag(duplicateDetection.requireReview, true)
-        : false;
-
-      const totalCandidates = Number(reviewCounts?.total_candidates ?? 0);
-      const totalGroups = Number(reviewCounts?.total_groups ?? 0);
-      const pendingCandidates = Number(reviewCounts?.pending_candidates ?? 0);
-      const decidedCandidates = Number(reviewCounts?.decided_candidates ?? 0);
-      const reviewRequired =
-        requireReviewConfigured && totalCandidates > 0 && pendingCandidates > 0;
-
-      const reviewState = readDuplicateReviewState(job);
-      let stage: 'not_required' | 'pending' | 'in_progress' | 'completed' | 'failed' =
-        'not_required';
-      if (requireReviewConfigured) {
-        if (totalCandidates === 0) {
-          stage = 'completed';
-        } else if (pendingCandidates === totalCandidates) {
-          stage = 'pending';
-        } else if (pendingCandidates > 0) {
-          stage = 'in_progress';
-        } else {
-          stage = 'completed';
+      )
+      .get(jobId, targetAccountId) as
+      | {
+          total_candidates?: number;
+          total_groups?: number;
+          pending_candidates?: number;
+          decided_candidates?: number;
         }
-      }
-      if (reviewState.applyState.phase === 'failed') {
-        stage = 'failed';
-      }
+      | undefined;
 
-      return res.json({
-        success: true,
-        status: {
-          jobId,
-          duplicate_detection_enabled: duplicatesEnabled,
-          require_review: requireReviewConfigured,
-          review_required: reviewRequired,
-          stage,
-          total_groups: totalGroups,
-          total_candidates: totalCandidates,
-          decided_candidates: decidedCandidates,
-          pending_candidates: pendingCandidates,
-          completed: requireReviewConfigured ? pendingCandidates === 0 : true,
-          apply_state: reviewState.applyState,
-          apply_summary: reviewState.applySummary || null,
-          last_updated: Date.now(),
-        },
-      });
-    })
-  );
+    const importOptions = parseRecord(job.config?.importOptions || {});
+    const duplicateDetection = parseRecord(importOptions.duplicateDetection);
+    const duplicatesEnabled = parseBooleanFlag(duplicateDetection.enabled, true);
+    const requireReviewConfigured = duplicatesEnabled
+      ? parseBooleanFlag(duplicateDetection.requireReview, true)
+      : false;
+
+    const totalCandidates = Number(reviewCounts?.total_candidates ?? 0);
+    const totalGroups = Number(reviewCounts?.total_groups ?? 0);
+    const pendingCandidates = Number(reviewCounts?.pending_candidates ?? 0);
+    const decidedCandidates = Number(reviewCounts?.decided_candidates ?? 0);
+    const reviewRequired = requireReviewConfigured && totalCandidates > 0 && pendingCandidates > 0;
+
+    const reviewState = readDuplicateReviewState(job);
+    let stage: 'not_required' | 'pending' | 'in_progress' | 'completed' | 'failed' = 'not_required';
+    if (requireReviewConfigured) {
+      if (totalCandidates === 0) {
+        stage = 'completed';
+      } else if (pendingCandidates === totalCandidates) {
+        stage = 'pending';
+      } else if (pendingCandidates > 0) {
+        stage = 'in_progress';
+      } else {
+        stage = 'completed';
+      }
+    }
+    if (reviewState.applyState.phase === 'failed') {
+      stage = 'failed';
+    }
+
+    return res.json({
+      success: true,
+      status: {
+        jobId,
+        duplicate_detection_enabled: duplicatesEnabled,
+        require_review: requireReviewConfigured,
+        review_required: reviewRequired,
+        stage,
+        total_groups: totalGroups,
+        total_candidates: totalCandidates,
+        decided_candidates: decidedCandidates,
+        pending_candidates: pendingCandidates,
+        completed: requireReviewConfigured ? pendingCandidates === 0 : true,
+        apply_state: reviewState.applyState,
+        apply_summary: reviewState.applySummary || null,
+        last_updated: Date.now(),
+      },
+    });
+  });
+
+  router.get('/:id/duplicate-review/status', requireAuth(authService), getReviewStatusHandler);
+
+  router.get('/:id/similarity-review/status', requireAuth(authService), getReviewStatusHandler);
 
   /**
    * DELETE /api/v1/jobs/:id

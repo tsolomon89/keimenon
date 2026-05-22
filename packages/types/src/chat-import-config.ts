@@ -125,6 +125,12 @@ export interface DuplicateReviewState {
   viewMode: 'side-by-side' | 'unified';
 }
 
+// Similarity Review Type Aliases for terminology transition
+export type SimilarityCandidate = DuplicateCandidate;
+export type SimilarityGroup = DuplicateGroup;
+export type SimilarityReviewState = DuplicateReviewState;
+export type SimilarityReviewDecision = ReviewDecision;
+
 // Import result from API
 export interface ImportResult {
   conversations: Array<{

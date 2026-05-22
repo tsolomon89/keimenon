@@ -1,4 +1,4 @@
-import { ChatImportConfig, DuplicateGroup } from '@/types/chat-import';
+import { ChatImportConfig, DuplicateGroup, SimilarityGroup } from '@/types/chat-import';
 import { handleApiError } from './error-handler';
 import { getToken } from '@/contexts/AuthContext';
 import { API_BASE_URL } from './env.config';
@@ -1378,6 +1378,150 @@ export async function getDuplicateReviewGroups(
   try {
     const response = await fetchWithAuthInterceptor(
       `${API_BASE_URL}/api/v1/jobs/${jobId}/duplicate-review/groups`,
+      {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      }
+    );
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+// ==================== Similarity Review API ====================
+
+export interface SimilarityReviewStatus {
+  jobId: string;
+  duplicate_detection_enabled: boolean;
+  require_review: boolean;
+  review_required: boolean;
+  stage: 'not_required' | 'pending' | 'in_progress' | 'completed';
+  total_groups: number;
+  total_candidates: number;
+  decided_candidates: number;
+  pending_candidates: number;
+  completed: boolean;
+  last_updated: number;
+}
+
+export interface SimilarityReviewStatusResponse {
+  success: boolean;
+  status: SimilarityReviewStatus;
+}
+
+export interface SimilarityReviewGroupsResponse {
+  success: boolean;
+  groups: SimilarityGroup[];
+  total_groups: number;
+  total_candidates: number;
+}
+
+/**
+ * Apply similarity review decisions after import
+ * Creates appropriate edges and removes/merges nodes based on user decisions
+ *
+ * @param decisions Array of review decisions
+ * @param jobId Required job ID for review context
+ */
+export async function applySimilarityDecisions(
+  decisions: Array<{
+    duplicateId: string;
+    action: 'keep-primary' | 'keep-duplicate' | 'keep-both' | 'merge' | 'sequester';
+    timestamp: number;
+    userId?: string;
+    primaryNodeId?: string;
+    duplicateNodeId?: string;
+  }>,
+  jobId: string
+): Promise<{
+  success: boolean;
+  result: {
+    applied_decisions: number;
+    action_counts: {
+      'keep-primary': number;
+      'keep-duplicate': number;
+      'keep-both': number;
+      merge: number;
+      sequester: number;
+    };
+    nodes_sequestered: number;
+    nodes_merged: number;
+    edges_created: number;
+    pending_candidates: number;
+    message: string;
+  };
+}> {
+  if (!jobId) {
+    throw new Error('jobId is required to apply similarity review decisions');
+  }
+
+  try {
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/jobs/${jobId}/similarity-review/apply`,
+      {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          decisions,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+export async function getSimilarityReviewStatus(
+  jobId: string
+): Promise<SimilarityReviewStatusResponse> {
+  if (!jobId) {
+    throw new Error('jobId is required to fetch similarity review status');
+  }
+
+  try {
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/jobs/${jobId}/similarity-review/status`,
+      {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      }
+    );
+
+    if (!response.ok) {
+      await handleApiError({ response });
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw await handleApiError(error);
+  }
+}
+
+export async function getSimilarityReviewGroups(
+  jobId: string
+): Promise<SimilarityReviewGroupsResponse> {
+  if (!jobId) {
+    throw new Error('jobId is required to fetch similarity review groups');
+  }
+
+  try {
+    const response = await fetchWithAuthInterceptor(
+      `${API_BASE_URL}/api/v1/jobs/${jobId}/similarity-review/groups`,
       {
         method: 'GET',
         headers: getAuthHeaders(),

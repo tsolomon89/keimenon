@@ -1,20 +1,13 @@
 'use client';
 
-import {
-  ChevronDown,
-  ChevronRight,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Loader2,
-} from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { useState, useRef, useMemo, useCallback, CSSProperties } from 'react';
 import { List } from 'react-window';
 import { useContainerHeight } from '@/hooks/useContainerHeight';
-import { DuplicateGroup, DuplicateCandidate, ReviewDecision } from '@/types/chat-import';
+import { SimilarityGroup, SimilarityCandidate, ReviewDecision } from '@/types/chat-import';
 
-interface DuplicateTreeViewProps {
-  groups: DuplicateGroup[];
+interface SimilarityTreeViewProps {
+  groups: SimilarityGroup[];
   selectedGroupId: string | null;
   selectedCandidateId: string | null;
   decisions: Map<string, ReviewDecision>;
@@ -24,28 +17,27 @@ interface DuplicateTreeViewProps {
 
 // Row height for virtualized list
 const GROUP_ROW_HEIGHT = 56;
-const CANDIDATE_ROW_HEIGHT = 56;
 
 // Flattened tree node type
-type FlatDuplicateNode =
-  | { type: 'group'; group: DuplicateGroup; isExpanded: boolean }
-  | { type: 'candidate'; candidate: DuplicateCandidate; groupId: string };
+type FlatSimilarityNode =
+  | { type: 'group'; group: SimilarityGroup; isExpanded: boolean }
+  | { type: 'candidate'; candidate: SimilarityCandidate; groupId: string };
 
 // Props for virtualized row
-interface DuplicateRowProps {
-  flattenedNodes: FlatDuplicateNode[];
+interface SimilarityRowProps {
+  flattenedNodes: FlatSimilarityNode[];
   selectedGroupId: string | null;
   selectedCandidateId: string | null;
   decisions: Map<string, ReviewDecision>;
   onGroupSelect: (groupId: string) => void;
   onCandidateSelect: (candidateId: string) => void;
   toggleGroup: (groupId: string) => void;
-  getGroupProgress: (group: DuplicateGroup) => { reviewed: number; total: number };
-  getDecisionIcon: (candidate: DuplicateCandidate) => React.ReactNode;
+  getGroupProgress: (group: SimilarityGroup) => { reviewed: number; total: number };
+  getDecisionIcon: (candidate: SimilarityCandidate) => React.ReactNode;
 }
 
 // Virtualized row component
-function DuplicateRow({
+function SimilarityRow({
   index,
   style,
   flattenedNodes,
@@ -59,8 +51,8 @@ function DuplicateRow({
 }: {
   index: number;
   style: CSSProperties;
-  ariaAttributes: { 'aria-posinset': number; 'aria-setsize': number; role: 'listitem' };
-} & DuplicateRowProps): React.ReactElement | null {
+  ariaAttributes?: { 'aria-posinset': number; 'aria-setsize': number; role: 'listitem' };
+} & SimilarityRowProps): React.ReactElement | null {
   const node = flattenedNodes[index];
 
   if (node.type === 'group') {
@@ -98,7 +90,7 @@ function DuplicateRow({
 
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">
-              Duplicate Group {group.id.slice(0, 8)}
+              Similarity Group {group.id.slice(0, 8)}
             </div>
             <div className="text-xs text-slate-400">
               {progress.reviewed}/{progress.total} reviewed
@@ -112,7 +104,7 @@ function DuplicateRow({
       </div>
     );
   } else {
-    const { candidate, groupId } = node;
+    const { candidate } = node;
     const isCandidateSelected = selectedCandidateId === candidate.id;
 
     return (
@@ -144,14 +136,14 @@ function DuplicateRow({
   }
 }
 
-export function DuplicateTreeView({
+export function SimilarityTreeView({
   groups,
   selectedGroupId,
   selectedCandidateId,
   decisions,
   onGroupSelect,
   onCandidateSelect,
-}: DuplicateTreeViewProps) {
+}: SimilarityTreeViewProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set(groups.map((g) => g.id))
   );
@@ -173,7 +165,7 @@ export function DuplicateTreeView({
   }, []);
 
   const getDecisionIcon = useCallback(
-    (candidate: DuplicateCandidate) => {
+    (candidate: SimilarityCandidate) => {
       const decision = decisions.get(candidate.id);
       if (!decision) {
         return <AlertCircle className="w-4 h-4 text-yellow-500" />;
@@ -197,7 +189,7 @@ export function DuplicateTreeView({
   );
 
   const getGroupProgress = useCallback(
-    (group: DuplicateGroup) => {
+    (group: SimilarityGroup) => {
       const reviewed = group.candidates.filter((c) => decisions.has(c.id)).length;
       return { reviewed, total: group.candidates.length };
     },
@@ -205,8 +197,8 @@ export function DuplicateTreeView({
   );
 
   // Flatten groups and candidates for virtualization
-  const flattenedNodes = useMemo((): FlatDuplicateNode[] => {
-    const result: FlatDuplicateNode[] = [];
+  const flattenedNodes = useMemo((): FlatSimilarityNode[] => {
+    const result: FlatSimilarityNode[] = [];
 
     for (const group of groups) {
       const isExpanded = expandedGroups.has(group.id);
@@ -224,7 +216,7 @@ export function DuplicateTreeView({
 
   // Memoized row props
   const rowProps = useMemo(
-    (): DuplicateRowProps => ({
+    (): SimilarityRowProps => ({
       flattenedNodes,
       selectedGroupId,
       selectedCandidateId,
@@ -251,13 +243,13 @@ export function DuplicateTreeView({
   return (
     <div ref={listContainerRef} className="p-2 flex-1">
       {flattenedNodes.length === 0 ? (
-        <div className="text-center text-sm text-slate-500 py-8">No duplicate groups found</div>
+        <div className="text-center text-sm text-slate-500 py-8">No similarity groups found</div>
       ) : (
-        <List<DuplicateRowProps>
+        <List<SimilarityRowProps>
           style={{ height: Math.min(flattenedNodes.length * GROUP_ROW_HEIGHT, listHeight) }}
           rowCount={flattenedNodes.length}
           rowHeight={GROUP_ROW_HEIGHT}
-          rowComponent={DuplicateRow}
+          rowComponent={SimilarityRow}
           rowProps={rowProps}
         />
       )}

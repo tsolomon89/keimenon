@@ -5,9 +5,9 @@ import { ChatImportModal } from './ChatImportModal';
 
 const mocked = vi.hoisted(() => ({
   uploadMock: vi.fn(),
-  getDuplicateReviewStatusMock: vi.fn(),
-  getDuplicateReviewGroupsMock: vi.fn(),
-  applyDuplicateDecisionsMock: vi.fn(),
+  getSimilarityReviewStatusMock: vi.fn(),
+  getSimilarityReviewGroupsMock: vi.fn(),
+  applySimilarityDecisionsMock: vi.fn(),
   getMyFeaturesMock: vi.fn(),
   analyzeFilesMock: vi.fn(),
   detectPlatformMock: vi.fn(),
@@ -50,9 +50,9 @@ vi.mock('@/lib/error-handler', () => ({
 vi.mock('@/lib/api-client', () => ({
   analyzeFiles: mocked.analyzeFilesMock,
   detectPlatform: mocked.detectPlatformMock,
-  applyDuplicateDecisions: mocked.applyDuplicateDecisionsMock,
-  getDuplicateReviewGroups: mocked.getDuplicateReviewGroupsMock,
-  getDuplicateReviewStatus: mocked.getDuplicateReviewStatusMock,
+  applySimilarityDecisions: mocked.applySimilarityDecisionsMock,
+  getSimilarityReviewGroups: mocked.getSimilarityReviewGroupsMock,
+  getSimilarityReviewStatus: mocked.getSimilarityReviewStatusMock,
   getMyFeatures: mocked.getMyFeaturesMock,
   completeCoreProcessReimport: mocked.completeCoreProcessReimportMock,
   getCoreProcessReimportStatus: mocked.getCoreProcessReimportStatusMock,
@@ -84,13 +84,13 @@ vi.mock('../import/ImportStageConfig', () => ({
   ImportStageConfig: () => <div data-testid="stage-config">Config...</div>,
 }));
 
-vi.mock('../import/DuplicateReviewPanel', () => ({
-  DuplicateReviewPanel: ({
+vi.mock('../import/SimilarityReviewPanel', () => ({
+  SimilarityReviewPanel: ({
     onReviewComplete,
   }: {
     onReviewComplete: (decisions: Map<string, any>) => Promise<void>;
   }) => (
-    <div data-testid="duplicate-review-panel">
+    <div data-testid="similarity-review-panel">
       <button
         type="button"
         data-testid="apply-review"
@@ -185,8 +185,8 @@ describe('ChatImportModal duplicate review transitions', () => {
     vi.clearAllMocks();
   });
 
-  it('transitions processing -> review when duplicate review is required and candidates exist', async () => {
-    mocked.getDuplicateReviewStatusMock.mockResolvedValue({
+  it('transitions processing -> review when similarity review is required and candidates exist', async () => {
+    mocked.getSimilarityReviewStatusMock.mockResolvedValue({
       success: true,
       status: {
         review_required: true,
@@ -194,7 +194,7 @@ describe('ChatImportModal duplicate review transitions', () => {
         total_candidates: 1,
       },
     });
-    mocked.getDuplicateReviewGroupsMock.mockResolvedValue({
+    mocked.getSimilarityReviewGroupsMock.mockResolvedValue({
       success: true,
       total_groups: 1,
       total_candidates: 1,
@@ -216,14 +216,14 @@ describe('ChatImportModal duplicate review transitions', () => {
     view.rerender(<ChatImportModal onDismiss={onDismiss} />);
 
     await waitFor(() => {
-      expect(mocked.getDuplicateReviewStatusMock).toHaveBeenCalledWith('job_123');
-      expect(screen.getByText('Review potential duplicates')).toBeInTheDocument();
-      expect(screen.getByTestId('duplicate-review-panel')).toBeInTheDocument();
+      expect(mocked.getSimilarityReviewStatusMock).toHaveBeenCalledWith('job_123');
+      expect(screen.getByText('Review similarity overlaps')).toBeInTheDocument();
+      expect(screen.getByTestId('similarity-review-panel')).toBeInTheDocument();
     });
   });
 
   it('transitions review -> complete only after successful apply with no pending candidates', async () => {
-    mocked.getDuplicateReviewStatusMock.mockResolvedValue({
+    mocked.getSimilarityReviewStatusMock.mockResolvedValue({
       success: true,
       status: {
         review_required: true,
@@ -231,13 +231,13 @@ describe('ChatImportModal duplicate review transitions', () => {
         total_candidates: 1,
       },
     });
-    mocked.getDuplicateReviewGroupsMock.mockResolvedValue({
+    mocked.getSimilarityReviewGroupsMock.mockResolvedValue({
       success: true,
       total_groups: 1,
       total_candidates: 1,
       groups: [{ id: 'group_1', candidates: [], totalDuplicates: 1, reviewed: 0, autoResolved: 0 }],
     });
-    mocked.applyDuplicateDecisionsMock.mockResolvedValue({
+    mocked.applySimilarityDecisionsMock.mockResolvedValue({
       success: true,
       result: {
         applied_decisions: 1,
@@ -245,7 +245,7 @@ describe('ChatImportModal duplicate review transitions', () => {
         nodes_merged: 0,
         action_counts: { sequester: 1 },
         pending_candidates: 0,
-        message: 'Duplicate review complete',
+        message: 'Similarity review complete',
       },
     });
 
@@ -261,12 +261,12 @@ describe('ChatImportModal duplicate review transitions', () => {
     mocked.jobs = new Map([['job_123', succeededJob('job_123')]]);
     view.rerender(<ChatImportModal onDismiss={onDismiss} />);
 
-    await waitFor(() => expect(screen.getByTestId('duplicate-review-panel')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('similarity-review-panel')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('apply-review'));
 
     await waitFor(() => {
-      expect(mocked.applyDuplicateDecisionsMock).toHaveBeenCalledTimes(1);
+      expect(mocked.applySimilarityDecisionsMock).toHaveBeenCalledTimes(1);
       expect(screen.getByText('Import completed successfully!')).toBeInTheDocument();
     });
   });

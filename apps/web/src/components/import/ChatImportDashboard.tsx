@@ -22,19 +22,19 @@ import {
   DEFAULT_IMPORT_CONFIG,
   PlatformDetection,
   UploadProgress,
-  DuplicateGroup,
+  SimilarityGroup,
   ReviewDecision,
   AnalysisResult,
 } from '@/types/chat-import';
 import { ImportStageSelect } from './ImportStageSelect';
 import { ImportStageConfig } from './ImportStageConfig';
-import { DuplicateReviewPanel } from './DuplicateReviewPanel';
+import { SimilarityReviewPanel } from './SimilarityReviewPanel';
 import {
   analyzeFiles,
   detectPlatform,
-  applyDuplicateDecisions,
-  getDuplicateReviewGroups,
-  getDuplicateReviewStatus,
+  applySimilarityDecisions,
+  getSimilarityReviewGroups,
+  getSimilarityReviewStatus,
   getMyFeatures,
   completeCoreProcessReimport,
   getCoreProcessReimportStatus,
@@ -104,7 +104,7 @@ export function ChatImportDashboard() {
   });
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [postImportResolvedJobId, setPostImportResolvedJobId] = useState<string | null>(null);
-  const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
+  const [similarityGroups, setSimilarityGroups] = useState<SimilarityGroup[]>([]);
   const [multiFileImports, setMultiFileImports] = useState<MultiFileImportProgress[]>([]);
 
   // Presets and Entitlements
@@ -349,17 +349,17 @@ export function ChatImportDashboard() {
       triggerGraphRefresh(resolvedJobId, 'import_modal_complete');
       void (async () => {
         try {
-          const reviewStatus = await getDuplicateReviewStatus(resolvedJobId);
+          const reviewStatus = await getSimilarityReviewStatus(resolvedJobId);
           const shouldReview = reviewStatus.status.review_required;
 
           if (shouldReview) {
-            const reviewGroups = await getDuplicateReviewGroups(resolvedJobId);
+            const reviewGroups = await getSimilarityReviewGroups(resolvedJobId);
             if (reviewGroups.total_candidates > 0) {
-              setDuplicateGroups(reviewGroups.groups);
+              setSimilarityGroups(reviewGroups.groups);
               setProgress({
                 stage: 'ready',
                 percent: 100,
-                message: `${reviewStatus.status.pending_candidates} duplicate candidates require review`,
+                message: `${reviewStatus.status.pending_candidates} similarity candidates require review`,
               });
               setStage('review');
               return;
@@ -367,7 +367,7 @@ export function ChatImportDashboard() {
           }
         } catch (reviewError) {
           console.warn(
-            '[ChatImportDashboard] Failed to load duplicate review status:',
+            '[ChatImportDashboard] Failed to load similarity review status:',
             reviewError
           );
         }
@@ -717,18 +717,18 @@ export function ChatImportDashboard() {
       setProgress({
         stage: 'uploading',
         percent: 90,
-        message: `Applying ${decisionsArray.length} duplicate decisions...`,
+        message: `Applying ${decisionsArray.length} similarity decisions...`,
       });
 
       if (!currentJobId) throw new Error('No active job ID');
-      await applyDuplicateDecisions(decisionsArray, currentJobId);
+      await applySimilarityDecisions(decisionsArray, currentJobId);
 
       triggerGraphRefresh(currentJobId, 'duplicate_review_applied');
       setStage('complete');
       void clearCoreProcessReimportGate();
     } catch (error) {
       console.error('[ChatImportDashboard] Failed to apply decisions:', error);
-      alert('Failed to apply duplicate review decisions');
+      alert('Failed to apply similarity review decisions');
     }
   };
 
@@ -1145,15 +1145,15 @@ export function ChatImportDashboard() {
               <div className="flex items-center gap-3 border-b border-slate-800 pb-4 mb-6">
                 <AlertCircle className="w-5 h-5 text-purple-400" />
                 <div>
-                  <h3 className="text-sm font-semibold text-white">Duplicate Resolution Queue</h3>
+                  <h3 className="text-sm font-semibold text-white">Similarity Resolution Queue</h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Duplicate identifiers detected in import session. Please select merge/keep
+                    Similarity overlaps detected in import session. Please select merge/keep
                     behaviors.
                   </p>
                 </div>
               </div>
-              <DuplicateReviewPanel
-                groups={duplicateGroups}
+              <SimilarityReviewPanel
+                groups={similarityGroups}
                 onReviewComplete={handleReviewComplete}
                 onCancel={() => {
                   setStage('config');

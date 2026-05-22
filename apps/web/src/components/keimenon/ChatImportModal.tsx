@@ -8,19 +8,19 @@ import {
   PlatformDetection,
   UploadProgress,
   AnalysisResult,
-  DuplicateGroup,
+  SimilarityGroup,
   ReviewDecision,
 } from '@/types/chat-import';
 import { ImportStageSelect } from '../import/ImportStageSelect';
 import { ImportStageProcessing } from '../import/ImportStageProcessing';
 import { ImportStageConfig } from '../import/ImportStageConfig';
-import { DuplicateReviewPanel } from '../import/DuplicateReviewPanel';
+import { SimilarityReviewPanel } from '../import/SimilarityReviewPanel';
 import {
   analyzeFiles,
   detectPlatform,
-  applyDuplicateDecisions,
-  getDuplicateReviewGroups,
-  getDuplicateReviewStatus,
+  applySimilarityDecisions,
+  getSimilarityReviewGroups,
+  getSimilarityReviewStatus,
   getMyFeatures,
   completeCoreProcessReimport,
   getCoreProcessReimportStatus,
@@ -81,7 +81,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
     message: '',
   });
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
+  const [similarityGroups, setSimilarityGroups] = useState<SimilarityGroup[]>([]);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [postImportResolvedJobId, setPostImportResolvedJobId] = useState<string | null>(null);
   const [collisionJobInfo, setCollisionJobInfo] = useState<{
@@ -362,24 +362,24 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       triggerGraphRefresh(resolvedJobId, 'import_modal_complete');
       void (async () => {
         try {
-          const reviewStatus = await getDuplicateReviewStatus(resolvedJobId);
+          const reviewStatus = await getSimilarityReviewStatus(resolvedJobId);
           const shouldReview = reviewStatus.status.review_required;
 
           if (shouldReview) {
-            const reviewGroups = await getDuplicateReviewGroups(resolvedJobId);
+            const reviewGroups = await getSimilarityReviewGroups(resolvedJobId);
             if (reviewGroups.total_candidates > 0) {
-              setDuplicateGroups(reviewGroups.groups);
+              setSimilarityGroups(reviewGroups.groups);
               setProgress({
                 stage: 'ready',
                 percent: 100,
-                message: `${reviewStatus.status.pending_candidates} duplicate candidates require review`,
+                message: `${reviewStatus.status.pending_candidates} similarity candidates require review`,
               });
               setStage('review');
               return;
             }
           }
         } catch (reviewError) {
-          console.warn('[ChatImportModal] Failed to load duplicate review status:', reviewError);
+          console.warn('[ChatImportModal] Failed to load similarity review status:', reviewError);
         }
 
         setStage('complete');
@@ -805,7 +805,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
 
   const handleReviewComplete = async (decisions: Map<string, ReviewDecision>) => {
     try {
-      console.log('[ChatImportModal] Applying duplicate decisions:', decisions);
+      console.log('[ChatImportModal] Applying similarity decisions:', decisions);
 
       // Convert Map to array format expected by backend
       const decisionsArray = Array.from(decisions.entries()).map(([duplicateId, decision]) => ({
@@ -826,22 +826,22 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       setProgress({
         stage: 'uploading',
         percent: 90,
-        message: `Applying ${decisionsArray.length} duplicate decisions...`,
+        message: `Applying ${decisionsArray.length} similarity decisions...`,
       });
 
       if (!currentJobId) {
-        throw new Error('Cannot apply duplicate decisions without an active import job ID');
+        throw new Error('Cannot apply similarity decisions without an active import job ID');
       }
 
       // Apply decisions to backend
-      const result = await applyDuplicateDecisions(decisionsArray, currentJobId);
+      const result = await applySimilarityDecisions(decisionsArray, currentJobId);
 
       console.log('[ChatImportModal] Decisions applied:', result);
 
       // Log success event
-      logApiEvent(`Applied ${result.result.applied_decisions} duplicate decisions`, {
+      logApiEvent(`Applied ${result.result.applied_decisions} similarity decisions`, {
         domain: 'import',
-        operation: 'duplicateDecisionsApplied',
+        operation: 'similarityDecisionsApplied',
         metadata: {
           applied: result.result.applied_decisions,
           sequestered: result.result.nodes_sequestered,
@@ -851,12 +851,12 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       });
 
       if (result.result.pending_candidates > 0 && currentJobId) {
-        const reviewGroups = await getDuplicateReviewGroups(currentJobId);
-        setDuplicateGroups(reviewGroups.groups);
+        const reviewGroups = await getSimilarityReviewGroups(currentJobId);
+        setSimilarityGroups(reviewGroups.groups);
         setProgress({
           stage: 'ready',
           percent: 100,
-          message: `${result.result.pending_candidates} duplicate candidates still pending`,
+          message: `${result.result.pending_candidates} similarity candidates still pending`,
         });
         setStage('review');
         return;
@@ -885,7 +885,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       });
 
       alert(
-        `Failed to apply duplicate decisions: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to apply similarity decisions: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   };
@@ -899,7 +899,7 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
       case 'config':
         return 'Configure import settings';
       case 'review':
-        return 'Review potential duplicates';
+        return 'Review similarity overlaps';
       case 'collision':
         return 'Exact file already imported';
       case 'complete':
@@ -947,8 +947,8 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
         {stage === 'review' ? (
           // Full-height review panel (no padding wrapper)
           <div className="flex-1 flex flex-col min-h-0">
-            <DuplicateReviewPanel
-              groups={duplicateGroups}
+            <SimilarityReviewPanel
+              groups={similarityGroups}
               onReviewComplete={handleReviewComplete}
               onCancel={onDismiss}
             />

@@ -419,4 +419,61 @@ describe('Jobs Routes - Duplicate Review API', () => {
     expect(response.body.error).toBe('review_apply_conflict');
     expect(response.body.reason_code).toBe('REVIEW_APPLY_CONFLICT');
   });
+
+  describe('Similarity Review API Aliases', () => {
+    it('supports fetching status, groups, and applying decisions on similarity-review endpoints', async () => {
+      const job = await createImportJobWithReview();
+      insertNode('node_primary_sim');
+      insertNode('node_duplicate_sim');
+      insertCandidate({
+        id: 'row_sim',
+        jobId: job.id,
+        groupId: 'group_sim',
+        candidateId: 'cand_sim',
+        primaryNodeId: 'node_primary_sim',
+        duplicateNodeId: 'node_duplicate_sim',
+      });
+
+      // 1. Check status
+      const statusRes = await request(app)
+        .get(`/api/v1/jobs/${job.id}/similarity-review/status`)
+        .set('Authorization', 'Bearer valid-token')
+        .expect(200);
+      expect(statusRes.body.status.stage).toBe('pending');
+      expect(statusRes.body.status.total_candidates).toBe(1);
+
+      // 2. Fetch groups
+      const groupsRes = await request(app)
+        .get(`/api/v1/jobs/${job.id}/similarity-review/groups`)
+        .set('Authorization', 'Bearer valid-token')
+        .expect(200);
+      expect(groupsRes.body.groups).toHaveLength(1);
+      expect(groupsRes.body.groups[0].id).toBe('group_sim');
+      expect(groupsRes.body.groups[0].candidates[0].id).toBe('cand_sim');
+
+      // 3. Apply decisions
+      const applyRes = await request(app)
+        .post(`/api/v1/jobs/${job.id}/similarity-review/apply`)
+        .set('Authorization', 'Bearer valid-token')
+        .send({
+          decisions: [
+            {
+              duplicateId: 'cand_sim',
+              action: 'keep-both',
+              timestamp: Date.now(),
+            },
+          ],
+        })
+        .expect(200);
+      expect(applyRes.body.success).toBe(true);
+
+      // 4. Check completed status
+      const completedStatusRes = await request(app)
+        .get(`/api/v1/jobs/${job.id}/similarity-review/status`)
+        .set('Authorization', 'Bearer valid-token')
+        .expect(200);
+      expect(completedStatusRes.body.status.stage).toBe('completed');
+      expect(completedStatusRes.body.status.completed).toBe(true);
+    });
+  });
 });

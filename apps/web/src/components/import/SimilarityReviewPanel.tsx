@@ -1,23 +1,23 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { DuplicateGroup, ReviewDecision } from '@/types/chat-import';
-import { DuplicateTreeView } from './DuplicateTreeView';
-import { DuplicateComparisonView } from './DuplicateComparisonView';
-import { DuplicateActionsPanel } from './DuplicateActionsPanel';
+import { SimilarityGroup, SimilarityCandidate, ReviewDecision } from '@/types/chat-import';
+import { SimilarityTreeView } from './SimilarityTreeView';
+import { SimilarityComparisonView } from './SimilarityComparisonView';
+import { SimilarityActionsPanel } from './SimilarityActionsPanel';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 
-interface DuplicateReviewPanelProps {
-  groups: DuplicateGroup[];
+interface SimilarityReviewPanelProps {
+  groups: SimilarityGroup[];
   onReviewComplete: (decisions: Map<string, ReviewDecision>) => void;
   onCancel: () => void;
 }
 
-export function DuplicateReviewPanel({
+export function SimilarityReviewPanel({
   groups,
   onReviewComplete,
   onCancel,
-}: DuplicateReviewPanelProps) {
+}: SimilarityReviewPanelProps) {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(
     groups.length > 0 ? groups[0].id : null
   );
@@ -249,7 +249,7 @@ export function DuplicateReviewPanel({
       <div className="p-4 border-b border-slate-700 bg-slate-900">
         <div className="flex items-center justify-between mb-2">
           <div>
-            <h2 className="text-lg font-semibold">Review Similarity Conflicts</h2>
+            <h2 className="text-lg font-semibold">Review Similarity Overlaps</h2>
             <div className="text-xs text-slate-500 mt-1">
               Use up/down arrows to navigate, 1-5 for actions, Ctrl+Z/Y to undo/redo, Esc to cancel,
               Ctrl+Enter to complete
@@ -336,7 +336,7 @@ export function DuplicateReviewPanel({
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-80 border-r border-slate-700 overflow-y-auto bg-slate-900/50">
-          <DuplicateTreeView
+          <SimilarityTreeView
             groups={groups}
             selectedGroupId={selectedGroupId}
             selectedCandidateId={selectedCandidateId}
@@ -348,21 +348,21 @@ export function DuplicateReviewPanel({
 
         <div className="flex-1 overflow-y-auto">
           {selectedCandidate ? (
-            <DuplicateComparisonView
+            <SimilarityComparisonView
               candidate={selectedCandidate}
               viewMode={viewMode}
               onViewModeChange={setViewMode}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-slate-400">
-              <p>Select a duplicate pair to review</p>
+              <p>Select a similarity pair to review</p>
             </div>
           )}
         </div>
 
         <div className="w-80 border-l border-slate-700 overflow-y-auto bg-slate-900/50">
           {selectedCandidate && (
-            <DuplicateActionsPanel
+            <SimilarityActionsPanel
               candidate={selectedCandidate}
               decision={selectedCandidateId ? decisions.get(selectedCandidateId) : undefined}
               onDecision={(action) =>

@@ -9,19 +9,19 @@ import {
   MessageSquare,
   Hash,
 } from 'lucide-react';
-import { DuplicateCandidate, ReviewDecision } from '@/types/chat-import';
+import { SimilarityCandidate, ReviewDecision } from '@/types/chat-import';
 
-interface DuplicateActionsPanelProps {
-  candidate: DuplicateCandidate;
+interface SimilarityActionsPanelProps {
+  candidate: SimilarityCandidate;
   decision?: ReviewDecision;
   onDecision: (action: ReviewDecision['action']) => void;
 }
 
-export function DuplicateActionsPanel({
+export function SimilarityActionsPanel({
   candidate,
   decision,
   onDecision,
-}: DuplicateActionsPanelProps) {
+}: SimilarityActionsPanelProps) {
   const actions: Array<{
     action: ReviewDecision['action'];
     label: string;
@@ -32,14 +32,14 @@ export function DuplicateActionsPanel({
     {
       action: 'keep-primary',
       label: 'Keep Primary',
-      description: 'Keep the primary message, discard duplicate',
+      description: 'Keep the primary message, discard alternate',
       icon: <CheckCircle2 className="w-5 h-5" />,
       color: 'blue',
     },
     {
       action: 'keep-duplicate',
-      label: 'Keep Duplicate',
-      description: 'Keep the duplicate message, discard primary',
+      label: 'Keep Alternate',
+      description: 'Keep the alternate message, discard primary',
       icon: <CheckCircle2 className="w-5 h-5" />,
       color: 'orange',
     },
@@ -60,7 +60,7 @@ export function DuplicateActionsPanel({
     {
       action: 'sequester',
       label: 'Sequester',
-      description: 'Keep raw data but exclude duplicate from model scope',
+      description: 'Keep raw data but exclude alternate from model scope',
       icon: <AlertCircle className="w-5 h-5" />,
       color: 'orange',
     },
@@ -205,7 +205,7 @@ export function DuplicateActionsPanel({
           <div className="font-medium mb-1">Keyboard shortcuts:</div>
           <div className="space-y-0.5">
             <div>1 - Keep Primary</div>
-            <div>2 - Keep Duplicate</div>
+            <div>2 - Keep Alternate</div>
             <div>3 - Keep Both</div>
             <div>4 - Merge</div>
             <div>5 - Sequester</div>

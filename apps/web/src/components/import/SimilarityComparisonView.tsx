@@ -2,19 +2,19 @@
 
 import { useMemo } from 'react';
 import { Columns, List, Calendar, MessageSquare, Hash } from 'lucide-react';
-import { DuplicateCandidate } from '@/types/chat-import';
+import { SimilarityCandidate } from '@/types/chat-import';
 
-interface DuplicateComparisonViewProps {
-  candidate: DuplicateCandidate;
+interface SimilarityComparisonViewProps {
+  candidate: SimilarityCandidate;
   viewMode: 'side-by-side' | 'unified';
   onViewModeChange: (mode: 'side-by-side' | 'unified') => void;
 }
 
-export function DuplicateComparisonView({
+export function SimilarityComparisonView({
   candidate,
   viewMode,
   onViewModeChange,
-}: DuplicateComparisonViewProps) {
+}: SimilarityComparisonViewProps) {
   const mergePreview = useMemo(() => {
     const toLines = (value: string) =>
       value
@@ -128,7 +128,7 @@ export function DuplicateComparisonView({
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-semibold text-slate-200">Merge Preview Assistance</h4>
             <span className="text-[11px] text-slate-400">
-              overlap {mergePreview.overlapCount}/{mergePreview.totalDuplicate} duplicate lines
+              overlap {mergePreview.overlapCount}/{mergePreview.totalDuplicate} alternate lines
             </span>
           </div>
           <p className="text-[11px] text-slate-400 mb-2">
@@ -172,12 +172,12 @@ export function DuplicateComparisonView({
               </div>
             </div>
 
-            {/* Duplicate */}
+            {/* Alternate */}
             <div className="space-y-3">
               <div className="sticky top-0 bg-slate-900 pb-2 border-b border-slate-700">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 rounded-full bg-orange-500" />
-                  <h4 className="text-sm font-semibold">Duplicate</h4>
+                  <h4 className="text-sm font-semibold">Alternate</h4>
                 </div>
                 <div className="text-xs text-slate-400 space-y-1">
                   <div className="flex items-center gap-1.5">
@@ -219,7 +219,7 @@ export function DuplicateComparisonView({
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 rounded-full bg-green-500" />
                 <h4 className="text-sm font-semibold">
-                  Duplicate ({candidate.duplicate.conversationTitle})
+                  Alternate ({candidate.duplicate.conversationTitle})
                 </h4>
               </div>
               {getDiffHighlight(candidate.duplicate.content, true)}

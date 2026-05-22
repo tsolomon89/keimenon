@@ -10,7 +10,11 @@ export type {
   ReviewDecision,
   DuplicateGroup,
   DuplicateReviewState,
-  ImportResult
+  ImportResult,
+  SimilarityCandidate,
+  SimilarityGroup,
+  SimilarityReviewState,
+  SimilarityReviewDecision,
 } from '@keimenon/types';
 
 export { DEFAULT_IMPORT_CONFIG } from '@keimenon/types';
