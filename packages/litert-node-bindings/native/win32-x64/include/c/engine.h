@@ -30,7 +30,11 @@ extern "C" {
 // x86, x64, or ARM64EC. Otherwise, undefined.
 // https://learn.microsoft.com/en-us/cpp/preprocessor/predefined-macros
 #if defined(_WIN32)
+#if defined(LITERT_LM_C_API_STATIC)
+#define LITERT_LM_C_API_EXPORT
+#else
 #define LITERT_LM_C_API_EXPORT __declspec(dllexport)
+#endif
 #else
 // Ensure symbols are exported when building the shared library with
 // -fvisibility=hidden.

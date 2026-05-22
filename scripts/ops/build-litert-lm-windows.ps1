@@ -125,9 +125,9 @@ try {
     # Bazel command to build the engine orchestration and C API
     # Using '...' to build all available runtime targets and explicitly building //c:engine
     if ($BazelCmd -is [array]) {
-        & $BazelCmd[0] $BazelCmd[1] $BazelCmd[2] build -c opt //c:engine --config=windows --copt=/Zc:nrvo- --shell_executable="$GitBashFound"
+        & $BazelCmd[0] $BazelCmd[1] $BazelCmd[2] --output_user_root=C:\_b build -c fastbuild //c:engine_test --config=windows --define tsl_protobuf_header_only=false --shell_executable="$GitBashFound" --copt=/Zc:nrvo- --host_copt=/Zc:nrvo- --cxxopt=/Zc:nrvo- --host_cxxopt=/Zc:nrvo-
     } else {
-        & $BazelCmd build -c opt //c:engine --config=windows --copt=/Zc:nrvo- --shell_executable="$GitBashFound"
+        & $BazelCmd --output_user_root=C:\_b build -c fastbuild //c:engine_test --config=windows --define tsl_protobuf_header_only=false --shell_executable="$GitBashFound" --copt=/Zc:nrvo- --host_copt=/Zc:nrvo- --cxxopt=/Zc:nrvo- --host_cxxopt=/Zc:nrvo-
     }
     if ($LASTEXITCODE -ne 0) {
         Write-Error "[Error] Bazel build failed with exit code $LASTEXITCODE."
@@ -157,18 +157,34 @@ $BazelBinDir = "$VendorDir\bazel-bin"
 # We expect libLiteRt.dll from either prebuilt or bazel-bin
 $PrebuiltDir = "$VendorDir\prebuilt\windows_x86_64"
 
-if (Test-Path "$PrebuiltDir\libLiteRt.dll") {
-    Copy-Item "$PrebuiltDir\libLiteRt.dll" "$BindingNativeDir\bin\" -Force
-    Copy-Item "$PrebuiltDir\libLiteRt.dll" "$DesktopResDir\" -Force
-    Write-Host "[Stage] Copied libLiteRt.dll from prebuilt directory."
-} else {
-    Write-Warning "[Warning] libLiteRt.dll not found in $PrebuiltDir. Native runtime will lack dependencies."
+if (Test-Path $PrebuiltDir) {
+    Get-ChildItem -Path $PrebuiltDir -Filter "*.dll" | ForEach-Object {
+        Copy-Item $_.FullName "$BindingNativeDir\bin\" -Force
+        Copy-Item $_.FullName "$DesktopResDir\" -Force
+        Write-Host "[Stage] Copied prebuilt DLL: $($_.Name)"
+    }
+    Get-ChildItem -Path $PrebuiltDir -Filter "*.lib" | ForEach-Object {
+        Copy-Item $_.FullName "$BindingNativeDir\lib\" -Force
+        Write-Host "[Stage] Copied prebuilt lib: $($_.Name)"
+    }
+}
+# Locate dynamic Rust standard library DLL if compiled dynamically under C:\_b
+$ExternalDir = "C:\_b"
+if (Test-Path $ExternalDir) {
+    $RustStdDll = Get-ChildItem -Path $ExternalDir -Recurse -Filter "std-*.dll" -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 0 -and $_.FullName -notlike "*rustlib*" } | Select-Object -First 1
+    if (-not $RustStdDll) {
+        $RustStdDll = Get-ChildItem -Path $ExternalDir -Recurse -Filter "std-*.dll" -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 0 } | Select-Object -First 1
+    }
+    if ($RustStdDll) {
+        Copy-Item $RustStdDll.FullName "$BindingNativeDir\bin\" -Force
+        Copy-Item $RustStdDll.FullName "$DesktopResDir\" -Force
+        Write-Host "[Stage] Copied dynamic Rust standard library: $($RustStdDll.Name)"
+    } else {
+        Write-Warning "[Warning] Dynamic Rust standard library (std-*.dll) not found under $ExternalDir."
+    }
 }
 
-if (Test-Path "$PrebuiltDir\libLiteRtWebGpuAccelerator.dll") {
-    Copy-Item "$PrebuiltDir\libLiteRtWebGpuAccelerator.dll" "$BindingNativeDir\bin\" -Force
-    Copy-Item "$PrebuiltDir\libLiteRtWebGpuAccelerator.dll" "$DesktopResDir\" -Force
-}
+
 
 # Locate MSVC lib.exe
 $LibExe = $null
@@ -216,31 +232,26 @@ if ($SearchPaths.Count -eq 0) {
     exit 1
 }
 
-$LibFiles = Get-ChildItem -Path $SearchPaths -Recurse -Include *.lib,*.a,*.lo.lib -ErrorAction SilentlyContinue | Where-Object {
+$LibFiles = Get-ChildItem -Path $SearchPaths -Recurse -Include *.lib,*.a,*.lo.lib,*.rlib -ErrorAction SilentlyContinue | Where-Object {
     $_.FullName -notlike "*prebuilt*" -and 
     $_.Name -ne "litert_lm_engine.lib" -and
-    $_.FullName -notlike "*exec*" -and
-    $_.FullName -notlike "*host*" -and
-    $_.FullName -notlike "*runfiles*"
-}
-
-$ObjFiles = Get-ChildItem -Path $SearchPaths -Recurse -Include *.obj -ErrorAction SilentlyContinue | Where-Object {
-    $_.FullName -notlike "*prebuilt*" -and 
-    $_.FullName -notlike "*exec*" -and
-    $_.FullName -notlike "*host*" -and
+    $_.Name -ne "engine_test.lib" -and
+    $_.Name -notlike "*_test.lib" -and
+    $_.FullName -notlike "*-exec-*" -and
+    $_.FullName -notlike "*-host-*" -and
     $_.FullName -notlike "*runfiles*" -and
-    ($_.FullName -like "*_objs/engine*" -or $_.FullName -like "*/c/_objs/*" -or $_.FullName -like "*\c\_objs\*")
+    $_.FullName -notlike "*googletest*" -and
+    $_.FullName -notlike "*gtest*"
 }
 
 $AllInputs = @()
 if ($LibFiles) { $AllInputs += $LibFiles }
-if ($ObjFiles) { $AllInputs += $ObjFiles }
 
 if ($AllInputs.Count -gt 0) {
     $UniqueLibs = @{}
     foreach ($L in $AllInputs) {
-        if (-not $UniqueLibs.ContainsKey($L.Name) -or $L.LastWriteTime -gt $UniqueLibs[$L.Name].LastWriteTime) {
-            $UniqueLibs[$L.Name] = $L
+        if (-not $UniqueLibs.ContainsKey($L.FullName)) {
+            $UniqueLibs[$L.FullName] = $L
         }
     }
     $FatLibPath = "$BindingNativeDir\lib\litert_lm_engine.lib"
