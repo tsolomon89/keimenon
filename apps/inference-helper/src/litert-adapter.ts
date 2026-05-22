@@ -3,6 +3,7 @@ import {
   GenerateInput,
   GenerateResult,
   HelperStatusResult,
+  HelperStatusState,
   LoadModelResult,
   ModelValidationResult,
   NativeGemmaRuntimeAdapter,
@@ -40,16 +41,64 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
       };
     }
 
-    return {
-      ok: true,
-      runtime: 'native-gemma',
-      state: this.isLoaded ? 'model_loaded' : 'ready',
-      message: this.isLoaded
-        ? 'LiteRT-LM model loaded and ready.'
-        : 'LiteRT-LM bindings loaded. Awaiting model.',
-      native_deps_dir: this.nativeDepsDir,
-      dependencies: this.dependencies,
-    };
+    try {
+      const nativeStatus =
+        typeof this.bindings.status === 'function' ? await this.bindings.status() : null;
+
+      if (!nativeStatus) {
+        return {
+          ok: true,
+          runtime: 'native-gemma',
+          state: 'runtime_binding_incomplete',
+          message: 'The native binding status method is missing or failed.',
+          native_deps_dir: this.nativeDepsDir,
+          dependencies: this.dependencies,
+        };
+      }
+
+      const {
+        state: nativeState,
+        native_deps_dir: nativeDepsDir,
+        dependencies: nativeDeps,
+        details,
+        platform,
+        arch,
+      } = nativeStatus;
+
+      let finalState: HelperStatusState = nativeState;
+      if (nativeState === 'ready') {
+        if (this.isLoaded) {
+          finalState = 'model_loaded';
+        } else {
+          finalState = 'ready';
+        }
+      }
+
+      return {
+        ok: true,
+        runtime: 'native-gemma',
+        state: finalState,
+        message:
+          details ||
+          (this.isLoaded
+            ? 'LiteRT-LM model loaded and ready.'
+            : 'LiteRT-LM bindings loaded. Awaiting model.'),
+        native_deps_dir: nativeDepsDir || this.nativeDepsDir,
+        dependencies: nativeDeps || this.dependencies,
+        details,
+        platform,
+        arch,
+      };
+    } catch (e: any) {
+      return {
+        ok: false,
+        runtime: 'native-gemma',
+        state: 'error',
+        message: `Failed to query native binding status: ${e.message}`,
+        native_deps_dir: this.nativeDepsDir,
+        dependencies: this.dependencies,
+      };
+    }
   }
 
   async validateModelFile(modelPath: string): Promise<ModelValidationResult> {
@@ -123,10 +172,22 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
         message: 'Model loaded successfully.',
       };
     } catch (e: any) {
+      const msg = e.message || '';
+      let state: HelperStatusState = 'model_load_failed';
+      if (msg.includes('RUNTIME_DEPENDENCY_MISSING')) {
+        state = 'runtime_dependency_missing';
+      } else if (msg.includes('MODEL_INVALID')) {
+        state = 'model_invalid';
+      } else if (msg.includes('MODEL_MISSING')) {
+        state = 'model_missing';
+      } else if (msg.includes('MODEL_LOAD_FAILED')) {
+        state = 'model_load_failed';
+      }
+
       return {
         success: false,
-        state: 'model_load_failed',
-        message: `Failed to load model: ${e.message}`,
+        state,
+        message: msg || `Failed to load model: ${e.message}`,
       };
     }
   }
@@ -162,9 +223,16 @@ export class LiteRTGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
         text,
       };
     } catch (e: any) {
+      const msg = e.message || '';
+      let error = `Generation failed: ${msg}`;
+      if (msg.includes('MODEL_NOT_LOADED')) {
+        error = 'Cannot generate: No model is loaded.';
+      } else if (msg.includes('INFERENCE_FAILED')) {
+        error = 'Inference failed: LiteRT-LM failed to generate content.';
+      }
       return {
         success: false,
-        error: `Generation failed: ${e.message}`,
+        error,
       };
     }
   }

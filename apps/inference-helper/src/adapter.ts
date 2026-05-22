@@ -22,6 +22,9 @@ export interface HelperStatusResult {
   };
   native_deps_dir?: string;
   dependencies?: { filename: string; path?: string; present: boolean; required: boolean }[];
+  details?: string;
+  platform?: string;
+  arch?: string;
 }
 
 export interface ModelValidationResult {

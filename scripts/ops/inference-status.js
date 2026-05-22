@@ -1,33 +1,32 @@
-const http = require('http');
+const path = require('path');
+const fs = require('fs');
 
-const req = http.request(
-  {
-    hostname: 'localhost',
-    port: 3000,
-    path: '/api/v1/runtime/local-inference/status',
-    method: 'GET',
-  },
-  (res) => {
-    let data = '';
-    res.on('data', (chunk) => (data += chunk));
-    res.on('end', () => {
-      try {
-        const json = JSON.parse(data);
-        console.log('Inference Status:', JSON.stringify(json, null, 2));
-        if (json.state === 'error') {
-          process.exit(1);
-        }
-      } catch (e) {
-        console.error('Failed to parse response:', data);
-        process.exit(1);
-      }
-    });
+async function main() {
+  try {
+    const adapterPath = path.resolve(
+      __dirname,
+      '../../apps/inference-helper/dist/litert-adapter.js'
+    );
+    if (!fs.existsSync(adapterPath)) {
+      console.error(
+        'FAILED: dist/litert-adapter.js not found. Please compile/build the project first.'
+      );
+      process.exit(1);
+    }
+
+    const { LiteRTGemmaRuntimeAdapter } = require(adapterPath);
+    const adapter = new LiteRTGemmaRuntimeAdapter();
+    const status = await adapter.status();
+
+    console.log('Inference Status:', JSON.stringify(status, null, 2));
+
+    if (status.state === 'error') {
+      process.exit(1);
+    }
+  } catch (err) {
+    console.error('FAILED: Error querying status:', err.message);
+    process.exit(1);
   }
-);
+}
 
-req.on('error', (e) => {
-  console.error(`Problem with request: ${e.message}`);
-  process.exit(1);
-});
-
-req.end();
+main();

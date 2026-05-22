@@ -4,7 +4,8 @@
     "outDir": "dist",
     "rootDir": "src",
     "module": "commonjs",
-    "target": "es2022"
+    "target": "es2022",
+    "noEmit": false
   },
   "include": ["src/**/*"]
 }
