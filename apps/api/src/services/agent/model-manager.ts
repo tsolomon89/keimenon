@@ -105,7 +105,7 @@ export class ModelManager {
     candidate_id?: string;
     terms_source?: string;
   }): Promise<LocalModelManifest> {
-    let models = await this.getInstalledModels();
+    const models = await this.getInstalledModels();
     let model = models.find((m) => {
       if (input.candidate_id) {
         return m.model_family === input.model_family && m.candidate_id === input.candidate_id;
@@ -143,7 +143,7 @@ export class ModelManager {
   public async createPendingModelManifest(
     candidate: GemmaModelSourceCandidate
   ): Promise<LocalModelManifest> {
-    let models = await this.getInstalledModels();
+    const models = await this.getInstalledModels();
     let model = models.find((m) => m.model_family === 'gemma');
 
     if (model) {
@@ -186,8 +186,8 @@ export class ModelManager {
   }
 
   public async markModelDownloadPending(candidate_id: string): Promise<void> {
-    let models = await this.getInstalledModels();
-    let model = models.find((m) => m.candidate_id === candidate_id);
+    const models = await this.getInstalledModels();
+    const model = models.find((m) => m.candidate_id === candidate_id);
     if (model) {
       model.download_status = 'pending';
       await this.writeInstalledModels(models);
@@ -199,8 +199,8 @@ export class ModelManager {
     local_path: string;
     size_bytes?: number;
   }): Promise<void> {
-    let models = await this.getInstalledModels();
-    let model = models.find((m) => m.candidate_id === input.candidate_id);
+    const models = await this.getInstalledModels();
+    const model = models.find((m) => m.candidate_id === input.candidate_id);
     if (model) {
       model.installed = false;
       model.local_path = input.local_path;
@@ -216,8 +216,8 @@ export class ModelManager {
     verification_status: 'unchecked' | 'presence_verified' | 'verified' | 'failed';
     message: string;
   }> {
-    let models = await this.getInstalledModels();
-    let model = models.find((m) => m.candidate_id === input.candidate_id);
+    const models = await this.getInstalledModels();
+    const model = models.find((m) => m.candidate_id === input.candidate_id);
 
     if (!model) {
       return { verified: false, verification_status: 'failed', message: 'Manifest not found' };
@@ -396,8 +396,8 @@ export class ModelManager {
   }
 
   public async recordDownloadStarted(candidate_id: string): Promise<void> {
-    let models = await this.getInstalledModels();
-    let model = models.find((m) => m.candidate_id === candidate_id);
+    const models = await this.getInstalledModels();
+    const model = models.find((m) => m.candidate_id === candidate_id);
     if (model) {
       model.download_status = 'downloading';
       await this.writeInstalledModels(models);
@@ -405,8 +405,8 @@ export class ModelManager {
   }
 
   public async recordDownloadFailed(candidate_id: string, reason: string): Promise<void> {
-    let models = await this.getInstalledModels();
-    let model = models.find((m) => m.candidate_id === candidate_id);
+    const models = await this.getInstalledModels();
+    const model = models.find((m) => m.candidate_id === candidate_id);
     if (model) {
       model.download_status = 'failed';
       model.verification_status = 'failed';

@@ -98,7 +98,7 @@ export async function handleApiError(error: any): Promise<never> {
         case 409:
           return new AppError(
             errorMessage,
-            'DUPLICATE_IMPORT',
+            'IMPORT_COLLISION',
             409,
             data.details || data.error?.details || backendError.details
           );

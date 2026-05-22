@@ -64,7 +64,7 @@ import {
 import { ImportPipelineProgress } from './ImportPipelineProgress';
 import { ImportMiniGraph } from './ImportMiniGraph';
 
-type Stage = 'select' | 'processing' | 'config' | 'review' | 'duplicate' | 'complete';
+type Stage = 'select' | 'processing' | 'config' | 'review' | 'collision' | 'complete';
 
 interface MultiFileImportProgress {
   fileName: string;
@@ -90,7 +90,7 @@ export function ChatImportDashboard() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
 
   // Duplicate / stats upgrades
-  const [duplicateJobInfo, setDuplicateJobInfo] = useState<{
+  const [collisionJobInfo, setCollisionJobInfo] = useState<{
     activeJobId: string;
     activeJobStatus: string;
   } | null>(null);
@@ -653,12 +653,12 @@ export function ChatImportDashboard() {
       const uploadResult = await chunkedUpload.upload(file, chunkedImportConfig);
       if (!uploadResult.success) {
         setIsImporting(false);
-        if (uploadResult.code === 'DUPLICATE_IMPORT') {
-          setDuplicateJobInfo({
+        if (uploadResult.code === 'IMPORT_COLLISION') {
+          setCollisionJobInfo({
             activeJobId: uploadResult.details?.activeJobId || '',
             activeJobStatus: uploadResult.details?.activeJobStatus || 'unknown',
           });
-          setStage('duplicate');
+          setStage('collision');
           return;
         }
         alert(`Failed to upload file: ${uploadResult.error || 'Unknown error'}`);
@@ -1164,37 +1164,37 @@ export function ChatImportDashboard() {
           </div>
         )}
 
-        {stage === 'duplicate' && duplicateJobInfo && (
+        {stage === 'collision' && collisionJobInfo && (
           <div className="flex-1 flex flex-col justify-center max-w-xl mx-auto w-full py-12">
             <div className="glass-card p-8 text-center flex flex-col items-center gap-6 border border-amber-500/30">
               <div className="h-16 w-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shadow-inner">
                 <AlertCircle className="w-8 h-8 animate-pulse" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">Duplicate Import Job Blocked</h3>
+                <h3 className="text-lg font-bold text-white">Exact File Already Imported</h3>
                 <p className="text-sm text-slate-400 mt-2">
-                  An identical export file has already been uploaded and registered.
+                  This exact file appears to have already been imported.
                 </p>
                 <div className="mt-4 p-4 bg-slate-950/60 rounded-xl border border-slate-800/80 text-left w-full max-w-md">
                   <div className="flex justify-between text-xs py-1.5 font-mono">
                     <span className="text-slate-500">Job ID:</span>
                     <span className="text-slate-300 font-semibold">
-                      {duplicateJobInfo.activeJobId}
+                      {collisionJobInfo.activeJobId}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs py-1.5 border-t border-slate-900 font-mono">
                     <span className="text-slate-500">Current Status:</span>
                     <span className="text-amber-400 font-bold uppercase">
-                      {duplicateJobInfo.activeJobStatus}
+                      {collisionJobInfo.activeJobStatus}
                     </span>
                   </div>
                 </div>
               </div>
               <div className="flex flex-col gap-3 w-full mt-2 max-w-md">
-                {['queued', 'running'].includes(duplicateJobInfo.activeJobStatus) ? (
+                {['queued', 'running'].includes(collisionJobInfo.activeJobStatus) ? (
                   <button
                     onClick={() => {
-                      setCurrentJobId(duplicateJobInfo.activeJobId);
+                      setCurrentJobId(collisionJobInfo.activeJobId);
                       setIsImporting(true);
                       setStage('processing');
                     }}
@@ -1202,22 +1202,22 @@ export function ChatImportDashboard() {
                   >
                     Monitor In-Progress Job
                   </button>
-                ) : duplicateJobInfo.activeJobStatus === 'succeeded' ? (
+                ) : collisionJobInfo.activeJobStatus === 'succeeded' ? (
                   <button
                     onClick={() => {
-                      triggerGraphRefresh(duplicateJobInfo.activeJobId);
+                      triggerGraphRefresh(collisionJobInfo.activeJobId);
                       setStage('complete');
                     }}
                     className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-xs font-semibold rounded-lg shadow-lg hover:shadow-green-500/30 transition-all uppercase tracking-wider"
                   >
-                    View Ingested Graph
+                    View Existing Import
                   </button>
                 ) : null}
                 <button
                   onClick={() => {
                     setStage('select');
                     setFiles([]);
-                    setDuplicateJobInfo(null);
+                    setCollisionJobInfo(null);
                   }}
                   className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-all"
                 >

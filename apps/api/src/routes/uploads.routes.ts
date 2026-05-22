@@ -214,7 +214,7 @@ export function createUploadRoutes(authService: AuthService): Router {
           .get(accountId, body.uploadHash) as { id: string; status: string } | undefined;
 
         if (duplicateJob) {
-          appLogger.warn('upload.initiate.duplicate_prevented', {
+          appLogger.warn('upload.initiate.collision_prevented', {
             accountId,
             uploadHash: body.uploadHash,
             existingJobId: duplicateJob.id,
@@ -223,9 +223,8 @@ export function createUploadRoutes(authService: AuthService): Router {
 
           return res.status(409).json({
             success: false,
-            error:
-              'A duplicate import job is already queued, running, or has succeeded for this file.',
-            code: 'DUPLICATE_IMPORT',
+            error: 'This exact file has already been imported.',
+            code: 'IMPORT_COLLISION',
             details: {
               activeJobId: duplicateJob.id,
               activeJobStatus: duplicateJob.status,
