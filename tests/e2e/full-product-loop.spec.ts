@@ -182,9 +182,9 @@ test.describe('Full Browser Product Loop E2E', () => {
     const hasEmptyState = await emptyState.isVisible().catch(() => false);
 
     // We expect the mock provider to not have explicit evidence attached unless we mocked that too.
-    // If it has evidence, it will show "Evidence Provenance Subgraph"
+    // If it has evidence, it will show "Evidence Provenance Workspace" or "Evidence Provenance Subgraph"
     const hasEvidence = await provenanceModal
-      .getByText(/Evidence Provenance Subgraph/i)
+      .getByText(/Evidence Provenance (Subgraph|Workspace)/i)
       .isVisible()
       .catch(() => false);
 

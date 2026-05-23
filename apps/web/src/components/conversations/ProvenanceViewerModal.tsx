@@ -10,31 +10,26 @@ import {
   Loader2,
   Eye,
   Cpu,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  RotateCcw,
+  Search,
 } from 'lucide-react';
+import {
+  GraphNode,
+  GraphEdge,
+  buildProvenanceGraph,
+  filterGraphByKind,
+  searchEvidenceItems,
+  calculateZoomToFit,
+  calculateNodeFocusTransform,
+  resetNodeLayout,
+} from './provenance-graph-utils';
 
 interface ProvenanceViewerModalProps {
   runId: string;
   onClose: () => void;
-}
-
-interface GraphNode {
-  id: string;
-  label: string;
-  kind: 'AgentRun' | 'Source' | 'SourceSpan' | 'Phrase' | 'Topic';
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  radius: number;
-  text?: string;
-  source_id?: string;
-  frequency?: number;
-}
-
-interface GraphEdge {
-  source: string;
-  target: string;
-  strength: number;
 }
 
 export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalProps) {
@@ -45,14 +40,29 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
 
+  // Filter and Search states
+  const [activeKinds, setActiveKinds] = useState<Set<string>>(
+    new Set(['AgentRun', 'Source', 'SourceSpan', 'Phrase', 'Topic'])
+  );
+  const [activeTab, setActiveTab] = useState<'details' | 'list'>('details');
+  const [searchQuery, setSearchQuery] = useState('');
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const nodesRef = useRef<GraphNode[]>([]);
-  const edgesRef = useRef<GraphEdge[]>([]);
+
+  // Refs holding original graph vs visible projected graph
+  const allNodesRef = useRef<GraphNode[]>([]);
+  const allEdgesRef = useRef<GraphEdge[]>([]);
+  const visibleNodesRef = useRef<GraphNode[]>([]);
+  const visibleEdgesRef = useRef<GraphEdge[]>([]);
+
   const animationFrameRef = useRef<number | null>(null);
   const transformRef = useRef({ x: 0, y: 0, zoom: 1 });
+  const targetTransformRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
+
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
 
+  // Fetch and build graph once
   useEffect(() => {
     const fetchProvenance = async () => {
       setLoading(true);
@@ -61,94 +71,17 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
         const data = await organizationService.getAgentRunProvenance(runId);
         setProvenance(data);
 
-        // Build graph structures
-        if (data && data.evidence.length > 0) {
-          const nodes: GraphNode[] = [];
-          const edges: GraphEdge[] = [];
+        if (data && data.evidence) {
+          const { nodes, edges } = buildProvenanceGraph(data, runId);
+          allNodesRef.current = nodes;
+          allEdgesRef.current = edges;
 
-          // 1. Central Agent Run Node
-          const centerNode: GraphNode = {
-            id: 'run-center',
-            label: 'Agent Run',
-            kind: 'AgentRun',
-            x: 250,
-            y: 200,
-            vx: 0,
-            vy: 0,
-            radius: 20,
-            text: `Agent Run ID: ${runId}`,
-          };
-          nodes.push(centerNode);
+          // Default visible projection
+          visibleNodesRef.current = nodes;
+          visibleEdgesRef.current = edges;
 
-          // Track unique sources to group spans
-          const uniqueSources = new Set<string>();
-
-          data.evidence.forEach((item, index) => {
-            // Determine a radial distribution for initial node layouts
-            const angle = (index / data.evidence.length) * Math.PI * 2;
-            const dist = 120 + Math.random() * 60;
-
-            const node: GraphNode = {
-              id: item.id,
-              label: item.kind,
-              kind: item.kind as any,
-              x: 250 + Math.cos(angle) * dist,
-              y: 200 + Math.sin(angle) * dist,
-              vx: 0,
-              vy: 0,
-              radius: item.kind === 'SourceSpan' ? 10 : 8,
-              text: item.text,
-              source_id: item.source_id,
-              frequency: item.frequency,
-            };
-            nodes.push(node);
-
-            // Connect evidence directly to AgentRun
-            edges.push({
-              source: 'run-center',
-              target: item.id,
-              strength: item.frequency ? Math.min(item.frequency / 5, 1) : 0.4,
-            });
-
-            // If it has a source_id, add standard source node and link it
-            if (item.source_id) {
-              uniqueSources.add(item.source_id);
-              edges.push({
-                source: item.source_id,
-                target: item.id,
-                strength: 0.6,
-              });
-            }
-          });
-
-          // Add unique source nodes and layout them wider
-          Array.from(uniqueSources).forEach((srcId, index) => {
-            const angle = (index / uniqueSources.size) * Math.PI * 2 + Math.PI / 4;
-            const dist = 240;
-            const sourceNode: GraphNode = {
-              id: srcId,
-              label: `Source: ${srcId.split('-')[0]}`,
-              kind: 'Source',
-              x: 250 + Math.cos(angle) * dist,
-              y: 200 + Math.sin(angle) * dist,
-              vx: 0,
-              vy: 0,
-              radius: 14,
-            };
-            nodes.push(sourceNode);
-
-            // Connect Source directly to Central Agent Run
-            edges.push({
-              source: 'run-center',
-              target: srcId,
-              strength: 0.5,
-            });
-          });
-
-          nodesRef.current = nodes;
-          edgesRef.current = edges;
-
-          if (nodes.length > 0) {
+          const centerNode = nodes.find((n) => n.id === 'run-center');
+          if (centerNode) {
             setSelectedNode(centerNode);
           }
         }
@@ -163,9 +96,120 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
     fetchProvenance();
   }, [runId]);
 
+  // Sync visible projected graph when activeKinds toggles
+  useEffect(() => {
+    const { nodes, edges } = filterGraphByKind(
+      { nodes: allNodesRef.current, edges: allEdgesRef.current },
+      activeKinds
+    );
+    visibleNodesRef.current = nodes;
+    visibleEdgesRef.current = edges;
+
+    // Adjust selectedNode if it has been filtered out
+    if (selectedNode && !activeKinds.has(selectedNode.kind)) {
+      const center = nodes.find((n) => n.id === 'run-center');
+      setSelectedNode(center || null);
+    }
+  }, [activeKinds]);
+
+  // Interactive Viewport Commands
+  const handleZoomIn = () => {
+    targetTransformRef.current = null; // stop running fly animations
+    const nextZoom = Math.min(3.0, transformRef.current.zoom * 1.25);
+    // Center-anchored zoom adjust
+    const canvas = canvasRef.current;
+    const w = canvas?.clientWidth ?? 500;
+    const h = canvas?.clientHeight ?? 400;
+
+    const cx = w / 2;
+    const cy = h / 2;
+    const dx = cx - transformRef.current.x;
+    const dy = cy - transformRef.current.y;
+
+    const zoomRatio = nextZoom / transformRef.current.zoom;
+    transformRef.current.x = cx - dx * zoomRatio;
+    transformRef.current.y = cy - dy * zoomRatio;
+    transformRef.current.zoom = nextZoom;
+  };
+
+  const handleZoomOut = () => {
+    targetTransformRef.current = null;
+    const nextZoom = Math.max(0.4, transformRef.current.zoom / 1.25);
+    const canvas = canvasRef.current;
+    const w = canvas?.clientWidth ?? 500;
+    const h = canvas?.clientHeight ?? 400;
+
+    const cx = w / 2;
+    const cy = h / 2;
+    const dx = cx - transformRef.current.x;
+    const dy = cy - transformRef.current.y;
+
+    const zoomRatio = nextZoom / transformRef.current.zoom;
+    transformRef.current.x = cx - dx * zoomRatio;
+    transformRef.current.y = cy - dy * zoomRatio;
+    transformRef.current.zoom = nextZoom;
+  };
+
+  const handleZoomToFit = () => {
+    const canvas = canvasRef.current;
+    const w = canvas?.clientWidth ?? 500;
+    const h = canvas?.clientHeight ?? 400;
+
+    const target = calculateZoomToFit(visibleNodesRef.current, w, h);
+    targetTransformRef.current = target;
+  };
+
+  const handleResetLayout = () => {
+    resetNodeLayout(allNodesRef.current);
+
+    // Refresh visibility layout
+    const { nodes, edges } = filterGraphByKind(
+      { nodes: allNodesRef.current, edges: allEdgesRef.current },
+      activeKinds
+    );
+    visibleNodesRef.current = nodes;
+    visibleEdgesRef.current = edges;
+
+    const canvas = canvasRef.current;
+    const w = canvas?.clientWidth ?? 500;
+    const h = canvas?.clientHeight ?? 400;
+    const target = calculateZoomToFit(nodes, w, h);
+    targetTransformRef.current = target;
+  };
+
+  const handleSelectNodeFromList = (nodeId: string) => {
+    const node = visibleNodesRef.current.find((n) => n.id === nodeId);
+    if (node) {
+      setSelectedNode(node);
+      setActiveTab('details');
+
+      const canvas = canvasRef.current;
+      const w = canvas?.clientWidth ?? 500;
+      const h = canvas?.clientHeight ?? 400;
+
+      const target = calculateNodeFocusTransform(node, w, h, 1.3);
+      targetTransformRef.current = target;
+    }
+  };
+
+  // Toggle filter helper
+  const handleToggleKind = (kind: string) => {
+    setActiveKinds((prev) => {
+      const next = new Set(prev);
+      if (next.has(kind)) {
+        // Enforce AgentRun stays visible by default per constraints unless intentionally unchecked
+        next.delete(kind);
+      } else {
+        next.add(kind);
+      }
+      return next;
+    });
+  };
+
   // Force-directed graph simulation & rendering loop
   useEffect(() => {
-    if (loading || error || !provenance || provenance.evidence.length === 0) return;
+    if (loading || error || !provenance || !provenance.evidence || provenance.evidence.length === 0)
+      return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -175,30 +219,28 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
 
     // Handle high-DPI sizing
     const dpr = window.devicePixelRatio || 1;
-    const width = 500;
-    const height = 400;
+    const width = canvas.clientWidth || 500;
+    const height = canvas.clientHeight || 400;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
     ctx.scale(dpr, dpr);
 
     const simulation = () => {
-      const nodes = nodesRef.current;
-      const edges = edgesRef.current;
+      const nodes = visibleNodesRef.current;
+      const edges = visibleEdgesRef.current;
 
-      // 1. Force Directed Layout Math
+      // 1. Force Directed Layout Math (Active projected subset only)
       for (let step = 0; step < 3; step++) {
         // Center forces
         nodes.forEach((n) => {
           if (n.id === 'run-center') return;
-          const dx = 250 - n.x;
-          const dy = 200 - n.y;
+          const dx = width / 2 - n.x;
+          const dy = height / 2 - n.y;
           n.vx += dx * 0.0005;
           n.vy += dy * 0.0005;
         });
 
-        // Repulsion forces between nodes
+        // Repulsion forces
         for (let i = 0; i < nodes.length; i++) {
           const n1 = nodes[i];
           for (let j = i + 1; j < nodes.length; j++) {
@@ -234,7 +276,7 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
           const dx = n2.x - n1.x;
           const dy = n2.y - n1.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const desiredDist = n1.kind === 'AgentRun' ? 140 : 80;
+          const desiredDist = n1.kind === 'AgentRun' ? 140 : 85;
 
           const force = (dist - desiredDist) * 0.005 * e.strength;
           const fx = (dx / dist) * force;
@@ -258,10 +300,32 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
           n.vx *= 0.85;
           n.vy *= 0.85;
 
-          // Boundary limits
-          n.x = Math.max(50, Math.min(450, n.x));
-          n.y = Math.max(50, Math.min(350, n.y));
+          // Soft boundary limits
+          n.x = Math.max(30, Math.min(width - 30, n.x));
+          n.y = Math.max(30, Math.min(height - 30, n.y));
         });
+      }
+
+      // Smooth pan/zoom interpolation (LERP Focus Animation)
+      if (targetTransformRef.current) {
+        const target = targetTransformRef.current;
+        const current = transformRef.current;
+        const lerpSpeed = 0.15;
+
+        current.x += (target.x - current.x) * lerpSpeed;
+        current.y += (target.y - current.y) * lerpSpeed;
+        current.zoom += (target.zoom - current.zoom) * lerpSpeed;
+
+        if (
+          Math.abs(target.x - current.x) < 0.1 &&
+          Math.abs(target.y - current.y) < 0.1 &&
+          Math.abs(target.zoom - current.zoom) < 0.002
+        ) {
+          current.x = target.x;
+          current.y = target.y;
+          current.zoom = target.zoom;
+          targetTransformRef.current = null; // finished fly animation
+        }
       }
 
       // 2. Draw loop
@@ -272,7 +336,7 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
       ctx.translate(transformRef.current.x, transformRef.current.y);
       ctx.scale(transformRef.current.zoom, transformRef.current.zoom);
 
-      // Render links
+      // Draw Edges
       edges.forEach((e) => {
         const n1 = nodes.find((n) => n.id === e.source);
         const n2 = nodes.find((n) => n.id === e.target);
@@ -285,11 +349,11 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
         ctx.beginPath();
         ctx.moveTo(n1.x, n1.y);
         ctx.lineTo(n2.x, n2.y);
-        ctx.lineWidth = isHighlighted ? 2 : 1;
-        ctx.strokeStyle = isHighlighted ? 'rgba(99, 102, 241, 0.4)' : 'rgba(51, 65, 85, 0.35)';
+        ctx.lineWidth = isHighlighted ? 2.5 : 1;
+        ctx.strokeStyle = isHighlighted ? 'rgba(99, 102, 241, 0.45)' : 'rgba(51, 65, 85, 0.35)';
         ctx.stroke();
 
-        // Render moving citation particles along highlighted links
+        // Glowing particle flows along citation paths
         if (isHighlighted) {
           const t = (Date.now() % 2000) / 2000;
           const px = n1.x + (n2.x - n1.x) * t;
@@ -297,22 +361,22 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
           ctx.beginPath();
           ctx.arc(px, py, 2.5, 0, Math.PI * 2);
           ctx.fillStyle = '#818cf8';
-          ctx.shadowBlur = 4;
+          ctx.shadowBlur = 5;
           ctx.shadowColor = '#818cf8';
           ctx.fill();
           ctx.shadowBlur = 0; // reset
         }
       });
 
-      // Render nodes
+      // Draw Nodes
       nodes.forEach((n) => {
         const isHovered = hoveredNode?.id === n.id;
         const isSelected = selectedNode?.id === n.id;
 
         ctx.beginPath();
-        ctx.arc(n.x, n.y, n.radius + (isHovered ? 2 : 0), 0, Math.PI * 2);
+        ctx.arc(n.x, n.y, n.radius + (isHovered ? 2.5 : 0), 0, Math.PI * 2);
 
-        // Harmonious Tailored HSL Colors based on Node Kind
+        // Harmonious Dark Palette Tailored to Node Kind
         let fillStyle = '#475569';
         let strokeStyle = '#64748b';
 
@@ -339,23 +403,40 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
         ctx.fill();
         ctx.stroke();
 
-        // Glowing outer rings for active selections
+        // Pulsing Selection Glow
         if (isSelected) {
           ctx.beginPath();
           ctx.arc(n.x, n.y, n.radius + 6, 0, Math.PI * 2);
-          ctx.strokeStyle = 'rgba(129, 140, 248, 0.15)';
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(129, 140, 248, 0.2)';
+          ctx.lineWidth = 1.5;
           ctx.stroke();
         }
-
-        // Draw miniature indicator inside central node
-        if (n.kind === 'AgentRun') {
-          ctx.fillStyle = '#818cf8';
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, 4, 0, Math.PI * 2);
-          ctx.fill();
-        }
       });
+
+      // Render Hover Tooltip inside canvas dynamically
+      if (hoveredNode) {
+        ctx.save();
+        ctx.font = '10px sans-serif';
+        const labelText = hoveredNode.kind === 'AgentRun' ? 'Agent Run center' : hoveredNode.label;
+        const textWidth = ctx.measureText(labelText).width;
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+
+        const tx = hoveredNode.x - textWidth / 2 - 8;
+        const ty = hoveredNode.y - hoveredNode.radius - 24;
+
+        ctx.beginPath();
+        ctx.roundRect(tx, ty, textWidth + 16, 16, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#f1f5f9';
+        ctx.textAlign = 'center';
+        ctx.fillText(labelText, hoveredNode.x, ty + 11);
+        ctx.restore();
+      }
 
       ctx.restore();
 
@@ -371,13 +452,12 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
     };
   }, [loading, error, provenance, hoveredNode, selectedNode]);
 
-  // Pointer interactions mapping screen coords to nodes
+  // Transform mapping from screen client space to canvas zoom/pan space
   const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
 
-    // Scale according to pan/zoom transforms
     const x = (e.clientX - rect.left - transformRef.current.x) / transformRef.current.zoom;
     const y = (e.clientY - rect.top - transformRef.current.y) / transformRef.current.zoom;
     return { x, y };
@@ -385,6 +465,7 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
 
   const handlePointerMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (isDraggingRef.current) {
+      targetTransformRef.current = null; // stop fly-to if user starts dragging
       const dx = e.clientX - dragStartRef.current.x;
       const dy = e.clientY - dragStartRef.current.y;
       transformRef.current.x += dx;
@@ -394,7 +475,7 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
     }
 
     const { x, y } = getCanvasCoords(e);
-    const hit = nodesRef.current.find((n) => {
+    const hit = visibleNodesRef.current.find((n) => {
       const dx = n.x - x;
       const dy = n.y - y;
       return Math.sqrt(dx * dx + dy * dy) < n.radius + 8;
@@ -404,8 +485,10 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
   };
 
   const handlePointerDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    targetTransformRef.current = null; // stop any focusing fly animations
     const { x, y } = getCanvasCoords(e);
-    const hit = nodesRef.current.find((n) => {
+
+    const hit = visibleNodesRef.current.find((n) => {
       const dx = n.x - x;
       const dy = n.y - y;
       return Math.sqrt(dx * dx + dy * dy) < n.radius + 8;
@@ -425,8 +508,12 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
 
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault();
+    targetTransformRef.current = null; // override camera focuses
     const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
-    transformRef.current.zoom = Math.max(0.4, Math.min(3, transformRef.current.zoom * zoomFactor));
+    transformRef.current.zoom = Math.max(
+      0.4,
+      Math.min(3.0, transformRef.current.zoom * zoomFactor)
+    );
   };
 
   const renderIcon = (kind: string) => {
@@ -442,6 +529,11 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
     }
   };
 
+  // Filter list results
+  const filteredEvidenceList = provenance
+    ? searchEvidenceItems(provenance.evidence, searchQuery)
+    : [];
+
   return (
     <div
       className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4"
@@ -449,7 +541,7 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
       aria-modal="true"
       aria-labelledby="provenance-modal-title"
     >
-      <div className="bg-slate-950 border border-slate-800 rounded-lg shadow-2xl w-full max-w-5xl flex flex-col max-h-[90vh]">
+      <div className="bg-slate-950 border border-slate-800 rounded-lg shadow-2xl w-full max-w-6xl flex flex-col max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-900">
           <div className="flex items-center gap-3">
@@ -461,7 +553,7 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
                 id="provenance-modal-title"
                 className="text-lg font-semibold text-slate-100 flex items-center gap-2"
               >
-                Evidence Provenance Subgraph
+                Evidence Provenance Workspace
               </h2>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 <span className="text-[10px] text-slate-500 font-mono">Run: {runId}</span>
@@ -496,20 +588,76 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
           </button>
         </div>
 
+        {/* Node Kind Active Filters Overlay */}
+        {!loading && !error && provenance && provenance.evidence.length > 0 && (
+          <div className="bg-slate-950 border-b border-slate-900 p-2.5 px-4 flex flex-wrap items-center justify-between gap-3 select-none">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+              <span>Filter Projection Layers:</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                {
+                  key: 'AgentRun',
+                  label: 'Agent Center',
+                  color: 'border-indigo-800 text-indigo-400 bg-indigo-950/20',
+                },
+                {
+                  key: 'Source',
+                  label: 'Sources',
+                  color: 'border-emerald-800 text-emerald-400 bg-emerald-950/20',
+                },
+                {
+                  key: 'SourceSpan',
+                  label: 'Source Spans',
+                  color: 'border-teal-800 text-teal-400 bg-teal-950/20',
+                },
+                {
+                  key: 'Phrase',
+                  label: 'Phrases',
+                  color: 'border-sky-800 text-sky-400 bg-sky-950/20',
+                },
+                {
+                  key: 'Topic',
+                  label: 'Topics',
+                  color: 'border-purple-800 text-purple-400 bg-purple-950/20',
+                },
+              ].map((pill) => {
+                const isActive = activeKinds.has(pill.key);
+                return (
+                  <button
+                    key={pill.key}
+                    onClick={() => handleToggleKind(pill.key)}
+                    className={`text-xs px-3 py-1 border rounded-full transition-all duration-200 ${
+                      isActive
+                        ? `${pill.color} font-medium`
+                        : 'border-slate-850 text-slate-500 hover:text-slate-400 hover:bg-slate-900'
+                    }`}
+                  >
+                    {pill.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="text-[10px] text-slate-500 font-mono">
+              Visible Nodes: {visibleNodesRef.current.length} / {allNodesRef.current.length}
+            </div>
+          </div>
+        )}
+
         {/* Content View */}
         <div className="flex-1 flex overflow-hidden">
           {loading ? (
             <div className="flex-1 flex flex-col items-center justify-center h-96 space-y-4">
               <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-              <p className="text-slate-400 text-sm">Hydrating provenance subgraph...</p>
+              <p className="text-slate-400 text-sm">Hydrating provenance workspace...</p>
             </div>
           ) : error ? (
             <div className="flex-1 flex flex-col items-center justify-center h-96 space-y-4 text-rose-400">
-              <AlertCircle className="w-8 h-8" />
+              <AlertCircle className="w-8 h-8 animate-bounce" />
               <p>{error}</p>
             </div>
           ) : !provenance || provenance.evidence.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center h-96 space-y-2 text-slate-400">
+            <div className="flex-1 flex flex-col items-center justify-center h-96 space-y-2 text-slate-400 bg-slate-950">
               {provenance?.status === 'error' ? (
                 <div className="text-center p-6 flex flex-col items-center justify-center">
                   <AlertCircle className="w-10 h-10 text-rose-500 mb-3 animate-pulse shrink-0" />
@@ -539,101 +687,264 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
                   onMouseUp={handlePointerUp}
                   onMouseLeave={handlePointerUp}
                   onWheel={handleWheel}
-                  className="cursor-grab active:cursor-grabbing"
+                  className="cursor-grab active:cursor-grabbing w-full h-full"
                 />
 
+                {/* Canvas Floating Viewport Toolbar */}
+                <div className="absolute top-4 right-4 bg-slate-950/85 backdrop-blur-sm border border-slate-900 rounded-lg p-1.5 shadow-xl flex gap-1 items-center z-10">
+                  <button
+                    onClick={handleZoomIn}
+                    title="Zoom In"
+                    aria-label="Zoom In"
+                    className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-900 rounded-md transition-colors"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleZoomOut}
+                    title="Zoom Out"
+                    aria-label="Zoom Out"
+                    className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-900 rounded-md transition-colors"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleZoomToFit}
+                    title="Zoom to Fit"
+                    aria-label="Zoom to Fit"
+                    className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-indigo-950/30 rounded-md transition-colors"
+                  >
+                    <Maximize className="w-4 h-4" />
+                  </button>
+                  <div className="w-[1px] h-4 bg-slate-900 mx-0.5" />
+                  <button
+                    onClick={handleResetLayout}
+                    title="Reset Layout"
+                    aria-label="Reset Layout"
+                    className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 rounded-md transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                </div>
+
                 {/* Floating micro instructions overlay */}
-                <div className="absolute bottom-3 left-3 bg-slate-950/80 backdrop-blur-sm border border-slate-900 p-2 rounded text-[10px] text-slate-400 space-y-0.5">
+                <div className="absolute bottom-3 left-3 bg-slate-950/80 backdrop-blur-sm border border-slate-900 p-2 rounded text-[10px] text-slate-400 space-y-0.5 pointer-events-none">
                   <p>• Click nodes to inspect citation details</p>
                   <p>• Drag canvas to pan, scroll to zoom</p>
                 </div>
+
+                {/* Empty filter state warning overlay */}
+                {visibleNodesRef.current.length === 0 && (
+                  <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center text-slate-400 z-20">
+                    <AlertCircle className="w-10 h-10 text-rose-500 mb-3 animate-pulse shrink-0" />
+                    <p className="font-semibold text-slate-200">
+                      No visible evidence with current filters.
+                    </p>
+                    <p className="text-xs text-slate-500 max-w-xs mt-1 leading-normal">
+                      Select one or more projection kinds above to restore visible nodes and inspect
+                      citation details.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Right Side: Detail Sidebar Panel */}
-              <div className="w-96 flex flex-col bg-slate-950/20 overflow-y-auto custom-scrollbar">
+              <div className="w-96 flex flex-col bg-slate-950 border-l border-slate-900 overflow-hidden">
                 {/* Stats Panel */}
-                <div className="p-4 border-b border-slate-900 grid grid-cols-2 gap-2">
-                  <div className="bg-slate-900/50 border border-slate-850 p-3 rounded-lg">
+                <div className="p-4 border-b border-slate-900 grid grid-cols-2 gap-2 shrink-0">
+                  <div className="bg-slate-900/50 border border-slate-850 p-2.5 rounded-lg">
                     <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">
                       Total Evidence
                     </p>
-                    <p className="text-xl font-light text-slate-200">
+                    <p className="text-lg font-light text-slate-200">
                       {provenance.stats.total_items}
                     </p>
                   </div>
-                  <div className="bg-slate-900/50 border border-slate-850 p-3 rounded-lg">
+                  <div className="bg-slate-900/50 border border-slate-850 p-2.5 rounded-lg">
                     <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">
                       Source Spans
                     </p>
-                    <p className="text-xl font-light text-emerald-400">{provenance.stats.spans}</p>
+                    <p className="text-lg font-light text-emerald-400">{provenance.stats.spans}</p>
                   </div>
-                  <div className="bg-slate-900/50 border border-slate-850 p-3 rounded-lg">
+                  <div className="bg-slate-900/50 border border-slate-850 p-2.5 rounded-lg">
                     <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">
                       Phrases
                     </p>
-                    <p className="text-xl font-light text-sky-400">{provenance.stats.phrases}</p>
+                    <p className="text-lg font-light text-sky-400">{provenance.stats.phrases}</p>
                   </div>
-                  <div className="bg-slate-900/50 border border-slate-850 p-3 rounded-lg">
+                  <div className="bg-slate-900/50 border border-slate-850 p-2.5 rounded-lg">
                     <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">
                       Topics
                     </p>
-                    <p className="text-xl font-light text-purple-400">{provenance.stats.topics}</p>
+                    <p className="text-lg font-light text-purple-400">{provenance.stats.topics}</p>
                   </div>
                 </div>
 
-                {/* Inspect Details panel */}
-                <div className="flex-1 p-4 flex flex-col justify-start">
-                  {selectedNode ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
-                          <Cpu className="w-3.5 h-3.5" />
-                          Citation Inspector
-                        </span>
-                        <span className="text-[10px] bg-slate-900 px-2 py-0.5 rounded border border-slate-850 text-slate-400">
-                          {selectedNode.kind}
-                        </span>
-                      </div>
+                {/* Sidebar Tabs switcher */}
+                <div className="flex border-b border-slate-900 select-none shrink-0 bg-slate-950/40">
+                  <button
+                    onClick={() => setActiveTab('details')}
+                    className={`flex-1 py-2.5 text-xs font-medium text-center border-b-2 transition-colors ${
+                      activeTab === 'details'
+                        ? 'border-indigo-500 text-indigo-400 font-semibold'
+                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Node Details
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('list')}
+                    className={`flex-1 py-2.5 text-xs font-medium text-center border-b-2 transition-colors ${
+                      activeTab === 'list'
+                        ? 'border-indigo-500 text-indigo-400 font-semibold'
+                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    All Evidence ({filteredEvidenceList.length})
+                  </button>
+                </div>
 
-                      <div className="bg-slate-900/30 border border-slate-850 rounded-lg p-4 space-y-3">
-                        <div className="flex items-center gap-2">
-                          {renderIcon(selectedNode.kind)}
-                          <span className="text-sm font-medium text-slate-200">
-                            {selectedNode.kind === 'AgentRun'
-                              ? 'Center Anchor'
-                              : `${selectedNode.kind} Node`}
-                          </span>
-                        </div>
-
-                        {selectedNode.text ? (
-                          <div className="space-y-2">
-                            <p className="text-xs text-slate-400 leading-relaxed max-h-48 overflow-y-auto bg-slate-950 p-2.5 rounded border border-slate-900 font-sans custom-scrollbar select-text">
-                              "{selectedNode.text}"
-                            </p>
+                {/* Tab Content Panels */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col bg-slate-950/20">
+                  {activeTab === 'details' ? (
+                    <div className="p-4 space-y-4 flex-1 flex flex-col">
+                      {selectedNode ? (
+                        <div className="space-y-4 flex-1 flex flex-col">
+                          <div className="flex items-center justify-between shrink-0">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                              <Cpu className="w-3.5 h-3.5" />
+                              Citation Inspector
+                            </span>
+                            <span className="text-[10px] bg-slate-900 px-2 py-0.5 rounded border border-slate-850 text-slate-400">
+                              {selectedNode.kind}
+                            </span>
                           </div>
-                        ) : (
-                          <p className="text-xs text-slate-500 italic">
-                            No associated text payload.
-                          </p>
-                        )}
 
-                        <div className="text-[10px] text-slate-500 font-mono space-y-1 border-t border-slate-900 pt-2.5">
-                          <p className="truncate">Node ID: {selectedNode.id}</p>
-                          {selectedNode.source_id && (
-                            <p className="truncate">Source ID: {selectedNode.source_id}</p>
-                          )}
-                          {selectedNode.frequency && (
-                            <p>Citation Frequency: {selectedNode.frequency}x</p>
-                          )}
+                          <div className="bg-slate-900/30 border border-slate-850 rounded-lg p-4 space-y-3 flex-1 flex flex-col justify-between">
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2">
+                                {renderIcon(selectedNode.kind)}
+                                <span className="text-sm font-medium text-slate-200">
+                                  {selectedNode.kind === 'AgentRun'
+                                    ? 'Center Anchor'
+                                    : `${selectedNode.kind} Node`}
+                                </span>
+                              </div>
+
+                              {selectedNode.text ? (
+                                <div className="space-y-2">
+                                  <p className="text-xs text-slate-400 leading-relaxed max-h-60 overflow-y-auto bg-slate-950 p-2.5 rounded border border-slate-900 font-sans custom-scrollbar select-text">
+                                    "{selectedNode.text}"
+                                  </p>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-slate-500 italic">
+                                  No associated text payload.
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="text-[10px] text-slate-500 font-mono space-y-1 border-t border-slate-900 pt-2.5 shrink-0">
+                              <p className="truncate">Node ID: {selectedNode.id}</p>
+                              {selectedNode.source_id && (
+                                <p className="truncate">Source ID: {selectedNode.source_id}</p>
+                              )}
+                              {selectedNode.frequency && (
+                                <p>Citation Frequency: {selectedNode.frequency}x</p>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-slate-500 space-y-2 py-24">
+                          <Eye className="w-6 h-6 text-slate-700" />
+                          <p className="text-xs">
+                            Hover or select a node in the graph canvas to inspect its source text.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-slate-500 space-y-2">
-                      <Eye className="w-6 h-6 text-slate-700" />
-                      <p className="text-xs">
-                        Hover or select a node in the graph canvas to inspect its source text.
-                      </p>
+                    // All Evidence Search Panel
+                    <div className="p-4 flex flex-col flex-1 overflow-hidden">
+                      <div className="relative mb-3 shrink-0">
+                        <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search evidence..."
+                          className="w-full bg-slate-950 border border-slate-850 rounded-md py-1.5 pl-9 pr-4 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                        />
+                        {searchQuery && (
+                          <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-3 top-2.5 text-xs text-slate-500 hover:text-slate-300"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Evidence item card list */}
+                      <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 select-none">
+                        {filteredEvidenceList.length > 0 ? (
+                          filteredEvidenceList.map((item) => {
+                            const isSelected = selectedNode?.id === item.id;
+                            const isVisible = activeKinds.has(item.kind);
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => isVisible && handleSelectNodeFromList(item.id)}
+                                className={`border p-3 rounded-lg text-left transition-all duration-200 ${
+                                  !isVisible
+                                    ? 'border-slate-900 bg-slate-950/20 opacity-30 cursor-not-allowed'
+                                    : isSelected
+                                      ? 'border-indigo-500 bg-indigo-950/10 cursor-pointer shadow-md shadow-indigo-950/20'
+                                      : 'border-slate-850 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-900/80 cursor-pointer'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                  <div className="flex items-center gap-1.5">
+                                    {renderIcon(item.kind)}
+                                    <span className="text-[10px] font-semibold tracking-wide text-slate-300 uppercase">
+                                      {item.kind}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    {item.frequency && (
+                                      <span className="text-[9px] font-bold text-slate-400 bg-slate-800 border border-slate-750 px-1.5 py-0.5 rounded">
+                                        {item.frequency}x
+                                      </span>
+                                    )}
+                                    {!isVisible && (
+                                      <span className="text-[9px] font-semibold text-rose-500 bg-rose-950/10 border border-rose-900/20 px-1.5 py-0.5 rounded">
+                                        Filtered
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <p className="text-[11px] text-slate-400 leading-normal line-clamp-3 mb-2 italic">
+                                  "{item.text}"
+                                </p>
+                                <div className="flex items-center justify-between text-[9px] text-slate-500 font-mono">
+                                  <span className="truncate max-w-[140px]">ID: {item.id}</span>
+                                  {item.source_id && (
+                                    <span className="truncate max-w-[140px]">
+                                      Src: {item.source_id.split('-')[0]}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="text-center py-12 text-slate-500">
+                            <Search className="w-5 h-5 mx-auto mb-2 text-slate-700" />
+                            <p className="text-xs">No matching evidence found.</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
