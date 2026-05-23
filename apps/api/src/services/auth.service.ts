@@ -1714,11 +1714,11 @@ export class CapabilityAuthorizationService {
     const principalNode = database
       .prepare(
         `
-        SELECT kind, properties FROM nodes
-        WHERE id = ? AND account_id = ? AND kind IN ('Principal', 'UserNode', 'AgentNode')
+        SELECT properties FROM nodes
+        WHERE id = ? AND account_id = ? AND kind = 'Principal'
       `
       )
-      .get(principalId, accountId) as { kind: string; properties: string } | undefined;
+      .get(principalId, accountId) as { properties: string } | undefined;
 
     if (!principalNode) {
       // Principal not found - return default human capabilities
@@ -1728,58 +1728,43 @@ export class CapabilityAuthorizationService {
 
     const properties = JSON.parse(principalNode.properties || '{}');
 
-    // For Principal nodes, use capabilities from properties
-    if (principalNode.kind === 'Principal') {
-      if (properties.capabilities) {
+    // Use capabilities from properties if defined
+    if (properties.capabilities) {
+      return {
+        can_upload: properties.capabilities.can_upload ?? true,
+        can_run_tools: properties.capabilities.can_run_tools ?? false,
+        can_import_web: properties.capabilities.can_import_web ?? false,
+        can_own_account: properties.capabilities.can_own_account ?? false,
+        can_approve_runs: properties.capabilities.can_approve_runs ?? false,
+      };
+    }
+
+    // Check policy profile
+    if (properties.policy_profile_id) {
+      const profile = database
+        .prepare(
+          `
+          SELECT can_upload, can_run_tools, can_import_web, can_own_account, can_approve_runs
+          FROM policy_profiles
+          WHERE id = ? AND account_id = ?
+        `
+        )
+        .get(properties.policy_profile_id, accountId) as any;
+
+      if (profile) {
         return {
-          can_upload: properties.capabilities.can_upload ?? true,
-          can_run_tools: properties.capabilities.can_run_tools ?? false,
-          can_import_web: properties.capabilities.can_import_web ?? false,
-          can_own_account: properties.capabilities.can_own_account ?? false,
-          can_approve_runs: properties.capabilities.can_approve_runs ?? false,
+          can_upload: profile.can_upload === 1,
+          can_run_tools: profile.can_run_tools === 1,
+          can_import_web: profile.can_import_web === 1,
+          can_own_account: profile.can_own_account === 1,
+          can_approve_runs: profile.can_approve_runs === 1,
         };
       }
-
-      // Check policy profile
-      if (properties.policy_profile_id) {
-        const profile = database
-          .prepare(
-            `
-            SELECT can_upload, can_run_tools, can_import_web, can_own_account, can_approve_runs
-            FROM policy_profiles
-            WHERE id = ? AND account_id = ?
-          `
-          )
-          .get(properties.policy_profile_id, accountId) as any;
-
-        if (profile) {
-          return {
-            can_upload: profile.can_upload === 1,
-            can_run_tools: profile.can_run_tools === 1,
-            can_import_web: profile.can_import_web === 1,
-            can_own_account: profile.can_own_account === 1,
-            can_approve_runs: profile.can_approve_runs === 1,
-          };
-        }
-      }
-
-      // Use default for principal_kind
-      const principalKind = properties.principal_kind || 'human';
-      return { ...DEFAULT_CAPABILITIES[principalKind as keyof typeof DEFAULT_CAPABILITIES] };
     }
 
-    // For legacy UserNode - use human defaults
-    if (principalNode.kind === 'UserNode') {
-      return { ...DEFAULT_CAPABILITIES.human };
-    }
-
-    // For legacy AgentNode - use agent defaults
-    if (principalNode.kind === 'AgentNode') {
-      return { ...DEFAULT_CAPABILITIES.agent };
-    }
-
-    // Fallback
-    return { ...DEFAULT_CAPABILITIES.human };
+    // Use default for principal_kind
+    const principalKind = properties.principal_kind || 'human';
+    return { ...DEFAULT_CAPABILITIES[principalKind as keyof typeof DEFAULT_CAPABILITIES] };
   }
 
   /**
