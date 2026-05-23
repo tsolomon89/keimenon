@@ -89,6 +89,18 @@ describe('ProvenanceViewerModal', () => {
     // Check stats display
     expect(screen.getByText('Total Evidence')).toBeInTheDocument();
     expect(screen.getAllByText('1').length).toBe(2); // total items and spans counts both render 1
+
+    // Check filter layer controls render when evidence exists
+    expect(screen.getByText('Filter Projection Layers:')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Agent Center' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sources' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Source Spans' })).toBeInTheDocument();
+
+    // Check floating viewport toolbar buttons render with accessible labels
+    expect(screen.getByRole('button', { name: /Zoom In/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Zoom Out/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Zoom to Fit/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Reset Layout/i })).toBeInTheDocument();
   });
 
   it('allows switching sidebar tabs and performing search on evidence', async () => {
