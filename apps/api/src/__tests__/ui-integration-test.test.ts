@@ -27,7 +27,7 @@ import path from 'path';
 // Load env vars
 dotenv.config({ path: path.join(__dirname, '../../.env'), override: true });
 (process.env as any).NODE_ENV = 'test';
-process.env.KEIMENON_BULK_INSERTS = '0';
+process.env.KEIMENON_BULK_INSERTS = '1';
 
 import assert from 'node:assert';
 import fs from 'fs';
@@ -68,13 +68,13 @@ const TEST_FILES_DIR =
 // Test Credentials
 const ADMIN_CREDENTIALS = {
   email: 'admin@admin.com',
-  password: 'admin123',
+  password: 'KeimenonStrongAdmin2026!',
   name: 'Admin User',
 };
 
 const CLIENT_CREDENTIALS = {
   email: 'client@client.com',
-  password: 'client123',
+  password: 'KeimenonStrongClient2026!',
   name: 'Client User',
 };
 
@@ -91,6 +91,8 @@ let sseBroadcaster: SSEBroadcaster;
 let workerPool: WorkerPool;
 let writeQueue: DatabaseWriteQueue;
 let previousTestApiUrl: string | undefined;
+let testDbClient: any;
+let originalDbClient: any;
 
 /**
  * Setup: Authenticate and get tokens
@@ -98,31 +100,39 @@ let previousTestApiUrl: string | undefined;
 beforeAll(async () => {
   console.log('\n🔧 Setting up UI Integration Tests...\n');
 
+  // Save original dbClient
+  originalDbClient = (global as any).dbClient;
+
   // Initialize DB
-  const dbClient = await DatabaseFactory.getClient({
+  testDbClient = await DatabaseFactory.getClient({
     mode: 'local',
     local: { databasePath: DB_PATH },
   });
 
   // Set global for routes
-  (global as any).dbClient = dbClient;
+  (global as any).dbClient = testDbClient;
 
   // Initialize Schema
-  if ((dbClient as any).initializeSchema) {
-    await (dbClient as any).initializeSchema();
+  if ((testDbClient as any).initializeSchema) {
+    await (testDbClient as any).initializeSchema();
   }
 
   // Initialize Services
-  const authService = new AuthService(dbClient as any);
+  const authService = new AuthService(testDbClient as any);
   sseBroadcaster = new SSEBroadcaster(500, 15000);
   sseBroadcaster.start();
 
+  // Initialize DB Worker singleton for bulk inserts
+  const { initDbWorker } = await import('../workers/db-worker-singleton');
+  const dbWorker = await initDbWorker(DB_PATH);
+
   // Initialize Job System
-  const jobRepository = new SQLiteJobRepository((dbClient as any).db);
+  const jobRepository = new SQLiteJobRepository((testDbClient as any).db);
   const concurrencyGuard = new ConcurrencyGuard(jobRepository);
   const startJob = new StartJob(jobRepository);
 
-  writeQueue = new DatabaseWriteQueue(dbClient as any);
+  writeQueue = new DatabaseWriteQueue(testDbClient as any);
+  writeQueue.setDbWorker(dbWorker);
 
   workerPool = new WorkerPool(jobRepository, concurrencyGuard, startJob, {
     maxConcurrentJobs: 2,
@@ -130,7 +140,7 @@ beforeAll(async () => {
   });
 
   // Register Workers
-  const importWorker = new ImportWorker(dbClient as any, writeQueue);
+  const importWorker = new ImportWorker(testDbClient as any, writeQueue);
   workerPool.registerWorker(importWorker);
 
   workerPool.start();
@@ -193,6 +203,17 @@ afterAll(async () => {
   if (writeQueue) {
     await writeQueue.stop();
   }
+  const { stopDbWorker } = await import('../workers/db-worker-singleton');
+  await stopDbWorker().catch(() => {});
+
+  // Close test-specific dbClient and restore original global dbClient
+  if (testDbClient && typeof testDbClient.close === 'function') {
+    await testDbClient.close().catch(() => {});
+  }
+  (global as any).dbClient = originalDbClient;
+  const { closeDbConnection } = await import('../utils/get-db-client');
+  await closeDbConnection(DB_PATH).catch(() => {});
+
   if (sseBroadcaster) {
     sseBroadcaster.stop();
   }

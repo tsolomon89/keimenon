@@ -8,6 +8,14 @@ vi.mock('../../utils/hibp-password', () => ({
   checkPasswordCompromised: vi.fn().mockResolvedValue({ compromised: false, count: 0 }),
 }));
 
+vi.mock('../../middleware/auth.middleware', () => ({
+  requireAuth: (authService: any) => async (req: any, _res: any, next: any) => {
+    const payload = await authService.verifyToken('valid-token');
+    req.user = payload;
+    next();
+  },
+}));
+
 describe('Auth routes password change', () => {
   const authService = {
     verifyToken: vi.fn().mockResolvedValue({

@@ -1,0 +1,20 @@
+{
+  "name": "@keimenon/litert-node-bindings",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && node scripts/check-and-build.js",
+    "clean": "rm -rf dist build",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@keimenon/types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.1"
+  }
+}

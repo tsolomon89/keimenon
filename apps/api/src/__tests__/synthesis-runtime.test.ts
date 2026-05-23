@@ -24,20 +24,22 @@ describe('Synthesis Runtime & Agent Skills', () => {
     await dbClient.connect();
     db = dbClient.getDatabase();
 
+    const uniqueEmail = `test_${randomUUID()}@test.com`;
+
     // Setup basic account and user
     db.prepare(
       `
       INSERT INTO accounts (id, name, email, account_type, account_class, created_at, updated_at, allow_email_invites) 
-      VALUES (?, 'Test Account', 'test@test.com', 'admin', 'free', ?, ?, 1)
+      VALUES (?, 'Test Account', ?, 'admin', 'free', ?, ?, 1)
     `
-    ).run(mockAccountId, Date.now(), Date.now());
+    ).run(mockAccountId, uniqueEmail, Date.now(), Date.now());
 
     db.prepare(
       `
       INSERT INTO users (id, email, name, permission_level, user_class, is_active, created_at, updated_at, email_verified) 
-      VALUES (?, 'test@test.com', 'Test User', 'admin', 'person', 1, ?, ?, 1)
+      VALUES (?, ?, 'Test User', 'admin', 'person', 1, ?, ?, 1)
     `
-    ).run(mockHumanId, Date.now(), Date.now());
+    ).run(mockHumanId, uniqueEmail, Date.now(), Date.now());
 
     db.prepare(
       `

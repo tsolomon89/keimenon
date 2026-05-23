@@ -170,6 +170,19 @@ export class NativeGemmaRuntimeBackend {
       if (err.message.includes('Helper path not found')) {
         return this.getMissingStatus();
       }
+      if (err.message.includes('RUNTIME_UNIMPLEMENTED')) {
+        const cleanMsg = err.message.split(':').slice(1).join(':').trim() || 'Not implemented';
+        return {
+          model_family: 'gemma',
+          preferred_backend: 'native-gemma',
+          state: 'runtime_unimplemented',
+          can_run_offline: true,
+          requires_admin: false,
+          model_id: null,
+          message: cleanMsg,
+          next_actions: [],
+        };
+      }
       return this.getErrorStatus(`Exception in checkStatus: ${err.message}`);
     }
   }

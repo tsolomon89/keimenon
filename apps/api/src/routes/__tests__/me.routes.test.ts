@@ -3,6 +3,14 @@ import express from 'express';
 import request from 'supertest';
 import { createMeRoutes } from '../me.routes';
 
+vi.mock('../../middleware/auth.middleware', () => ({
+  requireAuth: (authService: any) => async (req: any, _res: any, next: any) => {
+    const payload = await authService.verifyToken('test-token');
+    req.user = payload;
+    next();
+  },
+}));
+
 type AccountClass = 'free' | 'professional' | 'business';
 
 function buildApp(accountClass: AccountClass) {

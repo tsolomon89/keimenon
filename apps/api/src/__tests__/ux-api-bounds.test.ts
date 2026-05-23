@@ -127,7 +127,7 @@ describe('Phase 5: UX/API Bounds & Conversation Context Validation', () => {
   });
 
   describe('Canvas Context Validation and Filtering', () => {
-    it('successfully creates conversation after filtering non-Source/Group kinds with warnings', async () => {
+    it('rejects conversation creation containing non-Source/Group kinds with 400', async () => {
       // Create a conversation with a mix of valid node kinds ('ux_anchor_src', 'ux_anchor_grp')
       // and invalid node kinds ('ux_phrase_1', 'nonexistent_id')
       const payload = {
@@ -150,25 +150,10 @@ describe('Phase 5: UX/API Bounds & Conversation Context Validation', () => {
         body: JSON.stringify(payload),
       });
 
-      expect(res.status).toBe(201);
+      expect(res.status).toBe(400);
       const data = await res.json();
-      expect(data.success).toBe(true);
-      expect(data.conversation).toBeDefined();
-
-      // Check filtered context_spec
-      // Invalid kinds (Phrase 'ux_phrase_1', nonexistent IDs) must be filtered out
-      const contextSpec = data.conversation.context_spec;
-      expect(contextSpec.source_ids).toContain('ux_anchor_src');
-      expect(contextSpec.source_ids).not.toContain('ux_phrase_1');
-      expect(contextSpec.source_ids).not.toContain('nonexistent_src_id');
-
-      expect(contextSpec.group_ids).toContain('ux_anchor_grp');
-      expect(contextSpec.group_ids).not.toContain('ux_phrase_2');
-      expect(contextSpec.group_ids).not.toContain('nonexistent_grp_id');
-
-      // Check context indicators reflect the filtered values
-      expect(data.conversation.context_indicators.source_count).toBe(1);
-      expect(data.conversation.context_indicators.group_count).toBe(1);
+      expect(data.success).toBe(false);
+      expect(data.error).toContain('Invalid source_ids references');
     });
   });
 });

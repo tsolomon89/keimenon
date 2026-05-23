@@ -43,25 +43,30 @@ describe('SSE Reconnection', () => {
   let server: Server;
   let sseBroadcaster: SSEBroadcaster;
   let previousTestApiUrl: string | undefined;
+  let testDbClient: any;
+  let originalDbClient: any;
 
   beforeAll(async () => {
+    // Save original dbClient
+    originalDbClient = (global as any).dbClient;
+
     // Initialize DB
     const dbPath = path.join(os.homedir(), '.keimenon', 'keimenon.db');
-    const dbClient = await DatabaseFactory.getClient({
+    testDbClient = await DatabaseFactory.getClient({
       mode: 'local',
       local: { databasePath: dbPath },
     });
 
     // Mock global.dbClient for routes
-    (global as any).dbClient = dbClient;
+    (global as any).dbClient = testDbClient;
 
     // Initialize Schema if needed
-    if ((dbClient as any).initializeSchema) {
-      await (dbClient as any).initializeSchema();
+    if ((testDbClient as any).initializeSchema) {
+      await (testDbClient as any).initializeSchema();
     }
 
     // Initialize Services
-    const authService = new AuthService(dbClient as any);
+    const authService = new AuthService(testDbClient as any);
     sseBroadcaster = new SSEBroadcaster(500, 15000);
     sseBroadcaster.start();
 
@@ -95,7 +100,11 @@ describe('SSE Reconnection', () => {
 
     // Login as admin
     try {
-      const loginResult = await register('admin@admin.com', 'admin123', 'Admin User');
+      const loginResult = await register(
+        'admin@admin.com',
+        'KeimenonStrongAdmin2026!',
+        'Admin User'
+      );
       adminToken = loginResult.token;
       adminAccountId = loginResult.accountId;
     } catch (e) {
@@ -117,6 +126,12 @@ describe('SSE Reconnection', () => {
     if (sseBroadcaster) {
       sseBroadcaster.stop();
     }
+
+    // Close test-specific dbClient and restore original global dbClient
+    if (testDbClient && typeof testDbClient.close === 'function') {
+      await testDbClient.close().catch(() => {});
+    }
+    (global as any).dbClient = originalDbClient;
 
     if (previousTestApiUrl === undefined) {
       delete process.env.TEST_API_URL;

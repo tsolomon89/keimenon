@@ -189,3 +189,7 @@ vendor/litert-lm/
 packages/litert-node-bindings/native/win32-x64/lib/
 packages/litert-node-bindings/native/win32-x64/bin/
 apps/desktop/resources/native/win32-x64/*.dll
+
+# Scratch files
+scratch/
+apps/api/source-handling-keep_inline-*.json

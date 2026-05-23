@@ -92,7 +92,7 @@ describe('NativeGemmaRuntimeBackend', () => {
 
     expect(mockProcess.kill).toHaveBeenCalled();
     expect(status.state).toBe('error');
-    expect(status.message).toBe('Helper process timed out.');
+    expect(status.message).toBe('Exception in checkStatus: Helper request status timed out');
   });
 
   it('should handle runtime error from helper', async () => {

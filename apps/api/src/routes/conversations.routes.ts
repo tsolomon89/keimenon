@@ -156,59 +156,11 @@ function validateContextSpec(
   const validSourceKinds = ['Source', 'SourceDoc', 'UnifiedDoc', 'VerifiedSource'];
   const validGroupKinds = ['Group', 'Folder'];
 
-  // Filter source_ids
-  const filteredSourceIds: string[] = [];
-  if (sourceIds.length > 0) {
-    const placeholders = sourceIds.map(() => '?').join(', ');
-    const rows = database
-      .prepare(
-        `
-        SELECT id, kind
-        FROM nodes
-        WHERE account_id = ? AND id IN (${placeholders})
-        `
-      )
-      .all(accountId, ...sourceIds) as Array<{ id: string; kind: string }>;
+  // Throw validation error if any source_ids are missing or of an unsupported kind
+  assertNodeIdsInAccountByKinds(database, accountId, sourceIds, validSourceKinds, 'source_ids');
 
-    const sourceRowsMap = new Map(rows.map((row) => [row.id, row.kind]));
-    for (const id of sourceIds) {
-      const kind = sourceRowsMap.get(id);
-      if (kind && validSourceKinds.includes(kind)) {
-        filteredSourceIds.push(id);
-      } else {
-        console.warn(
-          `[ContextSpec Validation] Filtering out non-Source node kind '${kind || 'unknown'}' with ID '${id}' from source_ids`
-        );
-      }
-    }
-  }
-
-  // Filter group_ids
-  const filteredGroupIds: string[] = [];
-  if (groupIds.length > 0) {
-    const placeholders = groupIds.map(() => '?').join(', ');
-    const rows = database
-      .prepare(
-        `
-        SELECT id, kind
-        FROM nodes
-        WHERE account_id = ? AND id IN (${placeholders})
-        `
-      )
-      .all(accountId, ...groupIds) as Array<{ id: string; kind: string }>;
-
-    const groupRowsMap = new Map(rows.map((row) => [row.id, row.kind]));
-    for (const id of groupIds) {
-      const kind = groupRowsMap.get(id);
-      if (kind && validGroupKinds.includes(kind)) {
-        filteredGroupIds.push(id);
-      } else {
-        console.warn(
-          `[ContextSpec Validation] Filtering out non-Group node kind '${kind || 'unknown'}' with ID '${id}' from group_ids`
-        );
-      }
-    }
-  }
+  // Throw validation error if any group_ids are missing or of an unsupported kind
+  assertNodeIdsInAccountByKinds(database, accountId, groupIds, validGroupKinds, 'group_ids');
 
   // Check workspace_id
   let filteredWorkspaceId = contextSpec.workspace_id;
@@ -233,8 +185,8 @@ function validateContextSpec(
 
   return {
     ...contextSpec,
-    source_ids: filteredSourceIds,
-    group_ids: filteredGroupIds,
+    source_ids: sourceIds,
+    group_ids: groupIds,
     workspace_id: filteredWorkspaceId,
   };
 }

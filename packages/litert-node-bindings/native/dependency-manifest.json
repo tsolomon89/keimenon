@@ -1,0 +1,4 @@
+{
+  "required": ["libLiteRt.dll"],
+  "optional": ["libLiteRtWebGpuAccelerator.dll"]
+}

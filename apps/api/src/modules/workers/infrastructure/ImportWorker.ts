@@ -712,6 +712,9 @@ export class ImportWorker extends BaseWorker {
     console.log(`📥 Import worker processing ${files.length} file(s) for job ${job.id}`);
     console.log(`⏱️  Timeout: ${Math.round(this.timeoutMs / 1000)}s`);
 
+    let testWriteQueue: any;
+    let isTestMode = false;
+
     try {
       // Step 1: Initialize Import Service early (we need it for batch processing)
       // Get correct database client (test DB for E2E tests, production DB otherwise)
@@ -723,9 +726,15 @@ export class ImportWorker extends BaseWorker {
       console.log(`[ImportWorker] 🔌 DB Client Path: ${(dbClient as any).name}`);
       console.log(`[ImportWorker] 🔌 DB Connection: ${(dbClient as any).open ? 'OPEN' : 'CLOSED'}`);
 
-      // In test mode, disable write queue to avoid database client mismatch
-      const isTestMode = !!job.config.testContext?.dbPath;
-      const writeQueue = isTestMode ? undefined : this.writeQueue;
+      // In test mode, instantiate a local write queue bound to the test database client
+      isTestMode = !!job.config.testContext?.dbPath;
+      let writeQueue = isTestMode ? undefined : this.writeQueue;
+      if (isTestMode) {
+        const { DatabaseWriteQueue } = await import('../../../services/DatabaseWriteQueue');
+        testWriteQueue = new DatabaseWriteQueue(dbClient);
+        testWriteQueue.start();
+        writeQueue = testWriteQueue;
+      }
 
       const { getDbWorker } = await import('../../../workers/db-worker-singleton');
       const dbWorker = getDbWorker();
@@ -1614,6 +1623,10 @@ export class ImportWorker extends BaseWorker {
         console.warn(`[ImportWorker] Completed with ${parseErrorCount} parse error(s)`);
       }
 
+      if (isTestMode && testWriteQueue) {
+        await testWriteQueue.stop().catch(() => {});
+      }
+
       return {
         success: true,
         metadata: {
@@ -1641,6 +1654,10 @@ export class ImportWorker extends BaseWorker {
         },
       };
     } catch (error: any) {
+      if (isTestMode && testWriteQueue) {
+        await testWriteQueue.stop().catch(() => {});
+      }
+
       if (error.message === 'CANCELED') {
         return {
           success: false,
