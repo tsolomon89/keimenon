@@ -31,6 +31,7 @@ export const EDGE_TYPES = [
   'OWNED_BY',
   'HAS_MESSAGE',
   'COMPILED_FROM',
+  'SIMILAR_TO',
 ] as const;
 
 export type NodeLabel = (typeof NODE_LABELS)[number];

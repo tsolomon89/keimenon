@@ -28,6 +28,12 @@ describe('E2E Chunked Upload Workflow', () => {
   let adminAccountId: string;
 
   beforeAll(async () => {
+    console.log('--- TEST DIAGNOSTICS ---');
+    console.log('process.env.DB_PATH:', process.env.DB_PATH);
+    console.log('process.env.TEST_API_URL:', process.env.TEST_API_URL);
+    console.log('getDbPath():', getDbPath());
+    console.log('API_URL:', API_URL);
+    console.log('------------------------');
     db = new Database(getDbPath());
     const auth = await login(ADMIN_EMAIL, ADMIN_PASSWORD);
     adminToken = auth.token;

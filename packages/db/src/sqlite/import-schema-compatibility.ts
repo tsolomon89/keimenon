@@ -31,6 +31,7 @@ export const REQUIRED_IMPORT_EDGE_KINDS = [
   'CREATED_BY',
   'INITIATED_BY',
   'PARTICIPATED_IN',
+  'SIMILAR_TO',
 ] as const;
 
 export interface ImportSchemaCompatibilityResult {

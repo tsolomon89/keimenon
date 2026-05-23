@@ -98,6 +98,15 @@ export const NearDupEdgeSchema = BaseEdgeSchema.extend({
 
 export type NearDupEdge = z.infer<typeof NearDupEdgeSchema>;
 
+// SIMILAR_TO edge (similarity-based relationship, e.g. unreviewed candidate or standard similarity)
+export const SimilarToEdgeSchema = BaseEdgeSchema.extend({
+  kind: z.literal('SIMILAR_TO'),
+  score: z.number().min(0).max(1).optional(),
+  canonical: z.string().optional(),
+});
+
+export type SimilarToEdge = z.infer<typeof SimilarToEdgeSchema>;
+
 // SPAN_CONTAINS edge (hierarchical containment via byte spans)
 export const SpanContainsEdgeSchema = BaseEdgeSchema.extend({
   kind: z.literal('SPAN_CONTAINS'),
@@ -316,6 +325,7 @@ export type AnyEdge =
   | VerifiedByEdge
   | ExactDupEdge
   | NearDupEdge
+  | SimilarToEdge
   | SpanContainsEdge
   | ClusterMemberEdge
   | HasSpanEdge

@@ -2424,7 +2424,7 @@ export class EnhancedImportServiceV2 {
         `speedup: ${metadata.speedupVsBaseline.toFixed(1)}x)`
     );
 
-    // Create DUP_OF edges for detected duplicates
+    // Create SIMILAR_TO edges for detected similarity/overlap candidates
     let edgeCount = 0;
     for (const group of duplicateGroups) {
       for (const candidate of group.candidates) {
@@ -2434,19 +2434,19 @@ export class EnhancedImportServiceV2 {
 
         if (!duplicateNodeId || !primaryNodeId) {
           console.warn(
-            `⚠️  Skipping duplicate edge: missing node IDs (dup: ${duplicateNodeId}, primary: ${primaryNodeId})`
+            `⚠️  Skipping similarity edge: missing node IDs (dup: ${duplicateNodeId}, primary: ${primaryNodeId})`
           );
           continue;
         }
 
         console.log(
-          `🔗 Creating DUP_OF edge: ${duplicateNodeId} -> ${primaryNodeId} (similarity: ${candidate.similarity.toFixed(2)})`
+          `🔗 Creating SIMILAR_TO edge: ${duplicateNodeId} -> ${primaryNodeId} (similarity: ${candidate.similarity.toFixed(2)})`
         );
 
-        // Create DUP_OF edge from duplicate to primary
+        // Create SIMILAR_TO edge from duplicate/overlap candidate to primary
         await this.writeEdge({
           id: `edge_${nanoid()}`,
-          kind: 'DUP_OF',
+          kind: 'SIMILAR_TO',
           from: duplicateNodeId,
           to: primaryNodeId,
           created_at: Date.now(),
@@ -2460,7 +2460,7 @@ export class EnhancedImportServiceV2 {
       }
     }
 
-    console.log(`✅ Created ${edgeCount} DUP_OF edges (using ${metadata.strategy} strategy)`);
+    console.log(`✅ Created ${edgeCount} SIMILAR_TO edges (using ${metadata.strategy} strategy)`);
     const reviewCandidateCount = detectionConfig.requireReview
       ? duplicateGroups.reduce((sum, group) => sum + group.candidates.length, 0)
       : 0;
