@@ -226,6 +226,62 @@ export function createRuntimeRoutes(authService?: AuthServiceV2): Router {
     }
   );
 
+  router.post(
+    '/local-inference/models/download',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!requireAgentRuntime(req, res)) return;
+        const { modelDownloader } = await import('../services/agent/model-downloader');
+        const { candidateId } = req.body;
+
+        if (!candidateId) {
+          res.status(400).json({ error: 'candidateId is required' });
+          return;
+        }
+
+        await modelDownloader.startDownload(candidateId);
+        res.json({ success: true, message: 'Download initiated.' });
+      } catch (error: any) {
+        res.status(500).json({ error: error.message });
+      }
+    }
+  );
+
+  router.get(
+    '/local-inference/models/download/progress/:candidateId',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!requireAgentRuntime(req, res)) return;
+        const { modelDownloader } = await import('../services/agent/model-downloader');
+        const progress = modelDownloader.getProgress(req.params.candidateId);
+        res.json({ progress });
+      } catch (error: any) {
+        next(error);
+      }
+    }
+  );
+
+  router.post(
+    '/local-inference/models/download/cancel',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!requireAgentRuntime(req, res)) return;
+        const { modelDownloader } = await import('../services/agent/model-downloader');
+        const { candidateId } = req.body;
+
+        if (!candidateId) {
+          res.status(400).json({ error: 'candidateId is required' });
+          return;
+        }
+
+        modelDownloader.cancelDownload(candidateId);
+        res.json({ success: true, message: 'Download cancelled/paused.' });
+      } catch (error: any) {
+        next(error);
+      }
+    }
+  );
+
   router.get(
     '/local-inference/models/active',
     async (req: Request, res: Response, next: NextFunction) => {

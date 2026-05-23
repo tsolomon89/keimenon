@@ -23,7 +23,11 @@ vi.mock('@/contexts/AuthContext', () => ({
 function createLargeFile(name: string, sizeInMb: number): File {
   const size = sizeInMb * 1024 * 1024;
   const blob = new Blob([new ArrayBuffer(size)], { type: 'application/json' });
-  return new File([blob], name, { type: 'application/json' });
+  const file = new File([blob], name, { type: 'application/json' });
+  if (typeof file.arrayBuffer !== 'function') {
+    file.arrayBuffer = async () => new ArrayBuffer(size);
+  }
+  return file;
 }
 
 function createAbortAwareUploadResponse(delayMs: number) {

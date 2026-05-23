@@ -117,9 +117,7 @@ export function SelectionStack({
       {/* Header */}
       <div className="p-4 border-b border-slate-800">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-slate-300">
-            Selection Stack ({selectedNodes.length})
-          </h3>
+          <h3 className="text-sm font-semibold text-slate-300">Selection Stack</h3>
           <button
             onClick={onClearAll}
             className="text-xs text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1"
@@ -129,6 +127,23 @@ export function SelectionStack({
           </button>
         </div>
         <p className="text-xs text-slate-500">Selected items - click to expand details</p>
+
+        {/* Legit counts */}
+        <div className="flex flex-wrap gap-2 mt-3">
+          <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-300 font-medium">
+            Total: {selectedNodes.length}
+          </span>
+          <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950/40 border border-emerald-800/30 text-emerald-400 font-medium">
+            Valid Context:{' '}
+            {conversationContext.contextSpec.source_ids.length +
+              conversationContext.contextSpec.group_ids.length}
+          </span>
+          {conversationContext.unsupportedNodeCount > 0 && (
+            <span className="text-[10px] px-2 py-0.5 rounded bg-amber-950/40 border border-amber-800/30 text-amber-400 font-medium animate-pulse">
+              Unsupported: {conversationContext.unsupportedNodeCount}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Cards list */}
@@ -150,20 +165,49 @@ export function SelectionStack({
               <div className="p-3">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded border ${getNodeTypeColor(
-                          node.type
-                        )}`}
-                      >
-                        {node.type}
-                      </span>
-                      {isPinned && <Pin className="w-3 h-3 text-purple-400" />}
-                    </div>
-                    <h4 className="text-sm font-medium text-slate-200 truncate">
-                      {resolveNodeLabel(node)}
-                    </h4>
-                    <p className="text-xs text-slate-500 truncate">{node.id.slice(0, 16)}...</p>
+                    {(() => {
+                      const nodeKind = node.kind || node.type;
+                      const isEligible = [
+                        'Source',
+                        'SourceDoc',
+                        'VerifiedSource',
+                        'Group',
+                        'Folder',
+                      ].includes(nodeKind);
+                      return (
+                        <>
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded border ${getNodeTypeColor(
+                                node.type
+                              )}`}
+                            >
+                              {node.type}
+                            </span>
+                            {!isEligible && (
+                              <span
+                                className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 font-medium"
+                                title="Only Sources and Groups are supported in discussion context."
+                              >
+                                unsupported context
+                              </span>
+                            )}
+                            {isPinned && <Pin className="w-3 h-3 text-purple-400" />}
+                          </div>
+                          <h4 className="text-sm font-medium text-slate-200 truncate">
+                            {resolveNodeLabel(node)}
+                          </h4>
+                          <p className="text-xs text-slate-500 truncate">
+                            {node.id.slice(0, 16)}...
+                          </p>
+                          {!isEligible && (
+                            <p className="text-[10px] text-amber-500/70 mt-1">
+                              Excluded from discussion context
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <div className="flex items-center gap-1">

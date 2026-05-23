@@ -111,16 +111,23 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
     } | null>(null);
     const lastVisibilityIssueRef = useRef<string | null>(null);
 
+    const [showRefreshToast, setShowRefreshToast] = useState(false);
+
     // Find active import job
     useEffect(() => {
+      let toastTimer: ReturnType<typeof setTimeout>;
       const onImportRefresh = () => {
         setFilteredNodeIds(null);
         void loadGraphData();
+        setShowRefreshToast(true);
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => setShowRefreshToast(false), 4500);
       };
 
       window.addEventListener(IMPORT_GRAPH_REFRESH_EVENT, onImportRefresh);
       return () => {
         window.removeEventListener(IMPORT_GRAPH_REFRESH_EVENT, onImportRefresh);
+        clearTimeout(toastTimer);
       };
     }, [loadGraphData, setFilteredNodeIds]);
 
@@ -449,27 +456,50 @@ export const KeimenonViewport = forwardRef<KeimenonViewportHandle, KeimenonViewp
 
         {/* Loading state */}
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mb-4 mx-auto"></div>
-              <p className="text-slate-400">Loading graph data...</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 backdrop-blur-md z-30">
+            <div className="text-center bg-slate-900/80 border border-slate-800 rounded-2xl p-8 shadow-2xl max-w-sm">
+              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-indigo-400 border-r-2 border-r-indigo-400/20 mb-4 mx-auto"></div>
+              <h3 className="text-slate-200 font-medium mb-1">Hydrating Canvas</h3>
+              <p className="text-xs text-slate-500">
+                Loading similarity-weighted graph topology...
+              </p>
             </div>
           </div>
         )}
 
         {/* Error state */}
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center max-w-md">
-              <div className="text-red-500 text-5xl mb-4">!</div>
-              <h3 className="text-xl font-semibold mb-2 text-white">Failed to load graph</h3>
-              <p className="text-slate-400 mb-4">{error}</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm z-30">
+            <div className="text-center max-w-md bg-slate-900/90 border border-rose-950/40 rounded-2xl p-8 shadow-2xl mx-4">
+              <div className="text-rose-500 text-4xl mb-4 font-bold flex justify-center">⚠️</div>
+              <h3 className="text-lg font-semibold mb-2 text-slate-100">Failed to load graph</h3>
+              <p className="text-xs text-slate-400 mb-6 bg-slate-950/60 p-3 rounded-lg border border-slate-800 font-mono text-left max-h-32 overflow-y-auto break-all">
+                {error}
+              </p>
               <button
+                type="button"
                 onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-sm font-semibold rounded-lg transition-colors text-white shadow-lg"
               >
-                Retry
+                Retry loading data
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Post-import Graph Loaded Toast */}
+        {showRefreshToast && (
+          <div className="absolute bottom-6 right-6 z-30 animate-in fade-in slide-in-from-bottom-5 duration-300">
+            <div className="bg-slate-900/95 border border-emerald-500/30 text-emerald-400 rounded-xl p-4 shadow-2xl flex items-center gap-3 backdrop-blur-md max-w-sm">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></div>
+              <div>
+                <p className="text-sm font-medium text-slate-100">
+                  New import successfully loaded!
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  The similarity knowledge graph has been refreshed.
+                </p>
+              </div>
             </div>
           </div>
         )}

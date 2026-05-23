@@ -172,14 +172,19 @@ test.describe('Full Browser Product Loop E2E', () => {
     const provenanceModal = page.getByRole('dialog').filter({ hasText: /Provenance/i });
     await expect(provenanceModal).toBeVisible();
 
+    // Wait for hydration/loading to complete
+    await expect(provenanceModal.getByText(/Hydrating provenance subgraph.../i)).toBeHidden({
+      timeout: 10000,
+    });
+
     // 19. Assert either evidence items or empty evidence state renders
     const emptyState = provenanceModal.getByText(/No explicit evidence was bound to this run/i);
     const hasEmptyState = await emptyState.isVisible().catch(() => false);
 
     // We expect the mock provider to not have explicit evidence attached unless we mocked that too.
-    // If it has evidence, it will show "USED_EVIDENCE Subgraph"
+    // If it has evidence, it will show "Evidence Provenance Subgraph"
     const hasEvidence = await provenanceModal
-      .getByText(/USED_EVIDENCE Subgraph/i)
+      .getByText(/Evidence Provenance Subgraph/i)
       .isVisible()
       .catch(() => false);
 

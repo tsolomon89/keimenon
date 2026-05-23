@@ -1103,9 +1103,20 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
           }
         }
 
+        let runProps: any = {};
+        try {
+          runProps = JSON.parse(runRow.properties || '{}');
+        } catch {
+          // Ignore parse errors, fallback to empty object
+        }
+
         return res.json({
           success: true,
           runId,
+          provider: runProps.provider || 'unknown',
+          model: runProps.model || null,
+          skill_used: runProps.skill_used || 'unknown',
+          duration_ms: runProps.duration_ms || 0,
           evidence: evidenceNodes,
           stats: {
             total_items: evidenceNodes.length,

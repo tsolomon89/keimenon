@@ -136,6 +136,10 @@ export interface AgentRunProvenanceEvidence {
 export interface AgentRunProvenance {
   success?: boolean;
   runId: string;
+  provider?: string;
+  model?: string | null;
+  skill_used?: string;
+  duration_ms?: number;
   evidence: AgentRunProvenanceEvidence[];
   stats: {
     total_items: number;

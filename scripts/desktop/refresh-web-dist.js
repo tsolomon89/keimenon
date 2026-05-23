@@ -42,14 +42,14 @@ function copyWebOutToDesktop() {
 }
 
 function main() {
-  const source = computeSourceFingerprint();
-
   run('npm', ['run', 'build:export', '--workspace=@keimenon/web'], {
     ...process.env,
     NEXT_OUTPUT_EXPORT: '1',
   });
 
   copyWebOutToDesktop();
+
+  const source = computeSourceFingerprint();
 
   const manifestPath = writeManifest(WEB_DIST_DIR, {
     schemaVersion: 1,

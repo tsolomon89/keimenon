@@ -10,6 +10,9 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@keimenon/litert-node-bindings": "*"
+  },
   "devDependencies": {
     "typescript": "^5.4.5",
     "@types/node": "^20.0.0",
