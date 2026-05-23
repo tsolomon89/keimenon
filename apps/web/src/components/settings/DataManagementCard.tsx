@@ -288,7 +288,7 @@ export function DataManagementCard() {
       const result = await response.json();
       console.log('[DataManagementCard] Delete job created:', result);
 
-      const serverJobId: string | undefined = result.jobId;
+      const serverJobId: string | undefined = result.data?.jobId || result.jobId;
       const resolvedJobId = serverJobId ?? `del_${Date.now()}`;
 
       if (!serverJobId) {

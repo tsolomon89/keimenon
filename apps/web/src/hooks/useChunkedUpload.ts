@@ -229,7 +229,7 @@ export function useChunkedUpload() {
           // Return both success status and jobId (if present on final chunk)
           return {
             success: result.success === true,
-            jobId: result.jobId, // Set when isComplete=true
+            jobId: result.data?.jobId || result.jobId, // Set when isComplete=true
           };
         } else {
           if (response.status === 401 || response.status === 403) {
@@ -390,10 +390,12 @@ export function useChunkedUpload() {
         if (!statusResponse?.data?.success) {
           return undefined;
         }
-        const session = statusResponse.data.session as Record<string, any> | undefined;
-        return typeof session?.jobId === 'string' && session.jobId.length > 0
-          ? session.jobId
-          : undefined;
+        const session = (statusResponse.data.data?.session || statusResponse.data.session) as
+          | Record<string, any>
+          | undefined;
+        const jobId =
+          statusResponse.data.data?.jobId || statusResponse.data.jobId || session?.jobId;
+        return typeof jobId === 'string' && jobId.length > 0 ? jobId : undefined;
       } catch {
         return undefined;
       }
@@ -487,7 +489,7 @@ export function useChunkedUpload() {
           throw new Error(initResponse.data.error || 'Failed to initiate upload');
         }
 
-        const session: UploadSession = initResponse.data.session;
+        const session: UploadSession = initResponse.data.data?.session || initResponse.data.session;
 
         console.log(`✅ Upload session created: ${session.id}`);
         console.log(`   Total chunks: ${session.totalChunks}`);
@@ -594,7 +596,7 @@ export function useChunkedUpload() {
       throw new Error(statusResponse.data.error || 'Failed to get upload status');
     }
 
-    const session: UploadSession = statusResponse.data.session;
+    const session: UploadSession = statusResponse.data.data?.session || statusResponse.data.session;
 
     console.log(
       `📋 Resume upload: ${session.chunksUploaded.length}/${session.totalChunks} chunks already uploaded`

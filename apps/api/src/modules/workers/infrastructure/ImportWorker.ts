@@ -746,22 +746,27 @@ export class ImportWorker extends BaseWorker {
         if (!isTestMode) {
           if (dbWorker?.isReady()) {
             const sink = new BulkGraphWriteSink(dbWorker as any, (progress) => {
-              void this.reportProgress(
-                job,
-                progress.nodesWritten + progress.edgesWritten,
-                -1, // total is handled by the overall ImportPipeline logic
-                `Writing graph batch ${progress.batchIndex}...`,
-                context,
-                ImportJobStage.MATERIALIZE,
-                {
-                  elapsedMsInBatch: progress.elapsedMs,
-                  nodesWritten: progress.nodesWritten,
-                  edgesWritten: progress.edgesWritten,
-                  payloadsWritten: progress.payloadsWritten,
-                  quarantinedRows: progress.quarantinedRows,
-                  batchPhase: progress.phase,
-                }
-              );
+              // Only report progress to database when a batch completes or encounters an error.
+              // Intermediate phases (validate, insert_nodes, etc.) are executed within the active transaction,
+              // and updating the job record during that time causes severe SQLite lock contention starvation.
+              if (progress.phase === 'complete' || progress.phase === 'error') {
+                void this.reportProgress(
+                  job,
+                  progress.nodesWritten + progress.edgesWritten,
+                  -1, // total is handled by the overall ImportPipeline logic
+                  `Writing graph batch ${progress.batchIndex}...`,
+                  context,
+                  ImportJobStage.MATERIALIZE,
+                  {
+                    elapsedMsInBatch: progress.elapsedMs,
+                    nodesWritten: progress.nodesWritten,
+                    edgesWritten: progress.edgesWritten,
+                    payloadsWritten: progress.payloadsWritten,
+                    quarantinedRows: progress.quarantinedRows,
+                    batchPhase: progress.phase,
+                  }
+                );
+              }
             });
             batchAccumulator = new GraphBatchAccumulator(
               sink,

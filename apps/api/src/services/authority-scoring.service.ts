@@ -126,66 +126,72 @@ export class AuthorityScoringService {
       return 0;
     }
 
+    const updates: Array<{ id: string; metadata: string }> = [];
+
+    // Perform heavy SELECT queries outside of any write transaction
+    for (const phrase of phrases) {
+      const metadata = this.parseProperties(phrase.metadata || '{}');
+
+      // Source count: how many distinct sources MENTION this phrase
+      const sourceCount = this.countDistinctEdges(accountId, phrase.id, 'MENTIONS', 'to', 'Source');
+
+      // Span count: how many SourceSpan nodes MENTION this phrase
+      const spanCount = this.countDistinctEdges(
+        accountId,
+        phrase.id,
+        'MENTIONS',
+        'to',
+        'SourceSpan'
+      );
+
+      // Co-occurrence degree: how many CO_OCCURS_WITH edges
+      const coOccurrenceDegree = this.countEdgesOfKind(accountId, phrase.id, 'CO_OCCURS_WITH');
+
+      // Heading/title boost: if phrase text appears in any source title
+      const headingBoost = this.computeHeadingBoost(accountId, String(phrase.text || ''));
+
+      // Promotion boost: if the phrase belongs to a promoted topic
+      const promotionBoost = this.computePhrasePromotionBoost(accountId, phrase.id);
+
+      const hubScore = Number(
+        (
+          sourceCount +
+          spanCount * 0.5 +
+          coOccurrenceDegree * 0.3 +
+          headingBoost * 2 +
+          promotionBoost * 1.5
+        ).toFixed(4)
+      );
+
+      const components: AuthorityScoreComponents = {
+        sourceCount,
+        spanCount,
+        coOccurrenceDegree,
+        headingBoost,
+        promotionBoost,
+      };
+
+      metadata.hub_score = hubScore;
+      metadata.authority_score = hubScore; // Phrases use hub score as authority
+      metadata.score_components = components;
+      metadata.authority_computed_at = Date.now();
+
+      updates.push({
+        id: phrase.id,
+        metadata: JSON.stringify(metadata),
+      });
+    }
+
     const updateStmt = this.db.prepare(
       `UPDATE phrases SET metadata = ?, updated_at = ?
        WHERE account_id = ? AND id = ?`
     );
 
+    // Run only the fast UPDATE writes inside a transaction
     const transaction = this.db.transaction(() => {
-      for (const phrase of phrases) {
-        const metadata = this.parseProperties(phrase.metadata || '{}');
-
-        // Source count: how many distinct sources MENTION this phrase
-        const sourceCount = this.countDistinctEdges(
-          accountId,
-          phrase.id,
-          'MENTIONS',
-          'to',
-          'Source'
-        );
-
-        // Span count: how many SourceSpan nodes MENTION this phrase
-        const spanCount = this.countDistinctEdges(
-          accountId,
-          phrase.id,
-          'MENTIONS',
-          'to',
-          'SourceSpan'
-        );
-
-        // Co-occurrence degree: how many CO_OCCURS_WITH edges
-        const coOccurrenceDegree = this.countEdgesOfKind(accountId, phrase.id, 'CO_OCCURS_WITH');
-
-        // Heading/title boost: if phrase text appears in any source title
-        const headingBoost = this.computeHeadingBoost(accountId, String(phrase.text || ''));
-
-        // Promotion boost: if the phrase belongs to a promoted topic
-        const promotionBoost = this.computePhrasePromotionBoost(accountId, phrase.id);
-
-        const hubScore = Number(
-          (
-            sourceCount +
-            spanCount * 0.5 +
-            coOccurrenceDegree * 0.3 +
-            headingBoost * 2 +
-            promotionBoost * 1.5
-          ).toFixed(4)
-        );
-
-        const components: AuthorityScoreComponents = {
-          sourceCount,
-          spanCount,
-          coOccurrenceDegree,
-          headingBoost,
-          promotionBoost,
-        };
-
-        metadata.hub_score = hubScore;
-        metadata.authority_score = hubScore; // Phrases use hub score as authority
-        metadata.score_components = components;
-        metadata.authority_computed_at = Date.now();
-
-        updateStmt.run(JSON.stringify(metadata), Date.now(), accountId, phrase.id);
+      const now = Date.now();
+      for (const item of updates) {
+        updateStmt.run(item.metadata, now, accountId, item.id);
       }
     });
 
@@ -206,63 +212,75 @@ export class AuthorityScoringService {
       return 0;
     }
 
+    const updates: Array<{ id: string; properties: string }> = [];
+
+    // Perform heavy SELECT queries outside of any write transaction
+    for (const source of sources) {
+      const props = this.parseProperties(source.properties);
+      const metadata = { ...((props.metadata as Record<string, unknown>) || {}) };
+
+      // Distinct phrase count: how many distinct Phrase nodes this source MENTIONS
+      const distinctPhraseCount = this.countDistinctEdges(
+        accountId,
+        source.id,
+        'MENTIONS',
+        'from',
+        'Phrase'
+      );
+
+      // High-value mentions: phrases with hub_score > 2 that this source mentions
+      const highValueMentions = this.countHighValueMentions(accountId, source.id);
+
+      // Unified doc citations: how many UnifiedDoc nodes DERIVE_FROM this source
+      const unifiedDocCitations = this.countDistinctEdges(
+        accountId,
+        source.id,
+        'DERIVES_FROM',
+        'to',
+        'UnifiedDoc'
+      );
+
+      // Promoted topic links: how many promoted topics is this source ABOUT
+      const promotedLinks = this.countPromotedTopicLinks(accountId, source.id);
+
+      const authorityScore = Number(
+        (
+          distinctPhraseCount * 0.5 +
+          highValueMentions * 1.5 +
+          unifiedDocCitations * 3 +
+          promotedLinks * 2
+        ).toFixed(4)
+      );
+
+      const components: AuthorityScoreComponents = {
+        distinctPhraseCount,
+        highValueMentions,
+        unifiedDocCitations,
+        promotedLinks,
+      };
+
+      metadata.authority_score = authorityScore;
+      metadata.hub_score = authorityScore; // Sources use authority score as hub
+      metadata.score_components = components;
+      metadata.authority_computed_at = Date.now();
+
+      props.metadata = metadata;
+      updates.push({
+        id: source.id,
+        properties: JSON.stringify(props),
+      });
+    }
+
     const updateStmt = this.db.prepare(
       `UPDATE nodes SET properties = ?, updated_at = ?
        WHERE account_id = ? AND id = ?`
     );
 
+    // Run only the fast UPDATE writes inside a transaction
     const transaction = this.db.transaction(() => {
-      for (const source of sources) {
-        const props = this.parseProperties(source.properties);
-        const metadata = { ...((props.metadata as Record<string, unknown>) || {}) };
-
-        // Distinct phrase count: how many distinct Phrase nodes this source MENTIONS
-        const distinctPhraseCount = this.countDistinctEdges(
-          accountId,
-          source.id,
-          'MENTIONS',
-          'from',
-          'Phrase'
-        );
-
-        // High-value mentions: phrases with hub_score > 2 that this source mentions
-        const highValueMentions = this.countHighValueMentions(accountId, source.id);
-
-        // Unified doc citations: how many UnifiedDoc nodes DERIVE_FROM this source
-        const unifiedDocCitations = this.countDistinctEdges(
-          accountId,
-          source.id,
-          'DERIVES_FROM',
-          'to',
-          'UnifiedDoc'
-        );
-
-        // Promoted topic links: how many promoted topics is this source ABOUT
-        const promotedLinks = this.countPromotedTopicLinks(accountId, source.id);
-
-        const authorityScore = Number(
-          (
-            distinctPhraseCount * 0.5 +
-            highValueMentions * 1.5 +
-            unifiedDocCitations * 3 +
-            promotedLinks * 2
-          ).toFixed(4)
-        );
-
-        const components: AuthorityScoreComponents = {
-          distinctPhraseCount,
-          highValueMentions,
-          unifiedDocCitations,
-          promotedLinks,
-        };
-
-        metadata.authority_score = authorityScore;
-        metadata.hub_score = authorityScore; // Sources use authority score as hub
-        metadata.score_components = components;
-        metadata.authority_computed_at = Date.now();
-
-        props.metadata = metadata;
-        updateStmt.run(JSON.stringify(props), Date.now(), accountId, source.id);
+      const now = Date.now();
+      for (const item of updates) {
+        updateStmt.run(item.properties, now, accountId, item.id);
       }
     });
 
@@ -283,32 +301,44 @@ export class AuthorityScoringService {
       return 0;
     }
 
+    const updates: Array<{ id: string; properties: string }> = [];
+
+    // Perform heavy SELECT queries outside of any write transaction
+    for (const topic of topics) {
+      const props = this.parseProperties(topic.properties);
+      const metadata = { ...((props.metadata as Record<string, unknown>) || {}) };
+
+      const memberPhrases = this.countEdgesOfKind(accountId, topic.id, 'BELONGS_TO_TOPIC');
+      const aboutSources = this.countEdgesOfKind(accountId, topic.id, 'ABOUT');
+      const topicStatus = String(props.topic_status || 'suggested');
+      const promotionBoost = topicStatus === 'promoted' ? 2 : 0;
+
+      const authorityScore = Number(
+        (memberPhrases * 0.8 + aboutSources * 1.2 + promotionBoost).toFixed(4)
+      );
+
+      metadata.authority_score = authorityScore;
+      metadata.hub_score = authorityScore;
+      metadata.score_components = { memberPhrases, aboutSources, promotionBoost };
+      metadata.authority_computed_at = Date.now();
+
+      props.metadata = metadata;
+      updates.push({
+        id: topic.id,
+        properties: JSON.stringify(props),
+      });
+    }
+
     const updateStmt = this.db.prepare(
       `UPDATE nodes SET properties = ?, updated_at = ?
        WHERE account_id = ? AND id = ?`
     );
 
+    // Run only the fast UPDATE writes inside a transaction
     const transaction = this.db.transaction(() => {
-      for (const topic of topics) {
-        const props = this.parseProperties(topic.properties);
-        const metadata = { ...((props.metadata as Record<string, unknown>) || {}) };
-
-        const memberPhrases = this.countEdgesOfKind(accountId, topic.id, 'BELONGS_TO_TOPIC');
-        const aboutSources = this.countEdgesOfKind(accountId, topic.id, 'ABOUT');
-        const topicStatus = String(props.topic_status || 'suggested');
-        const promotionBoost = topicStatus === 'promoted' ? 2 : 0;
-
-        const authorityScore = Number(
-          (memberPhrases * 0.8 + aboutSources * 1.2 + promotionBoost).toFixed(4)
-        );
-
-        metadata.authority_score = authorityScore;
-        metadata.hub_score = authorityScore;
-        metadata.score_components = { memberPhrases, aboutSources, promotionBoost };
-        metadata.authority_computed_at = Date.now();
-
-        props.metadata = metadata;
-        updateStmt.run(JSON.stringify(props), Date.now(), accountId, topic.id);
+      const now = Date.now();
+      for (const item of updates) {
+        updateStmt.run(item.properties, now, accountId, item.id);
       }
     });
 

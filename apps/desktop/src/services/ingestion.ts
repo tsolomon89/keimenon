@@ -116,18 +116,17 @@ export class FileIngestionService {
       }),
     });
 
-    const initiateData = (await initiateResponse.json().catch(() => ({}))) as UploadSessionResponse;
-    if (!initiateResponse.ok || !initiateData.success || !initiateData.session?.id) {
+    const initiateData = (await initiateResponse.json().catch(() => ({}))) as any;
+    const session = initiateData.data?.session || initiateData.session;
+    if (!initiateResponse.ok || !initiateData.success || !session?.id) {
       const message = initiateData.error || `HTTP ${initiateResponse.status}`;
       throw new Error(`Desktop import initiate failed: ${message}`);
     }
 
-    const { id: sessionId, totalChunks } = initiateData.session;
+    const { id: sessionId, totalChunks } = session;
     const fd = fs.openSync(filePath, 'r');
     let jobId: string | undefined =
-      typeof initiateData.session.jobId === 'string' && initiateData.session.jobId.length > 0
-        ? initiateData.session.jobId
-        : undefined;
+      typeof session.jobId === 'string' && session.jobId.length > 0 ? session.jobId : undefined;
 
     try {
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
@@ -179,11 +178,9 @@ export class FileIngestionService {
           Authorization: `Bearer ${accessToken}`,
         },
       });
-      const statusData = (await statusResponse.json().catch(() => ({}))) as {
-        success?: boolean;
-        session?: { jobId?: string };
-      };
-      jobId = statusData.session?.jobId;
+      const statusData = (await statusResponse.json().catch(() => ({}))) as any;
+      const session = statusData.data?.session || statusData.session;
+      jobId = statusData.data?.jobId || statusData.jobId || session?.jobId;
     }
 
     if (!jobId) {

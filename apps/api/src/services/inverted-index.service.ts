@@ -249,44 +249,47 @@ export class InvertedIndexService {
        VALUES (?, ?, ?, ?, ?, ?, 'real')`
     );
 
-    const transaction = this.db.transaction(() => {
-      for (const row of spanRows) {
-        const text = String(row.text || '');
-        const sourceId = String(row.source_id || '');
-        if (!text || !sourceId) {
-          continue;
-        }
-
-        sourceIds.add(sourceId);
-        const tokens = this.tokenize(text);
-        const termPositions = new Map<string, number[]>();
-
-        for (const token of tokens) {
-          if (!termPositions.has(token.canonical)) {
-            termPositions.set(token.canonical, []);
+    const CHUNK_SIZE = 200;
+    for (let i = 0; i < spanRows.length; i += CHUNK_SIZE) {
+      const chunk = spanRows.slice(i, i + CHUNK_SIZE);
+      const transaction = this.db.transaction(() => {
+        for (const row of chunk) {
+          const text = String(row.text || '');
+          const sourceId = String(row.source_id || '');
+          if (!text || !sourceId) {
+            continue;
           }
-          termPositions.get(token.canonical)!.push(token.start);
+
+          sourceIds.add(sourceId);
+          const tokens = this.tokenize(text);
+          const termPositions = new Map<string, number[]>();
+
+          for (const token of tokens) {
+            if (!termPositions.has(token.canonical)) {
+              termPositions.set(token.canonical, []);
+            }
+            termPositions.get(token.canonical)!.push(token.start);
+          }
+
+          for (const [term, positions] of termPositions) {
+            uniqueTerms.add(term);
+            insertPosting.run(
+              accountId,
+              term,
+              row.id,
+              sourceId,
+              positions.length,
+              JSON.stringify(positions)
+            );
+            postingCount++;
+          }
+
+          const contentHash = createHash('sha256').update(text).digest('hex').slice(0, 32);
+          insertDocStats.run(accountId, row.id, sourceId, tokens.length, text.length, contentHash);
         }
-
-        for (const [term, positions] of termPositions) {
-          uniqueTerms.add(term);
-          insertPosting.run(
-            accountId,
-            term,
-            row.id,
-            sourceId,
-            positions.length,
-            JSON.stringify(positions)
-          );
-          postingCount++;
-        }
-
-        const contentHash = createHash('sha256').update(text).digest('hex').slice(0, 32);
-        insertDocStats.run(accountId, row.id, sourceId, tokens.length, text.length, contentHash);
-      }
-    });
-
-    transaction();
+      });
+      transaction();
+    }
 
     const durationMs = Date.now() - startTime;
 
