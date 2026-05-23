@@ -475,19 +475,36 @@ function CreateConversationModal({
     const eligible: typeof storeNodes = [];
     const ineligible: typeof storeNodes = [];
 
-    for (const node of selectedNodes) {
-      const nodeKind = node.kind || node.type;
-      const isEligible = ['Source', 'SourceDoc', 'VerifiedSource', 'Group', 'Folder'].includes(
-        nodeKind
-      );
-      if (isEligible) {
-        eligible.push(node);
-      } else {
-        ineligible.push(node);
+    if (contextSpec) {
+      const sourceIdsSet = new Set(contextSpec.source_ids || []);
+      const groupIdsSet = new Set(contextSpec.group_ids || []);
+
+      for (const node of storeNodes) {
+        if (sourceIdsSet.has(node.id) || groupIdsSet.has(node.id)) {
+          eligible.push(node);
+        }
+      }
+
+      for (const node of selectedNodes) {
+        if (!sourceIdsSet.has(node.id) && !groupIdsSet.has(node.id)) {
+          ineligible.push(node);
+        }
+      }
+    } else {
+      for (const node of selectedNodes) {
+        const nodeKind = node.kind || node.type;
+        const isEligible = ['Source', 'SourceDoc', 'VerifiedSource', 'Group', 'Folder'].includes(
+          nodeKind
+        );
+        if (isEligible) {
+          eligible.push(node);
+        } else {
+          ineligible.push(node);
+        }
       }
     }
     return { eligibleNodes: eligible, ineligibleNodes: ineligible };
-  }, [selectedNodes]);
+  }, [selectedNodes, storeNodes, contextSpec]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -600,52 +617,45 @@ function CreateConversationModal({
                   Discussion Context Bounds
                 </h4>
                 <p className="text-xs text-slate-400 mb-3">
-                  Discussing{' '}
-                  {contextSummary
-                    ? contextSummary.selectedNodeCount - contextSummary.unsupportedNodeCount
-                    : eligibleNodes.length}{' '}
-                  valid sources/groups.
+                  Discussing {eligibleNodes.length} valid sources/groups.
                 </p>
 
                 {/* Eligible nodes list */}
-                {contextSummary || eligibleNodes.length > 0 ? (
-                  !contextSummary &&
-                  eligibleNodes.length > 0 && (
-                    <div className="space-y-2 mb-3 max-h-36 overflow-y-auto custom-scrollbar">
-                      {eligibleNodes.map((node) => {
-                        const nodeKind = node.kind || node.type;
-                        const isGroup = ['Group', 'Folder'].includes(nodeKind);
-                        const label = getNodeLabel(
-                          {
-                            id: node.id,
-                            kind: node.kind || node.type,
-                            label: node.data?.label,
-                            ...(node.data?.metadata || {}),
-                          } as LabelableNode,
-                          30
-                        );
+                {eligibleNodes.length > 0 ? (
+                  <div className="space-y-2 mb-3 max-h-36 overflow-y-auto custom-scrollbar">
+                    {eligibleNodes.map((node) => {
+                      const nodeKind = node.kind || node.type;
+                      const isGroup = ['Group', 'Folder'].includes(nodeKind);
+                      const label = getNodeLabel(
+                        {
+                          id: node.id,
+                          kind: node.kind || node.type,
+                          label: node.data?.label,
+                          ...(node.data?.metadata || {}),
+                        } as LabelableNode,
+                        30
+                      );
 
-                        return (
-                          <div
-                            key={node.id}
-                            className="flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800"
-                          >
-                            {isGroup ? (
-                              <Folder className="w-3.5 h-3.5 text-indigo-400" />
-                            ) : (
-                              <FileText className="w-3.5 h-3.5 text-emerald-400" />
-                            )}
-                            <span className="text-xs font-medium text-slate-200 truncate">
-                              {label}
-                            </span>
-                            <span className="text-[10px] text-slate-500 font-mono ml-auto truncate max-w-[80px]">
-                              {node.type}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )
+                      return (
+                        <div
+                          key={node.id}
+                          className="flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800"
+                        >
+                          {isGroup ? (
+                            <Folder className="w-3.5 h-3.5 text-indigo-400" />
+                          ) : (
+                            <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                          )}
+                          <span className="text-xs font-medium text-slate-200 truncate">
+                            {label}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono ml-auto truncate max-w-[80px]">
+                            {node.type}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : (
                   <div className="text-xs text-rose-400 mb-3 bg-rose-500/10 p-2.5 rounded-lg border border-rose-500/20">
                     ⚠️ No valid sources or groups selected. Discussion context requires at least one
@@ -654,18 +664,17 @@ function CreateConversationModal({
                 )}
 
                 {/* Excluded nodes list */}
-                {(contextSummary
-                  ? contextSummary.unsupportedNodeCount > 0
-                  : ineligibleNodes.length > 0) && (
+                {(ineligibleNodes.length > 0 ||
+                  (contextSummary && contextSummary.unsupportedNodeCount > 0)) && (
                   <div className="pt-3 border-t border-slate-800">
                     <p className="text-[10px] text-amber-500 font-medium mb-2">
                       ⚠️{' '}
-                      {contextSummary
-                        ? contextSummary.unsupportedNodeCount
-                        : ineligibleNodes.length}{' '}
+                      {ineligibleNodes.length > 0
+                        ? ineligibleNodes.length
+                        : contextSummary?.unsupportedNodeCount}{' '}
                       node(s) omitted (unsupported kinds):
                     </p>
-                    {!contextSummary && ineligibleNodes.length > 0 && (
+                    {ineligibleNodes.length > 0 ? (
                       <div className="space-y-1.5 max-h-24 overflow-y-auto custom-scrollbar">
                         {ineligibleNodes.map((node) => {
                           const label = getNodeLabel(
@@ -688,10 +697,9 @@ function CreateConversationModal({
                           );
                         })}
                       </div>
-                    )}
-                    {contextSummary && (
-                      <p className="text-[10px] text-slate-500">
-                        Note: {contextSummary.unsupportedNodeCount} nodes were excluded from the
+                    ) : (
+                      <p className="text-[10px] text-slate-500 font-medium">
+                        Note: {contextSummary?.unsupportedNodeCount} nodes were excluded from the
                         selection context.
                       </p>
                     )}

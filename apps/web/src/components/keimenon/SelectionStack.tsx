@@ -129,18 +129,22 @@ export function SelectionStack({
         <p className="text-xs text-slate-500">Selected items - click to expand details</p>
 
         {/* Legit counts */}
-        <div className="flex flex-wrap gap-2 mt-3">
-          <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-300 font-medium">
-            Total: {selectedNodes.length}
-          </span>
-          <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950/40 border border-emerald-800/30 text-emerald-400 font-medium">
-            Valid Context:{' '}
-            {conversationContext.contextSpec.source_ids.length +
-              conversationContext.contextSpec.group_ids.length}
-          </span>
+        <div className="flex flex-col gap-1.5 mt-3">
+          <div className="flex flex-wrap gap-2">
+            <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-300 font-medium">
+              Total Selected: {selectedNodes.length}
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950/40 border border-emerald-800/30 text-emerald-400 font-medium">
+              {conversationContext.contextSpec.source_ids.length}{' '}
+              {conversationContext.contextSpec.source_ids.length === 1 ? 'source' : 'sources'},{' '}
+              {conversationContext.contextSpec.group_ids.length}{' '}
+              {conversationContext.contextSpec.group_ids.length === 1 ? 'group' : 'groups'} attached
+            </span>
+          </div>
           {conversationContext.unsupportedNodeCount > 0 && (
-            <span className="text-[10px] px-2 py-0.5 rounded bg-amber-950/40 border border-amber-800/30 text-amber-400 font-medium animate-pulse">
-              Unsupported: {conversationContext.unsupportedNodeCount}
+            <span className="text-[10px] px-2 py-0.5 rounded bg-amber-950/40 border border-amber-800/30 text-amber-400 font-medium w-fit animate-pulse">
+              {conversationContext.unsupportedNodeCount} unsupported{' '}
+              {conversationContext.unsupportedNodeCount === 1 ? 'node' : 'nodes'} ignored
             </span>
           )}
         </div>
@@ -421,7 +425,7 @@ export function SelectionStack({
                   ? 'No eligible sources or groups selected'
                   : `Discuss selection (${conversationContext.contextSpec.source_ids.length} sources, ${conversationContext.contextSpec.group_ids.length} groups)`
               }
-              className="flex items-center gap-1 px-3 py-1.5 text-xs bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 rounded transition-colors text-indigo-400 disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 rounded transition-colors text-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-800/20 disabled:text-slate-600 disabled:border-slate-800"
             >
               <MessageSquare className="w-3 h-3" />
               Discuss Selection
