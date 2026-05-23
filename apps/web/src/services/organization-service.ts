@@ -140,6 +140,7 @@ export interface AgentRunProvenance {
   model?: string | null;
   skill_used?: string;
   duration_ms?: number;
+  status?: 'success' | 'error';
   evidence: AgentRunProvenanceEvidence[];
   stats: {
     total_items: number;

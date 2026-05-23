@@ -1069,6 +1069,7 @@ export function createConversationsRoutes(db: SQLiteClient, authService: AuthSer
           model: runProps.model || null,
           skill_used: runProps.skill_used || 'unknown',
           duration_ms: runProps.duration_ms || 0,
+          status: runProps.status || 'success',
           evidence: evidenceNodes,
           stats: {
             total_items: evidenceNodes.length,

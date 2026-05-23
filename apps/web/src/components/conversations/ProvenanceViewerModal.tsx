@@ -510,11 +510,23 @@ export function ProvenanceViewerModal({ runId, onClose }: ProvenanceViewerModalP
             </div>
           ) : !provenance || provenance.evidence.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center h-96 space-y-2 text-slate-400">
-              <Network className="w-8 h-8 text-slate-700 mb-2" />
-              <p>No explicit evidence was bound to this run.</p>
-              <p className="text-xs text-slate-600">
-                The model may have answered from general knowledge.
-              </p>
+              {provenance?.status === 'error' ? (
+                <div className="text-center p-6 flex flex-col items-center justify-center">
+                  <AlertCircle className="w-10 h-10 text-rose-500 mb-3 animate-pulse shrink-0" />
+                  <p className="text-slate-200 font-semibold mb-1">Agent Run Execution Failed</p>
+                  <p className="text-xs text-slate-500 max-w-xs leading-normal">
+                    This run terminated with an error. No context evidence was bound or processed.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <Network className="w-8 h-8 text-slate-700 mb-2" />
+                  <p>No explicit evidence was bound to this run.</p>
+                  <p className="text-xs text-slate-600">
+                    The model may have answered from general knowledge.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <React.Fragment>

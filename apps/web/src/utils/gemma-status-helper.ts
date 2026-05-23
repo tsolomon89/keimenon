@@ -72,9 +72,9 @@ export function getLocalInferenceStatusLabel(status: LocalInferenceStatus | null
     case 'ready':
       return { label: 'Local Runtime Ready', tone: 'online' };
     case 'runtime_unimplemented':
-      return { label: 'Native Runtime Pending', tone: 'neutral' };
+      return { label: 'Native Gemma runtime unavailable', tone: 'error' };
     case 'runtime_missing':
-      return { label: 'Native Runtime Missing', tone: 'error' };
+      return { label: 'Native Gemma runtime unavailable', tone: 'error' };
     case 'model_missing':
       return { label: 'Model Missing', tone: 'warning' };
     case 'license_required':

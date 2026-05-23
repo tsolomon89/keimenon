@@ -90,9 +90,6 @@ export function ConversationMessageRuntime({
     setSending(true);
     setError(null);
 
-    // Optimistically add user message placeholder if needed,
-    // but the API returns the actual saved message anyway.
-
     try {
       const response = await organizationService.postConversationMessage(
         conversation.id,
@@ -108,6 +105,17 @@ export function ConversationMessageRuntime({
             (assistantMsg as any)._agentRunDetails = response.agentRunDetails;
           }
           newMessages.push(assistantMsg);
+        } else if (response.synthesisError) {
+          // Construct virtual assistant error message placeholder for Phase 7 failure state
+          const errorMsg = {
+            id: `msg_err_${Date.now()}`,
+            role: 'assistant',
+            content: `Synthesis failed: ${response.synthesisError}`,
+            synthesis_error: response.synthesisError,
+            _agentRunDetails: response.agentRunDetails,
+            timestamp: Date.now(),
+          };
+          newMessages.push(errorMsg as any);
         }
         return newMessages;
       });
@@ -117,10 +125,57 @@ export function ConversationMessageRuntime({
       }
     } catch (err: any) {
       setError(err.message || 'Failed to send message');
-      // If it failed completely, user can try again
       setInputValue(content);
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleRetry = async (errorMsg: any) => {
+    const errorIndex = messages.findIndex((m) => m.id === errorMsg.id);
+    if (errorIndex <= 0) return;
+    const prevMsg = messages[errorIndex - 1];
+    if (prevMsg && prevMsg.role === 'user') {
+      // Clear the error message card from state
+      setMessages((prev) => prev.filter((m) => m.id !== errorMsg.id));
+      setSending(true);
+      setError(null);
+      try {
+        const response = await organizationService.postConversationMessage(
+          conversation.id,
+          prevMsg.content || '',
+          true
+        );
+
+        setMessages((prev) => {
+          if (response.assistantMessage) {
+            const assistantMsg = { ...response.assistantMessage };
+            if (response.agentRunDetails) {
+              (assistantMsg as any)._agentRunDetails = response.agentRunDetails;
+            }
+            return [...prev, assistantMsg];
+          } else if (response.synthesisError) {
+            const errCard = {
+              id: `msg_err_${Date.now()}`,
+              role: 'assistant',
+              content: `Synthesis failed: ${response.synthesisError}`,
+              synthesis_error: response.synthesisError,
+              _agentRunDetails: response.agentRunDetails,
+              timestamp: Date.now(),
+            };
+            return [...prev, errCard as any];
+          }
+          return prev;
+        });
+
+        if (response.synthesisError) {
+          setError(response.synthesisError);
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to retry message');
+      } finally {
+        setSending(false);
+      }
     }
   };
 
@@ -324,9 +379,21 @@ export function ConversationMessageRuntime({
                         {content}
                       </div>
                       {synthesisError && (
-                        <div className="mt-3 text-xs bg-red-900/50 border border-red-500/50 text-red-200 p-2 rounded flex items-start gap-2">
-                          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                          <span>Synthesis failed: {synthesisError}</span>
+                        <div className="mt-3 flex flex-col gap-2 bg-red-950/20 border border-red-500/20 p-3 rounded-xl max-w-sm">
+                          <div className="text-xs text-red-400 flex items-start gap-2 leading-relaxed">
+                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                            <span>Synthesis failed: {synthesisError}</span>
+                          </div>
+                          <div className="flex gap-2 mt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleRetry(msg)}
+                              disabled={sending}
+                              className="px-2.5 py-1 text-[11px] font-semibold bg-red-950/40 hover:bg-red-900/40 border border-red-500/20 text-red-300 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-slate-800 rounded transition-colors"
+                            >
+                              Retry Generation
+                            </button>
+                          </div>
                         </div>
                       )}
                       {(msg as any)._agentRunDetails && (
