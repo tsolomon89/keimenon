@@ -1171,6 +1171,9 @@ export function ChatImportModal({ onDismiss }: ChatImportModalProps) {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-white">Graph Birth Complete</h3>
+                  {currentJobId && (
+                    <p className="text-xs text-slate-500 font-mono mt-1">Job ID: {currentJobId}</p>
+                  )}
                   <p className="text-sm text-slate-400 mt-2 max-w-md mx-auto">
                     Your conversations have been fully transformed and materialized into the
                     similarity-weighted knowledge graph.
