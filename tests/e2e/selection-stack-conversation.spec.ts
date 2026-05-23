@@ -95,7 +95,7 @@ test.describe('Frontend Golden Path: Canvas Selection → Scoped Conversation Pa
 
     // Assert the warning text is visible in the modal showing 1 unsupported node was excluded
     await expect(page.getByText(/Discussing 2 valid sources\/groups\./i)).toBeVisible();
-    await expect(page.getByText(/Note: 1 nodes were excluded/i)).toBeVisible();
+    await expect(page.getByText(/1 node\(s\) omitted/i)).toBeVisible();
 
     // 4. Intercept the conversation creation API POST using route mock
     let postData: any = null;
@@ -146,6 +146,7 @@ test.describe('Frontend Golden Path: Canvas Selection → Scoped Conversation Pa
 
     // 6. Assert stale state does not persist
     // Close the browser view and open start conversation modal again manually
+    await page.getByRole('button', { name: 'Back to conversations' }).click();
     await page.getByRole('button', { name: 'Start New Conversation', exact: true }).click();
 
     // Ensure the old warning isn't there

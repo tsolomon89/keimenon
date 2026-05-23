@@ -96,6 +96,29 @@ function shouldBypassSavepoint(testInfo: { file: string }): boolean {
 }
 
 /**
+ * Restore fresh database snapshot for bypass tests
+ * to prevent database pollution between sequential tests in the same worker
+ */
+async function restoreWorkerDbForBypass(workerIndex: number): Promise<void> {
+  const { DatabaseSnapshotManager } = await import('./database-snapshots');
+  const snapshotManager = new DatabaseSnapshotManager();
+  const workerDbAbsolutePath = path.join(process.cwd(), '.test-dbs', `worker-${workerIndex}.db`);
+
+  try {
+    const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4001';
+    await fetch(`${API_BASE_URL}/api/v1/test/close-connection`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ testDbPath: workerDbAbsolutePath }),
+    });
+  } catch (error) {
+    // Ignore if API not ready
+  }
+
+  await snapshotManager.restoreToWorker(workerIndex);
+}
+
+/**
  * Initialize worker-specific database
  * Copies template DB and updates test user to be worker-specific
  */
@@ -220,6 +243,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
       isolationLog(
         `[Test Isolation] Savepoint bypass enabled for API context (${path.basename(testInfo.file)})`
       );
+      await restoreWorkerDbForBypass(testInfo.workerIndex);
       await use(apiContext);
       await rawApiContext.dispose();
       return;
@@ -390,6 +414,7 @@ export const test = base.extend<TestIsolationFixtures, TestIsolationWorkerFixtur
       isolationLog(
         `[Test Isolation] Savepoint bypass enabled for page context (${path.basename(testInfo.file)})`
       );
+      await restoreWorkerDbForBypass(testInfo.workerIndex);
       await use(page);
       return;
     }

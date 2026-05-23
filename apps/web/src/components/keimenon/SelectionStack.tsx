@@ -117,7 +117,9 @@ export function SelectionStack({
       {/* Header */}
       <div className="p-4 border-b border-slate-800">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-slate-300">Selection Stack</h3>
+          <h3 className="text-sm font-semibold text-slate-300">
+            Selection Stack ({selectedNodes.length})
+          </h3>
           <button
             onClick={onClearAll}
             className="text-xs text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1"
