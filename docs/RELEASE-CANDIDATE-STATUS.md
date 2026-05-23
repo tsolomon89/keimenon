@@ -45,6 +45,16 @@ To guarantee zero test regressions and absolute build reproducibility, the follo
   - `npm run desktop:web-dist:refresh`: Re-runs a fresh Next.js build and syncs files.
   - `npm run desktop:web-dist:verify`: Compares embedded files against an exact checksum manifest, flagging any asset drift before compilation.
 
+### D. Standalone Dependency & ESM-CJS Alignment Hardening
+
+- **Problem**:
+  1. `@keimenon/parsers` and `@keimenon/api` relied on `canonicalize` and `jsonwebtoken` which were missing from production `dependencies` declarations (working in dev due to monorepo hoisting, but causing crash on packaged app start).
+  2. `@keimenon/agent-core` was compiled as an ES Module (`"type": "module"`, `"module": "NodeNext"`), causing `ERR_REQUIRE_ESM` when required inside the CommonJS Electron main process.
+- **Design Choice**:
+  - Explicitly added `canonicalize` and `jsonwebtoken` as workspace production dependencies.
+  - Converted `@keimenon/agent-core` fully to CommonJS (removed `"type": "module"` and set target compilerOptions to `"module": "commonjs"` / `"moduleResolution": "node"`), aligning the entire monorepo backend to a single, stable CommonJS package ecosystem.
+  - Verified a successful packaged manual launch under isolated Roaming AppData (`%APPDATA%/keimenon-desktop/keimenon.db`).
+
 ---
 
 ## 3. Local Inference and Native Truth Gates

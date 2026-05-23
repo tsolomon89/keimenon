@@ -80,9 +80,8 @@ export class SQLiteJobRepository implements JobRepository {
    */
   private async getDbForJob(job: Job): Promise<Database.Database> {
     const testDbPath = job.config.testContext?.dbPath;
-    const isTestMode = process.env.NODE_ENV === 'test';
 
-    if (testDbPath && isTestMode) {
+    if (testDbPath) {
       const { getJobsDbClient } = await import('../../../utils/get-db-client');
       const mockReq = { testDbPath } as any;
       const jobsClient = await getJobsDbClient(mockReq);

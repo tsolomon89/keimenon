@@ -107,14 +107,12 @@ export function requireAuth(authService: AuthServiceV2) {
       // This enables capability-based checks (F1: Principal Equivalence)
       try {
         if (dbClientRaw) {
-          // Use the request-scoped database instance!
-          // We wrap the database in an object that looks like the SQLiteClient that the services expect
-          const mockDbClient = { getDatabase: () => database, db: database };
-          const capabilityService = new CapabilityAuthorizationService(mockDbClient as any);
+          // Use the request-scoped database instance directly!
+          const capabilityService = new CapabilityAuthorizationService(dbClientRaw);
           let capabilityPrincipalId = payload.userId;
 
           try {
-            const principalService = new PrincipalService(mockDbClient as any);
+            const principalService = new PrincipalService(dbClientRaw);
             const principal = await principalService.resolveHumanPrincipal(
               payload.accountId,
               payload.userId,

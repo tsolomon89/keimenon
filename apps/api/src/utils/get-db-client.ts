@@ -130,9 +130,7 @@ export async function getDbClient(req?: Request): Promise<any> {
  * @returns Database client for jobs operations
  */
 export async function getJobsDbClient(req?: Request): Promise<any> {
-  const isTestMode = process.env.NODE_ENV === 'test';
-
-  if (!isTestMode || !req?.testDbPath) {
+  if (!req?.testDbPath) {
     // Production mode: jobs are in main database
     return global.dbClient;
   }

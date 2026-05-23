@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@keimenon/types": "*",
+    "canonicalize": "^2.1.0",
     "nanoid": "^3.3.7",
     "ulid": "^3.0.1",
     "uuid": "^9.0.1"
