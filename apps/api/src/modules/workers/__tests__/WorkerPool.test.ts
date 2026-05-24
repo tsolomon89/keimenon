@@ -19,6 +19,18 @@ import { StartJob } from '../../jobs/application/StartJob';
 import { SSEBroadcaster } from '../../jobs/infrastructure/SSEBroadcaster';
 import { BaseWorker, WorkerContext, WorkerResult } from '../domain/Worker';
 
+// ── Top Level Vitest Mocks ──────────────────────────────────────────
+// Must be defined at the top level to comply with Vitest's hoisting and isolation policies
+export const mockCompensateJobExecute = vi.fn().mockResolvedValue({ success: true });
+
+vi.mock('../../jobs/application/CompensateJob', () => {
+  return {
+    CompensateJob: class {
+      execute = mockCompensateJobExecute;
+    },
+  };
+});
+
 // Mock worker that simulates long-running work
 class MockImportWorker extends BaseWorker {
   readonly type = 'import' as const;
@@ -401,5 +413,70 @@ describe('WorkerPool', () => {
     assert.strictEqual(finalJob.status, 'canceled', 'Job should be marked as canceled');
 
     await workerPool.stop();
+  });
+
+  it('should trigger automatic database rollback on import failure', async () => {
+    // 1. Mock global.dbClient
+    const mockDbClient = {
+      enableDirectWrites: vi.fn(),
+      disableDirectWrites: vi.fn(),
+    };
+    (global as any).dbClient = mockDbClient;
+
+    // 2. Clear mock state
+    mockCompensateJobExecute.mockClear();
+
+    // 3. Create a mock worker that always fails
+    class MockFailedWorker extends BaseWorker {
+      readonly type = 'import' as const;
+      validate(job: Job): boolean {
+        return true;
+      }
+      protected async execute(): Promise<WorkerResult> {
+        return {
+          success: false,
+          error: { code: 'TEST_ERROR', message: 'Simulated import failure' },
+        };
+      }
+    }
+
+    const failingWorker = new MockFailedWorker();
+
+    // Register failing worker in a new worker pool
+    const testPool = new WorkerPool(jobRepository, concurrencyGuard, startJob, {
+      maxConcurrentJobs: 1,
+      pollIntervalMs: 50,
+    });
+    testPool.registerWorker(failingWorker);
+
+    // Save job
+    const jobSpec: JobSpec = {
+      type: 'import',
+      accountId: 'acc_rollback_test',
+      createdBy: 'user_test',
+      config: { files: [] },
+    };
+    const job = Job.create(jobSpec);
+    await jobRepository.save(job);
+
+    // Start pool and wait for job execution and failure
+    await testPool.start();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // Verify CompensateJob was triggered automatically
+    assert.strictEqual(
+      mockCompensateJobExecute.mock.calls.length,
+      1,
+      'CompensateJob execute should be called once'
+    );
+    const firstCallArg = mockCompensateJobExecute.mock.calls[0][0];
+    assert.strictEqual(firstCallArg.jobId, job.id, 'Should rollback correct jobId');
+    assert.strictEqual(firstCallArg.accountId, job.accountId, 'Should rollback correct accountId');
+    assert.strictEqual(firstCallArg.compensatedBy, 'system', 'Should specify compensatedBy system');
+
+    // Clean up
+    await testPool.stop();
+    delete (global as any).dbClient;
+    vi.restoreAllMocks();
   });
 });

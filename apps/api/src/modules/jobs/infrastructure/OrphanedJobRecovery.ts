@@ -101,17 +101,8 @@ export async function recoverOrphanedJobs(jobRepository: JobRepository): Promise
             interruptedAt: Date.now(),
             interruptedReason: 'SERVER_RESTART',
           });
-          job.retry();
-          appendRecoveryTimelineEvent(job, 'auto_resumed', {
-            reason: 'SERVER_RESTART',
-          });
-          job.updateStateMetadata({
-            autoResumedAt: Date.now(),
-            autoResumeReason: 'SERVER_RESTART',
-          });
-          result.autoResumed += 1;
           await jobRepository.save(job);
-          console.log(`   ✓ Auto-resumed import ${job.id} from restart interruption${suffix}`);
+          console.log(`   ✓ Recovered orphaned import ${job.id} as blocked/recoverable${suffix}`);
         } else {
           job.fail({
             code: 'ORPHANED',
@@ -126,39 +117,8 @@ export async function recoverOrphanedJobs(jobRepository: JobRepository): Promise
       }
     }
 
-    const recoverableBlockedJobs = await jobRepository.find({
-      status: 'blocked',
-      limit: 1000,
-    });
-    for (const job of recoverableBlockedJobs) {
-      if (job.type !== 'import') {
-        continue;
-      }
-      const metadata = (job.state.metadata || {}) as Record<string, unknown>;
-      const interruptedReason = String(metadata.interruptedReason || '');
-      const recoverableAfterRestart = metadata.recoverableAfterRestart === true;
-      if (!recoverableAfterRestart || interruptedReason !== 'SERVER_RESTART') {
-        continue;
-      }
-      try {
-        if (!job.canResume) {
-          continue;
-        }
-        job.retry();
-        appendRecoveryTimelineEvent(job, 'auto_resumed', {
-          reason: 'SERVER_RESTART',
-          source: 'blocked_job_scan',
-        });
-        job.updateStateMetadata({
-          autoResumedAt: Date.now(),
-          autoResumeReason: 'SERVER_RESTART',
-        });
-        await jobRepository.save(job);
-        result.autoResumed += 1;
-      } catch (error: any) {
-        console.error(`   ✗ Failed to auto-resume blocked job ${job.id}:`, error.message);
-      }
-    }
+    // We do NOT auto-resume blocked jobs anymore to prevent stuck restart loops.
+    // The user must explicitly choose to resume the blocked import or clear the data.
 
     // Summary
     const successCount = result.total - result.failed.length;

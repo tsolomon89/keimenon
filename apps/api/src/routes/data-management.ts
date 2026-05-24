@@ -257,6 +257,30 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
       const dataTag = req.query.data_tag as string | undefined;
       const now = Date.now();
 
+      // Clear any running imports for this account before clearing data
+      const workerPool = (global as any).workerPool;
+      if (workerPool) {
+        const poolStatus = workerPool.getStatus();
+        const activeImports = poolStatus.currentJobs.filter(
+          (j: any) => j.type === 'import' && (isAdmin || j.accountId === accountId)
+        );
+
+        if (activeImports.length > 0) {
+          console.log(
+            `[Data Management] ⛔ Found ${activeImports.length} active import(s) during clear request. Canceling...`
+          );
+          for (const activeJob of activeImports) {
+            await workerPool.cancelJob(
+              activeJob.jobId,
+              activeJob.accountId || accountId,
+              'Canceled due to data management clear operation'
+            );
+          }
+          // Sleep for 500ms to allow worker to cooperatively yield database locks
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
+
       // Build WHERE clause based on admin status and data_tag filter
       // Admin users can see and delete ALL data (matching graph view behavior)
       const accountFilter = isAdmin ? '' : 'AND account_id = ?';
@@ -470,6 +494,28 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
       const adminUserId = (req as any).user.userId;
       const adminAccountId = (req as any).user.accountId;
       const now = Date.now();
+
+      // Clear any running imports before clearing all client data
+      const workerPool = (global as any).workerPool;
+      if (workerPool) {
+        const poolStatus = workerPool.getStatus();
+        const activeImports = poolStatus.currentJobs.filter((j: any) => j.type === 'import');
+
+        if (activeImports.length > 0) {
+          console.log(
+            `[Data Management] ⛔ Found ${activeImports.length} active import(s) during clear-all request. Canceling...`
+          );
+          for (const activeJob of activeImports) {
+            await workerPool.cancelJob(
+              activeJob.jobId,
+              activeJob.accountId || adminAccountId,
+              'Canceled due to admin data management clear-all operation'
+            );
+          }
+          // Sleep for 500ms to allow worker to cooperatively yield database locks
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
 
       // Get all client accounts linked to this admin (enforce account_links authorization)
       const clientAccounts = database
@@ -804,6 +850,129 @@ export function createDataManagementRoutes(db: SQLiteClient, authService: AuthSe
           { accountId, errorName: error.name }
         );
       }
+    })
+  );
+
+  /**
+   * POST /api/v1/data/reset-hard
+   * Personal/Desktop only: Escape hatch nuclear option.
+   * Completely stops active jobs, disconnects SQLite, physically deletes the .db files,
+   * and boots a fresh, clean database seeded with default admin user.
+   */
+  router.post(
+    '/reset-hard',
+    requireAuth(authService),
+    asyncHandler(async (req: Request, res: Response) => {
+      console.log('[Hard Reset] 🚨 Initiating nuclear hard reset...');
+
+      const workerPool = (global as any).workerPool;
+      const writeQueue = (global as any).writeQueue;
+      const dbClient = (global as any).dbClient;
+
+      if (!dbClient) {
+        return res.status(500).json({ success: false, error: 'Database client not initialized' });
+      }
+
+      const dbPath = dbClient.config.databasePath;
+      console.log(`[Hard Reset] Database file path: ${dbPath}`);
+
+      // 1. Abort and stop all background workers
+      if (workerPool) {
+        console.log('[Hard Reset] Stopping worker pool...');
+        await workerPool.stop();
+      }
+
+      // 2. Stop and drain the write queue
+      if (writeQueue) {
+        console.log('[Hard Reset] Stopping write queue...');
+        await writeQueue.stop();
+      }
+
+      // 3. Disconnect SQLite and reset the factory singleton
+      console.log('[Hard Reset] Disconnecting from SQLite...');
+      const { DatabaseFactory } = await import('@keimenon/db');
+      await DatabaseFactory.closeAll();
+
+      // 4. Physically delete SQLite database files from disk
+      const fs = await import('fs/promises');
+      try {
+        await fs.rm(dbPath, { force: true });
+        await fs.rm(`${dbPath}-wal`, { force: true });
+        await fs.rm(`${dbPath}-shm`, { force: true });
+        console.log('[Hard Reset] Physical database files deleted.');
+      } catch (err: any) {
+        console.error('[Hard Reset] Warning: Error deleting database files:', err.message);
+      }
+
+      // 5. Re-create a fresh database client (will automatically connect and run migrations)
+      console.log('[Hard Reset] Creating a fresh database client...');
+      const newDbClient = await DatabaseFactory.getClient({
+        mode: 'local',
+        local: {
+          databasePath: dbPath,
+          verbose: process.env.NODE_ENV === 'development',
+        },
+      });
+      global.dbClient = newDbClient;
+
+      // 6. Assert compatibility and seed default admin account
+      if ((newDbClient as any).assertImportSchemaCompatibility) {
+        (newDbClient as any).assertImportSchemaCompatibility();
+      }
+      const { seedAdminAccount } = await import('@keimenon/db');
+      await seedAdminAccount(newDbClient as any);
+      console.log('[Hard Reset] Fresh database schema and seed completed.');
+
+      // 7. Update AuthService database reference
+      const activeAuthService = (global as any).authService || authService;
+      if (activeAuthService) {
+        (activeAuthService as any).db = newDbClient;
+        console.log('[Hard Reset] AuthService updated.');
+      }
+
+      // 8. Re-create and start the DatabaseWriteQueue
+      const { DatabaseWriteQueue } = await import('../services/DatabaseWriteQueue');
+      const newWriteQueue = new DatabaseWriteQueue(newDbClient, (global as any).sseBroadcaster);
+      newWriteQueue.start();
+      (global as any).writeQueue = newWriteQueue;
+      console.log('[Hard Reset] DatabaseWriteQueue re-initialized.');
+
+      // 9. Re-create and start the WorkerPool
+      const { SQLiteJobRepository } = await import('../modules/jobs/infrastructure/JobRepository');
+      const newJobRepository = new SQLiteJobRepository((newDbClient as any).db);
+      (global as any).jobRepository = newJobRepository;
+
+      if ((global as any).sseBroadcaster) {
+        (global as any).sseBroadcaster.setJobRepository(newJobRepository);
+      }
+
+      const { WorkerPool } = await import('../modules/workers/domain/WorkerPool');
+      const { ConcurrencyGuard } = await import('../modules/workers/domain/ConcurrencyGuard');
+      const { StartJob } = await import('../modules/jobs/application/StartJob');
+      const { ImportWorker } = await import('../modules/workers/infrastructure/ImportWorker');
+      const { DeleteWorker } = await import('../modules/workers/infrastructure/DeleteWorker');
+
+      const newWorkerPool = new WorkerPool(
+        newJobRepository,
+        new ConcurrencyGuard(newJobRepository),
+        new StartJob(newJobRepository),
+        {
+          maxConcurrentJobs: parseInt(process.env.MAX_CONCURRENT_JOBS || '3', 10),
+          pollIntervalMs: parseInt(process.env.WORKER_POLL_INTERVAL_MS || '5000', 10),
+        },
+        (global as any).sseBroadcaster
+      );
+
+      newWorkerPool.registerWorker(new ImportWorker(newDbClient, newWriteQueue));
+      newWorkerPool.registerWorker(new DeleteWorker(newDbClient));
+      await newWorkerPool.start();
+      (global as any).workerPool = newWorkerPool;
+      console.log('[Hard Reset] WorkerPool re-initialized.');
+
+      return res.json({
+        success: true,
+        message: 'Keimenon has been successfully hard reset to a clean, fresh state.',
+      });
     })
   );
 

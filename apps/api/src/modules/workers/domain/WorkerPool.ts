@@ -130,6 +130,7 @@ export class WorkerPool {
       currentJobs: Array.from(this.activeJobs.values()).map((e) => ({
         jobId: e.job.id,
         type: e.job.type,
+        accountId: e.job.accountId,
         status: e.job.status,
         startedAt: e.startedAt,
       })),
@@ -431,6 +432,14 @@ export class WorkerPool {
         );
       }
 
+      // Rollback failed or canceled imports automatically to prevent orphaned data!
+      if (
+        updatedJob.type === 'import' &&
+        (updatedJob.status === 'failed' || updatedJob.status === 'canceled')
+      ) {
+        await this.triggerImportRollback(updatedJob);
+      }
+
       if (
         updatedJob.type === 'import' &&
         (updatedJob.status === 'succeeded' ||
@@ -496,6 +505,7 @@ export class WorkerPool {
             await this.jobRepository.save(failedJob);
             if (failedJob.type === 'import') {
               await this.cleanupImportInputArtifacts(failedJob);
+              await this.triggerImportRollback(failedJob);
             }
             if (failedJob.type === 'import') {
               getImportMetrics().recordJobTerminal({
@@ -860,20 +870,6 @@ export class WorkerPool {
               recoveryTimeline: timeline.slice(-50),
               lastRecoveryEvent: 'recovered_blocked',
             });
-            if (job.canResume) {
-              job.retry();
-              timeline.push({
-                event: 'auto_resumed',
-                timestamp: Date.now(),
-                reason: 'SERVER_RESTART',
-              });
-              job.updateStateMetadata({
-                recoveryTimeline: timeline.slice(-50),
-                lastRecoveryEvent: 'auto_resumed',
-                autoResumedAt: Date.now(),
-                autoResumeReason: 'SERVER_RESTART',
-              });
-            }
             await this.jobRepository.save(job);
           } else {
             job.fail({
@@ -894,49 +890,54 @@ export class WorkerPool {
         }
       }
 
-      const recoverableBlockedJobs = await this.jobRepository.find({
-        status: ['blocked'],
-        limit: 1000,
-      });
-      for (const blockedJob of recoverableBlockedJobs) {
-        if (blockedJob.type !== 'import') {
-          continue;
-        }
-        const metadata = (blockedJob.state.metadata || {}) as Record<string, unknown>;
-        if (
-          metadata.recoverableAfterRestart !== true ||
-          String(metadata.interruptedReason || '') !== 'SERVER_RESTART'
-        ) {
-          continue;
-        }
-        if (!blockedJob.canResume) {
-          continue;
-        }
-        blockedJob.retry();
-        const timeline = Array.isArray(metadata.recoveryTimeline)
-          ? [...(metadata.recoveryTimeline as Array<Record<string, unknown>>)]
-          : [];
-        timeline.push({
-          event: 'auto_resumed',
-          timestamp: Date.now(),
-          reason: 'SERVER_RESTART',
-          source: 'blocked_job_scan',
-        });
-        blockedJob.updateStateMetadata({
-          recoveryTimeline: timeline.slice(-50),
-          lastRecoveryEvent: 'auto_resumed',
-          autoResumedAt: Date.now(),
-          autoResumeReason: 'SERVER_RESTART',
-        });
-        await this.jobRepository.save(blockedJob);
-        if (this.broadcaster) {
-          this.broadcaster.broadcastJobUpdate(blockedJob);
-        }
-      }
+      // We do NOT auto-resume blocked jobs anymore to prevent stuck restart loops.
+      // The user must explicitly choose to resume the blocked import or clear the data.
 
       console.log(`✅ Recovered ${orphanedCount} orphaned job(s)`);
     } catch (error: any) {
       console.error('❌ Error recovering orphaned jobs:', error);
+    }
+  }
+
+  /**
+   * Automatically roll back partially written data from failed or canceled imports.
+   * Resolves: KV-FEAT - No orphaned data from failed imports.
+   */
+  private async triggerImportRollback(job: Job): Promise<void> {
+    try {
+      console.log(
+        `[WorkerPool] 🔄 Triggering automatic database rollback for failed/canceled import job ${job.id}...`
+      );
+      const dbClient = (global as any).dbClient;
+      if (!dbClient) {
+        console.error(
+          `[WorkerPool] ❌ Cannot rollback job ${job.id}: global.dbClient is not available`
+        );
+        return;
+      }
+
+      const { CompensateJob } = await import('../../jobs/application/CompensateJob');
+      const compensateJob = new CompensateJob(this.jobRepository, dbClient);
+
+      // Perform direct rollback using CompensateJob
+      const result = await compensateJob.execute({
+        jobId: job.id,
+        accountId: job.accountId,
+        compensatedBy: 'system',
+      });
+
+      if (result.success) {
+        console.log(`[WorkerPool] ✅ Automatic database rollback complete for job ${job.id}`);
+      } else {
+        console.error(
+          `[WorkerPool] ❌ Automatic database rollback failed for job ${job.id}: ${result.error}`
+        );
+      }
+    } catch (error: any) {
+      console.error(
+        `[WorkerPool] ❌ Error during automatic database rollback for job ${job.id}:`,
+        error
+      );
     }
   }
 }
