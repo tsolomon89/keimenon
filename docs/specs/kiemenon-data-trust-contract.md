@@ -41,7 +41,13 @@ Requirements: `KV-TIER-002`, `KV-DATA-004`
 
 Requirements: `KV-AGENT-001`, `KV-AGENT-002`, `KV-AGENT-003`
 
-## 6) Drift Discipline (AGENTS-canonical)
+## 6) Ingestion Stability and Integrity Contract (Aligned)
+
+- **Resilient Ingest (Partial Success)**: Ingestion commits all valid nodes and edges in a batch. Constraint-violating rows are quarantined in the `bulk_insert_quarantine` table via a separate transaction. The overall job completes as `completed_with_warnings` to keep the user informed without blocking.
+- **Validate & Resume**: Resuming blocked (interrupted) imports requires validating that raw source files exist and database states perfectly match the checkpoint before starting worker threads. Discrepancies fail loud with diagnostic codes.
+- **Rollback Failure Escalation (Safe Lockout)**: If `CompensateJob` rollback fails or is interrupted, the job is marked `ROLLBACK_FAILED`, further imports for the target account are locked, and the user is guided to execute a health check or a Hard Reset.
+
+## 7) Drift Discipline (AGENTS-canonical)
 
 - Root `AGENTS.md` is canonical; supplementary documents cannot override it.
 - Any disagreement between requirement ledger, traceability matrices, and implementation evidence is treated as a documentation defect.
