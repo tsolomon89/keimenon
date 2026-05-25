@@ -7,7 +7,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Trash2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Trash2, AlertTriangle, Loader2, Flame } from 'lucide-react';
 import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { errorCapture } from '@/services/error-capture.service';
@@ -27,7 +27,7 @@ interface DataStats {
 }
 
 export function DataManagementCard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { addOperation, updateOperation, getOperation } = useBackgroundOperations();
   const { jobs: sseJobs } = useJobStream();
   const [showClearModal, setShowClearModal] = useState(false);
@@ -37,6 +37,12 @@ export function DataManagementCard() {
   const [loadingStats, setLoadingStats] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Nuclear Hard Reset states
+  const [showHardResetModal, setShowHardResetModal] = useState(false);
+  const [isHardResetting, setIsHardResetting] = useState(false);
+  const [hardResetError, setHardResetError] = useState<string | null>(null);
+  const [hardResetSuccess, setHardResetSuccess] = useState<string | null>(null);
 
   // PERFORMANCE FIX: Use ref to prevent creating new timeouts on every sseJobs change (2Hz)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -356,6 +362,38 @@ export function DataManagementCard() {
     }
   };
 
+  const handleHardResetConfirm = async () => {
+    try {
+      setIsHardResetting(true);
+      setHardResetError(null);
+
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/data/reset-hard`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to perform nuclear hard reset');
+      }
+
+      setHardResetSuccess('Nuclear reset complete! Application is restarting...');
+      setShowHardResetModal(false);
+
+      // Clear local store caches
+      useKeimenonStore.getState().reset();
+
+      setTimeout(() => {
+        logout();
+        window.location.href = '/register';
+      }, 1500);
+    } catch (err: any) {
+      console.error('Failed to perform nuclear hard reset:', err);
+      setHardResetError(err.message || 'An unexpected error occurred during hard reset.');
+    } finally {
+      setIsHardResetting(false);
+    }
+  };
+
   const getStatsMessage = () => {
     if (!stats) return '';
 
@@ -373,7 +411,7 @@ export function DataManagementCard() {
       : 'Clear Keimenon Data';
 
   return (
-    <>
+    <div className="space-y-6">
       <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-slate-600 transition-colors">
         {/* Header */}
         <div className="flex items-start gap-4 mb-4">
@@ -428,6 +466,68 @@ export function DataManagementCard() {
         </div>
       </div>
 
+      {/* Nuclear Hard Reset Card */}
+      <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-slate-600 transition-colors relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-24 h-24 bg-orange-600/5 rounded-full blur-2xl group-hover:bg-orange-600/10 transition-all duration-500" />
+
+        {/* Header */}
+        <div className="flex items-start gap-4 mb-4">
+          <div className="flex-shrink-0 bg-orange-600/20 rounded-lg p-3 group-hover:bg-orange-600/30 transition-colors">
+            <Flame className="w-6 h-6 text-orange-400 animate-pulse" />
+          </div>
+
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-slate-200 mb-1 flex items-center gap-2">
+              Nuclear Application Reset
+              <span className="px-1.5 py-0.5 bg-orange-500/15 text-orange-400 text-[10px] font-bold uppercase tracking-wider rounded">
+                Escape Hatch
+              </span>
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Completely stop active ingestion workers, shut down SQLite, physically delete all{' '}
+              <code>.db</code>,<code>.db-wal</code>, and <code>.db-shm</code> files from your local
+              disk, and restore a fresh, seeded database singleton instantly.
+            </p>
+          </div>
+        </div>
+
+        {/* Hard Reset Success message */}
+        {hardResetSuccess && (
+          <div className="mb-4 px-3 py-2 bg-green-600/10 border border-green-500/30 rounded text-xs text-green-300 font-medium">
+            {hardResetSuccess}
+          </div>
+        )}
+
+        {/* Hard Reset Error message */}
+        {hardResetError && (
+          <div className="mb-4 px-3 py-2 bg-red-600/10 border border-red-500/30 rounded text-xs text-red-300">
+            {hardResetError}
+          </div>
+        )}
+
+        {/* Action button */}
+        <button
+          onClick={() => setShowHardResetModal(true)}
+          disabled={isHardResetting}
+          className="w-full px-4 py-2.5 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:from-orange-600/50 disabled:to-red-600/50 text-white text-sm font-medium rounded-lg transition-all duration-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-orange-950/20 hover:shadow-orange-950/40"
+        >
+          {isHardResetting && <Loader2 className="w-4 h-4 animate-spin" />}
+          {isHardResetting ? 'Performing Hard Reset...' : 'Nuclear Hard Reset'}
+        </button>
+
+        {/* Warning footer */}
+        <div className="mt-4 flex items-start gap-2 px-3 py-2 bg-red-950/20 border border-red-800/30 rounded text-xs text-red-300">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-400" />
+          <div>
+            <p className="font-semibold mb-0.5 text-red-200">Ultimate Destructive Action</p>
+            <p className="text-red-400/80 leading-normal">
+              This will physically wipe the database file. All accounts, credentials, and graph data
+              will be permanently lost. The application will log you out and restart.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={showClearModal}
@@ -443,7 +543,20 @@ export function DataManagementCard() {
         onMinimize={isClearing && deletionJobId ? () => handleMinimizeDeletion() : undefined}
         minimizeText="Minimize"
       />
-    </>
+
+      {/* Hard Reset Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showHardResetModal}
+        onClose={() => setShowHardResetModal(false)}
+        onConfirm={handleHardResetConfirm}
+        variant="error"
+        title="Trigger Nuclear Hard Reset?"
+        message="WARNING: This is the ultimate escape hatch. It will physically delete the database file from disk, abort all active jobs, and wipe all credentials, accounts, and imported data permanently. You will be logged out and redirected to setup a fresh admin account."
+        confirmText="Yes, Wipe Everything"
+        cancelText="Cancel"
+        isProcessing={isHardResetting}
+      />
+    </div>
   );
 }
 

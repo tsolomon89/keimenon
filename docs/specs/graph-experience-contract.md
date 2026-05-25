@@ -139,17 +139,15 @@ For datasets > 50k nodes, budgets scale by 1.35× (nodes) / 1.4× (edges).
 ### 4.3 ND Lens
 
 - Deterministic projected N-dimensional lens with slice controls
-- Canonical defaults (per AGENTS.md §7.4):
+- Canonical defaults (per AGENTS.md §8.4):
   - `dims = 8`
   - `axes = [0, 1, 2]`
   - `sliceDim = 3`
   - `sliceCenter = 0`
   - `sliceWidth = 0.35`
-- Node vectors are resolved from embeddings, numeric signals, or deterministic
-  hash fallback
+- **ND Node Vector Derivation**: Semantic + Structural Hybrid. Content nodes derive 8D vectors from high-dimensional text embeddings (e.g. via Gemma/embeddings endpoint), while structural nodes fallback to graph-structural embeddings (like Node2Vec or Laplacians).
 - Positions are `projectNodeVector(vector, config)` — projected to chosen axes
-- Slice filter: nodes outside the slice hyperplane are hidden (unless pinned or
-  selected)
+- **Slicing Treatment (Holographic Ghosting)**: Nodes outside the slice hyperplane are rendered as semi-transparent and slightly smaller, creating a spatial 'fog' or depth effect, rather than being strictly clipped/hidden. Focused/pinned nodes remain fully bright.
 - Drag uses projected view-plane semantics
 
 ---
@@ -245,6 +243,7 @@ Edges are filtered by:
 > 3. Per-instance transform matrices provide position and scaling.
 > 4. Interaction uses instanced raycasting with instance ID resolution to node IDs.
 > 5. Total draw calls for nodes are $\le 8$ regardless of total node count.
+> 6. **Selection & Hover Highlighting**: Selection/hover modifies the instance matrix to scale the node up by 1.25x and doubles its instance color brightness (emissive boost). To minimize visual noise in dense layouts, connected edges are not animated with particle flows.
 >
 > ### Impact
 >
