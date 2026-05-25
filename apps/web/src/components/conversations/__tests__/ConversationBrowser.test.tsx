@@ -12,6 +12,19 @@ vi.mock('@/services/organization-service', () => ({
   },
 }));
 
+vi.mock('@/store/keimenonStore', () => ({
+  useKeimenonStore: vi.fn((selector) => {
+    const mockState = {
+      nodes: [
+        { id: 'src-1', kind: 'Source', type: 'Source', data: { label: 'Source 1' } },
+        { id: 'grp-1', kind: 'Group', type: 'Group', data: { label: 'Group 1' } },
+      ],
+      selectedNodeIds: new Set(['src-1', 'grp-1']),
+    };
+    return selector ? selector(mockState) : mockState;
+  }),
+}));
+
 describe('ConversationBrowser Modal Initialization', () => {
   beforeEach(() => {
     vi.clearAllMocks();

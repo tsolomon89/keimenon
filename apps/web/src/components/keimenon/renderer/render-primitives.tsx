@@ -4,6 +4,7 @@ import React, { useMemo, useRef, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import type { GraphNode } from '@keimenon/graph';
 import type { ThreeEvent } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 
 export interface RenderNodePrimitive {
   node: GraphNode;
@@ -11,6 +12,8 @@ export interface RenderNodePrimitive {
   radius: number;
   color: string;
   isSelected: boolean;
+  isHovered: boolean;
+  isGhosted: boolean;
 }
 
 interface EdgeSegmentsProps {
@@ -21,6 +24,7 @@ interface NodeSpheresProps {
   renderNodes: RenderNodePrimitive[];
   onNodeClick: (nodeId: string, event: MouseEvent, doubleClick: boolean) => void;
   onNodePointerDown: (nodeId: string, event: PointerEvent) => void;
+  onNodeHover?: (nodeId: string | null) => void;
 }
 
 export function EdgeSegments({ edgePositions }: EdgeSegmentsProps) {
@@ -89,49 +93,129 @@ function RadiusGroup({
   nodes,
   onNodeClick,
   onNodePointerDown,
+  onNodeHover,
 }: {
   radius: number;
   nodes: RenderNodePrimitive[];
   onNodeClick: NodeSpheresProps['onNodeClick'];
   onNodePointerDown: NodeSpheresProps['onNodePointerDown'];
+  onNodeHover?: NodeSpheresProps['onNodeHover'];
 }) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
+  const opacityAttrRef = useRef<any>(null);
   const count = nodes.length;
 
-  // instanceId → nodeId lookup
-  const instanceToNodeId = useMemo(() => {
-    const map = new Map<number, string>();
-    nodes.forEach((n, i) => map.set(i, n.node.id));
-    return map;
-  }, [nodes]);
+  // Track map of instanceId -> nodeId dynamically in a ref to support click resolution on culled instances
+  const instanceToNodeIdRef = useRef<Map<number, string>>(new Map());
 
-  // Update instance transforms + colors
-  useEffect(() => {
+  // Pre-allocated array for opacity attribute
+  const opacityArray = useMemo(() => new Float32Array(count), [count]);
+
+  // Hook standard material compilation to support per-instance opacity
+  const handleBeforeCompile = useCallback((shader: any) => {
+    shader.vertexShader = `
+      attribute float instanceOpacity;
+      varying float vInstanceOpacity;
+      ${shader.vertexShader}
+    `.replace(
+      '#include <begin_vertex>',
+      `
+      #include <begin_vertex>
+      vInstanceOpacity = instanceOpacity;
+      `
+    );
+    shader.fragmentShader = `
+      varying float vInstanceOpacity;
+      ${shader.fragmentShader}
+    `.replace(
+      '#include <opaque_fragment>',
+      `
+      #include <opaque_fragment>
+      gl_FragColor.a *= vInstanceOpacity;
+      `
+    );
+  }, []);
+
+  // Frame loop doing CPU-side active frustum culling, dynamic scaling, color composite updates, and mapping persistence
+  useFrame(({ camera }) => {
     const mesh = meshRef.current;
     if (!mesh || count === 0) return;
 
+    // Set frustumCulled = false to prevent Three.js from cullying entire InstancedMesh incorrectly
+    mesh.frustumCulled = false;
+
+    // 1. Set up frustum
+    const frustum = new THREE.Frustum();
+    const projScreenMatrix = new THREE.Matrix4();
+    projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(projScreenMatrix);
+
+    // 2. Filter nodes within view frustum using quick intersectsSphere
+    const visibleNodes: RenderNodePrimitive[] = [];
+    const tempPosition = new THREE.Vector3();
+
     for (let i = 0; i < count; i++) {
       const node = nodes[i];
+      tempPosition.set(node.position[0], node.position[1], node.position[2]);
+      const sphere = new THREE.Sphere(tempPosition, radius * 1.5);
+      if (frustum.intersectsSphere(sphere)) {
+        visibleNodes.push(node);
+      }
+    }
+
+    const visibleCount = visibleNodes.length;
+    mesh.count = visibleCount;
+
+    if (visibleCount === 0) return;
+
+    const opacities = new Float32Array(visibleCount);
+
+    // 3. Populate matrices, colors, and opacities for the visible subset
+    for (let i = 0; i < visibleCount; i++) {
+      const node = visibleNodes[i];
+
+      // Matrix scaling: selected/hovered nodes are 1.25x scale, ghosted are 0.6x, standard are 1.0x
+      let scale = 1.0;
+      if (node.isSelected || node.isHovered) {
+        scale = 1.25;
+      } else if (node.isGhosted) {
+        scale = 0.6;
+      }
+
       _matrix.makeTranslation(node.position[0], node.position[1], node.position[2]);
+      _matrix.scale(new THREE.Vector3(scale, scale, scale));
       mesh.setMatrixAt(i, _matrix);
-      mesh.setColorAt(i, computeCompositeColor(node.color, node.isSelected));
+
+      // Color assignment: baking dynamic emissive boost inside color calculations
+      mesh.setColorAt(i, computeCompositeColor(node.color, node.isSelected || node.isHovered));
+
+      // Holographic ghosting transparency assignment
+      opacities[i] = node.isGhosted ? 0.22 : 1.0;
     }
 
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) {
       mesh.instanceColor.needsUpdate = true;
     }
-  }, [nodes, count]);
+
+    // Update opacity buffer attribute
+    if (opacityAttrRef.current) {
+      opacityAttrRef.current.array.set(opacities);
+      opacityAttrRef.current.needsUpdate = true;
+    }
+
+    // 4. Update the event resolution mapping ref dynamically so raycasting continues to map perfectly to node IDs
+    const map = new Map<number, string>();
+    visibleNodes.forEach((n, idx) => map.set(idx, n.node.id));
+    instanceToNodeIdRef.current = map;
+  });
 
   // Event handlers — resolve instanceId → nodeId
-  const resolveNodeId = useCallback(
-    (event: ThreeEvent<any>): string | null => {
-      const instanceId = event.instanceId;
-      if (instanceId == null) return null;
-      return instanceToNodeId.get(instanceId) ?? null;
-    },
-    [instanceToNodeId]
-  );
+  const resolveNodeId = useCallback((event: ThreeEvent<any>): string | null => {
+    const instanceId = event.instanceId;
+    if (instanceId == null) return null;
+    return instanceToNodeIdRef.current.get(instanceId) ?? null;
+  }, []);
 
   const handleClick = useCallback(
     (event: ThreeEvent<MouseEvent>) => {
@@ -166,6 +250,26 @@ function RadiusGroup({
     [resolveNodeId, onNodePointerDown]
   );
 
+  const handlePointerOver = useCallback(
+    (event: ThreeEvent<PointerEvent>) => {
+      const nodeId = resolveNodeId(event);
+      if (nodeId && onNodeHover) {
+        event.stopPropagation();
+        onNodeHover(nodeId);
+      }
+    },
+    [resolveNodeId, onNodeHover]
+  );
+
+  const handlePointerOut = useCallback(
+    (event: ThreeEvent<PointerEvent>) => {
+      if (onNodeHover) {
+        onNodeHover(null);
+      }
+    },
+    [onNodeHover]
+  );
+
   if (count === 0) return null;
 
   return (
@@ -175,12 +279,22 @@ function RadiusGroup({
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onPointerDown={handlePointerDown}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
     >
-      <sphereGeometry args={[radius, SPHERE_SEGMENTS, SPHERE_SEGMENTS]} />
+      <sphereGeometry args={[radius, SPHERE_SEGMENTS, SPHERE_SEGMENTS]}>
+        <instancedBufferAttribute
+          ref={opacityAttrRef}
+          attach="attributes-instanceOpacity"
+          args={[opacityArray, 1]}
+        />
+      </sphereGeometry>
       <meshStandardMaterial
         vertexColors
+        transparent
         metalness={MATERIAL_METALNESS}
         roughness={MATERIAL_ROUGHNESS}
+        onBeforeCompile={handleBeforeCompile}
       />
     </instancedMesh>
   );
@@ -199,6 +313,7 @@ export function InstancedNodeSpheres({
   renderNodes,
   onNodeClick,
   onNodePointerDown,
+  onNodeHover,
 }: NodeSpheresProps) {
   // Group nodes by radius — this creates ≤8 groups based on resolveNodeRadius output
   const radiusGroups = useMemo(() => {
@@ -223,6 +338,7 @@ export function InstancedNodeSpheres({
           nodes={nodes}
           onNodeClick={onNodeClick}
           onNodePointerDown={onNodePointerDown}
+          onNodeHover={onNodeHover}
         />
       ))}
     </>

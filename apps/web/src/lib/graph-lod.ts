@@ -191,7 +191,14 @@ function edgeEndpointId(endpoint: string | GraphNode): string {
   return typeof endpoint === 'string' ? endpoint : endpoint.id;
 }
 
+const massCache = new WeakMap<GraphNode, number>();
+
 function extractNodeMass(node: GraphNode): number {
+  const cached = massCache.get(node);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   const candidate = node as GraphNode & {
     mass?: unknown;
     weightedMass?: unknown;
@@ -213,17 +220,27 @@ function extractNodeMass(node: GraphNode): number {
     candidate.metadata?.strength,
   ];
 
+  let result = 1;
   for (const value of values) {
     const numeric = Number(value);
     if (Number.isFinite(numeric) && numeric >= 0) {
-      return numeric;
+      result = numeric;
+      break;
     }
   }
 
-  return 1;
+  massCache.set(node, result);
+  return result;
 }
 
+const strengthCache = new WeakMap<GraphEdge, number>();
+
 function extractEdgeStrength(edge: GraphEdge): number {
+  const cached = strengthCache.get(edge);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   const candidate = edge as GraphEdge & {
     strength?: unknown;
     weight?: unknown;
@@ -239,14 +256,17 @@ function extractEdgeStrength(edge: GraphEdge): number {
     candidate.data?.weight,
   ];
 
+  let result = 0.5;
   for (const value of values) {
     const numeric = Number(value);
     if (Number.isFinite(numeric) && numeric >= 0) {
-      return numeric;
+      result = numeric;
+      break;
     }
   }
 
-  return 0.5;
+  strengthCache.set(edge, result);
+  return result;
 }
 
 function kindAllowedAtLevel(kind: string, level: LODLevel): boolean {

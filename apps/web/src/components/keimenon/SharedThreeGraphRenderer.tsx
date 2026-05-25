@@ -284,6 +284,7 @@ interface SceneRootProps {
   ) => void;
   onDragSessionChange: (session: NodeDragSession | null) => void;
   onNodeDrag: (nodeId: string, position: [number, number, number]) => void;
+  onNodeHover: (nodeId: string | null) => void;
 }
 
 function SceneRoot({
@@ -303,6 +304,7 @@ function SceneRoot({
   onMarqueeComplete,
   onDragSessionChange,
   onNodeDrag,
+  onNodeHover,
 }: SceneRootProps) {
   const controlsRef = useRef<any>(null);
   const { camera, gl, size } = useThree();
@@ -710,6 +712,7 @@ function SceneRoot({
         renderNodes={renderNodes}
         onNodeClick={handleNodeClickFromPrimitive}
         onNodePointerDown={startNodeDrag}
+        onNodeHover={onNodeHover}
       />
 
       <OrbitControls
@@ -773,6 +776,7 @@ export const SharedThreeGraphRenderer = forwardRef<
     const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
     const [zoomForLod, setZoomForLod] = useState(1);
     const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
+    const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
     const [marqueeSession, setMarqueeSession] = useState<MarqueeSelectionSession | null>(null);
     const [dragSession, setDragSession] = useState<NodeDragSession | null>(null);
     const [dragPositionsById, setDragPositionsById] = useState<
@@ -896,41 +900,10 @@ export const SharedThreeGraphRenderer = forwardRef<
     const selectedSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
 
     const visibleNodesForLens = useMemo(() => {
-      if (renderLens !== 'nd') {
-        return lodPlan.visibleNodes;
-      }
-
-      const sliced = lodPlan.visibleNodes.filter((node) => {
-        if (pinnedSet.has(node.id) || selectedSet.has(node.id) || focusNeighborhood.has(node.id)) {
-          return true;
-        }
-        const vector = vectorById.get(node.id);
-        if (!vector) {
-          return true;
-        }
-        return passesNdSlice(vector, ndConfig);
-      });
-      if (sliced.length > 0 || lodPlan.visibleNodes.length === 0) {
-        return sliced;
-      }
-
-      const fallbackAnchors = lodPlan.visibleNodes.filter((node) =>
-        LENS_FALLBACK_ANCHOR_KINDS.has(node.kind)
-      );
-      if (fallbackAnchors.length > 0) {
-        return fallbackAnchors.slice(0, Math.max(1, fallbackAnchors.length));
-      }
-
-      return lodPlan.visibleNodes.slice(0, Math.max(1, Math.min(8, lodPlan.visibleNodes.length)));
-    }, [
-      renderLens,
-      lodPlan.visibleNodes,
-      pinnedSet,
-      selectedSet,
-      focusNeighborhood,
-      vectorById,
-      ndConfig,
-    ]);
+      // Under holographic ghosting, we do NOT filter out nodes that don't pass the ND hyperplane slice.
+      // Instead, we pass all LOD visible nodes so that they can be rendered with a ghosted material.
+      return lodPlan.visibleNodes;
+    }, [lodPlan.visibleNodes]);
 
     const visibleNodeIdSet = useMemo(
       () => new Set(visibleNodesForLens.map((node) => node.id)),
@@ -1056,6 +1029,19 @@ export const SharedThreeGraphRenderer = forwardRef<
         visibleNodesForLens.map((node) => {
           const selected = selectedSet.has(node.id);
           const pinned = pinnedSet.has(node.id);
+          const isHovered = node.id === hoveredNodeId;
+
+          let isGhosted = false;
+          if (renderLens === 'nd') {
+            const isActor = pinned || selected || focusNeighborhood.has(node.id);
+            if (!isActor) {
+              const vector = vectorById.get(node.id);
+              if (vector) {
+                isGhosted = !passesNdSlice(vector, ndConfig);
+              }
+            }
+          }
+
           return {
             node,
             position: projectedPositionById.get(node.id) ?? [0, 0, 0],
@@ -1063,9 +1049,21 @@ export const SharedThreeGraphRenderer = forwardRef<
             color: resolveNodeColor(node, selected, pinned),
             isSelected: selected,
             isPinned: pinned,
+            isHovered,
+            isGhosted,
           };
         }),
-      [visibleNodesForLens, projectedPositionById, selectedSet, pinnedSet]
+      [
+        visibleNodesForLens,
+        projectedPositionById,
+        selectedSet,
+        pinnedSet,
+        hoveredNodeId,
+        renderLens,
+        focusNeighborhood,
+        vectorById,
+        ndConfig,
+      ]
     );
 
     const renderEdges = useMemo<RenderEdgeReference[]>(
@@ -1299,6 +1297,7 @@ export const SharedThreeGraphRenderer = forwardRef<
             onMarqueeComplete={onMarqueeComplete}
             onDragSessionChange={setDragSession}
             onNodeDrag={onNodeDrag}
+            onNodeHover={setHoveredNodeId}
           />
           {showBenchmark && <BenchmarkHarness />}
         </Canvas>
