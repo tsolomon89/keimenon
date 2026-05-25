@@ -116,7 +116,7 @@ Requirements:
   - source/group/objective nodes remain principal-linked and account-scoped
 - Legacy `UserNode`/`AgentNode` artifacts are compatibility-only and not primary hierarchy surfaces.
 
-## 7.1) Conversation Context Contract
+## 7.1) Conversation Context Contract (Aligned)
 
 - Conversation creation must resolve/validate principal references as account-scoped `Principal` nodes.
 - `human_principal_id` and `agent_principal_id` must resolve to account-scoped `Principal` nodes.
@@ -126,6 +126,10 @@ Requirements:
   - `source_ids`: `Source|SourceDoc|UnifiedDoc|VerifiedSource`
   - `group_ids`: `Group|Folder`
   - `workspace_id` (optional): `Source`
+- **Canvas Selection Mapping (Structural Translation)**: Detail selections (such as Topics, Phrases, or SourceSpans) are automatically mapped to their corresponding parent `Source` or `Group` nodes in the `context_spec` payload to ensure Gemma receives robust, full-text context.
+- **Large Context Assembly (Hierarchical Map-Reduce)**: For large selected context sets (e.g. thousands of messages in a Group), the system builds consolidated background summaries of the sources. These compressed summaries are fed into Gemma's active context window instead of raw concatenated text.
+- **Fidelity & Provenance (Fact-Grounding + Lineage Citation)**: Gemma's system prompts enforce a strict fact-grounding policy (only using provided facts, refusing to invent detail) and require explicit citations (referencing original message or document IDs) in the final response.
+- **External Research Integration (Entitlement-Gated Research Loop)**: Under Pro/Business tiers, when Gemma identifies a context gap or is asked to verify, it halts synthesis and triggers an autonomous background web-research tool call to fetch high domain authority sources, appending them to the active context before resuming.
 - Conversation responses must include principal identity and scoped context indicators.
 
 ## 8) Canvas Fidelity Contract
