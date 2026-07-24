@@ -87,6 +87,7 @@ function shouldBypassSavepoint(testInfo: { file: string }): boolean {
     '/tests/e2e/data-management-ui-updates.spec.ts',
     '/tests/e2e/data-retrieval-workflow.spec.ts',
     '/tests/e2e/full-product-loop.spec.ts',
+    '/tests/e2e/golden-path-slo.spec.ts',
     '/tests/e2e/graph-traversal.spec.ts',
     '/tests/e2e/import-workflow.spec.ts',
     '/tests/e2e/scenarios/huge-file-upload.spec.ts',

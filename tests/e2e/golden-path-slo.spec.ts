@@ -49,28 +49,80 @@ async function createImportJob(
   config: Record<string, unknown>
 ): Promise<string> {
   const fileContent = fs.readFileSync(filePath);
-  const response = await apiRequest.post('/api/v1/jobs/import', {
+  const chunkSize = 1 * 1024 * 1024; // 1MB chunks
+
+  const initiateResponse = await apiRequest.post('/api/v1/uploads/initiate', {
     headers: { Authorization: `Bearer ${authToken}` },
-    multipart: {
-      files: {
-        name: fileName,
-        mimeType: 'application/json',
-        buffer: fileContent,
-      },
-      config: JSON.stringify(config),
+    data: {
+      fileName,
+      fileSize: fileContent.length,
+      mimeType: 'application/json',
+      chunkSize,
+      importConfig: config,
     },
   });
 
-  if (!response.ok()) {
-    const body = await response.text();
-    throw new Error(`Import enqueue failed (${response.status()}): ${body}`);
+  if (!initiateResponse.ok()) {
+    const body = await initiateResponse.text();
+    throw new Error(`Upload initiation failed (${initiateResponse.status()}): ${body}`);
   }
 
-  const payload = await response.json();
-  if (!payload?.jobId) {
-    throw new Error('Import enqueue response missing jobId');
+  const initResult = await initiateResponse.json();
+  // Standardize API envelope extraction (check for root or nested data/session envelope)
+  const sessionData = initResult.session || initResult.data?.session || initResult;
+  const sessionId = sessionData?.id;
+  if (!sessionId) {
+    throw new Error(`Upload initiation response missing session ID: ${JSON.stringify(initResult)}`);
   }
-  return payload.jobId as string;
+
+  const chunks: Buffer[] = [];
+  let offset = 0;
+  while (offset < fileContent.length) {
+    chunks.push(fileContent.slice(offset, offset + chunkSize));
+    offset += chunkSize;
+  }
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunkResponse = await apiRequest.post(`/api/v1/uploads/${sessionId}/chunks/${i}`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/octet-stream',
+      },
+      data: chunks[i],
+    });
+    if (!chunkResponse.ok()) {
+      const body = await chunkResponse.text();
+      throw new Error(`Chunk ${i} upload failed (${chunkResponse.status()}): ${body}`);
+    }
+  }
+
+  // Poll for jobId assembly status
+  let jobId = '';
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 60000) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const statusResponse = await apiRequest.get(`/api/v1/uploads/${sessionId}`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    if (!statusResponse.ok()) {
+      throw new Error(`Failed to check upload session status (${statusResponse.status()})`);
+    }
+    const statusResult = await statusResponse.json();
+    const session = statusResult.session || statusResult.data?.session || statusResult;
+    if (session.jobId) {
+      jobId = session.jobId;
+      break;
+    }
+    if (session.status === 'failed') {
+      throw new Error(`Assembly failed: ${session.errorMessage || 'Unknown error'}`);
+    }
+  }
+
+  if (!jobId) {
+    throw new Error('Upload assembly timed out or failed to populate jobId');
+  }
+
+  return jobId;
 }
 
 async function waitForJobTerminal(
@@ -137,6 +189,8 @@ test.describe('Golden Path SLO Artifact', () => {
 
   test('collects import/review timings for SLO evaluation', async ({ apiRequest }) => {
     const mode = (process.env.GOLDEN_SLO_MODE === 'nightly' ? 'nightly' : 'pr') as 'pr' | 'nightly';
+    const testTimeoutMs = mode === 'nightly' ? 7200000 : 900000;
+    test.setTimeout(testTimeoutMs);
     const authToken = await login(apiRequest);
 
     const fixtures: Array<{
