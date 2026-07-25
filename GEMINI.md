@@ -131,7 +131,7 @@ Pro behavior:
 
 ### 5.0 Canonical Import Rail
 
-The **only** supported import rail is chunked upload:
+The canonical import rail is chunked upload:
 
 - `POST /api/v1/uploads/initiate`
 - `POST /api/v1/uploads/:sessionId/chunks/:chunkIndex`
@@ -139,7 +139,7 @@ The **only** supported import rail is chunked upload:
 
 Implementation: `apps/api/src/routes/uploads.routes.ts`
 
-The old multipart `POST /api/v1/jobs/import` endpoint is retired and removed.
+The old multipart `POST /api/v1/jobs/import` endpoint returns 410 Gone and is retired.
 Chunked upload is the only supported import rail.
 `import-jobs.routes.ts` currently serves only valid remaining jobs routes, namely delete jobs.
 
