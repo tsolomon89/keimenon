@@ -54,6 +54,12 @@ const SPHERE_SEGMENTS = 16;
 // Pre-allocated temporaries to avoid per-frame allocation
 const _matrix = new THREE.Matrix4();
 const _color = new THREE.Color();
+const _vector = new THREE.Vector3();
+const _sphere = new THREE.Sphere();
+const _frustum = new THREE.Frustum();
+const _projScreenMatrix = new THREE.Matrix4();
+const _emissiveSelected = new THREE.Color('#cbd5e1');
+const _emissiveDefault = new THREE.Color('#111827');
 
 /**
  * Compute a composite color that bakes emissive boost into the base color.
@@ -65,23 +71,25 @@ const _color = new THREE.Color();
  * selected → emissive '#cbd5e1' @ 0.45 intensity
  * default  → emissive '#111827' @ 0.15 intensity
  */
-function computeCompositeColor(hex: string, isSelected: boolean): THREE.Color {
-  const base = _color.set(hex);
+function computeCompositeColor(
+  hex: string,
+  isSelected: boolean,
+  targetColor: THREE.Color
+): THREE.Color {
+  targetColor.set(hex);
 
   if (isSelected) {
     // Blend emissive into base: base + emissive * intensity
-    const emissive = new THREE.Color('#cbd5e1');
-    base.r = Math.min(1, base.r + emissive.r * 0.45);
-    base.g = Math.min(1, base.g + emissive.g * 0.45);
-    base.b = Math.min(1, base.b + emissive.b * 0.45);
+    targetColor.r = Math.min(1, targetColor.r + _emissiveSelected.r * 0.45);
+    targetColor.g = Math.min(1, targetColor.g + _emissiveSelected.g * 0.45);
+    targetColor.b = Math.min(1, targetColor.b + _emissiveSelected.b * 0.45);
   } else {
-    const emissive = new THREE.Color('#111827');
-    base.r = Math.min(1, base.r + emissive.r * 0.15);
-    base.g = Math.min(1, base.g + emissive.g * 0.15);
-    base.b = Math.min(1, base.b + emissive.b * 0.15);
+    targetColor.r = Math.min(1, targetColor.r + _emissiveDefault.r * 0.15);
+    targetColor.g = Math.min(1, targetColor.g + _emissiveDefault.g * 0.15);
+    targetColor.b = Math.min(1, targetColor.b + _emissiveDefault.b * 0.15);
   }
 
-  return base.clone();
+  return targetColor;
 }
 
 /**
@@ -141,73 +149,67 @@ function RadiusGroup({
     const mesh = meshRef.current;
     if (!mesh || count === 0) return;
 
-    // Set frustumCulled = false to prevent Three.js from cullying entire InstancedMesh incorrectly
+    // Set frustumCulled = false to prevent Three.js from culling entire InstancedMesh incorrectly
     mesh.frustumCulled = false;
 
-    // 1. Set up frustum
-    const frustum = new THREE.Frustum();
-    const projScreenMatrix = new THREE.Matrix4();
-    projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-    frustum.setFromProjectionMatrix(projScreenMatrix);
+    // 1. Set up frustum using pre-allocated matrix & frustum
+    _projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    _frustum.setFromProjectionMatrix(_projScreenMatrix);
 
-    // 2. Filter nodes within view frustum using quick intersectsSphere
-    const visibleNodes: RenderNodePrimitive[] = [];
-    const tempPosition = new THREE.Vector3();
+    // Clear event resolution mapping ref to avoid memory leak and stale mappings
+    instanceToNodeIdRef.current.clear();
 
+    let visibleCount = 0;
+
+    // 2. Filter nodes within view frustum and set instance properties in a single pass
     for (let i = 0; i < count; i++) {
       const node = nodes[i];
-      tempPosition.set(node.position[0], node.position[1], node.position[2]);
-      const sphere = new THREE.Sphere(tempPosition, radius * 1.5);
-      if (frustum.intersectsSphere(sphere)) {
-        visibleNodes.push(node);
+      _vector.set(node.position[0], node.position[1], node.position[2]);
+      _sphere.set(_vector, radius * 1.5);
+
+      if (_frustum.intersectsSphere(_sphere)) {
+        // Matrix scaling: selected/hovered nodes are 1.25x scale, ghosted are 0.6x, standard are 1.0x
+        let scale = 1.0;
+        if (node.isSelected || node.isHovered) {
+          scale = 1.25;
+        } else if (node.isGhosted) {
+          scale = 0.6;
+        }
+
+        _matrix.makeTranslation(node.position[0], node.position[1], node.position[2]);
+        _vector.set(scale, scale, scale); // reusing _vector for scale
+        _matrix.scale(_vector);
+        mesh.setMatrixAt(visibleCount, _matrix);
+
+        // Color assignment: baking dynamic emissive boost inside color calculations in-place
+        computeCompositeColor(node.color, node.isSelected || node.isHovered, _color);
+        mesh.setColorAt(visibleCount, _color);
+
+        // Holographic ghosting transparency assignment directly in-place inside instanced attribute array
+        if (opacityAttrRef.current) {
+          opacityAttrRef.current.array[visibleCount] = node.isGhosted ? 0.22 : 1.0;
+        }
+
+        // Map instance ID to Node ID for event raycasting resolution
+        instanceToNodeIdRef.current.set(visibleCount, node.node.id);
+
+        visibleCount++;
       }
     }
 
-    const visibleCount = visibleNodes.length;
     mesh.count = visibleCount;
 
-    if (visibleCount === 0) return;
-
-    const opacities = new Float32Array(visibleCount);
-
-    // 3. Populate matrices, colors, and opacities for the visible subset
-    for (let i = 0; i < visibleCount; i++) {
-      const node = visibleNodes[i];
-
-      // Matrix scaling: selected/hovered nodes are 1.25x scale, ghosted are 0.6x, standard are 1.0x
-      let scale = 1.0;
-      if (node.isSelected || node.isHovered) {
-        scale = 1.25;
-      } else if (node.isGhosted) {
-        scale = 0.6;
+    if (visibleCount > 0) {
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) {
+        mesh.instanceColor.needsUpdate = true;
       }
 
-      _matrix.makeTranslation(node.position[0], node.position[1], node.position[2]);
-      _matrix.scale(new THREE.Vector3(scale, scale, scale));
-      mesh.setMatrixAt(i, _matrix);
-
-      // Color assignment: baking dynamic emissive boost inside color calculations
-      mesh.setColorAt(i, computeCompositeColor(node.color, node.isSelected || node.isHovered));
-
-      // Holographic ghosting transparency assignment
-      opacities[i] = node.isGhosted ? 0.22 : 1.0;
+      // Update opacity buffer attribute
+      if (opacityAttrRef.current) {
+        opacityAttrRef.current.needsUpdate = true;
+      }
     }
-
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) {
-      mesh.instanceColor.needsUpdate = true;
-    }
-
-    // Update opacity buffer attribute
-    if (opacityAttrRef.current) {
-      opacityAttrRef.current.array.set(opacities);
-      opacityAttrRef.current.needsUpdate = true;
-    }
-
-    // 4. Update the event resolution mapping ref dynamically so raycasting continues to map perfectly to node IDs
-    const map = new Map<number, string>();
-    visibleNodes.forEach((n, idx) => map.set(idx, n.node.id));
-    instanceToNodeIdRef.current = map;
   });
 
   // Event handlers — resolve instanceId → nodeId

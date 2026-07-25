@@ -50,8 +50,14 @@ describe('SSE Reconnection', () => {
     // Save original dbClient
     originalDbClient = (global as any).dbClient;
 
+    // Capture previous TEST_API_URL immediately before any failures can occur
+    previousTestApiUrl = process.env.TEST_API_URL;
+
+    // Reset DatabaseFactory singleton to ensure a fresh connected instance
+    await DatabaseFactory.closeAll().catch(() => {});
+
     // Initialize DB
-    const dbPath = path.join(os.homedir(), '.keimenon', 'keimenon.db');
+    const dbPath = process.env.DB_PATH || path.join(os.homedir(), '.keimenon', 'keimenon.db');
     testDbClient = await DatabaseFactory.getClient({
       mode: 'local',
       local: { databasePath: dbPath },
@@ -89,7 +95,6 @@ describe('SSE Reconnection', () => {
           SSE_BASE_URL = `${API_BASE_URL}/api/v1/stream/jobs`;
 
           // Override process.env for login helper
-          previousTestApiUrl = process.env.TEST_API_URL;
           process.env.TEST_API_URL = API_BASE_URL;
 
           console.log(`[SSE Test] Server started on port ${PORT}`);
@@ -128,9 +133,7 @@ describe('SSE Reconnection', () => {
     }
 
     // Close test-specific dbClient and restore original global dbClient
-    if (testDbClient && typeof testDbClient.close === 'function') {
-      await testDbClient.close().catch(() => {});
-    }
+    await DatabaseFactory.closeAll().catch(() => {});
     (global as any).dbClient = originalDbClient;
 
     if (previousTestApiUrl === undefined) {

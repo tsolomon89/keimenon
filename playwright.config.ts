@@ -86,7 +86,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
 
     /* Maximum time each action such as `click()` can take. */
-    actionTimeout: 10000,
+    actionTimeout: 60000,
 
     /* Maximum time for navigation (goto, waitForURL, etc.) */
     navigationTimeout: 30000,

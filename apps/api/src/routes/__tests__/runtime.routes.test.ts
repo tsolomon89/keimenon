@@ -25,6 +25,13 @@ vi.mock('../../services/agent/model-manager', () => ({
   },
 }));
 
+vi.mock('../../services/agent/model-downloader', () => ({
+  modelDownloader: {
+    startDownload: vi.fn(),
+    getProgress: vi.fn(),
+  },
+}));
+
 vi.mock('../../services/agent/gemma-local-provider', () => {
   return {
     gemmaProvider: {
@@ -184,5 +191,84 @@ describe('Runtime Routes', () => {
     const res = await request(app).get('/api/v1/runtime/local-inference/status');
     expect(res.status).toBe(403);
     expect(res.body.error).toBe('Agent runtime is not enabled for this account tier');
+  });
+
+  it('POST /api/v1/runtime/local-inference/models/download starts download', async () => {
+    setupApp('professional');
+    const { modelDownloader } = await import('../../services/agent/model-downloader');
+    vi.mocked(modelDownloader.startDownload).mockResolvedValueOnce();
+
+    const res = await request(app)
+      .post('/api/v1/runtime/local-inference/models/download')
+      .send({ candidateId: 'gemma-4' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toBe('Download initiated.');
+    expect(modelDownloader.startDownload).toHaveBeenCalledWith('gemma-4');
+  });
+
+  it('GET /api/v1/runtime/local-inference/models/download/progress/:id returns progress', async () => {
+    setupApp('professional');
+    const { modelDownloader } = await import('../../services/agent/model-downloader');
+    const mockProgress = {
+      candidateId: 'gemma-4',
+      bytesDownloaded: 100,
+      totalBytes: 1000,
+      progressPercent: 10,
+      status: 'downloading' as const,
+    };
+    vi.mocked(modelDownloader.getProgress).mockReturnValueOnce(mockProgress);
+
+    const res = await request(app).get(
+      '/api/v1/runtime/local-inference/models/download/progress/gemma-4'
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.progress).toEqual(mockProgress);
+    expect(modelDownloader.getProgress).toHaveBeenCalledWith('gemma-4');
+  });
+
+  it('POST /api/v1/runtime/local-inference/models/download-started starts download status update', async () => {
+    setupApp('professional');
+    vi.mocked(modelManager.recordDownloadStarted).mockResolvedValueOnce();
+
+    const res = await request(app)
+      .post('/api/v1/runtime/local-inference/models/download-started')
+      .send({ candidateId: 'gemma-4' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(modelManager.recordDownloadStarted).toHaveBeenCalledWith('gemma-4');
+  });
+
+  it('POST /api/v1/runtime/local-inference/models/download-failed fails download status update', async () => {
+    setupApp('professional');
+    vi.mocked(modelManager.recordDownloadFailed).mockResolvedValueOnce();
+
+    const res = await request(app)
+      .post('/api/v1/runtime/local-inference/models/download-failed')
+      .send({ candidateId: 'gemma-4', reason: 'Disk full' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(modelManager.recordDownloadFailed).toHaveBeenCalledWith('gemma-4', 'Disk full');
+  });
+
+  it('POST /api/v1/runtime/local-inference/models/download-complete completes download status update', async () => {
+    setupApp('professional');
+    vi.mocked(modelManager.recordDownloadComplete).mockResolvedValueOnce();
+
+    const res = await request(app)
+      .post('/api/v1/runtime/local-inference/models/download-complete')
+      .send({ candidateId: 'gemma-4', local_path: 'gemma-4.litertlm', size_bytes: 1000 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(modelManager.recordDownloadComplete).toHaveBeenCalledWith({
+      candidate_id: 'gemma-4',
+      local_path: 'gemma-4.litertlm',
+      size_bytes: 1000,
+    });
   });
 });

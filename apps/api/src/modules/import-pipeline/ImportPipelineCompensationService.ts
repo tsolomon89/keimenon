@@ -27,19 +27,32 @@ export class ImportPipelineCompensationService {
 
     const sqliteDb = (this.dbClient as SQLiteClient).getDatabase();
 
+    // Chunk array helper
+    const chunk = <T>(arr: T[], size: number): T[][] => {
+      const chunks: T[][] = [];
+      for (let i = 0; i < arr.length; i += size) {
+        chunks.push(arr.slice(i, i + size));
+      }
+      return chunks;
+    };
+
     // Delete edges first, then nodes to keep FK constraints satisfied.
     if (edgeIds.length > 0) {
-      const placeholders = edgeIds.map(() => '?').join(',');
-      sqliteDb
-        .prepare(`DELETE FROM edges WHERE id IN (${placeholders}) AND account_id = ?`)
-        .run(...edgeIds, accountId);
+      for (const edgeChunk of chunk(edgeIds, 500)) {
+        const placeholders = edgeChunk.map(() => '?').join(',');
+        sqliteDb
+          .prepare(`DELETE FROM edges WHERE id IN (${placeholders}) AND account_id = ?`)
+          .run(...edgeChunk, accountId);
+      }
     }
 
     if (nodeIds.length > 0) {
-      const placeholders = nodeIds.map(() => '?').join(',');
-      sqliteDb
-        .prepare(`DELETE FROM nodes WHERE id IN (${placeholders}) AND account_id = ?`)
-        .run(...nodeIds, accountId);
+      for (const nodeChunk of chunk(nodeIds, 500)) {
+        const placeholders = nodeChunk.map(() => '?').join(',');
+        sqliteDb
+          .prepare(`DELETE FROM nodes WHERE id IN (${placeholders}) AND account_id = ?`)
+          .run(...nodeChunk, accountId);
+      }
     }
   }
 }

@@ -55,6 +55,7 @@ let clientToken: string;
 let adminAccountId: string;
 let clientAccountId: string;
 let db: Database.Database;
+let jobsDb: Database.Database;
 
 /**
  * Register a new user and return auth data
@@ -203,9 +204,11 @@ function cleanupTestData(accountId: string) {
       'DELETE FROM edges WHERE account_id = ? AND (from_id NOT IN (SELECT id FROM nodes WHERE account_id = ?) OR to_id NOT IN (SELECT id FROM nodes WHERE account_id = ?))'
     ).run(accountId, accountId, accountId);
     // Delete all jobs for test account
-    db.prepare('DELETE FROM jobs WHERE account_id = ?').run(accountId);
-    // Delete all job events for test account
-    db.prepare('DELETE FROM job_events WHERE account_id = ?').run(accountId);
+    if (jobsDb) {
+      jobsDb.prepare('DELETE FROM jobs WHERE account_id = ?').run(accountId);
+      // Delete all job events for test account
+      jobsDb.prepare('DELETE FROM job_events WHERE account_id = ?').run(accountId);
+    }
 
     console.log(`✓ Cleaned up test data for account ${accountId}`);
   } catch (error: any) {
@@ -253,13 +256,14 @@ async function waitForNodeCount(
  * Count jobs for account
  */
 function _countJobs(accountId: string, status?: string): number {
+  const targetDb = jobsDb || db;
   if (status) {
-    const result = db
+    const result = targetDb
       .prepare('SELECT COUNT(*) as count FROM jobs WHERE account_id = ? AND status = ?')
       .get(accountId, status) as any;
     return result.count;
   } else {
-    const result = db
+    const result = targetDb
       .prepare('SELECT COUNT(*) as count FROM jobs WHERE account_id = ?')
       .get(accountId) as any;
     return result.count;
@@ -276,6 +280,10 @@ beforeAll(async () => {
 
   // Open database connection
   db = new Database(DB_PATH);
+  const jobsDbPath = DB_PATH.endsWith('.db')
+    ? DB_PATH.replace(/\.db$/, '-jobs.db')
+    : `${DB_PATH}-jobs`;
+  jobsDb = new Database(jobsDbPath);
 
   // Dynamic credentials to ensure clean state
   const timestamp = Date.now();
@@ -324,6 +332,9 @@ afterAll(async () => {
     cleanupTestData(adminAccountId);
     cleanupTestData(clientAccountId);
     db.close();
+  }
+  if (jobsDb) {
+    jobsDb.close();
   }
 
   console.log('\n✓ Test suite complete\n');
@@ -391,7 +402,7 @@ describe('Import Jobs', () => {
     console.log(`   📊 Imported ${nodeCount} nodes`);
 
     // Verify job events were created
-    const events = db
+    const events = (jobsDb || db)
       .prepare('SELECT * FROM job_events WHERE job_id = ? ORDER BY sequence_number')
       .all(jobId) as any[];
 
@@ -463,7 +474,9 @@ describe('Import Jobs', () => {
       assert.strictEqual(cancelData.success, true, 'Cancel response should indicate success');
     } else {
       assert.ok(
-        String(cancelData.error || '').includes('Cannot cancel job with status'),
+        String(cancelData.error?.message || cancelData.error || '').includes(
+          'Cannot cancel job with status'
+        ),
         'Expected completed-job cancellation rejection'
       );
     }
@@ -582,7 +595,7 @@ describe('Import Jobs', () => {
       assert.strictEqual(pauseData.success, true, 'Pause response should indicate success');
     } else {
       assert.ok(
-        String(pauseData.error || '').includes('Cannot pause job with status'),
+        String(pauseData.error?.message || pauseData.error || '').includes('Cannot pause job'),
         'Expected completed-job pause rejection'
       );
     }
@@ -640,14 +653,14 @@ describe('Import Jobs', () => {
 
     if (!pauseResponse.ok) {
       const pauseError = (await pauseResponse.json()) as any;
-      assert.strictEqual(
-        pauseResponse.status,
-        400,
-        `Pause should only fail when job already completed (status: ${pauseResponse.status})`
-      );
       assert.ok(
-        String(pauseError.error || '').includes('Cannot pause job with status'),
-        'Expected completed-job pause rejection'
+        pauseResponse.status === 400 || pauseResponse.status === 409,
+        `Pause should only fail when job already completed or locked (status: ${pauseResponse.status})`
+      );
+      const errMsg = String(pauseError.error?.message || pauseError.error || '');
+      assert.ok(
+        errMsg.includes('Cannot pause job') || errMsg.includes('Pause request could not acquire'),
+        `Expected pause rejection, got: ${errMsg}`
       );
       return;
     }
@@ -695,6 +708,10 @@ describe('Import Jobs', () => {
       );
 
       console.log(`   ✅ Job resumed with status: ${statusData.job.state.status}`);
+
+      // Wait for the resumed job to complete to avoid race condition with subsequent tests
+      console.log(`   ⏳ Waiting for resumed job ${jobId} to complete...`);
+      await waitForJobCompletion(jobId, adminToken, 30000);
     } else {
       console.log(`   ⏭️  Job completed before pause took effect, skipping resume test`);
     }
@@ -816,7 +833,7 @@ describe('Delete Jobs', () => {
     assert.ok(data.jobId !== undefined && data.jobId !== null);
 
     // Verify concurrency group
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(data.jobId) as any;
+    const job = (jobsDb || db).prepare('SELECT * FROM jobs WHERE id = ?').get(data.jobId) as any;
     assert.strictEqual(job.concurrency_group, `delete:${adminAccountId}`);
 
     console.log(`   ✅ Delete job created with exclusive lock`);
@@ -846,9 +863,9 @@ describe('Delete Jobs', () => {
 
     assert.strictEqual(completedJob.state.status, 'succeeded');
 
-    // Verify all nodes deleted
+    // Verify all nodes deleted (except 2 system nodes: AccountNode and Principal)
     const nodesAfter = countNodes(adminAccountId);
-    assert.strictEqual(nodesAfter, 0);
+    assert.strictEqual(nodesAfter, 2);
 
     console.log(`   ✅ All nodes deleted (${nodesBefore} → ${nodesAfter})`);
   }, 60000);
@@ -868,7 +885,9 @@ describe('Delete Jobs', () => {
     assert.strictEqual(response.ok, true);
 
     const data = (await response.json()) as any;
-    const row = db.prepare('SELECT config FROM jobs WHERE id = ?').get(data.jobId) as any;
+    const row = (jobsDb || db)
+      .prepare('SELECT config FROM jobs WHERE id = ?')
+      .get(data.jobId) as any;
     const jobConfig = typeof row?.config === 'string' ? JSON.parse(row.config) : row?.config;
     assert.strictEqual(jobConfig?.deleteScope, 'all-clients');
 

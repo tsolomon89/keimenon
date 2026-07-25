@@ -719,6 +719,9 @@ export class ImportWorker extends BaseWorker {
       // Step 1: Initialize Import Service early (we need it for batch processing)
       // Get correct database client (test DB for E2E tests, production DB otherwise)
       const dbClient = await this.getDbClientForJob(job);
+      if (dbClient && typeof (dbClient as any).enableDirectWrites === 'function') {
+        (dbClient as any).enableDirectWrites();
+      }
       const schemaCompatibilityCheck = (dbClient as any).assertImportSchemaCompatibility;
       if (typeof schemaCompatibilityCheck === 'function') {
         schemaCompatibilityCheck.call(dbClient);

@@ -157,10 +157,72 @@ export async function getJobsDbClient(req?: Request): Promise<any> {
     try {
       const { SQLiteClient } = await import('@keimenon/db');
 
+      // Pre-initialize jobs database with correct schema if it doesn't exist or has no tables
+      const fsMod = await import('fs');
+      let needsSchema = false;
+      if (!fsMod.existsSync(jobsDbPath)) {
+        needsSchema = true;
+      } else {
+        try {
+          const Database = await import('better-sqlite3');
+          const tempDb = new Database.default(jobsDbPath);
+          const hasJobsTable = tempDb
+            .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='jobs'")
+            .get();
+          tempDb.close();
+          if (!hasJobsTable) {
+            needsSchema = true;
+          }
+        } catch (err) {
+          needsSchema = true;
+        }
+      }
+
+      if (needsSchema) {
+        const Database = await import('better-sqlite3');
+
+        // Ensure parent directory exists
+        fsMod.mkdirSync(path.dirname(jobsDbPath), { recursive: true });
+
+        const jobsDb = new Database.default(jobsDbPath);
+
+        let schemaPath = path.resolve(
+          __dirname,
+          '..',
+          '..',
+          '..',
+          '..',
+          'packages',
+          'db',
+          'src',
+          'sqlite',
+          'jobs-schema.sql'
+        );
+
+        if (!fsMod.existsSync(schemaPath)) {
+          const candidates = [
+            path.resolve(process.cwd(), 'packages/db/src/sqlite/jobs-schema.sql'),
+            path.resolve(process.cwd(), '../packages/db/src/sqlite/jobs-schema.sql'),
+            path.resolve(process.cwd(), '../../packages/db/src/sqlite/jobs-schema.sql'),
+          ];
+          for (const c of candidates) {
+            if (fsMod.existsSync(c)) {
+              schemaPath = c;
+              break;
+            }
+          }
+        }
+
+        const schemaSQL = fsMod.readFileSync(schemaPath, 'utf-8');
+        jobsDb.exec(schemaSQL);
+        jobsDb.close();
+      }
+
       const client = new SQLiteClient({
         databasePath: jobsDbPath,
         verbose: false,
         ignoreGlobalContext: true,
+        skipSchemaInit: true,
       });
 
       await client.connect();

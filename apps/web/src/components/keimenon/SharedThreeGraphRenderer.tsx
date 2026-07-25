@@ -13,7 +13,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { GraphEdge, GraphNode } from '@keimenon/graph';
-import { buildLodPlan, type LodPlanStats } from '@/lib/graph-lod';
+import { buildLodPlan, resolveLodLevel, type LodPlanStats } from '@/lib/graph-lod';
 import { getPositionStore, type PositionStore } from '@/lib/position-store';
 import { BenchmarkHarness } from './renderer/benchmark-harness';
 import {
@@ -58,6 +58,14 @@ import type {
   MarqueeSelectionSession,
   NodeDragSession,
 } from '@/components/keimenon/renderer/types';
+
+// Pre-allocated raycasting helpers for drag operations
+const _dragRaycaster = new THREE.Raycaster();
+const _dragPlaneNormal = new THREE.Vector3();
+const _dragStartWorldVec = new THREE.Vector3();
+const _dragPlane = new THREE.Plane();
+const _dragIntersection = new THREE.Vector3();
+const _dragMouse = new THREE.Vector2();
 
 export interface SharedThreeGraphRendererProps {
   nodes: GraphNode[];
@@ -311,6 +319,7 @@ function SceneRoot({
   const targetRef = useRef<[number, number, number]>([0, 0, 0]);
   const distanceRef = useRef<number>(defaultLensDistance(renderLens));
   const zoomRef = useRef<number>(0);
+  const resolvedLevelRef = useRef<string>('');
   const renderNodeMapRef = useRef<Map<string, [number, number, number]>>(new Map());
   const dragSessionRef = useRef<NodeDragSession | null>(null);
   const marqueeSessionRef = useRef<MarqueeSelectionSession | null>(null);
@@ -534,31 +543,36 @@ function SceneRoot({
         pointerTravelRef.current += Math.abs(dx) + Math.abs(dy);
         dragSession.lastScreen = local;
 
-        const cameraDistance = camera.position.distanceTo(
-          new THREE.Vector3(
-            dragSession.currentWorld[0],
-            dragSession.currentWorld[1],
-            dragSession.currentWorld[2]
-          )
-        );
-        const scale = Math.max(0.18, cameraDistance / 900);
+        // Calculate normalized device coordinates (-1 to 1) for the pointer
+        const rect = gl.domElement.getBoundingClientRect();
+        _dragMouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        _dragMouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).normalize();
-        const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).normalize();
-        const next = applyDragDeltaForLens(
-          dragSession.currentWorld,
-          dragSession.lens,
-          { dx, dy },
-          scale,
-          {
-            right: { x: right.x, y: right.y, z: right.z },
-            up: { x: up.x, y: up.y, z: up.z },
-          }
-        );
+        // Set up raycaster from camera
+        _dragRaycaster.setFromCamera(_dragMouse, camera);
 
-        dragSession.currentWorld = next;
-        onNodeDrag(dragSession.nodeId, next);
-        onDragSessionChange({ ...dragSession });
+        // Define a plane facing the camera, passing through the startWorld position
+        camera.getWorldDirection(_dragPlaneNormal);
+        _dragPlaneNormal.negate(); // Plane faces the camera
+
+        _dragStartWorldVec.set(
+          dragSession.startWorld[0],
+          dragSession.startWorld[1],
+          dragSession.startWorld[2]
+        );
+        _dragPlane.setFromNormalAndCoplanarPoint(_dragPlaneNormal, _dragStartWorldVec);
+
+        // Find intersection of ray with plane
+        if (_dragRaycaster.ray.intersectPlane(_dragPlane, _dragIntersection)) {
+          const next: [number, number, number] = [
+            _dragIntersection.x,
+            _dragIntersection.y,
+            _dragIntersection.z,
+          ];
+          dragSession.currentWorld = next;
+          onNodeDrag(dragSession.nodeId, next);
+          onDragSessionChange({ ...dragSession });
+        }
         return;
       }
 
@@ -694,7 +708,9 @@ function SceneRoot({
     const distance = controlsRef.current.object.position.distanceTo(controlsRef.current.target);
     distanceRef.current = distance;
     const zoom = Math.max(0.05, Math.min(6, 820 / Math.max(1, distance)));
-    if (Math.abs(zoom - zoomRef.current) > 0.03) {
+    const currentLevel = resolveLodLevel(zoom);
+    if (currentLevel !== resolvedLevelRef.current) {
+      resolvedLevelRef.current = currentLevel;
       zoomRef.current = zoom;
       onZoomSample(zoom);
     }

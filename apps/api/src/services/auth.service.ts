@@ -31,6 +31,7 @@ import {
   logAccountSwitch,
 } from '../utils/audit-logger';
 import { ensureHumanPrincipalHierarchyForUser } from './graph-hierarchy.service';
+import { flushAllCaches } from '../utils/cache-registry';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'keimenon-secret-change-in-production';
 const JWT_EXPIRES_IN = '7d'; // 7 days
@@ -470,6 +471,9 @@ export class AuthServiceV2 {
     userAgent?: string,
     database?: Database.Database
   ): Promise<LoginResult> {
+    // Flush all in-memory caches to prevent cross-account/session data leakage
+    flushAllCaches();
+
     // Use provided database (for consistency within register flow) or get new instance
     const db = database || this.db.getDatabase();
 
@@ -1153,6 +1157,9 @@ export class AuthServiceV2 {
     userAgent?: string,
     databaseInstance?: any
   ): Promise<void> {
+    // Flush all in-memory caches to prevent data leakage from terminated session
+    flushAllCaches();
+
     const database = databaseInstance || this.db.getDatabase();
     const now = Date.now();
 

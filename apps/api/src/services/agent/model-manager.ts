@@ -1,6 +1,7 @@
 import { LocalModelManifest, LocalModelAcquisitionState, ModelDownloadPlan } from '@keimenon/types';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { gemmaModelSourceRegistry, GemmaModelSourceCandidate } from './gemma-model-source-registry';
 import { CandidateNotFoundError } from './errors';
 
@@ -47,20 +48,96 @@ export class ModelManager {
     return gemmaModelSourceRegistry.getCandidates();
   }
 
+  private async getDatabaseInstance(): Promise<any> {
+    try {
+      if (global.dbClient && typeof global.dbClient.getDatabase === 'function') {
+        return global.dbClient.getDatabase();
+      }
+      const { getDbClient } = await import('../../utils/get-db-client');
+      const client = await getDbClient();
+      return client?.getDatabase?.();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  private async getLicenseStatusFromDb(): Promise<boolean> {
+    const db = await this.getDatabaseInstance();
+    if (!db) return false;
+    try {
+      const row = db
+        .prepare(
+          `
+        SELECT value FROM settings_config
+        WHERE control_id = 'gemma_license_accepted' AND scope = 'org' AND scope_id = 'global'
+      `
+        )
+        .get() as any;
+      if (row) {
+        return JSON.parse(row.value) === true;
+      }
+    } catch (err: any) {
+      if (!err.message?.includes('no such table')) {
+        console.warn('[ModelManager] Failed to read license from DB settings:', err.message);
+      }
+    }
+    return false;
+  }
+
+  private async saveLicenseStatusToDb(accepted: boolean): Promise<void> {
+    const db = await this.getDatabaseInstance();
+    if (!db) return;
+    try {
+      db.prepare(
+        `
+        INSERT OR REPLACE INTO settings_config (control_id, scope, scope_id, value, updated_at)
+        VALUES ('gemma_license_accepted', 'org', 'global', ?, ?)
+      `
+      ).run(JSON.stringify(accepted), Date.now());
+    } catch (err: any) {
+      if (!err.message?.includes('no such table')) {
+        console.warn('[ModelManager] Failed to save license to DB settings:', err.message);
+      }
+    }
+  }
+
   public async getInstalledModels(): Promise<LocalModelManifest[]> {
     const manifestPath = this.getManifestPath();
+    let models: LocalModelManifest[] = [];
 
-    if (!fs.existsSync(manifestPath)) {
-      return [];
+    if (fs.existsSync(manifestPath)) {
+      try {
+        const data = await fs.promises.readFile(manifestPath, 'utf-8');
+        models = JSON.parse(data) as LocalModelManifest[];
+      } catch (err) {
+        console.error('[ModelManager] Failed to read models.json', err);
+      }
     }
 
-    try {
-      const data = await fs.promises.readFile(manifestPath, 'utf-8');
-      return JSON.parse(data) as LocalModelManifest[];
-    } catch (err) {
-      console.error('[ModelManager] Failed to read models.json', err);
-      return [];
+    const dbAccepted = await this.getLicenseStatusFromDb();
+    if (dbAccepted) {
+      let gemmaModel = models.find((m) => m.model_family === 'gemma');
+      if (gemmaModel) {
+        if (!gemmaModel.license_accepted) {
+          gemmaModel.license_accepted = true;
+          gemmaModel.license_accepted_at = gemmaModel.license_accepted_at || Date.now();
+          await this.writeInstalledModels(models);
+        }
+      } else {
+        gemmaModel = {
+          model_family: 'gemma',
+          model_id: null,
+          license_required: true,
+          license_accepted: true,
+          license_accepted_at: Date.now(),
+          installed: false,
+        };
+        models.push(gemmaModel);
+        await this.writeInstalledModels(models);
+      }
     }
+
+    return models;
   }
 
   public async writeInstalledModels(models: LocalModelManifest[]): Promise<void> {
@@ -137,6 +214,7 @@ export class ModelManager {
     }
 
     await this.writeInstalledModels(models);
+    await this.saveLicenseStatusToDb(true);
     return model;
   }
 
@@ -276,7 +354,46 @@ export class ModelManager {
       }
     }
 
-    // Checksum check would go here, if available it would be 'verified'. For now we only verify presence.
+    // Checksum check if candidate defines it
+    if (candidate && candidate.checksum) {
+      try {
+        const calculatedHash = await new Promise<string>((resolve, reject) => {
+          const hash = crypto.createHash('sha256');
+          const stream = fs.createReadStream(absolutePath);
+          stream.on('data', (data) => hash.update(data));
+          stream.on('end', () => resolve(hash.digest('hex')));
+          stream.on('error', (err) => reject(err));
+        });
+
+        if (calculatedHash !== candidate.checksum) {
+          model.verification_status = 'failed';
+          model.installed = false;
+          await this.writeInstalledModels(models);
+          return {
+            verified: false,
+            verification_status: 'failed',
+            message: `Model checksum verification failed. Expected ${candidate.checksum}, got ${calculatedHash}`,
+          };
+        }
+
+        model.verification_status = 'verified';
+        model.installed = true;
+        await this.writeInstalledModels(models);
+        return {
+          verified: true,
+          verification_status: 'verified',
+          message: 'Model file checksum verified',
+        };
+      } catch (err: any) {
+        return {
+          verified: false,
+          verification_status: 'failed',
+          message: `Failed to calculate model checksum: ${err.message}`,
+        };
+      }
+    }
+
+    // Fallback to presence verified if no checksum is defined
     model.verification_status = 'presence_verified';
     model.installed = true;
     await this.writeInstalledModels(models);
@@ -285,6 +402,39 @@ export class ModelManager {
       verification_status: 'presence_verified',
       message: 'Model file presence verified',
     };
+  }
+
+  public async sweepStaleStagedFiles(): Promise<{ sweptCount: number }> {
+    const dir = this.getModelDirectory();
+    if (!fs.existsSync(dir)) {
+      return { sweptCount: 0 };
+    }
+
+    let sweptCount = 0;
+    const now = Date.now();
+    const MS_IN_24_HOURS = 24 * 60 * 60 * 1000;
+
+    try {
+      const files = await fs.promises.readdir(dir);
+      for (const file of files) {
+        if (file.endsWith('.tmp')) {
+          const filePath = path.join(dir, file);
+          try {
+            const stats = await fs.promises.stat(filePath);
+            if (now - stats.mtimeMs > MS_IN_24_HOURS) {
+              await fs.promises.unlink(filePath);
+              sweptCount++;
+            }
+          } catch (_) {
+            // ignore
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[ModelManager] Failed to sweep stale staged files:', err);
+    }
+
+    return { sweptCount };
   }
 
   public async getModelStatus(): Promise<LocalModelAcquisitionState> {

@@ -10,6 +10,7 @@
  */
 
 import type Database from 'better-sqlite3';
+import { registerCache } from '../utils/cache-registry';
 
 export interface AuthorityScore {
   nodeId: string;
@@ -382,10 +383,10 @@ export class AuthorityScoringService {
     return row?.cnt ?? 0;
   }
 
-  private sourceTitlesCache: Map<string, string[]> = new Map();
+  private static readonly sourceTitlesCache: Map<string, string[]> = new Map();
 
   private getSourceTitles(accountId: string): string[] {
-    if (!this.sourceTitlesCache.has(accountId)) {
+    if (!AuthorityScoringService.sourceTitlesCache.has(accountId)) {
       const rows = this.db
         .prepare(`SELECT properties FROM nodes WHERE account_id = ? AND kind = 'Source'`)
         .all(accountId) as NodeRow[];
@@ -397,9 +398,9 @@ export class AuthorityScoringService {
         })
         .filter((t) => t.length > 0);
 
-      this.sourceTitlesCache.set(accountId, titles);
+      AuthorityScoringService.sourceTitlesCache.set(accountId, titles);
     }
-    return this.sourceTitlesCache.get(accountId)!;
+    return AuthorityScoringService.sourceTitlesCache.get(accountId)!;
   }
 
   private computeHeadingBoost(accountId: string, phraseText: string): number {
@@ -475,3 +476,10 @@ export class AuthorityScoringService {
     }
   }
 }
+
+// Register the static cache to the global registry
+registerCache({
+  clear: () => {
+    (AuthorityScoringService as any).sourceTitlesCache.clear();
+  },
+});

@@ -1,18 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Briefcase, Plus, Bot, Pin, Trash2, ChevronRight, Loader2, FolderOpen } from 'lucide-react';
 import {
-  Briefcase,
-  Plus,
-  Bot,
-  Pin,
-  Trash2,
-  ChevronRight,
-  Loader2,
-  FolderOpen,
-} from 'lucide-react';
-import { organizationService, Workspace, CreateWorkspaceInput } from '@/services/organization-service';
+  organizationService,
+  Workspace,
+  CreateWorkspaceInput,
+} from '@/services/organization-service';
 import { useKeimenonStore } from '@/store/keimenonStore';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface WorkspaceBrowserProps {
   onWorkspaceSelect?: (workspace: Workspace) => void;
@@ -33,6 +29,10 @@ export function WorkspaceBrowser({
 
   // Get selected nodes from keimenon store for workspace creation
   const selectedNodeIds = useKeimenonStore((state) => state.selectedNodeIds);
+
+  const [activeTab, setActiveTab] = useState<'my' | 'team' | 'all'>('all');
+  const { user } = useAuth();
+  const isBusiness = user?.accountClass === 'business';
 
   useEffect(() => {
     loadWorkspaces();
@@ -104,6 +104,13 @@ export function WorkspaceBrowser({
     );
   }
 
+  const filteredWorkspaces = workspaces.filter((w) => {
+    if (!isBusiness || activeTab === 'all') return true;
+    if (activeTab === 'my') return w.created_by === user?.userId;
+    if (activeTab === 'team') return w.created_by !== user?.userId;
+    return true;
+  });
+
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Header */}
@@ -111,7 +118,13 @@ export function WorkspaceBrowser({
         <div className="flex items-center gap-2">
           <Briefcase className="w-4 h-4 text-purple-400" />
           <h3 className="text-sm font-semibold text-slate-200">Workspaces</h3>
-          <span className="text-xs text-slate-500">({workspaces.length})</span>
+          <span className="text-xs text-slate-500">
+            (
+            {isBusiness
+              ? `${filteredWorkspaces.length} of ${workspaces.length}`
+              : workspaces.length}
+            )
+          </span>
         </div>
         <button
           onClick={handleCreateClick}
@@ -122,12 +135,48 @@ export function WorkspaceBrowser({
         </button>
       </div>
 
+      {/* Tabs for Business Tier */}
+      {isBusiness && (
+        <div className="flex p-1.5 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/60 gap-1.5">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`flex-1 py-1 text-xs font-medium rounded transition-all duration-200 ${
+              activeTab === 'all'
+                ? 'bg-purple-600/15 text-purple-400 border border-purple-500/20 shadow-[0_0_12px_rgba(168,85,247,0.05)] font-semibold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 border border-transparent'
+            }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setActiveTab('my')}
+            className={`flex-1 py-1 text-xs font-medium rounded transition-all duration-200 ${
+              activeTab === 'my'
+                ? 'bg-purple-600/15 text-purple-400 border border-purple-500/20 shadow-[0_0_12px_rgba(168,85,247,0.05)] font-semibold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 border border-transparent'
+            }`}
+          >
+            My Workspaces
+          </button>
+          <button
+            onClick={() => setActiveTab('team')}
+            className={`flex-1 py-1 text-xs font-medium rounded transition-all duration-200 ${
+              activeTab === 'team'
+                ? 'bg-purple-600/15 text-purple-400 border border-purple-500/20 shadow-[0_0_12px_rgba(168,85,247,0.05)] font-semibold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 border border-transparent'
+            }`}
+          >
+            Team Workspaces
+          </button>
+        </div>
+      )}
+
       {/* Workspace List */}
       <div className="flex-1 overflow-y-auto">
-        {workspaces.length === 0 ? (
+        {filteredWorkspaces.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-6 text-center">
             <FolderOpen className="w-12 h-12 text-slate-600 mb-4" />
-            <p className="text-sm text-slate-400 mb-2">No workspaces yet</p>
+            <p className="text-sm text-slate-400 mb-2">No workspaces found</p>
             <p className="text-xs text-slate-500 mb-4">
               Select nodes in the graph and create a workspace to organize your work
             </p>
@@ -143,11 +192,12 @@ export function WorkspaceBrowser({
           </div>
         ) : (
           <div className="p-2 space-y-1">
-            {workspaces.map((workspace) => (
+            {filteredWorkspaces.map((workspace) => (
               <WorkspaceCard
                 key={workspace.id}
                 workspace={workspace}
                 selected={workspace.id === selectedWorkspaceId}
+                currentUserId={user?.userId}
                 onClick={() => handleWorkspaceClick(workspace)}
                 onDelete={(e) => handleDeleteWorkspace(workspace.id, e)}
               />
@@ -182,19 +232,49 @@ export function WorkspaceBrowser({
 interface WorkspaceCardProps {
   workspace: Workspace;
   selected?: boolean;
+  currentUserId?: string;
   onClick?: () => void;
   onDelete?: (e: React.MouseEvent) => void;
 }
 
-function WorkspaceCard({ workspace, selected, onClick, onDelete }: WorkspaceCardProps) {
+function WorkspaceCard({
+  workspace,
+  selected,
+  currentUserId,
+  onClick,
+  onDelete,
+}: WorkspaceCardProps) {
+  const isCreatorMe = workspace.created_by === currentUserId;
+  const creatorLabel = isCreatorMe
+    ? 'by Me'
+    : workspace.creator_name
+      ? `by ${workspace.creator_name}`
+      : '';
+
+  // Overlaps indicator
+  const hasOverlaps = workspace.overlaps && workspace.overlaps.length > 0;
+  const primaryOverlap = hasOverlaps ? workspace.overlaps![0] : null;
+  const otherOverlapsCount = hasOverlaps ? workspace.overlaps!.length - 1 : 0;
+
+  let overlapText = '';
+  if (primaryOverlap) {
+    if (otherOverlapsCount > 0) {
+      overlapText = `Overlaps with '${primaryOverlap.title}' & ${otherOverlapsCount} other${otherOverlapsCount > 1 ? 's' : ''}`;
+    } else {
+      overlapText = `Overlaps with '${primaryOverlap.title}'`;
+    }
+  }
+
   return (
     <div
       onClick={onClick}
       className={`
-        p-3 rounded-lg border cursor-pointer transition-all
-        ${selected
-          ? 'bg-purple-600/20 border-purple-500/50 shadow-lg shadow-purple-500/10'
-          : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'}
+        p-3 rounded-lg border cursor-pointer transition-all duration-200
+        ${
+          selected
+            ? 'bg-purple-600/20 border-purple-500/50 shadow-lg shadow-purple-500/10'
+            : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'
+        }
       `}
     >
       <div className="flex items-start justify-between mb-2">
@@ -210,6 +290,28 @@ function WorkspaceCard({ workspace, selected, onClick, onDelete }: WorkspaceCard
           <ChevronRight className="w-4 h-4 text-slate-500" />
         </div>
       </div>
+
+      {/* Creator and Overlaps details */}
+      {(creatorLabel || overlapText) && (
+        <div className="mb-2 space-y-1">
+          {creatorLabel && (
+            <span className="text-[10px] font-semibold tracking-wide uppercase text-purple-400/90 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20 inline-block">
+              {creatorLabel}
+            </span>
+          )}
+          {overlapText && (
+            <div
+              className="text-[11px] text-amber-400/95 flex items-center gap-1.5 bg-amber-500/5 border border-amber-500/10 px-1.5 py-0.5 rounded"
+              title={workspace.overlaps
+                ?.map((o) => `${o.title} (${o.creator_name}): ${o.shared_count} shared pins`)
+                .join('\n')}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" />
+              <span className="truncate">{overlapText}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center gap-3 text-xs text-slate-500">
         {/* Attached agents */}
@@ -229,9 +331,7 @@ function WorkspaceCard({ workspace, selected, onClick, onDelete }: WorkspaceCard
         )}
 
         {/* Created date */}
-        <span className="ml-auto">
-          {new Date(workspace.created_at).toLocaleDateString()}
-        </span>
+        <span className="ml-auto">{new Date(workspace.created_at).toLocaleDateString()}</span>
       </div>
     </div>
   );
@@ -244,11 +344,7 @@ interface CreateWorkspaceModalProps {
   onCreate: (input: CreateWorkspaceInput) => Promise<void>;
 }
 
-function CreateWorkspaceModal({
-  selectedNodeIds,
-  onClose,
-  onCreate,
-}: CreateWorkspaceModalProps) {
+function CreateWorkspaceModal({ selectedNodeIds, onClose, onCreate }: CreateWorkspaceModalProps) {
   const [title, setTitle] = useState('');
   const [creating, setCreating] = useState(false);
 

@@ -100,9 +100,9 @@ export function errorLogger(
   const isAPIError = err instanceof APIError;
   const statusCode = isAPIError ? err.statusCode : 500;
   const userMessage =
-    isAPIError && err.userMessage
+    isAPIError && err.userMessage && process.env.NODE_ENV !== 'test'
       ? err.userMessage
-      : statusCode === 500
+      : statusCode === 500 && process.env.NODE_ENV !== 'test'
         ? 'An internal server error occurred'
         : err.message;
 

@@ -915,8 +915,26 @@ export class EnhancedImportServiceV2 {
       }
     >();
 
-    const skippedCatchAllGroups = 0;
+    const nonCatchAllGroups: Group[] = [];
+    const catchAllGroups: Group[] = [];
+
     for (const group of groups) {
+      const labelKey = normalizeGroupLabelKey(group.name || '');
+      if (!labelKey) {
+        continue;
+      }
+
+      if (this.isCatchAllGroupLabelKey(labelKey) || group.isCatchAll) {
+        catchAllGroups.push(group);
+      } else {
+        nonCatchAllGroups.push(group);
+      }
+    }
+
+    const groupsToProcess = nonCatchAllGroups.length > 0 ? nonCatchAllGroups : catchAllGroups;
+    const skippedCatchAllGroups = nonCatchAllGroups.length > 0 ? catchAllGroups.length : 0;
+
+    for (const group of groupsToProcess) {
       const labelKey = normalizeGroupLabelKey(group.name || '');
       if (!labelKey) {
         continue;
@@ -2495,7 +2513,6 @@ export class EnhancedImportServiceV2 {
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         UNIQUE(job_id, account_id, candidate_id),
-        FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
         FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
       );
       CREATE INDEX IF NOT EXISTS idx_job_duplicate_candidates_job

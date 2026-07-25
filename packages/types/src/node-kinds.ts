@@ -28,7 +28,6 @@ export const CANVAS_DATA_NODE_KINDS = [
   'UploadItem',
   'ChatThread',
   'ConversationThread',
-  'Principal',
   'Message',
   'Source',
   'SourceSpan',
@@ -119,6 +118,7 @@ export const SYSTEM_NODE_KINDS = [
   'Board',
   'Constellation',
   'AgentNode',
+  'Principal',
 ] as const;
 
 /**

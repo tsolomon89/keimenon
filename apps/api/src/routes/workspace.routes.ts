@@ -34,7 +34,9 @@ const CreateWorkspaceSchema = z.object({
   description: z.string().optional(),
   context_pins: z.array(z.string()).default([]), // Node IDs to pin as context
   attached_agents: z.array(z.string()).default([]), // Principal IDs of agents
-  purpose: z.enum(['summarize', 'cluster', 'draft', 'research', 'refactor', 'verify', 'general']).default('general'),
+  purpose: z
+    .enum(['summarize', 'cluster', 'draft', 'research', 'refactor', 'verify', 'general'])
+    .default('general'),
   metadata: z.record(z.any()).optional(),
 });
 
@@ -43,7 +45,9 @@ const UpdateWorkspaceSchema = z.object({
   description: z.string().optional(),
   context_pins: z.array(z.string()).optional(),
   attached_agents: z.array(z.string()).optional(),
-  purpose: z.enum(['summarize', 'cluster', 'draft', 'research', 'refactor', 'verify', 'general']).optional(),
+  purpose: z
+    .enum(['summarize', 'cluster', 'draft', 'research', 'refactor', 'verify', 'general'])
+    .optional(),
   metadata: z.record(z.any()).optional(),
 });
 
@@ -92,38 +96,60 @@ export function createWorkspaceRoutes(db: SQLiteClient, authService: AuthService
       });
 
       // Insert Source node with source_role='workspace'
-      database.prepare(`
+      database
+        .prepare(
+          `
         INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
         VALUES (?, 'Source', ?, ?, ?, ?, ?)
-      `).run(workspaceId, properties, accountId, userId, now, now);
+      `
+        )
+        .run(workspaceId, properties, accountId, userId, now, now);
 
       // Create CREATED_BY edge (Workspace -> Principal creator)
       const createdByEdgeId = `edge_created_by_${nanoid()}`;
-      database.prepare(`
+      database
+        .prepare(
+          `
         INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
         VALUES (?, 'CREATED_BY', ?, ?, '{}', ?, ?, ?)
-      `).run(createdByEdgeId, workspaceId, userId, accountId, userId, now);
+      `
+        )
+        .run(createdByEdgeId, workspaceId, userId, accountId, userId, now);
 
       // Create ATTACHED_TO edges for each agent
       for (const agentId of body.attached_agents) {
         const attachedEdgeId = `edge_attached_${nanoid()}`;
-        database.prepare(`
+        database
+          .prepare(
+            `
           INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
           VALUES (?, 'ATTACHED_TO', ?, ?, '{}', ?, ?, ?)
-        `).run(attachedEdgeId, workspaceId, agentId, accountId, userId, now);
+        `
+          )
+          .run(attachedEdgeId, workspaceId, agentId, accountId, userId, now);
       }
 
       // Create PINS_CONTEXT edges for each context pin
       for (const pinId of body.context_pins) {
         const pinEdgeId = `edge_pins_${nanoid()}`;
         const pinProps = JSON.stringify({ pin_type: 'explicit' });
-        database.prepare(`
+        database
+          .prepare(
+            `
           INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
           VALUES (?, 'PINS_CONTEXT', ?, ?, ?, ?, ?, ?)
-        `).run(pinEdgeId, workspaceId, pinId, pinProps, accountId, userId, now);
+        `
+          )
+          .run(pinEdgeId, workspaceId, pinId, pinProps, accountId, userId, now);
       }
 
       // Return created workspace
+      const creatorRow = database
+        .prepare('SELECT name, email FROM users WHERE id = ?')
+        .get(userId) as any;
+      const creatorName = creatorRow?.name || 'Unknown';
+      const creatorEmail = creatorRow?.email || '';
+
       return res.status(201).json({
         success: true,
         workspace: {
@@ -137,8 +163,11 @@ export function createWorkspaceRoutes(db: SQLiteClient, authService: AuthService
           context_pins: body.context_pins,
           account_id: accountId,
           created_by: userId,
+          creator_name: creatorName,
+          creator_email: creatorEmail,
           created_at: now,
           updated_at: now,
+          overlaps: [],
         },
       });
     } catch (error: any) {
@@ -174,19 +203,70 @@ export function createWorkspaceRoutes(db: SQLiteClient, authService: AuthService
       const limit = parseInt(req.query.limit as string) || 100;
       const offset = parseInt(req.query.offset as string) || 0;
 
-      // Query for Source nodes with source_role='workspace'
-      const rows = database.prepare(`
-        SELECT * FROM nodes
-        WHERE kind = 'Source'
-          AND account_id = ?
-          AND json_extract(properties, '$.source_role') = 'workspace'
-        ORDER BY created_at DESC
+      // Query all workspaces under the account to compute overlaps
+      const allRows = database
+        .prepare(
+          `
+        SELECT n.id, n.properties, n.created_by, u.name AS creator_name, u.email AS creator_email
+        FROM nodes n
+        LEFT JOIN users u ON n.created_by = u.id
+        WHERE n.kind = 'Source'
+          AND n.account_id = ?
+          AND json_extract(n.properties, '$.source_role') = 'workspace'
+      `
+        )
+        .all(accountId) as any[];
+
+      const allWorkspaces = allRows.map((row) => {
+        const props = JSON.parse(row.properties);
+        return {
+          id: row.id,
+          title: props.title || 'Untitled Workspace',
+          context_pins: props.context_pins || [],
+          creator_name: row.creator_name || 'Unknown',
+          creator_email: row.creator_email || '',
+        };
+      });
+
+      // Query for paginated Source nodes with source_role='workspace'
+      const rows = database
+        .prepare(
+          `
+        SELECT n.*, u.name AS creator_name, u.email AS creator_email
+        FROM nodes n
+        LEFT JOIN users u ON n.created_by = u.id
+        WHERE n.kind = 'Source'
+          AND n.account_id = ?
+          AND json_extract(n.properties, '$.source_role') = 'workspace'
+        ORDER BY n.created_at DESC
         LIMIT ? OFFSET ?
-      `).all(accountId, limit, offset) as any[];
+      `
+        )
+        .all(accountId, limit, offset) as any[];
 
       // Parse properties and map to response format
       const workspaces = rows.map((row) => {
         const props = JSON.parse(row.properties);
+        const contextPins = props.context_pins || [];
+        const overlaps: any[] = [];
+
+        // Compute overlaps
+        const currentPinsSet = new Set(contextPins);
+        if (currentPinsSet.size > 0) {
+          for (const other of allWorkspaces) {
+            if (other.id === row.id) continue;
+            const shared = other.context_pins.filter((p: string) => currentPinsSet.has(p));
+            if (shared.length > 0) {
+              overlaps.push({
+                id: other.id,
+                title: other.title,
+                creator_name: other.creator_name,
+                shared_count: shared.length,
+              });
+            }
+          }
+        }
+
         return {
           id: row.id,
           kind: row.kind,
@@ -195,21 +275,28 @@ export function createWorkspaceRoutes(db: SQLiteClient, authService: AuthService
           source_role: props.source_role,
           purpose: props.purpose,
           attached_agents: props.attached_agents || [],
-          context_pins: props.context_pins || [],
+          context_pins: contextPins,
           account_id: row.account_id,
           created_by: row.created_by,
+          creator_name: row.creator_name || 'Unknown',
+          creator_email: row.creator_email || '',
           created_at: row.created_at,
           updated_at: row.updated_at,
+          overlaps,
         };
       });
 
       // Get total count
-      const countResult = database.prepare(`
+      const countResult = database
+        .prepare(
+          `
         SELECT COUNT(*) as count FROM nodes
         WHERE kind = 'Source'
           AND account_id = ?
           AND json_extract(properties, '$.source_role') = 'workspace'
-      `).get(accountId) as any;
+      `
+        )
+        .get(accountId) as any;
 
       return res.json({
         success: true,
@@ -242,13 +329,18 @@ export function createWorkspaceRoutes(db: SQLiteClient, authService: AuthService
       const accountId = req.user!.accountId;
 
       // F2: Account Boundary - only return workspaces from same account
-      const row = database.prepare(`
-        SELECT * FROM nodes
-        WHERE id = ?
-          AND kind = 'Source'
-          AND account_id = ?
-          AND json_extract(properties, '$.source_role') = 'workspace'
-      `).get(id, accountId) as any;
+      const row = database
+        .prepare(
+          `
+        SELECT n.*, u.name AS creator_name, u.email AS creator_email FROM nodes n
+        LEFT JOIN users u ON n.created_by = u.id
+        WHERE n.id = ?
+          AND n.kind = 'Source'
+          AND n.account_id = ?
+          AND json_extract(n.properties, '$.source_role') = 'workspace'
+      `
+        )
+        .get(id, accountId) as any;
 
       if (!row) {
         return res.status(404).json({
@@ -260,17 +352,29 @@ export function createWorkspaceRoutes(db: SQLiteClient, authService: AuthService
       const props = JSON.parse(row.properties);
 
       // Get related edges
-      const createdByEdges = database.prepare(`
+      const createdByEdges = database
+        .prepare(
+          `
         SELECT * FROM edges WHERE kind = 'CREATED_BY' AND from_id = ? AND account_id = ?
-      `).all(id, accountId) as any[];
+      `
+        )
+        .all(id, accountId) as any[];
 
-      const attachedToEdges = database.prepare(`
+      const attachedToEdges = database
+        .prepare(
+          `
         SELECT * FROM edges WHERE kind = 'ATTACHED_TO' AND from_id = ? AND account_id = ?
-      `).all(id, accountId) as any[];
+      `
+        )
+        .all(id, accountId) as any[];
 
-      const pinsContextEdges = database.prepare(`
+      const pinsContextEdges = database
+        .prepare(
+          `
         SELECT * FROM edges WHERE kind = 'PINS_CONTEXT' AND from_id = ? AND account_id = ?
-      `).all(id, accountId) as any[];
+      `
+        )
+        .all(id, accountId) as any[];
 
       return res.json({
         success: true,
@@ -287,6 +391,8 @@ export function createWorkspaceRoutes(db: SQLiteClient, authService: AuthService
           metadata: props.metadata,
           account_id: row.account_id,
           created_by: row.created_by,
+          creator_name: row.creator_name || 'Unknown',
+          creator_email: row.creator_email || '',
           created_at: row.created_at,
           updated_at: row.updated_at,
         },
@@ -326,13 +432,17 @@ export function createWorkspaceRoutes(db: SQLiteClient, authService: AuthService
       const updates = UpdateWorkspaceSchema.parse(req.body);
 
       // F2: Account Boundary
-      const row = database.prepare(`
+      const row = database
+        .prepare(
+          `
         SELECT * FROM nodes
         WHERE id = ?
           AND kind = 'Source'
           AND account_id = ?
           AND json_extract(properties, '$.source_role') = 'workspace'
-      `).get(id, accountId) as any;
+      `
+        )
+        .get(id, accountId) as any;
 
       if (!row) {
         return res.status(404).json({
@@ -353,18 +463,26 @@ export function createWorkspaceRoutes(db: SQLiteClient, authService: AuthService
       // Update context_pins if provided
       if (updates.context_pins !== undefined) {
         // Remove old PINS_CONTEXT edges
-        database.prepare(`
+        database
+          .prepare(
+            `
           DELETE FROM edges WHERE kind = 'PINS_CONTEXT' AND from_id = ? AND account_id = ?
-        `).run(id, accountId);
+        `
+          )
+          .run(id, accountId);
 
         // Create new PINS_CONTEXT edges
         for (const pinId of updates.context_pins) {
           const pinEdgeId = `edge_pins_${nanoid()}`;
           const pinProps = JSON.stringify({ pin_type: 'explicit' });
-          database.prepare(`
+          database
+            .prepare(
+              `
             INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
             VALUES (?, 'PINS_CONTEXT', ?, ?, ?, ?, ?, ?)
-          `).run(pinEdgeId, id, pinId, pinProps, accountId, userId, now);
+          `
+            )
+            .run(pinEdgeId, id, pinId, pinProps, accountId, userId, now);
         }
 
         props.context_pins = updates.context_pins;
@@ -373,27 +491,46 @@ export function createWorkspaceRoutes(db: SQLiteClient, authService: AuthService
       // Update attached_agents if provided
       if (updates.attached_agents !== undefined) {
         // Remove old ATTACHED_TO edges
-        database.prepare(`
+        database
+          .prepare(
+            `
           DELETE FROM edges WHERE kind = 'ATTACHED_TO' AND from_id = ? AND account_id = ?
-        `).run(id, accountId);
+        `
+          )
+          .run(id, accountId);
 
         // Create new ATTACHED_TO edges
         for (const agentId of updates.attached_agents) {
           const attachedEdgeId = `edge_attached_${nanoid()}`;
-          database.prepare(`
+          database
+            .prepare(
+              `
             INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
             VALUES (?, 'ATTACHED_TO', ?, ?, '{}', ?, ?, ?)
-          `).run(attachedEdgeId, id, agentId, accountId, userId, now);
+          `
+            )
+            .run(attachedEdgeId, id, agentId, accountId, userId, now);
         }
 
         props.attached_agents = updates.attached_agents;
       }
 
       // Save updated properties
-      database.prepare(`
+      database
+        .prepare(
+          `
         UPDATE nodes SET properties = ?, updated_at = ?
         WHERE id = ? AND account_id = ?
-      `).run(JSON.stringify(props), now, id, accountId);
+      `
+        )
+        .run(JSON.stringify(props), now, id, accountId);
+
+      // Get creator details
+      const creatorRow = database
+        .prepare('SELECT name, email FROM users WHERE id = ?')
+        .get(row.created_by) as any;
+      const creatorName = creatorRow?.name || 'Unknown';
+      const creatorEmail = creatorRow?.email || '';
 
       return res.json({
         success: true,
@@ -408,8 +545,11 @@ export function createWorkspaceRoutes(db: SQLiteClient, authService: AuthService
           context_pins: props.context_pins || [],
           account_id: row.account_id,
           created_by: row.created_by,
+          creator_name: creatorName,
+          creator_email: creatorEmail,
           created_at: row.created_at,
           updated_at: now,
+          overlaps: [],
         },
       });
     } catch (error: any) {
@@ -435,56 +575,64 @@ export function createWorkspaceRoutes(db: SQLiteClient, authService: AuthService
    * DELETE /api/v1/workspaces/:id
    * Delete workspace and associated edges
    */
-  router.delete(
-    '/:id',
-    requireAuth(authService),
-    async (req: Request, res: Response) => {
-      try {
-        const dbClient = await getDbClient(req);
-        const database = dbClient.getDatabase();
-        const { id } = req.params;
-        const accountId = req.user!.accountId;
+  router.delete('/:id', requireAuth(authService), async (req: Request, res: Response) => {
+    try {
+      const dbClient = await getDbClient(req);
+      const database = dbClient.getDatabase();
+      const { id } = req.params;
+      const accountId = req.user!.accountId;
 
-        // F2: Account Boundary
-        const row = database.prepare(`
+      // F2: Account Boundary
+      const row = database
+        .prepare(
+          `
           SELECT * FROM nodes
           WHERE id = ?
             AND kind = 'Source'
             AND account_id = ?
             AND json_extract(properties, '$.source_role') = 'workspace'
-        `).get(id, accountId) as any;
+        `
+        )
+        .get(id, accountId) as any;
 
-        if (!row) {
-          return res.status(404).json({
-            success: false,
-            error: 'Workspace not found',
-          });
-        }
-
-        // Delete associated edges first
-        database.prepare(`
-          DELETE FROM edges WHERE (from_id = ? OR to_id = ?) AND account_id = ?
-        `).run(id, id, accountId);
-
-        // Delete workspace node
-        database.prepare(`
-          DELETE FROM nodes WHERE id = ? AND account_id = ?
-        `).run(id, accountId);
-
-        return res.json({
-          success: true,
-          message: 'Workspace deleted successfully',
-        });
-      } catch (error: any) {
-        console.error('[Workspaces] Delete error:', error);
-        return res.status(500).json({
+      if (!row) {
+        return res.status(404).json({
           success: false,
-          error: 'Failed to delete workspace',
-          message: error.message,
+          error: 'Workspace not found',
         });
       }
+
+      // Delete associated edges first
+      database
+        .prepare(
+          `
+          DELETE FROM edges WHERE (from_id = ? OR to_id = ?) AND account_id = ?
+        `
+        )
+        .run(id, id, accountId);
+
+      // Delete workspace node
+      database
+        .prepare(
+          `
+          DELETE FROM nodes WHERE id = ? AND account_id = ?
+        `
+        )
+        .run(id, accountId);
+
+      return res.json({
+        success: true,
+        message: 'Workspace deleted successfully',
+      });
+    } catch (error: any) {
+      console.error('[Workspaces] Delete error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to delete workspace',
+        message: error.message,
+      });
     }
-  );
+  });
 
   return router;
 }

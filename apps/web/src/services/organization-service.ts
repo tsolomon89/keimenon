@@ -39,23 +39,36 @@ export interface CreatePrincipalInput {
   capabilities?: Partial<Principal['capabilities']>;
 }
 
+export interface WorkspaceOverlap {
+  id: string;
+  title: string;
+  creator_name: string;
+  shared_count: number;
+}
+
 // Workspace types
 export interface Workspace {
   id: string;
   kind: 'Source';
   account_id: string;
   title: string;
+  description?: string;
   source_role: 'workspace';
+  purpose?: string;
   attached_agents: string[];
   context_pins: string[];
-  provenance: {
+  provenance?: {
     origin_principal_id: string;
     origin_type: string;
     origin_ref: string;
     trust_state: string;
   };
+  created_by?: string;
+  creator_name?: string;
+  creator_email?: string;
   created_at: number;
   updated_at: number;
+  overlaps?: WorkspaceOverlap[];
 }
 
 export interface CreateWorkspaceInput {

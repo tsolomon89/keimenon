@@ -145,17 +145,40 @@ export class NativeGemmaRuntimeBackend {
 
   public async getHelperStatus(): Promise<any> {
     const res = await this.sendRequest('status');
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+    const memPercent = Math.round((usedMem / totalMem) * 100);
+
     return {
       ...res,
       platform: os.platform(),
       arch: os.arch(),
       helper_path: this.resolveHelperPath(),
+      telemetry: {
+        total_memory_bytes: totalMem,
+        free_memory_bytes: freeMem,
+        memory_used_percent: memPercent,
+        cpu_cores: os.cpus().length,
+      },
     };
   }
 
   public async checkStatus(): Promise<LocalInferenceStatus> {
     try {
       const res = await this.getHelperStatus();
+      const next_actions: any[] = [];
+
+      if (res.telemetry?.memory_used_percent > 90) {
+        next_actions.push({
+          id: 'hardware-warning-ram',
+          label: 'System RAM Constrained',
+          description: `Your system is utilizing ${res.telemetry.memory_used_percent}% of its RAM. Local inference may be slow or unresponsive.`,
+          requires_user_confirmation: false,
+          action_type: 'run_check',
+        });
+      }
+
       return {
         model_family: 'gemma',
         preferred_backend: 'native-gemma',
@@ -164,7 +187,7 @@ export class NativeGemmaRuntimeBackend {
         requires_admin: false,
         model_id: null,
         message: res.message || 'Keimenon native local Gemma runtime check failed.',
-        next_actions: [],
+        next_actions,
       };
     } catch (err: any) {
       if (err.message.includes('Helper path not found')) {

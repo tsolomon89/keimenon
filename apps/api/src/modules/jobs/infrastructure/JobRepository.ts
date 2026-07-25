@@ -111,6 +111,14 @@ export class SQLiteJobRepository implements JobRepository {
       return;
     }
 
+    const accountsTableExists =
+      db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='accounts'").get() !==
+      undefined;
+
+    const fkConstraint = accountsTableExists
+      ? ', FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE'
+      : '';
+
     db.exec(`
       CREATE TABLE IF NOT EXISTS job_change_pages (
         id TEXT PRIMARY KEY,
@@ -121,8 +129,8 @@ export class SQLiteJobRepository implements JobRepository {
         ids_json TEXT NOT NULL,
         created_at INTEGER NOT NULL,
         UNIQUE(job_id, page_type, page_index),
-        FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
-        FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+        FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+        ${fkConstraint}
       );
       CREATE INDEX IF NOT EXISTS idx_job_change_pages_job ON job_change_pages(job_id);
       CREATE INDEX IF NOT EXISTS idx_job_change_pages_account ON job_change_pages(account_id);

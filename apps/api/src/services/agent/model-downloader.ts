@@ -23,6 +23,7 @@ class ModelDownloader extends EventEmitter {
       totalBytes: number;
       tempPath: string;
       status: 'pending' | 'downloading' | 'paused' | 'completed' | 'failed';
+      retryCount: number;
     }
   > = new Map();
 
@@ -86,6 +87,7 @@ class ModelDownloader extends EventEmitter {
       totalBytes,
       tempPath,
       status: 'downloading',
+      retryCount: 0,
     });
 
     // Run async download
@@ -109,7 +111,10 @@ class ModelDownloader extends EventEmitter {
     expectedSize: number,
     abortController: AbortController
   ) {
-    const active = this.activeDownloads.get(candidateId)!;
+    const active = this.activeDownloads.get(candidateId);
+    if (!active) return;
+
+    let fileStream: fs.WriteStream | null = null;
 
     try {
       const headers: Record<string, string> = {};
@@ -158,7 +163,7 @@ class ModelDownloader extends EventEmitter {
 
       active.totalBytes = totalBytes;
 
-      const fileStream = fs.createWriteStream(tempPath, {
+      fileStream = fs.createWriteStream(tempPath, {
         flags: startOffset > 0 ? 'r+' : 'w',
         start: startOffset,
       });
@@ -182,6 +187,7 @@ class ModelDownloader extends EventEmitter {
       }
 
       fileStream.end();
+      fileStream = null;
 
       // Check downloaded size
       const stats = fs.statSync(tempPath);
@@ -205,10 +211,65 @@ class ModelDownloader extends EventEmitter {
       // Verify files officially
       await modelManager.verifyModelFile({ candidate_id: candidateId });
     } catch (err: any) {
+      if (fileStream) {
+        try {
+          fileStream.end();
+        } catch (_) {
+          // ignore
+        }
+      }
+
       if (err.name === 'AbortError') {
         active.status = 'paused';
         this.emit('progress', this.getProgress(candidateId));
         return;
+      }
+
+      // Check if we can retry
+      if (active.status === 'downloading' && active.retryCount < 5) {
+        active.retryCount++;
+        const isTest = process.env.VITEST || process.env.NODE_ENV === 'test';
+        const delay = isTest ? 1 : Math.min(1000 * Math.pow(2, active.retryCount), 15000);
+        console.warn(
+          `[ModelDownloader] Download error for ${candidateId}: ${err.message}. Retrying ${active.retryCount}/5 in ${delay}ms...`
+        );
+
+        setTimeout(() => {
+          if (active.status !== 'downloading') return;
+
+          let currentSize = active.bytesDownloaded;
+          if (fs.existsSync(tempPath)) {
+            try {
+              const stats = fs.statSync(tempPath);
+              currentSize = stats.size;
+            } catch (_) {
+              // ignore
+            }
+          }
+
+          const newAbortController = new AbortController();
+          active.abortController = newAbortController;
+
+          this.runDownloadLoop(
+            candidateId,
+            url,
+            tempPath,
+            finalPath,
+            currentSize,
+            expectedSize,
+            newAbortController
+          );
+        }, delay);
+        return;
+      }
+
+      // Cleanup stale/corrupted partial staged file if failed permanently
+      if (fs.existsSync(tempPath)) {
+        try {
+          fs.unlinkSync(tempPath);
+        } catch (_) {
+          // ignore
+        }
       }
 
       active.status = 'failed';

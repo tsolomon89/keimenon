@@ -14,6 +14,7 @@ import {
   type SourceNode,
   type Task,
 } from '@keimenon/agent-core';
+import { registerCache } from '../../utils/cache-registry';
 
 type NodeRow = {
   id: string;
@@ -96,7 +97,7 @@ function parseJson<T>(value: string | null | undefined, fallback: T): T {
 }
 
 export class SQLiteAgentGraphRepo implements GraphRepo {
-  private readonly createdByCache = new Map<string, string>();
+  private static readonly createdByCache = new Map<string, string>();
 
   constructor(private readonly db: Database.Database) {
     this.ensureAgentTables();
@@ -1055,7 +1056,7 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
   }
 
   private async resolveCreatedByUser(accountId: string): Promise<string> {
-    const cached = this.createdByCache.get(accountId);
+    const cached = SQLiteAgentGraphRepo.createdByCache.get(accountId);
     if (cached) {
       return cached;
     }
@@ -1073,7 +1074,7 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
       .get(accountId) as { user_id?: string } | undefined;
 
     if (activeMembership?.user_id) {
-      this.createdByCache.set(accountId, activeMembership.user_id);
+      SQLiteAgentGraphRepo.createdByCache.set(accountId, activeMembership.user_id);
       return activeMembership.user_id;
     }
 
@@ -1090,10 +1091,17 @@ export class SQLiteAgentGraphRepo implements GraphRepo {
       .get(accountId) as { user_id?: string } | undefined;
 
     if (anyMembership?.user_id) {
-      this.createdByCache.set(accountId, anyMembership.user_id);
+      SQLiteAgentGraphRepo.createdByCache.set(accountId, anyMembership.user_id);
       return anyMembership.user_id;
     }
 
     throw new Error(`No user membership found for account ${accountId}`);
   }
 }
+
+// Register the static cache to the global registry
+registerCache({
+  clear: () => {
+    (SQLiteAgentGraphRepo as any).createdByCache.clear();
+  },
+});

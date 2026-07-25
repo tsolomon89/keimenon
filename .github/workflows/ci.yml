@@ -36,6 +36,12 @@ jobs:
       - name: Enforce Repo Hygiene
         run: npm run ci:hygiene:check
 
+      - name: Bootstrap Database
+        run: npm run factory-reset:db-only
+
+      - name: Run SQLite Integrity Check
+        run: npm run sqlite:check
+
       - name: Run Test
         run: npm run test
 

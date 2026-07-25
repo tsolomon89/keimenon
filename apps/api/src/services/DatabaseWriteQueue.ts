@@ -13,6 +13,7 @@ import { WriteQueueErrorHandler } from './WriteQueueErrorHandler';
 import type { SqlVariableSplitDiagnostics } from './WriteQueueErrorHandler';
 import type { DbWorkerClient } from '../workers/DbWorkerClient';
 import type { SerializedNode, SerializedEdge } from '../workers/db-worker-protocol';
+import { flushAllCaches } from '../utils/cache-registry';
 
 interface NodePreview {
   id: string;
@@ -265,6 +266,8 @@ export class DatabaseWriteQueue {
     while (this.flushRequested || this.nodeQueue.length > 0 || this.edgeQueue.length > 0) {
       this.flushRequested = false;
       await this.flushOnce();
+      // Yield to the event loop to prevent event loop starvation during bulk imports in test mode.
+      await new Promise<void>((resolve) => setImmediate(resolve));
     }
   }
 
@@ -344,6 +347,7 @@ export class DatabaseWriteQueue {
 
         // Broadcast SSE updates (still on main thread)
         this.broadcastFlushUpdates(nodes, edges);
+        flushAllCaches();
       } catch (workerErr: any) {
         console.error(
           '[DatabaseWriteQueue] Worker flush failed, falling back to main thread:',
@@ -501,6 +505,7 @@ export class DatabaseWriteQueue {
           });
         }
       }
+      flushAllCaches();
     } catch (error) {
       console.error('[DatabaseWriteQueue] flush failed:', error);
       if (this.errorHandler.isCircuitOpen()) {

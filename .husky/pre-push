@@ -1,8 +1,7 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-# Run tests before push (disabled for initial push)
-# npm test
+# Run repository doctors, SQLite checks, and hygiene validations before push
+echo "Running repository pre-push checks..."
+npm run doctor:runtime && npm run sqlite:check && npm run ci:hygiene:check
 
-# Run build to ensure it doesn't break (disabled for initial push)
-# npm run build

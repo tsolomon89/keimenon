@@ -38,6 +38,7 @@ const ADMIN_CREDENTIALS = {
 let adminToken: string;
 let adminAccountId: string;
 let db: Database.Database;
+let jobsDb: Database.Database;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -247,8 +248,10 @@ function cleanupTestData(accountId: string) {
   try {
     db.prepare('DELETE FROM nodes WHERE account_id = ?').run(accountId);
     db.prepare('DELETE FROM edges WHERE account_id = ?').run(accountId);
-    db.prepare('DELETE FROM jobs WHERE account_id = ?').run(accountId);
-    db.prepare('DELETE FROM job_events WHERE account_id = ?').run(accountId);
+    if (jobsDb) {
+      jobsDb.prepare('DELETE FROM jobs WHERE account_id = ?').run(accountId);
+      jobsDb.prepare('DELETE FROM job_events WHERE account_id = ?').run(accountId);
+    }
   } catch (error: any) {
     console.error(`✗ Error cleaning up test data: ${error.message}`);
   }
@@ -261,7 +264,7 @@ async function waitForNoActiveDeleteJobs(
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeoutMs) {
-    const activeDeleteJobs = db
+    const activeDeleteJobs = (jobsDb || db)
       .prepare(
         `
           SELECT id
@@ -282,7 +285,7 @@ async function waitForNoActiveDeleteJobs(
     await sleep(250);
   }
 
-  const remainingJobs = db
+  const remainingJobs = (jobsDb || db)
     .prepare(
       `
         SELECT id
@@ -388,6 +391,10 @@ beforeAll(async () => {
 
   // Open database connection
   db = new Database(DB_PATH);
+  const jobsDbPath = DB_PATH.endsWith('.db')
+    ? DB_PATH.replace(/\.db$/, '-jobs.db')
+    : `${DB_PATH}-jobs`;
+  jobsDb = new Database(jobsDbPath);
 
   // Login as admin
   const adminAuth = await login(ADMIN_CREDENTIALS.email, ADMIN_CREDENTIALS.password);
@@ -403,6 +410,9 @@ afterAll(async () => {
   }
   if (db) {
     db.close();
+  }
+  if (jobsDb) {
+    jobsDb.close();
   }
 
   console.log('\n✓ Test suite complete\n');
@@ -428,6 +438,11 @@ describe('Delete Scope Verification', () => {
     //      and preserves system nodes (UserNode, AccountNode, Board, Constellation)
 
     console.log('   🧪 Testing system node preservation during keimenon deletion...');
+
+    // Trigger auth middleware to ensure human principal is materialized
+    await fetch(`${getApiUrl()}/api/v1/jobs`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
 
     // Get initial system node count (should exist for admin account)
     let systemNodesBefore = countSystemNodes(adminAccountId);
@@ -479,6 +494,12 @@ describe('Delete Scope Verification', () => {
     // CRITICAL ASSERTIONS:
     // 1. Keimenon nodes should be deleted (0 remaining)
     const keimenonNodesAfter = countKeimenonNodes(adminAccountId);
+    if (keimenonNodesAfter !== 0) {
+      const remaining = db
+        .prepare('SELECT id, kind, account_id, properties FROM nodes WHERE account_id = ?')
+        .all(adminAccountId);
+      console.log('   ⚠️ [DEBUG] Remaining nodes for account:', remaining);
+    }
     assert.strictEqual(
       keimenonNodesAfter,
       0,
@@ -507,7 +528,7 @@ describe('Batched Deletion - Small Dataset', () => {
 
     console.log(`   📊 Created ${nodeCount} test nodes`);
 
-    const nodesBefore = countNodes(adminAccountId);
+    const nodesBefore = countKeimenonNodes(adminAccountId);
     assert.strictEqual(nodesBefore, nodeCount);
 
     // Start delete job
@@ -531,7 +552,17 @@ describe('Batched Deletion - Small Dataset', () => {
     assert.strictEqual(job.state.status, 'succeeded');
 
     // Verify all nodes deleted
-    const nodesAfter = countNodes(adminAccountId);
+    const nodesAfter = countKeimenonNodes(adminAccountId);
+    if (nodesAfter !== 0) {
+      try {
+        const remaining = db
+          .prepare('SELECT id, kind, properties FROM nodes WHERE account_id = ?')
+          .all(adminAccountId);
+        console.log('DEBUG: Remaining nodes:', remaining);
+      } catch (err) {
+        console.error('DEBUG: Failed to query remaining nodes:', err);
+      }
+    }
     assert.strictEqual(nodesAfter, 0);
 
     // Verify progress updates
@@ -568,7 +599,7 @@ describe('Batched Deletion - Medium Dataset', () => {
 
     console.log(`   📊 Created ${nodeCount} test nodes`);
 
-    const nodesBefore = countNodes(adminAccountId);
+    const nodesBefore = countKeimenonNodes(adminAccountId);
     assert.strictEqual(nodesBefore, nodeCount);
 
     // Start delete job
@@ -595,7 +626,7 @@ describe('Batched Deletion - Medium Dataset', () => {
     assert.strictEqual(job.state.status, 'succeeded');
 
     // Verify all nodes deleted
-    const nodesAfter = countNodes(adminAccountId);
+    const nodesAfter = countKeimenonNodes(adminAccountId);
     assert.strictEqual(nodesAfter, 0);
 
     // Check server responsiveness during deletion
@@ -636,7 +667,7 @@ describe('Batched Deletion - Large Dataset', () => {
 
     console.log(`   📊 Created ${nodeCount} test nodes`);
 
-    const nodesBefore = countNodes(adminAccountId);
+    const nodesBefore = countKeimenonNodes(adminAccountId);
     assert.strictEqual(nodesBefore, nodeCount);
 
     // Start delete job
@@ -664,7 +695,7 @@ describe('Batched Deletion - Large Dataset', () => {
     assert.strictEqual(job.state.status, 'succeeded');
 
     // Verify all nodes deleted
-    const nodesAfter = countNodes(adminAccountId);
+    const nodesAfter = countKeimenonNodes(adminAccountId);
     assert.strictEqual(nodesAfter, 0);
 
     // Analyze progress updates
@@ -713,7 +744,7 @@ describe('Batched Deletion - Performance Benchmarks', () => {
 
     console.log(`   📊 Created ${nodeCount} test nodes`);
 
-    const nodesBefore = countNodes(adminAccountId);
+    const nodesBefore = countKeimenonNodes(adminAccountId);
     assert.strictEqual(nodesBefore, nodeCount);
 
     // Measure server responsiveness WHILE deletion is running
@@ -744,7 +775,7 @@ describe('Batched Deletion - Performance Benchmarks', () => {
     assert.strictEqual(job.state.status, 'succeeded');
 
     // Verify all nodes deleted
-    const nodesAfter = countNodes(adminAccountId);
+    const nodesAfter = countKeimenonNodes(adminAccountId);
     assert.strictEqual(nodesAfter, 0);
 
     // Check server responsiveness

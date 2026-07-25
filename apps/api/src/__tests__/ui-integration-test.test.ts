@@ -68,7 +68,7 @@ const TEST_FILES_DIR =
 // Test Credentials
 const ADMIN_CREDENTIALS = {
   email: 'admin@admin.com',
-  password: 'KeimenonStrongAdmin2026!',
+  password: 'admin123',
   name: 'Admin User',
 };
 
@@ -102,6 +102,12 @@ beforeAll(async () => {
 
   // Save original dbClient
   originalDbClient = (global as any).dbClient;
+
+  // Capture previous TEST_API_URL immediately before any failures can occur
+  previousTestApiUrl = process.env.TEST_API_URL;
+
+  // Reset DatabaseFactory singleton to ensure a fresh connected instance
+  await DatabaseFactory.closeAll().catch(() => {});
 
   // Initialize DB
   testDbClient = await DatabaseFactory.getClient({
@@ -156,7 +162,6 @@ beforeAll(async () => {
       if (address && typeof address === 'object') {
         PORT = address.port;
         API_BASE_URL = `http://localhost:${PORT}`;
-        previousTestApiUrl = process.env.TEST_API_URL;
         process.env.TEST_API_URL = API_BASE_URL; // Verify helpers see this
         console.log(`[UI Test] Server started on port ${PORT}`);
       }
@@ -207,9 +212,7 @@ afterAll(async () => {
   await stopDbWorker().catch(() => {});
 
   // Close test-specific dbClient and restore original global dbClient
-  if (testDbClient && typeof testDbClient.close === 'function') {
-    await testDbClient.close().catch(() => {});
-  }
+  await DatabaseFactory.closeAll().catch(() => {});
   (global as any).dbClient = originalDbClient;
   const { closeDbConnection } = await import('../utils/get-db-client');
   await closeDbConnection(DB_PATH).catch(() => {});

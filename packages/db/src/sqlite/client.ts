@@ -29,6 +29,7 @@ export interface SQLiteConfig {
   readonly?: boolean;
   verbose?: boolean;
   ignoreGlobalContext?: boolean; // If true, getDatabase() returns this.db even if global.dbClient is set
+  skipSchemaInit?: boolean; // If true, bypasses automatic schema initialization and migrations
 }
 
 // Embedded SQL schema - Clean M:N architecture from day 1
@@ -962,7 +963,11 @@ export class SQLiteClient {
       }
 
       // Initialize schema
-      await this.initializeSchema();
+      if (!this.config.skipSchemaInit) {
+        await this.initializeSchema();
+      } else {
+        this.schemaInitialized = true;
+      }
 
       console.log(`✅ Connected to SQLite at: ${this.config.databasePath}`);
     } catch (error) {
@@ -1339,6 +1344,29 @@ export class SQLiteClient {
     if (node.kind === 'SourceSpan') {
       const span: any = node;
       const metadata = span.metadata ? JSON.stringify(span.metadata) : null;
+
+      const insertNodeStmt = this.db.prepare(`
+        INSERT OR REPLACE INTO nodes (
+          id, kind, properties, account_id, created_by, created_at, updated_at, data_tag,
+          content_hash, canonical_content, is_duplicate, original_node_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      insertNodeStmt.run(
+        node.id,
+        node.kind,
+        JSON.stringify(node),
+        nodeData.account_id,
+        nodeData.created_by,
+        node.created_at,
+        node.updated_at,
+        nodeData.data_tag || 'real',
+        contentHash,
+        canonicalContent,
+        isDuplicate ? 1 : 0,
+        originalNodeId
+      );
+
       this.db
         .prepare(
           `
@@ -1369,6 +1397,29 @@ export class SQLiteClient {
     } else if (node.kind === 'Phrase') {
       const phrase: any = node;
       const metadata = phrase.metadata ? JSON.stringify(phrase.metadata) : null;
+
+      const insertNodeStmt = this.db.prepare(`
+        INSERT OR REPLACE INTO nodes (
+          id, kind, properties, account_id, created_by, created_at, updated_at, data_tag,
+          content_hash, canonical_content, is_duplicate, original_node_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      insertNodeStmt.run(
+        node.id,
+        node.kind,
+        JSON.stringify(node),
+        nodeData.account_id,
+        nodeData.created_by,
+        node.created_at,
+        node.updated_at,
+        nodeData.data_tag || 'real',
+        contentHash,
+        canonicalContent,
+        isDuplicate ? 1 : 0,
+        originalNodeId
+      );
+
       this.db
         .prepare(
           `
@@ -1395,6 +1446,29 @@ export class SQLiteClient {
     } else if (node.kind === 'Packet') {
       const packet: any = node;
       const metadata = packet.metadata ? JSON.stringify(packet.metadata) : null;
+
+      const insertNodeStmt = this.db.prepare(`
+        INSERT OR REPLACE INTO nodes (
+          id, kind, properties, account_id, created_by, created_at, updated_at, data_tag,
+          content_hash, canonical_content, is_duplicate, original_node_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      insertNodeStmt.run(
+        node.id,
+        node.kind,
+        JSON.stringify(node),
+        nodeData.account_id,
+        nodeData.created_by,
+        node.created_at,
+        node.updated_at,
+        nodeData.data_tag || 'real',
+        contentHash,
+        canonicalContent,
+        isDuplicate ? 1 : 0,
+        originalNodeId
+      );
+
       this.db
         .prepare(
           `
@@ -1424,6 +1498,29 @@ export class SQLiteClient {
     } else if (node.kind === 'AtomicUnit') {
       const unit: any = node;
       const metadata = unit.metadata ? JSON.stringify(unit.metadata) : null;
+
+      const insertNodeStmt = this.db.prepare(`
+        INSERT OR REPLACE INTO nodes (
+          id, kind, properties, account_id, created_by, created_at, updated_at, data_tag,
+          content_hash, canonical_content, is_duplicate, original_node_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      insertNodeStmt.run(
+        node.id,
+        node.kind,
+        JSON.stringify(node),
+        nodeData.account_id,
+        nodeData.created_by,
+        node.created_at,
+        node.updated_at,
+        nodeData.data_tag || 'real',
+        contentHash,
+        canonicalContent,
+        isDuplicate ? 1 : 0,
+        originalNodeId
+      );
+
       this.db
         .prepare(
           `
@@ -1562,6 +1659,22 @@ export class SQLiteClient {
         if (node.kind === 'SourceSpan') {
           const span: any = node;
           const metadata = span.metadata ? JSON.stringify(span.metadata) : null;
+
+          insert.run(
+            node.id,
+            node.kind,
+            JSON.stringify(node),
+            nodeData.account_id,
+            nodeData.created_by,
+            node.created_at,
+            node.updated_at,
+            nodeData.data_tag || 'real',
+            contentHash,
+            canonicalContent,
+            0,
+            null
+          );
+
           insertSpan.run(
             span.id,
             span.account_id,
@@ -1584,6 +1697,22 @@ export class SQLiteClient {
         } else if (node.kind === 'Phrase') {
           const phrase: any = node;
           const metadata = phrase.metadata ? JSON.stringify(phrase.metadata) : null;
+
+          insert.run(
+            node.id,
+            node.kind,
+            JSON.stringify(node),
+            nodeData.account_id,
+            nodeData.created_by,
+            node.created_at,
+            node.updated_at,
+            nodeData.data_tag || 'real',
+            contentHash,
+            canonicalContent,
+            0,
+            null
+          );
+
           insertPhrase.run(
             phrase.id,
             phrase.account_id,
@@ -1602,6 +1731,22 @@ export class SQLiteClient {
         } else if (node.kind === 'Packet') {
           const packet: any = node;
           const metadata = packet.metadata ? JSON.stringify(packet.metadata) : null;
+
+          insert.run(
+            node.id,
+            node.kind,
+            JSON.stringify(node),
+            nodeData.account_id,
+            nodeData.created_by,
+            node.created_at,
+            node.updated_at,
+            nodeData.data_tag || 'real',
+            contentHash,
+            canonicalContent,
+            0,
+            null
+          );
+
           insertPacket.run(
             packet.id,
             packet.account_id,
@@ -1623,6 +1768,22 @@ export class SQLiteClient {
         } else if (node.kind === 'AtomicUnit') {
           const unit: any = node;
           const metadata = unit.metadata ? JSON.stringify(unit.metadata) : null;
+
+          insert.run(
+            node.id,
+            node.kind,
+            JSON.stringify(node),
+            nodeData.account_id,
+            nodeData.created_by,
+            node.created_at,
+            node.updated_at,
+            nodeData.data_tag || 'real',
+            contentHash,
+            canonicalContent,
+            0,
+            null
+          );
+
           insertAtomic.run(
             unit.id,
             unit.account_id,

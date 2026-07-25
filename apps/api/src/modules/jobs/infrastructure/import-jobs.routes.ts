@@ -75,12 +75,15 @@ export function createImportJobsRoutes(
 
       // CONCURRENT DELETION PREVENTION: Check for active delete jobs
       // Prevents data corruption and race conditions from simultaneous deletions
-      const activeDeleteJobs = await jobRepository.find({
-        accountId: targetAccountId,
-        type: 'delete',
-        status: ['queued', 'running'],
-        limit: 1,
-      });
+      const activeDeleteJobs = await jobRepository.find(
+        {
+          accountId: targetAccountId,
+          type: 'delete',
+          status: ['queued', 'running'],
+          limit: 1,
+        },
+        req
+      );
 
       if (activeDeleteJobs.length > 0) {
         const activeJob = activeDeleteJobs[0];
@@ -93,6 +96,7 @@ export function createImportJobsRoutes(
         return res.status(409).json({
           success: false,
           error: 'A delete operation is already in progress for this account',
+          activeJobId: activeJob.id,
           details: {
             activeJobId: activeJob.id,
             activeJobStatus: activeJob.status,
@@ -138,6 +142,7 @@ export function createImportJobsRoutes(
 
       return res.status(201).json({
         success: true,
+        jobId: result.jobId,
         data: {
           jobId: result.jobId,
           message: 'Delete job created. Monitor progress via SSE at /api/v1/stream/jobs',
