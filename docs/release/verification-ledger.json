@@ -8,12 +8,12 @@
     "npm": "11.6.0"
   },
   "candidateHead": "fc5050e0f46c764443fdb1042a70ad8052cc491e",
-  "testedSourceCommit": "d65ebcdcf9b6a71f8255a8da6350dd688b33623a",
+  "testedSourceCommit": "0579b7099ca466b9c0cc38f065369b2cd8d6ad42",
   "branch": "release/rc-readiness",
   "releaseArtifact": {
     "path": "apps/desktop/out/Keimenon Setup 0.1.0.exe",
-    "sizeBytes": 104976940,
-    "sha256": "3946F71CF7270AB10505970DEA40911E28FBC16EE374962F15F1F0F9DE983A2B",
+    "sizeBytes": 104978826,
+    "sha256": "4CEE50F1927DB59A8ABE21B21C67C6CF371B64814CCF3463069048E6F0F9977D",
     "blockmap": "apps/desktop/out/Keimenon Setup 0.1.0.exe.blockmap"
   },
   "results": [

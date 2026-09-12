@@ -4,7 +4,7 @@
 **Verdict:** **NOT PRODUCTION READY — EXTERNAL BLOCKERS**  
 **Integration Branch:** `release/rc-readiness`  
 **Audited Head:** `fc5050e0f46c764443fdb1042a70ad8052cc491e`  
-**Tested Source Commit:** `d65ebcdcf9b6a71f8255a8da6350dd688b33623a`  
+**Tested Source Commit:** `0579b7099ca466b9c0cc38f065369b2cd8d6ad42`  
 **Verified Candidate:** Frozen Working Tree on `release/rc-readiness`  
 **Release Target:** Windows x64 Desktop Application (`Keimenon Setup 0.1.0.exe`)  
 **Canonical Product Contract:** Root `AGENTS.md` and `GEMINI.md`
@@ -25,7 +25,7 @@ Because continuous physical time cannot be manufactured, the 14-day continuous n
 
 | Artifact                      | File Path                                            | Size (Bytes)            | SHA-256 Checksum                                                   |
 | ----------------------------- | ---------------------------------------------------- | ----------------------- | ------------------------------------------------------------------ |
-| **Windows Desktop Installer** | `apps/desktop/out/Keimenon Setup 0.1.0.exe`          | 104,976,940 (~100.1 MB) | `3946F71CF7270AB10505970DEA40911E28FBC16EE374962F15F1F0F9DE983A2B` |
+| **Windows Desktop Installer** | `apps/desktop/out/Keimenon Setup 0.1.0.exe`          | 104,978,826 (~100.1 MB) | `4CEE50F1927DB59A8ABE21B21C67C6CF371B64814CCF3463069048E6F0F9977D` |
 | **Blockmap**                  | `apps/desktop/out/Keimenon Setup 0.1.0.exe.blockmap` | 111,040                 | Generated via electron-builder                                     |
 | **Unpacked Application**      | `apps/desktop/out/win-unpacked/Keimenon.exe`         | Directory               | Complete standalone packaged executable                            |
 

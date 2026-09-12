@@ -2,7 +2,7 @@
 
 **Status:** Verified Candidate Baseline (Pre-Live External Blocker: Gate-E Observation Streak)  
 **Base Head:** `fc5050e0f46c764443fdb1042a70ad8052cc491e`  
-**Tested Source Commit:** `d65ebcdcf9b6a71f8255a8da6350dd688b33623a`  
+**Tested Source Commit:** `0579b7099ca466b9c0cc38f065369b2cd8d6ad42`  
 **Integration Branch:** `release/rc-readiness`  
 **Target Platform:** Windows 11 x64, Node 24.x, SQLite WAL local storage, Google Gemma local runtime  
 **Canonical Spec:** Root `AGENTS.md` and `GEMINI.md`
