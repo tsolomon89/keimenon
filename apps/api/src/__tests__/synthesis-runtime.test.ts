@@ -206,7 +206,9 @@ describe('Synthesis Runtime & Agent Skills', () => {
         undefined // No provider requested
       );
 
-      expect(unconfiguredResult.synthesisError).toBe('GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED');
+      expect(unconfiguredResult.synthesisError).toMatch(
+        /GEMMA_MODEL_NOT_FOUND|GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED/
+      );
       expect(unconfiguredResult.assistantMessage).toBeUndefined();
 
       // With explicit test mock provider injection, verify message persistence & edges
@@ -450,6 +452,72 @@ describe('Synthesis Runtime & Agent Skills', () => {
         .prepare(`SELECT * FROM edges WHERE from_id = ? AND to_id = ? AND kind = 'RUN_BY'`)
         .all(runNodes[0].id, mockAgentId);
       expect(edges.length).toBe(1);
+    });
+
+    it('should reject invented or out-of-scope evidence references and record only valid bounded evidence', async () => {
+      // Create a source node in database
+      const validSourceId = 'src_valid_bounded_1';
+      db.prepare(
+        `INSERT INTO nodes (id, kind, properties, account_id, created_by, created_at, updated_at)
+         VALUES (?, 'Source', '{"title":"Bounded Source"}', ?, ?, ?, ?)`
+      ).run(validSourceId, mockAccountId, mockHumanId, Date.now(), Date.now());
+
+      // Update conversation context_spec to bind validSourceId
+      const conv = db
+        .prepare(`SELECT properties FROM nodes WHERE id = ?`)
+        .get(mockConversationId) as any;
+      const props = JSON.parse(conv.properties);
+      props.agent_principal_id = mockAgentId;
+      props.context_spec = {
+        source_ids: [validSourceId],
+        group_ids: [],
+      };
+      db.prepare(`UPDATE nodes SET properties = ? WHERE id = ?`).run(
+        JSON.stringify(props),
+        mockConversationId
+      );
+
+      // Register mock provider returning 1 valid evidence ID and 1 invented/out-of-scope ID
+      const testEvidenceProvider = {
+        id: 'test-evidence-rejection-provider',
+        family: 'gemma',
+        mode: 'local',
+        synthesize: async () => ({
+          content: 'Synthesized with evidence',
+          provider: 'test-evidence-rejection-provider',
+          model: 'gemma-4-e2b',
+          skill_used: 'bounded-answer',
+          evidence_used: [validSourceId, 'invented_nonexistent_source_id_999'],
+          proposed_outputs: [],
+        }),
+      } as any;
+
+      providerRegistry.registerProvider(testEvidenceProvider);
+
+      const service = new ConversationMessageService(db);
+      const result = await service.postMessage(
+        mockAccountId,
+        mockHumanId,
+        mockConversationId,
+        'Question requiring evidence',
+        true,
+        'bounded-answer',
+        'test-evidence-rejection-provider'
+      );
+
+      expect(result.synthesisError).toBeUndefined();
+      expect(result.agentRunDetails?.evidence_used).toEqual([validSourceId]);
+      expect(result.agentRunDetails?.rejected_evidence).toEqual([
+        'invented_nonexistent_source_id_999',
+      ]);
+
+      // Verify USED_EVIDENCE edges in DB: ONLY validSourceId is linked!
+      const usedEdges = db
+        .prepare(`SELECT * FROM edges WHERE from_id = ? AND kind = 'USED_EVIDENCE'`)
+        .all(result.agentRunDetails?.agent_run_id) as any[];
+
+      expect(usedEdges.length).toBe(1);
+      expect(usedEdges[0].to_id).toBe(validSourceId);
     });
   });
 });

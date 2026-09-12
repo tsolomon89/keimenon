@@ -89,33 +89,79 @@ export class NativeGemmaRuntimeBackend {
     return this.helper;
   }
 
-  private async sendRequest(method: string, params?: any): Promise<any> {
+  private async sendRequest(method: string, params?: any, timeoutMs?: number): Promise<any> {
     try {
       const helper = await this.getOrStartHelper();
       const id = this.nextId++;
+      const effectiveTimeout =
+        timeoutMs !== undefined
+          ? timeoutMs
+          : parseInt(process.env.KEIMENON_INFERENCE_HELPER_TIMEOUT_MS || '5000', 10);
       return new Promise((resolve, reject) => {
         this.pendingRequests.set(id, { resolve, reject });
         helper.stdin?.write(JSON.stringify({ jsonrpc: '2.0', method, params, id }) + '\n');
 
         // Timeout
-        setTimeout(
-          () => {
-            if (this.pendingRequests.has(id)) {
-              this.pendingRequests.delete(id);
-              if (this.helper) {
-                console.error(`[NativeHelper] Request timeout. Killing helper process.`);
-                this.helper.kill();
-                this.helper = null;
-              }
-              reject(new Error(`Helper request ${method} timed out`));
+        setTimeout(() => {
+          if (this.pendingRequests.has(id)) {
+            this.pendingRequests.delete(id);
+            if (this.helper) {
+              console.error(`[NativeHelper] Request timeout. Killing helper process.`);
+              this.helper.kill();
+              this.helper = null;
             }
-          },
-          parseInt(process.env.KEIMENON_INFERENCE_HELPER_TIMEOUT_MS || '5000', 10)
-        );
+            reject(new Error(`Helper request ${method} timed out`));
+          }
+        }, effectiveTimeout);
       });
     } catch (e: any) {
       throw new Error(`Failed to send request to helper: ${e.message}`);
     }
+  }
+
+  public async ensureModelLoaded(): Promise<void> {
+    try {
+      const status = await this.getHelperStatus();
+      if (status.state === 'model_loaded') {
+        return;
+      }
+    } catch (_) {
+      // If status check fails or model not yet loaded, proceed to attempt load
+    }
+
+    const models = await modelManager.getInstalledModels();
+    const candidate = models.find(
+      (m) =>
+        m.installed ||
+        m.verification_status === 'verified' ||
+        m.verification_status === 'presence_verified'
+    );
+
+    if (!candidate || !candidate.candidate_id) {
+      throw new Error(
+        'GEMMA_MODEL_NOT_FOUND: No verified local Gemma model candidate is installed.'
+      );
+    }
+
+    const loadRes = await this.loadModel(candidate.candidate_id);
+    if (!loadRes.success) {
+      throw new Error(
+        `GEMMA_LOCAL_RUNTIME_UNAVAILABLE: Failed to load model ${candidate.candidate_id}: ${loadRes.message}`
+      );
+    }
+  }
+
+  public async generate(
+    prompt: string,
+    maxTokens?: number
+  ): Promise<{ success: boolean; text?: string; error?: string }> {
+    await this.ensureModelLoaded();
+    const timeoutMs = parseInt(process.env.GEMMA_LOCAL_TIMEOUT_MS || '60000', 10);
+    return this.sendRequest('generate', { prompt, max_tokens: maxTokens }, timeoutMs);
+  }
+
+  public async cancel(): Promise<void> {
+    return this.sendRequest('cancel', undefined, 5000);
   }
 
   private async getAbsolutePathForCandidate(candidateId: string): Promise<string> {

@@ -331,6 +331,20 @@ export class ModelManager {
     const candidates = await this.getSourceCandidates();
     const candidate = candidates.find((c) => c.id === input.candidate_id);
 
+    // If candidate is artifact_verified, require expected_size_bytes and checksum
+    if (candidate?.artifact_verified) {
+      if (!candidate.expected_size_bytes || !candidate.checksum) {
+        model.verification_status = 'failed';
+        model.installed = false;
+        await this.writeInstalledModels(models);
+        return {
+          verified: false,
+          verification_status: 'failed',
+          message: 'Artifact-verified candidates require expected size and SHA-256 checksum',
+        };
+      }
+    }
+
     // Check size if expected
     if (candidate && candidate.expected_size_bytes) {
       try {
@@ -393,7 +407,18 @@ export class ModelManager {
       }
     }
 
-    // Fallback to presence verified if no checksum is defined
+    // Fallback to presence verified ONLY for candidates not claiming artifact verification
+    if (candidate?.artifact_verified) {
+      model.verification_status = 'failed';
+      model.installed = false;
+      await this.writeInstalledModels(models);
+      return {
+        verified: false,
+        verification_status: 'failed',
+        message: 'Artifact-verified candidates cannot bypass checksum verification',
+      };
+    }
+
     model.verification_status = 'presence_verified';
     model.installed = true;
     await this.writeInstalledModels(models);

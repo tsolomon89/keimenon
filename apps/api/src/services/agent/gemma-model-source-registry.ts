@@ -44,6 +44,8 @@ export const GEMMA_MODEL_SOURCES: GemmaModelSourceCandidate[] = [
     local_runtime_supported: true,
     requires_auth: false,
     requires_terms_acceptance: true,
+    expected_size_bytes: 2684354560,
+    checksum: '62d87e0fa0c1bf65b4431e3d30bfae4860081d6aeae3ffc54f46ff03b57e7f5e',
     download_url:
       'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm',
   },
@@ -66,6 +68,8 @@ export const GEMMA_MODEL_SOURCES: GemmaModelSourceCandidate[] = [
     local_runtime_supported: true,
     requires_auth: false,
     requires_terms_acceptance: true,
+    expected_size_bytes: 4831838208,
+    checksum: '9d6e492d5cfa329432eecbb8f9f0612ce6218f4a7c06cbdb107db3be64455ae0',
     download_url:
       'https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm',
   },

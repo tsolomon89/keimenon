@@ -180,7 +180,9 @@ docs/OVERVIEW.md
 
 # Agent artifacts
 agent_context/*
-!agent_context/runtime-skills/apps/desktop/resources/web-dist
+!agent_context/runtime-skills/**
+!agent_context/AGENTS.md
+!agent_context/vision_gap_analysis.md
 
 # Vendor dependencies
 vendor/litert-lm/
@@ -193,3 +195,6 @@ apps/desktop/resources/native/win32-x64/*.dll
 # Scratch files
 scratch/
 apps/api/source-handling-keep_inline-*.json
+
+# Packaged web distribution (tracked for Electron desktop release)
+!apps/desktop/resources/web-dist/**

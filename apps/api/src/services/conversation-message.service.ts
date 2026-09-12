@@ -228,6 +228,33 @@ export class ConversationMessageService {
 
         let successRunId: string | undefined;
 
+        // Validate evidence items strictly against the bounded contextPack to prevent invented/out-of-scope references
+        const validContextNodeIds = new Set<string>([
+          ...contextPack.source_ids,
+          ...contextPack.group_ids,
+          ...contextPack.evidence.map((e) => e.node_id),
+        ]);
+
+        const validEvidenceUsed: string[] = [];
+        const rejectedEvidence: string[] = [];
+
+        if (synthesisResult.evidence_used && Array.isArray(synthesisResult.evidence_used)) {
+          for (const evId of synthesisResult.evidence_used) {
+            if (validContextNodeIds.has(evId)) {
+              validEvidenceUsed.push(evId);
+            } else {
+              rejectedEvidence.push(evId);
+            }
+          }
+        }
+
+        if (rejectedEvidence.length > 0) {
+          console.warn(
+            `[ConversationMessageService] Rejected ${rejectedEvidence.length} out-of-scope/invented evidence references:`,
+            rejectedEvidence
+          );
+        }
+
         const persistAssistantMessageTx = this.database.transaction(() => {
           this.database
             .prepare(
@@ -276,6 +303,8 @@ export class ConversationMessageService {
             skill_used: targetSkill,
             duration_ms: duration,
             status: 'success',
+            evidence_used: validEvidenceUsed,
+            rejected_evidence: rejectedEvidence,
           };
 
           this.database
@@ -325,13 +354,13 @@ export class ConversationMessageService {
             )
             .run(`edge_runout_${nanoid()}`, runId, asstMsgId, accountId, userId, asstTime);
 
-          // Record USED_EVIDENCE edges
-          if (synthesisResult.evidence_used && synthesisResult.evidence_used.length > 0) {
+          // Record USED_EVIDENCE edges for verified bounded evidence only
+          if (validEvidenceUsed.length > 0) {
             const insertEdge = this.database.prepare(`
               INSERT INTO edges (id, kind, from_id, to_id, properties, account_id, created_by, created_at)
               VALUES (?, 'USED_EVIDENCE', ?, ?, '{}', ?, ?, ?)
             `);
-            for (const evId of synthesisResult.evidence_used) {
+            for (const evId of validEvidenceUsed) {
               insertEdge.run(`edge_runev_${nanoid()}`, runId, evId, accountId, userId, asstTime);
             }
           }
@@ -347,6 +376,8 @@ export class ConversationMessageService {
           skill_used: targetSkill,
           duration_ms: Date.now() - startTime,
           status: 'success',
+          evidence_used: validEvidenceUsed,
+          rejected_evidence: rejectedEvidence,
         };
 
         return {

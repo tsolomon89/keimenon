@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish release to GitHub Releases'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -13,6 +20,10 @@ jobs:
   release:
     name: Create Release
     runs-on: windows-latest
+    env:
+      RELEASE_BUILD: '1'
+      KEIMENON_REQUIRE_NATIVE_BUILD: '1'
+      CI_NATIVE: 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,6 +45,9 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Run native runtime integration tests
+        run: npm run rc:check:native
+
       - name: Verify and package Windows desktop installer
         run: npm run rc:check:desktop
 
@@ -46,6 +60,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.publish == true
         uses: softprops/action-gh-release@v1
         with:
           body: ${{ steps.changelog.outputs.changelog }}

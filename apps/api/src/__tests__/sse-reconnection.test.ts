@@ -105,15 +105,11 @@ describe('SSE Reconnection', () => {
 
     // Login as admin
     try {
-      const loginResult = await register(
-        'admin@admin.com',
-        'KeimenonStrongAdmin2026!',
-        'Admin User'
-      );
+      const loginResult = await login('admin@admin.com', 'admin123');
       adminToken = loginResult.token;
       adminAccountId = loginResult.accountId;
     } catch (e) {
-      console.error('FATAL: Register/Login failed during test setup:', e);
+      console.error('FATAL: Login failed during test setup:', e);
       throw e;
     }
 

@@ -1,57 +1,90 @@
 # Keimenon Production Readiness Specification & Gap Ledger
 
-**Status:** Verified Release Candidate Baseline  
-**Revision:** `6bb7f1442af7319dd9411083e35f9dbd7ab85c20`  
-**Target Environment:** Windows 11 x64, Node 24.x, SQLite local storage, Google Gemma local runtime  
+**Status:** Verified Candidate Baseline (Pre-Live External Blocker: Gate-E Observation Streak)  
+**Base Head:** `fc5050e0f46c764443fdb1042a70ad8052cc491e`  
+**Integration Branch:** `release/rc-readiness`  
+**Target Platform:** Windows 11 x64, Node 24.x, SQLite WAL local storage, Google Gemma local runtime  
 **Canonical Spec:** Root `AGENTS.md` and `GEMINI.md`
 
 ---
 
 ## 1. Release Scope and Environment
 
-Keimenon is a local-first, similarity-first knowledge graph platform. The target release is the packaged Windows desktop application (Electron + Next.js web-dist + standalone Express API + SQLite + native LiteRT-LM Gemma runtime).
+Keimenon is a local-first, similarity-first knowledge graph platform. The target release is the packaged Windows desktop application (`Keimenon Setup 0.1.0.exe`) embedding:
 
-### Architecture Invariants:
+- Electron 28 desktop shell
+- Bundled Next.js 14 static web distribution (`resources/web-dist`)
+- Standalone Express local API with disk-backed SQLite (`better-sqlite3` in WAL mode)
+- Native LiteRT-LM C++ bindings compiled with MSVC x64
+- Packaged stdio inference helper executing local Gemma models
 
-- **Topology:** Single-instance local API with disk-backed SQLite (`better-sqlite3`). No mandatory cloud services, no remote microservices.
-- **Raw Content Fidelity:** Raw source payloads are immutable after persistence. Derived structures (similarity edges, objective claims, summaries) never overwrite raw material.
-- **Import Rail:** Chunked upload (`/api/v1/uploads/initiate`, `/chunks/:index`) is canonical. Multipart `/api/v1/jobs/import` returns `410 Gone`.
-- **Graph Birth:** Golden path requires materialization of `AccountNode`, `Principal`, `Source`, and `Group`. Failures report `GRAPH_MATERIALIZATION_FAILED`.
-- **Actor Identity:** `Principal` is the canonical actor node kind. The local Gemma model is infrastructure. `AgentRun` records actor, provider, model, context, and outcome.
-- **Local Inference:** Gemma is the sole local model family. The default floor is native LiteRT-LM. Optional BYOK is the ceiling with explicit egress control. Missing Gemma must report `GEMMA_MODEL_NOT_FOUND`.
+### Architectural Invariants:
+
+- **Local Ownership:** Single-instance local API with disk-backed SQLite (`better-sqlite3`). No mandatory external cloud services.
+- **Raw Content Fidelity:** Raw source payloads remain exact and immutable after persistence. Derived structures (similarity edges, objective claims, summaries) never overwrite raw material.
+- **Canonical Import Rail:** Chunked upload (`POST /api/v1/uploads/initiate`, `/chunks/:index`, `GET /api/v1/uploads/:sessionId`) is the only supported rail. Multipart `/api/v1/jobs/import` returns `410 Gone`.
+- **Golden Path Hierarchy:** Materialization requires non-empty `AccountNode -> Principal -> Source / Group` structure.
+- **Actor Identity:** `Principal` is the canonical actor node kind. AI is a user-like actor. The Gemma model is infrastructure. `AgentRun` records actor, provider, model, context, and outcome.
+- **Native Local Floor:** Gemma is the only supported local model family. The default floor is native LiteRT-LM. Optional developer endpoint is strictly explicit and requires exact Gemma family model ID.
 
 ---
 
 ## 2. Requirement-to-Code-to-Test Mapping
 
-| Requirement | Description                                                                             | Implementation File(s)                                                                                                | Test / Verification File(s)                                     | Status   |
-| ----------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------- |
-| **K-RC-01** | Real synthesis provider default; no production mock fallback                            | `apps/api/src/services/agent/synthesis-provider-registry.ts`, `apps/api/src/services/conversation-message.service.ts` | Unit tests in `apps/api`, `tests/e2e/full-product-loop.spec.ts` | VERIFIED |
-| **K-RC-02** | Remove mock fallback in LiteRT-LM native binding                                        | `packages/litert-node-bindings/native/binding.cc`                                                                     | `packages/litert-node-bindings/test`, MSVC native build         | VERIFIED |
-| **K-RC-03** | Fix LiteRT C API parameters, prompt buffer size, multibyte support                      | `packages/litert-node-bindings/native/binding.cc`                                                                     | Dynamic prompt allocation, official struct matching             | VERIFIED |
-| **K-RC-04** | Fail native compilation explicitly; separate test doubles from release                  | `packages/litert-node-bindings/scripts/check-and-build.js`                                                            | `npm run rc:check:native`                                       | VERIFIED |
-| **K-RC-05** | Harden model downloader & registry (Range 200 bug, backpressure, verification ordering) | `apps/api/src/services/agent/gemma-model-source-registry.ts`, `apps/api/src/services/agent/model-downloader.ts`       | Unit tests for downloader, range resume, corruption             | VERIFIED |
-| **K-RC-06** | Product loop tests assert real provider & provenance linkage                            | `tests/e2e/full-product-loop.spec.ts`                                                                                 | Playwright E2E contract test                                    | VERIFIED |
-| **K-RC-07** | Diagnose & eliminate `test.skip()` in chunked upload assembly test                      | `tests/e2e/chunked-upload-workflow.spec.ts`                                                                           | Playwright E2E strict assertion                                 | VERIFIED |
-| **K-RC-08** | Extend mock-ban scanner to include C++ native sources and inference helper              | `scripts/ci/check-runtime-markers.js`                                                                                 | `npm run ci:mock-ban:check`                                     | VERIFIED |
-| **K-RC-09** | Vision documentation synchronization on clean checkout                                  | `scripts/ops/verify-vision-doc-sync.js`                                                                               | `npm run ops:vision-doc-sync:check`                             | VERIFIED |
-| **K-RC-10** | Reconcile client dashboard access in matrices with AGENTS.md Section 10.4               | `docs/specs/*-traceability-matrix.md`, `docs/specs/kiemenon-requirement-ledger.md`                                    | `npm run ops:vision-doc-sync:check`, web snapshot tests         | VERIFIED |
-| **K-RC-11** | Release workflow Node 24 consistency & Windows installer package step                   | `.github/workflows/release.yml`, `apps/desktop/package.json`                                                          | `npm run rc:check:desktop`                                      | VERIFIED |
-| **K-RC-12** | SLO baseline evidence provenance and fresh measurements                                 | `scripts/ops/golden-path-slo-baseline.json`, `scripts/ci/run-slo-validation.js`                                       | `npm run validate:slo`                                          | VERIFIED |
+| ID            | Title                                                        | Implementation File(s)                                                                                                                                          | Verification / Test File(s)                                                                                                                    | Status   |
+| ------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| **FINDING-A** | Connect conversation synthesis to real native generation     | `apps/inference-helper/src/index.ts`, `apps/api/src/services/agent/native-gemma-runtime-backend.ts`, `apps/api/src/services/agent/gemma-local-provider.ts`      | `apps/api/src/__tests__/synthesis-runtime.test.ts`, `apps/api/src/services/agent/__tests__/native-gemma-runtime-backend.test.ts`               | VERIFIED |
+| **FINDING-B** | Make native execution genuinely asynchronous and cancellable | `packages/litert-node-bindings/native/binding.cc`, `apps/inference-helper/src/litert-adapter.ts`                                                                | `packages/litert-node-bindings/src/__tests__/native-addon-integration.test.ts`, `packages/litert-node-bindings/src/__tests__/index.test.ts`    | VERIFIED |
+| **FINDING-C** | Separate native unit tests from actual runtime acceptance    | `packages/litert-node-bindings/src/__tests__/native-addon-integration.test.ts`, `package.json`                                                                  | `npm run rc:check:native` (34 tests including real C++ MSVC addon execution)                                                                   | VERIFIED |
+| **FINDING-D** | Make native release compilation mandatory and reproducible   | `.github/workflows/release.yml`, `.github/workflows/ci.yml`, `packages/litert-node-bindings/scripts/check-and-build.js`                                         | Full MSVC compilation in `npm run build`, `npm run rc:check:desktop`                                                                           | VERIFIED |
+| **FINDING-E** | Fix documentation gate on clean checkout                     | `.gitignore`, `agent_context/AGENTS.md`, `agent_context/vision_gap_analysis.md`                                                                                 | `node scripts/ops/verify-vision-doc-sync.js` (clean checkout pass)                                                                             | VERIFIED |
+| **FINDING-F** | Enforce model identity and integrity before usable state     | `apps/api/src/services/agent/gemma-model-source-registry.ts`, `apps/api/src/services/agent/model-downloader.ts`, `apps/api/src/services/agent/model-manager.ts` | `apps/api/src/services/agent/__tests__/model-downloader.test.ts` (8/8 unit tests)                                                              | VERIFIED |
+| **FINDING-G** | Prove actual product loop and provenance                     | `apps/web/src/components/conversations/ConversationMessageRuntime.tsx`, `apps/api/src/services/conversation-message.service.ts`                                 | `tests/e2e/full-product-loop.spec.ts`, `apps/api/src/__tests__/synthesis-runtime.test.ts`                                                      | VERIFIED |
+| **FINDING-H** | Replace unsupported release evidence with observed results   | `docs/release/verification-ledger.json`, `docs/release/release-report.md`                                                                                       | Freshly hashed Windows installer, raw test logs, observed exit codes                                                                           | VERIFIED |
+| **FINDING-I** | Establish genuine performance and operational evidence       | `scripts/ops/golden-path-slo-baseline.json`, `scripts/ops/evaluate-golden-path-slo.js`, `apps/web/src/lib/graph-lod.ts`                                         | `npm run e2e:golden-path:slo`, `npm run ops:golden-path:slo:eval`, `npm run perf:lod:burnin:quick`, `npm run ops:rollout-rollback:drill:quick` | VERIFIED |
 
 ---
 
-## 3. Gap Status & Completed Repairs
+## 3. Detailed Verification Results
 
-1. **Step 1: Agent Synthesis Provider (K-RC-01) — VERIFIED**  
-   Default provider set to `gemma-local`. Gated `MockSynthesisProvider` strictly behind `NODE_ENV === 'test'` or `VITEST === 'true'`. Removed silent mock fallback in production.
-2. **Step 2: Native LiteRT-LM C++ Bindings (K-RC-02, K-RC-03, K-RC-04, K-RC-08) — VERIFIED**  
-   Eliminated mock function pointers and canned text. Dynamically allocated prompt strings (`std::string`). Mapped `LiteRtLmInputData` text structs matching official `engine.h`. Respected `maxTokens`. Added `cancel` method and mutex thread safety. Directed all diagnostics to stderr. Validated MSVC native compilation under Node 24 / win32-x64. Extended mock-ban scanner to scan `.cc`, `.cpp`, `.c`, `.h`, `.hpp` and inference helper roots (scanned 488 files, 0 violations).
-3. **Step 3: Model Downloader & Registry (K-RC-05) — VERIFIED**  
-   Populated official model IDs for E2B/E4B in `gemma-model-source-registry.ts`. Hardened Range resumption in `model-downloader.ts`: handled HTTP 200 responses to Range requests cleanly by resetting temp file without corruption, validated Content-Range start offsets, handled 416 Range Not Satisfiable, managed backpressure with stream `drain`, awaited stream flush before checking disk stats, verified file checksum/size on temp file _before_ renaming and _before_ publishing installed state, and cleared retry timeouts on cancellation/reset. Verified via 7 unit tests.
-4. **Step 4: E2E Tests Truth & Assembly (K-RC-06, K-RC-07) — VERIFIED**  
-   Eliminated `test.skip()` in `tests/e2e/chunked-upload-workflow.spec.ts` and replaced with strict assertions. Updated `tests/e2e/full-product-loop.spec.ts` to label test scope accurately as an isolated contract loop and strengthen assistant message bubble and provenance assertions.
-5. **Step 5: Specification & Matrix Reconciliation (K-RC-10) — VERIFIED**  
-   Aligned `KV-UX-005` in `vision-traceability-matrix.md`, `kiemenon-vision-traceability-matrix.md`, and `kiemenon-requirement-ledger.md` with canonical `AGENTS.md` §10.4: Client users can access Conversations and Workspaces dashboard surfaces, while Admin/Analytics/Storage surfaces remain backend-gated. Updated `KeimenonToolbar.tsx` and `KeimenonShellBars.snapshot.test.tsx` (all 6 tests passed, snapshot updated).
-6. **Step 6: Release Toolchain, Packaging & SLO (K-RC-11, K-RC-12) — VERIFIED**  
-   Updated `.github/workflows/release.yml` to target Windows, require Node 24, run `npm run rc:check:desktop`, and collect Windows release artifacts (`apps/desktop/out/*.exe`, `.blockmap`, `latest.yml`). Added provenance metadata to `scripts/ops/golden-path-slo-baseline.json`.
+1. **Native Synthesis Pipeline (Finding A):**
+   - Direct stdio JSON-RPC connection implemented between `NativeGemmaRuntimeBackend`, `inference-helper`, and `GemmaLocalProvider`.
+   - Bounded synthesis context packs serialized into Gemma chat template format.
+   - Verified via `synthesis-runtime.test.ts` (10 tests passing) and `native-gemma-runtime-backend.test.ts` (4 tests passing).
+2. **Asynchronous Cancellable C++ Addon (Finding B):**
+   - Replaced synchronous mutex-holding execution with Node-API `napi_create_async_work`.
+   - Added atomic session tracking (`std::atomic<LiteRtLmSession*> g_activeSession`) allowing non-blocking `cancel()` invocation.
+   - Dynamic prompt allocation and token limit application via official LiteRT-LM C engine API.
+3. **Native Release Compilation & Acceptance Gate (Findings C & D):**
+   - Created `packages/litert-node-bindings/src/__tests__/native-addon-integration.test.ts` directly loading the compiled MSVC addon binary.
+   - Updated `rc:check:native` script to require both binding tests and API backend tests. All 34 tests pass.
+   - Release workflows enforce `RELEASE_BUILD: '1'`, `KEIMENON_REQUIRE_NATIVE_BUILD: '1'`, and `CI_NATIVE: 'true'`.
+4. **Documentation Sync Gate (Finding E):**
+   - Unignored and restored tracked `agent_context/AGENTS.md` and `agent_context/vision_gap_analysis.md`.
+   - `npm run ops:vision-doc-sync:check` passes with exit code 0 on clean checkouts.
+5. **Model Registry & Downloader Hardening (Finding F):**
+   - Pinned exact sizes and SHA-256 checksums for official LiteRT-LM Gemma candidates (`gemma-4-e2b-it-litert` and `gemma-4-e4b-it-litert`).
+   - Downloader strictly requires both size and checksum matches before setting `artifact_verified: true`.
+   - Range 200 fallback, backpressure drain handling, flush synchronization, and cleanup verified via 8 tests.
+6. **Provenance Integrity & UI Locators (Finding G):**
+   - Added semantic `data-testid` locators (`user-message`, `assistant-message`, `message-bubble`, `message-content`, `view-provenance-button`) in `ConversationMessageRuntime.tsx`.
+   - `ConversationMessageService` validates all evidence references from synthesis against bounded context pack; out-of-scope references are actively rejected before creating `USED_EVIDENCE` edges.
+   - Full product loop browser test passes without route interception.
+7. **Operational Evidence & Performance (Finding I):**
+   - SLO baseline records configured threshold boundaries without fabricated historical runs. Fresh timings evaluated via `ops:golden-path:slo:eval`.
+   - LOD burn-in passes 10k (avg=188ms, p95=201ms, 0 gate failures) and 50k (avg=3076ms, p95=4756ms, 0 gate failures).
+   - Rollout/rollback drill passes with kill-switch verification and degraded fallback handling.
+   - Gate-E evidence bundle generated with `Overall pass: true` (status: GREEN).
+8. **Windows Desktop Packaging (Finding H):**
+   - Full packaging command `npm run rc:check:desktop` succeeded with exit code 0.
+   - Packaged installer: `apps/desktop/out/Keimenon Setup 0.1.0.exe` (104,976,940 bytes, SHA-256: `3946F71CF7270AB10505970DEA40911E28FBC16EE374962F15F1F0F9DE983A2B`).
+   - Host Node 24 ABI automatically restored post-packaging via `npm rebuild better-sqlite3`.
+
+---
+
+## 4. Remaining External Blocker
+
+- **Requirement:** 14-day continuous nightly observation streak for Gate-E signoff.
+- **Current State:** 0/14 days elapsed.
+- **Nature of Blocker:** In pre-live development, continuous calendar time cannot be manufactured or simulated without violating evidence integrity rules.
+- **Action Required:** Run nightly automation until the 14-day window completes.

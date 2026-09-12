@@ -78,6 +78,13 @@ rl.on('line', async (line) => {
         }
         break;
 
+      case 'cancel':
+        if (adapter.cancel) {
+          await adapter.cancel();
+        }
+        sendResponse(req.id, { success: true, cancelled: true });
+        break;
+
       case 'unload_model':
         await adapter.unloadModel();
         sendResponse(req.id, { success: true });

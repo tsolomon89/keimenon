@@ -23,6 +23,8 @@ export interface GemmaLocalStatus {
   thinkingEnabled?: boolean;
 }
 
+import { nativeGemmaBackend } from './native-gemma-runtime-backend';
+
 export class GemmaLocalProvider implements SynthesisProvider {
   public id = 'gemma-local';
   public family: 'gemma' | 'mock' = 'gemma';
@@ -36,15 +38,50 @@ export class GemmaLocalProvider implements SynthesisProvider {
     const timeoutMs = parseInt(process.env.GEMMA_LOCAL_TIMEOUT_MS || '60000', 10);
     const thinkingEnabled = process.env.GEMMA_LOCAL_THINKING === 'on';
 
+    // Canonical packaged floor: Native LiteRT-LM backend
     if (!baseUrl) {
-      return {
-        configured: false,
-        status: 'unavailable',
-        error_code: 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED',
-        error: 'Gemma local base URL is not configured.',
-      };
+      try {
+        const nativeStatus = await nativeGemmaBackend.checkStatus();
+        if (nativeStatus.state === 'ready' || nativeStatus.state === 'model_loaded') {
+          return {
+            configured: true,
+            status: 'online',
+            runtimeKind: 'native-gemma',
+            modelName: nativeStatus.model_id || 'gemma-4-e2b',
+            modelAvailable: nativeStatus.state === 'model_loaded',
+            timeoutMs,
+            thinkingEnabled,
+          };
+        }
+
+        return {
+          configured: false,
+          status: 'unavailable',
+          error_code: 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED',
+          error:
+            nativeStatus.message || 'Native local Gemma runtime not configured or model missing.',
+          runtimeKind: 'native-gemma',
+          modelName,
+          modelAvailable: false,
+          timeoutMs,
+          thinkingEnabled,
+        };
+      } catch (err: any) {
+        return {
+          configured: false,
+          status: 'unavailable',
+          error_code: 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED',
+          error: err.message,
+          runtimeKind: 'native-gemma',
+          modelName,
+          modelAvailable: false,
+          timeoutMs,
+          thinkingEnabled,
+        };
+      }
     }
 
+    // Explicit Developer Endpoint Fallback
     const endpoint = baseUrl.endsWith('/') ? `${baseUrl}models` : `${baseUrl}/models`;
 
     try {
@@ -146,10 +183,55 @@ export class GemmaLocalProvider implements SynthesisProvider {
     const timeoutMs = parseInt(process.env.GEMMA_LOCAL_TIMEOUT_MS || '60000', 10);
     const thinkingEnabled = process.env.GEMMA_LOCAL_THINKING === 'on';
 
+    // Canonical packaged floor: Native LiteRT-LM backend
     if (!baseUrl) {
-      throw new Error('GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED');
+      const skill = skillRegistry.selectRuntimeSkill(skillId);
+      const prompt = this.serializer.serializeToGemmaPrompt(input, skill);
+
+      const genRes = await nativeGemmaBackend.generate(prompt, 1024);
+      if (!genRes.success) {
+        throw new Error(
+          genRes.error || 'GEMMA_LOCAL_RUNTIME_UNAVAILABLE: Native LiteRT-LM inference failed'
+        );
+      }
+
+      const content = genRes.text || '';
+      let finalContent = content;
+      if (!thinkingEnabled) {
+        finalContent = finalContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+      }
+
+      let parsedOutput: any;
+      let textContent = finalContent;
+      let evidenceUsed: string[] = [];
+      let proposedOutputs: any[] = [];
+
+      try {
+        if (skill.output_schema && Object.keys(skill.output_schema).length > 0) {
+          const jsonMatch = finalContent.match(/```(?:json)?\n?([\s\S]*?)```/);
+          const jsonString = jsonMatch ? jsonMatch[1] : finalContent;
+          parsedOutput = JSON.parse(jsonString);
+
+          if (parsedOutput.content) textContent = parsedOutput.content;
+          if (Array.isArray(parsedOutput.evidence_used)) evidenceUsed = parsedOutput.evidence_used;
+          if (Array.isArray(parsedOutput.proposed_outputs))
+            proposedOutputs = parsedOutput.proposed_outputs;
+        }
+      } catch (e) {
+        console.warn('[GemmaLocalProvider] Failed to parse expected JSON output:', e);
+      }
+
+      return {
+        content: textContent,
+        provider: this.id,
+        model: modelName,
+        skill_used: skill.id,
+        evidence_used: evidenceUsed,
+        proposed_outputs: proposedOutputs,
+      };
     }
 
+    // Developer Endpoint mode
     if (
       runtimeKind !== 'ollama' &&
       runtimeKind !== 'lm-studio' &&
@@ -170,10 +252,6 @@ export class GemmaLocalProvider implements SynthesisProvider {
     // Serialize payload
     const payload = this.serializer.serializeToOpenAiFormat(input, skill, modelName);
 
-    // If thinking is disabled but model uses specific tokens, we rely on standard system prompting.
-    // Thinking mode requires specific endpoint configuration or parameter passing depending on runtime.
-    // For now, we only pass standard parameters.
-
     const endpoint = baseUrl.endsWith('/')
       ? `${baseUrl}chat/completions`
       : `${baseUrl}/chat/completions`;
@@ -189,8 +267,6 @@ export class GemmaLocalProvider implements SynthesisProvider {
         },
         body: JSON.stringify({
           ...payload,
-          // OpenAI compatible endpoints don't strictly support `thinking` fields natively yet,
-          // but we can pass generic options if needed.
         }),
         signal: controller.signal,
       });
@@ -208,7 +284,6 @@ export class GemmaLocalProvider implements SynthesisProvider {
       // We must strip thinking tags if they leak into the content
       let finalContent = content;
       if (!thinkingEnabled) {
-        // Strip out <think>...</think> blocks if any
         finalContent = finalContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
       }
 
@@ -220,7 +295,6 @@ export class GemmaLocalProvider implements SynthesisProvider {
 
       try {
         if (skill.output_schema && Object.keys(skill.output_schema).length > 0) {
-          // Attempt to extract JSON from markdown if model wrapped it
           const jsonMatch = finalContent.match(/```(?:json)?\n?([\s\S]*?)```/);
           const jsonString = jsonMatch ? jsonMatch[1] : finalContent;
           parsedOutput = JSON.parse(jsonString);

@@ -285,13 +285,27 @@ class ModelDownloader extends EventEmitter {
       const stats = await fs.promises.stat(tempPath);
       active.bytesDownloaded = stats.size;
 
-      if (expectedSize > 0 && stats.size !== expectedSize) {
-        throw new Error(`Size mismatch. Expected ${expectedSize} bytes, got ${stats.size}`);
-      }
-
-      // 2. Verify checksum on tempPath if candidate specifies one
       const candidates = await gemmaModelSourceRegistry.getCandidates();
       const candidate = candidates.find((c) => c.id === candidateId);
+
+      const requiredSize = candidate?.expected_size_bytes || expectedSize;
+      if (candidate?.artifact_verified && (!requiredSize || requiredSize <= 0)) {
+        throw new Error(
+          `Candidate '${candidateId}' is marked as artifact_verified but missing expected_size_bytes.`
+        );
+      }
+
+      if (requiredSize > 0 && stats.size !== requiredSize) {
+        throw new Error(`Size mismatch. Expected ${requiredSize} bytes, got ${stats.size}`);
+      }
+
+      // 2. Verify checksum on tempPath
+      if (candidate?.artifact_verified && !candidate?.checksum) {
+        throw new Error(
+          `Candidate '${candidateId}' is marked as artifact_verified but missing trusted checksum.`
+        );
+      }
+
       if (candidate?.checksum) {
         const hash = crypto.createHash('sha256');
         const fileReadStream = fs.createReadStream(tempPath);

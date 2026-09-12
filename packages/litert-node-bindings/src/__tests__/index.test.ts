@@ -8,6 +8,7 @@ describe('LiteRtNodeBindings', () => {
     expect(typeof litertBindings.loadModel).toBe('function');
     expect(typeof litertBindings.generate).toBe('function');
     expect(typeof litertBindings.unloadModel).toBe('function');
+    expect(typeof litertBindings.cancel).toBe('function');
   });
 
   it('should return a valid status payload', () => {
@@ -16,6 +17,10 @@ describe('LiteRtNodeBindings', () => {
     expect(typeof status.ok).toBe('boolean');
     expect(typeof status.state).toBe('string');
     expect(typeof status.message).toBe('string');
+  });
+
+  it('should support cancel invocation gracefully', async () => {
+    await expect(litertBindings.cancel()).resolves.toBeUndefined();
   });
 
   it('should reject loading models gracefully when native addon is missing', async () => {

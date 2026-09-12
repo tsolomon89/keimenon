@@ -55,5 +55,6 @@ export interface NativeGemmaRuntimeAdapter {
   validateModelFile(path: string): Promise<ModelValidationResult>;
   loadModel(path: string): Promise<LoadModelResult>;
   generate(input: GenerateInput): Promise<GenerateResult>;
+  cancel?(): Promise<void>;
   unloadModel(): Promise<void>;
 }

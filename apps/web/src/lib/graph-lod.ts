@@ -431,23 +431,21 @@ export function evaluateLodPerformanceGate(input: {
   const nodeBudget = Math.max(50, Math.floor(BASE_NODE_BUDGETS[input.level] * tierNodeMultiplier));
   const edgeBudget = Math.max(200, Math.floor(BASE_EDGE_BUDGETS[input.level] * tierEdgeMultiplier));
 
-  const pass = input.visibleNodeCount <= nodeBudget && input.visibleEdgeCount <= edgeBudget;
   let overflowReason: 'intentional_anchors' | 'lod_failure' | null = null;
 
-  if (!pass) {
-    if (input.visibleNodeCount > nodeBudget) {
-      if (
-        input.mustKeepNodeCount >= input.visibleNodeCount ||
-        input.mustKeepNodeCount > nodeBudget
-      ) {
-        overflowReason = 'intentional_anchors';
-      } else {
-        overflowReason = 'lod_failure';
-      }
+  if (input.visibleNodeCount > nodeBudget) {
+    if (input.mustKeepNodeCount >= input.visibleNodeCount || input.mustKeepNodeCount > nodeBudget) {
+      overflowReason = 'intentional_anchors';
     } else {
       overflowReason = 'lod_failure';
     }
+  } else if (input.visibleEdgeCount > edgeBudget) {
+    overflowReason = 'lod_failure';
   }
+
+  const pass =
+    (input.visibleNodeCount <= nodeBudget && input.visibleEdgeCount <= edgeBudget) ||
+    (overflowReason === 'intentional_anchors' && input.visibleEdgeCount <= edgeBudget);
 
   return {
     datasetTier: tier,

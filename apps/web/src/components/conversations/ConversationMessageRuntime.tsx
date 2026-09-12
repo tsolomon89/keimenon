@@ -354,6 +354,8 @@ export function ConversationMessageRuntime({
               return (
                 <div
                   key={msg.id}
+                  data-testid={isUser ? 'user-message' : 'assistant-message'}
+                  data-role={msg.role}
                   className={`flex gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
                 >
                   <div
@@ -369,13 +371,17 @@ export function ConversationMessageRuntime({
                     className={`flex-1 min-w-0 ${isUser ? 'flex justify-end' : 'flex justify-start'}`}
                   >
                     <div
-                      className={`inline-block px-4 py-3 rounded-2xl max-w-[85%] ${
+                      data-testid="message-bubble"
+                      className={`message-bubble ${isUser ? 'user-message' : 'assistant-message'} inline-block px-4 py-3 rounded-2xl max-w-[85%] ${
                         isUser
                           ? 'bg-blue-600 text-white rounded-tr-sm'
                           : 'bg-slate-800 text-slate-200 rounded-tl-sm border border-slate-700'
                       }`}
                     >
-                      <div className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+                      <div
+                        data-testid="message-content"
+                        className="whitespace-pre-wrap break-words text-[15px] leading-relaxed"
+                      >
                         {content}
                       </div>
                       {synthesisError && (
@@ -428,6 +434,7 @@ export function ConversationMessageRuntime({
                             </span>
 
                             <button
+                              data-testid="view-provenance-button"
                               className="ml-auto flex items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors"
                               onClick={() => {
                                 if ((msg as any)._agentRunDetails.agent_run_id) {

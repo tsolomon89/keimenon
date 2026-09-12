@@ -2,17 +2,42 @@
   "provenance": {
     "contract": "AGENTS.md §10",
     "description": "Deterministic SLO thresholds for PR and Nightly golden path imports",
-    "measurementStatus": "static_threshold_baseline",
-    "note": "Checked-in baseline defines the release gating SLA limits and regression medians. Dynamic execution metrics are collected into test-results/slo/ during test execution."
+    "measurementStatus": "configured_thresholds",
+    "note": "Checked-in baseline defines configured limits and regression median baselines. Measured operating samples are written to dynamic observation ledgers during execution."
   },
   "updatedAt": "2026-09-12T00:00:00.000Z",
-  "rolling7d": {
-    "runs": 50,
-    "failures": 0
+  "thresholds": {
+    "pr": {
+      "tinyImportMaxMs": 120000,
+      "smallImportMaxMs": 420000,
+      "similarityApplyMaxMs": 60000,
+      "maxStalledJobs": 0,
+      "maxScenarioFailures": 0
+    },
+    "nightly": {
+      "mediumImportMaxMs": 900000,
+      "realGptImportMaxMs": 2700000,
+      "similarityApplyMaxMs": 120000,
+      "maxFailureBudgetPercent": 2.0,
+      "maxRegressionPercentVsMedian": 15.0
+    }
+  },
+  "baselineMedians": {
+    "mediumImportMs": 600000,
+    "realGptImportMs": 1800000,
+    "similarityApplyMs": 45000
   },
   "medians": {
     "mediumImportMs": 600000,
     "realGptImportMs": 1800000,
     "similarityApplyMs": 45000
+  },
+  "operatingSamples": {
+    "status": "pending_nightly_streak",
+    "note": "Pre-live development phase. Real automated continuous 7-day observation streak requires elapsed deployment runtime. No fabricated runs.",
+    "rolling7d": {
+      "runs": 0,
+      "failures": 0
+    }
   }
 }

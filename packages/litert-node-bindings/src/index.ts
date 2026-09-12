@@ -27,6 +27,7 @@ export interface LiteRtNodeBindings {
     prompt: string,
     maxTokens?: number
   ): Promise<{ success: boolean; text?: string; error?: string }>;
+  cancel(): Promise<void>;
   unloadModel(): Promise<void>;
 }
 
@@ -154,6 +155,12 @@ class LiteRtNodeBindingsImpl implements LiteRtNodeBindings {
     }
 
     return nativeAddon.generate(prompt, maxTokens);
+  }
+
+  public async cancel(): Promise<void> {
+    if (nativeAddon && typeof nativeAddon.cancel === 'function') {
+      await nativeAddon.cancel();
+    }
   }
 
   public async unloadModel(): Promise<void> {

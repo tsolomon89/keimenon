@@ -385,11 +385,26 @@ static napi_value LoadModel(napi_env env, napi_callback_info info) {
     return promise;
 }
 
+#include <atomic>
+
+static std::atomic<LiteRtLmSession*> g_activeSession{nullptr};
+static std::atomic<bool> g_isGenerating{false};
+
+struct GenerateCarrier {
+    napi_async_work work;
+    napi_deferred deferred;
+    std::string prompt;
+    int32_t maxTokens;
+    bool success;
+    std::string text;
+    std::string error;
+};
+
 // JS: cancel() -> Promise<void>
 static napi_value Cancel(napi_env env, napi_callback_info info) {
-    std::lock_guard<std::mutex> lock(g_inferenceMutex);
-    if (g_session && fnSessionCancelProcess) {
-        fnSessionCancelProcess(g_session);
+    LiteRtLmSession* active = g_activeSession.load();
+    if (active && fnSessionCancelProcess) {
+        fnSessionCancelProcess(active);
     }
 
     napi_deferred deferred;
@@ -399,6 +414,110 @@ static napi_value Cancel(napi_env env, napi_callback_info info) {
     napi_get_undefined(env, &undefined);
     napi_resolve_deferred(env, deferred, undefined);
     return promise;
+}
+
+// Background thread execution for LiteRT-LM generation
+static void GenerateExecute(napi_env env, void* data) {
+    GenerateCarrier* carrier = static_cast<GenerateCarrier*>(data);
+
+    // Serialize inferences across worker threads
+    std::unique_lock<std::mutex> lock(g_inferenceMutex);
+
+    if (!g_isModelLoaded || !g_engine || !fnEngineCreateSession || !fnSessionGenerateContent) {
+        carrier->success = false;
+        carrier->error = "Inference engine is not loaded or ready.";
+        return;
+    }
+
+    LiteRtLmSessionConfig* sessionConfig = nullptr;
+    if (fnSessionConfigCreate) {
+        sessionConfig = fnSessionConfigCreate();
+        if (sessionConfig && fnSessionConfigSetMaxOutputTokens) {
+            fnSessionConfigSetMaxOutputTokens(sessionConfig, carrier->maxTokens > 0 ? carrier->maxTokens : 1024);
+        }
+    }
+
+    LiteRtLmSession* session = fnEngineCreateSession(g_engine, sessionConfig);
+    if (sessionConfig && fnSessionConfigDelete) {
+        fnSessionConfigDelete(sessionConfig);
+    }
+
+    if (!session) {
+        carrier->success = false;
+        carrier->error = "Failed to instantiate inference session for generation.";
+        return;
+    }
+
+    // Publish active session pointer so Cancel() can reach it concurrently without waiting on mutex
+    g_activeSession.store(session);
+    g_isGenerating.store(true);
+
+    // Release lock during long-running generation so cancel() and status() are non-blocking
+    lock.unlock();
+
+    LiteRtLmInputData inputData;
+    inputData.type = kLiteRtLmInputDataTypeText;
+    inputData.data = reinterpret_cast<const void*>(carrier->prompt.data());
+    inputData.size = carrier->prompt.size();
+
+    LiteRtLmResponses* responses = fnSessionGenerateContent(session, &inputData, 1);
+
+    // Clear active session pointer immediately after generation completes/aborts
+    g_activeSession.store(nullptr);
+    g_isGenerating.store(false);
+
+    if (!responses) {
+        if (fnSessionDelete) {
+            fnSessionDelete(session);
+        }
+        carrier->success = false;
+        carrier->error = "LiteRT-LM inference execution failed or was cancelled.";
+        return;
+    }
+
+    int candidates = fnResponsesGetNum ? fnResponsesGetNum(responses) : 0;
+    if (candidates <= 0) {
+        carrier->success = true;
+        carrier->text = "";
+    } else {
+        const char* textContent = fnResponsesGetText ? fnResponsesGetText(responses, 0) : nullptr;
+        carrier->success = true;
+        carrier->text = textContent ? textContent : "";
+    }
+
+    if (fnResponsesDelete) {
+        fnResponsesDelete(responses);
+    }
+    if (fnSessionDelete) {
+        fnSessionDelete(session);
+    }
+}
+
+// Event loop callback once background generation completes
+static void GenerateComplete(napi_env env, napi_status status, void* data) {
+    GenerateCarrier* carrier = static_cast<GenerateCarrier*>(data);
+
+    napi_value resObj;
+    napi_create_object(env, &resObj);
+
+    napi_value successVal;
+    napi_get_boolean(env, carrier->success, &successVal);
+    napi_set_named_property(env, resObj, "success", successVal);
+
+    if (carrier->success) {
+        napi_value textVal;
+        napi_create_string_utf8(env, carrier->text.c_str(), carrier->text.size(), &textVal);
+        napi_set_named_property(env, resObj, "text", textVal);
+    } else {
+        napi_value errVal;
+        napi_create_string_utf8(env, carrier->error.c_str(), carrier->error.size(), &errVal);
+        napi_set_named_property(env, resObj, "error", errVal);
+    }
+
+    napi_resolve_deferred(env, carrier->deferred, resObj);
+
+    napi_delete_async_work(env, carrier->work);
+    delete carrier;
 }
 
 // JS: generate(prompt, maxTokens) -> Promise<{ success: boolean, text?: string, error?: string }>
@@ -423,7 +542,7 @@ static napi_value Generate(napi_env env, napi_callback_info info) {
         return promise;
     }
 
-    // Dynamic prompt allocation - handles arbitrary length without 4096-byte truncation
+    // Dynamic prompt allocation - handles arbitrary length without fixed buffer truncation
     size_t promptLen = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &promptLen);
     std::string promptStr(promptLen + 1, '\0');
@@ -431,7 +550,6 @@ static napi_value Generate(napi_env env, napi_callback_info info) {
     napi_get_value_string_utf8(env, args[0], &promptStr[0], promptStr.size(), &promptCopied);
     promptStr.resize(promptCopied);
 
-    // Parse maxTokens argument if provided
     int32_t maxTokens = 1024;
     if (argc > 1) {
         napi_valuetype arg1Type;
@@ -441,64 +559,39 @@ static napi_value Generate(napi_env env, napi_callback_info info) {
         }
     }
 
-    std::lock_guard<std::mutex> lock(g_inferenceMutex);
+    GenerateCarrier* carrier = new GenerateCarrier();
+    carrier->deferred = deferred;
+    carrier->prompt = std::move(promptStr);
+    carrier->maxTokens = maxTokens;
+    carrier->success = false;
 
-    if (!g_isModelLoaded || !g_session || !fnSessionGenerateContent) {
+    napi_value resourceName;
+    napi_create_string_utf8(env, "LiteRtLmGenerate", NAPI_AUTO_LENGTH, &resourceName);
+
+    napi_status createStatus = napi_create_async_work(
+        env,
+        nullptr,
+        resourceName,
+        GenerateExecute,
+        GenerateComplete,
+        carrier,
+        &carrier->work
+    );
+
+    if (createStatus != napi_ok) {
+        delete carrier;
         napi_value resObj;
         napi_create_object(env, &resObj);
         napi_value success, error;
         napi_get_boolean(env, false, &success);
-        napi_create_string_utf8(env, "Inference engine is not loaded.", NAPI_AUTO_LENGTH, &error);
+        napi_create_string_utf8(env, "Failed to schedule async generation work", NAPI_AUTO_LENGTH, &error);
         napi_set_named_property(env, resObj, "success", success);
         napi_set_named_property(env, resObj, "error", error);
         napi_resolve_deferred(env, deferred, resObj);
         return promise;
     }
 
-    // Properly map to official LiteRT-LM C API LiteRtLmInputData struct
-    LiteRtLmInputData inputData;
-    inputData.type = kLiteRtLmInputDataTypeText;
-    inputData.data = (const void*)promptStr.data();
-    inputData.size = promptStr.size();
-
-    LiteRtLmResponses* responses = fnSessionGenerateContent(g_session, &inputData, 1);
-    if (!responses) {
-        napi_value resObj;
-        napi_create_object(env, &resObj);
-        napi_value success, error;
-        napi_get_boolean(env, false, &success);
-        napi_create_string_utf8(env, "LiteRT-LM inference execution failed.", NAPI_AUTO_LENGTH, &error);
-        napi_set_named_property(env, resObj, "success", success);
-        napi_set_named_property(env, resObj, "error", error);
-        napi_resolve_deferred(env, deferred, resObj);
-        return promise;
-    }
-
-    int candidates = fnResponsesGetNum(responses);
-    napi_value resObj;
-    napi_create_object(env, &resObj);
-
-    if (candidates <= 0) {
-        fnResponsesDelete(responses);
-        napi_value success, text;
-        napi_get_boolean(env, true, &success);
-        napi_create_string_utf8(env, "", 0, &text);
-        napi_set_named_property(env, resObj, "success", success);
-        napi_set_named_property(env, resObj, "text", text);
-        napi_resolve_deferred(env, deferred, resObj);
-        return promise;
-    }
-
-    const char* textContent = fnResponsesGetText(responses, 0);
-    napi_value success, text;
-    napi_get_boolean(env, true, &success);
-    napi_create_string_utf8(env, textContent ? textContent : "", NAPI_AUTO_LENGTH, &text);
-    napi_set_named_property(env, resObj, "success", success);
-    napi_set_named_property(env, resObj, "text", text);
-
-    fnResponsesDelete(responses);
-    napi_resolve_deferred(env, deferred, resObj);
-
+    napi_queue_async_work(env, carrier->work);
     return promise;
 }
 

@@ -105,6 +105,12 @@ export class LiteRtGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
     }
   }
 
+  async cancel(): Promise<void> {
+    if (typeof litertBindings.cancel === 'function') {
+      await litertBindings.cancel();
+    }
+  }
+
   async unloadModel(): Promise<void> {
     await litertBindings.unloadModel();
   }

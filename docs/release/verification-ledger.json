@@ -1,70 +1,107 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-09-12T11:40:00Z",
+  "generatedAt": "2026-09-12T22:26:00Z",
   "environment": {
     "os": "win32",
     "arch": "x64",
     "node": "v24.9.0",
     "npm": "11.6.0"
   },
-  "candidateRevision": "6bb7f1442af7319dd9411083e35f9dbd7ab85c20",
+  "candidateHead": "fc5050e0f46c764443fdb1042a70ad8052cc491e",
+  "branch": "release/rc-readiness",
   "releaseArtifact": {
     "path": "apps/desktop/out/Keimenon Setup 0.1.0.exe",
-    "sizeBytes": 104918435,
-    "sha256": "12C2E9AD5515D89F36481762A615D15C7A82C5F7B4F27F444A51600FBFC01191",
+    "sizeBytes": 104976940,
+    "sha256": "3946F71CF7270AB10505970DEA40911E28FBC16EE374962F15F1F0F9DE983A2B",
     "blockmap": "apps/desktop/out/Keimenon Setup 0.1.0.exe.blockmap"
   },
   "results": [
     {
+      "requirementId": "FINDING-E_VISION_DOC_SYNC",
+      "command": "npm run ops:vision-doc-sync:check",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T20:25:00Z",
+      "evidencePath": "terminal-output",
+      "verdict": "PASS",
+      "details": "Clean checkout documentation check passed: agent_context/AGENTS.md and agent_context/vision_gap_analysis.md tracked and synced"
+    },
+    {
       "requirementId": "DOCTOR_RUNTIME",
       "command": "npm run doctor:runtime",
       "exitCode": 0,
-      "timestamp": "2026-09-12T11:10:23Z",
+      "timestamp": "2026-09-12T20:30:00Z",
       "evidencePath": "terminal-output",
       "verdict": "PASS",
       "details": "Node 24 ABI verified, better-sqlite3 in-memory check passed"
     },
     {
+      "requirementId": "FINDING-B_C_NATIVE_INTEGRATION",
+      "command": "npm run rc:check:native",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T22:11:36Z",
+      "evidencePath": "terminal-output",
+      "verdict": "PASS",
+      "details": "34 tests passed: 11 tests in @keimenon/litert-node-bindings including real C++ MSVC addon integration test, plus 23 tests across native-gemma-runtime-backend, local-inference-manager, and synthesis-runtime"
+    },
+    {
+      "requirementId": "FINDING-A_SYNTHESIS_RUNTIME",
+      "command": "npm test --workspace=@keimenon/api apps/api/src/__tests__/synthesis-runtime.test.ts",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T22:11:35Z",
+      "evidencePath": "terminal-output",
+      "verdict": "PASS",
+      "details": "10/10 tests passed: connected native generation, out-of-scope evidence rejection, and agent principal actor separation"
+    },
+    {
+      "requirementId": "FINDING-F_MODEL_DOWNLOADER",
+      "command": "npm test --workspace=@keimenon/api apps/api/src/services/agent/__tests__/model-downloader.test.ts",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T22:03:56Z",
+      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1285.log",
+      "verdict": "PASS",
+      "details": "8/8 tests passed: verified SHA-256 checksum enforcement, size matching, Range 200 handling, stream drain, temp file cleanup"
+    },
+    {
       "requirementId": "TYPE_CHECK",
       "command": "npm run type-check",
       "exitCode": 0,
-      "timestamp": "2026-09-12T11:27:41Z",
-      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-452.log",
+      "timestamp": "2026-09-12T22:26:01Z",
+      "evidencePath": "terminal-output",
       "verdict": "PASS",
-      "details": "14/14 packages passed tsc --noEmit"
+      "details": "14/14 monorepo packages passed tsc --noEmit"
     },
     {
       "requirementId": "LINT",
       "command": "npm run lint",
       "exitCode": 0,
-      "timestamp": "2026-09-12T11:35:07Z",
-      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-484.log",
-      "verdict": "PASS",
-      "details": "14/14 packages passed eslint with 0 errors"
-    },
-    {
-      "requirementId": "K-RC-08",
-      "command": "npm run ci:mock-ban:check",
-      "exitCode": 0,
-      "timestamp": "2026-09-12T11:27:59Z",
+      "timestamp": "2026-09-12T22:26:13Z",
       "evidencePath": "terminal-output",
       "verdict": "PASS",
-      "details": "Scanned 488 files (including native C++ and inference-helper) with 0 violations"
+      "details": "14/14 packages passed ESLint with 0 errors"
+    },
+    {
+      "requirementId": "MOCK_BAN",
+      "command": "npm run ci:mock-ban:check",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T22:25:53Z",
+      "evidencePath": "terminal-output",
+      "verdict": "PASS",
+      "details": "488 files scanned (including C++ native addon and inference helper) with 0 mock violations"
     },
     {
       "requirementId": "CI_HYGIENE",
       "command": "npm run ci:hygiene:check",
       "exitCode": 0,
-      "timestamp": "2026-09-12T11:33:53Z",
+      "timestamp": "2026-09-12T22:25:33Z",
       "evidencePath": "terminal-output",
       "verdict": "PASS",
-      "details": "Repo hygiene, factory-reset contract, desktop web-dist (315 files), and Gemma target check passed"
+      "details": "Repo hygiene (483 files), factory-reset contract, web-dist freshness (315 files, fingerprint 73f825009ae25c3bb47321cfed395c3829e2a14142e08b17e7bb7f4389c0a777), and Gemma guard passed"
     },
     {
       "requirementId": "SQLITE_CHECK",
       "command": "npm run sqlite:check",
       "exitCode": 0,
-      "timestamp": "2026-09-12T11:33:59Z",
+      "timestamp": "2026-09-12T22:25:40Z",
       "evidencePath": "terminal-output",
       "verdict": "PASS",
       "details": "Database integrity verified (journal_mode=wal, foreign_keys=1, busy_timeout=5000, integrity_check=ok)"
@@ -73,73 +110,109 @@
       "requirementId": "FACTORY_RESET_CONTRACT",
       "command": "npm run ops:factory-reset:contract:check",
       "exitCode": 0,
-      "timestamp": "2026-09-12T11:34:05Z",
+      "timestamp": "2026-09-12T22:25:45Z",
       "evidencePath": "terminal-output",
       "verdict": "PASS",
       "details": "Factory reset preserved admin credentials and contract"
     },
     {
-      "requirementId": "K-RC-09",
-      "command": "npm run ops:vision-doc-sync:check",
-      "exitCode": 0,
-      "timestamp": "2026-09-12T11:34:10Z",
-      "evidencePath": "terminal-output",
-      "verdict": "PASS",
-      "details": "All vision documents synchronized with canonical AGENTS.md"
-    },
-    {
-      "requirementId": "K-RC-02_03_04",
-      "command": "npm run rc:check:native",
-      "exitCode": 0,
-      "timestamp": "2026-09-12T11:34:16Z",
-      "evidencePath": "terminal-output",
-      "verdict": "PASS",
-      "details": "13/13 native inference manager and backend tests passed against compiled C++ addon"
-    },
-    {
-      "requirementId": "K-RC-05",
-      "command": "npx vitest run apps/api/src/services/agent/__tests__/model-downloader.test.ts",
-      "exitCode": 0,
-      "timestamp": "2026-09-12T11:21:38Z",
-      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-323.log",
-      "verdict": "PASS",
-      "details": "7/7 model downloader tests passed (Range 200, Content-Range, checksum verification, pause/cancellation)"
-    },
-    {
-      "requirementId": "K-RC-10",
-      "command": "npm --workspace=@keimenon/web run test -- src/components/keimenon/KeimenonToolbar.dashboard.test.tsx src/components/keimenon/KeimenonShellBars.snapshot.test.tsx -u",
-      "exitCode": 0,
-      "timestamp": "2026-09-12T11:25:25Z",
-      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-399.log",
-      "verdict": "PASS",
-      "details": "6/6 web toolbar tests passed (client dashboard access to workspaces/conversations, admin surface gating)"
-    },
-    {
-      "requirementId": "TEST_AUTH",
-      "command": "npm run test:auth",
-      "exitCode": 0,
-      "timestamp": "2026-09-12T11:35:47Z",
-      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-494.log",
-      "verdict": "PASS",
-      "details": "10/10 auth integration tests passed against live local API instance"
-    },
-    {
       "requirementId": "MIGRATE_TO_LOCAL",
       "command": "npm run migrate:to-local:dry-run",
       "exitCode": 0,
-      "timestamp": "2026-09-12T11:35:15Z",
+      "timestamp": "2026-09-12T22:25:49Z",
       "evidencePath": "terminal-output",
       "verdict": "PASS",
       "details": "Local storage migration simulation verified"
     },
     {
-      "requirementId": "K-RC-11_DESKTOP_PACKAGE",
+      "requirementId": "AUTH_INTEGRATION",
+      "command": "npm run test:auth",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T22:26:25Z",
+      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1457.log",
+      "verdict": "PASS",
+      "details": "10/10 auth integration tests passed against live local API instance"
+    },
+    {
+      "requirementId": "MONOREPO_UNIT_INTEGRATION_TESTS",
+      "command": "npm run test",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T22:11:01Z",
+      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1303.log",
+      "verdict": "PASS",
+      "details": "All 28 turbo test tasks succeeded across monorepo; 93/93 test files passed (852 tests) in @keimenon/api"
+    },
+    {
+      "requirementId": "MONOREPO_FULL_BUILD",
+      "command": "npm run build",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T22:11:20Z",
+      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1307.log",
+      "verdict": "PASS",
+      "details": "14/14 build tasks succeeded; MSVC C++ compiler compiled litert_node_bindings.node and copied runtime DLLs"
+    },
+    {
+      "requirementId": "FINDING-G_RC_BROWSER_SUITE",
+      "command": "npm run rc:check",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T22:18:06Z",
+      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1339.log",
+      "verdict": "PASS",
+      "details": "22/22 Playwright browser tests passed: visual tests, selection-stack-conversation, chunked-upload-workflow, and full-product-loop with UI locators and provenance verification"
+    },
+    {
+      "requirementId": "FINDING-I_GOLDEN_PATH_SLO",
+      "command": "npm run e2e:golden-path:slo && npm run ops:golden-path:slo:eval",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T22:19:33Z",
+      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1343.log",
+      "verdict": "PASS",
+      "details": "Fresh measured timings collected and evaluated against threshold boundaries: [golden-path-slo] OK"
+    },
+    {
+      "requirementId": "FINDING-I_LOD_PERF_BURNIN",
+      "command": "npm run perf:lod:burnin:quick",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T22:20:50Z",
+      "evidencePath": "test-results/perf/lod-burnin-latest.json",
+      "verdict": "PASS",
+      "details": "10k (avg=188ms, p95=201ms, 0 gate failures) and 50k (avg=3076ms, p95=4756ms, 0 gate failures) passed"
+    },
+    {
+      "requirementId": "FINDING-I_ROLLOUT_ROLLBACK_DRILL",
+      "command": "npm run ops:rollout-rollback:drill:quick",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T22:21:47Z",
+      "evidencePath": "test-results/ops/rollout-rollback-drill-latest.json",
+      "verdict": "PASS",
+      "details": "Kill-switch scenarios, fallback degradation, and recovery simulation passed"
+    },
+    {
+      "requirementId": "GATE_E_REQUIRED_CHECKS_SYNC",
+      "command": "npm run ops:gate-e:required-checks:sync",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T22:21:51Z",
+      "evidencePath": "terminal-output",
+      "verdict": "PASS",
+      "details": "Required checks synchronized with Gate-E workflow definition"
+    },
+    {
+      "requirementId": "GATE_E_EVIDENCE_BUNDLE",
+      "command": "node scripts/ops/gate-e-evidence-bundle.js --e2e-status success --lod-report test-results/perf/lod-burnin-latest.json --drill-report test-results/ops/rollout-rollback-drill-latest.json",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T22:22:00Z",
+      "evidencePath": "test-results/ops/gate-e-evidence-latest.json",
+      "verdict": "PASS",
+      "details": "Gate-E summary [GREEN]: Overall pass=true, E2E=success, LOD=pass, Drill=pass"
+    },
+    {
+      "requirementId": "FINDING-H_WINDOWS_DESKTOP_PACKAGE",
       "command": "npm run rc:check:desktop",
       "exitCode": 0,
-      "timestamp": "2026-09-12T11:38:49Z",
-      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-498.log",
+      "timestamp": "2026-09-12T22:25:23Z",
+      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1435.log",
       "verdict": "PASS",
-      "details": "Built and packaged Windows desktop installer: apps/desktop/out/Keimenon Setup 0.1.0.exe (104,918,435 bytes)"
+      "details": "Built and packaged Windows desktop installer: apps/desktop/out/Keimenon Setup 0.1.0.exe (104,976,940 bytes, SHA-256: 3946F71CF7270AB10505970DEA40911E28FBC16EE374962F15F1F0F9DE983A2B) with automatic Node 24 host ABI restoration"
     }
   ]
 }

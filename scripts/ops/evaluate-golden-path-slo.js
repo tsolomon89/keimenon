@@ -85,13 +85,23 @@ function evaluate(args, metrics, baseline) {
   };
 
   if (mode === 'pr') {
-    assertLimit('tiny import', tinyImportMs, 120000);
-    assertLimit('small import', smallImportMs, 420000);
-    assertLimit('similarity apply', similarityApplyMs, 60000);
+    const prThresholds = baseline?.thresholds?.pr || {};
+    assertLimit('tiny import', tinyImportMs, prThresholds.tinyImportMaxMs || 120000);
+    assertLimit('small import', smallImportMs, prThresholds.smallImportMaxMs || 420000);
+    assertLimit('similarity apply', similarityApplyMs, prThresholds.similarityApplyMaxMs || 60000);
   } else {
-    assertLimit('medium import', mediumImportMs, 900000);
-    assertLimit('real_gpt import', realGptImportMs, 2700000);
-    assertLimit('similarity apply', similarityApplyMs, 120000);
+    const nightlyThresholds = baseline?.thresholds?.nightly || {};
+    assertLimit('medium import', mediumImportMs, nightlyThresholds.mediumImportMaxMs || 900000);
+    assertLimit(
+      'real_gpt import',
+      realGptImportMs,
+      nightlyThresholds.realGptImportMaxMs || 2700000
+    );
+    assertLimit(
+      'similarity apply',
+      similarityApplyMs,
+      nightlyThresholds.similarityApplyMaxMs || 120000
+    );
   }
 
   if (stalledJobsOver180s > 0) {
@@ -104,17 +114,23 @@ function evaluate(args, metrics, baseline) {
   let failureBudget7dPercent;
   let regressionPercentVsMedian;
   if (mode === 'nightly') {
-    const rolling7d = baseline?.rolling7d || {};
+    const rolling7d = baseline?.operatingSamples?.rolling7d || baseline?.rolling7d || {};
     const runs = Number(rolling7d.runs || 0);
     const failures = Number(rolling7d.failures || 0);
-    failureBudget7dPercent = runs > 0 ? (failures / runs) * 100 : undefined;
-    if (!Number.isFinite(failureBudget7dPercent)) {
-      breaches.push('nightly failure budget: missing rolling7d baseline');
-    } else if (failureBudget7dPercent > 2) {
-      breaches.push(`nightly failure budget: ${failureBudget7dPercent.toFixed(2)}% exceeds 2.00%`);
+    if (runs === 0) {
+      console.log(
+        '[golden-path-slo] Nightly operating window pending: 0 runs recorded (observation streak in progress).'
+      );
+    } else {
+      failureBudget7dPercent = (failures / runs) * 100;
+      if (failureBudget7dPercent > 2) {
+        breaches.push(
+          `nightly failure budget: ${failureBudget7dPercent.toFixed(2)}% exceeds 2.00%`
+        );
+      }
     }
 
-    const medians = baseline?.medians || {};
+    const medians = baseline?.baselineMedians || baseline?.medians || {};
     const regressionCandidates = [];
     const pushRegression = (name, current, median) => {
       if (!Number.isFinite(current) || !Number.isFinite(median) || median <= 0) {

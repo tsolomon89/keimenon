@@ -71,4 +71,29 @@ export class GemmaSerializer {
       temperature: 0.1, // Keep it deterministic
     };
   }
+
+  public serializeToGemmaPrompt(input: ConversationSynthesisInput, skill: RuntimeSkill): string {
+    const payload = this.serializeToOpenAiFormat(input, skill, 'gemma');
+    let prompt = '';
+    let systemText = '';
+
+    for (const m of payload.messages) {
+      if (m.role === 'system') {
+        systemText += `${m.content}\n\n`;
+      } else if (m.role === 'user') {
+        prompt += `<start_of_turn>user\n${systemText}${m.content}<end_of_turn>\n`;
+        systemText = '';
+      } else if (m.role === 'assistant') {
+        prompt += `<start_of_turn>model\n${m.content}<end_of_turn>\n`;
+      }
+    }
+
+    // If there was only system text and no user turn was processed (unlikely, but safe):
+    if (systemText && !prompt.includes('<start_of_turn>user')) {
+      prompt += `<start_of_turn>user\n${systemText}<end_of_turn>\n`;
+    }
+
+    prompt += `<start_of_turn>model\n`;
+    return prompt;
+  }
 }

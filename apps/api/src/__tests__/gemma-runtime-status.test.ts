@@ -7,9 +7,12 @@ describe('GemmaLocalProvider Status Check', () => {
   let originalEnv: NodeJS.ProcessEnv;
   let globalFetch: any;
 
+  let originalGlobalFetch: typeof global.fetch;
+
   beforeEach(() => {
     originalEnv = process.env;
     process.env = { ...originalEnv };
+    originalGlobalFetch = global.fetch;
     provider = new GemmaLocalProvider();
 
     globalFetch = vi.fn();
@@ -18,6 +21,7 @@ describe('GemmaLocalProvider Status Check', () => {
 
   afterEach(() => {
     process.env = originalEnv;
+    global.fetch = originalGlobalFetch;
     vi.resetAllMocks();
   });
 

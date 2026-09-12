@@ -1,123 +1,129 @@
 {
   "version": "1.0.0",
-  "baseSha": "f186d28e0036a1607fdc379bee20193fdfa5a8e2",
-  "currentSha": "6bb7f1442af7319dd9411083e35f9dbd7ab85c20",
-  "lastUpdated": "2026-09-12T11:25:00Z",
-  "status": "IN_PROGRESS",
-  "lastVerifiedChange": "Implemented K-RC-01 through K-RC-12 repairs across API, native bindings, web toolbar, downloader, and specs",
-  "nextConcreteAction": "Await web workspace tests verification and run full release gates (type-check, hygiene, native check, desktop packaging)",
+  "baseSha": "fc5050e0f46c764443fdb1042a70ad8052cc491e",
+  "branch": "release/rc-readiness",
+  "lastUpdated": "2026-09-12T22:25:00Z",
+  "status": "NOT_PRODUCTION_READY_EXTERNAL_BLOCKERS",
+  "verdictReason": "All 9 audit findings (A-I) and 12 RC gaps (K-RC-01 through K-RC-12) resolved, all required local and browser release gates pass, Windows desktop installer built and verified. Gate-E signoff requires 14 consecutive nightly runs in real time (0/14 elapsed), which cannot be manufactured.",
+  "lastVerifiedChange": "Resolved Findings A-I: connected native Gemma synthesis, asynchronous cancellable C++ addon, real native integration gate, clean-checkout vision doc sync, hardened model checksum verification, proven provenance integrity, uncorrupted SLO baseline, and packaged frozen Windows installer.",
+  "nextConcreteAction": "Push integration branch release/rc-readiness, open/update draft PR into main, and resume nightly workflow runs until 14-day observation streak elapses.",
+  "releaseArtifact": {
+    "path": "apps/desktop/out/Keimenon Setup 0.1.0.exe",
+    "sizeBytes": 104976940,
+    "sha256": "3946F71CF7270AB10505970DEA40911E28FBC16EE374962F15F1F0F9DE983A2B",
+    "blockmap": "apps/desktop/out/Keimenon Setup 0.1.0.exe.blockmap"
+  },
   "workQueue": [
     {
-      "id": "K-RC-01",
-      "area": "Agent Synthesis Provider",
-      "title": "Synthesis provider registry defaults to mock and permits silent fallback",
+      "id": "FINDING-A",
+      "area": "Native Synthesis Pipeline",
+      "title": "Connect conversation synthesis to real native generation",
       "status": "VERIFIED",
-      "dependencies": [],
+      "dependencies": ["FINDING-B"],
       "targetFiles": [
-        "apps/api/src/services/agent/synthesis-provider-registry.ts",
-        "apps/api/src/services/conversation-message.service.ts"
+        "apps/inference-helper/src/index.ts",
+        "apps/api/src/services/agent/native-gemma-runtime-backend.ts",
+        "apps/api/src/services/agent/gemma-local-provider.ts",
+        "apps/api/src/services/agent/gemma-serializer.ts"
       ]
     },
     {
-      "id": "K-RC-02",
-      "area": "Native Inference",
-      "title": "C++ LiteRT binding replaces missing symbols with mock function pointers and canned text",
-      "status": "VERIFIED",
-      "dependencies": [],
-      "targetFiles": ["packages/litert-node-bindings/native/binding.cc"]
-    },
-    {
-      "id": "K-RC-03",
-      "area": "Native Inference",
-      "title": "Fixed 4096-byte prompt buffer, unused maxTokens, signature mismatch with official LiteRT-LM C API",
-      "status": "VERIFIED",
-      "dependencies": ["K-RC-02"],
-      "targetFiles": ["packages/litert-node-bindings/native/binding.cc"]
-    },
-    {
-      "id": "K-RC-04",
-      "area": "Build Pipeline",
-      "title": "check-and-build.js exits 0 under CI=true and on native compilation failure",
-      "status": "VERIFIED",
-      "dependencies": ["K-RC-02", "K-RC-03"],
-      "targetFiles": ["packages/litert-node-bindings/scripts/check-and-build.js"]
-    },
-    {
-      "id": "K-RC-05",
-      "area": "Model Acquisition",
-      "title": "E2B/E4B registry missing model_id/checksum/size, downloader stream backpressure and Range 200 bug",
+      "id": "FINDING-B",
+      "area": "Native Addon Execution",
+      "title": "Make native execution genuinely asynchronous and cancellable",
       "status": "VERIFIED",
       "dependencies": [],
       "targetFiles": [
-        "apps/api/src/services/agent/gemma-model-source-registry.ts",
-        "apps/api/src/services/agent/model-downloader.ts"
+        "packages/litert-node-bindings/native/binding.cc",
+        "apps/inference-helper/src/litert-adapter.ts"
       ]
     },
     {
-      "id": "K-RC-06",
-      "area": "E2E Acceptance",
-      "title": "full-product-loop expects mock assistant response and permits empty provenance",
+      "id": "FINDING-C",
+      "area": "Native Testing Gate",
+      "title": "Separate native unit tests from actual runtime acceptance",
       "status": "VERIFIED",
-      "dependencies": ["K-RC-01"],
-      "targetFiles": ["tests/e2e/full-product-loop.spec.ts"]
+      "dependencies": ["FINDING-B"],
+      "targetFiles": [
+        "packages/litert-node-bindings/src/__tests__/native-addon-integration.test.ts",
+        "package.json"
+      ]
     },
     {
-      "id": "K-RC-07",
-      "area": "Import Pipeline",
-      "title": "chunked-upload-workflow calls test.skip() on assembly polling timeout",
+      "id": "FINDING-D",
+      "area": "Native Compilation & Release",
+      "title": "Make native release compilation mandatory and reproducible",
       "status": "VERIFIED",
       "dependencies": [],
-      "targetFiles": ["tests/e2e/chunked-upload-workflow.spec.ts"]
+      "targetFiles": [".github/workflows/release.yml", ".github/workflows/ci.yml", "package.json"]
     },
     {
-      "id": "K-RC-08",
-      "area": "CI / Hygiene",
-      "title": "check-runtime-markers.js excludes C++ and inference helper roots",
-      "status": "VERIFIED",
-      "dependencies": ["K-RC-02"],
-      "targetFiles": ["scripts/ci/check-runtime-markers.js"]
-    },
-    {
-      "id": "K-RC-09",
-      "area": "Documentation",
-      "title": "Documentation verification on clean checkout",
+      "id": "FINDING-E",
+      "area": "Documentation Gate",
+      "title": "Fix the documentation gate on a clean checkout",
       "status": "VERIFIED",
       "dependencies": [],
       "targetFiles": [
-        "scripts/ops/verify-vision-doc-sync.js",
+        ".gitignore",
         "agent_context/AGENTS.md",
         "agent_context/vision_gap_analysis.md"
       ]
     },
     {
-      "id": "K-RC-10",
-      "area": "Authorization / UX",
-      "title": "Reconcile blanket client-dashboard prohibition in matrices with AGENTS.md Section 10.4",
+      "id": "FINDING-F",
+      "area": "Model Acquisition & Integrity",
+      "title": "Enforce model identity and integrity before usable state",
       "status": "VERIFIED",
       "dependencies": [],
       "targetFiles": [
-        "docs/specs/vision-traceability-matrix.md",
-        "docs/specs/kiemenon-vision-traceability-matrix.md",
-        "docs/specs/kiemenon-requirement-ledger.md",
-        "apps/web/src/components/keimenon/KeimenonToolbar.tsx",
-        "apps/web/src/components/keimenon/KeimenonShellBars.snapshot.test.tsx"
+        "apps/api/src/services/agent/gemma-model-source-registry.ts",
+        "apps/api/src/services/agent/model-downloader.ts",
+        "apps/api/src/services/agent/model-manager.ts"
       ]
     },
     {
-      "id": "K-RC-11",
-      "area": "Release Toolchain",
-      "title": "Release workflow Node 24 toolchain consistency and Windows installer packaging",
+      "id": "FINDING-G",
+      "area": "Product Loop & Provenance",
+      "title": "Prove the actual product loop and provenance",
       "status": "VERIFIED",
-      "dependencies": [],
-      "targetFiles": [".github/workflows/release.yml"]
+      "dependencies": ["FINDING-A"],
+      "targetFiles": [
+        "apps/web/src/components/conversations/ConversationMessageRuntime.tsx",
+        "apps/api/src/services/conversation-message.service.ts",
+        "apps/api/src/__tests__/synthesis-runtime.test.ts",
+        "tests/e2e/full-product-loop.spec.ts"
+      ]
     },
     {
-      "id": "K-RC-12",
-      "area": "Operational / SLO",
-      "title": "SLO baseline evidence provenance and fresh measurements",
+      "id": "FINDING-H",
+      "area": "Release Evidence Integrity",
+      "title": "Replace unsupported release evidence with observed results",
       "status": "VERIFIED",
       "dependencies": [],
-      "targetFiles": ["scripts/ops/golden-path-slo-baseline.json"]
+      "targetFiles": ["docs/release/verification-ledger.json", "docs/release/release-report.md"]
+    },
+    {
+      "id": "FINDING-I",
+      "area": "Performance & Operational Evidence",
+      "title": "Establish genuine performance and operational evidence",
+      "status": "VERIFIED",
+      "dependencies": [],
+      "targetFiles": [
+        "scripts/ops/golden-path-slo-baseline.json",
+        "scripts/ops/evaluate-golden-path-slo.js",
+        "apps/web/src/lib/graph-lod.ts",
+        "scripts/perf/lod-burnin.ts"
+      ]
+    }
+  ],
+  "externalBlockers": [
+    {
+      "id": "GATE_E_NIGHTLY_STREAK",
+      "requirement": "14-day continuous nightly observation streak (Gate-E)",
+      "currentStreak": 0,
+      "targetStreak": 14,
+      "blockerReason": "Physical observation time has not elapsed in real time. The project is pre-live with no active users; elapsed days cannot be synthesized.",
+      "resumptionCommand": "npm run ops:gate-e:nightly:validate -- --require-streak"
     }
   ],
   "artifactLocations": {
@@ -125,6 +131,5 @@
     "executionState": "docs/release/execution-state.json",
     "verificationLedger": "docs/release/verification-ledger.json",
     "releaseReport": "docs/release/release-report.md"
-  },
-  "restartInstructions": "Inspect execution-state.json, check verification-ledger.json for completed gates, resume next pending item in workQueue."
+  }
 }

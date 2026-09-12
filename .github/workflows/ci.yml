@@ -54,8 +54,12 @@ jobs:
       - name: Run Local Migration Dry Run
         run: npm run migrate:to-local:dry-run
 
-  windows-runtime-smoke:
+  windows-runtime-verification:
     runs-on: windows-latest
+    env:
+      RELEASE_BUILD: '1'
+      KEIMENON_REQUIRE_NATIVE_BUILD: '1'
+      CI_NATIVE: 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -65,11 +69,14 @@ jobs:
           node-version: 24.x
           cache: npm
 
-      - name: Install dependencies
+      - name: Install dependencies (with mandatory native addon build)
         run: npm ci
 
       - name: Run Runtime Doctor
         run: npm run doctor:runtime
+
+      - name: Run Native Runtime Integration Gate
+        run: npm run rc:check:native
 
       - name: Run Auth Launcher Smoke
         run: npm run test:auth

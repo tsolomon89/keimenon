@@ -18,7 +18,10 @@ describe('ModelDownloader & ModelManager Hardening', () => {
   const tempPath = path.join(testDir, 'gemma-4-e2b-it-litert.tmp');
   const finalPath = path.join(testDir, 'gemma-4-E2B-it.litertlm');
 
+  let originalGlobalFetch: typeof global.fetch;
+
   beforeEach(() => {
+    originalGlobalFetch = global.fetch;
     process.env.KEIMENON_MODELS_DIR = testDir;
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true, force: true });
@@ -28,6 +31,7 @@ describe('ModelDownloader & ModelManager Hardening', () => {
   });
 
   afterEach(() => {
+    global.fetch = originalGlobalFetch;
     // Abort and clear active downloads and timeouts to prevent background async loops from leaking
     modelDownloader.reset();
 
@@ -100,6 +104,7 @@ describe('ModelDownloader & ModelManager Hardening', () => {
           runtime_compatibility_verified: true,
           verification_notes: '',
           local_runtime_supported: true,
+          expected_size_bytes: dummyContent.length,
           checksum: hash,
         },
       ]);
@@ -138,6 +143,7 @@ describe('ModelDownloader & ModelManager Hardening', () => {
           runtime_compatibility_verified: true,
           verification_notes: '',
           local_runtime_supported: true,
+          expected_size_bytes: dummyContent.length,
           checksum: 'wrong_checksum_value',
         },
       ]);
@@ -158,6 +164,46 @@ describe('ModelDownloader & ModelManager Hardening', () => {
       expect(result.verified).toBe(false);
       expect(result.verification_status).toBe('failed');
       expect(result.message).toContain('checksum verification failed');
+    });
+
+    it('should fail verification if candidate is artifact_verified but missing checksum', async () => {
+      const dummyContent = 'Gemma weight dummy data';
+      fs.writeFileSync(finalPath, dummyContent);
+
+      vi.mocked(gemmaModelSourceRegistry.getCandidates).mockResolvedValue([
+        {
+          id: 'gemma-4-e2b-it-litert',
+          model_family: 'gemma',
+          display_name: 'Gemma 4 E2B',
+          source_kind: 'official_huggingface',
+          source_url: '',
+          source_verified: true,
+          artifact_verified: true,
+          runtime_compatibility_verified: true,
+          verification_notes: '',
+          local_runtime_supported: true,
+          expected_size_bytes: dummyContent.length,
+        },
+      ]);
+
+      await modelManager.writeInstalledModels([
+        {
+          candidate_id: 'gemma-4-e2b-it-litert',
+          model_family: 'gemma',
+          model_id: null,
+          local_path: 'gemma-4-E2B-it.litertlm',
+          license_required: true,
+          license_accepted: true,
+          installed: false,
+        },
+      ]);
+
+      const result = await modelManager.verifyModelFile({ candidate_id: 'gemma-4-e2b-it-litert' });
+      expect(result.verified).toBe(false);
+      expect(result.verification_status).toBe('failed');
+      expect(result.message).toContain(
+        'Artifact-verified candidates require expected size and SHA-256 checksum'
+      );
     });
   });
 
@@ -185,6 +231,7 @@ describe('ModelDownloader & ModelManager Hardening', () => {
     it('should reset temp file and download cleanly if server answers a resumed request with 200 instead of 206', async () => {
       const fullData = 'COMPLETE_MODEL_WEIGHTS_DATA';
       const expectedSize = fullData.length;
+      const expectedHash = crypto.createHash('sha256').update(fullData).digest('hex');
 
       vi.mocked(gemmaModelSourceRegistry.getCandidates).mockResolvedValue([
         {
@@ -200,6 +247,7 @@ describe('ModelDownloader & ModelManager Hardening', () => {
           verification_notes: '',
           local_runtime_supported: true,
           expected_size_bytes: expectedSize,
+          checksum: expectedHash,
         },
       ]);
 
@@ -292,6 +340,8 @@ describe('ModelDownloader & ModelManager Hardening', () => {
           runtime_compatibility_verified: true,
           verification_notes: '',
           local_runtime_supported: true,
+          expected_size_bytes: 1000,
+          checksum: 'dummy_expected_checksum_value',
         },
       ]);
 
