@@ -194,7 +194,9 @@ describe('Synthesis Runtime & Agent Skills', () => {
         mockConversationId
       );
 
-      const result = await service.postMessage(
+      // When no provider is requested, system attempts canonical default (gemma-local)
+      // and fails explicitly if not configured rather than silently falling back to mock
+      const unconfiguredResult = await service.postMessage(
         mockAccountId,
         mockHumanId,
         mockConversationId,
@@ -202,6 +204,20 @@ describe('Synthesis Runtime & Agent Skills', () => {
         true,
         'bounded-answer',
         undefined // No provider requested
+      );
+
+      expect(unconfiguredResult.synthesisError).toBe('GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED');
+      expect(unconfiguredResult.assistantMessage).toBeUndefined();
+
+      // With explicit test mock provider injection, verify message persistence & edges
+      const result = await service.postMessage(
+        mockAccountId,
+        mockHumanId,
+        mockConversationId,
+        'Hello from the user for mock test',
+        true,
+        'bounded-answer',
+        'mock' // Explicit test double injection
       );
 
       expect(result.synthesisError).toBeUndefined();

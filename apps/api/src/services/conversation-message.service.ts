@@ -175,7 +175,7 @@ export class ConversationMessageService {
       const startTime = Date.now();
       const targetSkill = skillId || 'bounded-answer';
       let synthesisResult: any;
-      let usedProvider = providerId || 'mock';
+      let usedProvider = providerId || providerRegistry.getDefaultProviderId();
 
       try {
         // Ensure skills are loaded (in a real app this is done at startup)

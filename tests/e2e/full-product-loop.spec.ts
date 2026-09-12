@@ -14,7 +14,7 @@ test.describe('Full Browser Product Loop E2E', () => {
     await login(page, 'admin@admin.com', 'TestPass123!');
   });
 
-  test('executes real conversation creation, message runtime, AgentRun, and provenance endpoint', async ({
+  test('[Isolated Contract Loop] executes conversation creation, message runtime, AgentRun, and provenance verification', async ({
     page,
     apiRequest,
   }) => {
@@ -155,10 +155,11 @@ test.describe('Full Browser Product Loop E2E', () => {
     // 14. Assert user message appears
     await expect(page.getByText('Hello, please synthesize the context.').first()).toBeVisible();
 
-    // 15. Assert assistant message appears via mock provider
-    // The mock provider responds with "Mocked Assistant Response..."
-    const assistantMessage = page.getByText(/Mocked Assistant Response/).last();
+    // 15. Assert assistant message appears
+    const assistantMessage = page.locator('.message-bubble:not(.user-message)').last();
     await expect(assistantMessage).toBeVisible({ timeout: 15000 });
+    const assistantText = await assistantMessage.textContent();
+    expect(assistantText?.trim().length).toBeGreaterThan(0);
 
     // 16. Assert AgentRun metadata appears
     // The "View Provenance" button should appear

@@ -28,17 +28,8 @@ describe('ModelDownloader & ModelManager Hardening', () => {
   });
 
   afterEach(() => {
-    // Abort and clear active downloads to prevent background async loops from leaking
-    for (const [candidateId, active] of (modelDownloader as any).activeDownloads.entries()) {
-      if (active.status === 'downloading') {
-        try {
-          active.abortController.abort();
-        } catch (_) {
-          // ignore
-        }
-      }
-    }
-    (modelDownloader as any).activeDownloads.clear();
+    // Abort and clear active downloads and timeouts to prevent background async loops from leaking
+    modelDownloader.reset();
 
     process.env.KEIMENON_MODELS_DIR = originalEnv;
     if (fs.existsSync(testDir)) {
@@ -187,6 +178,138 @@ describe('ModelDownloader & ModelManager Hardening', () => {
 
       expect(fs.existsSync(staleTempPath)).toBe(false);
       expect(fs.existsSync(freshTempPath)).toBe(true);
+    });
+  });
+
+  describe('Resume handling and verification ordering', () => {
+    it('should reset temp file and download cleanly if server answers a resumed request with 200 instead of 206', async () => {
+      const fullData = 'COMPLETE_MODEL_WEIGHTS_DATA';
+      const expectedSize = fullData.length;
+
+      vi.mocked(gemmaModelSourceRegistry.getCandidates).mockResolvedValue([
+        {
+          id: 'gemma-4-e2b-it-litert',
+          model_family: 'gemma',
+          display_name: 'Gemma 4 E2B',
+          source_kind: 'official_huggingface',
+          source_url: 'https://huggingface.co',
+          download_url: 'https://huggingface.co/gemma-4-E2B-it.litertlm',
+          source_verified: true,
+          artifact_verified: true,
+          runtime_compatibility_verified: true,
+          verification_notes: '',
+          local_runtime_supported: true,
+          expected_size_bytes: expectedSize,
+        },
+      ]);
+
+      // Seed partial file (5 bytes)
+      fs.writeFileSync(tempPath, 'CORRU');
+
+      // Mock fetch: receives Range header, but server returns 200 OK with the full stream!
+      global.fetch = vi.fn().mockImplementation(async (url, options) => {
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(fullData));
+            controller.close();
+          },
+        });
+        return new Response(stream, {
+          status: 200,
+          headers: {
+            'content-length': String(expectedSize),
+          },
+        });
+      });
+
+      await modelDownloader.startDownload('gemma-4-e2b-it-litert');
+
+      // Wait for async download loop
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const active = (modelDownloader as any).activeDownloads.get('gemma-4-e2b-it-litert');
+      expect(active?.status).toBe('completed');
+      expect(fs.existsSync(finalPath)).toBe(true);
+      const content = fs.readFileSync(finalPath, 'utf-8');
+      expect(content).toBe(fullData);
+      expect(content).not.toContain('CORRU');
+    });
+
+    it('should refuse to rename to final path if checksum verification fails on tempPath', async () => {
+      const data = 'CORRUPTED_DOWNLOAD_DATA';
+
+      vi.mocked(gemmaModelSourceRegistry.getCandidates).mockResolvedValue([
+        {
+          id: 'gemma-4-e2b-it-litert',
+          model_family: 'gemma',
+          display_name: 'Gemma 4 E2B',
+          source_kind: 'official_huggingface',
+          source_url: 'https://huggingface.co',
+          download_url: 'https://huggingface.co/gemma-4-E2B-it.litertlm',
+          source_verified: true,
+          artifact_verified: true,
+          runtime_compatibility_verified: true,
+          verification_notes: '',
+          local_runtime_supported: true,
+          expected_size_bytes: data.length,
+          checksum: 'expected_correct_checksum_that_will_not_match',
+        },
+      ]);
+
+      global.fetch = vi.fn().mockImplementation(async () => {
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(data));
+            controller.close();
+          },
+        });
+        return new Response(stream, {
+          status: 200,
+          headers: { 'content-length': String(data.length) },
+        });
+      });
+
+      await modelDownloader.startDownload('gemma-4-e2b-it-litert');
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const active = (modelDownloader as any).activeDownloads.get('gemma-4-e2b-it-litert');
+      expect(active?.status).toBe('failed');
+      // Final path must NOT have been created!
+      expect(fs.existsSync(finalPath)).toBe(false);
+    });
+
+    it('should pause cleanly when cancelDownload is called', async () => {
+      vi.mocked(gemmaModelSourceRegistry.getCandidates).mockResolvedValue([
+        {
+          id: 'gemma-4-e2b-it-litert',
+          model_family: 'gemma',
+          display_name: 'Gemma 4 E2B',
+          source_kind: 'official_huggingface',
+          source_url: 'https://huggingface.co',
+          download_url: 'https://huggingface.co/gemma-4-E2B-it.litertlm',
+          source_verified: true,
+          artifact_verified: true,
+          runtime_compatibility_verified: true,
+          verification_notes: '',
+          local_runtime_supported: true,
+        },
+      ]);
+
+      // Never-ending stream
+      global.fetch = vi.fn().mockImplementation(async (url, options) => {
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('first_chunk'));
+          },
+        });
+        return new Response(stream, { status: 200 });
+      });
+
+      await modelDownloader.startDownload('gemma-4-e2b-it-litert');
+      modelDownloader.cancelDownload('gemma-4-e2b-it-litert');
+
+      const progress = modelDownloader.getProgress('gemma-4-e2b-it-litert');
+      expect(progress?.status).toBe('paused');
     });
   });
 });

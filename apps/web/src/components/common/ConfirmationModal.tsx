@@ -1,13 +1,7 @@
-/**
- * Polymorphic Confirmation Modal
- *
- * A reusable modal component for confirmations, warnings, errors, and info messages.
- * Supports custom colors, icons, and actions based on variant.
- */
-
 'use client';
 
 import { X, AlertTriangle, AlertCircle, Info, CheckCircle } from 'lucide-react';
+import { Button } from '@keimenon/ui';
 
 export type ConfirmationVariant = 'warning' | 'error' | 'info' | 'success';
 
@@ -35,8 +29,7 @@ const variantConfig = {
     iconColor: 'text-yellow-400',
     titleColor: 'text-yellow-300',
     messageColor: 'text-yellow-200/80',
-    confirmBg: 'bg-yellow-600 hover:bg-yellow-700',
-    confirmText: 'text-white',
+    confirmVariant: 'warning' as const,
   },
   error: {
     bg: 'bg-red-600/10',
@@ -46,8 +39,7 @@ const variantConfig = {
     iconColor: 'text-red-400',
     titleColor: 'text-red-300',
     messageColor: 'text-red-200/80',
-    confirmBg: 'bg-red-600 hover:bg-red-700',
-    confirmText: 'text-white',
+    confirmVariant: 'danger' as const,
   },
   info: {
     bg: 'bg-blue-600/10',
@@ -57,8 +49,7 @@ const variantConfig = {
     iconColor: 'text-blue-400',
     titleColor: 'text-blue-300',
     messageColor: 'text-blue-200/80',
-    confirmBg: 'bg-blue-600 hover:bg-blue-700',
-    confirmText: 'text-white',
+    confirmVariant: 'default' as const,
   },
   success: {
     bg: 'bg-green-600/10',
@@ -68,8 +59,7 @@ const variantConfig = {
     iconColor: 'text-green-400',
     titleColor: 'text-green-300',
     messageColor: 'text-green-200/80',
-    confirmBg: 'bg-green-600 hover:bg-green-700',
-    confirmText: 'text-white',
+    confirmVariant: 'default' as const,
   },
 };
 
@@ -156,48 +146,50 @@ export function ConfirmationModal({
 
             {/* Close button */}
             {!isProcessing && (
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={handleCancel}
-                className="flex-shrink-0 p-1 hover:bg-slate-800/50 rounded transition-colors"
+                className="flex-shrink-0 h-8 w-8 p-1 text-slate-400 hover:text-white"
               >
-                <X className="w-5 h-5 text-slate-400" />
-              </button>
+                <X className="w-5 h-5" />
+              </Button>
             )}
           </div>
 
           {/* Actions */}
           <div className="flex items-center justify-between gap-3 px-6 py-4 bg-slate-900/30 border-t border-slate-700/50">
-            {/* Left side - Minimize button (only show when processing and onMinimize is provided) */}
+            {/* Left side - Minimize button */}
             <div>
               {isProcessing && onMinimize && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={onMinimize}
-                  className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
+                  className="text-slate-400 hover:text-slate-200"
                 >
                   {minimizeText}
-                </button>
+                </Button>
               )}
             </div>
 
             {/* Right side - Cancel and Confirm buttons */}
             <div className="flex items-center gap-3">
-              <button
-                onClick={handleCancel}
-                disabled={isProcessing}
-                className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
-              >
+              <Button variant="secondary" size="sm" onClick={handleCancel} disabled={isProcessing}>
                 {cancelText}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant={config.confirmVariant}
+                size="sm"
                 onClick={handleConfirm}
                 disabled={isProcessing}
-                className={`px-4 py-2 text-sm font-medium ${config.confirmBg} ${config.confirmText} disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2`}
+                className="flex items-center gap-2"
               >
                 {isProcessing && (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 )}
                 {confirmText}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

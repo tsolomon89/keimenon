@@ -458,10 +458,11 @@ export async function createDeleteJob(
 /**
  * Count nodes in database for an account
  */
-export function countNodes(db: Database.Database, accountId: string): number {
-  const result = db
-    .prepare('SELECT COUNT(*) as count FROM nodes WHERE account_id = ?')
-    .get(accountId) as CountResult;
+export function countNodes(db: Database.Database, accountId: string, excludeSystem = true): number {
+  const query = excludeSystem
+    ? "SELECT COUNT(*) as count FROM nodes WHERE account_id = ? AND kind NOT IN ('AccountNode', 'UserNode', 'AgentNode', 'Principal', 'Board', 'Constellation')"
+    : 'SELECT COUNT(*) as count FROM nodes WHERE account_id = ?';
+  const result = db.prepare(query).get(accountId) as CountResult;
   return result.count;
 }
 

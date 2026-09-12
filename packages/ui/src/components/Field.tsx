@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Text } from './Text';
+import { PolymorphicComponentPropsWithRef, PolymorphicForwardRef } from '../utils/polymorphic';
 
 /**
  * Field Types - Extracted from SettingsCard.tsx lines 121-196
@@ -22,7 +23,7 @@ export type FieldType =
  */
 export type FieldMode = 'read' | 'edit';
 
-interface BaseFieldProps {
+export interface BaseFieldProps {
   /** Label for the field */
   label?: string;
 
@@ -39,243 +40,221 @@ interface BaseFieldProps {
   mode?: FieldMode;
 }
 
-interface BooleanFieldProps extends BaseFieldProps {
-  type: 'boolean';
-  value: boolean;
-  onChange?: (value: boolean) => void;
-}
-
-interface StringFieldProps extends BaseFieldProps {
-  type: 'string';
-  value: string;
-  onChange?: (value: string) => void;
+export interface FieldOwnProps extends BaseFieldProps {
+  type: FieldType;
+  value?: any;
+  onChange?: (value: any) => void;
   placeholder?: string;
   pattern?: string;
-}
-
-interface NumberFieldProps extends BaseFieldProps {
-  type: 'number';
-  value: number;
-  onChange?: (value: number) => void;
   min?: number;
   max?: number;
   step?: number;
   unit?: string;
+  options?: Array<{ label: string; value: any; description?: string }>;
+  allowCustom?: boolean;
+  className?: string;
 }
 
-interface SelectFieldProps extends BaseFieldProps {
-  type: 'select';
-  value: string | number;
-  onChange?: (value: string | number) => void;
-  options: Array<{ value: string | number; label: string }>;
-}
-
-interface MultiSelectFieldProps extends BaseFieldProps {
-  type: 'multiselect';
-  value: (string | number)[];
-  onChange?: (value: (string | number)[]) => void;
-  options: Array<{ value: string | number; label: string }>;
-}
-
-interface ColorFieldProps extends BaseFieldProps {
-  type: 'color';
-  value: string;
-  onChange?: (value: string) => void;
-}
-
-interface SliderFieldProps extends BaseFieldProps {
-  type: 'slider';
-  value: number;
-  onChange?: (value: number) => void;
-  min: number;
-  max: number;
-  step: number;
-  unit?: string;
-}
-
-interface JsonFieldProps extends BaseFieldProps {
-  type: 'json';
-  value: any;
-  onChange?: (value: any) => void;
-}
-
-export type FieldProps =
-  | BooleanFieldProps
-  | StringFieldProps
-  | NumberFieldProps
-  | SelectFieldProps
-  | MultiSelectFieldProps
-  | ColorFieldProps
-  | SliderFieldProps
-  | JsonFieldProps;
+export type FieldProps<C extends React.ElementType = 'div'> = PolymorphicComponentPropsWithRef<
+  C,
+  FieldOwnProps
+>;
 
 /**
- * Field Primitive - Universal form control
- *
- * Features:
- * - Automatic read/edit mode switching
- * - Inline validation
- * - Consistent styling across all types
- * - Error state handling
+ * Field Primitive - Unified form field renderer
  */
-export function Field(props: FieldProps) {
-  const { label, hint, error, disabled, mode = 'edit' } = props;
+export const Field: PolymorphicForwardRef<'div', FieldOwnProps> = React.forwardRef(
+  (
+    {
+      label,
+      hint,
+      error,
+      disabled,
+      mode = 'edit',
+      as,
+      type,
+      value,
+      onChange,
+      placeholder,
+      pattern,
+      min,
+      max,
+      step,
+      unit,
+      options,
+      allowCustom,
+      className,
+      ...props
+    }: any,
+    ref: any
+  ) => {
+    const Component = as || 'div';
+    const fieldProps: any = {
+      label,
+      hint,
+      error,
+      disabled,
+      mode,
+      type,
+      value,
+      onChange,
+      placeholder,
+      pattern,
+      min,
+      max,
+      step,
+      unit,
+      options,
+      allowCustom,
+    };
 
-  // Read-only mode: just display the value
-  if (mode === 'read') {
+    // Read-only mode: just display the value
+    if (mode === 'read') {
+      return (
+        <Component className={`space-y-1 ${className || ''}`.trim()} ref={ref} {...props}>
+          {label && <Text role="label">{label}</Text>}
+          <div className="text-sm text-white">{renderReadOnlyValue(fieldProps)}</div>
+          {hint && (
+            <Text role="hint" mode="muted">
+              {hint}
+            </Text>
+          )}
+        </Component>
+      );
+    }
+
+    // Edit mode: render appropriate control
     return (
-      <div className="space-y-1">
+      <Component className={`space-y-2 ${className || ''}`.trim()} ref={ref} {...props}>
         {label && <Text role="label">{label}</Text>}
-        <div className="text-sm text-white">{renderReadOnlyValue(props)}</div>
-        {hint && (
+        {renderControl(fieldProps)}
+        {error && (
+          <Text role="hint" mode="error">
+            {error}
+          </Text>
+        )}
+        {!error && hint && (
           <Text role="hint" mode="muted">
             {hint}
           </Text>
         )}
-      </div>
+      </Component>
     );
   }
+) as any;
 
-  // Edit mode: render appropriate control
-  return (
-    <div className="space-y-2">
-      {label && <Text role="label">{label}</Text>}
-      {renderControl(props)}
-      {error && (
-        <Text role="hint" mode="error">
-          {error}
-        </Text>
-      )}
-      {!error && hint && (
-        <Text role="hint" mode="muted">
-          {hint}
-        </Text>
-      )}
-    </div>
-  );
-}
+Field.displayName = 'Field';
 
 /**
  * Render read-only value display
  */
-function renderReadOnlyValue(props: FieldProps): React.ReactNode {
-  switch (props.type) {
+function renderReadOnlyValue(props: any): React.ReactNode {
+  const { type, value, unit } = props;
+
+  if (value === undefined || value === null) {
+    return <span className="text-slate-500 italic">Not set</span>;
+  }
+
+  switch (type) {
     case 'boolean':
-      return props.value ? 'Enabled' : 'Disabled';
-    case 'string':
-      return props.value || '—';
-    case 'number':
-      return `${props.value}${props.unit || ''}`;
-    case 'select':
-      const selectedOption = props.options.find((o) => o.value === props.value);
-      return selectedOption?.label || props.value;
-    case 'multiselect':
-      return props.value.length > 0 ? props.value.join(', ') : '—';
+      return value ? 'Enabled' : 'Disabled';
     case 'color':
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center space-x-2">
           <div
-            className="w-6 h-6 rounded border border-slate-700"
-            style={{ backgroundColor: props.value }}
+            className="w-4 h-4 rounded border border-slate-600"
+            style={{ backgroundColor: value }}
           />
-          <span>{props.value}</span>
+          <span>{value}</span>
         </div>
       );
-    case 'slider':
-      return `${props.value}${props.unit || ''}`;
+    case 'multiselect':
+      return Array.isArray(value) ? value.join(', ') : String(value);
     case 'json':
       return (
-        <pre className="text-xs font-mono text-slate-300">
-          {JSON.stringify(props.value, null, 2)}
+        <pre className="font-mono text-xs bg-slate-900 p-2 rounded">
+          {JSON.stringify(value, null, 2)}
         </pre>
       );
     default:
-      return '—';
+      return `${value}${unit ? ` ${unit}` : ''}`;
   }
 }
 
 /**
- * Render editable control
+ * Render control based on type
  */
-function renderControl(props: FieldProps): React.ReactNode {
-  switch (props.type) {
+function renderControl(props: any): React.ReactNode {
+  const { type, ...controlProps } = props;
+
+  switch (type) {
     case 'boolean':
-      return <BooleanControl {...props} />;
+      return <BooleanControl {...controlProps} />;
     case 'string':
-      return <StringControl {...props} />;
+      return <StringControl {...controlProps} />;
     case 'number':
-      return <NumberControl {...props} />;
+      return <NumberControl {...controlProps} />;
     case 'select':
-      return <SelectControl {...props} />;
+      return <SelectControl {...controlProps} />;
     case 'multiselect':
-      return <MultiSelectControl {...props} />;
+      return <MultiSelectControl {...controlProps} />;
     case 'color':
-      return <ColorControl {...props} />;
+      return <ColorControl {...controlProps} />;
     case 'slider':
-      return <SliderControl {...props} />;
+      return <SliderControl {...controlProps} />;
     case 'json':
-      return <JsonControl {...props} />;
+      return <JsonControl {...controlProps} />;
     default:
       return null;
   }
 }
 
-// Control components
-
-function BooleanControl({ value, onChange, disabled }: BooleanFieldProps) {
+function BooleanControl({ value, onChange, disabled }: any) {
   return (
-    <label className="flex items-center gap-3 cursor-pointer">
+    <label className="flex items-center space-x-3 cursor-pointer">
       <input
         type="checkbox"
         checked={value}
         onChange={(e) => onChange?.(e.target.checked)}
         disabled={disabled}
-        className="w-4 h-4 rounded bg-slate-700 border-slate-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 cursor-pointer"
+        className="w-4 h-4 rounded border-slate-700 bg-slate-900/50 text-purple-600 focus:ring-purple-500 disabled:opacity-50"
       />
-      <Text role="value" mode="muted">
-        {value ? 'Enabled' : 'Disabled'}
-      </Text>
+      <Text role="value">{value ? 'Enabled' : 'Disabled'}</Text>
     </label>
   );
 }
 
-function StringControl({ value, onChange, disabled, placeholder, pattern }: StringFieldProps) {
+function StringControl({ value, onChange, placeholder, pattern, disabled }: any) {
   return (
     <input
       type="text"
-      value={value}
+      value={value || ''}
       onChange={(e) => onChange?.(e.target.value)}
-      disabled={disabled}
       placeholder={placeholder}
       pattern={pattern}
+      disabled={disabled}
       className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
     />
   );
 }
 
-function NumberControl({ value, onChange, disabled, min, max, step, unit }: NumberFieldProps) {
+function NumberControl({ value, onChange, min, max, step, placeholder, disabled }: any) {
   return (
-    <div className="flex items-center gap-2">
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => onChange?.(Number(e.target.value))}
-        disabled={disabled}
-        min={min}
-        max={max}
-        step={step}
-        className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-700 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
-      />
-      {unit && (
-        <Text role="value" mode="muted">
-          {unit}
-        </Text>
-      )}
-    </div>
+    <input
+      type="number"
+      value={value ?? ''}
+      onChange={(e) => onChange?.(e.target.value === '' ? undefined : Number(e.target.value))}
+      min={min}
+      max={max}
+      step={step}
+      placeholder={placeholder}
+      disabled={disabled}
+      className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+    />
   );
 }
 
-function SelectControl({ value, onChange, disabled, options }: SelectFieldProps) {
+function SelectControl({ value, onChange, options = [], disabled }: any) {
   return (
     <select
       value={value}
@@ -283,8 +262,8 @@ function SelectControl({ value, onChange, disabled, options }: SelectFieldProps)
       disabled={disabled}
       className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
     >
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
+      {options.map((opt: any) => (
+        <option key={opt.value} value={opt.value} className="bg-slate-900">
           {opt.label}
         </option>
       ))}
@@ -292,61 +271,59 @@ function SelectControl({ value, onChange, disabled, options }: SelectFieldProps)
   );
 }
 
-function MultiSelectControl({ value, onChange, disabled, options }: MultiSelectFieldProps) {
-  const toggleOption = (optionValue: string | number) => {
-    const newValue = value.includes(optionValue)
-      ? value.filter((v) => v !== optionValue)
-      : [...value, optionValue];
-    onChange?.(newValue);
+function MultiSelectControl({ value = [], onChange, options = [], disabled }: any) {
+  const handleToggle = (optValue: any) => {
+    const current = Array.isArray(value) ? value : [];
+    const next = current.includes(optValue)
+      ? current.filter((v: any) => v !== optValue)
+      : [...current, optValue];
+    onChange?.(next);
   };
 
   return (
     <div className="space-y-2">
-      {options.map((opt) => (
-        <label key={opt.value} className="flex items-center gap-3 cursor-pointer">
+      {options.map((opt: any) => (
+        <label key={opt.value} className="flex items-center space-x-2 cursor-pointer">
           <input
             type="checkbox"
-            checked={value.includes(opt.value)}
-            onChange={() => toggleOption(opt.value)}
+            checked={Array.isArray(value) && value.includes(opt.value)}
+            onChange={() => handleToggle(opt.value)}
             disabled={disabled}
-            className="w-4 h-4 rounded bg-slate-700 border-slate-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 cursor-pointer"
+            className="w-4 h-4 rounded border-slate-700 bg-slate-900/50 text-purple-600 focus:ring-purple-500 disabled:opacity-50"
           />
-          <Text role="value" mode="muted">
-            {opt.label}
-          </Text>
+          <span className="text-sm text-slate-300">{opt.label}</span>
         </label>
       ))}
     </div>
   );
 }
 
-function ColorControl({ value, onChange, disabled }: ColorFieldProps) {
+function ColorControl({ value, onChange, disabled }: any) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center space-x-3">
       <input
         type="color"
-        value={value}
+        value={value || '#000000'}
         onChange={(e) => onChange?.(e.target.value)}
         disabled={disabled}
-        className="w-12 h-10 rounded border border-slate-700 bg-slate-900/50 cursor-pointer disabled:opacity-50"
+        className="w-10 h-10 rounded border border-slate-700 bg-slate-900/50 cursor-pointer disabled:opacity-50"
       />
       <input
         type="text"
-        value={value}
+        value={value || ''}
         onChange={(e) => onChange?.(e.target.value)}
-        disabled={disabled}
-        pattern="^#[0-9A-Fa-f]{6}$"
         placeholder="#000000"
-        className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-700 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+        disabled={disabled}
+        className="w-32 px-3 py-2 bg-slate-900/50 border border-slate-700 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
       />
     </div>
   );
 }
 
-function SliderControl({ value, onChange, disabled, min, max, step, unit }: SliderFieldProps) {
+function SliderControl({ value, onChange, min = 0, max = 100, step = 1, unit, disabled }: any) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex justify-between items-center text-xs">
         <Text role="value" mode="muted">
           {value}
           {unit}
@@ -367,14 +344,14 @@ function SliderControl({ value, onChange, disabled, min, max, step, unit }: Slid
         step={step}
         className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer disabled:opacity-50"
         style={{
-          accentColor: 'rgb(147, 51, 234)', // purple-600
+          accentColor: 'rgb(147, 51, 234)',
         }}
       />
     </div>
   );
 }
 
-function JsonControl({ value, onChange, disabled }: JsonFieldProps) {
+function JsonControl({ value, onChange, disabled }: any) {
   const [jsonString, setJsonString] = React.useState(JSON.stringify(value, null, 2));
   const [jsonError, setJsonError] = React.useState<string | null>(null);
 

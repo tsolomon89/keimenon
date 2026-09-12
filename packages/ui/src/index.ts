@@ -18,3 +18,4 @@ export * from './layouts/FourRegionLayout';
 
 // Utils
 export * from './utils/cn';
+export * from './utils/polymorphic';

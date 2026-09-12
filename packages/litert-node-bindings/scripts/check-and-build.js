@@ -4,17 +4,24 @@ const path = require('path');
 
 console.log('[LiteRtNodeBindings] check-and-build started.');
 
-const isCI = process.env.CI === 'true';
-const bypassBuild = process.env.KEIMENON_SKIP_NATIVE_BUILD === '1';
+const requireNativeBuild =
+  process.env.KEIMENON_REQUIRE_NATIVE_BUILD === '1' ||
+  process.env.RELEASE_BUILD === '1' ||
+  process.env.CI_NATIVE === 'true';
 
-if (bypassBuild || isCI) {
-  console.log('[LiteRtNodeBindings] Bypassing native addon build gracefully via env/CI flags.');
+const bypassBuild = process.env.KEIMENON_SKIP_NATIVE_BUILD === '1';
+const isCI = process.env.CI === 'true';
+
+if (!requireNativeBuild && (bypassBuild || (isCI && process.env.CI_NATIVE !== 'true'))) {
+  console.log(
+    '[LiteRtNodeBindings] Bypassing native addon build gracefully for non-native CI/unit environment.'
+  );
   process.exit(0);
 }
 
 try {
   console.log('[LiteRtNodeBindings] Triggering node-gyp rebuild...');
-  execSync('npx node-gyp rebuild', { stdio: 'inherit' });
+  execSync('npx node-gyp rebuild', { stdio: 'inherit', cwd: path.resolve(__dirname, '..') });
   console.log('[LiteRtNodeBindings] C++ native compilation completed successfully.');
 
   // Create native structure directories
@@ -37,6 +44,8 @@ try {
     console.log(
       '[LiteRtNodeBindings] Copied compiled litert_node_bindings.node to native/win32-x64/'
     );
+  } else if (requireNativeBuild) {
+    throw new Error(`Compiled addon missing at ${srcAddon}`);
   }
 
   // Copy prebuilt dynamic libraries from vendor
@@ -66,9 +75,17 @@ try {
     );
   }
 } catch (err) {
-  console.warn(
-    '[LiteRtNodeBindings] Native C++ compilation failed. This is acceptable in dev/CI if dynamic libraries are mock-only.'
-  );
-  console.warn('[LiteRtNodeBindings] Warning details:', err.message);
-  process.exit(0);
+  if (requireNativeBuild) {
+    console.error(
+      '[LiteRtNodeBindings] FATAL: Native C++ compilation failed in required native release gate.'
+    );
+    console.error('[LiteRtNodeBindings] Error details:', err.message);
+    process.exit(1);
+  } else {
+    console.warn(
+      '[LiteRtNodeBindings] Native C++ compilation failed in non-native environment. Proceeding with caution.'
+    );
+    console.warn('[LiteRtNodeBindings] Warning details:', err.message);
+    process.exit(0);
+  }
 }

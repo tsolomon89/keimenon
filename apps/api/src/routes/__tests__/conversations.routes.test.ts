@@ -456,7 +456,7 @@ describe('Conversations Routes principal/context contract', () => {
       const response = await request(app)
         .post('/api/v1/conversations/conv_msg_1/messages')
         .set('Authorization', 'Bearer test-token')
-        .send({ content: 'Hello agent!', run_synthesis: true })
+        .send({ content: 'Hello agent!', run_synthesis: true, provider: 'mock' })
         .expect(200);
 
       expect(response.body.success).toBe(true);
@@ -491,7 +491,7 @@ describe('Conversations Routes principal/context contract', () => {
       await request(app)
         .post('/api/v1/conversations/conv_msg_1/messages')
         .set('Authorization', 'Bearer test-token')
-        .send({ content: 'Hello', run_synthesis: true })
+        .send({ content: 'Hello', run_synthesis: true, provider: 'mock' })
         .expect(200);
 
       const response = await request(app)
@@ -514,7 +514,7 @@ describe('Conversations Routes principal/context contract', () => {
       const response = await request(app)
         .post('/api/v1/conversations/conv_msg_1/messages')
         .set('Authorization', 'Bearer test-token')
-        .send({ content: 'Break the adapter!', run_synthesis: true })
+        .send({ content: 'Break the adapter!', run_synthesis: true, provider: 'mock' })
         .expect(200);
 
       expect(response.body.success).toBe(true);

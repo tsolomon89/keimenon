@@ -707,15 +707,12 @@ test.describe('Chunked Upload Workflow - Complete Coverage', () => {
       attempts++;
     }
 
-    // Verify job was created (or document timeout issue)
-    if (jobCreated) {
-      console.log('[Test 7] ✅ Job creation after assembly completed successfully');
-    } else {
-      console.warn('[Test 7] ⚠️ Assembly stuck in "assembling" state for >30s - worker pool issue');
-      console.warn('[Test 7] ⚠️ This is a test environment limitation, not a code bug');
-      // Mark test as skipped rather than failed - this is a known test infrastructure issue
-      test.skip();
-    }
+    // Verify job was created with strict assertion (no test.skip fallback)
+    expect(
+      jobCreated,
+      `Assembly failed to create import job within 30s timeout for upload session ${sessionId}.`
+    ).toBe(true);
+    console.log('[Test 7] ✅ Job creation after assembly completed successfully');
   });
 
   // ==========================================================================

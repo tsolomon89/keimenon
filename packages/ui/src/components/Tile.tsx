@@ -1,18 +1,13 @@
-'use client';
-
 import React from 'react';
 import { Text } from './Text';
 import { LucideIcon } from 'lucide-react';
+import { cn } from '../utils/cn';
+import { PolymorphicComponentPropsWithRef, PolymorphicForwardRef } from '../utils/polymorphic';
 
 /**
  * Tile Color - Semantic color schemes
  */
-export type TileColor =
-  | 'purple' // Conversations
-  | 'green' // Sources
-  | 'orange' // Code
-  | 'blue' // Groups
-  | 'slate'; // Default
+export type TileColor = 'purple' | 'green' | 'orange' | 'blue' | 'slate';
 
 /**
  * Badge Configuration
@@ -22,7 +17,7 @@ export interface TileBadge {
   color?: TileColor;
 }
 
-export interface TileProps {
+export interface TileOwnProps {
   /** Tile title */
   title: string;
 
@@ -51,9 +46,11 @@ export interface TileProps {
   className?: string;
 }
 
-/**
- * Color scheme mappings
- */
+export type TileProps<C extends React.ElementType = 'div'> = PolymorphicComponentPropsWithRef<
+  C,
+  TileOwnProps
+>;
+
 const colorSchemes: Record<TileColor, { bg: string; border: string; icon: string; text: string }> =
   {
     purple: {
@@ -90,89 +87,90 @@ const colorSchemes: Record<TileColor, { bg: string; border: string; icon: string
 
 /**
  * Tile Primitive - Compact card with icon and metadata
- *
- * Features:
- * - Icon with color theming
- * - Title + subtitle
- * - Metadata badges
- * - Selection state
- * - Hover effects
  */
-import { cn } from '../utils/cn';
+export const Tile: PolymorphicForwardRef<'div', TileOwnProps> = React.forwardRef(
+  (
+    {
+      title,
+      subtitle,
+      icon: Icon,
+      iconColor = 'slate',
+      badges = [],
+      selected = false,
+      onClick,
+      onDoubleClick,
+      className = '',
+      as,
+      ...props
+    }: any,
+    ref: any
+  ) => {
+    const Component = as || 'div';
+    const colors = colorSchemes[iconColor as TileColor] || colorSchemes.slate;
 
-// ... (imports)
+    const containerClasses = cn(
+      'p-4 rounded-lg border backdrop-blur-sm cursor-pointer transition-all duration-200',
+      colors.bg,
+      colors.border,
+      selected
+        ? 'ring-2 ring-purple-500 shadow-lg shadow-purple-500/20'
+        : 'hover:shadow-md hover:border-opacity-60',
+      className
+    );
 
-// ... (TileProps definition)
+    return (
+      <Component
+        className={containerClasses}
+        onClick={onClick}
+        onDoubleClick={onDoubleClick}
+        ref={ref}
+        {...props}
+      >
+        {/* Header with icon */}
+        <div className="flex items-start justify-between mb-3">
+          {Icon && (
+            <div className={`p-2 ${colors.bg} rounded-lg ${colors.icon}`}>
+              <Icon className="w-5 h-5" />
+            </div>
+          )}
+        </div>
 
-/**
- * Tile Primitive - Compact card with icon and metadata
- * ...
- */
-export function Tile({
-  title,
-  subtitle,
-  icon: Icon,
-  iconColor = 'slate',
-  badges = [],
-  selected = false,
-  onClick,
-  onDoubleClick,
-  className = '',
-}: TileProps) {
-  const colors = colorSchemes[iconColor];
+        {/* Title */}
+        <Text role="title" className="text-sm mb-1 line-clamp-2">
+          {title}
+        </Text>
 
-  const containerClasses = cn(
-    'p-4 rounded-lg border backdrop-blur-sm cursor-pointer transition-all duration-200',
-    colors.bg,
-    colors.border,
-    selected
-      ? 'ring-2 ring-purple-500 shadow-lg shadow-purple-500/20'
-      : 'hover:shadow-md hover:border-opacity-60',
-    className
-  );
+        {/* Subtitle */}
+        {subtitle && (
+          <Text role="subtitle" mode="muted" className="line-clamp-1">
+            {subtitle}
+          </Text>
+        )}
 
-  return (
-    <div className={containerClasses} onClick={onClick} onDoubleClick={onDoubleClick}>
-      {/* Header with icon */}
-      <div className="flex items-start justify-between mb-3">
-        {Icon && (
-          <div className={`p-2 ${colors.bg} rounded-lg ${colors.icon}`}>
-            <Icon className="w-5 h-5" />
+        {/* Badges */}
+        {badges.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-700/50">
+            {badges.slice(0, 3).map((badge: TileBadge, idx: number) => {
+              const badgeColors = badge.color ? colorSchemes[badge.color] : colorSchemes.slate;
+              return (
+                <span
+                  key={idx}
+                  className={`px-2 py-1 ${badgeColors.bg} rounded text-xs ${badgeColors.text}`}
+                >
+                  {badge.label}
+                </span>
+              );
+            })}
           </div>
         )}
-      </div>
 
-      {/* Title */}
-      <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2">{title}</h3>
+        {/* Selection indicator */}
+        {selected && (
+          <div className="absolute top-2 right-2 w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+        )}
+      </Component>
+    );
+  }
+) as any;
 
-      {/* Subtitle */}
-      {subtitle && (
-        <Text role="subtitle" mode="muted" className="line-clamp-1">
-          {subtitle}
-        </Text>
-      )}
-
-      {/* Badges */}
-      {badges.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-700/50">
-          {badges.slice(0, 3).map((badge, idx) => {
-            const badgeColors = badge.color ? colorSchemes[badge.color] : colorSchemes.slate;
-            return (
-              <span
-                key={idx}
-                className={`px-2 py-1 ${badgeColors.bg} rounded text-xs ${badgeColors.text}`}
-              >
-                {badge.label}
-              </span>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Selection indicator */}
-      {selected && (
-        <div className="absolute top-2 right-2 w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
-      )}
-    </div>
-  );
-}
+Tile.displayName = 'Tile';

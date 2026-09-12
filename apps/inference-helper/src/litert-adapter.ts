@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import {
   GenerateInput,
   GenerateResult,
@@ -21,9 +22,8 @@ export class LiteRtGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
     };
   }
 
-  async validateModelFile(path: string): Promise<ModelValidationResult> {
-    // Model validation involves verifying standard Litert-LM extension
-    if (!path.endsWith('.litertlm') && !path.endsWith('.task')) {
+  async validateModelFile(modelPath: string): Promise<ModelValidationResult> {
+    if (!modelPath.endsWith('.litertlm') && !modelPath.endsWith('.task')) {
       return {
         valid: false,
         state: 'model_invalid',
@@ -31,10 +31,35 @@ export class LiteRtGemmaRuntimeAdapter implements NativeGemmaRuntimeAdapter {
       };
     }
 
+    if (!fs.existsSync(modelPath)) {
+      return {
+        valid: false,
+        state: 'model_missing',
+        message: `Model file does not exist at specified path: ${modelPath}`,
+      };
+    }
+
+    try {
+      const stats = fs.statSync(modelPath);
+      if (stats.size === 0) {
+        return {
+          valid: false,
+          state: 'model_invalid',
+          message: `Model file is empty: ${modelPath}`,
+        };
+      }
+    } catch (e: any) {
+      return {
+        valid: false,
+        state: 'model_invalid',
+        message: `Failed to inspect model file: ${e.message}`,
+      };
+    }
+
     return {
       valid: true,
       state: 'runtime_dependency_found',
-      message: 'Model format validated.',
+      message: 'Model format and file presence validated.',
     };
   }
 

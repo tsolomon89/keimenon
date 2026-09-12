@@ -63,7 +63,16 @@ rl.on('line', async (line) => {
         }
         const genRes = await adapter.generate(req.params);
         if (!genRes.success) {
-          sendError(req.id, 'RUNTIME_UNIMPLEMENTED', genRes.error || 'Generation failed');
+          const errStr = genRes.error || 'Generation failed';
+          let errCode = 'GENERATION_FAILED';
+          if (errStr.includes('not loaded') || errStr.includes('not available')) {
+            errCode = 'RUNTIME_UNAVAILABLE';
+          } else if (errStr.includes('timed out') || errStr.includes('timeout')) {
+            errCode = 'TIMEOUT';
+          } else if (errStr.includes('cancel')) {
+            errCode = 'CANCELLED';
+          }
+          sendError(req.id, errCode, errStr);
         } else {
           sendResponse(req.id, genRes);
         }

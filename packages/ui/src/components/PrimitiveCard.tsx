@@ -1,7 +1,7 @@
-'use client';
-
 import React from 'react';
 import { Text } from './Text';
+import { cn } from '../utils/cn';
+import { PolymorphicComponentPropsWithRef, PolymorphicForwardRef } from '../utils/polymorphic';
 
 /**
  * Card Variant - Visual style
@@ -14,7 +14,7 @@ export type PrimitiveCardVariant =
   | 'warning' // Warning state (yellow tint)
   | 'error'; // Error state (red tint)
 
-export interface PrimitiveCardProps {
+export interface PrimitiveCardOwnProps {
   /** Card title */
   title?: string;
 
@@ -23,9 +23,6 @@ export interface PrimitiveCardProps {
 
   /** Visual variant */
   variant?: PrimitiveCardVariant;
-
-  /** Child content */
-  children: React.ReactNode;
 
   /** Additional CSS classes */
   className?: string;
@@ -40,9 +37,9 @@ export interface PrimitiveCardProps {
   headerActions?: React.ReactNode;
 }
 
-/**
- * Variant style mappings
- */
+export type PrimitiveCardProps<C extends React.ElementType = 'div'> =
+  PolymorphicComponentPropsWithRef<C, PrimitiveCardOwnProps>;
+
 const variantStyles: Record<PrimitiveCardVariant, string> = {
   default: 'bg-slate-800 border-slate-700',
   subtle: 'bg-slate-800/50 border-slate-700',
@@ -54,61 +51,55 @@ const variantStyles: Record<PrimitiveCardVariant, string> = {
 
 /**
  * PrimitiveCard - Logical grouping container
- * Renamed to avoid conflict with generic Card
  */
-import { cn } from '../utils/cn';
+export const PrimitiveCard: PolymorphicForwardRef<'div', PrimitiveCardOwnProps> = React.forwardRef(
+  (
+    {
+      title,
+      subtitle,
+      variant = 'default',
+      children,
+      className = '',
+      onClick,
+      hoverable = false,
+      headerActions,
+      as,
+      ...props
+    }: any,
+    ref: any
+  ) => {
+    const Component = as || 'div';
+    const variantClasses = variantStyles[variant as PrimitiveCardVariant] || variantStyles.default;
 
-// ... (imports)
+    const hoverClasses =
+      hoverable || onClick ? 'hover:border-slate-600 transition-colors cursor-pointer' : '';
 
-// ... (PrimitiveCardProps definition)
+    const combinedClassName = cn('border rounded-lg p-6', variantClasses, hoverClasses, className);
 
-/**
- * PrimitiveCard - Logical grouping container
- * Renamed to avoid conflict with generic Card
- */
-export function PrimitiveCard({
-  title,
-  subtitle,
-  variant = 'default',
-  children,
-  className = '',
-  onClick,
-  hoverable = false,
-  headerActions,
-}: PrimitiveCardProps) {
-  const variantClasses = variantStyles[variant];
+    return (
+      <Component className={combinedClassName} onClick={onClick} ref={ref} {...props}>
+        {/* Header */}
+        {(title || subtitle || headerActions) && (
+          <div className="mb-4">
+            {(title || headerActions) && (
+              <div className="flex items-start justify-between mb-1">
+                {title && <Text role="title">{title}</Text>}
+                {headerActions && <div className="flex items-center gap-2">{headerActions}</div>}
+              </div>
+            )}
+            {subtitle && (
+              <Text role="hint" mode="muted">
+                {subtitle}
+              </Text>
+            )}
+          </div>
+        )}
 
-  const hoverClasses =
-    hoverable || onClick ? 'hover:border-slate-600 transition-colors cursor-pointer' : '';
+        {/* Content */}
+        <div>{children}</div>
+      </Component>
+    );
+  }
+) as any;
 
-  const combinedClassName = cn(
-    'border rounded-lg p-6',
-    variantClasses,
-    hoverClasses,
-    className
-  );
-
-  return (
-    <div className={combinedClassName} onClick={onClick}>
-      {/* Header */}
-      {(title || subtitle || headerActions) && (
-        <div className="mb-4">
-          {(title || headerActions) && (
-            <div className="flex items-start justify-between mb-1">
-              {title && <Text role="title">{title}</Text>}
-              {headerActions && <div className="flex items-center gap-2">{headerActions}</div>}
-            </div>
-          )}
-          {subtitle && (
-            <Text role="hint" mode="muted">
-              {subtitle}
-            </Text>
-          )}
-        </div>
-      )}
-
-      {/* Content */}
-      <div>{children}</div>
-    </div>
-  );
-}
+PrimitiveCard.displayName = 'PrimitiveCard';

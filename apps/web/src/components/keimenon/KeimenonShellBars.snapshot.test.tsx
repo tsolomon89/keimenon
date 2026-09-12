@@ -160,7 +160,12 @@ describe('Keimenon shell bars snapshots', () => {
     expect(container.firstChild).toMatchSnapshot();
   });
 
-  it('hides dashboard mode toggle for client accounts', () => {
+  it('shows dashboard mode toggle for client accounts and restricts admin surfaces in dashboard mode', () => {
+    mockUseShell.mockReturnValue({
+      keimenonMode: 'dashboard',
+      setKeimenonMode: vi.fn(),
+    });
+
     render(
       <KeimenonToolbar
         onUploadClick={vi.fn()}
@@ -173,7 +178,7 @@ describe('Keimenon shell bars snapshots', () => {
         onZoomIn={vi.fn()}
         onZoomOut={vi.fn()}
         onCenterView={vi.fn()}
-        dashboardView="analytics"
+        dashboardView="conversations"
         onDashboardViewChange={vi.fn()}
         focusModeEnabled={false}
         onFocusModeToggle={vi.fn()}
@@ -188,10 +193,17 @@ describe('Keimenon shell bars snapshots', () => {
       />
     );
 
-    expect(screen.queryByTitle('Dashboard')).toBeNull();
+    // Dashboard toggle is available for client accounts
+    expect(screen.getByTitle('Dashboard')).not.toBeNull();
+    // Workspaces and Conversations are available
+    expect(screen.getByTitle('Workspace Browser')).not.toBeNull();
+    expect(screen.getByTitle('Conversation Browser')).not.toBeNull();
+    // Admin-only surfaces (Analytics, Storage) are not available
+    expect(screen.queryByTitle('Analytics Overview')).toBeNull();
+    expect(screen.queryByTitle('Storage Statistics')).toBeNull();
   });
 
-  it('shows dashboard mode toggle for admin accounts', () => {
+  it('shows all dashboard surfaces for admin accounts', () => {
     mockUseAuth.mockReturnValue({
       user: {
         accountId: 'acc_admin',
@@ -203,6 +215,11 @@ describe('Keimenon shell bars snapshots', () => {
       },
       logout: vi.fn(),
       switchAccount: vi.fn(),
+    });
+
+    mockUseShell.mockReturnValue({
+      keimenonMode: 'dashboard',
+      setKeimenonMode: vi.fn(),
     });
 
     render(
@@ -232,7 +249,11 @@ describe('Keimenon shell bars snapshots', () => {
       />
     );
 
-    expect(screen.queryByTitle('Dashboard')).not.toBeNull();
+    expect(screen.getByTitle('Dashboard')).not.toBeNull();
+    expect(screen.getByTitle('Analytics Overview')).not.toBeNull();
+    expect(screen.getByTitle('Storage Statistics')).not.toBeNull();
+    expect(screen.getByTitle('Workspace Browser')).not.toBeNull();
+    expect(screen.getByTitle('Conversation Browser')).not.toBeNull();
   });
 
   it('matches console bar snapshot (collapsed and expanded)', () => {

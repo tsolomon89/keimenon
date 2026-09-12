@@ -29,7 +29,7 @@ export const GEMMA_MODEL_SOURCES: GemmaModelSourceCandidate[] = [
     id: 'gemma-4-e2b-it-litert',
     model_family: 'gemma',
     model_generation: 'gemma-4',
-    model_id: null,
+    model_id: 'google/gemma-4-e2b-it',
     display_name: 'Gemma 4 E2B (LiteRT)',
     variant: 'e2b',
     runtime_format: 'litert',
@@ -42,7 +42,7 @@ export const GEMMA_MODEL_SOURCES: GemmaModelSourceCandidate[] = [
     verification_notes:
       'Official litert-community artifact hosted on Hugging Face. Ready for LiteRT-LM deployment.',
     local_runtime_supported: true,
-    requires_auth: 'unknown',
+    requires_auth: false,
     requires_terms_acceptance: true,
     download_url:
       'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm',
@@ -51,7 +51,7 @@ export const GEMMA_MODEL_SOURCES: GemmaModelSourceCandidate[] = [
     id: 'gemma-4-e4b-it-litert',
     model_family: 'gemma',
     model_generation: 'gemma-4',
-    model_id: null,
+    model_id: 'google/gemma-4-e4b-it',
     display_name: 'Gemma 4 E4B (LiteRT)',
     variant: 'e4b',
     runtime_format: 'litert',
@@ -64,7 +64,7 @@ export const GEMMA_MODEL_SOURCES: GemmaModelSourceCandidate[] = [
     verification_notes:
       'Official litert-community artifact hosted on Hugging Face. Ready for LiteRT-LM deployment.',
     local_runtime_supported: true,
-    requires_auth: 'unknown',
+    requires_auth: false,
     requires_terms_acceptance: true,
     download_url:
       'https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm',

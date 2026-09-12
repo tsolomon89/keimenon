@@ -1,0 +1,145 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-09-12T11:40:00Z",
+  "environment": {
+    "os": "win32",
+    "arch": "x64",
+    "node": "v24.9.0",
+    "npm": "11.6.0"
+  },
+  "candidateRevision": "6bb7f1442af7319dd9411083e35f9dbd7ab85c20",
+  "releaseArtifact": {
+    "path": "apps/desktop/out/Keimenon Setup 0.1.0.exe",
+    "sizeBytes": 104918435,
+    "sha256": "12C2E9AD5515D89F36481762A615D15C7A82C5F7B4F27F444A51600FBFC01191",
+    "blockmap": "apps/desktop/out/Keimenon Setup 0.1.0.exe.blockmap"
+  },
+  "results": [
+    {
+      "requirementId": "DOCTOR_RUNTIME",
+      "command": "npm run doctor:runtime",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:10:23Z",
+      "evidencePath": "terminal-output",
+      "verdict": "PASS",
+      "details": "Node 24 ABI verified, better-sqlite3 in-memory check passed"
+    },
+    {
+      "requirementId": "TYPE_CHECK",
+      "command": "npm run type-check",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:27:41Z",
+      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-452.log",
+      "verdict": "PASS",
+      "details": "14/14 packages passed tsc --noEmit"
+    },
+    {
+      "requirementId": "LINT",
+      "command": "npm run lint",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:35:07Z",
+      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-484.log",
+      "verdict": "PASS",
+      "details": "14/14 packages passed eslint with 0 errors"
+    },
+    {
+      "requirementId": "K-RC-08",
+      "command": "npm run ci:mock-ban:check",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:27:59Z",
+      "evidencePath": "terminal-output",
+      "verdict": "PASS",
+      "details": "Scanned 488 files (including native C++ and inference-helper) with 0 violations"
+    },
+    {
+      "requirementId": "CI_HYGIENE",
+      "command": "npm run ci:hygiene:check",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:33:53Z",
+      "evidencePath": "terminal-output",
+      "verdict": "PASS",
+      "details": "Repo hygiene, factory-reset contract, desktop web-dist (315 files), and Gemma target check passed"
+    },
+    {
+      "requirementId": "SQLITE_CHECK",
+      "command": "npm run sqlite:check",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:33:59Z",
+      "evidencePath": "terminal-output",
+      "verdict": "PASS",
+      "details": "Database integrity verified (journal_mode=wal, foreign_keys=1, busy_timeout=5000, integrity_check=ok)"
+    },
+    {
+      "requirementId": "FACTORY_RESET_CONTRACT",
+      "command": "npm run ops:factory-reset:contract:check",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:34:05Z",
+      "evidencePath": "terminal-output",
+      "verdict": "PASS",
+      "details": "Factory reset preserved admin credentials and contract"
+    },
+    {
+      "requirementId": "K-RC-09",
+      "command": "npm run ops:vision-doc-sync:check",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:34:10Z",
+      "evidencePath": "terminal-output",
+      "verdict": "PASS",
+      "details": "All vision documents synchronized with canonical AGENTS.md"
+    },
+    {
+      "requirementId": "K-RC-02_03_04",
+      "command": "npm run rc:check:native",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:34:16Z",
+      "evidencePath": "terminal-output",
+      "verdict": "PASS",
+      "details": "13/13 native inference manager and backend tests passed against compiled C++ addon"
+    },
+    {
+      "requirementId": "K-RC-05",
+      "command": "npx vitest run apps/api/src/services/agent/__tests__/model-downloader.test.ts",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:21:38Z",
+      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-323.log",
+      "verdict": "PASS",
+      "details": "7/7 model downloader tests passed (Range 200, Content-Range, checksum verification, pause/cancellation)"
+    },
+    {
+      "requirementId": "K-RC-10",
+      "command": "npm --workspace=@keimenon/web run test -- src/components/keimenon/KeimenonToolbar.dashboard.test.tsx src/components/keimenon/KeimenonShellBars.snapshot.test.tsx -u",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:25:25Z",
+      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-399.log",
+      "verdict": "PASS",
+      "details": "6/6 web toolbar tests passed (client dashboard access to workspaces/conversations, admin surface gating)"
+    },
+    {
+      "requirementId": "TEST_AUTH",
+      "command": "npm run test:auth",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:35:47Z",
+      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-494.log",
+      "verdict": "PASS",
+      "details": "10/10 auth integration tests passed against live local API instance"
+    },
+    {
+      "requirementId": "MIGRATE_TO_LOCAL",
+      "command": "npm run migrate:to-local:dry-run",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:35:15Z",
+      "evidencePath": "terminal-output",
+      "verdict": "PASS",
+      "details": "Local storage migration simulation verified"
+    },
+    {
+      "requirementId": "K-RC-11_DESKTOP_PACKAGE",
+      "command": "npm run rc:check:desktop",
+      "exitCode": 0,
+      "timestamp": "2026-09-12T11:38:49Z",
+      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-498.log",
+      "verdict": "PASS",
+      "details": "Built and packaged Windows desktop installer: apps/desktop/out/Keimenon Setup 0.1.0.exe (104,918,435 bytes)"
+    }
+  ]
+}

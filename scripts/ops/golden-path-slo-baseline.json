@@ -1,5 +1,11 @@
 {
-  "updatedAt": "2026-04-01T00:00:00.000Z",
+  "provenance": {
+    "contract": "AGENTS.md §10",
+    "description": "Deterministic SLO thresholds for PR and Nightly golden path imports",
+    "measurementStatus": "static_threshold_baseline",
+    "note": "Checked-in baseline defines the release gating SLA limits and regression medians. Dynamic execution metrics are collected into test-results/slo/ during test execution."
+  },
+  "updatedAt": "2026-09-12T00:00:00.000Z",
   "rolling7d": {
     "runs": 50,
     "failures": 0

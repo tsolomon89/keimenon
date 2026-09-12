@@ -12,7 +12,7 @@ permissions:
 jobs:
   release:
     name: Create Release
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,6 +34,9 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Verify and package Windows desktop installer
+        run: npm run rc:check:desktop
+
       - name: Generate changelog
         id: changelog
         uses: mikepenz/release-changelog-builder-action@v4
@@ -49,6 +52,9 @@ jobs:
           draft: false
           prerelease: false
           files: |
+            apps/desktop/out/*.exe
+            apps/desktop/out/*.blockmap
+            apps/desktop/out/latest.yml
             apps/*/dist/**
             packages/*/dist/**
         env:

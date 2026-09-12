@@ -1,0 +1,130 @@
+{
+  "version": "1.0.0",
+  "baseSha": "f186d28e0036a1607fdc379bee20193fdfa5a8e2",
+  "currentSha": "6bb7f1442af7319dd9411083e35f9dbd7ab85c20",
+  "lastUpdated": "2026-09-12T11:25:00Z",
+  "status": "IN_PROGRESS",
+  "lastVerifiedChange": "Implemented K-RC-01 through K-RC-12 repairs across API, native bindings, web toolbar, downloader, and specs",
+  "nextConcreteAction": "Await web workspace tests verification and run full release gates (type-check, hygiene, native check, desktop packaging)",
+  "workQueue": [
+    {
+      "id": "K-RC-01",
+      "area": "Agent Synthesis Provider",
+      "title": "Synthesis provider registry defaults to mock and permits silent fallback",
+      "status": "VERIFIED",
+      "dependencies": [],
+      "targetFiles": [
+        "apps/api/src/services/agent/synthesis-provider-registry.ts",
+        "apps/api/src/services/conversation-message.service.ts"
+      ]
+    },
+    {
+      "id": "K-RC-02",
+      "area": "Native Inference",
+      "title": "C++ LiteRT binding replaces missing symbols with mock function pointers and canned text",
+      "status": "VERIFIED",
+      "dependencies": [],
+      "targetFiles": ["packages/litert-node-bindings/native/binding.cc"]
+    },
+    {
+      "id": "K-RC-03",
+      "area": "Native Inference",
+      "title": "Fixed 4096-byte prompt buffer, unused maxTokens, signature mismatch with official LiteRT-LM C API",
+      "status": "VERIFIED",
+      "dependencies": ["K-RC-02"],
+      "targetFiles": ["packages/litert-node-bindings/native/binding.cc"]
+    },
+    {
+      "id": "K-RC-04",
+      "area": "Build Pipeline",
+      "title": "check-and-build.js exits 0 under CI=true and on native compilation failure",
+      "status": "VERIFIED",
+      "dependencies": ["K-RC-02", "K-RC-03"],
+      "targetFiles": ["packages/litert-node-bindings/scripts/check-and-build.js"]
+    },
+    {
+      "id": "K-RC-05",
+      "area": "Model Acquisition",
+      "title": "E2B/E4B registry missing model_id/checksum/size, downloader stream backpressure and Range 200 bug",
+      "status": "VERIFIED",
+      "dependencies": [],
+      "targetFiles": [
+        "apps/api/src/services/agent/gemma-model-source-registry.ts",
+        "apps/api/src/services/agent/model-downloader.ts"
+      ]
+    },
+    {
+      "id": "K-RC-06",
+      "area": "E2E Acceptance",
+      "title": "full-product-loop expects mock assistant response and permits empty provenance",
+      "status": "VERIFIED",
+      "dependencies": ["K-RC-01"],
+      "targetFiles": ["tests/e2e/full-product-loop.spec.ts"]
+    },
+    {
+      "id": "K-RC-07",
+      "area": "Import Pipeline",
+      "title": "chunked-upload-workflow calls test.skip() on assembly polling timeout",
+      "status": "VERIFIED",
+      "dependencies": [],
+      "targetFiles": ["tests/e2e/chunked-upload-workflow.spec.ts"]
+    },
+    {
+      "id": "K-RC-08",
+      "area": "CI / Hygiene",
+      "title": "check-runtime-markers.js excludes C++ and inference helper roots",
+      "status": "VERIFIED",
+      "dependencies": ["K-RC-02"],
+      "targetFiles": ["scripts/ci/check-runtime-markers.js"]
+    },
+    {
+      "id": "K-RC-09",
+      "area": "Documentation",
+      "title": "Documentation verification on clean checkout",
+      "status": "VERIFIED",
+      "dependencies": [],
+      "targetFiles": [
+        "scripts/ops/verify-vision-doc-sync.js",
+        "agent_context/AGENTS.md",
+        "agent_context/vision_gap_analysis.md"
+      ]
+    },
+    {
+      "id": "K-RC-10",
+      "area": "Authorization / UX",
+      "title": "Reconcile blanket client-dashboard prohibition in matrices with AGENTS.md Section 10.4",
+      "status": "VERIFIED",
+      "dependencies": [],
+      "targetFiles": [
+        "docs/specs/vision-traceability-matrix.md",
+        "docs/specs/kiemenon-vision-traceability-matrix.md",
+        "docs/specs/kiemenon-requirement-ledger.md",
+        "apps/web/src/components/keimenon/KeimenonToolbar.tsx",
+        "apps/web/src/components/keimenon/KeimenonShellBars.snapshot.test.tsx"
+      ]
+    },
+    {
+      "id": "K-RC-11",
+      "area": "Release Toolchain",
+      "title": "Release workflow Node 24 toolchain consistency and Windows installer packaging",
+      "status": "VERIFIED",
+      "dependencies": [],
+      "targetFiles": [".github/workflows/release.yml"]
+    },
+    {
+      "id": "K-RC-12",
+      "area": "Operational / SLO",
+      "title": "SLO baseline evidence provenance and fresh measurements",
+      "status": "VERIFIED",
+      "dependencies": [],
+      "targetFiles": ["scripts/ops/golden-path-slo-baseline.json"]
+    }
+  ],
+  "artifactLocations": {
+    "productionReadiness": "docs/release/production-readiness.md",
+    "executionState": "docs/release/execution-state.json",
+    "verificationLedger": "docs/release/verification-ledger.json",
+    "releaseReport": "docs/release/release-report.md"
+  },
+  "restartInstructions": "Inspect execution-state.json, check verification-ledger.json for completed gates, resume next pending item in workQueue."
+}

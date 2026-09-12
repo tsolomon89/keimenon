@@ -1,29 +1,53 @@
 #include <node_api.h>
 #include <string>
 #include <vector>
+#include <mutex>
+#include <cstdio>
 
 #ifdef _WIN32
 #include <windows.h>
+#include <io.h>
 #else
 #include <dlfcn.h>
+#include <unistd.h>
 #endif
 
-// LiteRT C API opaque handles
+// LiteRT C API opaque handles matching vendor/litert-lm/c/engine.h
 typedef struct LiteRtLmEngineSettings LiteRtLmEngineSettings;
 typedef struct LiteRtLmEngine LiteRtLmEngine;
 typedef struct LiteRtLmSession LiteRtLmSession;
 typedef struct LiteRtLmResponses LiteRtLmResponses;
-typedef struct LiteRtLmInputData LiteRtLmInputData;
+typedef struct LiteRtLmSessionConfig LiteRtLmSessionConfig;
 
-// Function pointer definitions matching c/engine.h symbols
+// Represents the type of input data in LiteRT-LM C API
+typedef enum {
+  kLiteRtLmInputDataTypeText = 0,
+  kLiteRtLmInputDataTypeImage = 1,
+  kLiteRtLmInputDataTypeImageEnd = 2,
+  kLiteRtLmInputDataTypeAudio = 3,
+  kLiteRtLmInputDataTypeAudioEnd = 4,
+} LiteRtLmInputDataType;
+
+// Represents a single piece of input data in LiteRT-LM C API
+typedef struct {
+  LiteRtLmInputDataType type;
+  const void* data;
+  size_t size;
+} LiteRtLmInputData;
+
+// Function pointer definitions matching vendor/litert-lm/c/engine.h symbols
 typedef LiteRtLmEngineSettings* (*FnEngineSettingsCreate)(const char*, const char*, const char*, const char*);
 typedef void (*FnEngineSettingsSetMaxNumTokens)(LiteRtLmEngineSettings*, int);
 typedef void (*FnEngineSettingsDelete)(LiteRtLmEngineSettings*);
 typedef LiteRtLmEngine* (*FnEngineCreate)(const LiteRtLmEngineSettings*);
 typedef void (*FnEngineDelete)(LiteRtLmEngine*);
-typedef LiteRtLmSession* (*FnEngineCreateSession)(LiteRtLmEngine*, void*);
+typedef LiteRtLmSessionConfig* (*FnSessionConfigCreate)();
+typedef void (*FnSessionConfigSetMaxOutputTokens)(LiteRtLmSessionConfig*, int);
+typedef void (*FnSessionConfigDelete)(LiteRtLmSessionConfig*);
+typedef LiteRtLmSession* (*FnEngineCreateSession)(LiteRtLmEngine*, LiteRtLmSessionConfig*);
 typedef void (*FnSessionDelete)(LiteRtLmSession*);
-typedef LiteRtLmResponses* (*FnSessionGenerateContent)(LiteRtLmSession*, const void*, size_t);
+typedef void (*FnSessionCancelProcess)(LiteRtLmSession*);
+typedef LiteRtLmResponses* (*FnSessionGenerateContent)(LiteRtLmSession*, const LiteRtLmInputData*, size_t);
 typedef int (*FnResponsesGetNumCandidates)(const LiteRtLmResponses*);
 typedef const char* (*FnResponsesGetResponseTextAt)(const LiteRtLmResponses*, int);
 typedef void (*FnResponsesDelete)(LiteRtLmResponses*);
@@ -40,58 +64,22 @@ static FnEngineSettingsSetMaxNumTokens fnSettingsSetMax = nullptr;
 static FnEngineSettingsDelete fnSettingsDelete = nullptr;
 static FnEngineCreate fnEngineCreate = nullptr;
 static FnEngineDelete fnEngineDelete = nullptr;
+static FnSessionConfigCreate fnSessionConfigCreate = nullptr;
+static FnSessionConfigSetMaxOutputTokens fnSessionConfigSetMaxOutputTokens = nullptr;
+static FnSessionConfigDelete fnSessionConfigDelete = nullptr;
 static FnEngineCreateSession fnEngineCreateSession = nullptr;
 static FnSessionDelete fnSessionDelete = nullptr;
+static FnSessionCancelProcess fnSessionCancelProcess = nullptr;
 static FnSessionGenerateContent fnSessionGenerateContent = nullptr;
 static FnResponsesGetNumCandidates fnResponsesGetNum = nullptr;
 static FnResponsesGetResponseTextAt fnResponsesGetText = nullptr;
 static FnResponsesDelete fnResponsesDelete = nullptr;
 
+static std::mutex g_inferenceMutex;
 static LiteRtLmEngine* g_engine = nullptr;
 static LiteRtLmSession* g_session = nullptr;
 static bool g_isModelLoaded = false;
 static std::string g_loadedModelPath = "";
-
-// Mock implementation functions
-static LiteRtLmEngineSettings* MockEngineSettingsCreate(const char* model_path, const char* backend_str, const char* vision_backend_str, const char* audio_backend_str) {
-    printf("[LiteRtNodeBindings C++ Mock] litert_lm_engine_settings_create called with model: %s\n", model_path);
-    return (LiteRtLmEngineSettings*)1;
-}
-static void MockEngineSettingsSetMaxNumTokens(LiteRtLmEngineSettings* settings, int max_num_tokens) {
-    printf("[LiteRtNodeBindings C++ Mock] litert_lm_engine_settings_set_max_num_tokens called: %d\n", max_num_tokens);
-}
-static void MockEngineSettingsDelete(LiteRtLmEngineSettings* settings) {
-    printf("[LiteRtNodeBindings C++ Mock] litert_lm_engine_settings_delete called\n");
-}
-static LiteRtLmEngine* MockEngineCreate(const LiteRtLmEngineSettings* settings) {
-    printf("[LiteRtNodeBindings C++ Mock] litert_lm_engine_create called\n");
-    return (LiteRtLmEngine*)1;
-}
-static void MockEngineDelete(LiteRtLmEngine* engine) {
-    printf("[LiteRtNodeBindings C++ Mock] litert_lm_engine_delete called\n");
-}
-static LiteRtLmSession* MockEngineCreateSession(LiteRtLmEngine* engine, void* config) {
-    printf("[LiteRtNodeBindings C++ Mock] litert_lm_engine_create_session called\n");
-    return (LiteRtLmSession*)1;
-}
-static void MockSessionDelete(LiteRtLmSession* session) {
-    printf("[LiteRtNodeBindings C++ Mock] litert_lm_session_delete called\n");
-}
-static LiteRtLmResponses* MockSessionGenerateContent(LiteRtLmSession* session, const void* inputs, size_t num_inputs) {
-    printf("[LiteRtNodeBindings C++ Mock] litert_lm_session_generate_content called\n");
-    return (LiteRtLmResponses*)1;
-}
-static int MockResponsesGetNumCandidates(const LiteRtLmResponses* responses) {
-    printf("[LiteRtNodeBindings C++ Mock] litert_lm_responses_get_num_candidates called\n");
-    return 1;
-}
-static const char* MockResponsesGetResponseTextAt(const LiteRtLmResponses* responses, int index) {
-    printf("[LiteRtNodeBindings C++ Mock] litert_lm_responses_get_response_text_at called\n");
-    return "Gemma 4 Mock Inference Output: LiteRT C++ bindings operational and validated successfully.";
-}
-static void MockResponsesDelete(LiteRtLmResponses* responses) {
-    printf("[LiteRtNodeBindings C++ Mock] litert_lm_responses_delete called\n");
-}
 
 #ifdef _WIN32
 static std::string GetCurrentModuleDirectory() {
@@ -110,111 +98,112 @@ static std::string GetCurrentModuleDirectory() {
 }
 #endif
 
-// Dynamic Library Loader Utility
+static void ResetFunctionPointers() {
+    fnSettingsCreate = nullptr;
+    fnSettingsSetMax = nullptr;
+    fnSettingsDelete = nullptr;
+    fnEngineCreate = nullptr;
+    fnEngineDelete = nullptr;
+    fnSessionConfigCreate = nullptr;
+    fnSessionConfigSetMaxOutputTokens = nullptr;
+    fnSessionConfigDelete = nullptr;
+    fnEngineCreateSession = nullptr;
+    fnSessionDelete = nullptr;
+    fnSessionCancelProcess = nullptr;
+    fnSessionGenerateContent = nullptr;
+    fnResponsesGetNum = nullptr;
+    fnResponsesGetText = nullptr;
+    fnResponsesDelete = nullptr;
+}
+
+// Dynamic Library Loader Utility - Truthful symbol resolution and strict production gating
 static bool LoadLiteRtLibrary() {
-    if (g_liteRtDll != NULL) return true;
+    if (g_liteRtDll != NULL && fnEngineCreate != nullptr && fnSessionGenerateContent != nullptr) {
+        return true;
+    }
 
 #ifdef _WIN32
     if (g_liteRtDll == NULL) {
         std::string moduleDir = GetCurrentModuleDirectory();
-        printf("[LiteRtNodeBindings C++] moduleDir: %s\n", moduleDir.c_str());
         if (!moduleDir.empty()) {
             std::string binDir = moduleDir + "\\bin";
-            printf("[LiteRtNodeBindings C++] setting DLL directory to: %s\n", binDir.c_str());
             SetDllDirectoryA(binDir.c_str());
         }
         g_liteRtDll = LoadLibraryA("libLiteRt.dll");
-        if (!g_liteRtDll) {
-            DWORD err = GetLastError();
-            printf("[LiteRtNodeBindings C++] LoadLibraryA failed with error code: %lu\n", err);
-        }
-        // Restore DLL directory search path
         SetDllDirectoryA(NULL);
     }
-    if (!g_liteRtDll) return false;
+    if (!g_liteRtDll) {
+        ResetFunctionPointers();
+        return false;
+    }
 
     fnSettingsCreate = (FnEngineSettingsCreate)GetProcAddress(g_liteRtDll, "litert_lm_engine_settings_create");
     fnSettingsSetMax = (FnEngineSettingsSetMaxNumTokens)GetProcAddress(g_liteRtDll, "litert_lm_engine_settings_set_max_num_tokens");
     fnSettingsDelete = (FnEngineSettingsDelete)GetProcAddress(g_liteRtDll, "litert_lm_engine_settings_delete");
     fnEngineCreate = (FnEngineCreate)GetProcAddress(g_liteRtDll, "litert_lm_engine_create");
     fnEngineDelete = (FnEngineDelete)GetProcAddress(g_liteRtDll, "litert_lm_engine_delete");
+    fnSessionConfigCreate = (FnSessionConfigCreate)GetProcAddress(g_liteRtDll, "litert_lm_session_config_create");
+    fnSessionConfigSetMaxOutputTokens = (FnSessionConfigSetMaxOutputTokens)GetProcAddress(g_liteRtDll, "litert_lm_session_config_set_max_output_tokens");
+    fnSessionConfigDelete = (FnSessionConfigDelete)GetProcAddress(g_liteRtDll, "litert_lm_session_config_delete");
     fnEngineCreateSession = (FnEngineCreateSession)GetProcAddress(g_liteRtDll, "litert_lm_engine_create_session");
     fnSessionDelete = (FnSessionDelete)GetProcAddress(g_liteRtDll, "litert_lm_session_delete");
+    fnSessionCancelProcess = (FnSessionCancelProcess)GetProcAddress(g_liteRtDll, "litert_lm_session_cancel_process");
     fnSessionGenerateContent = (FnSessionGenerateContent)GetProcAddress(g_liteRtDll, "litert_lm_session_generate_content");
     fnResponsesGetNum = (FnResponsesGetNumCandidates)GetProcAddress(g_liteRtDll, "litert_lm_responses_get_num_candidates");
     fnResponsesGetText = (FnResponsesGetResponseTextAt)GetProcAddress(g_liteRtDll, "litert_lm_responses_get_response_text_at");
     fnResponsesDelete = (FnResponsesDelete)GetProcAddress(g_liteRtDll, "litert_lm_responses_delete");
 #else
-    g_liteRtDll = dlopen("libLiteRt.so", RTLD_LAZY);
-    if (!g_liteRtDll) return false;
+    if (g_liteRtDll == NULL) {
+        g_liteRtDll = dlopen("libLiteRt.so", RTLD_LAZY);
+    }
+    if (!g_liteRtDll) {
+        ResetFunctionPointers();
+        return false;
+    }
 
     fnSettingsCreate = (FnEngineSettingsCreate)dlsym(g_liteRtDll, "litert_lm_engine_settings_create");
     fnSettingsSetMax = (FnEngineSettingsSetMaxNumTokens)dlsym(g_liteRtDll, "litert_lm_engine_settings_set_max_num_tokens");
     fnSettingsDelete = (FnEngineSettingsDelete)dlsym(g_liteRtDll, "litert_lm_engine_settings_delete");
     fnEngineCreate = (FnEngineCreate)dlsym(g_liteRtDll, "litert_lm_engine_create");
     fnEngineDelete = (FnEngineDelete)dlsym(g_liteRtDll, "litert_lm_engine_delete");
+    fnSessionConfigCreate = (FnSessionConfigCreate)dlsym(g_liteRtDll, "litert_lm_session_config_create");
+    fnSessionConfigSetMaxOutputTokens = (FnSessionConfigSetMaxOutputTokens)dlsym(g_liteRtDll, "litert_lm_session_config_set_max_output_tokens");
+    fnSessionConfigDelete = (FnSessionConfigDelete)dlsym(g_liteRtDll, "litert_lm_session_config_delete");
     fnEngineCreateSession = (FnEngineCreateSession)dlsym(g_liteRtDll, "litert_lm_engine_create_session");
     fnSessionDelete = (FnSessionDelete)dlsym(g_liteRtDll, "litert_lm_session_delete");
+    fnSessionCancelProcess = (FnSessionCancelProcess)dlsym(g_liteRtDll, "litert_lm_session_cancel_process");
     fnSessionGenerateContent = (FnSessionGenerateContent)dlsym(g_liteRtDll, "litert_lm_session_generate_content");
     fnResponsesGetNum = (FnResponsesGetNumCandidates)dlsym(g_liteRtDll, "litert_lm_responses_get_num_candidates");
     fnResponsesGetText = (FnResponsesGetResponseTextAt)dlsym(g_liteRtDll, "litert_lm_responses_get_response_text_at");
     fnResponsesDelete = (FnResponsesDelete)dlsym(g_liteRtDll, "litert_lm_responses_delete");
 #endif
 
-    // Verify all functions loaded successfully
-    if (!fnSettingsCreate) printf("[LiteRtNodeBindings C++] fnSettingsCreate is NULL\n");
-    if (!fnSettingsSetMax) printf("[LiteRtNodeBindings C++] fnSettingsSetMax is NULL\n");
-    if (!fnSettingsDelete) printf("[LiteRtNodeBindings C++] fnSettingsDelete is NULL\n");
-    if (!fnEngineCreate) printf("[LiteRtNodeBindings C++] fnEngineCreate is NULL\n");
-    if (!fnEngineDelete) printf("[LiteRtNodeBindings C++] fnEngineDelete is NULL\n");
-    if (!fnEngineCreateSession) printf("[LiteRtNodeBindings C++] fnEngineCreateSession is NULL\n");
-    if (!fnSessionDelete) printf("[LiteRtNodeBindings C++] fnSessionDelete is NULL\n");
-    if (!fnSessionGenerateContent) printf("[LiteRtNodeBindings C++] fnSessionGenerateContent is NULL\n");
-    if (!fnResponsesGetNum) printf("[LiteRtNodeBindings C++] fnResponsesGetNum is NULL\n");
-    if (!fnResponsesGetText) printf("[LiteRtNodeBindings C++] fnResponsesGetText is NULL\n");
-    if (!fnResponsesDelete) printf("[LiteRtNodeBindings C++] fnResponsesDelete is NULL\n");
-
-    if (!fnSettingsCreate || !fnSettingsSetMax || !fnSettingsDelete ||
+    // Strict validation: Every required LiteRT-LM C API function MUST be exported.
+    // Production runtime requires authentic LiteRT-LM libraries and symbols.
+    if (!fnSettingsCreate || !fnSettingsDelete ||
         !fnEngineCreate || !fnEngineDelete || !fnEngineCreateSession ||
         !fnSessionDelete || !fnSessionGenerateContent || !fnResponsesGetNum ||
         !fnResponsesGetText || !fnResponsesDelete) {
         
-        printf("[LiteRtNodeBindings C++] Activating high-fidelity mock fallback.\n");
-        fnSettingsCreate = MockEngineSettingsCreate;
-        fnSettingsSetMax = MockEngineSettingsSetMaxNumTokens;
-        fnSettingsDelete = MockEngineSettingsDelete;
-        fnEngineCreate = MockEngineCreate;
-        fnEngineDelete = MockEngineDelete;
-        fnEngineCreateSession = MockEngineCreateSession;
-        fnSessionDelete = MockSessionDelete;
-        fnSessionGenerateContent = MockSessionGenerateContent;
-        fnResponsesGetNum = MockResponsesGetNumCandidates;
-        fnResponsesGetText = MockResponsesGetResponseTextAt;
-        fnResponsesDelete = MockResponsesDelete;
-
-        if (g_liteRtDll == NULL) {
+        // Output diagnostics exclusively to stderr to keep JSON-RPC stdio clean
+        fprintf(stderr, "[LiteRtNodeBindings] Verification failed: Required LiteRT-LM C API symbols missing in shared library.\n");
+        ResetFunctionPointers();
 #ifdef _WIN32
-            g_liteRtDll = (HMODULE)1;
+        FreeLibrary(g_liteRtDll);
 #else
-            g_liteRtDll = (void*)1;
+        dlclose(g_liteRtDll);
 #endif
-        }
+        g_liteRtDll = NULL;
+        return false;
     }
 
     return true;
 }
 
-// N-API helper to throw JS errors
-static void ThrowJsError(napi_env env, const char* code, const char* msg) {
-    napi_value error, jsCode, jsMsg;
-    napi_create_string_utf8(env, code, NAPI_AUTO_LENGTH, &jsCode);
-    napi_create_string_utf8(env, msg, NAPI_AUTO_LENGTH, &jsMsg);
-    napi_create_error(env, jsCode, jsMsg, &error);
-    napi_throw(env, error);
-}
-
 // JS: status() -> { ok: boolean, state: string, message: string }
 static napi_value BindingStatus(napi_env env, napi_callback_info info) {
+    std::lock_guard<std::mutex> lock(g_inferenceMutex);
+
     napi_value resultObj;
     napi_create_object(env, &resultObj);
 
@@ -224,11 +213,11 @@ static napi_value BindingStatus(napi_env env, napi_callback_info info) {
     if (!libOk) {
         napi_get_boolean(env, false, &okVal);
         napi_create_string_utf8(env, "runtime_dependency_missing", NAPI_AUTO_LENGTH, &stateVal);
-        napi_create_string_utf8(env, "Required LiteRT dynamic libraries (libLiteRt.dll) are missing in environment.", NAPI_AUTO_LENGTH, &msgVal);
+        napi_create_string_utf8(env, "Required LiteRT dynamic libraries (libLiteRt.dll) or LiteRT-LM symbols are missing in environment.", NAPI_AUTO_LENGTH, &msgVal);
     } else if (!g_isModelLoaded) {
         napi_get_boolean(env, true, &okVal);
         napi_create_string_utf8(env, "runtime_dependency_found", NAPI_AUTO_LENGTH, &stateVal);
-        napi_create_string_utf8(env, "LiteRT-LM native binaries loaded successfully. Ready to load model.", NAPI_AUTO_LENGTH, &msgVal);
+        napi_create_string_utf8(env, "LiteRT-LM native binaries and symbols loaded successfully. Ready to load model.", NAPI_AUTO_LENGTH, &msgVal);
     } else {
         napi_get_boolean(env, true, &okVal);
         napi_create_string_utf8(env, "model_loaded", NAPI_AUTO_LENGTH, &stateVal);
@@ -244,6 +233,8 @@ static napi_value BindingStatus(napi_env env, napi_callback_info info) {
 
 // JS: unloadModel() -> Promise<void>
 static napi_value UnloadModel(napi_env env, napi_callback_info info) {
+    std::lock_guard<std::mutex> lock(g_inferenceMutex);
+
     if (g_session && fnSessionDelete) {
         fnSessionDelete(g_session);
         g_session = nullptr;
@@ -282,28 +273,57 @@ static napi_value LoadModel(napi_env env, napi_callback_info info) {
         return promise;
     }
 
-    char modelPath[1024];
-    size_t pathLen;
-    napi_get_value_string_utf8(env, args[0], modelPath, sizeof(modelPath), &pathLen);
+    // Dynamic model path extraction avoiding arbitrary buffer limits
+    size_t pathLen = 0;
+    napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLen);
+    std::string modelPath(pathLen + 1, '\0');
+    size_t pathCopied = 0;
+    napi_get_value_string_utf8(env, args[0], &modelPath[0], modelPath.size(), &pathCopied);
+    modelPath.resize(pathCopied);
+
+    std::lock_guard<std::mutex> lock(g_inferenceMutex);
 
     if (!LoadLiteRtLibrary()) {
-        napi_value rejectVal;
-        napi_create_string_utf8(env, "LiteRT-LM native binaries not loaded", NAPI_AUTO_LENGTH, &rejectVal);
-        napi_reject_deferred(env, deferred, rejectVal);
+        napi_value resObj;
+        napi_create_object(env, &resObj);
+        napi_value success, msg;
+        napi_get_boolean(env, false, &success);
+        napi_create_string_utf8(env, "LiteRT-LM native binaries or required symbols not available.", NAPI_AUTO_LENGTH, &msg);
+        napi_set_named_property(env, resObj, "success", success);
+        napi_set_named_property(env, resObj, "message", msg);
+        napi_resolve_deferred(env, deferred, resObj);
         return promise;
     }
 
-    // Unload existing if loaded
+    // Validate model file presence on disk
+#ifdef _WIN32
+    DWORD dwAttrib = GetFileAttributesA(modelPath.c_str());
+    if (dwAttrib == INVALID_FILE_ATTRIBUTES || (dwAttrib & FILE_ATTRIBUTE_DIRECTORY)) {
+#else
+    if (access(modelPath.c_str(), R_OK) != 0) {
+#endif
+        napi_value resObj;
+        napi_create_object(env, &resObj);
+        napi_value success, msg;
+        napi_get_boolean(env, false, &success);
+        napi_create_string_utf8(env, ("Model file does not exist or cannot be read: " + modelPath).c_str(), NAPI_AUTO_LENGTH, &msg);
+        napi_set_named_property(env, resObj, "success", success);
+        napi_set_named_property(env, resObj, "message", msg);
+        napi_resolve_deferred(env, deferred, resObj);
+        return promise;
+    }
+
+    // Unload existing session if loaded
     if (g_isModelLoaded) {
-        if (g_session) fnSessionDelete(g_session);
-        if (g_engine) fnEngineDelete(g_engine);
+        if (g_session && fnSessionDelete) fnSessionDelete(g_session);
+        if (g_engine && fnEngineDelete) fnEngineDelete(g_engine);
         g_session = nullptr;
         g_engine = nullptr;
         g_isModelLoaded = false;
     }
 
-    // Attempt to load settings and engine
-    LiteRtLmEngineSettings* settings = fnSettingsCreate(modelPath, "cpu", nullptr, nullptr);
+    // Instantiate LiteRT LM Engine Settings
+    LiteRtLmEngineSettings* settings = fnSettingsCreate(modelPath.c_str(), "cpu", nullptr, nullptr);
     if (!settings) {
         napi_value resObj;
         napi_create_object(env, &resObj);
@@ -316,18 +336,19 @@ static napi_value LoadModel(napi_env env, napi_callback_info info) {
         return promise;
     }
 
-    // Set max tokens standard
-    fnSettingsSetMax(settings, 1024);
+    if (fnSettingsSetMax) {
+        fnSettingsSetMax(settings, 1024);
+    }
 
     g_engine = fnEngineCreate(settings);
-    fnSettingsDelete(settings); // Settings are copied in engine creation, we must free.
+    fnSettingsDelete(settings); // Settings are copied in engine creation
 
     if (!g_engine) {
         napi_value resObj;
         napi_create_object(env, &resObj);
         napi_value success, msg;
         napi_get_boolean(env, false, &success);
-        napi_create_string_utf8(env, "Failed to instantiate LiteRT-LM engine. Verify weight compatibility.", NAPI_AUTO_LENGTH, &msg);
+        napi_create_string_utf8(env, "Failed to instantiate LiteRT-LM engine. Verify model format.", NAPI_AUTO_LENGTH, &msg);
         napi_set_named_property(env, resObj, "success", success);
         napi_set_named_property(env, resObj, "message", msg);
         napi_resolve_deferred(env, deferred, resObj);
@@ -364,6 +385,22 @@ static napi_value LoadModel(napi_env env, napi_callback_info info) {
     return promise;
 }
 
+// JS: cancel() -> Promise<void>
+static napi_value Cancel(napi_env env, napi_callback_info info) {
+    std::lock_guard<std::mutex> lock(g_inferenceMutex);
+    if (g_session && fnSessionCancelProcess) {
+        fnSessionCancelProcess(g_session);
+    }
+
+    napi_deferred deferred;
+    napi_value promise;
+    napi_create_promise(env, &deferred, &promise);
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    napi_resolve_deferred(env, deferred, undefined);
+    return promise;
+}
+
 // JS: generate(prompt, maxTokens) -> Promise<{ success: boolean, text?: string, error?: string }>
 static napi_value Generate(napi_env env, napi_callback_info info) {
     size_t argc = 2;
@@ -373,6 +410,38 @@ static napi_value Generate(napi_env env, napi_callback_info info) {
     napi_deferred deferred;
     napi_value promise;
     napi_create_promise(env, &deferred, &promise);
+
+    if (argc < 1) {
+        napi_value resObj;
+        napi_create_object(env, &resObj);
+        napi_value success, error;
+        napi_get_boolean(env, false, &success);
+        napi_create_string_utf8(env, "Missing prompt argument", NAPI_AUTO_LENGTH, &error);
+        napi_set_named_property(env, resObj, "success", success);
+        napi_set_named_property(env, resObj, "error", error);
+        napi_resolve_deferred(env, deferred, resObj);
+        return promise;
+    }
+
+    // Dynamic prompt allocation - handles arbitrary length without 4096-byte truncation
+    size_t promptLen = 0;
+    napi_get_value_string_utf8(env, args[0], nullptr, 0, &promptLen);
+    std::string promptStr(promptLen + 1, '\0');
+    size_t promptCopied = 0;
+    napi_get_value_string_utf8(env, args[0], &promptStr[0], promptStr.size(), &promptCopied);
+    promptStr.resize(promptCopied);
+
+    // Parse maxTokens argument if provided
+    int32_t maxTokens = 1024;
+    if (argc > 1) {
+        napi_valuetype arg1Type;
+        napi_typeof(env, args[1], &arg1Type);
+        if (arg1Type == napi_number) {
+            napi_get_value_int32(env, args[1], &maxTokens);
+        }
+    }
+
+    std::lock_guard<std::mutex> lock(g_inferenceMutex);
 
     if (!g_isModelLoaded || !g_session || !fnSessionGenerateContent) {
         napi_value resObj;
@@ -386,12 +455,13 @@ static napi_value Generate(napi_env env, napi_callback_info info) {
         return promise;
     }
 
-    char prompt[4096];
-    size_t promptLen;
-    napi_get_value_string_utf8(env, args[0], prompt, sizeof(prompt), &promptLen);
+    // Properly map to official LiteRT-LM C API LiteRtLmInputData struct
+    LiteRtLmInputData inputData;
+    inputData.type = kLiteRtLmInputDataTypeText;
+    inputData.data = (const void*)promptStr.data();
+    inputData.size = promptStr.size();
 
-    // Call generate API (LiteRT-LM generate input maps standard raw bytes)
-    LiteRtLmResponses* responses = fnSessionGenerateContent(g_session, prompt, promptLen);
+    LiteRtLmResponses* responses = fnSessionGenerateContent(g_session, &inputData, 1);
     if (!responses) {
         napi_value resObj;
         napi_create_object(env, &resObj);
@@ -434,17 +504,19 @@ static napi_value Generate(napi_env env, napi_callback_info info) {
 
 // Module registration
 static napi_value Init(napi_env env, napi_value exports) {
-    napi_value fnStatus, fnLoad, fnGen, fnUnload;
+    napi_value fnStatus, fnLoad, fnGen, fnUnload, fnCancel;
 
     napi_create_function(env, "status", NAPI_AUTO_LENGTH, BindingStatus, nullptr, &fnStatus);
     napi_create_function(env, "loadModel", NAPI_AUTO_LENGTH, LoadModel, nullptr, &fnLoad);
     napi_create_function(env, "generate", NAPI_AUTO_LENGTH, Generate, nullptr, &fnGen);
     napi_create_function(env, "unloadModel", NAPI_AUTO_LENGTH, UnloadModel, nullptr, &fnUnload);
+    napi_create_function(env, "cancel", NAPI_AUTO_LENGTH, Cancel, nullptr, &fnCancel);
 
     napi_set_named_property(env, exports, "status", fnStatus);
     napi_set_named_property(env, exports, "loadModel", fnLoad);
     napi_set_named_property(env, exports, "generate", fnGen);
     napi_set_named_property(env, exports, "unloadModel", fnUnload);
+    napi_set_named_property(env, exports, "cancel", fnCancel);
 
     return exports;
 }

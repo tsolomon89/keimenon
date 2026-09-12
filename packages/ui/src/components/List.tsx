@@ -1,16 +1,13 @@
-'use client';
-
 import React from 'react';
 import { Text } from './Text';
+import { Button } from './Button';
+import { cn } from '../utils/cn';
+import { PolymorphicComponentPropsWithRef } from '../utils/polymorphic';
 
 /**
  * List Layout - How items are displayed
  */
-export type ListLayout =
-  | 'vertical' // Stacked list (default)
-  | 'grid-2' // 2-column grid
-  | 'grid-3' // 3-column grid
-  | 'grid-4'; // 4-column grid
+export type ListLayout = 'vertical' | 'grid-2' | 'grid-3' | 'grid-4';
 
 /**
  * Empty State Configuration
@@ -24,7 +21,7 @@ export interface EmptyStateConfig {
   };
 }
 
-export interface ListProps<T = any> {
+export interface ListOwnProps<T = any> {
   /** Array of items to render */
   items: T[];
 
@@ -53,9 +50,16 @@ export interface ListProps<T = any> {
   keyExtractor?: (item: T, index: number) => string | number;
 }
 
-/**
- * Layout CSS mappings
- */
+export type ListProps<
+  T = any,
+  C extends React.ElementType = 'div',
+> = PolymorphicComponentPropsWithRef<C, ListOwnProps<T>>;
+
+export interface ListComponent {
+  <T = any, C extends React.ElementType = 'div'>(props: ListProps<T, C>): React.ReactNode;
+  displayName?: string;
+}
+
 const layoutStyles: Record<ListLayout, string> = {
   vertical: 'flex flex-col',
   'grid-2': 'grid grid-cols-1 md:grid-cols-2',
@@ -71,47 +75,67 @@ const gapStyles = {
 
 /**
  * List Primitive - Array renderer with layouts
- *
- * Features:
- * - Multiple layout modes (vertical, grid-2/3/4)
- * - Empty state handling
- * - Loading state
- * - Flexible rendering via render prop
  */
-import { cn } from '../utils/cn';
+export const List: ListComponent = React.forwardRef(
+  (
+    {
+      items,
+      renderItem,
+      layout = 'vertical',
+      emptyState,
+      loading = false,
+      loadingMessage = 'Loading...',
+      gap = 'md',
+      className = '',
+      keyExtractor,
+      as,
+      ...props
+    }: any,
+    ref: any
+  ) => {
+    const Component = as || 'div';
 
-// ... (imports)
+    if (loading) {
+      return (
+        <div className="p-8 text-center">
+          <Text role="hint" mode="muted">
+            {loadingMessage}
+          </Text>
+        </div>
+      );
+    }
 
-// ... (ListProps definition)
+    if (!items || items.length === 0) {
+      if (emptyState) {
+        return (
+          <div className="p-8 text-center border border-dashed border-slate-800 rounded-lg">
+            {emptyState.icon && <div className="mb-2 flex justify-center">{emptyState.icon}</div>}
+            <Text role="hint" mode="muted" className="mb-4">
+              {emptyState.message}
+            </Text>
+            {emptyState.action && (
+              <Button size="sm" variant="default" onClick={emptyState.action.onClick}>
+                {emptyState.action.label}
+              </Button>
+            )}
+          </div>
+        );
+      }
+      return null;
+    }
 
-/**
- * List Primitive - Array renderer with layouts
- *
- * ...
- */
-export function List<T = any>({
-  items,
-  renderItem,
-  layout = 'vertical',
-  emptyState,
-  loading = false,
-  loadingMessage = 'Loading...',
-  gap = 'md',
-  className = '',
-  keyExtractor,
-}: ListProps<T>) {
-  // ... (loading and empty state)
+    const layoutClasses = layoutStyles[layout as ListLayout] || layoutStyles.vertical;
+    const gapClasses = gapStyles[gap as keyof typeof gapStyles] || gapStyles.md;
 
-  // Render items
-  const layoutClasses = layoutStyles[layout];
-  const gapClasses = gapStyles[gap];
+    return (
+      <Component className={cn(layoutClasses, gapClasses, className)} ref={ref} {...props}>
+        {items.map((item: any, index: number) => {
+          const key = keyExtractor ? keyExtractor(item, index) : index;
+          return <div key={key}>{renderItem(item, index)}</div>;
+        })}
+      </Component>
+    );
+  }
+) as any;
 
-  return (
-    <div className={cn(layoutClasses, gapClasses, className)}>
-      {items.map((item, index) => {
-        const key = keyExtractor ? keyExtractor(item, index) : index;
-        return <div key={key}>{renderItem(item, index)}</div>;
-      })}
-    </div>
-  );
-}
+List.displayName = 'List';

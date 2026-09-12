@@ -84,7 +84,7 @@ export function KeimenonToolbar({
   const isAdminAccount = user?.accountType === 'admin';
 
   const isKeimenonMode = keimenonMode === 'keimenon';
-  const isDashboardMode = isAdminAccount && keimenonMode === 'dashboard';
+  const isDashboardMode = keimenonMode === 'dashboard';
   const isFiltering = sourceRoleFilter.size > 0;
 
   // Close filter dropdown on outside click
@@ -105,11 +105,10 @@ export function KeimenonToolbar({
   };
 
   const handleDashboardMode = () => {
-    if (!isAdminAccount) {
-      return;
-    }
     setKeimenonMode('dashboard');
-    onDashboardViewChange('analytics');
+    if (!isAdminAccount && (dashboardView === 'analytics' || dashboardView === 'storage')) {
+      onDashboardViewChange('conversations');
+    }
   };
 
   const handleSettingsMode = () => {
@@ -454,22 +453,26 @@ export function KeimenonToolbar({
       {isDashboardMode && (
         <div className="hidden md:flex items-center gap-2 lg:gap-3">
           <div className="flex items-center bg-slate-800/50 rounded-lg p-0.5 border border-slate-700/50 shadow-inner">
-            <button
-              onClick={() => onDashboardViewChange('analytics')}
-              type="button"
-              className={surfaceButtonClass(dashboardView === 'analytics')}
-              title="Analytics Overview"
-            >
-              <LayoutDashboard className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => onDashboardViewChange('storage')}
-              type="button"
-              className={surfaceButtonClass(dashboardView === 'storage')}
-              title="Storage Statistics"
-            >
-              <Database className="w-4 h-4" />
-            </button>
+            {isAdminAccount && (
+              <>
+                <button
+                  onClick={() => onDashboardViewChange('analytics')}
+                  type="button"
+                  className={surfaceButtonClass(dashboardView === 'analytics')}
+                  title="Analytics Overview"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onDashboardViewChange('storage')}
+                  type="button"
+                  className={surfaceButtonClass(dashboardView === 'storage')}
+                  title="Storage Statistics"
+                >
+                  <Database className="w-4 h-4" />
+                </button>
+              </>
+            )}
             <button
               onClick={() => onDashboardViewChange('workspaces')}
               type="button"
@@ -503,16 +506,14 @@ export function KeimenonToolbar({
             <Grid3x3 className="w-4 h-4" />
           </button>
 
-          {isAdminAccount && (
-            <button
-              onClick={handleDashboardMode}
-              type="button"
-              className={modeButtonClass(keimenonMode === 'dashboard')}
-              title="Dashboard"
-            >
-              <LayoutDashboard className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            onClick={handleDashboardMode}
+            type="button"
+            className={modeButtonClass(keimenonMode === 'dashboard')}
+            title="Dashboard"
+          >
+            <LayoutDashboard className="w-4 h-4" />
+          </button>
 
           <button
             onClick={handleSettingsMode}

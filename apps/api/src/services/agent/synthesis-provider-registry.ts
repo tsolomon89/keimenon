@@ -21,7 +21,7 @@ export interface SynthesisProvider {
 
 export class SynthesisProviderRegistry {
   private providers: Map<string, SynthesisProvider> = new Map();
-  private defaultProviderId: string = 'mock';
+  private defaultProviderId: string = 'gemma-local';
 
   public registerProvider(provider: SynthesisProvider) {
     this.providers.set(provider.id, provider);
@@ -31,16 +31,24 @@ export class SynthesisProviderRegistry {
     this.defaultProviderId = providerId;
   }
 
+  public getDefaultProviderId(): string {
+    return this.defaultProviderId;
+  }
+
   public getProvider(providerId?: string): SynthesisProvider {
     // 1. Explicit request
     if (providerId) {
       if (this.providers.has(providerId)) {
         return this.providers.get(providerId)!;
       }
-      // If explicitly requested but not configured/available
       if (providerId === 'gemma-local') {
         throw new Error(
           'PROVIDER_UNAVAILABLE: gemma-local requested but not configured or available'
+        );
+      }
+      if (providerId === 'mock') {
+        throw new Error(
+          'PROVIDER_UNAVAILABLE: mock synthesis provider is restricted to test environments'
         );
       }
       throw new Error(
@@ -53,12 +61,10 @@ export class SynthesisProviderRegistry {
       return this.providers.get(this.defaultProviderId)!;
     }
 
-    // 3. Absolute fallback when omitted and default fails
-    if (this.providers.has('mock')) {
-      return this.providers.get('mock')!;
-    }
-
-    throw new Error('No synthesis providers available.');
+    // Never fall back silently to mock in production
+    throw new Error(
+      `PROVIDER_UNAVAILABLE: Default provider '${this.defaultProviderId}' is not available and no fallback permitted`
+    );
   }
 }
 
@@ -68,4 +74,8 @@ import { gemmaProvider } from './gemma-local-provider';
 import { MockSynthesisProvider } from '../conversation-synthesis-adapter';
 
 providerRegistry.registerProvider(gemmaProvider);
-providerRegistry.registerProvider(new MockSynthesisProvider());
+
+// Mock synthesis provider is strictly restricted to automated test runs
+if (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true') {
+  providerRegistry.registerProvider(new MockSynthesisProvider());
+}

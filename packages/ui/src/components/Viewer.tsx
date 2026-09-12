@@ -5,6 +5,7 @@ import { PrimitiveCard as Card } from './PrimitiveCard';
 import { List } from './List';
 import { Field } from './Field';
 import { Text } from './Text';
+import { Button } from './Button';
 import { cn } from '../utils/cn';
 
 /**
@@ -253,13 +254,9 @@ function renderDetailMode(data: any): React.ReactNode {
       <Card
         title={boundObject.type ? `${boundObject.type} Details` : 'Details'}
         headerActions={boundObject._actions?.map((action) => (
-          <button
-            key={action.id}
-            onClick={action.handler}
-            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm transition-colors"
-          >
+          <Button key={action.id} onClick={action.handler} size="sm" variant="default">
             {action.label}
-          </button>
+          </Button>
         ))}
       >
         {renderObjectAsFields(actualData)}

@@ -1,9 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { pipeline } from 'stream/promises';
+import * as crypto from 'crypto';
+import { EventEmitter } from 'events';
 import { modelManager } from './model-manager';
 import { gemmaModelSourceRegistry } from './gemma-model-source-registry';
-import { EventEmitter } from 'events';
 
 export interface DownloadProgress {
   candidateId: string;
@@ -24,6 +24,7 @@ class ModelDownloader extends EventEmitter {
       tempPath: string;
       status: 'pending' | 'downloading' | 'paused' | 'completed' | 'failed';
       retryCount: number;
+      retryTimeout?: NodeJS.Timeout;
     }
   > = new Map();
 
@@ -110,7 +111,7 @@ class ModelDownloader extends EventEmitter {
     startOffset: number,
     expectedSize: number,
     abortController: AbortController
-  ) {
+  ): Promise<void> {
     const active = this.activeDownloads.get(candidateId);
     if (!active) return;
 
@@ -127,15 +128,76 @@ class ModelDownloader extends EventEmitter {
         signal: abortController.signal,
       });
 
-      if (!response.ok && response.status !== 206) {
-        // If range request fails, fallback to full download
+      let actualStartOffset = startOffset;
+
+      // Handle range responses and edge cases:
+      // 1) If resumed request was sent with Range header, but server returned 200 OK instead of 206:
+      // Server returned the full file body from byte 0. Truncate temp file and reset offset.
+      if (startOffset > 0 && response.status === 200) {
+        console.warn(
+          `[ModelDownloader] Range request for ${candidateId} answered with 200 instead of 206. Resetting to full download.`
+        );
+        actualStartOffset = 0;
+        active.bytesDownloaded = 0;
+        if (fs.existsSync(tempPath)) {
+          fs.truncateSync(tempPath, 0);
+        }
+      } else if (response.status === 206) {
+        // Validate Content-Range header
+        const contentRange = response.headers.get('content-range');
+        if (contentRange) {
+          const match = contentRange.match(/^bytes\s+(\d+)-(\d+)\/(\d+|\*)/i);
+          if (match) {
+            const rangeStart = parseInt(match[1], 10);
+            if (rangeStart !== startOffset) {
+              console.warn(
+                `[ModelDownloader] Content-Range start (${rangeStart}) does not match expected offset (${startOffset}). Resetting to full download.`
+              );
+              if (fs.existsSync(tempPath)) {
+                fs.truncateSync(tempPath, 0);
+              }
+              active.bytesDownloaded = 0;
+              return this.runDownloadLoop(
+                candidateId,
+                url,
+                tempPath,
+                finalPath,
+                0,
+                expectedSize,
+                abortController
+              );
+            }
+          }
+        }
+      } else if (response.status === 416) {
+        // Range Not Satisfiable - partial file is corrupt or exceeds remote size
+        console.warn(
+          `[ModelDownloader] HTTP 416 Range Not Satisfiable for ${candidateId}. Resetting temp file and restarting full download.`
+        );
+        if (fs.existsSync(tempPath)) {
+          fs.truncateSync(tempPath, 0);
+        }
+        active.bytesDownloaded = 0;
+        return this.runDownloadLoop(
+          candidateId,
+          url,
+          tempPath,
+          finalPath,
+          0,
+          expectedSize,
+          abortController
+        );
+      } else if (!response.ok) {
+        // If range request failed with an error, reset temp file and try full download once
         if (startOffset > 0) {
           console.warn(
-            `[ModelDownloader] Range request failed (status ${response.status}). Retrying full download...`
+            `[ModelDownloader] Range request failed with HTTP ${response.status}. Retrying full download...`
           );
-          fs.writeFileSync(tempPath, ''); // Reset temp file
+          if (fs.existsSync(tempPath)) {
+            fs.truncateSync(tempPath, 0);
+          }
           active.bytesDownloaded = 0;
-          this.runDownloadLoop(
+          return this.runDownloadLoop(
             candidateId,
             url,
             tempPath,
@@ -144,7 +206,6 @@ class ModelDownloader extends EventEmitter {
             expectedSize,
             abortController
           );
-          return;
         }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -157,15 +218,32 @@ class ModelDownloader extends EventEmitter {
       if (contentRangeHeader) {
         const match = contentRangeHeader.match(/\/(\d+)$/);
         if (match) totalBytes = parseInt(match[1], 10);
-      } else if (contentLengthHeader && startOffset === 0) {
-        totalBytes = parseInt(contentLengthHeader, 10);
+      } else if (contentLengthHeader) {
+        const parsedLength = parseInt(contentLengthHeader, 10);
+        if (actualStartOffset === 0) {
+          totalBytes = parsedLength;
+        } else if (parsedLength > 0) {
+          totalBytes = actualStartOffset + parsedLength;
+        }
       }
 
       active.totalBytes = totalBytes;
 
+      const fileExists = fs.existsSync(tempPath);
+      const useResume = actualStartOffset > 0 && fileExists;
+      if (!fileExists) {
+        actualStartOffset = 0;
+      }
+
       fileStream = fs.createWriteStream(tempPath, {
-        flags: startOffset > 0 ? 'r+' : 'w',
-        start: startOffset,
+        flags: useResume ? 'r+' : 'w',
+        start: actualStartOffset,
+      });
+
+      fileStream.on('error', (streamErr) => {
+        console.warn(
+          `[ModelDownloader] File stream error for ${candidateId}: ${streamErr.message}`
+        );
       });
 
       if (!response.body) {
@@ -180,43 +258,77 @@ class ModelDownloader extends EventEmitter {
         const { done, value } = await reader.read();
         if (done) break;
 
-        fileStream.write(Buffer.from(value));
-        active.bytesDownloaded += value.length;
+        const chunk = Buffer.from(value);
+        const canWrite = fileStream.write(chunk);
+        if (!canWrite) {
+          await new Promise<void>((resolve, reject) => {
+            fileStream!.once('drain', resolve);
+            fileStream!.once('error', reject);
+          });
+        }
+        active.bytesDownloaded += chunk.length;
 
         this.emit('progress', this.getProgress(candidateId));
       }
 
-      fileStream.end();
+      // Ensure write stream has flushed completely to disk
+      await new Promise<void>((resolve, reject) => {
+        if (!fileStream) return resolve();
+        fileStream.end((err?: Error | null) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
       fileStream = null;
 
-      // Check downloaded size
-      const stats = fs.statSync(tempPath);
+      // 1. Verify downloaded file size on tempPath
+      const stats = await fs.promises.stat(tempPath);
+      active.bytesDownloaded = stats.size;
+
       if (expectedSize > 0 && stats.size !== expectedSize) {
         throw new Error(`Size mismatch. Expected ${expectedSize} bytes, got ${stats.size}`);
       }
 
-      // Rename to final path upon success
-      fs.renameSync(tempPath, finalPath);
+      // 2. Verify checksum on tempPath if candidate specifies one
+      const candidates = await gemmaModelSourceRegistry.getCandidates();
+      const candidate = candidates.find((c) => c.id === candidateId);
+      if (candidate?.checksum) {
+        const hash = crypto.createHash('sha256');
+        const fileReadStream = fs.createReadStream(tempPath);
+        for await (const chunk of fileReadStream) {
+          hash.update(chunk);
+        }
+        const calculatedHash = hash.digest('hex');
+        if (calculatedHash !== candidate.checksum) {
+          throw new Error(
+            `Model checksum verification failed. Expected ${candidate.checksum}, got ${calculatedHash}`
+          );
+        }
+      }
+
+      // 3. Rename to final path only AFTER verification succeeds on tempPath
+      await fs.promises.rename(tempPath, finalPath);
 
       active.status = 'completed';
       this.emit('progress', this.getProgress(candidateId));
 
-      // Mark installed inside ModelManager
+      // 4. Mark installed inside ModelManager
       await modelManager.recordDownloadComplete({
         candidate_id: candidateId,
         local_path: path.basename(finalPath),
         size_bytes: stats.size,
       });
 
-      // Verify files officially
+      // 5. Verify files officially
       await modelManager.verifyModelFile({ candidate_id: candidateId });
     } catch (err: any) {
       if (fileStream) {
         try {
-          fileStream.end();
+          (fileStream as fs.WriteStream).destroy();
         } catch (_) {
           // ignore
         }
+        fileStream = null;
       }
 
       if (err.name === 'AbortError') {
@@ -225,8 +337,12 @@ class ModelDownloader extends EventEmitter {
         return;
       }
 
-      // Check if we can retry
-      if (active.status === 'downloading' && active.retryCount < 5) {
+      const isVerificationError =
+        err.message?.includes('checksum verification failed') ||
+        err.message?.includes('Size mismatch');
+
+      // Check if we can retry (only for network/IO errors, not checksum or size corruption)
+      if (!isVerificationError && active.status === 'downloading' && active.retryCount < 5) {
         active.retryCount++;
         const isTest = process.env.VITEST || process.env.NODE_ENV === 'test';
         const delay = isTest ? 1 : Math.min(1000 * Math.pow(2, active.retryCount), 15000);
@@ -234,10 +350,11 @@ class ModelDownloader extends EventEmitter {
           `[ModelDownloader] Download error for ${candidateId}: ${err.message}. Retrying ${active.retryCount}/5 in ${delay}ms...`
         );
 
-        setTimeout(() => {
+        active.retryTimeout = setTimeout(() => {
+          active.retryTimeout = undefined;
           if (active.status !== 'downloading') return;
 
-          let currentSize = active.bytesDownloaded;
+          let currentSize = 0;
           if (fs.existsSync(tempPath)) {
             try {
               const stats = fs.statSync(tempPath);
@@ -246,6 +363,7 @@ class ModelDownloader extends EventEmitter {
               // ignore
             }
           }
+          active.bytesDownloaded = currentSize;
 
           const newAbortController = new AbortController();
           active.abortController = newAbortController;
@@ -263,7 +381,7 @@ class ModelDownloader extends EventEmitter {
         return;
       }
 
-      // Cleanup stale/corrupted partial staged file if failed permanently
+      // Cleanup stale/corrupted partial staged file if failed permanently or verification failed
       if (fs.existsSync(tempPath)) {
         try {
           fs.unlinkSync(tempPath);
@@ -284,11 +402,32 @@ class ModelDownloader extends EventEmitter {
 
   public cancelDownload(candidateId: string): void {
     const active = this.activeDownloads.get(candidateId);
-    if (active && active.status === 'downloading') {
-      active.abortController.abort();
-      active.status = 'paused';
-      this.emit('progress', this.getProgress(candidateId));
+    if (active) {
+      if (active.retryTimeout) {
+        clearTimeout(active.retryTimeout);
+        active.retryTimeout = undefined;
+      }
+      if (active.status === 'downloading') {
+        active.status = 'paused';
+        active.abortController.abort();
+        this.emit('progress', this.getProgress(candidateId));
+      }
     }
+  }
+
+  public reset(): void {
+    for (const [_, active] of this.activeDownloads.entries()) {
+      if (active.retryTimeout) {
+        clearTimeout(active.retryTimeout);
+        active.retryTimeout = undefined;
+      }
+      try {
+        active.abortController.abort();
+      } catch (_) {
+        // ignore
+      }
+    }
+    this.activeDownloads.clear();
   }
 }
 

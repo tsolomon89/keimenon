@@ -4,9 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const ROOTS = ['apps/api/src', 'apps/web/src', 'packages'];
+const ROOTS = ['apps/api/src', 'apps/web/src', 'apps/inference-helper/src', 'packages'];
 
-const CODE_FILE_RE = /\.(ts|tsx|js|jsx|mjs|cjs)$/;
+const CODE_FILE_RE = /\.(ts|tsx|js|jsx|mjs|cjs|cc|cpp|c|h|hpp)$/;
 const TEST_PATH_PATTERNS = [
   `${path.sep}__tests__${path.sep}`,
   `${path.sep}tests${path.sep}`,
