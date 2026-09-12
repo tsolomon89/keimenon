@@ -8,6 +8,7 @@
     "npm": "11.6.0"
   },
   "candidateHead": "fc5050e0f46c764443fdb1042a70ad8052cc491e",
+  "testedSourceCommit": "d65ebcdcf9b6a71f8255a8da6350dd688b33623a",
   "branch": "release/rc-readiness",
   "releaseArtifact": {
     "path": "apps/desktop/out/Keimenon Setup 0.1.0.exe",

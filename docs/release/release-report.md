@@ -4,6 +4,7 @@
 **Verdict:** **NOT PRODUCTION READY — EXTERNAL BLOCKERS**  
 **Integration Branch:** `release/rc-readiness`  
 **Audited Head:** `fc5050e0f46c764443fdb1042a70ad8052cc491e`  
+**Tested Source Commit:** `d65ebcdcf9b6a71f8255a8da6350dd688b33623a`  
 **Verified Candidate:** Frozen Working Tree on `release/rc-readiness`  
 **Release Target:** Windows x64 Desktop Application (`Keimenon Setup 0.1.0.exe`)  
 **Canonical Product Contract:** Root `AGENTS.md` and `GEMINI.md`
