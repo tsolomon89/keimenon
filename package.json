@@ -97,7 +97,7 @@
     "node:check": "node scripts/check-node-version.js",
     "doctor:runtime": "node scripts/runtime-doctor.js",
     "runtime:repair": "node scripts/run-with-project-node.js \"node scripts/runtime-repair.js\"",
-    "desktop:rebuild-native": "npm run postinstall --workspace=keimenon-desktop",
+    "desktop:rebuild-native": "npm run rebuild-deps --workspace=keimenon-desktop",
     "rc:check": "node scripts/run-with-project-node.js \"turbo run build --no-daemon && turbo run type-check lint --no-daemon\" && npm run sqlite:check && npm run ci:hygiene:check && npm run e2e:visual && node scripts/run-with-project-node.js \"playwright test tests/e2e/full-product-loop.spec.ts tests/e2e/chunked-upload-workflow.spec.ts tests/e2e/selection-stack-conversation.spec.ts --project=chromium\"",
     "rc:check:desktop": "node scripts/run-with-project-node.js \"turbo run type-check build --filter=keimenon-desktop --no-daemon\" && npm run desktop:web-dist:refresh && npm run desktop:web-dist:verify && npm run make --workspace=keimenon-desktop && npm rebuild better-sqlite3",
     "rc:check:native": "node scripts/run-with-project-node.js \"npm test --workspace=@keimenon/litert-node-bindings && npx vitest run native-gemma-runtime-backend local-inference-manager synthesis-runtime\"",

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "test": "playwright test",
-    "build": "npm --workspace keimenon-desktop run build:dist",
+    "build": "node -e \"console.log('desktop-e2e build placeholder')\"",
     "lint": "node -e \"console.log('desktop-e2e lint placeholder')\"",
     "type-check": "node -e \"console.log('desktop-e2e type-check placeholder')\""
   },
