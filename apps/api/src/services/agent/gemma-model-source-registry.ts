@@ -44,10 +44,10 @@ export const GEMMA_MODEL_SOURCES: GemmaModelSourceCandidate[] = [
     local_runtime_supported: true,
     requires_auth: false,
     requires_terms_acceptance: true,
-    expected_size_bytes: 2684354560,
-    checksum: '62d87e0fa0c1bf65b4431e3d30bfae4860081d6aeae3ffc54f46ff03b57e7f5e',
+    expected_size_bytes: 2588147712,
+    checksum: '181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c',
     download_url:
-      'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm',
+      'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/b3ca0d2f076785a8f4b2219ddbd2bdb99954eae1/gemma-4-E2B-it.litertlm',
   },
   {
     id: 'gemma-4-e4b-it-litert',
@@ -68,10 +68,10 @@ export const GEMMA_MODEL_SOURCES: GemmaModelSourceCandidate[] = [
     local_runtime_supported: true,
     requires_auth: false,
     requires_terms_acceptance: true,
-    expected_size_bytes: 4831838208,
-    checksum: '9d6e492d5cfa329432eecbb8f9f0612ce6218f4a7c06cbdb107db3be64455ae0',
+    expected_size_bytes: 3659530240,
+    checksum: '0b2a8980ce155fd97673d8e820b4d29d9c7d99b8fa6806f425d969b145bd52e0',
     download_url:
-      'https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm',
+      'https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/2eee7ac325f20eb8c9ac1d0e972f7c84663062da/gemma-4-E4B-it.litertlm',
   },
   {
     id: 'gemma-4-26b-a4b-it-huggingface',

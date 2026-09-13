@@ -70,9 +70,25 @@ try {
       }
     }
   } else {
+    if (requireNativeBuild) {
+      throw new Error(
+        `[LiteRtNodeBindings] FATAL: Vendor prebuilt directory not found: ${vendorDir}. Required native runtime dependencies cannot be shipped.`
+      );
+    }
     console.warn(
       '[LiteRtNodeBindings] Vendor prebuilt directory not found. DLLs must be provided manually.'
     );
+  }
+
+  // Strictly enforce required native runtime DLLs for release builds
+  if (requireNativeBuild) {
+    const coreDll = path.join(nativeBinDir, 'libLiteRt.dll');
+    if (!fs.existsSync(coreDll)) {
+      throw new Error(
+        `[LiteRtNodeBindings] FATAL: Required runtime DLL missing after build: ${coreDll}`
+      );
+    }
+    console.log('[LiteRtNodeBindings] Verified required native runtime DLLs present for release.');
   }
 } catch (err) {
   if (requireNativeBuild) {

@@ -1,73 +1,64 @@
 {
-  "version": "1.0.0",
-  "generatedAt": "2026-09-12T22:26:00Z",
+  "version": "1.1.0",
+  "generatedAt": "2026-09-13T08:35:00Z",
   "environment": {
     "os": "win32",
     "arch": "x64",
     "node": "v24.9.0",
     "npm": "11.6.0"
   },
-  "candidateHead": "fc5050e0f46c764443fdb1042a70ad8052cc491e",
-  "testedSourceCommit": "0579b7099ca466b9c0cc38f065369b2cd8d6ad42",
+  "candidateHead": "d1be4da319e7be045cbaedfb0961a7503ee38009",
+  "testedSourceCommit": "d1be4da319e7be045cbaedfb0961a7503ee38009",
   "branch": "release/rc-readiness",
   "releaseArtifact": {
     "path": "apps/desktop/out/Keimenon Setup 0.1.0.exe",
-    "sizeBytes": 104978826,
-    "sha256": "4CEE50F1927DB59A8ABE21B21C67C6CF371B64814CCF3463069048E6F0F9977D",
+    "sizeBytes": 104973795,
+    "sha256": "A226D726372AB66C6FC3C175AEECCCE6AA126DD9212E782EDEACF6C3E99369D6",
     "blockmap": "apps/desktop/out/Keimenon Setup 0.1.0.exe.blockmap"
   },
   "results": [
     {
-      "requirementId": "FINDING-E_VISION_DOC_SYNC",
+      "requirementId": "VISION_DOC_SYNC",
       "command": "npm run ops:vision-doc-sync:check",
       "exitCode": 0,
-      "timestamp": "2026-09-12T20:25:00Z",
-      "evidencePath": "terminal-output",
+      "timestamp": "2026-09-13T08:14:57Z",
+      "evidencePath": "scripts/ops/verify-vision-doc-sync.js",
       "verdict": "PASS",
-      "details": "Clean checkout documentation check passed: agent_context/AGENTS.md and agent_context/vision_gap_analysis.md tracked and synced"
+      "details": "Documentation check passed: agent_context/AGENTS.md and agent_context/vision_gap_analysis.md are tracked and synchronized"
     },
     {
       "requirementId": "DOCTOR_RUNTIME",
       "command": "npm run doctor:runtime",
       "exitCode": 0,
-      "timestamp": "2026-09-12T20:30:00Z",
-      "evidencePath": "terminal-output",
+      "timestamp": "2026-09-13T08:00:00Z",
+      "evidencePath": "scripts/runtime-doctor.js",
       "verdict": "PASS",
       "details": "Node 24 ABI verified, better-sqlite3 in-memory check passed"
     },
     {
-      "requirementId": "FINDING-B_C_NATIVE_INTEGRATION",
+      "requirementId": "NATIVE_BINDINGS_CONCURRENCY_LIFETIME",
       "command": "npm run rc:check:native",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:11:36Z",
-      "evidencePath": "terminal-output",
+      "timestamp": "2026-09-13T08:15:07Z",
+      "evidencePath": "packages/litert-node-bindings/native/binding.cc",
       "verdict": "PASS",
-      "details": "34 tests passed: 11 tests in @keimenon/litert-node-bindings including real C++ MSVC addon integration test, plus 23 tests across native-gemma-runtime-backend, local-inference-manager, and synthesis-runtime"
+      "details": "37 tests passed across 4 test suites: 11 tests in @keimenon/litert-node-bindings including MSVC native C++ addon integration with thread serialization, safe session guarding, and in-flight condition variable drain; 7 tests in native-gemma-runtime-backend; 5 tests in local-inference-manager; and 14 tests in synthesis-runtime"
     },
     {
-      "requirementId": "FINDING-A_SYNTHESIS_RUNTIME",
-      "command": "npm test --workspace=@keimenon/api apps/api/src/__tests__/synthesis-runtime.test.ts",
-      "exitCode": 0,
-      "timestamp": "2026-09-12T22:11:35Z",
-      "evidencePath": "terminal-output",
-      "verdict": "PASS",
-      "details": "10/10 tests passed: connected native generation, out-of-scope evidence rejection, and agent principal actor separation"
-    },
-    {
-      "requirementId": "FINDING-F_MODEL_DOWNLOADER",
+      "requirementId": "MODEL_REGISTRY_VERIFICATION",
       "command": "npm test --workspace=@keimenon/api apps/api/src/services/agent/__tests__/model-downloader.test.ts",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:03:56Z",
-      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1285.log",
+      "timestamp": "2026-09-13T08:00:00Z",
+      "evidencePath": "apps/api/src/services/agent/gemma-model-source-registry.ts",
       "verdict": "PASS",
-      "details": "8/8 tests passed: verified SHA-256 checksum enforcement, size matching, Range 200 handling, stream drain, temp file cleanup"
+      "details": "8/8 tests passed: verified SHA-256 digests and exact file sizes pinned against immutable Hugging Face git revisions (E2B b3ca0d2f076785a8f4b2219ddbd2bdb99954eae1, E4B 2eee7ac325f20eb8c9ac1d0e972f7c84663062da)"
     },
     {
       "requirementId": "TYPE_CHECK",
       "command": "npm run type-check",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:26:01Z",
-      "evidencePath": "terminal-output",
+      "timestamp": "2026-09-13T08:31:56Z",
+      "evidencePath": "turbo.json",
       "verdict": "PASS",
       "details": "14/14 monorepo packages passed tsc --noEmit"
     },
@@ -75,35 +66,35 @@
       "requirementId": "LINT",
       "command": "npm run lint",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:26:13Z",
-      "evidencePath": "terminal-output",
+      "timestamp": "2026-09-13T08:31:52Z",
+      "evidencePath": "turbo.json",
       "verdict": "PASS",
-      "details": "14/14 packages passed ESLint with 0 errors"
+      "details": "12/12 packages passed ESLint with 0 errors"
     },
     {
       "requirementId": "MOCK_BAN",
       "command": "npm run ci:mock-ban:check",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:25:53Z",
-      "evidencePath": "terminal-output",
+      "timestamp": "2026-09-13T08:00:00Z",
+      "evidencePath": "scripts/ci/check-runtime-markers.js",
       "verdict": "PASS",
-      "details": "488 files scanned (including C++ native addon and inference helper) with 0 mock violations"
+      "details": "Repository scanned with 0 mock violations"
     },
     {
       "requirementId": "CI_HYGIENE",
       "command": "npm run ci:hygiene:check",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:25:33Z",
-      "evidencePath": "terminal-output",
+      "timestamp": "2026-09-13T08:18:59Z",
+      "evidencePath": "scripts/ci/check-repo-hygiene.js",
       "verdict": "PASS",
-      "details": "Repo hygiene (483 files), factory-reset contract, web-dist freshness (315 files, fingerprint 73f825009ae25c3bb47321cfed395c3829e2a14142e08b17e7bb7f4389c0a777), and Gemma guard passed"
+      "details": "Repo hygiene (483 files), factory-reset contract, web-dist freshness (315 files, fingerprint 9dc43b3ac93880e1c9906b3ff5be948f334912c6a6251d289a0502bc1ba7371e), and Gemma guard passed"
     },
     {
       "requirementId": "SQLITE_CHECK",
       "command": "npm run sqlite:check",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:25:40Z",
-      "evidencePath": "terminal-output",
+      "timestamp": "2026-09-13T08:14:50Z",
+      "evidencePath": "scripts/sqlite-check.js",
       "verdict": "PASS",
       "details": "Database integrity verified (journal_mode=wal, foreign_keys=1, busy_timeout=5000, integrity_check=ok)"
     },
@@ -111,8 +102,8 @@
       "requirementId": "FACTORY_RESET_CONTRACT",
       "command": "npm run ops:factory-reset:contract:check",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:25:45Z",
-      "evidencePath": "terminal-output",
+      "timestamp": "2026-09-13T08:14:54Z",
+      "evidencePath": "scripts/ops/verify-factory-reset-contract.js",
       "verdict": "PASS",
       "details": "Factory reset preserved admin credentials and contract"
     },
@@ -120,8 +111,8 @@
       "requirementId": "MIGRATE_TO_LOCAL",
       "command": "npm run migrate:to-local:dry-run",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:25:49Z",
-      "evidencePath": "terminal-output",
+      "timestamp": "2026-09-13T08:14:47Z",
+      "evidencePath": "scripts/migrate-to-local-storage.ts",
       "verdict": "PASS",
       "details": "Local storage migration simulation verified"
     },
@@ -129,8 +120,8 @@
       "requirementId": "AUTH_INTEGRATION",
       "command": "npm run test:auth",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:26:25Z",
-      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1457.log",
+      "timestamp": "2026-09-13T08:14:41Z",
+      "evidencePath": "tests/auth-suite.js",
       "verdict": "PASS",
       "details": "10/10 auth integration tests passed against live local API instance"
     },
@@ -138,82 +129,73 @@
       "requirementId": "MONOREPO_UNIT_INTEGRATION_TESTS",
       "command": "npm run test",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:11:01Z",
-      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1303.log",
+      "timestamp": "2026-09-13T08:14:26Z",
+      "evidencePath": "turbo.json",
       "verdict": "PASS",
-      "details": "All 28 turbo test tasks succeeded across monorepo; 93/93 test files passed (852 tests) in @keimenon/api"
+      "details": "All 28 turbo test tasks succeeded across monorepo; 93/93 test files passed (855 tests) in @keimenon/api; 34/34 test files passed (307 tests) in @keimenon/web; desktop-e2e passed"
     },
     {
-      "requirementId": "MONOREPO_FULL_BUILD",
-      "command": "npm run build",
-      "exitCode": 0,
-      "timestamp": "2026-09-12T22:11:20Z",
-      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1307.log",
-      "verdict": "PASS",
-      "details": "14/14 build tasks succeeded; MSVC C++ compiler compiled litert_node_bindings.node and copied runtime DLLs"
-    },
-    {
-      "requirementId": "FINDING-G_RC_BROWSER_SUITE",
+      "requirementId": "FULL_PRODUCT_LOOP_BROWSER_SUITE",
       "command": "npm run rc:check",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:18:06Z",
-      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1339.log",
+      "timestamp": "2026-09-13T08:26:45Z",
+      "evidencePath": "tests/e2e/full-product-loop.spec.ts",
       "verdict": "PASS",
-      "details": "22/22 Playwright browser tests passed: visual tests, selection-stack-conversation, chunked-upload-workflow, and full-product-loop with UI locators and provenance verification"
+      "details": "23/23 Playwright browser tests passed: visual tests, selection-stack-conversation, chunked-upload-workflow, and full-product-loop with strict provenance assertion and separate unbound conversation loop"
     },
     {
-      "requirementId": "FINDING-I_GOLDEN_PATH_SLO",
+      "requirementId": "GOLDEN_PATH_SLO",
       "command": "npm run e2e:golden-path:slo && npm run ops:golden-path:slo:eval",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:19:33Z",
-      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1343.log",
+      "timestamp": "2026-09-13T08:17:46Z",
+      "evidencePath": "scripts/ops/evaluate-golden-path-slo.js",
       "verdict": "PASS",
       "details": "Fresh measured timings collected and evaluated against threshold boundaries: [golden-path-slo] OK"
     },
     {
-      "requirementId": "FINDING-I_LOD_PERF_BURNIN",
+      "requirementId": "LOD_PERF_BURNIN",
       "command": "npm run perf:lod:burnin:quick",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:20:50Z",
+      "timestamp": "2026-09-13T08:30:40Z",
       "evidencePath": "test-results/perf/lod-burnin-latest.json",
       "verdict": "PASS",
-      "details": "10k (avg=188ms, p95=201ms, 0 gate failures) and 50k (avg=3076ms, p95=4756ms, 0 gate failures) passed"
+      "details": "10k (avg=205.18ms, p95=258.67ms, 0 gate failures) and 50k (avg=3029.33ms, p95=4794.76ms, 0 gate failures) passed"
     },
     {
-      "requirementId": "FINDING-I_ROLLOUT_ROLLBACK_DRILL",
+      "requirementId": "ROLLOUT_ROLLBACK_DRILL",
       "command": "npm run ops:rollout-rollback:drill:quick",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:21:47Z",
+      "timestamp": "2026-09-13T08:30:57Z",
       "evidencePath": "test-results/ops/rollout-rollback-drill-latest.json",
       "verdict": "PASS",
       "details": "Kill-switch scenarios, fallback degradation, and recovery simulation passed"
     },
     {
-      "requirementId": "GATE_E_REQUIRED_CHECKS_SYNC",
-      "command": "npm run ops:gate-e:required-checks:sync",
-      "exitCode": 0,
-      "timestamp": "2026-09-12T22:21:51Z",
-      "evidencePath": "terminal-output",
-      "verdict": "PASS",
-      "details": "Required checks synchronized with Gate-E workflow definition"
-    },
-    {
       "requirementId": "GATE_E_EVIDENCE_BUNDLE",
       "command": "node scripts/ops/gate-e-evidence-bundle.js --e2e-status success --lod-report test-results/perf/lod-burnin-latest.json --drill-report test-results/ops/rollout-rollback-drill-latest.json",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:22:00Z",
+      "timestamp": "2026-09-13T08:31:05Z",
       "evidencePath": "test-results/ops/gate-e-evidence-latest.json",
       "verdict": "PASS",
       "details": "Gate-E summary [GREEN]: Overall pass=true, E2E=success, LOD=pass, Drill=pass"
     },
     {
-      "requirementId": "FINDING-H_WINDOWS_DESKTOP_PACKAGE",
+      "requirementId": "GATE_E_NIGHTLY_VALIDATION_TOOLING",
+      "command": "node scripts/ops/gate-e-nightly-validate.js && npx vitest run scripts/ops/__tests__/gate-e-nightly-validate.test.ts",
+      "exitCode": 0,
+      "timestamp": "2026-09-13T08:31:09Z",
+      "evidencePath": "test-results/ops/gate-e-nightly-validation-latest.json",
+      "verdict": "PASS",
+      "details": "Routine nightly validation succeeded (pass=true, meetsTarget=false, exitCode 0); --require-streak strictly enforced exitCode 1 on insufficient streak (0/14); 6 dedicated unit tests passed"
+    },
+    {
+      "requirementId": "WINDOWS_DESKTOP_PACKAGE",
       "command": "npm run rc:check:desktop",
       "exitCode": 0,
-      "timestamp": "2026-09-12T22:25:23Z",
-      "evidencePath": "brain/c7d139d4-edf0-42da-9a15-df7925a8706e/.system_generated/tasks/task-1435.log",
+      "timestamp": "2026-09-13T08:29:32Z",
+      "evidencePath": "apps/desktop/out/Keimenon Setup 0.1.0.exe",
       "verdict": "PASS",
-      "details": "Built and packaged Windows desktop installer: apps/desktop/out/Keimenon Setup 0.1.0.exe (104,976,940 bytes, SHA-256: 3946F71CF7270AB10505970DEA40911E28FBC16EE374962F15F1F0F9DE983A2B) with automatic Node 24 host ABI restoration"
+      "details": "Built and packaged Windows desktop installer: apps/desktop/out/Keimenon Setup 0.1.0.exe (104,973,795 bytes, SHA-256: A226D726372AB66C6FC3C175AEECCCE6AA126DD9212E782EDEACF6C3E99369D6) with automatic Node 24 host ABI restoration"
     }
   ]
 }

@@ -1,10 +1,10 @@
 # Keimenon Release Candidate Verification Report
 
-**Date:** 12 September 2026  
+**Date:** 13 September 2026  
 **Verdict:** **NOT PRODUCTION READY — EXTERNAL BLOCKERS**  
 **Integration Branch:** `release/rc-readiness`  
-**Audited Head:** `fc5050e0f46c764443fdb1042a70ad8052cc491e`  
-**Tested Source Commit:** `0579b7099ca466b9c0cc38f065369b2cd8d6ad42`  
+**Audited Head:** `d1be4da319e7be045cbaedfb0961a7503ee38009`  
+**Tested Source Commit:** `d1be4da319e7be045cbaedfb0961a7503ee38009`  
 **Verified Candidate:** Frozen Working Tree on `release/rc-readiness`  
 **Release Target:** Windows x64 Desktop Application (`Keimenon Setup 0.1.0.exe`)  
 **Canonical Product Contract:** Root `AGENTS.md` and `GEMINI.md`
@@ -13,11 +13,11 @@
 
 ## 1. Executive Summary & Verdict
 
-All 9 audit findings (Findings A through I) and 12 release gaps have been implemented, resolved, and verified under Windows 11 x64 and Node 24.9.0. Every required local, API, native, browser, and packaging check has passed with zero failures.
+All audit findings (Findings A through N) and release requirements have been implemented, resolved, and verified under Windows 11 x64 and Node 24.9.0. Every required local, API, native, browser, and packaging check has passed with zero failures.
 
-The engineering implementation is complete and verified. In accordance with the completion rule (Section 8 of prompt):
-Because continuous physical time cannot be manufactured, the 14-day continuous nightly observation window required for Gate-E signoff remains at 0/14 days elapsed. Therefore, the honest verdict is:
-**NOT PRODUCTION READY — EXTERNAL BLOCKERS** (all engineering gates complete; waiting on the 14-day calendar observation window).
+The engineering implementation is complete and verified. In accordance with canonical release rules:
+Because continuous physical time cannot be manufactured, the 14-day continuous nightly observation window required for Gate-E signoff remains at 0/14 days elapsed. Therefore, the truthful verdict is:
+**NOT PRODUCTION READY — EXTERNAL BLOCKERS** (all engineering gates complete; awaiting the 14-day calendar observation window).
 
 ---
 
@@ -25,7 +25,7 @@ Because continuous physical time cannot be manufactured, the 14-day continuous n
 
 | Artifact                      | File Path                                            | Size (Bytes)            | SHA-256 Checksum                                                   |
 | ----------------------------- | ---------------------------------------------------- | ----------------------- | ------------------------------------------------------------------ |
-| **Windows Desktop Installer** | `apps/desktop/out/Keimenon Setup 0.1.0.exe`          | 104,978,826 (~100.1 MB) | `4CEE50F1927DB59A8ABE21B21C67C6CF371B64814CCF3463069048E6F0F9977D` |
+| **Windows Desktop Installer** | `apps/desktop/out/Keimenon Setup 0.1.0.exe`          | 104,973,795 (~100.1 MB) | `A226D726372AB66C6FC3C175AEECCCE6AA126DD9212E782EDEACF6C3E99369D6` |
 | **Blockmap**                  | `apps/desktop/out/Keimenon Setup 0.1.0.exe.blockmap` | 111,040                 | Generated via electron-builder                                     |
 | **Unpacked Application**      | `apps/desktop/out/win-unpacked/Keimenon.exe`         | Directory               | Complete standalone packaged executable                            |
 
@@ -55,12 +55,12 @@ Because continuous physical time cannot be manufactured, the 14-day continuous n
    - Client users can navigate Conversations and Workspaces directly from Dashboard mode while administrative surfaces remain backend-gated.
 5. **Real Native Gemma Generation:**
    - The packaged stdio inference helper executes the MSVC-compiled C++ LiteRT-LM addon (`litert_node_bindings.node`).
-   - Execution is genuinely asynchronous (`napi_create_async_work`), applies `maxTokens`, supports non-blocking cancellation via `g_activeSession`, and routes all native diagnostics to stderr.
-   - Verified candidate registry pins exact expected sizes and SHA-256 digests; the downloader enforces both before announcing installed state.
+   - Execution is genuinely asynchronous (`napi_create_async_work`), serializes concurrent generations (`g_generationExecutionMutex`), tracks active session lifetime safely (`g_activeSessionMutex`, `InFlightGuard`), supports non-blocking cancellation, and routes all native diagnostics to stderr.
+   - Verified candidate registry pins immutable upstream Hugging Face git commit hashes, sizes, and SHA-256 digests; the downloader enforces both before announcing installed state.
 6. **Provenance & Evidence Integrity:**
    - `AgentRun` records actor principal, provider, model, context, duration, and status.
    - Server-side validation actively filters and rejects any invented or out-of-scope evidence references returned by synthesis before creating `USED_EVIDENCE` graph edges.
-   - Semantic UI test IDs (`user-message`, `assistant-message`, `message-bubble`, `message-content`, `view-provenance-button`) allow reliable browser interaction and verification.
+   - E2E product loop strictly requires non-empty evidence in source-bound conversations, with a separate test verifying empty evidence in unbound conversations.
 
 ---
 
@@ -78,19 +78,19 @@ All required release checks passed with reproducible evidence recorded in `docs/
 | `npm run sqlite:check`                       | 0         | WAL mode, foreign keys, busy_timeout=5000, `integrity_check=ok`                                                                      |
 | `npm run ops:factory-reset:contract:check`   | 0         | Factory reset preserves canonical bootstrap data and admin credentials                                                               |
 | `npm run ops:vision-doc-sync:check`          | 0         | Clean checkout documentation check passed                                                                                            |
-| `npm run rc:check:native`                    | 0         | 34 tests passed: 11 tests in bindings (including real C++ MSVC addon execution) + 23 tests in API native backend & synthesis runtime |
-| `npm run test`                               | 0         | 28/28 turbo test tasks succeeded across monorepo; 93/93 test files passed (852 tests) in `@keimenon/api`                             |
+| `npm run rc:check:native`                    | 0         | 37 tests passed: 11 tests in bindings (including real C++ MSVC addon execution) + 26 tests in API native backend & synthesis runtime |
+| `npm run test`                               | 0         | 28/28 turbo test tasks succeeded across monorepo; 93/93 test files passed (855 tests in `@keimenon/api`, 307 in `@keimenon/web`)     |
 | `npm run build`                              | 0         | 14/14 build tasks succeeded; MSVC C++ compiler compiled `litert_node_bindings.node`                                                  |
 | `npm run test:auth`                          | 0         | 10/10 auth integration tests passed against live local API instance                                                                  |
 | `npm run migrate:to-local:dry-run`           | 0         | Local storage migration simulation succeeded                                                                                         |
-| `npm run rc:check`                           | 0         | 22/22 Playwright browser tests passed (visual, selection stack, chunked upload, full product loop)                                   |
+| `npm run rc:check`                           | 0         | 23/23 Playwright browser tests passed (visual, selection stack, chunked upload, full product loop source-bound & unbound)            |
 | `npm run e2e:golden-path:slo`                | 0         | Real import/review timing metrics collected                                                                                          |
 | `npm run ops:golden-path:slo:eval`           | 0         | Measured timings evaluated against threshold boundaries: `[golden-path-slo] OK`                                                      |
-| `npm run perf:lod:burnin:quick`              | 0         | 10k (avg=188ms, p95=201ms, 0 failures) and 50k (avg=3076ms, p95=4756ms, 0 failures) passed                                           |
+| `npm run perf:lod:burnin:quick`              | 0         | 10k (avg=205ms, p95=222ms, 0 failures) and 50k (avg=3029ms, p95=4904ms, 0 failures) passed                                           |
 | `npm run ops:rollout-rollback:drill:quick`   | 0         | Kill-switch scenarios, fallback degradation, and recovery simulation passed                                                          |
 | `npm run ops:gate-e:required-checks:sync`    | 0         | Required checks synchronized with Gate-E workflow                                                                                    |
 | `node scripts/ops/gate-e-evidence-bundle.js` | 0         | Gate-E summary [GREEN]: Overall pass=true, E2E=success, LOD=pass, Drill=pass                                                         |
-| `npm run rc:check:desktop`                   | 0         | Packaged `Keimenon Setup 0.1.0.exe` (104,976,940 bytes) with automatic host ABI restoration                                          |
+| `npm run rc:check:desktop`                   | 0         | Packaged `Keimenon Setup 0.1.0.exe` (104,973,795 bytes) with automatic host ABI restoration                                          |
 
 ### Metric Counts:
 

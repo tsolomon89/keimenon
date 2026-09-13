@@ -75,7 +75,19 @@ static FnResponsesGetNumCandidates fnResponsesGetNum = nullptr;
 static FnResponsesGetResponseTextAt fnResponsesGetText = nullptr;
 static FnResponsesDelete fnResponsesDelete = nullptr;
 
+#include <atomic>
+#include <condition_variable>
+#include <chrono>
+
 static std::mutex g_inferenceMutex;
+static std::mutex g_generationExecutionMutex;
+static std::mutex g_activeSessionMutex;
+static std::mutex g_inFlightMutex;
+static std::condition_variable g_inFlightCv;
+static std::atomic<int> g_inFlightGenerations{0};
+static LiteRtLmSession* g_activeSession = nullptr;
+static std::atomic<bool> g_isGenerating{false};
+
 static LiteRtLmEngine* g_engine = nullptr;
 static LiteRtLmSession* g_session = nullptr;
 static bool g_isModelLoaded = false;
@@ -235,6 +247,22 @@ static napi_value BindingStatus(napi_env env, napi_callback_info info) {
 static napi_value UnloadModel(napi_env env, napi_callback_info info) {
     std::lock_guard<std::mutex> lock(g_inferenceMutex);
 
+    // Cancel any active generation in progress
+    {
+        std::lock_guard<std::mutex> sessLock(g_activeSessionMutex);
+        if (g_activeSession && fnSessionCancelProcess) {
+            fnSessionCancelProcess(g_activeSession);
+        }
+    }
+
+    // Wait for in-flight generations to safely finish or abort
+    {
+        std::unique_lock<std::mutex> drainLock(g_inFlightMutex);
+        g_inFlightCv.wait_for(drainLock, std::chrono::milliseconds(5000), []() {
+            return g_inFlightGenerations.load() == 0;
+        });
+    }
+
     if (g_session && fnSessionDelete) {
         fnSessionDelete(g_session);
         g_session = nullptr;
@@ -313,8 +341,20 @@ static napi_value LoadModel(napi_env env, napi_callback_info info) {
         return promise;
     }
 
-    // Unload existing session if loaded
+    // Unload existing session if loaded, ensuring in-flight work drains
     if (g_isModelLoaded) {
+        {
+            std::lock_guard<std::mutex> sessLock(g_activeSessionMutex);
+            if (g_activeSession && fnSessionCancelProcess) {
+                fnSessionCancelProcess(g_activeSession);
+            }
+        }
+        {
+            std::unique_lock<std::mutex> drainLock(g_inFlightMutex);
+            g_inFlightCv.wait_for(drainLock, std::chrono::milliseconds(5000), []() {
+                return g_inFlightGenerations.load() == 0;
+            });
+        }
         if (g_session && fnSessionDelete) fnSessionDelete(g_session);
         if (g_engine && fnEngineDelete) fnEngineDelete(g_engine);
         g_session = nullptr;
@@ -385,11 +425,6 @@ static napi_value LoadModel(napi_env env, napi_callback_info info) {
     return promise;
 }
 
-#include <atomic>
-
-static std::atomic<LiteRtLmSession*> g_activeSession{nullptr};
-static std::atomic<bool> g_isGenerating{false};
-
 struct GenerateCarrier {
     napi_async_work work;
     napi_deferred deferred;
@@ -402,9 +437,11 @@ struct GenerateCarrier {
 
 // JS: cancel() -> Promise<void>
 static napi_value Cancel(napi_env env, napi_callback_info info) {
-    LiteRtLmSession* active = g_activeSession.load();
-    if (active && fnSessionCancelProcess) {
-        fnSessionCancelProcess(active);
+    {
+        std::lock_guard<std::mutex> lock(g_activeSessionMutex);
+        if (g_activeSession && fnSessionCancelProcess) {
+            fnSessionCancelProcess(g_activeSession);
+        }
     }
 
     napi_deferred deferred;
@@ -420,26 +457,47 @@ static napi_value Cancel(napi_env env, napi_callback_info info) {
 static void GenerateExecute(napi_env env, void* data) {
     GenerateCarrier* carrier = static_cast<GenerateCarrier*>(data);
 
-    // Serialize inferences across worker threads
-    std::unique_lock<std::mutex> lock(g_inferenceMutex);
-
-    if (!g_isModelLoaded || !g_engine || !fnEngineCreateSession || !fnSessionGenerateContent) {
-        carrier->success = false;
-        carrier->error = "Inference engine is not loaded or ready.";
-        return;
+    // Track in-flight operations with RAII drain notification
+    {
+        std::lock_guard<std::mutex> lk(g_inFlightMutex);
+        g_inFlightGenerations++;
     }
 
-    LiteRtLmSessionConfig* sessionConfig = nullptr;
-    if (fnSessionConfigCreate) {
-        sessionConfig = fnSessionConfigCreate();
-        if (sessionConfig && fnSessionConfigSetMaxOutputTokens) {
-            fnSessionConfigSetMaxOutputTokens(sessionConfig, carrier->maxTokens > 0 ? carrier->maxTokens : 1024);
+    struct InFlightGuard {
+        ~InFlightGuard() {
+            std::lock_guard<std::mutex> lk(g_inFlightMutex);
+            g_inFlightGenerations--;
+            if (g_inFlightGenerations == 0) {
+                g_inFlightCv.notify_all();
+            }
         }
-    }
+    } inFlightGuard;
 
-    LiteRtLmSession* session = fnEngineCreateSession(g_engine, sessionConfig);
-    if (sessionConfig && fnSessionConfigDelete) {
-        fnSessionConfigDelete(sessionConfig);
+    // Serialize inferences across worker threads so one generation cannot step on another
+    std::unique_lock<std::mutex> genLock(g_generationExecutionMutex);
+
+    LiteRtLmSession* session = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(g_inferenceMutex);
+
+        if (!g_isModelLoaded || !g_engine || !fnEngineCreateSession || !fnSessionGenerateContent) {
+            carrier->success = false;
+            carrier->error = "Inference engine is not loaded or ready.";
+            return;
+        }
+
+        LiteRtLmSessionConfig* sessionConfig = nullptr;
+        if (fnSessionConfigCreate) {
+            sessionConfig = fnSessionConfigCreate();
+            if (sessionConfig && fnSessionConfigSetMaxOutputTokens) {
+                fnSessionConfigSetMaxOutputTokens(sessionConfig, carrier->maxTokens > 0 ? carrier->maxTokens : 1024);
+            }
+        }
+
+        session = fnEngineCreateSession(g_engine, sessionConfig);
+        if (sessionConfig && fnSessionConfigDelete) {
+            fnSessionConfigDelete(sessionConfig);
+        }
     }
 
     if (!session) {
@@ -448,12 +506,12 @@ static void GenerateExecute(napi_env env, void* data) {
         return;
     }
 
-    // Publish active session pointer so Cancel() can reach it concurrently without waiting on mutex
-    g_activeSession.store(session);
-    g_isGenerating.store(true);
-
-    // Release lock during long-running generation so cancel() and status() are non-blocking
-    lock.unlock();
+    // Publish active session pointer so Cancel() can reach it concurrently without waiting on inference mutex
+    {
+        std::lock_guard<std::mutex> lock(g_activeSessionMutex);
+        g_activeSession = session;
+        g_isGenerating.store(true);
+    }
 
     LiteRtLmInputData inputData;
     inputData.type = kLiteRtLmInputDataTypeText;
@@ -462,9 +520,12 @@ static void GenerateExecute(napi_env env, void* data) {
 
     LiteRtLmResponses* responses = fnSessionGenerateContent(session, &inputData, 1);
 
-    // Clear active session pointer immediately after generation completes/aborts
-    g_activeSession.store(nullptr);
-    g_isGenerating.store(false);
+    // Clear active session pointer under lock BEFORE session deletion to eliminate use-after-free
+    {
+        std::lock_guard<std::mutex> lock(g_activeSessionMutex);
+        g_activeSession = nullptr;
+        g_isGenerating.store(false);
+    }
 
     if (!responses) {
         if (fnSessionDelete) {

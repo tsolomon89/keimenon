@@ -178,17 +178,117 @@ test.describe('Full Browser Product Loop E2E', () => {
       timeout: 10000,
     });
 
-    // 19. Assert either evidence items or empty evidence state renders
+    // 19. Assert evidence items render in source-bound acceptance scenario
+    const provenanceHeading = provenanceModal.getByRole('heading', {
+      name: /Evidence Provenance (Subgraph|Workspace)/i,
+    });
+    await expect(provenanceHeading).toBeVisible();
+
+    // In this source-bound acceptance scenario, evidence MUST be bound; empty state is forbidden
     const emptyState = provenanceModal.getByText(/No explicit evidence was bound to this run/i);
-    const hasEmptyState = await emptyState.isVisible().catch(() => false);
+    await expect(emptyState).not.toBeVisible();
+  });
 
-    // We expect the mock provider to not have explicit evidence attached unless we mocked that too.
-    // If it has evidence, it will show "Evidence Provenance Workspace" or "Evidence Provenance Subgraph"
-    const hasEvidence = await provenanceModal
-      .getByText(/Evidence Provenance (Subgraph|Workspace)/i)
-      .isVisible()
-      .catch(() => false);
+  test('[Unbound Conversation Loop] displays empty evidence panel when conversation has no source context', async ({
+    page,
+    apiRequest,
+  }) => {
+    // 1. Get auth token
+    const token = await page.evaluate(() => window.localStorage.getItem('keimenon_token'));
+    if (!token) {
+      throw new Error('Authentication token not found in localStorage after login');
+    }
+    const headers = { Authorization: `Bearer ${token}` };
 
-    expect(hasEvidence || hasEmptyState).toBeTruthy();
+    // 2. Ensure agent principal exists
+    const principalsRes = await apiRequest.get('/api/v1/principals?kind=agent', { headers });
+    expect(principalsRes.ok()).toBeTruthy();
+    const principalsBody = await principalsRes.json();
+    let agentPrincipalId = principalsBody.principals?.[0]?.id;
+
+    if (!agentPrincipalId) {
+      const createRes = await apiRequest.post('/api/v1/principals', {
+        headers,
+        data: { display_name: 'E2E Agent', principal_kind: 'agent' },
+      });
+      expect(createRes.ok()).toBeTruthy();
+      const createBody = await createRes.json();
+      agentPrincipalId = createBody.principal.id;
+    }
+
+    // 3. Create an unbound conversation directly via API
+    const convRes = await apiRequest.post('/api/v1/conversations', {
+      headers,
+      data: {
+        title: 'Unbound Conversation',
+        agent_principal_id: agentPrincipalId,
+        context_spec: { source_ids: [], group_ids: [] },
+      },
+    });
+    expect(convRes.ok()).toBeTruthy();
+    const convBody = await convRes.json();
+    const conversationId = convBody.conversation.id;
+
+    // 4. Navigate to /keimenon and dismiss welcome modal if present
+    await page.goto('/keimenon');
+    await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30000 });
+
+    const welcomeModal = page.getByRole('dialog', { name: /Welcome to Keimenon!/i });
+    try {
+      await welcomeModal.waitFor({ state: 'visible', timeout: 5000 });
+      await welcomeModal.getByRole('button', { name: /Close welcome modal/i }).click();
+      await welcomeModal.waitFor({ state: 'hidden', timeout: 5000 });
+    } catch (e) {
+      // It's okay if it doesn't appear
+    }
+
+    // Switch to Dashboard
+    await page.getByRole('button', { name: 'Dashboard' }).click();
+
+    // Ensure Conversation Browser view is selected
+    const convTabBtn = page.getByTitle('Conversation Browser');
+    if (await convTabBtn.isVisible()) {
+      await convTabBtn.click();
+    }
+
+    // In ConversationBrowser, click the unbound conversation
+    const convCard = page.getByText('Unbound Conversation').first();
+    await expect(convCard).toBeVisible({ timeout: 15000 });
+    await convCard.click();
+
+    // In ConversationSynthesisView, click Launch Runtime
+    const launchBtn = page.getByRole('button', { name: 'Launch Runtime', exact: true });
+    await expect(launchBtn).toBeVisible({ timeout: 10000 });
+    await launchBtn.click();
+
+    // Wait for the message input
+    await expect(page.getByPlaceholder('Message runtime...')).toBeVisible({ timeout: 15000 });
+
+    // 5. Send message
+    const responsePromise = page.waitForResponse(
+      (response) => response.url().includes('/messages') && response.request().method() === 'POST'
+    );
+    await page
+      .getByPlaceholder('Message runtime...')
+      .fill('Explain general concept without context.');
+    await page.keyboard.press('Enter');
+    await responsePromise;
+
+    // 6. Assert assistant message and provenance button appear
+    const assistantMessage = page.locator('.message-bubble:not(.user-message)').last();
+    await expect(assistantMessage).toBeVisible({ timeout: 15000 });
+
+    const provenanceBtn = page.getByRole('button', { name: /View Provenance/i }).last();
+    await expect(provenanceBtn).toBeVisible({ timeout: 10000 });
+    await provenanceBtn.click();
+
+    // 7. In this unbound scenario, the empty evidence state is legitimately expected
+    const provenanceModal = page.getByRole('dialog').filter({ hasText: /Provenance/i });
+    await expect(provenanceModal).toBeVisible();
+    await expect(
+      provenanceModal.getByText(
+        /(No explicit evidence was bound to this run|This run terminated with an error\. No context evidence was bound or processed\.)/i
+      )
+    ).toBeVisible({ timeout: 10000 });
   });
 });

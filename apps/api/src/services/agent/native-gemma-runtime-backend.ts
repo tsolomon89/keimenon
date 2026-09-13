@@ -3,16 +3,23 @@ import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { StringDecoder } from 'string_decoder';
 import { modelManager } from './model-manager';
 import { CandidateNotFoundError } from './errors';
 
+interface PendingRequestEntry {
+  resolve: (res: any) => void;
+  reject: (err: any) => void;
+  timer?: NodeJS.Timeout;
+}
+
 export class NativeGemmaRuntimeBackend {
   private helper: ChildProcess | null = null;
-  private pendingRequests: Map<
-    number,
-    { resolve: (res: any) => void; reject: (err: any) => void }
-  > = new Map();
+  private pendingRequests: Map<number, PendingRequestEntry> = new Map();
   private nextId = 1;
+  private stdoutBuffer = '';
+  private stdoutDecoder = new StringDecoder('utf8');
+  private loadedCandidateId: string | null = null;
 
   private resolveHelperPath(): string | null {
     if (
@@ -28,6 +35,52 @@ export class NativeGemmaRuntimeBackend {
     }
 
     return null;
+  }
+
+  public handleStdoutLine(line: string): void {
+    try {
+      const res = JSON.parse(line);
+      if (res.id !== undefined && this.pendingRequests.has(res.id)) {
+        const entry = this.pendingRequests.get(res.id)!;
+        this.pendingRequests.delete(res.id);
+        if (entry.timer) {
+          clearTimeout(entry.timer);
+        }
+        if (!res.ok && res.error) {
+          entry.reject(new Error(`[Helper Error] ${res.error.code}: ${res.error.message}`));
+        } else if (res.error) {
+          // fallback for old format
+          entry.reject(res.error);
+        } else {
+          entry.resolve(res.result);
+        }
+      }
+    } catch (e: any) {
+      console.error(`[NativeHelper] JSON Parse Error on stdout line: ${e.message}`, line);
+    }
+  }
+
+  public processStdoutChunk(chunk: Buffer | string): void {
+    if (typeof chunk === 'string') {
+      this.stdoutBuffer += chunk;
+    } else {
+      this.stdoutBuffer += this.stdoutDecoder.write(chunk);
+    }
+    let newlineIndex: number;
+    while ((newlineIndex = this.stdoutBuffer.indexOf('\n')) !== -1) {
+      const line = this.stdoutBuffer.slice(0, newlineIndex);
+      this.stdoutBuffer = this.stdoutBuffer.slice(newlineIndex + 1);
+      if (!line.trim()) continue;
+      this.handleStdoutLine(line);
+    }
+
+    // Bounded buffer protection: prevent memory leak if malformed output lacks newlines
+    if (this.stdoutBuffer.length > 10 * 1024 * 1024) {
+      console.error(
+        '[NativeHelper] Stdout buffer exceeded 10MB limit without newline delimiter. Clearing buffer.'
+      );
+      this.stdoutBuffer = '';
+    }
   }
 
   private async getOrStartHelper(): Promise<ChildProcess> {
@@ -48,39 +101,29 @@ export class NativeGemmaRuntimeBackend {
       shell: false,
     });
 
+    this.stdoutBuffer = '';
+    this.stdoutDecoder = new StringDecoder('utf8');
+
     this.helper.stderr?.on('data', (data) => {
       console.error(`[NativeHelper] STDERR: ${data}`);
     });
 
-    this.helper.stdout?.on('data', (data) => {
-      const lines = data
-        .toString()
-        .split('\n')
-        .filter((l: string) => l.trim().length > 0);
-      for (const line of lines) {
-        try {
-          const res = JSON.parse(line);
-          if (res.id !== undefined && this.pendingRequests.has(res.id)) {
-            const { resolve, reject } = this.pendingRequests.get(res.id)!;
-            this.pendingRequests.delete(res.id);
-            if (!res.ok && res.error) {
-              reject(new Error(`[Helper Error] ${res.error.code}: ${res.error.message}`));
-            } else if (res.error) {
-              // fallback for old format
-              reject(res.error);
-            } else {
-              resolve(res.result);
-            }
-          }
-        } catch (e: any) {
-          console.error(`[NativeHelper] JSON Parse Error on stdout: ${e.message}`, line);
-        }
-      }
+    this.helper.stdout?.on('data', (chunk: Buffer) => {
+      this.processStdoutChunk(chunk);
+    });
+
+    this.helper.on('error', (err) => {
+      console.error(`[NativeHelper] Process error: ${err.message}`);
     });
 
     this.helper.on('exit', () => {
       this.helper = null;
+      this.loadedCandidateId = null;
+      this.stdoutBuffer = '';
       for (const req of this.pendingRequests.values()) {
+        if (req.timer) {
+          clearTimeout(req.timer);
+        }
         req.reject(new Error('Helper process exited'));
       }
       this.pendingRequests.clear();
@@ -98,21 +141,23 @@ export class NativeGemmaRuntimeBackend {
           ? timeoutMs
           : parseInt(process.env.KEIMENON_INFERENCE_HELPER_TIMEOUT_MS || '5000', 10);
       return new Promise((resolve, reject) => {
-        this.pendingRequests.set(id, { resolve, reject });
-        helper.stdin?.write(JSON.stringify({ jsonrpc: '2.0', method, params, id }) + '\n');
-
-        // Timeout
-        setTimeout(() => {
+        const timer = setTimeout(() => {
           if (this.pendingRequests.has(id)) {
+            const entry = this.pendingRequests.get(id);
             this.pendingRequests.delete(id);
             if (this.helper) {
               console.error(`[NativeHelper] Request timeout. Killing helper process.`);
               this.helper.kill();
               this.helper = null;
             }
-            reject(new Error(`Helper request ${method} timed out`));
+            if (entry) {
+              entry.reject(new Error(`Helper request ${method} timed out`));
+            }
           }
         }, effectiveTimeout);
+
+        this.pendingRequests.set(id, { resolve, reject, timer });
+        helper.stdin?.write(JSON.stringify({ jsonrpc: '2.0', method, params, id }) + '\n');
       });
     } catch (e: any) {
       throw new Error(`Failed to send request to helper: ${e.message}`);
@@ -186,7 +231,47 @@ export class NativeGemmaRuntimeBackend {
 
   public async loadModel(candidateId: string): Promise<any> {
     const absPath = await this.getAbsolutePathForCandidate(candidateId);
-    return this.sendRequest('load_model', { model_path: absPath });
+    const res = await this.sendRequest('load_model', { model_path: absPath });
+    if (res && (res.success === true || res.ok === true)) {
+      this.loadedCandidateId = candidateId;
+    }
+    return res;
+  }
+
+  public async unloadModel(): Promise<void> {
+    try {
+      await this.sendRequest('unload_model');
+    } finally {
+      this.loadedCandidateId = null;
+    }
+  }
+
+  public getLoadedCandidateId(): string | null {
+    return this.loadedCandidateId;
+  }
+
+  public async getLoadedModelInfo(): Promise<{
+    model_id: string | null;
+    candidate_id: string | null;
+    checksum: string | null;
+  }> {
+    if (!this.loadedCandidateId) {
+      return { model_id: null, candidate_id: null, checksum: null };
+    }
+    try {
+      const manifest = await modelManager.getManifestByCandidateId(this.loadedCandidateId);
+      return {
+        model_id: manifest?.model_id || this.loadedCandidateId,
+        candidate_id: this.loadedCandidateId,
+        checksum: manifest?.checksum || null,
+      };
+    } catch (_) {
+      return {
+        model_id: this.loadedCandidateId,
+        candidate_id: this.loadedCandidateId,
+        checksum: null,
+      };
+    }
   }
 
   public async getHelperStatus(): Promise<any> {
@@ -225,13 +310,23 @@ export class NativeGemmaRuntimeBackend {
         });
       }
 
+      let observedModelId: string | null = null;
+      if (res.state === 'model_loaded' && this.loadedCandidateId) {
+        try {
+          const manifest = await modelManager.getManifestByCandidateId(this.loadedCandidateId);
+          observedModelId = manifest?.model_id || this.loadedCandidateId;
+        } catch (_) {
+          observedModelId = this.loadedCandidateId;
+        }
+      }
+
       return {
         model_family: 'gemma',
         preferred_backend: 'native-gemma',
         state: res.state || 'runtime_unimplemented',
         can_run_offline: true,
         requires_admin: false,
-        model_id: null,
+        model_id: observedModelId,
         message: res.message || 'Keimenon native local Gemma runtime check failed.',
         next_actions,
       };

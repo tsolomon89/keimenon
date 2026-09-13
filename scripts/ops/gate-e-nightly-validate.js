@@ -77,14 +77,13 @@ function statusBadge(status) {
   return '[RED]';
 }
 
-function main() {
-  const args = parseArgs(process.argv.slice(2));
+function evaluateGateENightly(options) {
   const warnings = [];
   const failures = [];
 
-  const evidence = readJsonIfExists(args.evidenceReport);
+  const evidence = readJsonIfExists(options.evidenceReport);
   if (!evidence) {
-    failures.push(`Missing evidence report: ${path.resolve(args.evidenceReport)}`);
+    failures.push(`Missing evidence report: ${path.resolve(options.evidenceReport)}`);
   }
 
   let evidenceConsistent = false;
@@ -110,14 +109,14 @@ function main() {
     }
   }
 
-  const streak = readJsonIfExists(args.streakReport);
+  const streak = readJsonIfExists(options.streakReport);
   let streakValid = false;
   if (!streak) {
-    if (args.requireStreak) {
-      failures.push(`Missing streak report: ${path.resolve(args.streakReport)}`);
+    if (options.requireStreak) {
+      failures.push(`Missing streak report: ${path.resolve(options.streakReport)}`);
     } else {
       warnings.push(
-        `Streak report not found: ${path.resolve(args.streakReport)} (expected outside scheduled nightly runs)`
+        `Streak report not found: ${path.resolve(options.streakReport)} (expected outside scheduled nightly runs)`
       );
     }
   } else {
@@ -128,15 +127,48 @@ function main() {
     if (!hasFields) {
       failures.push('Streak report is missing required fields (target, streak, meetsTarget).');
     } else {
-      if (streak.target !== args.targetStreak) {
+      if (streak.target !== options.targetStreak) {
         warnings.push(
-          `Streak target mismatch: report.target=${streak.target}, expected=${args.targetStreak}`
+          `Streak target mismatch: report.target=${streak.target}, expected=${options.targetStreak}`
         );
       }
-      if (streak.meetsTarget && streak.streak < args.targetStreak) {
+      if (streak.meetsTarget && streak.streak < options.targetStreak) {
         failures.push(
-          `Streak report inconsistent: meetsTarget=true but streak=${streak.streak} < ${args.targetStreak}`
+          `Streak report inconsistent: meetsTarget=true but streak=${streak.streak} < ${options.targetStreak}`
         );
+      }
+
+      // Hard enforcement for final release signoff (--require-streak)
+      if (options.requireStreak) {
+        if (!streak.meetsTarget || streak.streak < options.targetStreak) {
+          failures.push(
+            `Streak requirement not satisfied: current streak is ${streak.streak}, required target is ${options.targetStreak} (meetsTarget=${streak.meetsTarget})`
+          );
+        }
+
+        // Calendar-day validation if historical runs are inspected
+        if (
+          Array.isArray(streak.historicalRunsInspected) &&
+          streak.historicalRunsInspected.length > 0
+        ) {
+          const dateMap = new Map();
+          for (const run of streak.historicalRunsInspected) {
+            if (run.conclusion !== 'success') {
+              failures.push(
+                `Historical run ${run.id || run.runNumber} is not successful (conclusion=${run.conclusion})`
+              );
+            }
+            if (run.createdAt) {
+              const d = new Date(run.createdAt).toISOString().slice(0, 10);
+              dateMap.set(d, (dateMap.get(d) || 0) + 1);
+            }
+          }
+          if (dateMap.size < options.targetStreak) {
+            failures.push(
+              `Calendar streak requirement not satisfied: observed ${dateMap.size} distinct UTC dates, required ${options.targetStreak}`
+            );
+          }
+        }
       }
       streakValid = true;
     }
@@ -150,8 +182,8 @@ function main() {
     status,
     failures,
     warnings,
-    evidenceReport: path.resolve(args.evidenceReport),
-    streakReport: path.resolve(args.streakReport),
+    evidenceReport: path.resolve(options.evidenceReport),
+    streakReport: path.resolve(options.streakReport),
     evidencePass: evidence ? evidence.pass === true : null,
     evidenceConsistent,
     streakSeen: Boolean(streak),
@@ -163,16 +195,23 @@ function main() {
           meetsTarget: streak.meetsTarget,
         }
       : null,
-    requireStreak: args.requireStreak,
+    requireStreak: options.requireStreak,
   };
 
   const summary = [
     `## Gate-E Nightly Validation ${statusBadge(status)} ${status.toUpperCase()}`,
     '',
     `- Overall pass: ${pass ? 'true' : 'false'}`,
-    `- Evidence file: \`${path.resolve(args.evidenceReport)}\``,
-    `- Streak file: \`${path.resolve(args.streakReport)}\``,
-    `- Require streak file: ${args.requireStreak ? 'true' : 'false'}`,
+    `- Workflow: \`.github/workflows/gate-e-hardening.yml\``,
+    `- Evidence file: \`${path.resolve(options.evidenceReport)}\``,
+    `- Streak file: \`${path.resolve(options.streakReport)}\``,
+    `- Require streak file: ${options.requireStreak ? 'true' : 'false'}`,
+    ...(streak
+      ? [
+          `- Current streak: ${streak.streak}/${streak.target}`,
+          `- Meets target: ${streak.meetsTarget ? 'true' : 'false'}`,
+        ]
+      : []),
     '',
     '### Failures',
     ...(failures.length > 0 ? failures.map((item) => `- ${item}`) : ['- none']),
@@ -181,25 +220,40 @@ function main() {
     ...(warnings.length > 0 ? warnings.map((item) => `- ${item}`) : ['- none']),
   ].join('\n');
 
+  return { pass, status, payload, summary, failures, warnings };
+}
+
+function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const result = evaluateGateENightly(args);
+
   ensureParentDir(args.output);
-  fs.writeFileSync(path.resolve(args.output), JSON.stringify(payload, null, 2), 'utf8');
+  fs.writeFileSync(path.resolve(args.output), JSON.stringify(result.payload, null, 2), 'utf8');
   ensureParentDir(args.summaryOutput);
-  fs.writeFileSync(path.resolve(args.summaryOutput), summary, 'utf8');
+  fs.writeFileSync(path.resolve(args.summaryOutput), result.summary, 'utf8');
 
   console.log(`[gate-e-nightly-validate] wrote ${path.resolve(args.output)}`);
   console.log(`[gate-e-nightly-validate] wrote ${path.resolve(args.summaryOutput)}`);
 
-  if (!pass) {
+  if (!result.pass) {
     console.error('[gate-e-nightly-validate] FAILED');
     process.exit(1);
   }
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(
-    `[gate-e-nightly-validate] ${error instanceof Error ? error.message : String(error)}`
-  );
-  process.exit(1);
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(
+      `[gate-e-nightly-validate] ${error instanceof Error ? error.message : String(error)}`
+    );
+    process.exit(1);
+  }
 }
+
+module.exports = {
+  evaluateGateENightly,
+  parseArgs,
+  computeStatus,
+};

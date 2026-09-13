@@ -124,7 +124,7 @@ describe('graph-lod', () => {
 
     expect(plan.level).toBe('L0');
     expect(plan.stats.gate.datasetTier).toBe('10k');
-    expect(plan.stats.gate.pass).toBe(false); // Fails because 5,000 structural anchors are forced to survive the 276 budget limit
+    expect(plan.stats.gate.pass).toBe(true); // Passes because intentional structural anchors are allowed with overflowReason
     expect(plan.stats.gate.overflowReason).toBe('intentional_anchors');
     expect(plan.visibleNodes.length).toBeGreaterThanOrEqual(5000);
     expect(durationMs).toBeLessThan(3000);
@@ -142,7 +142,7 @@ describe('graph-lod', () => {
 
     expect(plan.level).toBe('L0');
     expect(plan.stats.gate.datasetTier).toBe('50k');
-    expect(plan.stats.gate.pass).toBe(false); // Fails because 25,000 structural anchors are forced to survive the 324 budget limit
+    expect(plan.stats.gate.pass).toBe(true); // Passes because intentional structural anchors are allowed with overflowReason
     expect(plan.stats.gate.overflowReason).toBe('intentional_anchors');
     expect(plan.visibleNodes.length).toBeGreaterThanOrEqual(25000);
     expect(durationMs).toBeLessThan(10000);

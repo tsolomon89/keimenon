@@ -37,7 +37,10 @@ test('Desktop app launches and renders login shell', async () => {
             (await window.getByText('Welcome to Keimenon!', { exact: false }).count()) > 0;
           const hasDashboard =
             (await window.getByText('Manager Dashboard', { exact: false }).count()) > 0;
-          return hasLogin || hasWelcomeModal || hasDashboard;
+          const hasStartupGate =
+            (await window.getByText('Preparing backend services', { exact: false }).count()) > 0 ||
+            (await window.getByText('Keimenon Startup', { exact: false }).count()) > 0;
+          return hasLogin || hasWelcomeModal || hasDashboard || hasStartupGate;
         },
         { timeout: 15000 }
       )

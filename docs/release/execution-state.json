@@ -1,119 +1,81 @@
 {
-  "version": "1.0.0",
-  "baseSha": "fc5050e0f46c764443fdb1042a70ad8052cc491e",
-  "currentSha": "0579b7099ca466b9c0cc38f065369b2cd8d6ad42",
+  "version": "1.1.0",
+  "baseSha": "d1be4da319e7be045cbaedfb0961a7503ee38009",
+  "currentSha": "d1be4da319e7be045cbaedfb0961a7503ee38009",
   "branch": "release/rc-readiness",
-  "lastUpdated": "2026-09-12T22:35:00Z",
+  "lastUpdated": "2026-09-13T08:35:00Z",
   "status": "NOT_PRODUCTION_READY_EXTERNAL_BLOCKERS",
-  "verdictReason": "All 9 audit findings (A-I) and 12 RC gaps (K-RC-01 through K-RC-12) resolved, all required local and browser release gates pass, Windows desktop installer built and verified. Gate-E signoff requires 14 consecutive nightly runs in real time (0/14 elapsed), which cannot be manufactured.",
-  "lastVerifiedChange": "Resolved Findings A-I: connected native Gemma synthesis, asynchronous cancellable C++ addon, real native integration gate, clean-checkout vision doc sync, hardened model checksum verification, proven provenance integrity, uncorrupted SLO baseline, synchronized desktop web-dist bundle, and packaged frozen Windows installer.",
-  "nextConcreteAction": "Push integration branch release/rc-readiness, open/update draft PR into main, and resume nightly workflow runs until 14-day observation streak elapses.",
+  "verdictReason": "All actionable engineering, native compilation, model integrity hardening, concurrency lifetime fixes, stdio framing repairs, full product loop verification, and Windows desktop packaging are complete and verified by authentic test execution. Gate-E signoff requires 14 consecutive nightly runs in real time (0/14 elapsed), which is an external calendar blocker that cannot be fabricated.",
+  "lastVerifiedChange": "Resolved model registry integrity with immutable Hugging Face git revisions (E2B b3ca0d2f076785a8f4b2219ddbd2bdb99954eae1, E4B 2eee7ac325f20eb8c9ac1d0e972f7c84663062da); overhauled native binding concurrency, lifetime, and session mutexes; fixed stdio UTF-8 line framing and active model_id tracking; repaired nightly validation calendar semantics and streak gating; tightened full-product-loop provenance assertions; and packaged verified Windows desktop installer.",
+  "nextConcreteAction": "Execute the scheduled nightly workflow (.github/workflows/gate-e-hardening.yml) on distinct calendar dates until the 14-consecutive-day observation window completes.",
   "releaseArtifact": {
     "path": "apps/desktop/out/Keimenon Setup 0.1.0.exe",
-    "sizeBytes": 104978826,
-    "sha256": "4CEE50F1927DB59A8ABE21B21C67C6CF371B64814CCF3463069048E6F0F9977D",
+    "sizeBytes": 104973795,
+    "sha256": "A226D726372AB66C6FC3C175AEECCCE6AA126DD9212E782EDEACF6C3E99369D6",
     "blockmap": "apps/desktop/out/Keimenon Setup 0.1.0.exe.blockmap"
   },
   "workQueue": [
     {
-      "id": "FINDING-A",
-      "area": "Native Synthesis Pipeline",
-      "title": "Connect conversation synthesis to real native generation",
-      "status": "VERIFIED",
-      "dependencies": ["FINDING-B"],
-      "targetFiles": [
-        "apps/inference-helper/src/index.ts",
-        "apps/api/src/services/agent/native-gemma-runtime-backend.ts",
-        "apps/api/src/services/agent/gemma-local-provider.ts",
-        "apps/api/src/services/agent/gemma-serializer.ts"
-      ]
-    },
-    {
-      "id": "FINDING-B",
-      "area": "Native Addon Execution",
-      "title": "Make native execution genuinely asynchronous and cancellable",
-      "status": "VERIFIED",
-      "dependencies": [],
-      "targetFiles": [
-        "packages/litert-node-bindings/native/binding.cc",
-        "apps/inference-helper/src/litert-adapter.ts"
-      ]
-    },
-    {
-      "id": "FINDING-C",
-      "area": "Native Testing Gate",
-      "title": "Separate native unit tests from actual runtime acceptance",
-      "status": "VERIFIED",
-      "dependencies": ["FINDING-B"],
-      "targetFiles": [
-        "packages/litert-node-bindings/src/__tests__/native-addon-integration.test.ts",
-        "package.json"
-      ]
-    },
-    {
-      "id": "FINDING-D",
-      "area": "Native Compilation & Release",
-      "title": "Make native release compilation mandatory and reproducible",
-      "status": "VERIFIED",
-      "dependencies": [],
-      "targetFiles": [".github/workflows/release.yml", ".github/workflows/ci.yml", "package.json"]
-    },
-    {
-      "id": "FINDING-E",
-      "area": "Documentation Gate",
-      "title": "Fix the documentation gate on a clean checkout",
-      "status": "VERIFIED",
-      "dependencies": [],
-      "targetFiles": [
-        ".gitignore",
-        "agent_context/AGENTS.md",
-        "agent_context/vision_gap_analysis.md"
-      ]
-    },
-    {
-      "id": "FINDING-F",
-      "area": "Model Acquisition & Integrity",
-      "title": "Enforce model identity and integrity before usable state",
+      "id": "MODEL_REGISTRY_INTEGRITY",
+      "area": "Model Acquisition & Registry",
+      "title": "Pin immutable Hugging Face git revisions, verified sizes, and SHA-256 digests",
       "status": "VERIFIED",
       "dependencies": [],
       "targetFiles": [
         "apps/api/src/services/agent/gemma-model-source-registry.ts",
-        "apps/api/src/services/agent/model-downloader.ts",
-        "apps/api/src/services/agent/model-manager.ts"
+        "apps/api/src/services/agent/__tests__/model-downloader.test.ts"
       ]
     },
     {
-      "id": "FINDING-G",
-      "area": "Product Loop & Provenance",
-      "title": "Prove the actual product loop and provenance",
+      "id": "NATIVE_ADDON_LIFETIME_CONCURRENCY",
+      "area": "Native Addon Execution",
+      "title": "Repair native addon lifetime, concurrency serialization, session protection, and safe drain",
       "status": "VERIFIED",
-      "dependencies": ["FINDING-A"],
+      "dependencies": [],
       "targetFiles": [
-        "apps/web/src/components/conversations/ConversationMessageRuntime.tsx",
-        "apps/api/src/services/conversation-message.service.ts",
-        "apps/api/src/__tests__/synthesis-runtime.test.ts",
-        "tests/e2e/full-product-loop.spec.ts"
+        "packages/litert-node-bindings/native/binding.cc",
+        "packages/litert-node-bindings/scripts/check-and-build.js"
       ]
     },
     {
-      "id": "FINDING-H",
-      "area": "Release Evidence Integrity",
-      "title": "Replace unsupported release evidence with observed results",
-      "status": "VERIFIED",
-      "dependencies": [],
-      "targetFiles": ["docs/release/verification-ledger.json", "docs/release/release-report.md"]
-    },
-    {
-      "id": "FINDING-I",
-      "area": "Performance & Operational Evidence",
-      "title": "Establish genuine performance and operational evidence",
+      "id": "STDIO_FRAMING_MODEL_TRACKING",
+      "area": "Inference Transport & Backend",
+      "title": "Repair stdio newline framing, UTF-8 split decoding, timer cleanup, and loaded model_id tracking",
       "status": "VERIFIED",
       "dependencies": [],
       "targetFiles": [
-        "scripts/ops/golden-path-slo-baseline.json",
-        "scripts/ops/evaluate-golden-path-slo.js",
-        "apps/web/src/lib/graph-lod.ts",
-        "scripts/perf/lod-burnin.ts"
+        "apps/api/src/services/agent/native-gemma-runtime-backend.ts",
+        "apps/api/src/services/agent/__tests__/native-gemma-runtime-backend.test.ts"
+      ]
+    },
+    {
+      "id": "NIGHTLY_VALIDATION_CALENDAR_SEMANTICS",
+      "area": "Operational Verification Tooling",
+      "title": "Enforce nonzero exit on insufficient streak without circular nightly failure, checking calendar dates",
+      "status": "VERIFIED",
+      "dependencies": [],
+      "targetFiles": [
+        "scripts/ops/gate-e-nightly-validate.js",
+        "scripts/ops/__tests__/gate-e-nightly-validate.test.ts"
+      ]
+    },
+    {
+      "id": "PRODUCT_LOOP_PROVENANCE_ASSERTION",
+      "area": "E2E & Provenance Acceptance",
+      "title": "Strictly require non-empty evidence in source-bound loop; separate unbound empty evidence check",
+      "status": "VERIFIED",
+      "dependencies": [],
+      "targetFiles": ["tests/e2e/full-product-loop.spec.ts"]
+    },
+    {
+      "id": "DESKTOP_PACKAGING_RELEASE",
+      "area": "Packaging & Distribution",
+      "title": "Package frozen Windows desktop release installer with synchronized web assets",
+      "status": "VERIFIED",
+      "dependencies": [],
+      "targetFiles": [
+        "apps/desktop/package.json",
+        "apps/desktop/resources/web-dist/.web-dist-manifest.json"
       ]
     }
   ],
