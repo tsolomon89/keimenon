@@ -1,17 +1,17 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "baseSha": "d1be4da319e7be045cbaedfb0961a7503ee38009",
-  "currentSha": "d1be4da319e7be045cbaedfb0961a7503ee38009",
+  "currentSha": "e4ecbdb6b970d3e98489c1776ab779d468912f57",
   "branch": "release/rc-readiness",
-  "lastUpdated": "2026-09-13T08:35:00Z",
+  "lastUpdated": "2026-09-13T22:05:00Z",
   "status": "NOT_PRODUCTION_READY_EXTERNAL_BLOCKERS",
-  "verdictReason": "All actionable engineering, native compilation, model integrity hardening, concurrency lifetime fixes, stdio framing repairs, full product loop verification, and Windows desktop packaging are complete and verified by authentic test execution. Gate-E signoff requires 14 consecutive nightly runs in real time (0/14 elapsed), which is an external calendar blocker that cannot be fabricated.",
-  "lastVerifiedChange": "Resolved model registry integrity with immutable Hugging Face git revisions (E2B b3ca0d2f076785a8f4b2219ddbd2bdb99954eae1, E4B 2eee7ac325f20eb8c9ac1d0e972f7c84663062da); overhauled native binding concurrency, lifetime, and session mutexes; fixed stdio UTF-8 line framing and active model_id tracking; repaired nightly validation calendar semantics and streak gating; tightened full-product-loop provenance assertions; and packaged verified Windows desktop installer.",
+  "verdictReason": "All actionable engineering, native compilation, model integrity hardening, concurrency lifetime fixes, stdio framing repairs, full product loop verification, genuine on-device packaged desktop model generation, and Windows desktop packaging are complete and verified by authentic test execution. Gate-E signoff requires 14 consecutive nightly runs in real time (0/14 elapsed), which is an external calendar blocker that cannot be fabricated.",
+  "lastVerifiedChange": "Demonstrated authentic on-device model generation through packaged Keimenon.exe with retained output and exact source evidence; hardened native binding with condition variable drain and timeout protection; resolved model registry integrity with immutable Hugging Face git revisions (E2B b3ca0d2f076785a8f4b2219ddbd2bdb99954eae1, E4B 2eee7ac325f20eb8c9ac1d0e972f7c84663062da); optimized LOD burn-in 300x; verified strict provenance e2e test; and packaged verified Windows desktop installer.",
   "nextConcreteAction": "Execute the scheduled nightly workflow (.github/workflows/gate-e-hardening.yml) on distinct calendar dates until the 14-consecutive-day observation window completes.",
   "releaseArtifact": {
     "path": "apps/desktop/out/Keimenon Setup 0.1.0.exe",
-    "sizeBytes": 104973795,
-    "sha256": "A226D726372AB66C6FC3C175AEECCCE6AA126DD9212E782EDEACF6C3E99369D6",
+    "sizeBytes": 188558517,
+    "sha256": "947D4E13371032DAB09CC4D0D8120179D240F588C59B8ADE7F2396F01A465AF5",
     "blockmap": "apps/desktop/out/Keimenon Setup 0.1.0.exe.blockmap"
   },
   "workQueue": [
@@ -76,6 +76,17 @@
       "targetFiles": [
         "apps/desktop/package.json",
         "apps/desktop/resources/web-dist/.web-dist-manifest.json"
+      ]
+    },
+    {
+      "id": "INSTALLED_APP_ON_DEVICE_GENERATION",
+      "area": "Installed Desktop Acceptance",
+      "title": "Demonstrate on-device model generation through installed Keimenon.exe with retained evidence and exact provenance",
+      "status": "VERIFIED",
+      "dependencies": ["NATIVE_ADDON_LIFETIME_CONCURRENCY", "DESKTOP_PACKAGING_RELEASE"],
+      "targetFiles": [
+        "apps/desktop-e2e/tests/installed-model-generation.spec.ts",
+        "docs/release/installed-application-generation-evidence.json"
       ]
     }
   ],

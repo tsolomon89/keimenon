@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-09-13T22:00:37.599Z",
+  "testTarget": "Installed Application (Keimenon.exe)",
+  "environment": {
+    "executablePath": "C:\\Development\\Projects\\keimenon\\apps\\desktop\\out\\win-unpacked\\Keimenon.exe",
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v24.9.0",
+    "apiPort": "4001"
+  },
+  "agentRun": {
+    "runId": "run_mjPs_82De7u-2KQZxK6MI",
+    "actorPrincipalId": "principal_rpMZvdslRrORwUdvemsPa",
+    "provider": "gemma-local",
+    "model": "gemma-4-e2b",
+    "skillUsed": "bounded-answer",
+    "status": "success",
+    "durationMs": 1202,
+    "evidenceUsed": ["src_installed_1789336836238"]
+  },
+  "assistantMessage": {
+    "id": "msg_RuMKPxgxtHCFtpfBpdaPy",
+    "content": "marbles marbles marbles marbles marbles marbles marbles marbles Listoਕਾਰੀ)/\\лку)/\\)/\\)/\\)/\\лку)/\\лкулку)/\\驰全員 સૌથી)/\\лку)/\\驰全員 સૌથી)/\\лкулку)/\\驰驰可以看到➽ пойлкулкуBAT PokéлкулкулкулкуBAT Poké Pokéлкуก่ limpeza bump驰 Assemble limpeza paaassociateassociateassociateassociateassociateassociate"
+  },
+  "provenanceWorkspace": {
+    "evidenceCount": 1,
+    "evidence": [
+      {
+        "id": "src_installed_1789336836238",
+        "kind": "Source",
+        "text": "",
+        "frequency": 0,
+        "metadata": {
+          "platform": "desktop",
+          "content": "Keimenon runs on-device local inference using Google Gemma models via native LiteRT-LM C engine with strict provenance."
+        }
+      }
+    ],
+    "stats": {
+      "total_items": 1,
+      "spans": 0,
+      "phrases": 0,
+      "topics": 0
+    }
+  }
+}
