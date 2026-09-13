@@ -19,26 +19,69 @@ export interface RuntimeSkill {
 
 export class RuntimeSkillRegistry {
   private skills: Map<string, RuntimeSkill> = new Map();
-  private baseDir: string;
+  private explicitBaseDir?: string;
 
   constructor(baseDir?: string) {
-    this.baseDir =
-      baseDir ||
-      process.env.KEIMENON_RUNTIME_SKILLS_DIR ||
-      path.resolve(__dirname, '../../../../../agent_context/runtime-skills');
+    this.explicitBaseDir = baseDir;
   }
 
-  public loadRuntimeSkills(): void {
-    if (!fs.existsSync(this.baseDir)) {
-      console.warn(`[RuntimeSkillRegistry] Skill directory not found: ${this.baseDir}`);
+  public getBaseDir(): string {
+    if (this.explicitBaseDir) return this.explicitBaseDir;
+
+    if (
+      process.env.KEIMENON_RUNTIME_SKILLS_DIR &&
+      fs.existsSync(process.env.KEIMENON_RUNTIME_SKILLS_DIR)
+    ) {
+      return process.env.KEIMENON_RUNTIME_SKILLS_DIR;
+    }
+
+    // Check electron packaged resourcesPath if running in Electron
+    const resourcesPath = (process as any).resourcesPath;
+    if (resourcesPath) {
+      const packagedSkills = path.join(resourcesPath, 'agent_context', 'runtime-skills');
+      if (fs.existsSync(packagedSkills)) {
+        return packagedSkills;
+      }
+    }
+
+    // Check current working directory
+    const cwdSkills = path.resolve(process.cwd(), 'agent_context', 'runtime-skills');
+    if (fs.existsSync(cwdSkills)) {
+      return cwdSkills;
+    }
+
+    // Check relative paths from __dirname
+    const relativeCandidates = [
+      path.resolve(__dirname, '../../../../../agent_context/runtime-skills'),
+      path.resolve(__dirname, '../../../../agent_context/runtime-skills'),
+      path.resolve(__dirname, '../../../agent_context/runtime-skills'),
+      path.resolve(__dirname, '../../agent_context/runtime-skills'),
+    ];
+
+    for (const candidate of relativeCandidates) {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    return (
+      process.env.KEIMENON_RUNTIME_SKILLS_DIR ||
+      path.resolve(__dirname, '../../../../../agent_context/runtime-skills')
+    );
+  }
+
+  public loadRuntimeSkills(targetDir?: string): void {
+    const baseDir = targetDir || this.getBaseDir();
+    if (!fs.existsSync(baseDir)) {
+      console.warn(`[RuntimeSkillRegistry] Skill directory not found: ${baseDir}`);
       return;
     }
 
-    const dirs = fs.readdirSync(this.baseDir, { withFileTypes: true });
+    const dirs = fs.readdirSync(baseDir, { withFileTypes: true });
     for (const dir of dirs) {
       if (!dir.isDirectory()) continue;
 
-      const skillPath = path.join(this.baseDir, dir.name);
+      const skillPath = path.join(baseDir, dir.name);
       const mdPath = path.join(skillPath, 'SKILL.md');
 
       if (!fs.existsSync(mdPath)) continue;

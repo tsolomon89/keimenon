@@ -70,25 +70,33 @@ try {
       }
     }
   } else {
-    if (requireNativeBuild) {
+    const coreDll = path.join(nativeBinDir, 'libLiteRt.dll');
+    const lmDll = path.join(nativeBinDir, 'libLiteRtLm.dll');
+    const alreadyPresent = fs.existsSync(coreDll) && fs.existsSync(lmDll);
+    if (requireNativeBuild && !alreadyPresent) {
       throw new Error(
-        `[LiteRtNodeBindings] FATAL: Vendor prebuilt directory not found: ${vendorDir}. Required native runtime dependencies cannot be shipped.`
+        `[LiteRtNodeBindings] FATAL: Vendor prebuilt directory not found: ${vendorDir} and required runtime DLLs missing at ${nativeBinDir}. Required native runtime dependencies cannot be shipped.`
       );
     }
-    console.warn(
-      '[LiteRtNodeBindings] Vendor prebuilt directory not found. DLLs must be provided manually.'
-    );
+    if (!alreadyPresent) {
+      console.warn(
+        '[LiteRtNodeBindings] Vendor prebuilt directory not found. DLLs must be provided manually.'
+      );
+    }
   }
 
   // Strictly enforce required native runtime DLLs for release builds
   if (requireNativeBuild) {
     const coreDll = path.join(nativeBinDir, 'libLiteRt.dll');
-    if (!fs.existsSync(coreDll)) {
+    const lmDll = path.join(nativeBinDir, 'libLiteRtLm.dll');
+    if (!fs.existsSync(coreDll) || !fs.existsSync(lmDll)) {
       throw new Error(
-        `[LiteRtNodeBindings] FATAL: Required runtime DLL missing after build: ${coreDll}`
+        `[LiteRtNodeBindings] FATAL: Required runtime DLLs missing after build: libLiteRt.dll or libLiteRtLm.dll not found in ${nativeBinDir}`
       );
     }
-    console.log('[LiteRtNodeBindings] Verified required native runtime DLLs present for release.');
+    console.log(
+      '[LiteRtNodeBindings] Verified required native runtime DLLs (libLiteRt.dll, libLiteRtLm.dll) present for release.'
+    );
   }
 } catch (err) {
   if (requireNativeBuild) {

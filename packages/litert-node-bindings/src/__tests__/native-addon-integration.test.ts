@@ -67,4 +67,45 @@ describe('Native Addon Real Binary Integration', () => {
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
   });
+
+  it('must load a genuine model, generate tokens on CPU, and safely unload resources', async () => {
+    const target = binaryPaths.find((p) => fs.existsSync(p));
+    const addon = require(target!);
+
+    const modelPath = path.resolve(
+      __dirname,
+      '../../../../vendor/litert-lm/runtime/testdata/test_lm_new_metadata.task'
+    );
+
+    if (!fs.existsSync(modelPath)) {
+      console.warn('Real test model fixture not present at:', modelPath);
+      return;
+    }
+
+    // 1. Load model
+    const loadResult = await addon.loadModel(modelPath);
+    expect(loadResult).toBeDefined();
+    expect(loadResult.success).toBe(true);
+    expect(loadResult.message).toContain('loaded successfully');
+
+    // 2. Verify loaded status
+    const loadedStatus = addon.status();
+    expect(loadedStatus.ok).toBe(true);
+    expect(loadedStatus.state).toBe('model_loaded');
+
+    // 3. Generate tokens
+    const genResult = await addon.generate('Hello', 10);
+    expect(genResult).toBeDefined();
+    expect(genResult.success).toBe(true);
+    expect(typeof genResult.text).toBe('string');
+    expect(genResult.text.length).toBeGreaterThan(0);
+
+    // 4. Safely unload model
+    await expect(addon.unloadModel()).resolves.toBeUndefined();
+
+    // 5. Verify status reverts
+    const postStatus = addon.status();
+    expect(postStatus.ok).toBe(true);
+    expect(postStatus.state).toBe('runtime_dependency_found');
+  });
 });

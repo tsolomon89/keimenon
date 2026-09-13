@@ -384,7 +384,7 @@ function sortNodesByMass(nodes: GraphNode[]): GraphNode[] {
     if (massDelta !== 0) {
       return massDelta;
     }
-    return a.id.localeCompare(b.id);
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   });
 }
 
@@ -394,7 +394,7 @@ function sortEdgesByStrength(edges: GraphEdge[]): GraphEdge[] {
     if (strengthDelta !== 0) {
       return strengthDelta;
     }
-    return a.id.localeCompare(b.id);
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   });
 }
 
@@ -411,7 +411,7 @@ function sortEdgesByConnectorPriority(edges: GraphEdge[]): GraphEdge[] {
       return strengthDelta;
     }
 
-    return a.id.localeCompare(b.id);
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   });
 }
 
@@ -600,7 +600,9 @@ export function buildLodPlan(input: BuildLodPlanInput): LodPlan {
 
   // Phase 2: LOD Policy Hardening
   // Ensure structural anchors are always preserved and bypass mass/budget culling.
+  const nodeById = new Map<string, GraphNode>();
   for (const node of input.nodes) {
+    nodeById.set(node.id, node);
     if (HIERARCHY_ANCHOR_KINDS.has(node.kind)) {
       mustKeepNodeIds.add(node.id);
     }
@@ -613,7 +615,7 @@ export function buildLodPlan(input: BuildLodPlanInput): LodPlan {
         continue;
       }
 
-      const pinnedNode = input.nodes.find((node) => node.id === pinnedNodeId);
+      const pinnedNode = nodeById.get(pinnedNodeId);
       if (!pinnedNode) {
         continue;
       }

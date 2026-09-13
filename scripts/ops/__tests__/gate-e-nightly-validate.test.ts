@@ -157,6 +157,7 @@ describe('gate-e-nightly-validate', () => {
         target: 14,
         streak: 14,
         meetsTarget: true,
+        timestamp: '2026-08-14T12:00:00Z',
         historicalRunsInspected: distinctDays,
       }),
       'utf8'

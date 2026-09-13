@@ -13,6 +13,7 @@ async function main() {
 
   console.log('Provider is online. Running synthesis test...');
 
+  skillRegistry.loadRuntimeSkills();
   const skillId = 'bounded-answer';
   try {
     skillRegistry.selectRuntimeSkill(skillId);
@@ -78,6 +79,7 @@ async function main() {
     console.log(`Provider: ${result.provider}`);
     console.log(`Model: ${result.model}`);
     console.log(`Skill Used: ${result.skill_used}`);
+    process.exit(0);
   } catch (err: any) {
     console.error('Synthesis failed:', err.message);
     process.exit(1);

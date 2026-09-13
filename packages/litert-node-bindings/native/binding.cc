@@ -76,15 +76,17 @@ static FnResponsesGetResponseTextAt fnResponsesGetText = nullptr;
 static FnResponsesDelete fnResponsesDelete = nullptr;
 
 #include <atomic>
-#include <condition_variable>
 #include <chrono>
+#include <condition_variable>
 
 static std::mutex g_inferenceMutex;
-static std::mutex g_generationExecutionMutex;
-static std::mutex g_activeSessionMutex;
-static std::mutex g_inFlightMutex;
-static std::condition_variable g_inFlightCv;
+static std::mutex g_drainMutex;
+static std::condition_variable g_drainCv;
 static std::atomic<int> g_inFlightGenerations{0};
+static std::atomic<bool> g_isDraining{false};
+
+static std::timed_mutex g_generationExecutionMutex;
+static std::mutex g_activeSessionMutex;
 static LiteRtLmSession* g_activeSession = nullptr;
 static std::atomic<bool> g_isGenerating{false};
 
@@ -141,7 +143,10 @@ static bool LoadLiteRtLibrary() {
             std::string binDir = moduleDir + "\\bin";
             SetDllDirectoryA(binDir.c_str());
         }
-        g_liteRtDll = LoadLibraryA("libLiteRt.dll");
+        g_liteRtDll = LoadLibraryA("libLiteRtLm.dll");
+        if (g_liteRtDll == NULL) {
+            g_liteRtDll = LoadLibraryA("libLiteRt.dll");
+        }
         SetDllDirectoryA(NULL);
     }
     if (!g_liteRtDll) {
@@ -166,7 +171,10 @@ static bool LoadLiteRtLibrary() {
     fnResponsesDelete = (FnResponsesDelete)GetProcAddress(g_liteRtDll, "litert_lm_responses_delete");
 #else
     if (g_liteRtDll == NULL) {
-        g_liteRtDll = dlopen("libLiteRt.so", RTLD_LAZY);
+        g_liteRtDll = dlopen("libLiteRtLm.so", RTLD_LAZY);
+        if (!g_liteRtDll) {
+            g_liteRtDll = dlopen("libLiteRt.so", RTLD_LAZY);
+        }
     }
     if (!g_liteRtDll) {
         ResetFunctionPointers();
@@ -191,13 +199,11 @@ static bool LoadLiteRtLibrary() {
 #endif
 
     // Strict validation: Every required LiteRT-LM C API function MUST be exported.
-    // Production runtime requires authentic LiteRT-LM libraries and symbols.
     if (!fnSettingsCreate || !fnSettingsDelete ||
         !fnEngineCreate || !fnEngineDelete || !fnEngineCreateSession ||
         !fnSessionDelete || !fnSessionGenerateContent || !fnResponsesGetNum ||
         !fnResponsesGetText || !fnResponsesDelete) {
         
-        // Output diagnostics exclusively to stderr to keep JSON-RPC stdio clean
         fprintf(stderr, "[LiteRtNodeBindings] Verification failed: Required LiteRT-LM C API symbols missing in shared library.\n");
         ResetFunctionPointers();
 #ifdef _WIN32
@@ -225,7 +231,7 @@ static napi_value BindingStatus(napi_env env, napi_callback_info info) {
     if (!libOk) {
         napi_get_boolean(env, false, &okVal);
         napi_create_string_utf8(env, "runtime_dependency_missing", NAPI_AUTO_LENGTH, &stateVal);
-        napi_create_string_utf8(env, "Required LiteRT dynamic libraries (libLiteRt.dll) or LiteRT-LM symbols are missing in environment.", NAPI_AUTO_LENGTH, &msgVal);
+        napi_create_string_utf8(env, "Required LiteRT dynamic libraries (libLiteRtLm.dll) or LiteRT-LM symbols are missing in environment.", NAPI_AUTO_LENGTH, &msgVal);
     } else if (!g_isModelLoaded) {
         napi_get_boolean(env, true, &okVal);
         napi_create_string_utf8(env, "runtime_dependency_found", NAPI_AUTO_LENGTH, &stateVal);
@@ -243,11 +249,12 @@ static napi_value BindingStatus(napi_env env, napi_callback_info info) {
     return resultObj;
 }
 
-// JS: unloadModel() -> Promise<void>
-static napi_value UnloadModel(napi_env env, napi_callback_info info) {
-    std::lock_guard<std::mutex> lock(g_inferenceMutex);
+// Helper function to safely cancel and drain in-flight generation before destroying resources
+static bool TeardownEngineSafe() {
+    // 1. Mark draining immediately so any newly arriving generation worker is rejected
+    g_isDraining.store(true);
 
-    // Cancel any active generation in progress
+    // 2. Request cancellation of active session if currently generating (without holding inference mutex)
     {
         std::lock_guard<std::mutex> sessLock(g_activeSessionMutex);
         if (g_activeSession && fnSessionCancelProcess) {
@@ -255,28 +262,61 @@ static napi_value UnloadModel(napi_env env, napi_callback_info info) {
         }
     }
 
-    // Wait for in-flight generations to safely finish or abort
+    // 3. Wait on drain condition variable with 5-second timeout WITHOUT holding g_inferenceMutex
     {
-        std::unique_lock<std::mutex> drainLock(g_inFlightMutex);
-        g_inFlightCv.wait_for(drainLock, std::chrono::milliseconds(5000), []() {
+        std::unique_lock<std::mutex> drainLock(g_drainMutex);
+        bool drained = g_drainCv.wait_for(drainLock, std::chrono::milliseconds(5000), [] {
             return g_inFlightGenerations.load() == 0;
         });
+
+        if (!drained || g_inFlightGenerations.load() > 0) {
+            fprintf(stderr, "[LiteRtNodeBindings] TeardownEngineSafe timed out waiting for generation to drain (%d still active). Engine destruction aborted; resources preserved.\n", g_inFlightGenerations.load());
+            g_isDraining.store(false);
+            return false;
+        }
     }
 
-    if (g_session && fnSessionDelete) {
-        fnSessionDelete(g_session);
-        g_session = nullptr;
-    }
-    if (g_engine && fnEngineDelete) {
-        fnEngineDelete(g_engine);
-        g_engine = nullptr;
-    }
-    g_isModelLoaded = false;
-    g_loadedModelPath = "";
+    // 4. All active generations drained to 0. Acquire g_generationExecutionMutex and g_inferenceMutex
+    // to safely destroy resources without any possibility of concurrent access
+    {
+        std::unique_lock<std::timed_mutex> genLock(g_generationExecutionMutex, std::defer_lock);
+        if (!genLock.try_lock_for(std::chrono::milliseconds(2000))) {
+            fprintf(stderr, "[LiteRtNodeBindings] TeardownEngineSafe timed out acquiring execution mutex. Resources preserved.\n");
+            g_isDraining.store(false);
+            return false;
+        }
 
+        std::lock_guard<std::mutex> lock(g_inferenceMutex);
+        if (g_session && fnSessionDelete) {
+            fnSessionDelete(g_session);
+            g_session = nullptr;
+        }
+        if (g_engine && fnEngineDelete) {
+            fnEngineDelete(g_engine);
+            g_engine = nullptr;
+        }
+        g_isModelLoaded = false;
+        g_loadedModelPath = "";
+    }
+
+    g_isDraining.store(false);
+    return true;
+}
+
+// JS: unloadModel() -> Promise<void>
+static napi_value UnloadModel(napi_env env, napi_callback_info info) {
     napi_deferred deferred;
     napi_value promise;
     napi_create_promise(env, &deferred, &promise);
+
+    bool drained = TeardownEngineSafe();
+    if (!drained) {
+        napi_value rejectVal;
+        napi_create_string_utf8(env, "Cannot unload model: in-flight generation failed to drain within timeout.", NAPI_AUTO_LENGTH, &rejectVal);
+        napi_reject_deferred(env, deferred, rejectVal);
+        return promise;
+    }
+
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     napi_resolve_deferred(env, deferred, undefined);
@@ -309,8 +349,6 @@ static napi_value LoadModel(napi_env env, napi_callback_info info) {
     napi_get_value_string_utf8(env, args[0], &modelPath[0], modelPath.size(), &pathCopied);
     modelPath.resize(pathCopied);
 
-    std::lock_guard<std::mutex> lock(g_inferenceMutex);
-
     if (!LoadLiteRtLibrary()) {
         napi_value resObj;
         napi_create_object(env, &resObj);
@@ -341,26 +379,23 @@ static napi_value LoadModel(napi_env env, napi_callback_info info) {
         return promise;
     }
 
-    // Unload existing session if loaded, ensuring in-flight work drains
+    // Unload existing session if loaded, ensuring in-flight work drains safely WITHOUT holding inference mutex
     if (g_isModelLoaded) {
-        {
-            std::lock_guard<std::mutex> sessLock(g_activeSessionMutex);
-            if (g_activeSession && fnSessionCancelProcess) {
-                fnSessionCancelProcess(g_activeSession);
-            }
+        bool drained = TeardownEngineSafe();
+        if (!drained) {
+            napi_value resObj;
+            napi_create_object(env, &resObj);
+            napi_value success, msg;
+            napi_get_boolean(env, false, &success);
+            napi_create_string_utf8(env, "Cannot replace model: in-flight generation on previous model failed to drain within timeout.", NAPI_AUTO_LENGTH, &msg);
+            napi_set_named_property(env, resObj, "success", success);
+            napi_set_named_property(env, resObj, "message", msg);
+            napi_resolve_deferred(env, deferred, resObj);
+            return promise;
         }
-        {
-            std::unique_lock<std::mutex> drainLock(g_inFlightMutex);
-            g_inFlightCv.wait_for(drainLock, std::chrono::milliseconds(5000), []() {
-                return g_inFlightGenerations.load() == 0;
-            });
-        }
-        if (g_session && fnSessionDelete) fnSessionDelete(g_session);
-        if (g_engine && fnEngineDelete) fnEngineDelete(g_engine);
-        g_session = nullptr;
-        g_engine = nullptr;
-        g_isModelLoaded = false;
     }
+
+    std::lock_guard<std::mutex> lock(g_inferenceMutex);
 
     // Instantiate LiteRT LM Engine Settings
     LiteRtLmEngineSettings* settings = fnSettingsCreate(modelPath.c_str(), "cpu", nullptr, nullptr);
@@ -457,30 +492,28 @@ static napi_value Cancel(napi_env env, napi_callback_info info) {
 static void GenerateExecute(napi_env env, void* data) {
     GenerateCarrier* carrier = static_cast<GenerateCarrier*>(data);
 
-    // Track in-flight operations with RAII drain notification
-    {
-        std::lock_guard<std::mutex> lk(g_inFlightMutex);
-        g_inFlightGenerations++;
+    if (g_isDraining.load()) {
+        carrier->success = false;
+        carrier->error = "Inference engine is currently unloading or replacing model.";
+        return;
     }
 
-    struct InFlightGuard {
-        ~InFlightGuard() {
-            std::lock_guard<std::mutex> lk(g_inFlightMutex);
-            g_inFlightGenerations--;
-            if (g_inFlightGenerations == 0) {
-                g_inFlightCv.notify_all();
-            }
+    g_inFlightGenerations.fetch_add(1);
+    struct DrainGuard {
+        ~DrainGuard() {
+            g_inFlightGenerations.fetch_sub(1);
+            g_drainCv.notify_all();
         }
-    } inFlightGuard;
+    } drainGuard;
 
     // Serialize inferences across worker threads so one generation cannot step on another
-    std::unique_lock<std::mutex> genLock(g_generationExecutionMutex);
+    std::unique_lock<std::timed_mutex> genLock(g_generationExecutionMutex);
 
     LiteRtLmSession* session = nullptr;
     {
         std::lock_guard<std::mutex> lock(g_inferenceMutex);
 
-        if (!g_isModelLoaded || !g_engine || !fnEngineCreateSession || !fnSessionGenerateContent) {
+        if (g_isDraining.load() || !g_isModelLoaded || !g_engine || !fnEngineCreateSession || !fnSessionGenerateContent) {
             carrier->success = false;
             carrier->error = "Inference engine is not loaded or ready.";
             return;

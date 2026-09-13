@@ -186,6 +186,18 @@ export class ConversationMessageService {
         const provider = providerRegistry.getProvider(providerId);
         usedProvider = provider.id;
 
+        if (typeof provider.checkStatus === 'function') {
+          const providerStatus = await provider.checkStatus();
+          if (
+            providerStatus &&
+            (providerStatus.configured === false ||
+              providerStatus.status === 'unavailable' ||
+              providerStatus.status === 'error')
+          ) {
+            throw new Error(providerStatus.error_code || 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED');
+          }
+        }
+
         // Build context pack
         const contextPack = this.contextService.buildContextPack(
           accountId,

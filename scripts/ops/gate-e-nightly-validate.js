@@ -138,39 +138,93 @@ function evaluateGateENightly(options) {
         );
       }
 
-      // Hard enforcement for final release signoff (--require-streak)
+      // Hard enforcement for final release signoff (--require-streak) or when meetsTarget is claimed
+      const requireHistoryValidation = options.requireStreak || streak.meetsTarget;
+
       if (options.requireStreak) {
         if (!streak.meetsTarget || streak.streak < options.targetStreak) {
           failures.push(
             `Streak requirement not satisfied: current streak is ${streak.streak}, required target is ${options.targetStreak} (meetsTarget=${streak.meetsTarget})`
           );
         }
+      }
 
-        // Calendar-day validation if historical runs are inspected
+      if (requireHistoryValidation) {
         if (
-          Array.isArray(streak.historicalRunsInspected) &&
-          streak.historicalRunsInspected.length > 0
+          !Array.isArray(streak.historicalRunsInspected) ||
+          streak.historicalRunsInspected.length === 0
         ) {
-          const dateMap = new Map();
+          failures.push(
+            'Streak claim unverifiable: missing historicalRunsInspected evidence array in streak report.'
+          );
+        } else {
+          // Gather runs in the streak (current run if pass, plus successful historical runs)
+          const validRuns = [];
+          if (streak.currentRun?.pass) {
+            validRuns.push({
+              createdAt: streak.timestamp || new Date().toISOString(),
+              conclusion: 'success',
+            });
+          }
+
           for (const run of streak.historicalRunsInspected) {
             if (run.conclusion !== 'success') {
               failures.push(
                 `Historical run ${run.id || run.runNumber} is not successful (conclusion=${run.conclusion})`
               );
-            }
-            if (run.createdAt) {
-              const d = new Date(run.createdAt).toISOString().slice(0, 10);
-              dateMap.set(d, (dateMap.get(d) || 0) + 1);
+            } else {
+              validRuns.push(run);
             }
           }
-          if (dateMap.size < options.targetStreak) {
+
+          // Distinct UTC dates
+          const distinctDates = Array.from(
+            new Set(
+              validRuns
+                .map((r) => r.createdAt && new Date(r.createdAt).toISOString().slice(0, 10))
+                .filter(Boolean)
+            )
+          ).sort(); // chronological order e.g. ['2026-08-31', '2026-09-01', ...]
+
+          const requiredCount = options.requireStreak ? options.targetStreak : streak.streak || 1;
+          if (distinctDates.length < requiredCount) {
             failures.push(
-              `Calendar streak requirement not satisfied: observed ${dateMap.size} distinct UTC dates, required ${options.targetStreak}`
+              `Calendar streak requirement not satisfied: observed ${distinctDates.length} distinct UTC dates, required ${requiredCount}`
             );
+          } else {
+            // 1. Verify dates are strictly consecutive (no gaps)
+            for (let i = 1; i < distinctDates.length; i++) {
+              const prev = new Date(distinctDates[i - 1]);
+              const curr = new Date(distinctDates[i]);
+              const diffDays = Math.round(
+                (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24)
+              );
+              if (diffDays !== 1) {
+                failures.push(
+                  `Calendar streak is not consecutive: gap of ${diffDays} days detected between ${distinctDates[i - 1]} and ${distinctDates[i]}`
+                );
+                break;
+              }
+            }
+
+            // 2. Verify streak is current, not stale (latest date within 48h of reference time)
+            const latestDate = new Date(distinctDates[distinctDates.length - 1]);
+            const referenceTime = streak.timestamp
+              ? new Date(streak.timestamp)
+              : options.referenceDate
+                ? new Date(options.referenceDate)
+                : new Date();
+            const staleDiffHours =
+              (referenceTime.getTime() - latestDate.getTime()) / (1000 * 60 * 60);
+            if (staleDiffHours > 48) {
+              failures.push(
+                `Calendar streak is stale: most recent successful run date (${distinctDates[distinctDates.length - 1]}) is ${Math.round(staleDiffHours)} hours old relative to report timestamp (max 48h allowed)`
+              );
+            }
           }
         }
       }
-      streakValid = true;
+      streakValid = failures.length === 0;
     }
   }
 

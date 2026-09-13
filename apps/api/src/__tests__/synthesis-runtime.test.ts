@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vitest';
 import { SQLiteClient } from '@keimenon/db';
 import { randomUUID } from 'crypto';
 import { ConversationMessageService } from '../services/conversation-message.service';
@@ -196,6 +196,18 @@ describe('Synthesis Runtime & Agent Skills', () => {
 
       // When no provider is requested, system attempts canonical default (gemma-local)
       // and fails explicitly if not configured rather than silently falling back to mock
+      const statusSpy = vi.spyOn(gemmaProvider, 'checkStatus').mockResolvedValueOnce({
+        configured: false,
+        status: 'unavailable',
+        error_code: 'GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED',
+        error: 'Gemma local runtime is not configured or offline',
+        timeoutMs: 5000,
+        thinkingEnabled: false,
+        modelAvailable: false,
+        runtimeKind: 'native-gemma',
+        modelName: 'gemma-4-e2b',
+      });
+
       const unconfiguredResult = await service.postMessage(
         mockAccountId,
         mockHumanId,
@@ -205,6 +217,8 @@ describe('Synthesis Runtime & Agent Skills', () => {
         'bounded-answer',
         undefined // No provider requested
       );
+
+      statusSpy.mockRestore();
 
       expect(unconfiguredResult.synthesisError).toMatch(
         /GEMMA_MODEL_NOT_FOUND|GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED/

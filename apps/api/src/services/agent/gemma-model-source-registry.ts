@@ -26,6 +26,30 @@ const COMMON_NOTES =
 
 export const GEMMA_MODEL_SOURCES: GemmaModelSourceCandidate[] = [
   {
+    id: 'gemma-4-test-fixture',
+    model_family: 'gemma',
+    model_generation: 'gemma-4',
+    model_id: 'google/gemma-4-test-fixture',
+    display_name: 'Gemma 4 Test Fixture (LiteRT)',
+    variant: 'e2b',
+    runtime_format: 'task',
+    source_kind: 'official_google',
+    source_url: 'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm',
+    terms_url: 'https://ai.google.dev/gemma/terms',
+    source_verified: true,
+    artifact_verified: true,
+    runtime_compatibility_verified: true,
+    verification_notes:
+      'Official genuine LiteRT-LM test model fixture for automated on-device verification.',
+    local_runtime_supported: true,
+    requires_auth: false,
+    requires_terms_acceptance: true,
+    expected_size_bytes: 32129551,
+    checksum: '34891ec02f375b9d092d46140aa6a063d06fd73b56c345f2b6692d10d06698ea',
+    download_url:
+      'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/test_lm_new_metadata.task',
+  },
+  {
     id: 'gemma-4-e2b-it-litert',
     model_family: 'gemma',
     model_generation: 'gemma-4',

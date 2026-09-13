@@ -579,6 +579,7 @@ describe('FTS5 Duplicate Detection Performance Benchmark', () => {
     }> = [];
 
     for (const size of testSizes) {
+      await new Promise((r) => setTimeout(r, 10));
       const messages = generateMessages(size, `conv_${size}`, `Test ${size}`, 0.1);
 
       // Baseline

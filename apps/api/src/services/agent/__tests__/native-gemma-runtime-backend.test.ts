@@ -35,7 +35,8 @@ describe('NativeGemmaRuntimeBackend', () => {
       'validate_model',
       expect.objectContaining({
         model_path: expect.stringContaining('foo.litertlm'),
-      })
+      }),
+      expect.any(Number)
     );
   });
 
@@ -70,7 +71,8 @@ describe('NativeGemmaRuntimeBackend', () => {
       'load_model',
       expect.objectContaining({
         model_path: expect.stringContaining('foo.litertlm'),
-      })
+      }),
+      expect.any(Number)
     );
   });
 

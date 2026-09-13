@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vitest';
 import { GemmaLocalProvider } from '../services/agent/gemma-local-provider';
+import { nativeGemmaBackend } from '../services/agent/native-gemma-runtime-backend';
 import { skillRegistry } from '../services/agent/runtime-skill-loader';
 
 describe('GemmaLocalProvider Status Check', () => {
@@ -25,13 +26,42 @@ describe('GemmaLocalProvider Status Check', () => {
     vi.resetAllMocks();
   });
 
-  it('returns not configured when GEMMA_LOCAL_BASE_URL is missing', async () => {
+  it('returns not configured when GEMMA_LOCAL_BASE_URL is missing and native backend is unavailable', async () => {
     delete process.env.GEMMA_LOCAL_BASE_URL;
+    vi.spyOn(nativeGemmaBackend, 'checkStatus').mockResolvedValueOnce({
+      state: 'runtime_missing',
+      model_family: 'gemma',
+      preferred_backend: 'native-gemma',
+      can_run_offline: true,
+      requires_admin: false,
+      model_id: null,
+      message: 'Native runtime not found',
+      next_actions: [],
+    });
 
     const status = await provider.checkStatus();
     expect(status.configured).toBe(false);
     expect(status.status).toBe('unavailable');
     expect(status.error_code).toBe('GEMMA_LOCAL_RUNTIME_NOT_CONFIGURED');
+  });
+
+  it('returns online when native LiteRT-LM backend is ready without BASE_URL', async () => {
+    delete process.env.GEMMA_LOCAL_BASE_URL;
+    vi.spyOn(nativeGemmaBackend, 'checkStatus').mockResolvedValueOnce({
+      state: 'ready',
+      model_family: 'gemma',
+      preferred_backend: 'native-gemma',
+      can_run_offline: true,
+      requires_admin: false,
+      model_id: 'google/gemma-4-e2b-it',
+      message: 'Ready',
+      next_actions: [],
+    });
+
+    const status = await provider.checkStatus();
+    expect(status.configured).toBe(true);
+    expect(status.status).toBe('online');
+    expect(status.runtimeKind).toBe('native-gemma');
   });
 
   it('returns unavailable when base URL cannot be reached', async () => {

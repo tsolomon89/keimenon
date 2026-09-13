@@ -76,6 +76,7 @@ yarn-error.log*
 *.sqlite
 *.sqlite3
 .keimenon/
+.data/
 
 # Vercel
 .vercel/

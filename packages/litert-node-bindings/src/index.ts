@@ -39,8 +39,16 @@ try {
   const pathsToTry = [
     path.resolve(__dirname, '../build/Release/litert_node_bindings.node'),
     path.resolve(__dirname, '../native/win32-x64/litert_node_bindings.node'),
-    // Packaging targets
+    path.resolve(__dirname, '../../native/win32-x64/litert_node_bindings.node'),
     path.resolve(process.cwd(), 'resources/native/win32-x64/litert_node_bindings.node'),
+    path.resolve(
+      (process as any).resourcesPath || '',
+      'native/win32-x64/litert_node_bindings.node'
+    ),
+    path.resolve(
+      (process as any).resourcesPath || '',
+      '../native/win32-x64/litert_node_bindings.node'
+    ),
   ];
 
   for (const p of pathsToTry) {

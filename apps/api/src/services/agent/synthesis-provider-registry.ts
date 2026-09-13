@@ -13,6 +13,7 @@ export interface SynthesisProvider {
   id: string;
   family: 'mock' | 'gemma';
   mode: 'mock' | 'local';
+  checkStatus?(): Promise<any>;
   synthesize(
     input: ConversationSynthesisInput,
     skillId: string

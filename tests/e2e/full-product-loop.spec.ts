@@ -160,6 +160,8 @@ test.describe('Full Browser Product Loop E2E', () => {
     await expect(assistantMessage).toBeVisible({ timeout: 15000 });
     const assistantText = await assistantMessage.textContent();
     expect(assistantText?.trim().length).toBeGreaterThan(0);
+    // Strict acceptance: Must NOT be an error or failed synthesis!
+    await expect(assistantMessage).not.toContainText('Synthesis failed');
 
     // 16. Assert AgentRun metadata appears
     // The "View Provenance" button should appear
@@ -174,7 +176,9 @@ test.describe('Full Browser Product Loop E2E', () => {
     await expect(provenanceModal).toBeVisible();
 
     // Wait for hydration/loading to complete
-    await expect(provenanceModal.getByText(/Hydrating provenance subgraph.../i)).toBeHidden({
+    await expect(
+      provenanceModal.getByText(/Hydrating provenance (subgraph|workspace)... /i)
+    ).toBeHidden({
       timeout: 10000,
     });
 
@@ -184,9 +188,16 @@ test.describe('Full Browser Product Loop E2E', () => {
     });
     await expect(provenanceHeading).toBeVisible();
 
+    // Strict acceptance: Execution must have SUCCEEDED, NOT failed with an error!
+    await expect(provenanceModal.getByText(/Agent Run Execution Failed/i)).not.toBeVisible();
+    await expect(provenanceModal.getByText(/This run terminated with an error/i)).not.toBeVisible();
+
     // In this source-bound acceptance scenario, evidence MUST be bound; empty state is forbidden
     const emptyState = provenanceModal.getByText(/No explicit evidence was bound to this run/i);
     await expect(emptyState).not.toBeVisible();
+
+    // Assert that evidence was actually bound and rendered (Total Evidence > 0)
+    await expect(provenanceModal.getByText(/Total Evidence/i)).toBeVisible();
   });
 
   test('[Unbound Conversation Loop] displays empty evidence panel when conversation has no source context', async ({
@@ -277,6 +288,8 @@ test.describe('Full Browser Product Loop E2E', () => {
     // 6. Assert assistant message and provenance button appear
     const assistantMessage = page.locator('.message-bubble:not(.user-message)').last();
     await expect(assistantMessage).toBeVisible({ timeout: 15000 });
+    // Strict acceptance: Must NOT be a failed synthesis!
+    await expect(assistantMessage).not.toContainText('Synthesis failed');
 
     const provenanceBtn = page.getByRole('button', { name: /View Provenance/i }).last();
     await expect(provenanceBtn).toBeVisible({ timeout: 10000 });
@@ -285,10 +298,14 @@ test.describe('Full Browser Product Loop E2E', () => {
     // 7. In this unbound scenario, the empty evidence state is legitimately expected
     const provenanceModal = page.getByRole('dialog').filter({ hasText: /Provenance/i });
     await expect(provenanceModal).toBeVisible();
+
+    // Strict acceptance: Must NOT have terminated with an error!
+    await expect(provenanceModal.getByText(/Agent Run Execution Failed/i)).not.toBeVisible();
+    await expect(provenanceModal.getByText(/This run terminated with an error/i)).not.toBeVisible();
+
+    // Legitimate empty state must be visible
     await expect(
-      provenanceModal.getByText(
-        /(No explicit evidence was bound to this run|This run terminated with an error\. No context evidence was bound or processed\.)/i
-      )
+      provenanceModal.getByText(/No explicit evidence was bound to this run/i)
     ).toBeVisible({ timeout: 10000 });
   });
 });

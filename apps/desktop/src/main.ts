@@ -425,7 +425,6 @@ async function getAvailablePort(startPort: number): Promise<number> {
 
 async function runApiServer(startPort: number) {
   try {
-    const { start: startApiServer } = await import('@keimenon/api');
     const userDataPath = app.getPath('userData');
     const dbPath = path.join(userDataPath, 'keimenon.db');
     const storagePath = path.join(userDataPath, 'storage');
@@ -436,11 +435,6 @@ async function runApiServer(startPort: number) {
     if (!fs.existsSync(userDataPath)) fs.mkdirSync(userDataPath, { recursive: true });
     if (!fs.existsSync(storagePath)) fs.mkdirSync(storagePath, { recursive: true });
     if (!fs.existsSync(modelsDir)) fs.mkdirSync(modelsDir, { recursive: true });
-
-    // Dynamic port selection
-    const apiPort = await getAvailablePort(startPort);
-
-    console.log('[Main] Starting Embedded API Server...', { dbPath, apiPort });
 
     // Inject Dev Auth flag if in dev mode
     if (!app.isPackaged) {
@@ -463,6 +457,13 @@ async function runApiServer(startPort: number) {
         'inference-helper/index.js'
       );
     }
+
+    const { start: startApiServer } = await import('@keimenon/api');
+
+    // Dynamic port selection
+    const apiPort = await getAvailablePort(startPort);
+
+    console.log('[Main] Starting Embedded API Server...', { dbPath, apiPort });
 
     await startApiServer({
       port: apiPort,

@@ -1,4 +1,4 @@
-import { LocalInferenceStatus } from '@keimenon/types';
+import { LocalInferenceState, LocalInferenceStatus } from '@keimenon/types';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -95,10 +95,16 @@ export class NativeGemmaRuntimeBackend {
     const command = isJs ? process.execPath : helperPath;
     const args = isJs ? [helperPath] : [];
 
+    const env = {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: '1',
+    };
+
     this.helper = spawn(command, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
       shell: false,
+      env,
     });
 
     this.stdoutBuffer = '';
@@ -116,7 +122,8 @@ export class NativeGemmaRuntimeBackend {
       console.error(`[NativeHelper] Process error: ${err.message}`);
     });
 
-    this.helper.on('exit', () => {
+    this.helper.on('exit', (code, signal) => {
+      console.error(`[NativeHelper] Helper exited with code=${code} signal=${signal}`);
       this.helper = null;
       this.loadedCandidateId = null;
       this.stdoutBuffer = '';
@@ -124,7 +131,7 @@ export class NativeGemmaRuntimeBackend {
         if (req.timer) {
           clearTimeout(req.timer);
         }
-        req.reject(new Error('Helper process exited'));
+        req.reject(new Error(`Helper process exited (code=${code}, signal=${signal})`));
       }
       this.pendingRequests.clear();
     });
@@ -139,14 +146,16 @@ export class NativeGemmaRuntimeBackend {
       const effectiveTimeout =
         timeoutMs !== undefined
           ? timeoutMs
-          : parseInt(process.env.KEIMENON_INFERENCE_HELPER_TIMEOUT_MS || '5000', 10);
+          : parseInt(process.env.KEIMENON_INFERENCE_HELPER_TIMEOUT_MS || '15000', 10);
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           if (this.pendingRequests.has(id)) {
             const entry = this.pendingRequests.get(id);
             this.pendingRequests.delete(id);
             if (this.helper) {
-              console.error(`[NativeHelper] Request timeout. Killing helper process.`);
+              console.error(
+                `[NativeHelper] Request timeout (${effectiveTimeout}ms) for ${method}. Killing helper process.`
+              );
               this.helper.kill();
               this.helper = null;
             }
@@ -226,12 +235,13 @@ export class NativeGemmaRuntimeBackend {
 
   public async validateModel(candidateId: string): Promise<any> {
     const absPath = await this.getAbsolutePathForCandidate(candidateId);
-    return this.sendRequest('validate_model', { model_path: absPath });
+    return this.sendRequest('validate_model', { model_path: absPath }, 30000);
   }
 
   public async loadModel(candidateId: string): Promise<any> {
     const absPath = await this.getAbsolutePathForCandidate(candidateId);
-    const res = await this.sendRequest('load_model', { model_path: absPath });
+    const loadTimeoutMs = parseInt(process.env.GEMMA_LOCAL_LOAD_TIMEOUT_MS || '60000', 10);
+    const res = await this.sendRequest('load_model', { model_path: absPath }, loadTimeoutMs);
     if (res && (res.success === true || res.ok === true)) {
       this.loadedCandidateId = candidateId;
     }
@@ -240,7 +250,7 @@ export class NativeGemmaRuntimeBackend {
 
   public async unloadModel(): Promise<void> {
     try {
-      await this.sendRequest('unload_model');
+      await this.sendRequest('unload_model', undefined, 15000);
     } finally {
       this.loadedCandidateId = null;
     }
@@ -320,10 +330,27 @@ export class NativeGemmaRuntimeBackend {
         }
       }
 
+      let resolvedState: LocalInferenceState =
+        (res.state as LocalInferenceState) || 'runtime_unimplemented';
+      if (res.state === 'runtime_dependency_found') {
+        try {
+          const models = await modelManager.getInstalledModels();
+          const hasInstalled = models.some(
+            (m) =>
+              m.installed ||
+              m.verification_status === 'verified' ||
+              m.verification_status === 'presence_verified'
+          );
+          resolvedState = hasInstalled ? 'ready' : 'model_missing';
+        } catch (_) {
+          resolvedState = 'ready';
+        }
+      }
+
       return {
         model_family: 'gemma',
         preferred_backend: 'native-gemma',
-        state: res.state || 'runtime_unimplemented',
+        state: resolvedState,
         can_run_offline: true,
         requires_admin: false,
         model_id: observedModelId,
